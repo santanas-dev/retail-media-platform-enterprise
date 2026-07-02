@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from packages.observability import log_request_middleware, setup_logging
-from packages.domain.database import check_db_health, create_engine
+from packages.domain.database import check_db_health, create_engine, set_global_engine
 
 SERVICE_NAME = "control-api"
 logger = setup_logging(SERVICE_NAME)
@@ -32,6 +32,7 @@ async def lifespan(app: FastAPI):
     global _engine
     try:
         _engine = create_engine()
+        set_global_engine(_engine)
         logger.info("Database engine created")
     except Exception:
         logger.exception("Failed to create database engine — service will start degraded")
@@ -47,12 +48,20 @@ async def lifespan(app: FastAPI):
 # ---------------------------------------------------------------------------
 app = FastAPI(
     title="RMP Control API",
-    version="0.2.0",
+    version="0.3.0",
     docs_url=None,
     redoc_url=None,
     lifespan=lifespan,
 )
 app.middleware("http")(log_request_middleware)
+
+# ---------------------------------------------------------------------------
+# API Routers
+# ---------------------------------------------------------------------------
+
+from packages.api.identity import router as identity_router
+
+app.include_router(identity_router)
 
 
 # ---------------------------------------------------------------------------

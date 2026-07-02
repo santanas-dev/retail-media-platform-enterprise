@@ -16,6 +16,20 @@ DATABASE_URL = os.environ.get(
     "postgresql+asyncpg://retail_media:retail_media_dev@localhost:5432/retail_media_platform",
 )
 
+# ---------------------------------------------------------------------------
+# Engine registry — modules import engine from here, not from control-api main
+# ---------------------------------------------------------------------------
+_global_engine = None
+
+
+def set_global_engine(engine) -> None:
+    global _global_engine
+    _global_engine = engine
+
+
+def get_global_engine():
+    return _global_engine
+
 
 def create_engine(url: str | None = None):
     """Create async SQLAlchemy engine."""
