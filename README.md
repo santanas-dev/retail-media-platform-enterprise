@@ -20,14 +20,17 @@
 # 1. Start only PostgreSQL
 docker compose -f infra/compose/docker-compose.phase1.yml up -d postgres
 
-# 2. Run migrations + seed (one-shot, profile-gated)
+# 2. Build the db-setup image (first time only)
+docker compose -f infra/compose/docker-compose.phase1.yml build db-setup
+
+# 3. Run migrations + seed (one-shot, profile-gated)
 docker compose -f infra/compose/docker-compose.phase1.yml \
   --profile setup run --rm db-setup
 
-# 3. Start all services
+# 4. Start all services
 docker compose -f infra/compose/docker-compose.phase1.yml up -d
 
-# 4. Verify
+# 5. Verify
 curl http://localhost:8000/health/live
 curl http://localhost:8000/health/ready
 ```

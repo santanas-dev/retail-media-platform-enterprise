@@ -30,7 +30,11 @@ cd "$ALEMBIC_DIR"
 
 echo "==> Running Alembic migrations..."
 echo "    Config: alembic.ini"
-echo "    Database: ${DATABASE_URL:-'(default dev)'}"
+if [ -n "${DATABASE_URL:-}" ]; then
+    echo "    Database: configured"
+else
+    echo "    Database: default dev"
+fi
 
 alembic upgrade head
 

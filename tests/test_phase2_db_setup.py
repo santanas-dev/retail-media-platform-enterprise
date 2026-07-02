@@ -68,6 +68,27 @@ class TestDbScriptsContent(unittest.TestCase):
         src = _read("scripts/db/seed.sh")
         self.assertIn("set -euo pipefail", src)
 
+    def test_migrate_script_never_echoes_database_url(self):
+        """Script must not print DATABASE_URL value (credential leak)."""
+        import re
+        src = _read("scripts/db/migrate.sh")
+        # Find echo/printf lines, check none contain ${DATABASE_URL} unguarded
+        for line in src.split("\n"):
+            stripped = line.strip()
+            if stripped.startswith("echo") or stripped.startswith("printf"):
+                self.assertNotIn("${DATABASE_URL}", stripped,
+                                 f"migrate.sh echo/printf leaks DATABASE_URL: {stripped}")
+
+    def test_seed_script_never_echoes_database_url(self):
+        """Script must not print DATABASE_URL value (credential leak)."""
+        import re
+        src = _read("scripts/db/seed.sh")
+        for line in src.split("\n"):
+            stripped = line.strip()
+            if stripped.startswith("echo") or stripped.startswith("printf"):
+                self.assertNotIn("${DATABASE_URL}", stripped,
+                                 f"seed.sh echo/printf leaks DATABASE_URL: {stripped}")
+
 
 # ---------------------------------------------------------------------------
 # Compose Has db-setup Service

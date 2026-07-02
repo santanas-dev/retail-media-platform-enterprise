@@ -28,7 +28,11 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$REPO_ROOT"
 
 echo "==> Seeding database..."
-echo "    Database: ${DATABASE_URL:-'(default dev)'}"
+if [ -n "${DATABASE_URL:-}" ]; then
+    echo "    Database: configured"
+else
+    echo "    Database: default dev"
+fi
 
 python3 apps/control-api/seed.py
 
