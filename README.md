@@ -14,23 +14,51 @@
 
 Документация: `docs/architecture/`
 
-## Quick Start
+## Quick Start — Clean Setup (Docker)
 
 ```bash
-# 1. Infrastructure
+# 1. Start only PostgreSQL
+docker compose -f infra/compose/docker-compose.phase1.yml up -d postgres
+
+# 2. Run migrations + seed (one-shot, profile-gated)
+docker compose -f infra/compose/docker-compose.phase1.yml \
+  --profile setup run --rm db-setup
+
+# 3. Start all services
 docker compose -f infra/compose/docker-compose.phase1.yml up -d
 
-# 2. Migrations
-docker compose -f infra/compose/docker-compose.phase1.yml exec control-api \
-  alembic -c apps/control-api/alembic.ini upgrade head
-
-# 3. Seed dev data
-docker compose -f infra/compose/docker-compose.phase1.yml exec control-api \
-  python apps/control-api/seed.py
-
-# 4. Health check
+# 4. Verify
 curl http://localhost:8000/health/live
 curl http://localhost:8000/health/ready
+```
+
+## Quick Start — Development (local Python)
+
+```bash
+# 1. Start PostgreSQL
+docker compose -f infra/compose/docker-compose.phase1.yml up -d postgres
+
+# 2. Run migrations
+bash scripts/db/migrate.sh
+
+# 3. Seed dev data
+bash scripts/db/seed.sh
+
+# 4. Start control-api
+python apps/control-api/main.py
+```
+
+## Database Setup
+
+```bash
+# Migrations only
+bash scripts/db/migrate.sh
+
+# Seed only (idempotent — safe to run repeatedly)
+bash scripts/db/seed.sh
+
+# Custom database URL
+DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/db bash scripts/db/migrate.sh
 ```
 
 ## Local Checks

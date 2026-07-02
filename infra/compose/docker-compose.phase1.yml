@@ -210,6 +210,36 @@ services:
       timeout: 3s
       retries: 5
 
+  # ---------------------------------------------------------------------------
+  # One-shot database setup (manual, profile-gated)
+  # ---------------------------------------------------------------------------
+  # Run with:
+  #   docker compose -f infra/compose/docker-compose.phase1.yml \
+  #     --profile setup run --rm db-setup
+  db-setup:
+    build:
+      context: ../..
+      dockerfile: infra/compose/Dockerfile.service
+      args:
+        SERVICE_NAME: control-api
+        SERVICE_MODULE: apps.control-api.main
+        SERVICE_PORT: "8000"
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://retail_media:retail_media_dev@postgres:5432/retail_media_platform"
+    command: >
+      sh -c "
+        echo '=== Running migrations ===' &&
+        cd apps/control-api && alembic upgrade head &&
+        echo '=== Running seed ===' &&
+        cd /app && python apps/control-api/seed.py &&
+        echo '=== DB setup complete ==='
+      "
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - setup
+
   admin-web:
     image: node:22-alpine
     working_dir: /app
