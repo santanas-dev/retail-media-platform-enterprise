@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+*.secret
+
+# Sidecar agent — local filled config files (templates with placeholders ARE committed)
+apps/kso_sidecar_agent/config/agent_config.json
+apps/kso_sidecar_agent/config/device_secret.dev
+apps/kso_sidecar_agent/config/*_filled.json
+# sidecar operator runtime dirs (if testing locally)
+agent-root/
+kso-agent-root/
+test-agent-root/
+
+# Database
+*.db
+*.sqlite3
+
+# Media cache
+players/*/cache/
+
+# Logs
+logs/
+*.log
+
+# Node
+node_modules/
+frontend/dist/
+frontend/build/
+
+# Infra
+infra/data/
