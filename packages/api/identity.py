@@ -13,6 +13,7 @@ from packages.api.dependencies import (
     get_current_active_user,
     get_db,
     require_permission,
+    require_scoped_permission,
     set_rls_context,
 )
 from packages.domain import repository
@@ -113,17 +114,15 @@ async def list_audit_events(
 @router.get("/advertiser-organizations", response_model=list[AdvertiserOrganizationOut])
 async def list_advertiser_organizations(
     db=Depends(get_db),
-    _user: dict = Depends(get_current_active_user),
+    _perm=Depends(require_scoped_permission("organization.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
-    """List advertiser organizations visible through RLS.
+    """List advertiser organizations — scoped + RLS protected.
 
-    Protected by:
-    - JWT + active user (get_current_active_user)
-    - PostgreSQL RLS: rows filtered by app.rmp_scope_advertiser_ids
-
-    NOTE: Phase 3.5b pilot uses RLS-only filtering.  Phase 3.5c will add
-    require_scoped_permission for the app-layer defense.
+    Two-layer defense:
+    - App: require_scoped_permission("organization.read", "advertiser")
+      → global permission OR advertiser scope
+    - DB: PostgreSQL RLS filters rows by app.rmp_scope_advertiser_ids
     """
     result = await db.execute(select(AdvertiserOrganization))
     items = result.scalars().all()

@@ -169,3 +169,78 @@ async def set_rls_context(
     await db.execute(text("SELECT set_config('app.rmp_is_admin', :a, true)"), {"a": is_admin})
     await db.execute(text("SELECT set_config('app.rmp_scope_advertiser_ids', :ids, true)"),
                      {"ids": advertiser_csv})
+
+
+# ---------------------------------------------------------------------------
+# Phase 3.5c - Scoped permission enforcement
+# ---------------------------------------------------------------------------
+
+
+def require_scoped_permission(permission_code: str, scope_type: str | None = None):
+    """Factory: FastAPI dependency enforcing permission + optional scope.
+
+    Combines ``require_permission`` semantics with ``ScopeContext``:
+    - Global permission (unscoped role) → pass
+    - Admin (unscoped system_admin/security_admin with the permission) → pass
+    - Scoped access: if ``scope_type`` is specified, the user must have
+      scope IDs for that type (e.g. advertiser_scope_ids for ``advertiser``).
+      RLS handles which specific rows are visible.
+    - Empty scopes → 403 SCOPE_RESTRICTED
+    - No permission and no matching scope → 403 PERMISSION_DENIED
+    - Scoped admin (system_admin with branch scope) is NOT a global admin
+    """
+
+    async def enforce(
+        db=Depends(get_db),
+        scope: ScopeContext = Depends(get_scope_context),
+    ) -> ScopeContext:
+        # 1. Admin bypass — unscoped admin with the permission
+        if scope.is_admin and permission_code in scope.global_permissions:
+            return scope
+
+        # 2. Global permission — user has the perm from an unscoped role
+        if permission_code in scope.global_permissions:
+            return scope
+
+        # 3. Scoped access — user has scope IDs AND the permission
+        if scope_type == "advertiser":
+            if scope.advertiser_scope_ids and permission_code in scope.all_permissions:
+                return scope
+            # Has scopes but missing the permission
+            if scope.advertiser_scope_ids:
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "code": "PERMISSION_DENIED",
+                        "message": f"Missing required permission: {permission_code}",
+                    },
+                )
+            # Scope type required but user has no scope IDs
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "SCOPE_RESTRICTED",
+                    "message": f"Access requires {scope_type} scope",
+                },
+            )
+
+        # 4. Scope type specified but not advertiser (branch, cluster, store deferred)
+        if scope_type is not None:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "SCOPE_RESTRICTED",
+                    "message": f"Access requires {scope_type} scope",
+                },
+            )
+
+        # 5. No permission at all
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "PERMISSION_DENIED",
+                "message": f"Missing required permission: {permission_code}",
+            },
+        )
+
+    return enforce

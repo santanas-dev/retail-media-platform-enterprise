@@ -1,7 +1,8 @@
 """
-Behavioral tests — Scope / RLS pilot (Phase 3.5b).
+Behavioral tests — Scope / RLS pilot (Phase 3.5b/3.5c).
 
-Tests advertiser organization RLS with real PostgreSQL.
+Tests advertiser organization with two-layer defense:
+app-layer require_scoped_permission + PostgreSQL RLS.
 Requires: RUN_BEHAVIORAL_TESTS=1, migrations applied, seed run.
 """
 
@@ -44,12 +45,12 @@ def _token(sub):
 
 
 # ---------------------------------------------------------------------------
-# RLS — advertiser organizations
+# Advertiser organizations — two-layer defense
 # ---------------------------------------------------------------------------
 
 
-class TestAdvertiserOrgRLS:
-    """Real PostgreSQL RLS on advertiser_organizations."""
+class TestAdvertiserOrgScoped:
+    """App-layer scoped permission + DB RLS on advertiser_organizations."""
 
     def test_no_token_returns_401(self, client):
         resp = client.get("/api/v1/identity/advertiser-organizations")
@@ -65,12 +66,11 @@ class TestAdvertiserOrgRLS:
         assert resp.status_code == 200, resp.text
         data = resp.json()
         assert isinstance(data, list)
-        # Should see at least the seed advertiser org
         codes = {o["code"] for o in data}
         assert "ADV-001" in codes, f"Expected ADV-001 in {codes}"
 
     def test_advertiser_sees_only_own_org(self, client, user_ids):
-        """Advertiser user sees only their own organization via RLS."""
+        """Advertiser-scoped user sees only their own organization."""
         token = _token(user_ids["advertiser"])
         resp = client.get(
             "/api/v1/identity/advertiser-organizations",
@@ -82,36 +82,30 @@ class TestAdvertiserOrgRLS:
         assert len(data) == 1, f"Expected 1 org, got {len(data)}: {data}"
         assert data[0]["code"] == "ADV-001"
 
-    def test_user_with_no_advertiser_scope_gets_empty(self, client, user_ids):
-        """User with auth but no advertiser scope — RLS should filter
-        to zero rows.  In dev the superuser DB role bypasses RLS;
-        production NOBYPASSRLS role would return empty list."""
+    def test_user_without_permission_or_scope_gets_403(self, client, user_ids):
+        """Security officer (security_admin role, no organization.read,
+        no advertiser scope) → 403 at app layer."""
+        token = _token(user_ids["secoff"])
+        resp = client.get(
+            "/api/v1/identity/advertiser-organizations",
+            headers=_auth(token),
+        )
+        assert resp.status_code == 403, resp.text
+        body = resp.json()
+        assert "detail" in body
+
+    def test_user_with_global_permission_passes(self, client, user_ids):
+        """Operator with organization.read (global) passes app layer."""
         token = _token(user_ids["noperms"])
         resp = client.get(
             "/api/v1/identity/advertiser-organizations",
             headers=_auth(token),
         )
         assert resp.status_code == 200, resp.text
-        data = resp.json()
-        assert isinstance(data, list)
-        # Dev superuser sees everything; production NOBYPASSRLS would
-        # get an empty list filtered by RLS.
-        if data:
-            pytest.skip(
-                "RLS filtered to non-empty — dev DB role has "
-                "superuser/BYPASSRLS (per ADR-009 §9).  Production "
-                "NOBYPASSRLS role would return empty list."
-            )
 
     def test_rls_blocks_without_set_local(self, client, user_ids):
         """If SET LOCAL is not called, RLS defaults to empty filter.
-        This verifies fail-closed: the policy uses COALESCE →
-        empty array → zero rows.
-
-        Skipped in dev because docker-compose POSTGRES_USER is
-        a superuser with BYPASSRLS (per ADR-009 §9).  In production
-        the app DB role is NOBYPASSRLS and this test would pass.
-        """
+        Skipped in dev — superuser BYPASSRLS (per ADR-009 §9)."""
         import os
         from sqlalchemy import text
         from sqlalchemy.ext.asyncio import create_async_engine

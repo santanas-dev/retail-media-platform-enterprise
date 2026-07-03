@@ -40,6 +40,7 @@ USER_IDS = {
     "noperms":    "beh-np-00000000000000000002",
     "disabled":   "beh-ds-00000000000000000003",
     "advertiser": "beh-av-00000000000000000004",
+    "secoff":     "beh-so-00000000000000000005",
 }
 
 TEST_PASSWORD = "TestPassword123!"
@@ -59,6 +60,8 @@ async def _check_db():
 async def _run_sql(sql: str):
     engine = create_async_engine(DB_URL, echo=False)
     async with engine.begin() as conn:
+        # Bypass RLS for test fixture setup/cleanup
+        await conn.execute(text("SELECT set_config('app.rmp_is_admin', 'true', true)"))
         for stmt in sql.split(";"):
             s = stmt.strip()
             if s and not s.startswith("--"):
@@ -78,12 +81,14 @@ def _setup_sql(ph):
       ('{u["readonly"]}','BEH-RO','beh-readonly','beh-ro@t.local','Beh RO','local_advertiser','active'),
       ('{u["noperms"]}','BEH-NP','beh-noperms','beh-np@t.local','Beh NP','local_advertiser','active'),
       ('{u["disabled"]}','BEH-DS','beh-disabled','beh-ds@t.local','Beh DS','local_advertiser','disabled'),
-      ('{u["advertiser"]}','BEH-AV','beh-advertiser','beh-av@t.local','Beh AV','local_advertiser','active')
+      ('{u["advertiser"]}','BEH-AV','beh-advertiser','beh-av@t.local','Beh AV','local_advertiser','active'),
+      ('{u["secoff"]}','BEH-SO','beh-secoff','beh-so@t.local','Beh SO','local_advertiser','active')
     ; INSERT INTO local_credentials (id,user_id,credential_type,password_hash,status) VALUES
       ('lc-beh-ro','{u["readonly"]}','local_advertiser','{ph}','active'),
       ('lc-beh-np','{u["noperms"]}','local_advertiser','{ph}','active'),
       ('lc-beh-ds','{u["disabled"]}','local_advertiser','{ph}','active'),
-      ('lc-beh-av','{u["advertiser"]}','local_advertiser','{ph}','active')
+      ('lc-beh-av','{u["advertiser"]}','local_advertiser','{ph}','active'),
+      ('lc-beh-so','{u["secoff"]}','local_advertiser','{ph}','active')
     ; INSERT INTO user_roles (id,user_id,role_id)
       SELECT 'ur-beh-ro','{u["readonly"]}',id FROM roles WHERE code='system_admin'
     ; INSERT INTO user_roles (id,user_id,role_id)
@@ -92,12 +97,31 @@ def _setup_sql(ph):
       SELECT 'ur-beh-ds','{u["disabled"]}',id FROM roles WHERE code='system_admin'
     ; INSERT INTO user_roles (id,user_id,role_id)
       SELECT 'ur-beh-av','{u["advertiser"]}',id FROM roles WHERE code='advertiser'
+    ; INSERT INTO user_roles (id,user_id,role_id)
+      SELECT 'ur-beh-so','{u["secoff"]}',id FROM roles WHERE code='security_admin'
+    -- Ensure advertiser role exists (not in seed)
+    ; INSERT INTO roles (id,code,name,description,is_system)
+      SELECT '00000000-0000-0000-0000-000000000114','advertiser','Advertiser','Advertiser cabinet user',false
+      WHERE NOT EXISTS (SELECT 1 FROM roles WHERE code='advertiser')
+    -- Ensure advertiser role has organization.read permission
+    ; INSERT INTO role_permissions (id,role_id,permission_id)
+      SELECT 'rp-beh-adv-org','00000000-0000-0000-0000-000000000114',id
+      FROM permissions WHERE code='organization.read'
+      AND NOT EXISTS (
+        SELECT 1 FROM role_permissions
+        WHERE role_id='00000000-0000-0000-0000-000000000114'
+        AND permission_id=(SELECT id FROM permissions WHERE code='organization.read')
+      )
+    ; INSERT INTO advertiser_user_memberships (id,user_id,advertiser_organization_id,status)
+      SELECT 'aum-beh-av','{u["advertiser"]}',id,'active'
+      FROM advertiser_organizations WHERE code='ADV-001'
     """
 
 
 _CLEANUP = """
     DELETE FROM login_attempts WHERE username_or_email_hash LIKE 'beh-test-%'
     ; DELETE FROM refresh_sessions WHERE user_id LIKE 'beh-%'
+    ; DELETE FROM advertiser_user_memberships WHERE user_id LIKE 'beh-%'
     ; DELETE FROM local_credentials WHERE user_id LIKE 'beh-%'
     ; DELETE FROM user_roles WHERE user_id LIKE 'beh-%'
     ; DELETE FROM users WHERE id LIKE 'beh-%'

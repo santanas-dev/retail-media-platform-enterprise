@@ -152,3 +152,133 @@ class TestADMIN_ROLE_CODES:
 
     def test_advertiser_not_admin(self):
         assert "advertiser" not in ADMIN_ROLE_CODES
+
+
+# ---------------------------------------------------------------------------
+# require_scoped_permission decision logic (Phase 3.5c)
+# ---------------------------------------------------------------------------
+
+
+def _check_scoped(scope, perm_code, scope_type=None):
+    """Simulate require_scoped_permission decision without FastAPI Depends.
+
+    Returns (allowed, code) where code is None on pass or the 403 reason.
+    """
+    # 1. Admin bypass (unscoped admin + perm)
+    if scope.is_admin and perm_code in scope.global_permissions:
+        return True, None
+    # 2. Global permission
+    if perm_code in scope.global_permissions:
+        return True, None
+    # 3. Scoped access — advertiser scope type
+    if scope_type == "advertiser":
+        if scope.advertiser_scope_ids and perm_code in scope.all_permissions:
+            return True, None
+        if scope.advertiser_scope_ids:
+            return False, "PERMISSION_DENIED"
+        return False, "SCOPE_RESTRICTED"
+    # 4. Other scope types (branch, cluster, store) — deferred
+    if scope_type is not None:
+        return False, "SCOPE_RESTRICTED"
+    # 5. No permission
+    return False, "PERMISSION_DENIED"
+
+
+class TestScopedPermissionGlobal:
+    """Global permission passes regardless of scope."""
+
+    def test_admin_with_permission_passes(self):
+        scope = ScopeContext.admin("u-a", permissions={"organization.read"})
+        ok, _ = _check_scoped(scope, "organization.read", "advertiser")
+        assert ok is True
+
+    def test_admin_without_permission_fails(self):
+        scope = ScopeContext.admin("u-a", permissions={"users.read"})
+        ok, code = _check_scoped(scope, "organization.read", "advertiser")
+        assert ok is False
+        # Admin flag alone doesn't grant advertiser scope
+        assert code == "SCOPE_RESTRICTED"
+
+    def test_operator_with_org_read_passes(self):
+        scope = ScopeContext(
+            user_id="u-op", role_codes={"operator"},
+            global_permissions={"organization.read"},
+        )
+        ok, _ = _check_scoped(scope, "organization.read", "advertiser")
+        assert ok is True
+
+    def test_operator_without_org_read_fails(self):
+        scope = ScopeContext(
+            user_id="u-op", role_codes={"operator"},
+            global_permissions={"devices.read"},
+        )
+        ok, code = _check_scoped(scope, "organization.read", "advertiser")
+        assert ok is False
+
+
+class TestScopedPermissionAdvertiser:
+    """Advertiser scoped access."""
+
+    def test_advertiser_with_scope_passes(self):
+        scope = ScopeContext(
+            user_id="u-adv", role_codes={"advertiser"},
+            advertiser_scope_ids={"ADV-001"},
+            all_permissions={"organization.read"},
+        )
+        ok, _ = _check_scoped(scope, "organization.read", "advertiser")
+        assert ok is True
+
+    def test_advertiser_without_scope_fails(self):
+        scope = ScopeContext(
+            user_id="u-adv", role_codes={"advertiser"},
+            advertiser_scope_ids=set(),
+            all_permissions={"organization.read"},
+        )
+        ok, code = _check_scoped(scope, "organization.read", "advertiser")
+        assert ok is False
+        assert code == "SCOPE_RESTRICTED"
+
+    def test_advertiser_without_permission_fails(self):
+        """Advertiser scope alone doesn't grant global organization.read."""
+        scope = ScopeContext(
+            user_id="u-adv", role_codes={"advertiser"},
+            advertiser_scope_ids={"ADV-001"},
+            all_permissions=set(),
+        )
+        ok, _ = _check_scoped(scope, "organization.read")
+        assert ok is False
+
+
+class TestScopedPermissionScopedAdmin:
+    """Scoped system_admin is NOT a global admin."""
+
+    def test_scoped_admin_without_global_permission_fails(self):
+        """system_admin with branch scope has no global_permissions."""
+        scope = ScopeContext(
+            user_id="u-branch-admin",
+            is_admin=False,
+            role_codes={"system_admin"},
+            global_permissions=set(),
+        )
+        ok, code = _check_scoped(scope, "organization.read", "advertiser")
+        assert ok is False
+
+    def test_scoped_admin_with_global_permission_passes(self):
+        """system_admin with unscoped role has global_permissions."""
+        scope = ScopeContext.admin("u-a", permissions={"organization.read"})
+        ok, _ = _check_scoped(scope, "organization.read", "advertiser")
+        assert ok is True
+
+
+class TestScopedPermissionEmptyScope:
+    """Empty scopes = deny-all."""
+
+    def test_empty_scope_fails(self):
+        scope = ScopeContext.deny_all("u-none")
+        ok, code = _check_scoped(scope, "organization.read", "advertiser")
+        assert ok is False
+
+    def test_empty_scope_without_scope_type_fails(self):
+        scope = ScopeContext.deny_all("u-none")
+        ok, code = _check_scoped(scope, "organization.read")
+        assert ok is False

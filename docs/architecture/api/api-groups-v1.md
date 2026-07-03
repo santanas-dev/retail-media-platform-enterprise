@@ -96,7 +96,11 @@ Login and password-reset endpoints return **identical responses** whether the us
 >
 > Tenant RLS/scopes deferred to Phase 3.5. **Architecture locked in ADR-009** —
 > fail-closed two-layer defense: app `ScopeContext` + PostgreSQL RLS.
-> Phase 3.5b pilot on `advertiser_organizations` / `advertiser_user_memberships`.
+> **Implemented (Phase 3.5b–3.5c):**
+> - `GET /api/v1/identity/advertiser-organizations` — scoped permission
+>   (`organization.read` global OR advertiser scope) + PostgreSQL RLS
+> - RLS on `advertiser_organizations` / `advertiser_user_memberships`
+> - Tenant RLS expansion to campaigns/placements deferred to 3.6+
 >
 > **Implemented (Phase 3.0, protected in 3.3):**
 > - `GET /api/v1/identity/users` — list users (paginated, limit/offset)

@@ -45,6 +45,7 @@ class ScopeContext:
     role_codes: set[str] = field(default_factory=set)
     global_permissions: set[str] = field(default_factory=set)
     advertiser_scope_ids: set[str] = field(default_factory=set)
+    all_permissions: set[str] = field(default_factory=set)
 
     def __bool__(self) -> bool:
         """False for deny-all (empty scopes, not admin)."""
@@ -58,11 +59,13 @@ class ScopeContext:
     @classmethod
     def admin(cls, user_id: str, permissions: set[str] | None = None) -> ScopeContext:
         """Return an admin context with all given permissions."""
+        perms = permissions or set()
         return cls(
             user_id=user_id,
             is_admin=True,
             role_codes={"system_admin"},
-            global_permissions=permissions or set(),
+            global_permissions=perms,
+            all_permissions=perms,
         )
 
 
@@ -73,7 +76,21 @@ async def resolve_scope_context(
 
     Returns ``ScopeContext.deny_all()`` if the user is not found
     or inactive.
+
+    Uses the raw connection to SET LOCAL before queries so RLS
+    does not block visibility into advertiser_user_memberships
+    (this resolver runs before set_rls_context in the dep chain).
     """
+    from sqlalchemy import text
+
+    # Bypass RLS for scope resolution: this needs to read
+    # advertiser_user_memberships which is RLS-protected, but
+    # the RLS context hasn't been set yet (circular dep).
+    conn = await session.connection()
+    await conn.execute(
+        text("SELECT set_config('app.rmp_is_admin', 'true', true)")
+    )
+
     # Verify user exists and is active
     user = await _get_user(session, user_id)
     if user is None or user.status != "active":
@@ -87,6 +104,7 @@ async def resolve_scope_context(
     is_admin = False
     role_codes: set[str] = set()
     global_permissions: set[str] = set()
+    all_permissions: set[str] = set()
     advertiser_scope_ids: set[str] = set()
 
     for ur in role_rows:
@@ -96,9 +114,13 @@ async def resolve_scope_context(
 
         role_codes.add(role_code)
 
+        if perm_code is not None:
+            all_permissions.add(perm_code)
+
         if scope_type is None:
             # Unscoped role → global permissions
-            global_permissions.add(perm_code)
+            if perm_code is not None:
+                global_permissions.add(perm_code)
             if role_code in ADMIN_ROLE_CODES:
                 is_admin = True
         elif scope_type == "advertiser" and ur.scope_id:
@@ -114,6 +136,7 @@ async def resolve_scope_context(
         is_admin=is_admin,
         role_codes=role_codes,
         global_permissions=global_permissions,
+        all_permissions=all_permissions,
         advertiser_scope_ids=advertiser_scope_ids,
     )
 
@@ -130,9 +153,10 @@ async def _get_user(session: AsyncSession, user_id: str) -> User | None:
 
 
 async def _load_user_roles(session: AsyncSession, user_id: str):
-    """Return rows with (scope_type, scope_id, role_code, perm_code)."""
-    from sqlalchemy import and_
+    """Return rows with (scope_type, scope_id, role_code, perm_code).
 
+    Uses LEFT JOIN so roles without permissions still appear.
+    """
     stmt = (
         select(
             UserRole.scope_type,
@@ -141,8 +165,8 @@ async def _load_user_roles(session: AsyncSession, user_id: str):
             Permission.code.label("perm_code"),
         )
         .join(Role, Role.id == UserRole.role_id)
-        .join(RolePermission, RolePermission.role_id == Role.id)
-        .join(Permission, Permission.id == RolePermission.permission_id)
+        .outerjoin(RolePermission, RolePermission.role_id == Role.id)
+        .outerjoin(Permission, Permission.id == RolePermission.permission_id)
         .where(UserRole.user_id == user_id)
     )
     result = await session.execute(stmt)
