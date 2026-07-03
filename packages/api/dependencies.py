@@ -21,7 +21,8 @@ async def get_db():
     """Yield an async SQLAlchemy session, auto-close on exit."""
     engine = get_global_engine()
     async with get_session(engine) as session:
-        yield session
+        async with session.begin():
+            yield session
 
 
 def get_auth_service() -> AuthService:

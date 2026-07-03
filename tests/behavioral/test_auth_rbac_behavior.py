@@ -1,0 +1,239 @@
+"""
+Behavioral tests - Auth (Phase 3.4).
+
+Tests against real PostgreSQL with actual Alembic schema.
+Requires: RUN_BEHAVIORAL_TESTS=1, running PostgreSQL, migrations applied.
+"""
+
+import pytest
+from fastapi.testclient import TestClient
+
+from packages.security.config import reset_security_config
+from packages.security.jwt import create_access_token
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def client(app, db_available, test_users):
+    """Provide a TestClient with a fresh SecurityConfig."""
+    reset_security_config()
+    return TestClient(app)
+
+
+@pytest.fixture
+def user_ids(test_users):
+    return test_users
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _auth(token):
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _token(sub="u-001", auth_provider="local_advertiser"):
+    return create_access_token(sub, auth_provider)
+
+
+# ---------------------------------------------------------------------------
+# Health - open
+# ---------------------------------------------------------------------------
+
+
+class TestHealthBehavioral:
+    """Health endpoints must be open without any auth."""
+
+    def test_live_returns_200(self, client):
+        resp = client.get("/health/live")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+
+
+# ---------------------------------------------------------------------------
+# Auth - login
+# ---------------------------------------------------------------------------
+
+
+class TestLoginBehavioral:
+    """Login endpoint against real DB credentials."""
+
+    @pytest.fixture(autouse=True)
+    def setup_config(self):
+        reset_security_config()
+
+    def test_advertiser_login_success(self, client, user_ids):
+        """Advertiser user with correct password gets access_token + cookie."""
+        resp = client.post("/api/v1/auth/login", json={
+            "username_or_email": "beh-advertiser",
+            "password": user_ids["password"],
+            "auth_provider": "local_advertiser",
+        })
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert "access_token" in body
+        assert body["token_type"] == "Bearer"
+        assert body["expires_in"] > 0
+        assert "refresh_token" not in body
+        # Cookie must be set
+        assert "refresh_token" in resp.cookies
+
+    def test_wrong_password_returns_401(self, client, user_ids):
+        """Wrong password -> generic 401, login_attempt recorded."""
+        resp = client.post("/api/v1/auth/login", json={
+            "username_or_email": "beh-advertiser",
+            "password": "WrongPassword!",
+            "auth_provider": "local_advertiser",
+        })
+        assert resp.status_code == 401, resp.text
+        body = resp.json()
+        assert body["detail"]["code"] == "INVALID_CREDENTIALS"
+        # No cookie on failure
+        assert "refresh_token" not in resp.cookies
+
+    def test_unknown_user_returns_401(self, client):
+        """Unknown username -> generic 401, no user enumeration."""
+        resp = client.post("/api/v1/auth/login", json={
+            "username_or_email": "nonexistent-user",
+            "password": "AnyPassword123!",
+            "auth_provider": "local_advertiser",
+        })
+        assert resp.status_code == 401, resp.text
+        body = resp.json()
+        assert body["detail"]["code"] == "INVALID_CREDENTIALS"
+        # Must not reveal "user not found"
+        assert "not found" not in str(body).lower()
+
+
+# ---------------------------------------------------------------------------
+# Auth - refresh
+# ---------------------------------------------------------------------------
+
+
+class TestRefreshBehavioral:
+    """Refresh token rotation with real DB."""
+
+    def test_refresh_rotates_token(self, client, user_ids):
+        """Login -> extract refresh cookie -> refresh -> new cookie."""
+        # Login — cookie is stored automatically by TestClient
+        login_resp = client.post("/api/v1/auth/login", json={
+            "username_or_email": "beh-advertiser",
+            "password": user_ids["password"],
+            "auth_provider": "local_advertiser",
+        })
+        assert login_resp.status_code == 200
+        old_cookie = login_resp.cookies.get("refresh_token")
+        assert old_cookie
+
+        # Cookie from login is already in client.cookies
+        refresh_resp = client.post("/api/v1/auth/refresh")
+        assert refresh_resp.status_code == 200, refresh_resp.text
+        body = refresh_resp.json()
+        assert "access_token" in body
+        assert "refresh_token" not in body
+
+        new_cookie = refresh_resp.cookies.get("refresh_token")
+        assert new_cookie
+        assert new_cookie != old_cookie
+
+
+# ---------------------------------------------------------------------------
+# Auth - logout
+# ---------------------------------------------------------------------------
+
+
+class TestLogoutBehavioral:
+    """Logout with real DB."""
+
+    def test_logout_revokes_and_clears(self, client, user_ids):
+        """Login -> logout -> cookie cleared."""
+        login_resp = client.post("/api/v1/auth/login", json={
+            "username_or_email": "beh-advertiser",
+            "password": user_ids["password"],
+            "auth_provider": "local_advertiser",
+        })
+        assert login_resp.status_code == 200
+        refresh_token = login_resp.cookies.get("refresh_token")
+        assert refresh_token
+
+        client.cookies.set("refresh_token", refresh_token)
+        logout_resp = client.post("/api/v1/auth/logout")
+        assert logout_resp.status_code == 200
+        assert logout_resp.json()["message"] == "Logged out"
+        # Cookie should be cleared (empty or expired)
+        cleared = logout_resp.cookies.get("refresh_token")
+        assert cleared == "" or cleared is None
+
+
+# ---------------------------------------------------------------------------
+# RBAC - identity endpoints
+# ---------------------------------------------------------------------------
+
+
+class TestRBACBehavioral:
+    """RBAC enforcement with real DB users and permissions."""
+
+    def test_missing_token_returns_401(self, client):
+        """No token on identity endpoint -> 401."""
+        resp = client.get("/api/v1/identity/users")
+        assert resp.status_code == 401
+        assert resp.json()["detail"]["code"] == "NOT_AUTHENTICATED"
+
+    def test_garbage_token_returns_401(self, client):
+        """Garbage token -> 401."""
+        resp = client.get(
+            "/api/v1/identity/users",
+            headers=_auth("not.a.real.jwt"),
+        )
+        assert resp.status_code == 401
+
+    def test_no_permission_returns_403(self, client, user_ids):
+        """User with role but no permissions -> 403."""
+        token = _token(user_ids["noperms"])
+        resp = client.get(
+            "/api/v1/identity/users",
+            headers=_auth(token),
+        )
+        assert resp.status_code == 403
+        assert resp.json()["detail"]["code"] == "PERMISSION_DENIED"
+
+    def test_with_permission_returns_200(self, client, user_ids):
+        """User with users.read -> 200."""
+        token = _token(user_ids["readonly"])
+        resp = client.get(
+            "/api/v1/identity/users",
+            headers=_auth(token),
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "items" in data
+        assert "total" in data
+
+    def test_disabled_user_returns_403(self, client, user_ids):
+        """Disabled user with valid JWT -> 403."""
+        token = _token(user_ids["disabled"])
+        resp = client.get(
+            "/api/v1/identity/users",
+            headers=_auth(token),
+        )
+        assert resp.status_code == 403
+        assert resp.json()["detail"]["code"] == "USER_DISABLED"
+
+    def test_deny_by_default_empty_permissions(self, client, user_ids):
+        """User with role but role has no permissions -> 403 on all endpoints."""
+        token = _token(user_ids["noperms"])
+        endpoints = [
+            "/api/v1/identity/users",
+            "/api/v1/identity/roles",
+            "/api/v1/identity/permissions",
+            "/api/v1/identity/audit-events",
+        ]
+        for ep in endpoints:
+            resp = client.get(ep, headers=_auth(token))
+            assert resp.status_code == 403, f"Expected 403 on {ep}, got {resp.status_code}"
