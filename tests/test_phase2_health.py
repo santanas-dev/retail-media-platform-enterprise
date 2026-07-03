@@ -106,8 +106,10 @@ class TestHealthReady(unittest.TestCase):
         """When DB is healthy, return 200 ok."""
         mod = _load_module()
         with patch.object(mod, "check_db_health", new_callable=AsyncMock) as mock_check, \
+             patch.object(mod, "check_db_role_safety", new_callable=AsyncMock) as mock_role, \
              patch.object(mod, "_engine", object()):
             mock_check.return_value = (True, None)
+            mock_role.return_value = (True, {"db_role": "ok", "db_role_details": "ok"})
             client = TestClient(_get_app())
             resp = client.get("/health/ready")
             self.assertEqual(resp.status_code, 200)
@@ -190,6 +192,143 @@ class TestNoOldBackendDependency(unittest.TestCase):
         src = _read_main_src()
         self.assertNotIn("from backend", src)
         self.assertNotIn("import backend", src)
+
+
+# ---------------------------------------------------------------------------
+# DB role safety (Phase 3.5b)
+# ---------------------------------------------------------------------------
+
+
+class TestDbRoleSafety(unittest.TestCase):
+    """check_db_role_safety must detect unsafe roles and never leak secrets."""
+
+    def test_ok_when_role_is_safe(self):
+        import asyncio
+        from packages.domain.database import check_db_role_safety
+
+        mock_engine = _MockEngine([
+            (False, False),  # rolsuper=false, rolbypassrls=false
+        ])
+        ok, info = asyncio.run(check_db_role_safety(mock_engine))
+        self.assertTrue(ok)
+        self.assertEqual(info["db_role"], "ok")
+        self.assertEqual(info["db_role_details"], "non-superuser, NOBYPASSRLS")
+
+    def test_unsafe_when_superuser_in_production(self):
+        import asyncio
+        from packages.domain.database import check_db_role_safety
+
+        mock_engine = _MockEngine([
+            (True, False),  # rolsuper=true
+        ])
+        ok, info = asyncio.run(
+            check_db_role_safety(mock_engine, dev_mode=False)
+        )
+        self.assertFalse(ok)
+        self.assertEqual(info["db_role"], "unsafe")
+        self.assertIn("superuser", info["db_role_details"])
+
+    def test_unsafe_when_bypassrls_in_production(self):
+        import asyncio
+        from packages.domain.database import check_db_role_safety
+
+        mock_engine = _MockEngine([
+            (False, True),  # rolbypassrls=true
+        ])
+        ok, info = asyncio.run(
+            check_db_role_safety(mock_engine, dev_mode=False)
+        )
+        self.assertFalse(ok)
+        self.assertEqual(info["db_role"], "unsafe")
+        self.assertIn("BYPASSRLS", info["db_role_details"])
+
+    def test_dev_mode_allows_superuser(self):
+        import asyncio
+        from packages.domain.database import check_db_role_safety
+
+        mock_engine = _MockEngine([
+            (True, True),  # both superuser and BYPASSRLS
+        ])
+        ok, info = asyncio.run(
+            check_db_role_safety(mock_engine, dev_mode=True)
+        )
+        self.assertTrue(ok)
+        self.assertEqual(info["db_role"], "ok")
+        self.assertIn("dev:", info["db_role_details"])
+
+    def test_no_engine_returns_unhealthy(self):
+        import asyncio
+        from packages.domain.database import check_db_role_safety
+
+        ok, info = asyncio.run(check_db_role_safety(None))
+        self.assertFalse(ok)
+        self.assertEqual(info["db_role"], "unhealthy")
+
+    def test_pg_roles_failure_returns_unhealthy(self):
+        import asyncio
+        from packages.domain.database import check_db_role_safety
+
+        class _FailingEngine:
+            def connect(self):
+                raise RuntimeError("connection lost")
+
+        ok, info = asyncio.run(check_db_role_safety(_FailingEngine()))
+        self.assertFalse(ok)
+        self.assertEqual(info["db_role"], "unhealthy")
+
+    def test_response_never_leaks_secrets(self):
+        """check_db_role_safety must never return DB URLs or credentials."""
+        import asyncio
+        from packages.domain.database import check_db_role_safety
+
+        mock_engine = _MockEngine([
+            (True, True),
+        ])
+        _, info = asyncio.run(
+            check_db_role_safety(mock_engine, dev_mode=False)
+        )
+        body = str(info).lower()
+        self.assertNotIn("postgresql", body)
+        self.assertNotIn("password", body)
+        self.assertNotIn("retail_media", body)
+        self.assertNotIn("5432", body)
+
+
+# ---------------------------------------------------------------------------
+# Mock helpers
+# ---------------------------------------------------------------------------
+
+
+class _MockEngine:
+    """Minimal async engine mock — returns a fixed row from connect()."""
+
+    def __init__(self, rows: list):
+        self._rows = rows
+
+    def connect(self):
+        return _MockConnection(self._rows)
+
+
+class _MockConnection:
+    def __init__(self, rows: list):
+        self._rows = rows
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        pass
+
+    async def execute(self, stmt):
+        return _MockResult(self._rows)
+
+
+class _MockResult:
+    def __init__(self, rows: list):
+        self._rows = rows
+
+    def fetchone(self):
+        return self._rows[0] if self._rows else None
 
 
 if __name__ == "__main__":

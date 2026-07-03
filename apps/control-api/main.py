@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from packages.observability import log_request_middleware, setup_logging
-from packages.domain.database import check_db_health, create_engine, set_global_engine
+from packages.domain.database import check_db_health, check_db_role_safety, create_engine, set_global_engine
 
 SERVICE_NAME = "control-api"
 logger = setup_logging(SERVICE_NAME)
@@ -83,8 +83,11 @@ async def health_ready():
 
     Checks:
     - database: SELECT 1 via async SQLAlchemy
+    - db_role: non-superuser, NOBYPASSRLS (production only; dev reports but
+      does not fail on superuser/BYPASSRLS)
     """
-    checks = {"database": "unhealthy"}
+    dev_mode = os.environ.get("ENVIRONMENT", "production") != "production"
+    checks = {"database": "unhealthy", "db_role": "unhealthy"}
 
     if _engine is None:
         logger.warning("Readiness check: no database engine")
@@ -93,23 +96,40 @@ async def health_ready():
             status_code=503,
         )
 
+    # Database connectivity
     db_ok, db_reason = await check_db_health(_engine, timeout=2.0)
 
     if db_ok:
         checks["database"] = "ok"
-        return {"status": "ok", "service": SERVICE_NAME, "checks": checks}
+    else:
+        logger.error("Readiness check: database unavailable (reason=%s)", db_reason)
+        return JSONResponse(
+            content={
+                "status": "degraded",
+                "service": SERVICE_NAME,
+                "checks": checks,
+                "db_error": "database_unavailable",
+            },
+            status_code=503,
+        )
 
-    # DB unavailable — log internally, return sanitised response
-    logger.error("Readiness check: database unavailable (reason=%s)", db_reason)
-    return JSONResponse(
-        content={
-            "status": "degraded",
-            "service": SERVICE_NAME,
-            "checks": checks,
-            "db_error": "database_unavailable",
-        },
-        status_code=503,
-    )
+    # DB role safety (RLS enforcement)
+    role_ok, role_info = await check_db_role_safety(_engine, dev_mode=dev_mode)
+    checks.update(role_info)
+
+    if not role_ok:
+        logger.error("Readiness check: unsafe db role (info=%s)", role_info)
+        return JSONResponse(
+            content={
+                "status": "degraded",
+                "service": SERVICE_NAME,
+                "checks": checks,
+                "db_error": "unsafe_db_role",
+            },
+            status_code=503,
+        )
+
+    return {"status": "ok", "service": SERVICE_NAME, "checks": checks}
 
 
 # ---------------------------------------------------------------------------

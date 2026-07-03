@@ -65,6 +65,63 @@ async def check_db_health(engine, timeout: float = 2.0) -> tuple[bool, str | Non
         return False, "connection_failed"
 
 
+async def check_db_role_safety(engine, dev_mode: bool = False) -> tuple[bool, dict]:
+    """Verify the current DB role is safe for RLS enforcement.
+
+    In production, the role MUST be non-superuser and NOBYPASSRLS.
+    In dev mode, violations are reported but not fatal.
+
+    Returns (ok, checks_dict).  Checks dict has:
+        {"db_role": "ok" | "unsafe", "db_role_details": str}
+    Never leaks DATABASE_URL or secrets.
+    """
+    if engine is None:
+        return False, {
+            "db_role": "unhealthy",
+            "db_role_details": "no database engine",
+        }
+
+    try:
+        async with engine.connect() as conn:
+            result = await conn.execute(
+                text(
+                    "SELECT rolsuper, rolbypassrls "
+                    "FROM pg_roles WHERE rolname = current_user"
+                )
+            )
+            row = result.fetchone()
+    except Exception:
+        return False, {
+            "db_role": "unhealthy",
+            "db_role_details": "cannot query pg_roles",
+        }
+
+    if row is None:
+        return False, {
+            "db_role": "unhealthy",
+            "db_role_details": "pg_roles row not found",
+        }
+
+    is_super = row[0]
+    has_bypassrls = row[1]
+
+    issues = []
+    if is_super:
+        issues.append("superuser")
+    if has_bypassrls:
+        issues.append("BYPASSRLS")
+
+    if not issues:
+        return True, {"db_role": "ok", "db_role_details": "non-superuser, NOBYPASSRLS"}
+
+    detail = f"role has {', '.join(issues)}"
+    if dev_mode:
+        # Report but don't fail in dev
+        return True, {"db_role": "ok", "db_role_details": f"dev: {detail}"}
+
+    return False, {"db_role": "unsafe", "db_role_details": detail}
+
+
 @asynccontextmanager
 async def get_session(engine):
     """Yield an async session, auto-close on exit."""

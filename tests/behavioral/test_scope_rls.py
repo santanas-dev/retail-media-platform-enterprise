@@ -15,50 +15,6 @@ from packages.security.jwt import create_access_token
 
 
 # ---------------------------------------------------------------------------
-# DB helpers
-# ---------------------------------------------------------------------------
-
-
-def _db_orgs(org_ids: list[str] | None = None):
-    """Query advertiser_organizations via raw SQL."""
-    import os
-    from sqlalchemy import text
-    from sqlalchemy.ext.asyncio import create_async_engine
-
-    db_url = os.environ.get(
-        "BEHAVIORAL_DB_URL",
-        "postgresql+asyncpg://retail_media:retail_media_dev@localhost:5432/"
-        "retail_media_platform",
-    )
-
-    async def _query():
-        engine = create_async_engine(db_url, echo=False)
-        try:
-            async with engine.connect() as conn:
-                if org_ids:
-                    result = await conn.execute(
-                        text(
-                            "SELECT id, code, display_name, status "
-                            "FROM advertiser_organizations "
-                            "WHERE id = ANY(:ids)"
-                        ),
-                        {"ids": org_ids},
-                    )
-                else:
-                    result = await conn.execute(
-                        text(
-                            "SELECT id, code, display_name, status "
-                            "FROM advertiser_organizations"
-                        )
-                    )
-                return [dict(row._mapping) for row in result.fetchall()]
-        finally:
-            await engine.dispose()
-
-    return asyncio.run(_query())
-
-
-# ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
