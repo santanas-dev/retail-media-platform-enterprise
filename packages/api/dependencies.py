@@ -8,6 +8,8 @@ TODO(auth): Add JWT/SSO auth dependency when identity is implemented.
 All endpoints are currently unprotected — open for development.
 """
 
+from jwt import ExpiredSignatureError, InvalidTokenError
+
 from fastapi import Depends, HTTPException, Request
 
 from packages.auth.service import AuthService
@@ -57,12 +59,12 @@ async def get_current_user(
         )
     try:
         claims = verify_access_token(access_token)
-    except __import__("jwt").ExpiredSignatureError:
+    except ExpiredSignatureError:
         raise HTTPException(
             status_code=401,
             detail={"code": "TOKEN_EXPIRED", "message": "Access token has expired"},
         )
-    except __import__("jwt").InvalidTokenError:
+    except InvalidTokenError:
         raise HTTPException(
             status_code=401,
             detail={"code": "INVALID_TOKEN", "message": "Invalid access token"},

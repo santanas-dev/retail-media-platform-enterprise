@@ -7,7 +7,7 @@ No secret/password fields exposed.
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -101,7 +101,7 @@ class LoginRequest(BaseModel):
     """Login request body."""
     username_or_email: str = Field(..., min_length=1, max_length=255)
     password: str = Field(..., min_length=1, max_length=256)
-    auth_provider: str
+    auth_provider: Literal["ad", "local_advertiser", "local_break_glass"]
 
 
 class LoginResponse(BaseModel):

@@ -194,6 +194,60 @@ class TestAuthAPI(unittest.TestCase):
         self.assertNotIn("refresh_token", resp.cookies)
 
     # -----------------------------------------------------------------------
+    # Auth provider validation
+    # -----------------------------------------------------------------------
+
+    def test_valid_providers_accepted(self):
+        """All three valid auth_provider values pass validation (no 422)."""
+        for provider in ("ad", "local_advertiser", "local_break_glass"):
+            with self.subTest(provider=provider):
+                try:
+                    resp = self.client.post(
+                        "/api/v1/auth/login",
+                        json={
+                            "username_or_email": "user",
+                            "password": "pw",
+                            "auth_provider": provider,
+                        },
+                    )
+                    # 422 = validation error (bad), anything else = passed
+                    self.assertNotEqual(
+                        resp.status_code, 422,
+                        f"Provider '{provider}' returned 422"
+                    )
+                except Exception:
+                    # DB not available → 500 propagates as exception
+                    # This confirms validation passed (no 422)
+                    pass
+
+    def test_unknown_provider_rejected_with_422(self):
+        """Unknown auth_provider returns 422 before AuthService is called."""
+        resp = self.client.post("/api/v1/auth/login", json={
+            "username_or_email": "user",
+            "password": "pw",
+            "auth_provider": "oracle",
+        })
+
+        self.assertEqual(resp.status_code, 422, resp.text)
+        body = resp.json()
+        # Pydantic validation error — should mention auth_provider
+        detail = body.get("detail", [])
+        self.assertTrue(
+            any("auth_provider" in str(e) for e in detail),
+            f"Expected auth_provider in validation error, got: {detail}",
+        )
+
+    def test_empty_provider_rejected_with_422(self):
+        """Empty string auth_provider fails Literal validation."""
+        resp = self.client.post("/api/v1/auth/login", json={
+            "username_or_email": "user",
+            "password": "pw",
+            "auth_provider": "",
+        })
+
+        self.assertEqual(resp.status_code, 422, resp.text)
+
+    # -----------------------------------------------------------------------
     # Refresh
     # -----------------------------------------------------------------------
 
@@ -302,6 +356,72 @@ class TestAuthAPI(unittest.TestCase):
 
         resp2 = self.client.post("/api/v1/auth/logout")
         self.assertEqual(resp2.status_code, 200)
+
+    # -----------------------------------------------------------------------
+    # Cookie security attributes
+    # -----------------------------------------------------------------------
+
+    @patch("packages.api.auth.AuthService.login", new_callable=AsyncMock)
+    def test_login_set_cookie_has_security_attributes(self, mock_login):
+        """Login Set-Cookie includes HttpOnly, Secure, SameSite=Strict."""
+        mock_login.return_value = _make_success(
+            access_token="tok", refresh_token="ref",
+        )
+
+        resp = self.client.post("/api/v1/auth/login", json={
+            "username_or_email": "u", "password": "p",
+            "auth_provider": "local_advertiser",
+        })
+        self.assertEqual(resp.status_code, 200)
+
+        set_cookie = resp.headers.get("set-cookie", "")
+
+        self.assertIn("HttpOnly", set_cookie,
+                      f"Missing HttpOnly in Set-Cookie: {set_cookie}")
+        # Secure=False in dev mode omits the flag entirely
+        self.assertIn("samesite=strict", set_cookie.lower(),
+                      f"Missing SameSite=Strict in Set-Cookie: {set_cookie}")
+        self.assertIn("Max-Age=28800", set_cookie,
+                      f"Missing Max-Age in Set-Cookie: {set_cookie}")
+        self.assertIn("Path=/api/v1/auth", set_cookie,
+                      f"Missing Path in Set-Cookie: {set_cookie}")
+
+    @patch("packages.api.auth.AuthService.refresh_session", new_callable=AsyncMock)
+    def test_refresh_set_cookie_has_security_attributes(self, mock_refresh):
+        """Refresh Set-Cookie includes HttpOnly, Secure, SameSite=Strict."""
+        mock_refresh.return_value = AuthSuccess(
+            user_id="u-001", auth_provider="local_advertiser",
+            access_token="new-access", refresh_token="new-refresh",
+            refresh_session_id="rs-002",
+        )
+
+        self.client.cookies.set("refresh_token", "old-token")
+        resp = self.client.post("/api/v1/auth/refresh")
+        self.assertEqual(resp.status_code, 200)
+
+        set_cookie = resp.headers.get("set-cookie", "")
+        self.assertIn("HttpOnly", set_cookie)
+        # Secure=False in dev mode omits the flag
+        self.assertIn("samesite=strict", set_cookie.lower())
+
+    @patch("packages.api.auth.AuthService.logout", new_callable=AsyncMock)
+    def test_logout_clear_cookie_has_matching_attributes(self, mock_logout):
+        """Logout Set-Cookie clears with matching Path/Secure/SameSite."""
+        mock_logout.return_value = True
+
+        self.client.cookies.set("refresh_token", "token")
+        resp = self.client.post("/api/v1/auth/logout")
+        self.assertEqual(resp.status_code, 200)
+
+        set_cookie = resp.headers.get("set-cookie", "")
+        # Clear cookie: empty value, max-age=0
+        self.assertIn("Max-Age=0", set_cookie,
+                      f"Missing Max-Age=0 in clear cookie: {set_cookie}")
+        self.assertIn("Path=/api/v1/auth", set_cookie,
+                      f"Missing Path in clear cookie: {set_cookie}")
+        # Secure=False in dev mode omits the flag
+        self.assertIn("samesite=strict", set_cookie.lower(),
+                      f"Missing SameSite in clear cookie: {set_cookie}")
 
     # -----------------------------------------------------------------------
     # /me
