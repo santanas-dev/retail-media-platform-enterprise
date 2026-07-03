@@ -138,3 +138,19 @@ class MeResponse(BaseModel):
     auth_provider: str
     username: str = ""
     display_name: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Phase 3.5b — Advertiser organization (RLS pilot)
+# ---------------------------------------------------------------------------
+
+
+class AdvertiserOrganizationOut(BaseModel):
+    """Public advertiser organization — no internal fields."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    code: str
+    legal_name: str
+    display_name: str
+    status: str

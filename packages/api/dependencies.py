@@ -13,6 +13,7 @@ from fastapi import Depends, HTTPException, Request
 from packages.auth.service import AuthService
 from packages.domain import repository
 from packages.domain.database import get_global_engine, get_session
+from packages.domain.scopes import ScopeContext, resolve_scope_context
 from packages.security.config import get_security_config
 from packages.security.jwt import verify_access_token
 
@@ -130,3 +131,41 @@ def require_permission(permission_code: str):
         return claims
 
     return enforce
+
+
+# ---------------------------------------------------------------------------
+# Phase 3.5b - Scope + RLS dependencies
+# ---------------------------------------------------------------------------
+
+
+async def get_scope_context(
+    claims: dict = Depends(get_current_active_user),
+    db=Depends(get_db),
+) -> ScopeContext:
+    """Resolve the current user's effective scopes from the database.
+
+    Uses the same transaction as get_db() (session.begin is already
+    active).  Returns ScopeContext.deny_all() for disabled users.
+    """
+    return await resolve_scope_context(db, claims["sub"])
+
+
+async def set_rls_context(
+    db=Depends(get_db),
+    scope: ScopeContext = Depends(get_scope_context),
+) -> None:
+    """Apply RLS session variables so tenant queries are filtered.
+
+    Must execute AFTER the transaction starts (get_db) and AFTER
+    scope resolution (get_scope_context).  Wired as a router-level
+    dependency on tenant-scoped routers.
+    """
+    from sqlalchemy import text
+
+    is_admin = "true" if scope.is_admin else "false"
+    advertiser_csv = ",".join(sorted(scope.advertiser_scope_ids)) if scope.advertiser_scope_ids else ""
+
+    await db.execute(text("SELECT set_config('app.rmp_user_id', :uid, true)"), {"uid": scope.user_id})
+    await db.execute(text("SELECT set_config('app.rmp_is_admin', :a, true)"), {"a": is_admin})
+    await db.execute(text("SELECT set_config('app.rmp_scope_advertiser_ids', :ids, true)"),
+                     {"ids": advertiser_csv})

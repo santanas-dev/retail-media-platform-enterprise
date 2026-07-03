@@ -108,7 +108,7 @@ CREATE POLICY advertiser_scope_sel ON advertiser_organizations
                     NULLIF(current_setting('app.rmp_scope_advertiser_ids', true), ''),
                     ','
                 ),
-                '{}'::uuid[]
+                '{}'::text[]
             )
         )
     );
@@ -123,7 +123,7 @@ Key safety rules enforced by the policy:
   of raising ``unrecognized configuration parameter``.
 - `NULLIF(..., '')` — treats an empty string (explicit `SET TO ''`) as unset.
 - `COALESCE(..., 'false')` — defaults to deny for the admin flag.
-- `COALESCE(..., '{}'::uuid[])` — defaults to empty array for scope lists
+- `COALESCE(..., '{}'::text[])` — defaults to empty array for scope lists
   (empty array never matches any row → deny-all).
 
 **Every RLS policy in the platform MUST use this pattern.**  A forgotten
