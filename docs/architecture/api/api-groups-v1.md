@@ -29,8 +29,10 @@ Four logically separated API groups, each with its own authentication, rate limi
 > **Cookie security:** Refresh token cookie is `HttpOnly; SameSite=Strict; Path=/api/v1/auth`. `Secure` flag is **on in production, off in local dev** (HTTP). See `packages/security/config.py:refresh_token_cookie_secure`.
 >
 > **Next phases:**
-> - **Phase 3.3** — All non-health endpoints protected by JWT + RBAC middleware. Identity endpoints (`/api/v1/identity/*`) require `users.read` permission.
-> - **Phase 3.4** — Real PostgreSQL behavioral auth/RBAC tests (test DB, migration, seed, login → JWT → call protected endpoint → verify 403/200, audit integrity). Replaces/supplements current mocked-AuthService tests.
+> - **Phase 3.3** — All non-health endpoints protected by JWT + RBAC middleware. Identity endpoints (`/api/v1/identity/*`) require `users.read` permission. ✅
+> - **Phase 3.4** — Real PostgreSQL behavioral auth/RBAC tests. ✅
+> - **Phase 3.5a** — Scope/RLS architecture lock (ADR-009): fail-closed two-layer defense, `advertiser_organizations` pilot target.
+> - **Phase 3.5b** — PostgreSQL RLS implementation: `SET LOCAL` session vars, RLS policies, `ScopeContext` dependency, behavioral tests.
 
 ### Identity Types (ADR-006)
 
@@ -92,7 +94,9 @@ Login and password-reset endpoints return **identical responses** whether the us
 > - `GET /api/v1/identity/permissions` → `roles.read`
 > - `GET /api/v1/identity/audit-events` → `audit.read`
 >
-> Tenant RLS/scopes deferred to Phase 3.5.
+> Tenant RLS/scopes deferred to Phase 3.5. **Architecture locked in ADR-009** —
+> fail-closed two-layer defense: app `ScopeContext` + PostgreSQL RLS.
+> Phase 3.5b pilot on `advertiser_organizations` / `advertiser_user_memberships`.
 >
 > **Implemented (Phase 3.0, protected in 3.3):**
 > - `GET /api/v1/identity/users` — list users (paginated, limit/offset)
