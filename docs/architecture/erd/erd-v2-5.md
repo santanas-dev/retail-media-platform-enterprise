@@ -514,6 +514,58 @@ ORDER BY (event_date, user_id, action)  PARTITION BY toYYYYMM(date)
                                         ORDER BY (date, scope_type, scope_id)
 ```
 
+---
+
+### 1.9 Auth Persistence (Phase 3.2a)
+
+```
+advertiser_organizations         advertiser_user_memberships
+┌──────────────────────────┐    ┌──────────────────────────────────┐
+│ id (UUID)                │    │ id (UUID)                        │
+│ code (unique)            │    │ user_id FK → users.id            │
+│ legal_name               │    │ advertiser_organization_id FK →  │
+│ display_name             │    │   advertiser_organizations.id    │
+│ status                   │    │ status                           │
+│ created_at               │    │ created_at                       │
+│ updated_at               │    └──────────────────────────────────┘
+└──────────────────────────┘    UNIQUE (user_id, advertiser_organization_id)
+
+local_credentials                    refresh_sessions
+┌──────────────────────────┐        ┌──────────────────────────┐
+│ id (UUID)                │        │ id (UUID)                │
+│ user_id FK (unique) →    │        │ user_id FK → users.id    │
+│   users.id               │        │ token_hash (unique)      │
+│ credential_type          │        │ token_family_id          │
+│   CHECK: local_advertiser│        │ issued_at                │
+│   | local_break_glass    │        │ expires_at               │
+│ password_hash            │        │ rotated_at (nullable)    │
+│ password_hash_algorithm  │        │ revoked_at (nullable)    │
+│ password_changed_at      │        │ ip_address (nullable)    │
+│ email_verified_at (opt)  │        │ user_agent (nullable)    │
+│ must_change_password     │        │ created_at               │
+│ status                   │        └──────────────────────────┘
+│ created_at               │
+│ updated_at               │
+└──────────────────────────┘
+
+login_attempts                      password_reset_tokens
+┌──────────────────────────┐        ┌──────────────────────────┐
+│ id (UUID)                │        │ id (UUID)                │
+│ username_or_email_hash   │        │ user_id FK → users.id    │
+│ auth_provider            │        │ token_hash (unique)      │
+│ success                  │        │ expires_at               │
+│ failure_reason (opt)     │        │ used_at (nullable)       │
+│ ip_address (nullable)    │        │ created_at               │
+│ correlation_id (opt)     │        └──────────────────────────┘
+│ created_at               │
+└──────────────────────────┘
+
+NOTE: No raw passwords, tokens, or secrets are stored in any of these tables.
+      password_hash is bcrypt-derived. token_hash is SHA-256 of the raw token.
+      Seed does NOT populate local_credentials, refresh_sessions,
+      login_attempts, or password_reset_tokens.
+```
+
 ## 3. Relational Summary
 
 - `branches` 1→N `clusters` 1→N `stores` 1→N `store_zones`
@@ -530,6 +582,9 @@ ORDER BY (event_date, user_id, action)  PARTITION BY toYYYYMM(date)
 - `playlist_versions` 1→N `manifests` 1→N `manifest_items`
 - `emergency_events` N→M `devices/surfaces` (via `emergency_targets`)
 - `users` N→M `roles` (via `user_roles`), `roles` N→M `permissions` (via `role_permissions`)
+- `users` 1→1 (opt) `local_credentials`, `users` 1→N `refresh_sessions`
+- `users` N→M `advertiser_organizations` (via `advertiser_user_memberships`)
+- `users` 1→N `login_attempts`, `users` 1→N `password_reset_tokens`
 
 ## References
 

@@ -48,6 +48,11 @@ SEED_ROLE_IDS = {
 SEED_BG_USER_ID =      "00000000-0000-0000-0000-000000000150"
 SEED_BG_USER_ROLE_ID = "00000000-0000-0000-0000-000000000160"
 
+# Auth persistence seed IDs (Phase 3.2a)
+SEED_ADV_ORG_ID =         "00000000-0000-0000-0000-000000000200"
+SEED_ADV_MEMBERSHIP_ID =  "00000000-0000-0000-0000-000000000201"
+SEED_ADV_USER_ID =        "00000000-0000-0000-0000-000000000202"
+
 
 def _rp(n: int) -> str:
     """Generate deterministic role_permission UUID from numeric suffix."""
@@ -253,7 +258,7 @@ INSERT INTO users (id, code, username, email, display_name, auth_provider,
     status, is_break_glass)
 VALUES ('{SEED_BG_USER_ID}', 'U-BG-001', 'break_glass_admin',
         'break_glass@retail-media.local',
-        'Break-Glass Administrator', 'local', 'active', true)
+        'Break-Glass Administrator', 'local_break_glass', 'active', true)
 ON CONFLICT (username) DO NOTHING;
 
 -- Assign system_admin to break-glass admin (unscoped — global role)
@@ -261,6 +266,31 @@ INSERT INTO user_roles (id, user_id, role_id)
 VALUES ('{SEED_BG_USER_ROLE_ID}', '{SEED_BG_USER_ID}',
         '{SEED_ROLE_IDS["system_admin"]}')
 ON CONFLICT (user_id, role_id) WHERE scope_type IS NULL AND scope_id IS NULL DO NOTHING;
+
+-- Auth persistence (Phase 3.2a)
+
+-- Test advertiser organization
+INSERT INTO advertiser_organizations (id, code, legal_name, display_name)
+VALUES ('{SEED_ADV_ORG_ID}', 'ADV-001',
+        'ООО «Рекламный Альянс»', 'Рекламный Альянс')
+ON CONFLICT (code) DO NOTHING;
+
+-- Test advertiser user (no credential — record only)
+INSERT INTO users (id, code, username, email, display_name, auth_provider,
+    status, is_break_glass)
+VALUES ('{SEED_ADV_USER_ID}', 'U-ADV-001', 'advertiser_test',
+        'test@advertiser.example.com',
+        'Тестовый Рекламодатель', 'local_advertiser', 'active', false)
+ON CONFLICT (username) DO NOTHING;
+
+-- Link advertiser user to organization
+INSERT INTO advertiser_user_memberships (id, user_id, advertiser_organization_id)
+VALUES ('{SEED_ADV_MEMBERSHIP_ID}', '{SEED_ADV_USER_ID}', '{SEED_ADV_ORG_ID}')
+ON CONFLICT (user_id, advertiser_organization_id) DO NOTHING;
+
+-- NOTE: No local_credentials, refresh_sessions, login_attempts,
+--       or password_reset_tokens are seeded — these contain sensitive
+--       material (password hashes, tokens) and must NOT appear in dev seed.
 """
 
 
@@ -273,7 +303,8 @@ async def seed():
                 await conn.execute(text(stmt + ";"))
     await engine.dispose()
     print("Seed complete: 1 branch → 1 cluster → 1 store → 1 KSO device → 1 surface "
-          "+ 8 permissions, 4 roles, 20 role-permissions, 1 break-glass admin")
+          "+ 8 permissions, 4 roles, 20 role-permissions, 1 break-glass admin, "
+          "1 advertiser org + 1 advertiser user")
 
 
 if __name__ == "__main__":

@@ -45,6 +45,12 @@ __all__ = [
     "AccessScope",
     "UserAccessScope",
     "AuditEventOperational",
+    "AdvertiserOrganization",
+    "AdvertiserUserMembership",
+    "LocalCredential",
+    "RefreshSession",
+    "LoginAttempt",
+    "PasswordResetToken",
 ]
 
 
@@ -410,6 +416,107 @@ class AuditEventOperational(Base):
 
 
 # ---------------------------------------------------------------------------
+# Auth Persistence (Phase 3.2a)
+# ---------------------------------------------------------------------------
+
+
+class AdvertiserOrganization(Base):
+    __tablename__ = "advertiser_organizations"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    code = Column(String(64), nullable=False, unique=True, index=True)
+    legal_name = Column(String(255), nullable=False)
+    display_name = Column(String(255), nullable=False)
+    status = Column(String(32), nullable=False, default="active")
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+    memberships = relationship("AdvertiserUserMembership", back_populates="organization")
+
+
+class AdvertiserUserMembership(Base):
+    __tablename__ = "advertiser_user_memberships"
+    __table_args__ = (
+        UniqueConstraint("user_id", "advertiser_organization_id",
+                         name="uq_adv_membership"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    advertiser_organization_id = Column(
+        String(36), ForeignKey("advertiser_organizations.id"), nullable=False, index=True,
+    )
+    status = Column(String(32), nullable=False, default="active")
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    user = relationship("User", backref="advertiser_memberships")
+    organization = relationship("AdvertiserOrganization", back_populates="memberships")
+
+
+class LocalCredential(Base):
+    __tablename__ = "local_credentials"
+    __table_args__ = (
+        CheckConstraint(
+            "credential_type IN ('local_advertiser', 'local_break_glass')",
+            name="ck_lc_credential_type",
+        ),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False,
+                     unique=True, index=True)
+    credential_type = Column(String(32), nullable=False)
+    password_hash = Column(String(255), nullable=False, default="")
+    password_hash_algorithm = Column(String(32), nullable=False, default="bcrypt")
+    password_changed_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    email_verified_at = Column(DateTime(timezone=True), nullable=True)
+    must_change_password = Column(Boolean, nullable=False, default=False)
+    status = Column(String(32), nullable=False, default="active")
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
+class RefreshSession(Base):
+    __tablename__ = "refresh_sessions"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    token_hash = Column(String(128), nullable=False, unique=True, index=True)
+    token_family_id = Column(String(36), nullable=False, index=True)
+    issued_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    rotated_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
+class LoginAttempt(Base):
+    __tablename__ = "login_attempts"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    username_or_email_hash = Column(String(128), nullable=False, index=True)
+    auth_provider = Column(String(32), nullable=False, index=True)
+    success = Column(Boolean, nullable=False)
+    failure_reason = Column(String(64), nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    correlation_id = Column(String(64), nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, index=True)
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    token_hash = Column(String(128), nullable=False, unique=True, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
+# ---------------------------------------------------------------------------
 # Required Table Count
 # ---------------------------------------------------------------------------
 
@@ -420,4 +527,7 @@ REQUIRED_TABLES = frozenset({
     "logical_carriers", "display_surfaces",
     "users", "roles", "permissions", "role_permissions", "user_roles",
     "access_scopes", "user_access_scopes", "audit_events_operational",
+    "advertiser_organizations", "advertiser_user_memberships",
+    "local_credentials", "refresh_sessions",
+    "login_attempts", "password_reset_tokens",
 })

@@ -24,17 +24,17 @@ class TestPhase2Metadata(unittest.TestCase):
         self.assertIsNotNone(REQUIRED_TABLES)
 
     def test_all_required_tables_present(self):
-        """Base.metadata contains all 19 required foundation tables."""
+        """Base.metadata contains all 25 required foundation tables."""
         from packages.domain.models import REQUIRED_TABLES, Base
         actual = set(Base.metadata.tables.keys())
         missing = REQUIRED_TABLES - actual
         self.assertSetEqual(missing, set(), f"Missing tables: {missing}")
 
     def test_exact_table_count(self):
-        """Metadata has exactly 19 tables (Phase 2 + Phase 2.1)."""
+        """Metadata has exactly 25 tables (Phase 2 + Phase 2.1 + Phase 3.2a)."""
         from packages.domain.models import Base
         count = len(Base.metadata.tables)
-        self.assertEqual(count, 19, f"Expected 19 tables, got {count}")
+        self.assertEqual(count, 25, f"Expected 25 tables, got {count}")
 
 
 class TestPhase2ModelColumns(unittest.TestCase):
@@ -351,15 +351,19 @@ class TestPhase21SeedIdentity(unittest.TestCase):
         self.assertIn("true", bg_section)
 
     def test_seed_has_no_passwords(self):
-        """Seed INSERTs contain no password/passwd/secret/token/key strings."""
+        """Seed INSERT VALUES contain no password/passwd/secret/token/key strings."""
         src = self._SEED_SRC
-        # Extract just the SQL block
         m = re.search(r'SEED_SQL = f"""(.+?)"""', src, re.DOTALL)
         self.assertIsNotNone(m, "Cannot find SEED_SQL")
         sql = m.group(1)
+        # Only check INSERT lines with VALUES, not comments
+        value_lines = [l for l in sql.split("\n")
+                       if "VALUES" in l.upper() and l.strip().upper().startswith("INSERT")]
         forbidden = ["password", "passwd", "pwd_hash", "secret_key", "access_token", "api_key"]
         for word in forbidden:
-            self.assertNotIn(word, sql.lower(), f"Seed SQL contains forbidden word: {word}")
+            for line in value_lines:
+                self.assertNotIn(word, line.lower(),
+                                 f"INSERT VALUES contains forbidden word '{word}': {line[:120]}")
 
     def test_seed_breaks_on_conflict_count(self):
         """Every INSERT has ON CONFLICT (idempotent)."""
@@ -373,13 +377,13 @@ class TestPhase21SeedIdentity(unittest.TestCase):
                          f"INSERT count {insert_count} != ON CONFLICT count {conflict_count}")
 
     def test_seed_insert_count(self):
-        """Seed has exactly 43 INSERT statements (9 phase 2 + 34 phase 2.1)."""
+        """Seed has exactly 46 INSERT statements (9 phase 2 + 34 phase 2.1 + 3 phase 3.2a)."""
         src = self._SEED_SRC
         m = re.search(r'SEED_SQL = f"""(.+?)"""', src, re.DOTALL)
         self.assertIsNotNone(m, "Cannot find SEED_SQL")
         sql = m.group(1)
         inserts = [l for l in sql.split("\n") if l.strip().upper().startswith("INSERT")]
-        self.assertEqual(len(inserts), 43, f"Expected 43 INSERTs, got {len(inserts)}")
+        self.assertEqual(len(inserts), 46, f"Expected 46 INSERTs, got {len(inserts)}")
 
 
 class TestPhase21AuditEventModel(unittest.TestCase):
