@@ -23,7 +23,8 @@ Four logically separated API groups, each with its own authentication, rate limi
 
 ## 1. Auth API
 
-> **Status: Phase 3.1 — Architecture Lock. Endpoints below are NOT IMPLEMENTED.**
+> **Status: Phase 3.2d — Implemented.** See ADR-006 for architecture decisions.
+> Endpoints live, auth service wired. No RBAC/middleware enforcement yet.
 > Implementation in Phase 3.2 per ADR-006.
 
 ### Identity Types (ADR-006)
@@ -48,13 +49,15 @@ Auth endpoints determine `auth_provider` from the login payload or by username/e
 
 ### Planned Endpoints (Phase 3.2+)
 
-| Method | Endpoint | Auth | Permission | Description |
-|--------|----------|------|------------|-------------|
-| POST | `/api/v1/auth/login` | None | — | Login for all identity types. `auth_provider` determines backend (LDAPS / local bcrypt). Returns `{access_token, expires_at, user}` + `Set-Cookie` refresh token. |
-| POST | `/api/v1/auth/refresh` | Refresh token cookie | — | Rotate refresh token, return new access token |
-| POST | `/api/v1/auth/logout` | JWT | — | Invalidate refresh token, clear cookie |
-| GET | `/api/v1/auth/me` | JWT | — | Current user profile + permissions + scopes |
-| POST | `/api/v1/auth/mfa/verify` | JWT (partial) | — | MFA second factor (deferred) |
+> **Phase 3.2d (implemented):** Login, refresh, logout, me.
+
+| Method | Endpoint | Auth | Permission | Description | Status |
+|--------|----------|------|------------|-------------|--------|
+| POST | `/api/v1/auth/login` | None | — | Login for all identity types. Returns `{access_token, expires_in, user}` + `Set-Cookie` refresh token. | ✅ 3.2d |
+| POST | `/api/v1/auth/refresh` | Refresh token cookie | — | Rotate refresh token, return new access token + Set-Cookie | ✅ 3.2d |
+| POST | `/api/v1/auth/logout` | Refresh token cookie | — | Revoke session, clear cookie | ✅ 3.2d |
+| GET | `/api/v1/auth/me` | JWT | — | Current user claims (sub, auth_provider) decoded from JWT | ✅ 3.2d |
+| POST | `/api/v1/auth/mfa/verify` | JWT (partial) | — | MFA second factor | deferred |
 
 **Advertiser-specific (planned, Phase 3.2+):**
 

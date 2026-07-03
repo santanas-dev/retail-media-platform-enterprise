@@ -71,6 +71,7 @@ PYTHON_FILES=(
     "packages/api/__init__.py"
     "packages/api/dependencies.py"
     "packages/api/identity.py"
+    "packages/api/auth.py"
     "packages/security/__init__.py"
     "packages/security/config.py"
     "packages/security/password.py"

@@ -64,6 +64,12 @@ class SecurityConfig:
     password_min_length: int = 8
     password_bcrypt_rounds: int = 12
 
+    # Cookie (refresh token)
+    refresh_token_cookie_name: str = "refresh_token"
+    refresh_token_cookie_secure: bool = True  # overridden to False in dev
+    refresh_token_cookie_samesite: str = "strict"
+    refresh_token_cookie_path: str = "/api/v1/auth"
+
     # Audit
     audit_correlation_id_header: str = "X-Correlation-ID"
 
@@ -90,6 +96,9 @@ class SecurityConfig:
             self.jwt_secret = "dev-secret-do-not-use-in-production"
         if not self.jwt_audience:
             self.jwt_audience = self.jwt_issuer  # default: issuer = audience
+        # In dev mode, allow non-HTTPS cookies
+        if self.dev_mode:
+            self.refresh_token_cookie_secure = False
 
     def _validate_production(self) -> None:
         """Production mode: require strong JWT secret."""
