@@ -49,6 +49,7 @@ class SecurityConfig:
     jwt_access_token_ttl_minutes: int = 15
     jwt_clock_skew_seconds: int = 30
     jwt_issuer: str = "rmp-control-api"
+    jwt_audience: str = ""
 
     # Refresh sessions
     refresh_session_ttl_hours: int = 8
@@ -70,6 +71,9 @@ class SecurityConfig:
         # Load JWT_SECRET from env if not provided
         if not self.jwt_secret:
             self.jwt_secret = os.environ.get("JWT_SECRET", "")
+        # Load JWT_AUDIENCE from env if not provided
+        if not self.jwt_audience:
+            self.jwt_audience = os.environ.get("JWT_AUDIENCE", "")
         self._validate()
 
     def _validate(self) -> None:
@@ -84,6 +88,8 @@ class SecurityConfig:
             self.jwt_secret = "dev-secret-do-not-use-in-production"
         if len(self.jwt_secret) < 16:
             self.jwt_secret = "dev-secret-do-not-use-in-production"
+        if not self.jwt_audience:
+            self.jwt_audience = self.jwt_issuer  # default: issuer = audience
 
     def _validate_production(self) -> None:
         """Production mode: require strong JWT secret."""

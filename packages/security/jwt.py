@@ -35,6 +35,7 @@ def create_access_token(
         "iat": now,
         "exp": now + (cfg.jwt_access_token_ttl_minutes * 60),
         "iss": cfg.jwt_issuer,
+        "aud": cfg.jwt_audience,
     }
     return pyjwt.encode(claims, cfg.jwt_secret, algorithm=cfg.jwt_algorithm)
 
@@ -63,9 +64,10 @@ def verify_access_token(token: str) -> dict:
             "verify_exp": True,
             "verify_iat": True,
             "verify_signature": True,
-            "require": ["sub", "auth_provider", "jti", "iat", "exp", "iss"],
+            "require": ["sub", "auth_provider", "jti", "iat", "exp", "iss", "aud"],
         },
         issuer=cfg.jwt_issuer,
+        audience=cfg.jwt_audience,
         leeway=leeway,
     )
     return claims

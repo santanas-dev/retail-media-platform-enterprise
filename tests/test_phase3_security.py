@@ -254,25 +254,50 @@ class TestJWTHelpers(unittest.TestCase):
         claims = sec_jwt.verify_access_token(token)
         self.assertEqual(claims["sub"], sub)
         self.assertEqual(claims["auth_provider"], "local_advertiser")
+        self.assertEqual(claims["aud"], "rmp-control-api")
         self.assertIn("jti", claims)
         self.assertIn("iat", claims)
         self.assertIn("exp", claims)
 
+    def test_audience_missing_fails(self):
+        """Token without aud claim is rejected."""
+        cfg = sec_config.get_security_config()
+        now = int(time.time())
+        token = pyjwt.encode(
+            {"sub": "u-1", "auth_provider": "ad", "jti": "x",
+             "iat": now, "exp": now + 900, "iss": cfg.jwt_issuer},
+            cfg.jwt_secret, algorithm="HS256",
+        )
+        with self.assertRaises(pyjwt.MissingRequiredClaimError):
+            sec_jwt.verify_access_token(token)
+
+    def test_wrong_audience_fails(self):
+        """Token with wrong audience is rejected."""
+        cfg = sec_config.get_security_config()
+        now = int(time.time())
+        token = pyjwt.encode(
+            {"sub": "u-1", "auth_provider": "ad", "jti": "x",
+             "iat": now, "exp": now + 900,
+             "iss": cfg.jwt_issuer, "aud": "wrong-service"},
+            cfg.jwt_secret, algorithm="HS256",
+        )
+        with self.assertRaises(pyjwt.InvalidAudienceError):
+            sec_jwt.verify_access_token(token)
+
     def test_expired_token_rejected(self):
         """Expired token raises ExpiredSignatureError."""
-        # Create a token directly that is already expired
         cfg = sec_config.get_security_config()
         now = int(time.time())
         claims = {
             "sub": "u-1",
             "auth_provider": "ad",
             "jti": "test-jti",
-            "iat": now - 3600,  # issued 1 hour ago
-            "exp": now - 1800,   # expired 30 minutes ago
+            "iat": now - 3600,
+            "exp": now - 1800,
             "iss": cfg.jwt_issuer,
+            "aud": cfg.jwt_audience,
         }
         token = pyjwt.encode(claims, cfg.jwt_secret, algorithm=cfg.jwt_algorithm)
-        # Set skew to 0 for this check so it definitely rejects
         old_skew = cfg.jwt_clock_skew_seconds
         cfg.jwt_clock_skew_seconds = 0
         try:
@@ -306,7 +331,7 @@ class TestJWTHelpers(unittest.TestCase):
         token = pyjwt.encode(
             {"sub": "u-1", "auth_provider": "ad", "jti": "x",
              "iat": int(time.time()), "exp": int(time.time()) + 900,
-             "iss": "rmp-control-api"},
+             "iss": "rmp-control-api", "aud": "rmp-control-api"},
             key="",
             algorithm="none",
         )
@@ -316,7 +341,7 @@ class TestJWTHelpers(unittest.TestCase):
     def test_required_claims_enforced(self):
         """Token missing required claims is rejected."""
         token = pyjwt.encode(
-            {"sub": "u-1"},  # missing auth_provider, jti, iat, exp, iss
+            {"sub": "u-1"},  # missing auth_provider, jti, iat, exp, iss, aud
             os.environ["JWT_SECRET"],
             algorithm="HS256",
         )
@@ -327,7 +352,6 @@ class TestJWTHelpers(unittest.TestCase):
         """Token just beyond TTL but within skew window is accepted."""
         cfg = sec_config.get_security_config()
         now = int(time.time())
-        # Expired 15 seconds ago — within default 30s skew
         claims = {
             "sub": "u-1",
             "auth_provider": "ad",
@@ -335,6 +359,7 @@ class TestJWTHelpers(unittest.TestCase):
             "iat": now - 120,
             "exp": now - 15,
             "iss": cfg.jwt_issuer,
+            "aud": cfg.jwt_audience,
         }
         token = pyjwt.encode(claims, cfg.jwt_secret, algorithm=cfg.jwt_algorithm)
         claims_decoded = sec_jwt.verify_access_token(token)
@@ -344,7 +369,6 @@ class TestJWTHelpers(unittest.TestCase):
         """Token expired beyond skew window is rejected."""
         cfg = sec_config.get_security_config()
         now = int(time.time())
-        # Expired 60 seconds ago — beyond default 30s skew
         claims = {
             "sub": "u-1",
             "auth_provider": "ad",
@@ -352,6 +376,7 @@ class TestJWTHelpers(unittest.TestCase):
             "iat": now - 200,
             "exp": now - 60,
             "iss": cfg.jwt_issuer,
+            "aud": cfg.jwt_audience,
         }
         token = pyjwt.encode(claims, cfg.jwt_secret, algorithm=cfg.jwt_algorithm)
         with self.assertRaises(pyjwt.ExpiredSignatureError):
@@ -432,6 +457,34 @@ class TestSanitizeHelpers(unittest.TestCase):
         data = {"username": "test", "action": "login", "ip": "127.0.0.1"}
         clean = sec_sanitize.sanitize_auth_details(data)
         self.assertEqual(clean, data)
+
+    def test_substring_false_positives_not_masked(self):
+        """Fields containing sensitive substrings are NOT masked."""
+        data = {
+            "authorization_id": "auth-123",
+            "cookie_preferences": "dark-mode",
+            "tokenizer_config": "gpt-4",
+            "passwordless_enabled": True,
+            "refresh_tokens_count": 5,
+        }
+        clean = sec_sanitize.sanitize_auth_details(data)
+        self.assertEqual(clean["authorization_id"], "auth-123")
+        self.assertEqual(clean["cookie_preferences"], "dark-mode")
+        self.assertEqual(clean["tokenizer_config"], "gpt-4")
+        self.assertEqual(clean["passwordless_enabled"], True)
+        self.assertEqual(clean["refresh_tokens_count"], 5)
+
+    def test_underscore_variants_masked(self):
+        """Underscore variants of sensitive keys are masked."""
+        data = {
+            "access_token": "secret-token",
+            "set_cookie": "session=abc",
+            "api_key": "sk-123",
+        }
+        clean = sec_sanitize.sanitize_auth_details(data)
+        self.assertEqual(clean["access_token"], "***MASKED***")
+        self.assertEqual(clean["set_cookie"], "***MASKED***")
+        self.assertEqual(clean["api_key"], "***MASKED***")
 
 
 if __name__ == "__main__":
