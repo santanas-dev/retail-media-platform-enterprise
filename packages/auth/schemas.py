@@ -58,9 +58,15 @@ def auth_failure(
     internal_code: str = "AUTH_FAILED",
     debug_context: dict | None = None,
 ) -> AuthFailure:
-    """Factory for failure result — generic public message, no user enumeration."""
+    """Factory for failure result — generic public message, no user enumeration.
+
+    debug_context is automatically sanitized before storage — passwords,
+    tokens, secrets, and authorization headers are masked.
+    """
+    from packages.security.sanitize import sanitize_auth_details
+
     return AuthFailure(
         public_reason=public_reason,
         internal_code=internal_code,
-        debug_context=debug_context,
+        debug_context=sanitize_auth_details(debug_context),
     )

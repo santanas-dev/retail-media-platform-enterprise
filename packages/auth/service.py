@@ -205,7 +205,7 @@ class AuthService:
             )
             return auth_failure(internal_code="USER_INACTIVE")
 
-        # Get local credentials
+        # Get local credentials and validate type matches provider
         cred = await get_local_credential(session, user.id)
         if cred is None:
             await create_login_attempt(
@@ -214,6 +214,18 @@ class AuthService:
                 auth_provider=provider,
                 success=False,
                 failure_reason="no_credential",
+                ip_address=ip_address,
+                correlation_id=correlation_id,
+            )
+            return auth_failure(internal_code="AUTH_FAILED")
+
+        if cred.credential_type != provider:
+            await create_login_attempt(
+                session,
+                username_or_email_hash=identifier_hash,
+                auth_provider=provider,
+                success=False,
+                failure_reason="credential_type_mismatch",
                 ip_address=ip_address,
                 correlation_id=correlation_id,
             )

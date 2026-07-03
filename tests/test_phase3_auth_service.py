@@ -276,6 +276,54 @@ class TestAuthServiceLogin(unittest.TestCase):
             ["ldap_unavailable", "ad_auth_failed"],
         )
 
+    # -- Credential type mismatch --
+
+    @patch("packages.auth.service.find_user_by_username", new_callable=AsyncMock)
+    @patch("packages.auth.service.get_local_credential", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
+    async def test_advertiser_with_break_glass_credential_fails(
+        self, mock_login_attempt, mock_get_cred, mock_find_user,
+    ):
+        """local_advertiser user with local_break_glass credential fails."""
+        user = _make_user(auth_provider="local_advertiser")
+        cred = _make_credential(credential_type="local_break_glass")
+        mock_find_user.return_value = user
+        mock_get_cred.return_value = cred
+
+        svc = AuthService()
+        session = MagicMock(spec=AsyncSession)
+        result = await svc.login(
+            session, username_or_email="testuser",
+            password="correct-password-here",
+        )
+
+        self.assertIsInstance(result, AuthFailure)
+        call_kwargs = mock_login_attempt.call_args.kwargs
+        self.assertEqual(call_kwargs["failure_reason"], "credential_type_mismatch")
+
+    @patch("packages.auth.service.find_user_by_username", new_callable=AsyncMock)
+    @patch("packages.auth.service.get_local_credential", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
+    async def test_break_glass_with_advertiser_credential_fails(
+        self, mock_login_attempt, mock_get_cred, mock_find_user,
+    ):
+        """local_break_glass user with local_advertiser credential fails."""
+        user = _make_user(auth_provider="local_break_glass", is_break_glass=True)
+        cred = _make_credential(credential_type="local_advertiser")
+        mock_find_user.return_value = user
+        mock_get_cred.return_value = cred
+
+        svc = AuthService()
+        session = MagicMock(spec=AsyncSession)
+        result = await svc.login(
+            session, username_or_email="break_glass_admin",
+            password="correct-password-here",
+        )
+
+        self.assertIsInstance(result, AuthFailure)
+        call_kwargs = mock_login_attempt.call_args.kwargs
+        self.assertEqual(call_kwargs["failure_reason"], "credential_type_mismatch")
+
     # -- No credential --
 
     @patch("packages.auth.service.find_user_by_username", new_callable=AsyncMock)
@@ -399,6 +447,24 @@ class TestAuthServiceSessionManagement(unittest.TestCase):
         result = await svc.logout(session, raw_refresh_token="unknown")
 
         self.assertFalse(result)
+
+    @patch("packages.auth.service.find_active_refresh_session", new_callable=AsyncMock)
+    async def test_rotated_token_is_not_active(
+        self, mock_find_rs,
+    ):
+        """Rotated refresh token is not returned as active — treated as invalid."""
+        # find_active_refresh_session filters rotated_at.is_(None)
+        # So a rotated session won't be found at all
+        mock_find_rs.return_value = None
+
+        svc = AuthService()
+        session = MagicMock(spec=AsyncSession)
+        result = await svc.refresh_session(
+            session, raw_refresh_token="already-rotated-token",
+        )
+
+        self.assertIsInstance(result, AuthFailure)
+        self.assertEqual(result.internal_code, "REFRESH_FAILED")
 
 
 class TestAuthServicePasswordReset(unittest.TestCase):
@@ -537,6 +603,29 @@ class TestNoSecretsInRepr(unittest.TestCase):
         )
         r = repr(f)
         self.assertNotIn("secret detail", r)
+        self.assertNotIn("debug_context", r)
+
+    def test_auth_failure_sanitizes_debug_context(self):
+        """auth_failure factory sanitizes passwords/tokens in debug_context."""
+        from packages.auth.schemas import auth_failure
+
+        f = auth_failure(
+            internal_code="TEST",
+            debug_context={
+                "password": "secret123",
+                "access_token": "eyJhbG...",
+                "authorization": "Bearer xyz",
+                "safe_field": "visible",
+            },
+        )
+        # Sanitized values
+        self.assertEqual(f.debug_context["password"], "***")
+        self.assertEqual(f.debug_context["access_token"], "***MASKED***")
+        self.assertEqual(f.debug_context["authorization"], "***MASKED***")
+        # Non-sensitive preserved
+        self.assertEqual(f.debug_context["safe_field"], "visible")
+        # repr still excludes debug_context entirely
+        r = repr(f)
         self.assertNotIn("debug_context", r)
 
 

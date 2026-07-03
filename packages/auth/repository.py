@@ -39,7 +39,7 @@ def _new_id() -> str:
 async def find_user_by_username(
     session: AsyncSession, username: str
 ) -> User | None:
-    """Find user by exact username (case-insensitive)."""
+    """Find user by exact username match (case-sensitive)."""
     stmt = select(User).where(User.username == username)
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
@@ -145,7 +145,8 @@ async def create_refresh_session(
 async def find_active_refresh_session(
     session: AsyncSession, token_hash: str
 ) -> RefreshSession | None:
-    """Find an active (not revoked, not rotated) refresh session by token_hash."""
+    """Find an active (not revoked, not rotated, not expired) refresh session
+    by token_hash."""
     now = _now()
     stmt = (
         select(RefreshSession)
@@ -153,6 +154,7 @@ async def find_active_refresh_session(
             RefreshSession.token_hash == token_hash,
             RefreshSession.expires_at > now,
             RefreshSession.revoked_at.is_(None),
+            RefreshSession.rotated_at.is_(None),
         )
     )
     result = await session.execute(stmt)
