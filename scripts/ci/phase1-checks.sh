@@ -71,6 +71,12 @@ PYTHON_FILES=(
     "packages/api/__init__.py"
     "packages/api/dependencies.py"
     "packages/api/identity.py"
+    "packages/security/__init__.py"
+    "packages/security/config.py"
+    "packages/security/password.py"
+    "packages/security/tokens.py"
+    "packages/security/jwt.py"
+    "packages/security/sanitize.py"
     "packages/observability/__init__.py"
 )
 

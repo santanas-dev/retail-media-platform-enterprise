@@ -44,6 +44,12 @@ jobs:
           - packages/api/__init__.py
           - packages/api/dependencies.py
           - packages/api/identity.py
+          - packages/security/__init__.py
+          - packages/security/config.py
+          - packages/security/password.py
+          - packages/security/tokens.py
+          - packages/security/jwt.py
+          - packages/security/sanitize.py
           - packages/observability/__init__.py
     steps:
       - uses: actions/checkout@v4
@@ -81,7 +87,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install deps
-        run: pip install sqlalchemy alembic asyncpg fastapi httpx pytest
+        run: pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT
       - name: Run tests
         run: python -m pytest tests/ -v
   json-schema:
