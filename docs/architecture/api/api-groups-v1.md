@@ -26,10 +26,23 @@ Four logically separated API groups, each with its own authentication, rate limi
 > **Status: Phase 3.1 — Architecture Lock. Endpoints below are NOT IMPLEMENTED.**
 > Implementation in Phase 3.2 per ADR-006.
 
+### Identity Types (ADR-006)
+
+Three distinct identity types share `/api/v1/auth/*` endpoints, distinguished by `auth_provider`:
+
+| Type | `auth_provider` | Auth method | Use case |
+|------|-----------------|-------------|----------|
+| Internal staff | `ad` | LDAPS bind/search | Admin, managers, analysts |
+| Advertiser user | `local_advertiser` | Email + bcrypt password | Advertiser cabinet |
+| Break-glass admin | `local_break_glass` | Local bcrypt (emergency) | AD outage recovery |
+
+Auth endpoints determine `auth_provider` from the login payload or by username/email lookup.
+
 ### Auth Protocol: LDAP bind/search (ADR-006)
 
-- Primary identity provider: Active Directory via LDAPS (port 636)
-- Fallback: break-glass local admin only (fully audited, CRITICAL-level events)
+- Primary identity provider for internal staff: Active Directory via LDAPS (port 636)
+- Advertiser auth: local credentials in separate `local_credentials` table (not in `users`)
+- Break-glass: emergency local access only, fully audited, CRITICAL-level events
 - Session: JWT access token (15 min) + opaque refresh token (8 h) in HttpOnly Secure SameSite cookie
 - MFA: deferred until AD/IdP mechanism is confirmed
 
@@ -37,11 +50,28 @@ Four logically separated API groups, each with its own authentication, rate limi
 
 | Method | Endpoint | Auth | Permission | Description |
 |--------|----------|------|------------|-------------|
-| POST | `/api/v1/auth/login` | None | — | AD/SSO or local login |
-| POST | `/api/v1/auth/refresh` | Refresh token | — | Refresh access token |
-| POST | `/api/v1/auth/logout` | JWT | — | Invalidate refresh token |
-| GET | `/api/v1/auth/me` | JWT | — | Current user profile + permissions |
-| POST | `/api/v1/auth/mfa/verify` | JWT (partial) | — | MFA second factor |
+| POST | `/api/v1/auth/login` | None | — | Login for all identity types. `auth_provider` determines backend (LDAPS / local bcrypt). Returns `{access_token, expires_at, user}` + `Set-Cookie` refresh token. |
+| POST | `/api/v1/auth/refresh` | Refresh token cookie | — | Rotate refresh token, return new access token |
+| POST | `/api/v1/auth/logout` | JWT | — | Invalidate refresh token, clear cookie |
+| GET | `/api/v1/auth/me` | JWT | — | Current user profile + permissions + scopes |
+| POST | `/api/v1/auth/mfa/verify` | JWT (partial) | — | MFA second factor (deferred) |
+
+**Advertiser-specific (planned, Phase 3.2+):**
+
+| Method | Endpoint | Auth | Permission | Description |
+|--------|----------|------|-------------|-------------|
+| POST | `/api/v1/auth/register` | None | — | Self-registration (advertiser). Email verification required. |
+| POST | `/api/v1/auth/verify-email` | Verification token | — | Confirm email address |
+| POST | `/api/v1/auth/password-reset/request` | None | — | Send reset link. Generic response — no user enumeration. |
+| POST | `/api/v1/auth/password-reset/confirm` | Reset token | — | Set new password |
+
+### Security: No User Enumeration
+
+Login and password-reset endpoints return **identical responses** whether the user/email exists or not:
+
+- Login failure: `{"error": {"code": "INVALID_CREDENTIALS", "message": "Invalid email or password"}}` (HTTP 401) — regardless of whether the email is registered
+- Password reset request: `{"message": "If this email is registered, a reset link has been sent"}` (HTTP 200) — always, even for unknown emails
+- Rate limits are per-identifier but errors are generic
 
 ---
 

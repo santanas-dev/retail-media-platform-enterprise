@@ -112,7 +112,8 @@ bash scripts/ci/phase1-checks.sh
 |-----------|-------------|
 - Identity: users, roles, permissions, RBAC/RLS | Phase 2.1 ✅ (schema only, no auth implementation)
 - AD/SSO integration | Phase 3.1 (architecture lock: ADR-006), Phase 3.2 (LDAP implementation)
-- Password authentication | Not implemented. User schema supports `auth_provider` and `external_subject` for AD integration and `is_break_glass` for emergency local access. No `password_hash` field is populated yet.
+- Password authentication | Not implemented. User schema supports `auth_provider` (`ad` / `local_advertiser` / `local_break_glass`), `external_subject` for AD SID, and `is_break_glass` for emergency access. No `password_hash` column in `users` — local credentials will be stored in a separate `local_credentials` table (Phase 3.2+). Current break-glass seed user has no credential — login is impossible until credential migration.
+- Advertiser cabinet auth | Phase 3.2+. Requires `local_credentials`, `advertiser_organizations`, email verification, password reset flow.
 | Campaigns, placements, inventory | Phase 3 |
 | Device onboarding + JWT auth | Phase 3 |
 | Manifest generation | Phase 3 |
