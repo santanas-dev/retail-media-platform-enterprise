@@ -110,8 +110,9 @@ bash scripts/ci/phase1-checks.sh
 
 | Capability | Target Phase |
 |-----------|-------------|
-| Identity: users, roles, permissions, RBAC/RLS | Phase 2.1 |
-| AD/SSO integration | Phase 2.1 |
+- Identity: users, roles, permissions, RBAC/RLS | Phase 2.1 ✅ (schema only, no auth implementation)
+- AD/SSO integration | Phase 3.1 (architecture lock: ADR-006), Phase 3.2 (LDAP implementation)
+- Password authentication | Not implemented. User schema supports `auth_provider` and `external_subject` for AD integration and `is_break_glass` for emergency local access. No `password_hash` field is populated yet.
 | Campaigns, placements, inventory | Phase 3 |
 | Device onboarding + JWT auth | Phase 3 |
 | Manifest generation | Phase 3 |

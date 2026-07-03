@@ -23,6 +23,18 @@ Four logically separated API groups, each with its own authentication, rate limi
 
 ## 1. Auth API
 
+> **Status: Phase 3.1 — Architecture Lock. Endpoints below are NOT IMPLEMENTED.**
+> Implementation in Phase 3.2 per ADR-006.
+
+### Auth Protocol: LDAP bind/search (ADR-006)
+
+- Primary identity provider: Active Directory via LDAPS (port 636)
+- Fallback: break-glass local admin only (fully audited, CRITICAL-level events)
+- Session: JWT access token (15 min) + opaque refresh token (8 h) in HttpOnly Secure SameSite cookie
+- MFA: deferred until AD/IdP mechanism is confirmed
+
+### Planned Endpoints (Phase 3.2+)
+
 | Method | Endpoint | Auth | Permission | Description |
 |--------|----------|------|------------|-------------|
 | POST | `/api/v1/auth/login` | None | — | AD/SSO or local login |
@@ -34,6 +46,22 @@ Four logically separated API groups, each with its own authentication, rate limi
 ---
 
 ## 2. Users & RBAC API
+
+> **Phase 3.0 (implemented):** Read-only endpoints live at `/api/v1/identity/*` (not `/api/v1/*` as originally planned).
+> Endpoints are **unprotected** until Phase 3.2 auth middleware. See ADR-006.
+>
+> **Implemented (Phase 3.0):**
+> - `GET /api/v1/identity/users` — list users (paginated, limit/offset)
+> - `GET /api/v1/identity/roles` — list roles
+> - `GET /api/v1/identity/permissions` — list permissions
+> - `GET /api/v1/identity/audit-events` — list operational audit events (paginated)
+>
+> **Planned (Phase 3.2+, after auth middleware):**
+> - All endpoints require JWT + permission
+> - Paths may be consolidated under `/api/v1/*` or remain at `/api/v1/identity/*`
+> - Mutation endpoints (create/update/assign/block) per original table below
+
+### Full Planned Surface (post-Phase 3.2)
 
 | Method | Endpoint | Auth | Permission | Description |
 |--------|----------|------|------------|-------------|
@@ -217,7 +245,8 @@ Four logically separated API groups, each with its own authentication, rate limi
 
 ## Common Patterns
 
-- **Pagination:** `?page=1&page_size=20` (allowed: 20, 50, 100)
+- **Authentication (Phase 3.2+):** All non-health endpoints require JWT `Authorization: Bearer` header. See ADR-006.
+- **Pagination:** `?limit=20&offset=0` (allowed limit: 1–100)
 - **Filtering:** `?status=active&channel_type=KSO&search=term`
 - **Sorting:** `?sort_by=created_at&sort_order=desc`
 - **Idempotency:** `Idempotency-Key: <uuid>` header for POST/PATCH
