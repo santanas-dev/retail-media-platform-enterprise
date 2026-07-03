@@ -18,7 +18,7 @@ os.environ["JWT_SECRET"] = "behavioral-test-secret-at-least-32-chars"
 
 import bcrypt
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from packages.security.config import reset_security_config
 
@@ -158,85 +158,19 @@ def _load_control_api_app():
 def app():
     """Load the control-api FastAPI app once per test session."""
     reset_security_config()
-    os.environ["ENVIRONMENT"] = "dev"
-    os.environ["JWT_SECRET"] = "behavioral-test-secret-at-least-32-chars"
     return _load_control_api_app()
-
-
-@pytest.fixture
-def db_check(app):
-    """Query real PostgreSQL tables to verify post-request side-effects.
-
-    Depends on ``app`` so the global engine is initialised (lifespan fires
-    when TestClient is created in the ``client`` fixture).
-    """
-    from packages.domain.database import get_global_engine
-
-    engine = get_global_engine()
-    if engine is None:
-        pytest.skip("No database engine — app lifespan may not have run")
-
-    factory = async_sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False,
-    )
-
-    class _Checker:
-        @staticmethod
-        def _run(coro):
-            return asyncio.run(coro)
-
-        def login_attempts(self, username_hash: str):
-            """Return most recent login_attempts for *username_hash*."""
-            from packages.domain.models import LoginAttempt
-            from sqlalchemy import select
-
-            async def _query():
-                async with factory() as session:
-                    result = await session.execute(
-                        select(LoginAttempt)
-                        .where(LoginAttempt.username_or_email_hash == username_hash)
-                        .order_by(LoginAttempt.created_at.desc())
-                        .limit(5)
-                    )
-                    return list(result.scalars().all())
-
-            return self._run(_query())
-
-        def refresh_sessions(self, user_id: str):
-            """Return active refresh sessions for *user_id* (most recent first)."""
-            from packages.domain.models import RefreshSession
-            from sqlalchemy import select
-
-            async def _query():
-                async with factory() as session:
-                    result = await session.execute(
-                        select(RefreshSession)
-                        .where(
-                            RefreshSession.user_id == user_id,
-                            RefreshSession.revoked_at.is_(None),
-                        )
-                        .order_by(RefreshSession.issued_at.desc())
-                        .limit(10)
-                    )
-                    return list(result.scalars().all())
-
-            return self._run(_query())
-
-    yield _Checker()
 
 
 @pytest.fixture(scope="session")
 def db_available():
     if not REQUIRE_ENV:
         pytest.skip(SKIP_REASON)
-    import asyncio
     if not asyncio.run(_check_db()):
         pytest.skip("PostgreSQL not reachable at " + DB_URL)
 
 
 @pytest.fixture
 def test_users(db_available):
-    import asyncio
     ph = bcrypt.hashpw(TEST_PASSWORD.encode(), bcrypt.gensalt(rounds=4)).decode()
     asyncio.run(_run_sql(_setup_sql(ph)))
     yield {**USER_IDS, "password": TEST_PASSWORD}
