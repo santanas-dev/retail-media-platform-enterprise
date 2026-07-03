@@ -98,11 +98,18 @@ Example for `advertiser_organizations`:
 CREATE POLICY advertiser_scope_sel ON advertiser_organizations
     FOR SELECT
     USING (
-        current_setting('app.rmp_is_admin')::bool = true
+        COALESCE(
+            NULLIF(current_setting('app.rmp_is_admin', true), ''),
+            'false'
+        )::bool = true
         OR id = ANY(
-            string_to_array(
-                current_setting('app.rmp_scope_advertiser_ids'), ','
-            )::uuid[]
+            COALESCE(
+                string_to_array(
+                    NULLIF(current_setting('app.rmp_scope_advertiser_ids', true), ''),
+                    ','
+                ),
+                '{}'::uuid[]
+            )
         )
     );
 
@@ -110,8 +117,17 @@ ALTER TABLE advertiser_organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE advertiser_organizations FORCE ROW LEVEL SECURITY;
 ```
 
-`FORCE ROW LEVEL SECURITY` ensures that even the table owner (migration user)
-must pass RLS — preventing accidental bypass during development.
+Key safety rules enforced by the policy:
+- `current_setting(..., true)` — second argument `true` (PostgreSQL 16+
+  `missing_ok`) returns NULL when the variable was never `SET`, instead
+  of raising ``unrecognized configuration parameter``.
+- `NULLIF(..., '')` — treats an empty string (explicit `SET TO ''`) as unset.
+- `COALESCE(..., 'false')` — defaults to deny for the admin flag.
+- `COALESCE(..., '{}'::uuid[])` — defaults to empty array for scope lists
+  (empty array never matches any row → deny-all).
+
+**Every RLS policy in the platform MUST use this pattern.**  A forgotten
+`SET LOCAL` must result in zero rows, never a 500 error.
 
 **Why both layers?** The app layer provides clear 403 errors with
 `PERMISSION_DENIED` / `SCOPE_RESTRICTED` codes. PostgreSQL RLS is the
@@ -124,7 +140,7 @@ filters rows instead of leaking data. Defense in depth.
 
 | Table | Scope FK | RLS filter |
 |-------|----------|------------|
-| `advertiser_organizations` | `id` = advertiser | `advertiser_id` |
+| `advertiser_organizations` | `id` (PK, IS the advertiser) | `id` in advertiser scope |
 | `advertiser_user_memberships` | derived from `advertiser_organization_id` | `advertiser_organization_id` via org |
 | `campaigns` | `advertiser_id` | `advertiser_id` |
 | `placements` | derived from `campaign_id` | `campaign.advertiser_id` |
@@ -179,17 +195,41 @@ filters rows instead of leaking data. Defense in depth.
 1. Create helper function `app.set_rmp_session_vars(user_id, is_admin, branches, clusters, stores, advertisers)` — takes arrays, produces CSV
 2. `ALTER TABLE advertiser_organizations ENABLE ROW LEVEL SECURITY`
 3. `ALTER TABLE advertiser_organizations FORCE ROW LEVEL SECURITY`
-4. `CREATE POLICY advertiser_scope_all ON advertiser_organizations FOR ALL USING (...)` — admin bypass OR advertiser_id in scope
+4. `CREATE POLICY advertiser_scope_sel ON advertiser_organizations FOR SELECT USING (...)` — admin bypass OR advertiser_id in scope.  `FOR SELECT` (not `FOR ALL`) for the pilot; SELECT-only per the pilot scope.  `USING` filters existing rows; `WITH CHECK` (needed for INSERT/UPDATE/DELETE policies) is deferred to 3.5c.
 5. Same for `advertiser_user_memberships` (inherits from `advertiser_organization_id`)
 6. Index on `advertiser_organizations.id` (already PK) and `advertiser_user_memberships.advertiser_organization_id` (already FK)
 
 **Code changes:**
 
 1. `packages/domain/scopes.py` — `ScopeKey`, `ScopeContext`, `resolve_scope_context(session, user_id)` — queries `user_roles` + `role_permissions` + `access_scopes`
-2. `packages/api/dependencies.py` — `get_scope_context()` dependency, `require_scoped_permission(perm, scope_type=None)` factory
-3. `packages/domain/database.py` — `set_rmp_session_vars(session, scope: ScopeContext)` — calls `SET LOCAL`
-4. Wire `set_rmp_session_vars` into `get_db()` — automatically sets session variables at transaction start
-5. Existing `require_permission` endpoints continue to work; new scoped endpoints use `require_scoped_permission`
+2. `packages/api/dependencies.py`:
+   - `get_scope_context(db, current_user)` — resolves `ScopeContext` using the
+     same DB session that `get_db()` opened.  Must be called after
+     `get_current_active_user` (which loads the user record).
+   - `require_scoped_permission(perm, scope_type=None)` — factory dependency
+     that checks both permission AND scope.
+   - `set_rls_context(db, scope)` — a separate dependency (or router-level
+     `dependencies=[Depends(set_rls_context)]`) that calls `SET LOCAL` after
+     both the transaction and the scope context are ready.  Depends on
+     `get_db` + `get_scope_context`.
+3. `packages/domain/database.py` — `set_rmp_session_vars(session, scope: ScopeContext)` — executes `SET LOCAL app.rmp_*` on the active connection
+4. Existing `require_permission` endpoints continue to work; new scoped
+   endpoints use `require_scoped_permission`
+
+**Dependency ordering (no circular dependency):**
+
+```
+get_db()               → starts transaction, yields session
+get_current_active_user → validates JWT, loads user row (uses session)
+get_scope_context()     → loads roles/permissions/scopes (uses session)
+set_rls_context()       → SET LOCAL app.rmp_* on session (side-effect only)
+route handler           → tenant queries now filtered by RLS + app-layer
+```
+
+`set_rls_context` is wired as a router-level dependency on tenant-scoped
+routers, so every route handler on that router automatically gets RLS
+variables set before its queries run.  Individual handlers that need
+explicit scope checks also use `Depends(require_scoped_permission(...))`.
 
 **Behavioral tests (new file `tests/behavioral/test_scope_rls.py`):**
 
@@ -287,6 +327,29 @@ org-hierarchy scope:
 
 A user can have multiple scopes across both dimensions. The effective access
 is the union of individually scoped permissions — never the intersection.
+
+### 9. Database role privileges
+
+RLS is only effective if the database role executing queries does not have
+the `BYPASSRLS` attribute or superuser privileges.  The platform MUST enforce:
+
+| Role | Purpose | `BYPASSRLS` | Superuser | Notes |
+|------|---------|:-----------:|:---------:|-------|
+| App runtime (`retail_media_app`) | FastAPI connection pool | **NO** | **NO** | Regular user with `CONNECT` + DML on schema. `FORCE ROW LEVEL SECURITY` ensures even table owner cannot bypass RLS. |
+| Migration runner (`retail_media_admin`) | Alembic `upgrade head` | Temporarily YES | **NO** | Needs DDL rights (`CREATE TABLE`, `ALTER TABLE … FORCE RLS`). Revoke `BYPASSRLS` after migration completes. |
+| Dev `docker-compose` user | Local development only | YES (dev convenience) | YES (dev convenience) | `POSTGRES_USER=retail_media` in `docker-compose.phase1.yml` — this is a **dev-only shortcut**. Production must use distinct, least-privilege roles. |
+| seed runner | `python apps/control-api/seed.py` | NO | NO | `INSERT`/`UPDATE` on seed tables. Must respect RLS — if seed inserts tenant data, it must `SET LOCAL` first. |
+
+**Production invariant:** the PostgreSQL role used by the FastAPI connection
+pool MUST be `NOBYPASSRLS` and NOT a superuser.  This is validated at startup
+by the readiness check (Phase 3.5b adds a `SELECT rolsuper, rolbypassrls FROM
+pg_roles WHERE rolname = current_user` assertion to `/health/ready`).
+
+**Background workers** (NATS-based orchestrator, pop-ingestor, adapter-workers)
+do not go through FastAPI middleware.  They will need their own RLS context
+mechanism — either a dedicated worker DB role with system-scoped privileges,
+or a per-job `SET LOCAL` preamble that resolves scopes from the job payload.
+This is deferred to Phase 3.6 (worker RLS).
 
 ## Consequences
 
