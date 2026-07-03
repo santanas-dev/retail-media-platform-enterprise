@@ -84,6 +84,7 @@ PYTHON_FILES=(
     "packages/auth/repository.py"
     "packages/auth/service.py"
     "packages/observability/__init__.py"
+    "tests/test_phase3_protected_identity.py"
 )
 
 for f in "${PYTHON_FILES[@]}"; do

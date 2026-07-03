@@ -1,15 +1,13 @@
 """
-Retail Media Platform — Identity API Router.
+Retail Media Platform - Identity API Router.
 
 Phase 3.0: Read-only endpoints for users, roles, permissions, audit events.
-
-TODO(auth): All endpoints are unprotected. Add JWT/SSO auth dependency
-and permission checks (users.read, roles.read, audit.read) in Phase 3.1.
+Phase 3.3: Endpoints now protected with JWT + permission checks.
 """
 
 from fastapi import APIRouter, Depends, Query
 
-from packages.api.dependencies import get_db
+from packages.api.dependencies import get_db, require_permission
 from packages.domain import repository
 from packages.domain.schemas import (
     DEFAULT_LIMIT,
@@ -35,6 +33,7 @@ async def list_users(
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
     offset: int = Query(0, ge=0),
     db=Depends(get_db),
+    _claims: dict = Depends(require_permission("users.read")),
 ):
     items, total = await repository.list_users(db, limit=limit, offset=offset)
     return PaginatedUsers(
@@ -51,7 +50,10 @@ async def list_users(
 
 
 @router.get("/roles", response_model=list[RoleOut])
-async def list_roles(db=Depends(get_db)):
+async def list_roles(
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("roles.read")),
+):
     items = await repository.list_roles(db)
     return [RoleOut.model_validate(r) for r in items]
 
@@ -62,7 +64,13 @@ async def list_roles(db=Depends(get_db)):
 
 
 @router.get("/permissions", response_model=list[PermissionOut])
-async def list_permissions(db=Depends(get_db)):
+async def list_permissions(
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("roles.read")),
+):
+    """List all permissions. Requires roles.read (least privilege -
+    reading permissions is an admin/role-management concern, not a
+    separate permission)."""
     items = await repository.list_permissions(db)
     return [PermissionOut.model_validate(p) for p in items]
 
@@ -77,6 +85,7 @@ async def list_audit_events(
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
     offset: int = Query(0, ge=0),
     db=Depends(get_db),
+    _claims: dict = Depends(require_permission("audit.read")),
 ):
     items, total = await repository.list_audit_events(db, limit=limit, offset=offset)
     return PaginatedAuditEvents(

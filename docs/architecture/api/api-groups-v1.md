@@ -85,10 +85,16 @@ Login and password-reset endpoints return **identical responses** whether the us
 
 ## 2. Users & RBAC API
 
-> **Phase 3.0 (implemented):** Read-only endpoints live at `/api/v1/identity/*` (not `/api/v1/*` as originally planned).
-> Endpoints are **unprotected** until Phase 3.2 auth middleware. See ADR-006.
+> **Phase 3.0 (previously unprotected):** Endpoints are now **protected** as of Phase 3.3.
+> All identity endpoints require JWT + appropriate permission:
+> - `GET /api/v1/identity/users` → `users.read`
+> - `GET /api/v1/identity/roles` → `roles.read`
+> - `GET /api/v1/identity/permissions` → `roles.read`
+> - `GET /api/v1/identity/audit-events` → `audit.read`
 >
-> **Implemented (Phase 3.0):**
+> Tenant RLS/scopes deferred to Phase 3.5.
+>
+> **Implemented (Phase 3.0, protected in 3.3):**
 > - `GET /api/v1/identity/users` — list users (paginated, limit/offset)
 > - `GET /api/v1/identity/roles` — list roles
 > - `GET /api/v1/identity/permissions` — list permissions

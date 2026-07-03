@@ -6,12 +6,15 @@ Phase 3.0: Read-only query functions for identity/RBAC tables.
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from packages.domain.models import (
     AuditEventOperational,
     Permission,
     Role,
+    RolePermission,
     User,
+    UserRole,
 )
 
 
@@ -58,3 +61,38 @@ async def list_audit_events(
     )
     result = await session.execute(stmt)
     return list(result.scalars().all()), total or 0
+
+
+# ---------------------------------------------------------------------------
+# Authz (Phase 3.3) — permission lookups for RBAC enforcement
+# ---------------------------------------------------------------------------
+
+
+async def find_user_by_id(session: AsyncSession, user_id: str) -> User | None:
+    """Find user by primary key."""
+    stmt = select(User).where(User.id == user_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def get_user_permissions(
+    session: AsyncSession, user_id: str
+) -> set[str]:
+    """Return the set of permission codes granted to a user via their roles.
+
+    Joins: UserRole → RolePermission → Permission.
+    Only considers unscoped (global) role assignments — tenant RLS deferred.
+    """
+    stmt = (
+        select(Permission.code)
+        .select_from(UserRole)
+        .join(RolePermission, RolePermission.role_id == UserRole.role_id)
+        .join(Permission, Permission.id == RolePermission.permission_id)
+        .where(
+            UserRole.user_id == user_id,
+            UserRole.scope_type.is_(None),  # global assignments only
+        )
+        .distinct()
+    )
+    result = await session.execute(stmt)
+    return {row[0] for row in result}

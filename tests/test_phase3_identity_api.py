@@ -1,8 +1,11 @@
 """
-Retail Media Platform — Phase 3.0 Identity API Tests.
+Retail Media Platform - Phase 3.0/3.3 Identity API Tests.
+
+Phase 3.3 update: tests now provide JWT tokens and mock authz dependencies
+since identity endpoints are protected.
 
 Tests: endpoints return correct shapes, pagination enforced, no secrets exposed.
-Uses mocked sessions — no real database required.
+Uses mocked sessions - no real database required.
 """
 
 import importlib.util
@@ -14,7 +17,13 @@ from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+os.environ["ENVIRONMENT"] = "dev"
+os.environ["JWT_SECRET"] = "test-jwt-secret-for-identity-tests-32bytes"
+
 from fastapi.testclient import TestClient
+
+from packages.security.config import reset_security_config
+from packages.security.jwt import create_access_token
 
 
 # ---------------------------------------------------------------------------
@@ -78,18 +87,87 @@ def _get_app():
 
 
 # ---------------------------------------------------------------------------
+# Authz mock helper (Phase 3.3)
+# ---------------------------------------------------------------------------
+
+class _MockActiveUser:
+    def __init__(self, user_id="u-1", status="active"):
+        self.id = user_id
+        self.status = status
+
+
+def _setup_authz_mocks(test_case, perms=None, user=_MockActiveUser("u-1")):
+    """Mock repository.find_user_by_id and get_user_permissions so authz passes."""
+    patcher_find = patch(
+        "packages.api.dependencies.repository.find_user_by_id",
+        new_callable=AsyncMock,
+    )
+    patcher_perms = patch(
+        "packages.api.dependencies.repository.get_user_permissions",
+        new_callable=AsyncMock,
+    )
+    mock_find = patcher_find.start()
+    mock_perms = patcher_perms.start()
+
+    mock_find.return_value = user
+    mock_perms.return_value = perms or set()
+
+    test_case.addCleanup(patcher_find.stop)
+    test_case.addCleanup(patcher_perms.stop)
+
+    return mock_find, mock_perms
+
+
+def _token(sub="u-1"):
+    return create_access_token(sub, "local_advertiser")
+
+
+def _auth(token):
+    return {"Authorization": f"Bearer {token}"}
+
+
+# ---------------------------------------------------------------------------
+# Mixin: provides setUp/tearDown with env + authz mocks
+# ---------------------------------------------------------------------------
+
+class AuthzMixin:
+    """Shared setup for protected identity tests."""
+
+    def setUp(self):
+        reset_security_config()
+        os.environ["ENVIRONMENT"] = "dev"
+        os.environ["JWT_SECRET"] = "test-jwt-secret-for-identity-tests-32bytes"
+        self._setup_authz()
+
+    def tearDown(self):
+        reset_security_config()
+
+    def _setup_authz(self, perms=None, user=None):
+        if user is None:
+            user = _MockActiveUser("u-1", "active")
+        if perms is None:
+            perms = {"users.read", "roles.read", "audit.read"}
+        return _setup_authz_mocks(self, perms=perms, user=user)
+
+    def _get(self, url, **kwargs):
+        """GET with default JWT auth."""
+        headers = kwargs.pop("headers", {})
+        headers.update(_auth(_token()))
+        return TestClient(_get_app()).get(url, headers=headers, **kwargs)
+
+
+# ---------------------------------------------------------------------------
 # Users endpoint
 # ---------------------------------------------------------------------------
 
 
-class TestListUsers(unittest.TestCase):
+class TestListUsers(AuthzMixin, unittest.TestCase):
     """GET /api/v1/identity/users"""
 
     @patch("packages.api.identity.repository.list_users", new_callable=AsyncMock)
     def test_returns_paginated_shape(self, mock_repo):
         mock_repo.return_value = ([_make_user()], 1)
-        client = TestClient(_get_app())
-        resp = client.get("/api/v1/identity/users")
+        resp = self._get("/api/v1/identity/users")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertIn("items", data)
@@ -101,22 +179,19 @@ class TestListUsers(unittest.TestCase):
     @patch("packages.api.identity.repository.list_users", new_callable=AsyncMock)
     def test_limit_enforced(self, mock_repo):
         mock_repo.return_value = ([], 0)
-        client = TestClient(_get_app())
-        resp = client.get("/api/v1/identity/users?limit=200")
+        resp = self._get("/api/v1/identity/users?limit=200")
         self.assertEqual(resp.status_code, 422)  # exceeds max
 
     @patch("packages.api.identity.repository.list_users", new_callable=AsyncMock)
     def test_limit_max_accepted(self, mock_repo):
         mock_repo.return_value = ([], 0)
-        client = TestClient(_get_app())
-        resp = client.get("/api/v1/identity/users?limit=100")
+        resp = self._get("/api/v1/identity/users?limit=100")
         self.assertEqual(resp.status_code, 200)
 
     @patch("packages.api.identity.repository.list_users", new_callable=AsyncMock)
     def test_no_password_field(self, mock_repo):
         mock_repo.return_value = ([_make_user()], 1)
-        client = TestClient(_get_app())
-        resp = client.get("/api/v1/identity/users")
+        resp = self._get("/api/v1/identity/users")
         data = resp.json()
         user = data["items"][0]
         self.assertNotIn("password", user)
@@ -128,16 +203,14 @@ class TestListUsers(unittest.TestCase):
     def test_no_external_subject_exposed(self, mock_repo):
         """external_subject (AD GUID) is omitted from UserOut schema."""
         mock_repo.return_value = ([_make_user()], 1)
-        client = TestClient(_get_app())
-        resp = client.get("/api/v1/identity/users")
+        resp = self._get("/api/v1/identity/users")
         user = resp.json()["items"][0]
         self.assertNotIn("external_subject", user)
 
     @patch("packages.api.identity.repository.list_users", new_callable=AsyncMock)
     def test_expected_fields_present(self, mock_repo):
         mock_repo.return_value = ([_make_user()], 1)
-        client = TestClient(_get_app())
-        resp = client.get("/api/v1/identity/users")
+        resp = self._get("/api/v1/identity/users")
         user = resp.json()["items"][0]
         expected = {"id", "code", "username", "email", "display_name",
                      "auth_provider", "status", "is_break_glass"}
@@ -150,14 +223,13 @@ class TestListUsers(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-class TestListRoles(unittest.TestCase):
+class TestListRoles(AuthzMixin, unittest.TestCase):
     """GET /api/v1/identity/roles"""
 
     @patch("packages.api.identity.repository.list_roles", new_callable=AsyncMock)
     def test_returns_list(self, mock_repo):
         mock_repo.return_value = [_make_role(), _make_role(code="operator", name="Operator", is_system=False)]
-        client = TestClient(_get_app())
-        resp = client.get("/api/v1/identity/roles")
+        resp = self._get("/api/v1/identity/roles")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertIsInstance(data, list)
@@ -170,14 +242,13 @@ class TestListRoles(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-class TestListPermissions(unittest.TestCase):
+class TestListPermissions(AuthzMixin, unittest.TestCase):
     """GET /api/v1/identity/permissions"""
 
     @patch("packages.api.identity.repository.list_permissions", new_callable=AsyncMock)
     def test_returns_list(self, mock_repo):
         mock_repo.return_value = [_make_permission(), _make_permission(code="users.manage", name="Manage Users")]
-        client = TestClient(_get_app())
-        resp = client.get("/api/v1/identity/permissions")
+        resp = self._get("/api/v1/identity/permissions")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertIsInstance(data, list)
@@ -189,14 +260,13 @@ class TestListPermissions(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-class TestListAuditEvents(unittest.TestCase):
+class TestListAuditEvents(AuthzMixin, unittest.TestCase):
     """GET /api/v1/identity/audit-events"""
 
     @patch("packages.api.identity.repository.list_audit_events", new_callable=AsyncMock)
     def test_returns_paginated_shape(self, mock_repo):
         mock_repo.return_value = ([_make_audit()], 1)
-        client = TestClient(_get_app())
-        resp = client.get("/api/v1/identity/audit-events")
+        resp = self._get("/api/v1/identity/audit-events")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertIn("items", data)
@@ -205,8 +275,7 @@ class TestListAuditEvents(unittest.TestCase):
     @patch("packages.api.identity.repository.list_audit_events", new_callable=AsyncMock)
     def test_details_json_present(self, mock_repo):
         mock_repo.return_value = ([_make_audit()], 1)
-        client = TestClient(_get_app())
-        resp = client.get("/api/v1/identity/audit-events")
+        resp = self._get("/api/v1/identity/audit-events")
         event = resp.json()["items"][0]
         self.assertIsNotNone(event.get("details_json"))
         self.assertEqual(event["details_json"]["method"], "local")
@@ -214,8 +283,7 @@ class TestListAuditEvents(unittest.TestCase):
     @patch("packages.api.identity.repository.list_audit_events", new_callable=AsyncMock)
     def test_limit_enforced(self, mock_repo):
         mock_repo.return_value = ([], 0)
-        client = TestClient(_get_app())
-        resp = client.get("/api/v1/identity/audit-events?limit=200")
+        resp = self._get("/api/v1/identity/audit-events?limit=200")
         self.assertEqual(resp.status_code, 422)
 
 
