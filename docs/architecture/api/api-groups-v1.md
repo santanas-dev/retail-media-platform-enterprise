@@ -25,7 +25,12 @@ Four logically separated API groups, each with its own authentication, rate limi
 
 > **Status: Phase 3.2d — Implemented.** See ADR-006 for architecture decisions.
 > Endpoints live, auth service wired. No RBAC/middleware enforcement yet.
-> Implementation in Phase 3.2 per ADR-006.
+>
+> **Cookie security:** Refresh token cookie is `HttpOnly; SameSite=Strict; Path=/api/v1/auth`. `Secure` flag is **on in production, off in local dev** (HTTP). See `packages/security/config.py:refresh_token_cookie_secure`.
+>
+> **Next phases:**
+> - **Phase 3.3** — All non-health endpoints protected by JWT + RBAC middleware. Identity endpoints (`/api/v1/identity/*`) require `users.read` permission.
+> - **Phase 3.4** — Real PostgreSQL behavioral auth/RBAC tests (test DB, migration, seed, login → JWT → call protected endpoint → verify 403/200, audit integrity). Replaces/supplements current mocked-AuthService tests.
 
 ### Identity Types (ADR-006)
 

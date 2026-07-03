@@ -59,6 +59,10 @@ The `rmp_rewrite_starting_decisions.md` confirms: React + TypeScript is approved
 - **Negative:** Two React apps to build and deploy; need API client generation or manual typing; frontend developers must learn TypeScript if not already familiar.
 - **Risk:** React SPA may feel heavy for simple pages. Mitigation: code splitting, lazy loading, bundle analysis.
 
+### External Audit Note (Phase 3.2e)
+
+An external architecture audit recommended Vue as the frontend stack, based on staffing assumptions (Vue developers more available in the local market). This recommendation is **acknowledged but not adopted**. The project owner explicitly approved React + TypeScript, and this decision carries unless the owner changes it. The architecture does not prevent a future migration — API contracts are framework-agnostic.
+
 ## References
 
 - TZ v2.5 §21.4 (Required Project Structure), §22.13 (UX for Different Roles)

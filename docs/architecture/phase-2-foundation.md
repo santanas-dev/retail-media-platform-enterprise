@@ -117,7 +117,7 @@ bash scripts/ci/phase1-checks.sh
 | Campaigns, placements, inventory | Phase 3 |
 | Device onboarding + JWT auth | Phase 3 |
 | Manifest generation | Phase 3 |
-| PoP pipeline, ClickHouse | Phase 4 |
+| PoP pipeline, ClickHouse | Phase 4 (deferred — see ADR-007) |
 
 ## Next Steps
 

@@ -8,7 +8,7 @@
 
 - **Channel-agnostic core** — KSO is the first channel, not the foundation.
 - **PostgreSQL** — operational data (FastAPI + SQLAlchemy async + Alembic).
-- **ClickHouse** — аналитика и PoP-события.
+- **ClickHouse** — аналитика и PoP-события *(deferred — Phase 4+)*.
 - **NATS JetStream** — асинхронная шина между сервисами.
 - **React 19 + TypeScript + Vite** — admin-web и advertiser-web.
 

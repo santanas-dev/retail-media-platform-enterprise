@@ -27,6 +27,7 @@ services:
       retries: 5
 
   clickhouse:
+    # Deferred — Phase 4+. Not part of current runtime. See ADR-007.
     image: clickhouse/clickhouse-server:24-alpine
     environment:
       CLICKHOUSE_USER: retail_media
