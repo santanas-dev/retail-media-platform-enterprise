@@ -77,6 +77,11 @@ PYTHON_FILES=(
     "packages/security/tokens.py"
     "packages/security/jwt.py"
     "packages/security/sanitize.py"
+    "packages/auth/__init__.py"
+    "packages/auth/schemas.py"
+    "packages/auth/ad_provider.py"
+    "packages/auth/repository.py"
+    "packages/auth/service.py"
     "packages/observability/__init__.py"
 )
 
