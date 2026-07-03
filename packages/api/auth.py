@@ -106,6 +106,11 @@ async def login(
                     "message": "Authentication service temporarily unavailable",
                 },
             )
+        # Persist login_attempt audit event before returning 401.
+        # The service wrote login_attempt via session.flush() inside the
+        # get_db() transaction; commit() makes it durable so the session
+        # rollback on HTTPException does not discard the audit trail.
+        await db.commit()
         # Generic 401 — never reveal internal reason
         raise HTTPException(
             status_code=401,

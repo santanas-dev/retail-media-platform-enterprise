@@ -5,11 +5,51 @@ Tests against real PostgreSQL with actual Alembic schema.
 Requires: RUN_BEHAVIORAL_TESTS=1, running PostgreSQL, migrations applied.
 """
 
+import asyncio
+
 import pytest
 from fastapi.testclient import TestClient
 
 from packages.security.config import reset_security_config
 from packages.security.jwt import create_access_token
+
+
+# ---------------------------------------------------------------------------
+# DB helper — must be called AFTER client.post() (which fires app lifespan)
+# ---------------------------------------------------------------------------
+
+
+def _db_login_attempts(username_hash: str):
+    """Query login_attempts via raw SQL — sync wrapper, call after TestClient use."""
+    import os
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    db_url = os.environ.get(
+        "BEHAVIORAL_DB_URL",
+        "postgresql+asyncpg://retail_media:retail_media_dev@localhost:5432/"
+        "retail_media_platform",
+    )
+
+    async def _query():
+        engine = create_async_engine(db_url, echo=False)
+        try:
+            async with engine.connect() as conn:
+                result = await conn.execute(
+                    text(
+                        "SELECT success, failure_reason, auth_provider, "
+                        "username_or_email_hash "
+                        "FROM login_attempts "
+                        "WHERE username_or_email_hash = :h "
+                        "ORDER BY created_at DESC LIMIT 5"
+                    ),
+                    {"h": username_hash},
+                )
+                return [dict(row._mapping) for row in result.fetchall()]
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(_query())
 
 
 # ---------------------------------------------------------------------------
@@ -85,7 +125,7 @@ class TestLoginBehavioral:
         assert "refresh_token" in resp.cookies
 
     def test_wrong_password_returns_401(self, client, user_ids):
-        """Wrong password -> generic 401, login_attempt recorded."""
+        """Wrong password -> generic 401, login_attempt persisted in DB."""
         resp = client.post("/api/v1/auth/login", json={
             "username_or_email": "beh-advertiser",
             "password": "WrongPassword!",
@@ -97,8 +137,19 @@ class TestLoginBehavioral:
         # No cookie on failure
         assert "refresh_token" not in resp.cookies
 
+        # Verify login_attempt row was actually persisted.
+        # Query AFTER client.post() — app lifespan fires on first request.
+        from packages.auth.repository import hash_identifier
+
+        attempts = _db_login_attempts(hash_identifier("beh-advertiser"))
+        assert len(attempts) >= 1, "Expected at least one login_attempt row"
+        last = attempts[0]
+        assert last["success"] is False
+        assert last["failure_reason"] == "wrong_password"
+        assert last["auth_provider"] == "local_advertiser"
+
     def test_unknown_user_returns_401(self, client):
-        """Unknown username -> generic 401, no user enumeration."""
+        """Unknown username -> generic 401, login_attempt with hashed identifier."""
         resp = client.post("/api/v1/auth/login", json={
             "username_or_email": "nonexistent-user",
             "password": "AnyPassword123!",
@@ -109,6 +160,21 @@ class TestLoginBehavioral:
         assert body["detail"]["code"] == "INVALID_CREDENTIALS"
         # Must not reveal "user not found"
         assert "not found" not in str(body).lower()
+
+        # Verify login_attempt row was persisted with hashed identifier
+        from packages.auth.repository import hash_identifier
+
+        expected_hash = hash_identifier("nonexistent-user")
+        attempts = _db_login_attempts(expected_hash)
+        assert len(attempts) >= 1, "Expected at least one login_attempt row"
+        last = attempts[0]
+        assert last["success"] is False
+        assert last["failure_reason"] == "user_not_found"
+        assert last["auth_provider"] == "unknown"
+        # Raw email/username MUST NOT be stored — hash only
+        stored = last["username_or_email_hash"].lower()
+        assert "nonexistent-user" not in stored
+        assert "@" not in stored
 
 
 # ---------------------------------------------------------------------------

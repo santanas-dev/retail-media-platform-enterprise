@@ -64,6 +64,26 @@ bash scripts/db/seed.sh
 DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/db bash scripts/db/migrate.sh
 ```
 
+## Behavioral Tests (real PostgreSQL)
+
+End-to-end auth/RBAC tests against the real database.  Require a running
+PostgreSQL with migrations and seed applied.
+
+```bash
+# 1. Start PostgreSQL
+docker compose -f infra/compose/docker-compose.phase1.yml up -d postgres
+
+# 2. Run migrations + seed
+bash scripts/db/migrate.sh && python3 apps/control-api/seed.py
+
+# 3. Run behavioral tests
+RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral/ -v
+```
+
+These tests are opt-in (skip cleanly without `RUN_BEHAVIORAL_TESTS=1`) and are
+**required** before accepting future auth, RBAC, or tenant-isolation changes
+(per ADR-008).
+
 ## Local Checks
 
 ```bash

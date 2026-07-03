@@ -4,6 +4,7 @@ Behavioral test suite - shared fixtures (Phase 3.4).
 Tests run against real PostgreSQL. Skipped unless RUN_BEHAVIORAL_TESTS=1.
 """
 
+import asyncio
 import importlib.util
 import os
 import sys
@@ -17,7 +18,7 @@ os.environ["JWT_SECRET"] = "behavioral-test-secret-at-least-32-chars"
 
 import bcrypt
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from packages.security.config import reset_security_config
 
@@ -103,19 +104,125 @@ _CLEANUP = """
 """
 
 
+# ---------------------------------------------------------------------------
+# App loader — fails loudly if the control-api module can't be found
+# ---------------------------------------------------------------------------
+
+
+def _load_control_api_app():
+    """Load the FastAPI app from apps/control-api/main.py.
+
+    Uses importlib because the directory name ``control-api`` contains a
+    hyphen, which prevents normal ``import``.  Every failure mode produces
+    a clear, actionable error message.
+    """
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    main_path = os.path.join(repo_root, "apps", "control-api", "main.py")
+
+    if not os.path.exists(main_path):
+        raise FileNotFoundError(
+            f"control-api main.py not found at {main_path}. "
+            f"Ensure the repo is checked out correctly."
+        )
+
+    spec = importlib.util.spec_from_file_location("control_api_main", main_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(
+            f"Could not create module spec for {main_path}. "
+            f"Check that the file is valid Python."
+        )
+
+    mod = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(mod)
+    except Exception as exc:
+        raise ImportError(
+            f"Failed to load control-api module from {main_path}: {exc}"
+        ) from exc
+
+    if not hasattr(mod, "app"):
+        raise AttributeError(
+            f"Module at {main_path} does not export 'app'. "
+            f"Expected a FastAPI instance named 'app' at module level."
+        )
+
+    return mod.app
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
 @pytest.fixture(scope="session")
 def app():
+    """Load the control-api FastAPI app once per test session."""
     reset_security_config()
     os.environ["ENVIRONMENT"] = "dev"
     os.environ["JWT_SECRET"] = "behavioral-test-secret-at-least-32-chars"
-    path = os.path.join(
-        os.path.dirname(__file__), "..", "..",
-        "apps", "control-api", "main.py",
+    return _load_control_api_app()
+
+
+@pytest.fixture
+def db_check(app):
+    """Query real PostgreSQL tables to verify post-request side-effects.
+
+    Depends on ``app`` so the global engine is initialised (lifespan fires
+    when TestClient is created in the ``client`` fixture).
+    """
+    from packages.domain.database import get_global_engine
+
+    engine = get_global_engine()
+    if engine is None:
+        pytest.skip("No database engine — app lifespan may not have run")
+
+    factory = async_sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False,
     )
-    spec = importlib.util.spec_from_file_location("control_api_main", path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod.app
+
+    class _Checker:
+        @staticmethod
+        def _run(coro):
+            return asyncio.run(coro)
+
+        def login_attempts(self, username_hash: str):
+            """Return most recent login_attempts for *username_hash*."""
+            from packages.domain.models import LoginAttempt
+            from sqlalchemy import select
+
+            async def _query():
+                async with factory() as session:
+                    result = await session.execute(
+                        select(LoginAttempt)
+                        .where(LoginAttempt.username_or_email_hash == username_hash)
+                        .order_by(LoginAttempt.created_at.desc())
+                        .limit(5)
+                    )
+                    return list(result.scalars().all())
+
+            return self._run(_query())
+
+        def refresh_sessions(self, user_id: str):
+            """Return active refresh sessions for *user_id* (most recent first)."""
+            from packages.domain.models import RefreshSession
+            from sqlalchemy import select
+
+            async def _query():
+                async with factory() as session:
+                    result = await session.execute(
+                        select(RefreshSession)
+                        .where(
+                            RefreshSession.user_id == user_id,
+                            RefreshSession.revoked_at.is_(None),
+                        )
+                        .order_by(RefreshSession.issued_at.desc())
+                        .limit(10)
+                    )
+                    return list(result.scalars().all())
+
+            return self._run(_query())
+
+    yield _Checker()
 
 
 @pytest.fixture(scope="session")
