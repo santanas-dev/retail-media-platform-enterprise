@@ -162,6 +162,30 @@ class TestProtectedIdentityAPI(unittest.TestCase):
         self.assertEqual(resp.status_code, 401)
         self.assertEqual(resp.json()["detail"]["code"], "TOKEN_EXPIRED")
 
+    def test_basic_scheme_rejected(self):
+        """Authorization: Basic <token> -> 401."""
+        resp = self.client.get(
+            "/api/v1/identity/users",
+            headers={"Authorization": "Basic dXNlcjpwYXNz"},
+        )
+        self.assertEqual(resp.status_code, 401)
+
+    def test_bearer_lowercase_rejected(self):
+        """Authorization: bearer <token> (lowercase) -> 401."""
+        resp = self.client.get(
+            "/api/v1/identity/users",
+            headers={"Authorization": "bearer valid-token"},
+        )
+        self.assertEqual(resp.status_code, 401)
+
+    def test_bearer_no_space_rejected(self):
+        """Authorization: Bearer-token (no space) -> 401."""
+        resp = self.client.get(
+            "/api/v1/identity/users",
+            headers={"Authorization": "Bearervalid-token"},
+        )
+        self.assertEqual(resp.status_code, 401)
+
     # -------------------------------------------------------------------
     # 403 - valid token, no permission
     # -------------------------------------------------------------------

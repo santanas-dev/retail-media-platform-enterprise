@@ -36,7 +36,7 @@ async def get_refresh_token(request: Request) -> str | None:
 
 
 async def get_access_token(request: Request) -> str | None:
-    """Extract access token from Authorization: Bearer header."""
+    """Extract access token from the Authorization header."""
     auth = request.headers.get("Authorization", "")
     if auth.startswith("Bearer "):
         return auth[7:]
@@ -49,7 +49,7 @@ async def get_current_user(
     """Require a valid JWT access token - returns decoded claims.
 
     Raises HTTPException(401) on missing, expired, or invalid token.
-    Does not perform DB/RBAC lookups yet.
+    Used as the foundation for RBAC-enforcing dependencies.
     """
     if not access_token:
         raise HTTPException(
