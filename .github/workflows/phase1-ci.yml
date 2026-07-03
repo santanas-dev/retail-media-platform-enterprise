@@ -39,6 +39,11 @@ jobs:
           - packages/domain/__init__.py
           - packages/domain/models.py
           - packages/domain/database.py
+          - packages/domain/schemas.py
+          - packages/domain/repository.py
+          - packages/api/__init__.py
+          - packages/api/dependencies.py
+          - packages/api/identity.py
           - packages/observability/__init__.py
     steps:
       - uses: actions/checkout@v4
@@ -76,7 +81,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install deps
-        run: pip install sqlalchemy alembic asyncpg fastapi httpx
+        run: pip install sqlalchemy alembic asyncpg fastapi httpx pytest
       - name: Run tests
         run: python -m pytest tests/ -v
   json-schema:

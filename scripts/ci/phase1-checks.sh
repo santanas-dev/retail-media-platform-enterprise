@@ -66,6 +66,11 @@ PYTHON_FILES=(
     "packages/domain/__init__.py"
     "packages/domain/models.py"
     "packages/domain/database.py"
+    "packages/domain/schemas.py"
+    "packages/domain/repository.py"
+    "packages/api/__init__.py"
+    "packages/api/dependencies.py"
+    "packages/api/identity.py"
     "packages/observability/__init__.py"
 )
 
