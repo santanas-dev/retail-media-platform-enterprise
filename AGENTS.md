@@ -16,11 +16,34 @@ Before any architecture, planning, or implementation work, read:
 2. `docs/00-source-of-truth/TZ_Retail_Media_Platform_v2_5_Final_Hermes.extracted.md`
 3. `docs/00-source-of-truth/rmp_rewrite_starting_decisions.md`
 4. `docs/00-source-of-truth/rmp_enterprise_architecture_review.md`
-5. relevant ADRs/contracts in `docs/architecture/`
+5. `docs/architecture/adr/ADR-001..ADR-010` — architecture decision records (current)
+6. `docs/architecture/erd/erd-v2-5.md` — current ERD
+7. `docs/architecture/api/api-groups-v1.md` — current API contracts
+8. `docs/architecture/README.md` — index + superseded doc list
 
 The source-of-truth folder overrides older generated phase reports unless a
 newer approved ADR explicitly changes a decision. The original `.docx` in that
 folder is traceability-only; agents should use the markdown extraction.
+
+### ADR Precedence
+
+**ADRs override all other architecture documents.** If a design-gate doc,
+correction plan, or migration checklist conflicts with an ADR, the ADR wins.
+When you encounter a conflict:
+
+1. Stop — do not implement from the old document.
+2. Check `docs/architecture/README.md` for the superseded doc list.
+3. If uncertain, ask the user or review the relevant ADR.
+
+Superseded documents in `docs/architecture/` carry a banner:
+
+```
+<!-- SUPERSEDED: This document is retained for historical context only. ... -->
+```
+
+**Do not implement from a file marked SUPERSEDED** when it conflicts with an ADR.
+Source-inspection tests are not behavioral proof — static checks on old code
+do not validate runtime RBAC/RLS behavior.
 
 Fix critical platform risks first:
 

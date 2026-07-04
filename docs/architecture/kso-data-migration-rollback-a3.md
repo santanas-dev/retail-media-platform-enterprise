@@ -1,3 +1,14 @@
+<!--
+SUPERSEDED: This document is retained for historical context only.
+Current source of truth:
+- ADR-007 for analytics/ClickHouse boundary
+- ADR-008 for testing/phase gates
+- ADR-009 for fail-closed RBAC/RLS and PostgreSQL RLS
+- ADR-010 for advertiser domain foundation
+Do not implement from this document when it conflicts with ADRs.
+See docs/architecture/README.md for full source-of-truth ordering.
+-->
+
 # KSO Data Migration Rollback Plan — A.3
 
 > **Дата:** 2026-06-29 | **Этап:** A.3 EXECUTED → A.3.2 VERIFIED  
