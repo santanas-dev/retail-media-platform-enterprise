@@ -118,7 +118,10 @@ advertiser_contacts
 │ full_name                │
 │ email                    │  -- not unique globally, scoped per org
 │ phone (nullable)         │
-│ is_primary (bool)        │  -- only one primary per org+type
+│ is_primary (bool)        │  -- only one primary per org+contact_type;
+│                          │     enforce via partial unique index:
+│                          │     CREATE UNIQUE INDEX ... WHERE
+│                          │     is_primary AND status='active'
 │ status                   │  -- active/inactive
 │ created_at               │
 │ updated_at               │

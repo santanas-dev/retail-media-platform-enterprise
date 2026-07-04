@@ -540,11 +540,12 @@ advertiser_brands (Phase 4.0)       advertiser_contracts (Phase 4.0)
 │ description (nullable)       │   │ contract_number (nullable)   │
 │ status                       │   │ budget_limit_amount (null)   │
 │   draft|active|suspended     │   │ budget_limit_currency        │
-│   |archived                  │   │ valid_from                   │
-│ created_at                   │   │ valid_until (nullable)       │
-│ updated_at                   │   │ status                       │
-└──────────────────────────────┘   │   draft|active|suspended     │
-UNIQUE (advertiser_org_id, code)   │   |expired|archived           │
+│   |archived                  │   │ valid_from (TIMESTAMPTZ)      │
+│ created_at                   │   │ valid_until (TIMESTAMPTZ,     │
+│ updated_at                   │   │   nullable)                   │
+└──────────────────────────────┘   │ status                       │
+UNIQUE (advertiser_org_id, code)   │   draft|active|suspended     │
+                                   │   |expired|archived           │
                                    │ terms_url (nullable)         │
 advertiser_contacts (Phase 4.0)    │ created_at                   │
 ┌──────────────────────────────┐   │ updated_at                   │
@@ -612,7 +613,7 @@ NOTE: No raw passwords, tokens, or secrets are stored in any of these tables.
 - `advertiser_organizations` 1→N `advertiser_brands` 1→N (opt) `campaigns`
 - `advertiser_organizations` 1→N `advertiser_contracts` 1→N (opt) `campaigns`
 - `advertiser_organizations` 1→N `advertiser_contacts`
-- `advertisers` 1→N `brands` 1→N `contracts` 1→N `orders`
+- `advertisers` 1→N `brands` 1→N `contracts` 1→N `orders` *(Phase 0 — superseded by lines 612–614 above)*
 - `campaigns` N→1 `advertisers`, `campaigns` 1→N `placements` 1→N `placement_targets`
 - `campaigns` N→M `creative_versions` (via `campaign_creative_links`)
 - `media_assets` 1→N `creative_versions` 1→N `renditions`
