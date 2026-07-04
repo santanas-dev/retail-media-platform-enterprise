@@ -94,6 +94,9 @@ Login and password-reset endpoints return **identical responses** whether the us
 > - `GET /api/v1/identity/permissions` → `roles.read`
 > - `GET /api/v1/identity/audit-events` → `audit.read`
 >
+> **Phase 3.5 complete:** Auth + RBAC + advertiser RLS pilot + app-layer
+> scoped permission guard + behavioral proof.
+>
 > Tenant RLS/scopes deferred to Phase 3.5. **Architecture locked in ADR-009** —
 > fail-closed two-layer defense: app `ScopeContext` + PostgreSQL RLS.
 > **Implemented (Phase 3.5b–3.5c):**

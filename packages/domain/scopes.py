@@ -31,6 +31,9 @@ class ScopeContext:
 
     * ``is_admin`` is True ONLY for unscoped system_admin / security_admin.
     * ``global_permissions`` come from unscoped role assignments.
+    * ``all_permissions`` is the union of permission codes from scoped
+      AND unscoped roles.  Used only in scoped guard checks (never
+      grants global access — see require_scoped_permission).
     * ``advertiser_scope_ids`` come from advertiser_user_memberships
       and scoped user_roles with scope_type='advertiser'.
     * ``role_codes`` is the set of role codes assigned to the user
@@ -125,7 +128,8 @@ async def resolve_scope_context(
                 is_admin = True
         elif scope_type == "advertiser" and ur.scope_id:
             advertiser_scope_ids.add(ur.scope_id)
-        # Other scope types (branch, cluster, store) are deferred to 3.5c
+        # Other scope types (branch, cluster, store) are deferred to
+        # future hierarchy expansion phases
 
     # Also load advertiser memberships (direct user→org link)
     membership_ids = await _load_advertiser_memberships(session, user_id)
