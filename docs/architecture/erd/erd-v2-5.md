@@ -530,6 +530,41 @@ advertiser_organizations         advertiser_user_memberships
 │ updated_at               │    └──────────────────────────────────┘
 └──────────────────────────┘    UNIQUE (user_id, advertiser_organization_id)
 
+advertiser_brands (Phase 4.0)       advertiser_contracts (Phase 4.0)
+┌──────────────────────────────┐   ┌──────────────────────────────┐
+│ id (UUID)                    │   │ id (UUID)                    │
+│ advertiser_organization_id   │   │ advertiser_organization_id   │
+│   FK → advertiser_orgs.id    │   │   FK → advertiser_orgs.id    │
+│ code                         │   │ code                         │
+│ name                         │   │ name                         │
+│ description (nullable)       │   │ contract_number (nullable)   │
+│ status                       │   │ budget_limit_amount (null)   │
+│   draft|active|suspended     │   │ budget_limit_currency        │
+│   |archived                  │   │ valid_from                   │
+│ created_at                   │   │ valid_until (nullable)       │
+│ updated_at                   │   │ status                       │
+└──────────────────────────────┘   │   draft|active|suspended     │
+UNIQUE (advertiser_org_id, code)   │   |expired|archived           │
+                                   │ terms_url (nullable)         │
+advertiser_contacts (Phase 4.0)    │ created_at                   │
+┌──────────────────────────────┐   │ updated_at                   │
+│ id (UUID)                    │   └──────────────────────────────┘
+│ advertiser_organization_id   │   UNIQUE (advertiser_org_id, code)
+│   FK → advertiser_orgs.id    │
+│ contact_type                 │
+│   primary|billing|technical  │
+│   |emergency                 │
+│ full_name                    │
+│ email                        │
+│ phone (nullable)             │
+│ is_primary (bool)            │
+│ status (active|inactive)     │
+│ created_at                   │
+│ updated_at                   │
+└──────────────────────────────┘
+NOTE: email/phone are PII — visible only to internal staff with
+      advertisers.contacts.read.  Never included in audit event details.
+
 local_credentials                    refresh_sessions
 ┌──────────────────────────┐        ┌──────────────────────────┐
 │ id (UUID)                │        │ id (UUID)                │
@@ -574,6 +609,9 @@ NOTE: No raw passwords, tokens, or secrets are stored in any of these tables.
 - `physical_devices` 1→N `device_certificates`
 - `physical_devices` 1→N `device_status_history`
 - `device_types` → `physical_devices`
+- `advertiser_organizations` 1→N `advertiser_brands` 1→N (opt) `campaigns`
+- `advertiser_organizations` 1→N `advertiser_contracts` 1→N (opt) `campaigns`
+- `advertiser_organizations` 1→N `advertiser_contacts`
 - `advertisers` 1→N `brands` 1→N `contracts` 1→N `orders`
 - `campaigns` N→1 `advertisers`, `campaigns` 1→N `placements` 1→N `placement_targets`
 - `campaigns` N→M `creative_versions` (via `campaign_creative_links`)

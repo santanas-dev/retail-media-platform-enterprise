@@ -145,7 +145,43 @@ Login and password-reset endpoints return **identical responses** whether the us
 
 ---
 
-## 4. Channels & Devices API
+## 4. Advertiser API
+
+> **Status: Phase 4.0a — Architecture Lock (ADR-010).**
+> Endpoints are planned, not implemented.  All advertiser endpoints
+> require two-layer defense: app-layer `require_scoped_permission` +
+> PostgreSQL RLS (ADR-009 pattern, proven in Phase 3.5c).
+>
+> **Phase 4.0b target (read-only):**
+
+| Method | Endpoint | Auth | Permission | Scope |
+|--------|----------|------|------------|-------|
+| GET | `/api/v1/advertisers/organizations` | JWT | `advertisers.read` | Global: all orgs. Advertiser: own org only (RLS). |
+| GET | `/api/v1/advertisers/organizations/{id}` | JWT | `advertisers.read` | Same. 404 if not in scope. |
+| GET | `/api/v1/advertisers/brands` | JWT | `advertisers.read` | Filtered by org scope (RLS). |
+| GET | `/api/v1/advertisers/contracts` | JWT | `advertisers.read` | Filtered by org scope (RLS). |
+
+> **Phase 4.0c+ (mutations, deferred):**
+
+| Method | Endpoint | Auth | Permission | Description |
+|--------|----------|------|------------|-------------|
+| POST | `/api/v1/advertisers/organizations` | JWT | `advertisers.manage` | Create organization |
+| PATCH | `/api/v1/advertisers/organizations/{id}` | JWT | `advertisers.manage` | Update organization |
+| POST | `/api/v1/advertisers/brands` | JWT | `advertisers.manage` | Create brand |
+| POST | `/api/v1/advertisers/contracts` | JWT | `advertisers.manage` | Create contract |
+| GET | `/api/v1/advertisers/organizations/{id}/contacts` | JWT | `advertisers.contacts.read` | List contacts (PII-gated) |
+| POST | `/api/v1/advertisers/organizations/{id}/contacts` | JWT | `advertisers.contacts.manage` | Add contact |
+
+> **Security invariants (from ADR-010):**
+> - Every endpoint: negative behavioral test required before acceptance
+>   (no-token 401, wrong-scope 403, scoped sees own, admin sees all)
+> - Contact email/phone never in audit event details
+> - No hard delete for orgs with campaigns/contracts
+> - `advertiser_organizations` is tenant root for all advertiser-scoped data
+
+---
+
+## 5. Channels & Devices API
 
 | Method | Endpoint | Auth | Permission | Description |
 |--------|----------|------|------------|-------------|
@@ -163,21 +199,15 @@ Login and password-reset endpoints return **identical responses** whether the us
 
 ---
 
-## 5. Advertisers API
+## 6. Advertisers API (Legacy — superseded by §4)
 
-| Method | Endpoint | Auth | Permission | Description |
-|--------|----------|------|------------|-------------|
-| GET | `/api/v1/advertisers` | JWT | `advertisers.read` | List advertisers |
-| POST | `/api/v1/advertisers` | JWT | `advertisers.manage` | Create advertiser |
-| GET | `/api/v1/advertisers/{id}` | JWT | `advertisers.read` | Advertiser details |
-| GET | `/api/v1/contracts` | JWT | `contracts.read` | List contracts |
-| POST | `/api/v1/contracts` | JWT | `contracts.manage` | Create contract |
-| GET | `/api/v1/orders` | JWT | `orders.read` | List orders |
-| POST | `/api/v1/orders` | JWT | `orders.manage` | Create order |
+> **Superseded by ADR-010 (Phase 4.0a).**  See §4 Advertiser API above for
+> current planned endpoints with proper scoping, RLS, and behavioral test
+> requirements.
 
 ---
 
-## 6. Campaigns & Placements API
+## 7. Campaigns & Placements API
 
 | Method | Endpoint | Auth | Permission | Description |
 |--------|----------|------|------------|-------------|
@@ -195,7 +225,7 @@ Login and password-reset endpoints return **identical responses** whether the us
 
 ---
 
-## 7. Inventory API
+## 8. Inventory API
 
 | Method | Endpoint | Auth | Permission | Description |
 |--------|----------|------|------------|-------------|
@@ -208,7 +238,7 @@ Login and password-reset endpoints return **identical responses** whether the us
 
 ---
 
-## 8. Content & Creatives API
+## 9. Content & Creatives API
 
 | Method | Endpoint | Auth | Permission | Description |
 |--------|----------|------|------------|-------------|
@@ -223,7 +253,7 @@ Login and password-reset endpoints return **identical responses** whether the us
 
 ---
 
-## 9. Playlist & Manifest API
+## 10. Playlist & Manifest API
 
 | Method | Endpoint | Auth | Permission | Description |
 |--------|----------|------|------------|-------------|
@@ -237,7 +267,7 @@ Login and password-reset endpoints return **identical responses** whether the us
 
 ---
 
-## 10. Approval API
+## 11. Approval API
 
 | Method | Endpoint | Auth | Permission | Description |
 |--------|----------|------|------------|-------------|
@@ -247,7 +277,7 @@ Login and password-reset endpoints return **identical responses** whether the us
 
 ---
 
-## 11. Emergency API
+## 12. Emergency API
 
 | Method | Endpoint | Auth | Permission | Description |
 |--------|----------|------|------------|-------------|
@@ -259,7 +289,7 @@ Login and password-reset endpoints return **identical responses** whether the us
 
 ---
 
-## 12. Analytics API
+## 13. Analytics API
 
 | Method | Endpoint | Auth | Permission | Description |
 |--------|----------|------|------------|-------------|
@@ -273,7 +303,7 @@ Login and password-reset endpoints return **identical responses** whether the us
 
 ---
 
-## 13. Audit API
+## 14. Audit API
 
 | Method | Endpoint | Auth | Permission | Description |
 |--------|----------|------|------------|-------------|
@@ -281,7 +311,7 @@ Login and password-reset endpoints return **identical responses** whether the us
 
 ---
 
-## 14. Device Gateway API (separate auth)
+## 15. Device Gateway API (separate auth)
 
 | Method | Endpoint | Auth | Permission | Description |
 |--------|----------|------|------------|-------------|
