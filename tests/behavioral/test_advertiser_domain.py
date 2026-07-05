@@ -89,22 +89,34 @@ class TestAdvertiserBrands:
         for b in data:
             assert b["advertiser_organization_id"] == "00000000-0000-0000-0000-000000000200"
 
-    def test_wrong_scope_denies(self):
-        """Permission deny test: 403 gated by contacts endpoint below.
+    def test_global_read_sees_all(self):
+        """User with global advertisers.read can see all brands.
 
-        All behavioral test users now have advertisers.read (operator, admin,
-        advertiser roles). The 403 proof lives in TestAdvertiserContacts
-        where advertisers.read alone is insufficient for contacts.
+        noperms user has operator role → advertisers.read (global/unscoped).
+        Global permission grants access without requiring advertiser scope.
         """
-        # All users have advertisers.read globally → brands are visible.
-        # The 403 gate for missing permission is tested via contacts endpoint.
         token = _token(self.uid["noperms"])
         resp = self.client.get(
             "/api/v1/identity/advertiser-brands",
             headers=_auth(token),
         )
-        # noperms = operator → has advertisers.read → 200
-        assert resp.status_code == 200
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert len(data) >= 2  # BRAND-COLA + BRAND-ZERO
+
+    def test_no_permission_returns_403(self):
+        """User without advertisers.read gets 403 on brands.
+
+        analyst user has analyst role → organization.read, but NOT advertisers.read.
+        """
+        token = _token(self.uid["analyst"])
+        resp = self.client.get(
+            "/api/v1/identity/advertiser-brands",
+            headers=_auth(token),
+        )
+        assert resp.status_code == 403, (
+            f"Expected 403 for user without advertisers.read, got {resp.status_code}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -147,21 +159,32 @@ class TestAdvertiserContracts:
         codes = {c["code"] for c in data}
         assert "CTR-2026-001" in codes
 
-    def test_wrong_scope_denies(self):
-        """User without advertisers.read gets 403 (contacts PII gate).
+    def test_global_read_sees_all(self):
+        """User with global advertisers.read can see all contracts.
 
-        noperms has operator role → advertisers.read but NOT contacts.read.
-        Verified via contacts endpoint in TestAdvertiserContacts below.
+        noperms user has operator role → advertisers.read (global/unscoped).
         """
         token = _token(self.uid["noperms"])
         resp = self.client.get(
             "/api/v1/identity/advertiser-contracts",
             headers=_auth(token),
         )
-        # operator has global advertisers.read → 200 (can see all contracts)
-        assert resp.status_code == 200, (
-            f"Operator with global advertisers.read should see all contracts, "
-            f"got {resp.status_code}"
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert len(data) >= 1  # at least CTR-2026-001
+
+    def test_no_permission_returns_403(self):
+        """User without advertisers.read gets 403 on contracts.
+
+        analyst user has analyst role → organization.read, but NOT advertisers.read.
+        """
+        token = _token(self.uid["analyst"])
+        resp = self.client.get(
+            "/api/v1/identity/advertiser-contracts",
+            headers=_auth(token),
+        )
+        assert resp.status_code == 403, (
+            f"Expected 403 for user without advertisers.read, got {resp.status_code}"
         )
 
 

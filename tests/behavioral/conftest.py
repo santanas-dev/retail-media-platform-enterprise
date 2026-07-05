@@ -41,6 +41,7 @@ USER_IDS = {
     "disabled":   "beh-ds-00000000000000000003",
     "advertiser": "beh-av-00000000000000000004",
     "secoff":     "beh-so-00000000000000000005",
+    "analyst":    "beh-an-00000000000000000006",
 }
 
 TEST_PASSWORD = "TestPassword123!"
@@ -82,13 +83,15 @@ def _setup_sql(ph):
       ('{u["noperms"]}','BEH-NP','beh-noperms','beh-np@t.local','Beh NP','local_advertiser','active'),
       ('{u["disabled"]}','BEH-DS','beh-disabled','beh-ds@t.local','Beh DS','local_advertiser','disabled'),
       ('{u["advertiser"]}','BEH-AV','beh-advertiser','beh-av@t.local','Beh AV','local_advertiser','active'),
-      ('{u["secoff"]}','BEH-SO','beh-secoff','beh-so@t.local','Beh SO','local_advertiser','active')
+      ('{u["secoff"]}','BEH-SO','beh-secoff','beh-so@t.local','Beh SO','local_advertiser','active'),
+      ('{u["analyst"]}','BEH-AN','beh-analyst','beh-an@t.local','Beh AN','local_advertiser','active')
     ; INSERT INTO local_credentials (id,user_id,credential_type,password_hash,status) VALUES
       ('lc-beh-ro','{u["readonly"]}','local_advertiser','{ph}','active'),
       ('lc-beh-np','{u["noperms"]}','local_advertiser','{ph}','active'),
       ('lc-beh-ds','{u["disabled"]}','local_advertiser','{ph}','active'),
       ('lc-beh-av','{u["advertiser"]}','local_advertiser','{ph}','active'),
-      ('lc-beh-so','{u["secoff"]}','local_advertiser','{ph}','active')
+      ('lc-beh-so','{u["secoff"]}','local_advertiser','{ph}','active'),
+      ('lc-beh-an','{u["analyst"]}','local_advertiser','{ph}','active')
     ; INSERT INTO user_roles (id,user_id,role_id)
       SELECT 'ur-beh-ro','{u["readonly"]}',id FROM roles WHERE code='system_admin'
     ; INSERT INTO user_roles (id,user_id,role_id)
@@ -99,6 +102,8 @@ def _setup_sql(ph):
       SELECT 'ur-beh-av','{u["advertiser"]}',id FROM roles WHERE code='advertiser'
     ; INSERT INTO user_roles (id,user_id,role_id)
       SELECT 'ur-beh-so','{u["secoff"]}',id FROM roles WHERE code='security_admin'
+    ; INSERT INTO user_roles (id,user_id,role_id)
+      SELECT 'ur-beh-an','{u["analyst"]}',id FROM roles WHERE code='analyst'
     -- Ensure advertiser role exists (not in seed)
     ; INSERT INTO roles (id,code,name,description,is_system)
       SELECT '00000000-0000-0000-0000-000000000114','advertiser','Advertiser','Advertiser cabinet user',false
