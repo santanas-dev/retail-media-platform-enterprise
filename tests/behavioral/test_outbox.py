@@ -337,8 +337,14 @@ class TestOutboxOrmHelper:
         assert rows[0][4] is not None  # headers_json present
         assert rows[0][5] == "pending"
 
-    def test_orm_enqueue_no_secrets_in_payload(self, db_available):
-        """ORM helper stores payload, but no raw secret patterns leak."""
+    def test_orm_enqueue_passes_payload_as_is(self, db_available):
+        """ORM helper stores whatever the caller passes — no sanitization.
+
+        enqueue_outbox_event is transaction-only.  Secret/PII filtering is
+        a producer responsibility, enforced by producer tests and ADR-011 §2.
+        This test proves the helper does NOT silently drop or mask fields —
+        it passes the payload through as-is to the outbox table.
+        """
         async def _run():
             engine = create_async_engine(DB_URL, echo=False)
             async with AsyncSession(engine) as session:

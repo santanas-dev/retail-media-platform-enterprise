@@ -70,9 +70,9 @@ outbox_events
 │ partition_key (VARCHAR 128) │  -- for ordering: device_id, advertiser_id
 │ payload_json (JSONB)        │  -- full event payload
 │ headers_json (JSONB)        │  -- correlation_id, source_service, etc.
-| status (VARCHAR 32)         │  -- pending|publishing|published|failed|dead_letter
-|                             │     publishing: relay claim lock (prevents
-|                             │     double-processing in concurrent relay)
+│ status (VARCHAR 32)         │  -- pending|publishing|published|failed|dead_letter
+│                             │     publishing: relay claim lock (prevents
+│                             │     double-processing in concurrent relay)
 │ attempts (INT, DEFAULT 0)   │
 │ next_attempt_at (TIMESTAMPTZ │
 │   NOT NULL DEFAULT NOW())    │  -- immediate eligibility; producers
