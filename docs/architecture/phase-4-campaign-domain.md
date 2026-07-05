@@ -1,8 +1,8 @@
 # Phase 4 — Campaign Domain
 
 **Date:** 2026-07-05
-**Phase:** 4.1b (Campaign Read-Only Foundation)
-**Commits:** `aab040e` (implementation), `8280d54` (hardening fix), `1c5e013` (model/migration alignment)
+**Phase:** 4.1c (Campaign Mutation Foundation)
+**Commits:** `aab040e` (read-only implementation), `8280d54` (hardening), `1c5e013` (model/migration alignment), `4b19637` (mutation foundation), `7dd05a3` (tenant isolation), `861d082` (existence oracle)
 **Previous:** Phase 4.0b (Advertiser Read-Only Foundation)
 
 ## Purpose
@@ -102,7 +102,52 @@ Phase 4.1c+ (mutations/detail).
 | Storage secrets hidden | `storage_bucket`/`storage_key`/`presigned_url` absent from creative asset responses |
 | Global read sees all | operator (global campaigns.read) sees all campaigns |
 
-### Deferred (Phase 4.1c–4.1f)
+### Phase 4.1c — Mutation Foundation (Phase 4.2) ✅
+
+| Deliverable | Status |
+|-------------|--------|
+| Repository methods (3) | ✅ `create_campaign`, `update_campaign`, `archive_campaign` |
+| API endpoints (3) | ✅ POST `/campaigns`, PATCH `/campaigns/{id}`, POST `/campaigns/{id}/archive` |
+| Domain exceptions | ✅ `ScopeError`, `CrossOrgReferenceError`, `EntityNotFoundError` |
+| Outbox integration | ✅ `campaign.created/updated/archived` in same DB transaction |
+| Tenant isolation | ✅ scoped advertiser → 403 on cross-org create/update/archive |
+| Brand/contract org validation | ✅ cross-org → 422, no existence oracle |
+| Unit tests | ✅ 12 (schemas, permissions, draft-only, no `db.execute`, exceptions, scope helpers) |
+| Behavioral tests | ✅ 10 (401, 403, create/update/archive, outbox, status history, cross-org isolation, no-outbox-on-rejection) |
+| CI checks | ✅ 44/44 (import boundaries + all gates) |
+
+#### Implemented Mutations
+
+| Method | Endpoint | Permission | Scope check | Status |
+|--------|----------|------------|-------------|--------|
+| POST | `/api/v1/identity/campaigns` | `campaigns.manage` | Org must be in advertiser scope | ✅ |
+| PATCH | `/api/v1/identity/campaigns/{campaign_id}` | `campaigns.manage` | Campaign org must be in scope | ✅ |
+| POST | `/api/v1/identity/campaigns/{campaign_id}/archive` | `campaigns.manage` | Campaign org must be in scope | ✅ |
+
+All endpoints are provisional identity-prefixed flat paths.  Admin bypass
+preserved (`scope_advertiser_ids=None` → no restriction).
+
+#### Behavioral Proof
+
+| Test | Proves |
+|------|--------|
+| Scoped advertiser cannot create for other org | 403 (scope) |
+| Scoped advertiser cannot use cross-org brand | 422 (generic) |
+| Scoped advertiser cannot use cross-org contract | 422 (generic) |
+| Scoped advertiser CAN create for own org | 201 + draft |
+| Admin can create for any org | 201 (scope bypass) |
+| Admin cannot use cross-org contract | 422 (brand/contract checks universal) |
+| Scoped advertiser cannot update/archive other org campaign | 403 (scope) |
+| Admin can update any org campaign | 200 |
+| Nonexistent brand/contract same as cross-org | both 422 "Invalid advertiser … reference" |
+| Rejection writes no campaign + no outbox | `SELECT` proves empty |
+| Successful create writes outbox `campaign.created` | `outbox_events` row exists |
+| Successful update writes outbox `campaign.updated` | `outbox_events` row exists |
+| Successful archive writes outbox `campaign.archived` | `outbox_events` row exists |
+| Non-draft update → 409 | seed campaign set to 'active', PATCH rejected |
+| Status history written on create + archive | `campaign_status_history` rows verified |
+
+### Deferred (Phase 4.2–4.4)
 
 - **Mutations:** create/update/submit/status-change for campaigns, placements, creatives, flights
 - **Approval workflow:** approve/reject actions, approval history by campaign

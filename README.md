@@ -2,7 +2,7 @@
 
 Мультиканальная платформа управления рекламой на цифровых носителях розничной сети.
 
-**Статус:** 🏗️ Phase 4.1b — Campaign Read-Only DB/API Foundation.
+**Статус:** 🏗️ Phase 4.1c — Campaign Mutation Foundation.
 
 ## Architecture
 

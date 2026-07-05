@@ -216,13 +216,13 @@ scoped access (403 / 200), RLS row visibility, and the contacts PII gate
 
 ## 7. Campaigns & Placements API
 
-> **Status: Phase 4.1b — Implemented (read-only).**
-> All campaign endpoints live under `/api/v1/identity/` in Phase 4.1b
+> **Status: Phase 4.1c — Implemented (read-only + mutations).**
+> All campaign endpoints live under `/api/v1/identity/` in Phase 4.1
 > (provisional flat list-all paths).  Nested REST paths under
-> `/api/v1/campaigns/{code}/...` are planned for mutation/detail phases
-> (4.1c+).  Architecture locked in ADR-015.
+> `/api/v1/campaigns/{code}/...` are planned for detail/mutation phases
+> (4.2+).  Architecture locked in ADR-015.
 >
-> **Current (Phase 4.1b) endpoints:**
+> **Current (Phase 4.1c) endpoints:**
 >
 > | Method | Endpoint | Auth | Permission | Status | Description |
 > |--------|----------|------|------------|--------|-------------|
@@ -233,10 +233,26 @@ scoped access (403 / 200), RLS row visibility, and the contacts PII gate
 > | GET | `/api/v1/identity/campaign-placements` | JWT | `campaigns.read` | ✅ 4.1b | List placements |
 > | GET | `/api/v1/identity/campaign-approvals` | JWT | `campaigns.read` | ✅ 4.1b | List approval records |
 > | GET | `/api/v1/identity/campaign-status-history` | JWT | `campaigns.read` | ✅ 4.1b | List status history |
+> | POST | `/api/v1/identity/campaigns` | JWT | `campaigns.manage` + advertiser scope | ✅ 4.1c | Create draft campaign. Writes outbox event `campaign.created` + status history. Scoped advertiser can only create for own org. Brand/contract must belong to same org. |
+> | PATCH | `/api/v1/identity/campaigns/{campaign_id}` | JWT | `campaigns.manage` + advertiser scope | ✅ 4.1c | Update draft campaign. Only draft status allowed. Writes outbox event `campaign.updated`. |
+> | POST | `/api/v1/identity/campaigns/{campaign_id}/archive` | JWT | `campaigns.manage` + advertiser scope | ✅ 4.1c | Archive draft/rejected campaign. Writes outbox event `campaign.archived` + status history. |
 >
-> **Future REST paths (Phase 4.1c+):**
+> **Mutation security invariants (Phase 4.1c):**
+> - All mutation endpoints require `campaigns.manage` + advertiser scope
+> - Tenant isolation: scoped advertiser can only mutate own org's campaigns
+> - Cross-org brand/contract → 422 (generic — no existence oracle)
+> - Scope violation → 403
+> - All mutations produce outbox events in the same DB transaction
+> - No campaign/outbox written on rejection (validated before INSERT)
+>
+> **Deferred (Phase 4.2+):**
+> - Approval workflow (submit/approve/reject)
+> - Delivery/manifest generation
+> - PoP/reporting
+> - Frontend campaign management UI
+> - DB write RLS `WITH CHECK` policies
 
-### Phase 4.1c — Mutations (planned, deferred)
+### Phase 4.1c — Mutations ✅ (completed)
 
 | Method | Endpoint | Auth | Permission | Description |
 |--------|----------|------|------------|-------------|
