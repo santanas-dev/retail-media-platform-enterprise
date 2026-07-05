@@ -38,7 +38,7 @@ CREATE POLICY {table}_rls_sel ON {table}
                     ),
                     ','
                 ),
-                '{}'::text[]
+                '{{}}'::text[]
             )
         )
     )

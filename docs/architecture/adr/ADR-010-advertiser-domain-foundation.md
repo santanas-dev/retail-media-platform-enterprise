@@ -122,6 +122,10 @@ advertiser_contacts
 │                          │     enforce via partial unique index:
 │                          │     CREATE UNIQUE INDEX ... WHERE
 │                          │     is_primary AND status='active'
+│                          │     Inactive contacts are ignored by the
+│                          │     partial index — deactivating a primary
+│                          │     contact allows creating a replacement
+│                          │     without deleting the old record.
 │ status                   │  -- active/inactive
 │ created_at               │
 │ updated_at               │

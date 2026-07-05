@@ -103,6 +103,13 @@ def _setup_sql(ph):
     ; INSERT INTO roles (id,code,name,description,is_system)
       SELECT '00000000-0000-0000-0000-000000000114','advertiser','Advertiser','Advertiser cabinet user',false
       WHERE NOT EXISTS (SELECT 1 FROM roles WHERE code='advertiser')
+    -- Phase 4.0b: ensure advertiser-scoped permissions exist (idempotent)
+    ; INSERT INTO permissions (id, code, name) VALUES
+      ('00000000-0000-0000-0000-000000000108','advertisers.read','Просмотр рекламодателей')
+      ON CONFLICT (code) DO NOTHING
+    ; INSERT INTO permissions (id, code, name) VALUES
+      ('00000000-0000-0000-0000-00000000010a','advertisers.contacts.read','Просмотр контактов рекламодателей')
+      ON CONFLICT (code) DO NOTHING
     -- Ensure advertiser role has organization.read permission
     ; INSERT INTO role_permissions (id,role_id,permission_id)
       SELECT 'rp-beh-adv-org','00000000-0000-0000-0000-000000000114',id
@@ -112,9 +119,45 @@ def _setup_sql(ph):
         WHERE role_id='00000000-0000-0000-0000-000000000114'
         AND permission_id=(SELECT id FROM permissions WHERE code='organization.read')
       )
+    -- Phase 4.0b: advertiser role needs advertisers.read for brands/contracts
+    ; INSERT INTO role_permissions (id,role_id,permission_id)
+      SELECT 'rp-beh-adv-read','00000000-0000-0000-0000-000000000114',id
+      FROM permissions WHERE code='advertisers.read'
+      AND NOT EXISTS (
+        SELECT 1 FROM role_permissions
+        WHERE role_id='00000000-0000-0000-0000-000000000114'
+        AND permission_id=(SELECT id FROM permissions WHERE code='advertisers.read')
+      )
+    -- Phase 4.0b: advertiser role needs advertisers.contacts.read for PII-gated contacts
+    ; INSERT INTO role_permissions (id,role_id,permission_id)
+      SELECT 'rp-beh-adv-contacts','00000000-0000-0000-0000-000000000114',id
+      FROM permissions WHERE code='advertisers.contacts.read'
+      AND NOT EXISTS (
+        SELECT 1 FROM role_permissions
+        WHERE role_id='00000000-0000-0000-0000-000000000114'
+        AND permission_id=(SELECT id FROM permissions WHERE code='advertisers.contacts.read')
+      )
     ; INSERT INTO advertiser_user_memberships (id,user_id,advertiser_organization_id,status)
       SELECT 'aum-beh-av','{u["advertiser"]}',id,'active'
       FROM advertiser_organizations WHERE code='ADV-001'
+    -- Phase 4.0b: ensure system_admin has advertisers.read + contacts.read
+    -- (seed may not have been re-run yet, these inserts are idempotent)
+    ; INSERT INTO role_permissions (id,role_id,permission_id)
+      SELECT 'rp-beh-sa-read',r.id,p.id
+      FROM roles r CROSS JOIN permissions p
+      WHERE r.code='system_admin' AND p.code='advertisers.read'
+      AND NOT EXISTS (
+        SELECT 1 FROM role_permissions
+        WHERE role_id=r.id AND permission_id=p.id
+      )
+    ; INSERT INTO role_permissions (id,role_id,permission_id)
+      SELECT 'rp-beh-sa-contacts',r.id,p.id
+      FROM roles r CROSS JOIN permissions p
+      WHERE r.code='system_admin' AND p.code='advertisers.contacts.read'
+      AND NOT EXISTS (
+        SELECT 1 FROM role_permissions
+        WHERE role_id=r.id AND permission_id=p.id
+      )
     """
 
 

@@ -125,7 +125,7 @@ class TestAdvertiserDomainMigration(unittest.TestCase):
         self.assertIn("COALESCE", self.migration_text)
         self.assertIn("NULLIF(current_setting('app.rmp_is_admin'", self.migration_text)
         self.assertIn("app.rmp_scope_advertiser_ids", self.migration_text)
-        self.assertIn("'{}'::text[]", self.migration_text)
+        self.assertIn("'{{}}'::text[]", self.migration_text)
 
     def test_downgrade_drops_tables_and_policies(self):
         downgrade = self.migration_text.split("def downgrade")[1]
