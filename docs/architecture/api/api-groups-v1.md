@@ -252,22 +252,26 @@ scoped access (403 / 200), RLS row visibility, and the contacts PII gate
 > - Frontend campaign management UI
 > - DB write RLS `WITH CHECK` policies
 
-### Phase 4.1c — Mutations ✅ (completed)
+### Future REST paths (Phase 4.2+, deferred)
 
-| Method | Endpoint | Auth | Permission | Description |
-|--------|----------|------|------------|-------------|
-| POST | `/api/v1/campaigns` | JWT | `campaigns.create` | Create campaign (draft) |
-| PATCH | `/api/v1/campaigns/{code}` | JWT | `campaigns.manage` or owner | Update campaign (draft/rejected only) |
-| POST | `/api/v1/campaigns/{code}/submit` | JWT | `campaigns.create` or owner | Submit for approval |
-| PATCH | `/api/v1/campaigns/{code}/status` | JWT | `campaigns.manage` | Force status transition |
-| POST | `/api/v1/campaigns/{code}/placements` | JWT | `campaigns.manage` or owner | Add placement |
-| DELETE | `/api/v1/campaigns/{code}/placements/{id}` | JWT | `campaigns.manage` or owner | Remove placement |
-| POST | `/api/v1/campaigns/{code}/creatives` | JWT | `campaigns.manage` or owner | Link creative |
-| DELETE | `/api/v1/campaigns/{code}/creatives/{id}` | JWT | `campaigns.manage` or owner | Unlink creative |
-| POST | `/api/v1/campaigns/{code}/flights` | JWT | `campaigns.manage` or owner | Add flight/period |
-| PATCH | `/api/v1/campaigns/{code}/flights/{id}` | JWT | `campaigns.manage` or owner | Update flight |
-| DELETE | `/api/v1/campaigns/{code}/flights/{id}` | JWT | `campaigns.manage` or owner | Remove flight |
-| POST | `/api/v1/creatives/upload` | JWT | `creatives.upload` | Upload creative asset (presigned) |
+> **Note:** The 3 implemented mutation endpoints live under `/api/v1/identity/`
+> (see Current endpoints table above).  The nested REST paths below are
+> planned for future phases and are **not yet implemented.**
+
+| Method | Endpoint | Auth | Permission | Description | Status |
+|--------|----------|------|------------|-------------|--------|
+| POST | `/api/v1/campaigns` | JWT | `campaigns.create` | Create campaign (draft) | Deferred |
+| PATCH | `/api/v1/campaigns/{code}` | JWT | `campaigns.manage` or owner | Update campaign (draft/rejected only) | Deferred |
+| POST | `/api/v1/campaigns/{code}/submit` | JWT | `campaigns.create` or owner | Submit for approval | Deferred |
+| PATCH | `/api/v1/campaigns/{code}/status` | JWT | `campaigns.manage` | Force status transition | Deferred |
+| POST | `/api/v1/campaigns/{code}/placements` | JWT | `campaigns.manage` or owner | Add placement | Deferred |
+| DELETE | `/api/v1/campaigns/{code}/placements/{id}` | JWT | `campaigns.manage` or owner | Remove placement | Deferred |
+| POST | `/api/v1/campaigns/{code}/creatives` | JWT | `campaigns.manage` or owner | Link creative | Deferred |
+| DELETE | `/api/v1/campaigns/{code}/creatives/{id}` | JWT | `campaigns.manage` or owner | Unlink creative | Deferred |
+| POST | `/api/v1/campaigns/{code}/flights` | JWT | `campaigns.manage` or owner | Add flight/period | Deferred |
+| PATCH | `/api/v1/campaigns/{code}/flights/{id}` | JWT | `campaigns.manage` or owner | Update flight | Deferred |
+| DELETE | `/api/v1/campaigns/{code}/flights/{id}` | JWT | `campaigns.manage` or owner | Remove flight | Deferred |
+| POST | `/api/v1/creatives/upload` | JWT | `creatives.upload` | Upload creative asset (presigned) | Deferred |
 
 ### Phase 4.1d — Approval Workflow (planned, deferred)
 
