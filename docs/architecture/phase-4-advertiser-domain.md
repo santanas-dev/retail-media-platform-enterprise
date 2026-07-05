@@ -40,7 +40,7 @@ defense per ADR-009).
 | Repository methods | ✅ `list_advertiser_brands/contracts/contacts()` |
 | API endpoints (4) | ✅ all live at `/api/v1/identity/` |
 | Unit tests (33) | ✅ models, RLS, seed, repository, router compliance |
-| Behavioral tests (31) | ✅ 401/403/200 scoped/200 global, PII gate |
+| Behavioral tests | ✅ auth, scoped access, RLS visibility, contacts PII gate |
 | CI checks (43/43) | ✅ |
 
 #### Database Tables
@@ -75,17 +75,16 @@ All under `/api/v1/identity/` (control-api router):
 > can list brands and contracts, cannot see contact details (verified by
 > behavioral test `test_advertisers_read_alone_is_not_enough_for_contacts`).
 
-#### Behavioral Coverage (31 tests)
+#### Advertiser-domain behavioral coverage
 
-| Category | Count | Tests |
-|----------|-------|-------|
-| 401 — no token | 4 | brands, contracts, contacts, organizations |
-| 403 — missing permission | 2 | `advertisers.read` for brands + contracts (analyst user) |
-| 403 — missing `contacts.read` | 1 | operator has `advertisers.read` but not `contacts.read` |
-| 403 — wrong scope | 1 | advertiser scoped to org-A, requests without advertiser scope |
-| 200 — global (admin) | 3 | system_admin sees all brands/contracts/contacts |
-| 200 — scoped (advertiser) | 4 | advertiser sees only own brands/contracts/contacts + orgs |
-| RLS — skipped (no `SET LOCAL`) | 1 | `test_rls_requires_set_local_for_advertiser_tables` |
+`test_advertiser_domain.py` (14 tests) covers every endpoint with:
+- **401** — no token → rejected
+- **403** — missing `advertisers.read` (analyst user) → denied on brands + contracts
+- **403** — missing `advertisers.contacts.read` (operator) → PII gate on contacts
+- **200 global** — system_admin sees all brands/contracts/contacts
+- **200 scoped** — advertiser user sees only own org's rows via RLS
+
+Plus `test_scope_rls.py` (6 tests, 1 known RLS skip) covers advertiser-organization scoping and RLS enforcement.
 
 #### Key Files
 
@@ -99,7 +98,7 @@ All under `/api/v1/identity/` (control-api router):
 | `packages/domain/schemas.py` | `AdvertiserBrandOut`, `AdvertiserContractOut`, `AdvertiserContactOut` |
 | `packages/api/dependencies.py` | `require_scoped_permission`, `ScopeContext`, `set_rls_context` |
 | `tests/test_phase4_advertiser_domain.py` | Unit tests (33) |
-| `tests/behavioral/test_advertiser_domain.py` | Behavioral tests (31) |
+| `tests/behavioral/test_advertiser_domain.py` | Behavioral tests (14) |
 | `tests/behavioral/conftest.py` | Test users: admin, advertiser, operator, analyst |
 
 ## Deferred (beyond Phase 4.0b)

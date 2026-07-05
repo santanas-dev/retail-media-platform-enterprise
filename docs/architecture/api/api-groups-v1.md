@@ -164,9 +164,9 @@ All live under `/api/v1/identity/`.
 | GET | `/api/v1/identity/advertiser-contracts` | JWT | `advertisers.read` | Filtered by org scope (RLS). | ✅ 4.0b |
 | GET | `/api/v1/identity/advertiser-contacts` | JWT | `advertisers.contacts.read` | Filtered by org scope (RLS). PII-gated. | ✅ 4.0b |
 
-**Behavioral proof:** 31 tests covering 401 (no token), 403 (missing permission,
-wrong scope, PII gate without `contacts.read`), 200 scoped (advertiser sees only
-own), 200 global (admin sees all).
+**Behavioral proof:** advertiser-domain behavioral tests cover auth (401),
+scoped access (403 / 200), RLS row visibility, and the contacts PII gate
+(`advertisers.contacts.read` required separately from `advertisers.read`).
 
 ### Mutations (deferred — Phase 4.0c+)
 
