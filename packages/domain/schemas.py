@@ -318,3 +318,47 @@ class CampaignStatusHistoryOut(BaseModel):
     changed_by: str
     changed_at: datetime
     reason: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Campaign Mutation Schemas (Phase 4.1c — ADR-015)
+# ---------------------------------------------------------------------------
+
+
+class CampaignCreateRequest(BaseModel):
+    """Create a draft campaign. No PII, no storage secrets."""
+    advertiser_organization_id: str
+    advertiser_brand_id: str | None = None
+    advertiser_contract_id: str
+    code: str = Field(..., min_length=1, max_length=64)
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str | None = None
+    start_at: datetime | None = None
+    end_at: datetime | None = None
+    timezone: str = "Europe/Moscow"
+    budget_limit_amount: float | None = None
+    budget_limit_currency: str = "RUB"
+    priority: int = 0
+
+
+class CampaignUpdateRequest(BaseModel):
+    """Update a draft campaign. All fields optional — partial update."""
+    advertiser_brand_id: str | None = None
+    advertiser_contract_id: str | None = None
+    code: str | None = Field(None, min_length=1, max_length=64)
+    name: str | None = Field(None, min_length=1, max_length=255)
+    description: str | None = None
+    start_at: datetime | None = None
+    end_at: datetime | None = None
+    timezone: str | None = None
+    budget_limit_amount: float | None = None
+    budget_limit_currency: str | None = None
+    priority: int | None = None
+
+
+class CampaignArchiveResponse(BaseModel):
+    """Response after archiving a campaign."""
+    message: str = "Campaign archived"
+    campaign_id: str
+    old_status: str
+    new_status: str = "archived"

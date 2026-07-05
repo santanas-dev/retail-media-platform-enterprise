@@ -153,6 +153,18 @@ async def list_campaigns(session: AsyncSession) -> list:
     return list(result.scalars().all())
 
 
+async def get_campaign(
+    session: AsyncSession,
+    campaign_id: str,
+):
+    """Get a single campaign by id. Returns Campaign or None."""
+    from packages.domain.models import Campaign
+    result = await session.execute(
+        select(Campaign).where(Campaign.id == campaign_id)
+    )
+    return result.scalar_one_or_none()
+
+
 async def list_campaign_flights(session: AsyncSession) -> list:
     """Return all campaign flights, ordered by campaign_id + start_at."""
     from packages.domain.models import CampaignFlight
@@ -207,6 +219,145 @@ async def list_campaign_status_history(session: AsyncSession) -> list:
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+# ---------------------------------------------------------------------------
+# Campaign Mutations (Phase 4.1c — ADR-015)
+# ---------------------------------------------------------------------------
+
+
+async def create_campaign(
+    session: AsyncSession,
+    *,
+    advertiser_organization_id: str,
+    advertiser_contract_id: str,
+    code: str,
+    name: str,
+    created_by: str,
+    advertiser_brand_id: str | None = None,
+    description: str | None = None,
+    start_at=None,
+    end_at=None,
+    timezone: str = "Europe/Moscow",
+    budget_limit_amount=None,
+    budget_limit_currency: str = "RUB",
+    priority: int = 0,
+) -> str:
+    """Create a new campaign in draft status. Returns campaign id."""
+    import uuid
+    from datetime import datetime, timezone as tz
+    from packages.domain.models import Campaign, CampaignStatusHistory
+
+    campaign_id = str(uuid.uuid4())
+    now = datetime.now(tz.utc)
+
+    campaign = Campaign(
+        id=campaign_id,
+        advertiser_organization_id=advertiser_organization_id,
+        advertiser_brand_id=advertiser_brand_id,
+        advertiser_contract_id=advertiser_contract_id,
+        code=code,
+        name=name,
+        description=description,
+        status="draft",
+        priority=priority,
+        budget_limit_amount=budget_limit_amount,
+        budget_limit_currency=budget_limit_currency,
+        start_at=start_at,
+        end_at=end_at,
+        timezone=timezone,
+        created_by=created_by,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(campaign)
+
+    # Status history
+    history = CampaignStatusHistory(
+        id=str(uuid.uuid4()),
+        campaign_id=campaign_id,
+        old_status=None,
+        new_status="draft",
+        changed_by=created_by,
+        changed_at=now,
+        reason="Campaign created",
+    )
+    session.add(history)
+
+    return campaign_id
+
+
+async def update_campaign(
+    session: AsyncSession,
+    campaign_id: str,
+    *,
+    changed_by: str,
+    **kwargs,
+) -> str | None:
+    """Update a draft campaign. Returns new status if status changed, else None.
+
+    Only draft campaigns can be updated.  Only non-None kwargs are applied.
+    """
+    from packages.domain.models import Campaign
+    from datetime import datetime, timezone as tz
+
+    result = await session.execute(
+        select(Campaign).where(Campaign.id == campaign_id)
+    )
+    campaign = result.scalar_one_or_none()
+    if campaign is None:
+        return None
+    if campaign.status != "draft":
+        return None
+
+    for key, value in kwargs.items():
+        if value is not None and hasattr(campaign, key):
+            setattr(campaign, key, value)
+
+    campaign.updated_at = datetime.now(tz.utc)
+    return campaign.status  # still "draft"
+
+
+async def archive_campaign(
+    session: AsyncSession,
+    campaign_id: str,
+    *,
+    changed_by: str,
+) -> tuple[str | None, str]:
+    """Archive a draft or rejected campaign. Returns (old_status, new_status).
+
+    Only draft and rejected campaigns can be archived.
+    """
+    import uuid
+    from datetime import datetime, timezone as tz
+    from packages.domain.models import Campaign, CampaignStatusHistory
+
+    result = await session.execute(
+        select(Campaign).where(Campaign.id == campaign_id)
+    )
+    campaign = result.scalar_one_or_none()
+    if campaign is None:
+        return None, "archived"
+    old_status = campaign.status
+    if old_status not in ("draft", "rejected"):
+        return old_status, old_status  # no change
+
+    now = datetime.now(tz.utc)
+    campaign.status = "archived"
+    campaign.updated_at = now
+
+    history = CampaignStatusHistory(
+        id=str(uuid.uuid4()),
+        campaign_id=campaign_id,
+        old_status=old_status,
+        new_status="archived",
+        changed_by=changed_by,
+        changed_at=now,
+        reason="Campaign archived",
+    )
+    session.add(history)
+
+    return old_status, "archived"
 
 
 # ---------------------------------------------------------------------------

@@ -77,6 +77,7 @@ def _setup_sql(ph):
     ; DELETE FROM refresh_sessions WHERE user_id LIKE 'beh-%'
     ; DELETE FROM local_credentials WHERE user_id LIKE 'beh-%'
     ; DELETE FROM user_roles WHERE user_id LIKE 'beh-%'
+    ; DELETE FROM advertiser_user_memberships WHERE user_id LIKE 'beh-%'
     ; DELETE FROM users WHERE id LIKE 'beh-%'
     ; INSERT INTO users (id,code,username,email,display_name,auth_provider,status) VALUES
       ('{u["readonly"]}','BEH-RO','beh-readonly','beh-ro@t.local','Beh RO','local_advertiser','active'),
@@ -85,6 +86,26 @@ def _setup_sql(ph):
       ('{u["advertiser"]}','BEH-AV','beh-advertiser','beh-av@t.local','Beh AV','local_advertiser','active'),
       ('{u["secoff"]}','BEH-SO','beh-secoff','beh-so@t.local','Beh SO','local_advertiser','active'),
       ('{u["analyst"]}','BEH-AN','beh-analyst','beh-an@t.local','Beh AN','local_advertiser','active')
+    -- Phase 4.1c: clean up campaign data referencing behavioral users
+    ; DELETE FROM outbox_events WHERE aggregate_id IN (
+        SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
+    )
+    ; DELETE FROM campaign_status_history WHERE campaign_id IN (
+        SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
+    )
+    ; DELETE FROM campaign_placements WHERE campaign_id IN (
+        SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
+    )
+    ; DELETE FROM campaign_creatives WHERE campaign_id IN (
+        SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
+    )
+    ; DELETE FROM campaign_flights WHERE campaign_id IN (
+        SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
+    )
+    ; DELETE FROM campaign_approvals WHERE campaign_id IN (
+        SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
+    )
+    ; DELETE FROM campaigns WHERE created_by LIKE 'beh-%'
     ; INSERT INTO local_credentials (id,user_id,credential_type,password_hash,status) VALUES
       ('lc-beh-ro','{u["readonly"]}','local_advertiser','{ph}','active'),
       ('lc-beh-np','{u["noperms"]}','local_advertiser','{ph}','active'),
@@ -209,7 +230,26 @@ def _setup_sql(ph):
 
 
 _CLEANUP = """
-    DELETE FROM login_attempts WHERE username_or_email_hash LIKE 'beh-test-%'
+    DELETE FROM outbox_events WHERE aggregate_id IN (
+        SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
+    )
+    ; DELETE FROM campaign_status_history WHERE campaign_id IN (
+        SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
+    )
+    ; DELETE FROM campaign_placements WHERE campaign_id IN (
+        SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
+    )
+    ; DELETE FROM campaign_creatives WHERE campaign_id IN (
+        SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
+    )
+    ; DELETE FROM campaign_flights WHERE campaign_id IN (
+        SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
+    )
+    ; DELETE FROM campaign_approvals WHERE campaign_id IN (
+        SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
+    )
+    ; DELETE FROM campaigns WHERE created_by LIKE 'beh-%'
+    ; DELETE FROM login_attempts WHERE username_or_email_hash LIKE 'beh-test-%'
     ; DELETE FROM refresh_sessions WHERE user_id LIKE 'beh-%'
     ; DELETE FROM advertiser_user_memberships WHERE user_id LIKE 'beh-%'
     ; DELETE FROM local_credentials WHERE user_id LIKE 'beh-%'

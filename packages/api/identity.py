@@ -277,3 +277,140 @@ async def list_campaign_status_history(
     """List campaign status history — scoped + RLS protected."""
     items = await repository.list_campaign_status_history(db)
     return [CampaignStatusHistoryOut.model_validate(item) for item in items]
+
+
+# ---------------------------------------------------------------------------
+# Campaign Mutations (Phase 4.1c — ADR-015)
+# ---------------------------------------------------------------------------
+
+from packages.domain.schemas import (
+    CampaignArchiveResponse,
+    CampaignCreateRequest,
+    CampaignUpdateRequest,
+)
+from packages.domain.repository import (
+archive_campaign,
+create_campaign,
+enqueue_outbox_event,
+get_campaign,
+update_campaign,
+)
+
+
+@router.post("/campaigns", response_model=CampaignOut, status_code=201)
+async def create_campaign_endpoint(
+    body: CampaignCreateRequest,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    _perm=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Create a draft campaign. Writes status history + outbox event."""
+    user_id = claims["sub"]
+    campaign_id = await create_campaign(
+        db,
+        advertiser_organization_id=body.advertiser_organization_id,
+        advertiser_brand_id=body.advertiser_brand_id,
+        advertiser_contract_id=body.advertiser_contract_id,
+        code=body.code,
+        name=body.name,
+        description=body.description,
+        created_by=user_id,
+        start_at=body.start_at,
+        end_at=body.end_at,
+        timezone=body.timezone,
+        budget_limit_amount=body.budget_limit_amount,
+        budget_limit_currency=body.budget_limit_currency,
+        priority=body.priority,
+    )
+    await enqueue_outbox_event(
+        db,
+        event_type="campaign.created",
+        aggregate_type="campaign",
+        aggregate_id=campaign_id,
+        partition_key=body.advertiser_organization_id,
+        payload={
+            "campaign_id": campaign_id,
+            "advertiser_organization_id": body.advertiser_organization_id,
+            "code": body.code,
+            "status": "draft",
+        },
+        headers={"source_service": "control-api"},
+    )
+    campaign = await get_campaign(db, campaign_id)
+    return _serialize_campaign(campaign)
+
+
+@router.patch("/campaigns/{campaign_id}", response_model=CampaignOut)
+async def update_campaign_endpoint(
+    campaign_id: str,
+    body: CampaignUpdateRequest,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    _perm=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Update a draft campaign. Only draft status allowed."""
+    user_id = claims["sub"]
+    status = await update_campaign(
+        db,
+        campaign_id,
+        changed_by=user_id,
+        **body.model_dump(exclude_unset=True),
+    )
+    if status is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=409, detail="Campaign not found or not in draft status")
+    await enqueue_outbox_event(
+        db,
+        event_type="campaign.updated",
+        aggregate_type="campaign",
+        aggregate_id=campaign_id,
+        payload={
+            "campaign_id": campaign_id,
+            "updated_fields": list(body.model_dump(exclude_unset=True).keys()),
+        },
+        headers={"source_service": "control-api"},
+    )
+    campaign = await get_campaign(db, campaign_id)
+    return _serialize_campaign(campaign)
+
+
+@router.post("/campaigns/{campaign_id}/archive", response_model=CampaignArchiveResponse)
+async def archive_campaign_endpoint(
+    campaign_id: str,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    _perm=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Archive a draft or rejected campaign. Writes status history + outbox event."""
+    user_id = claims["sub"]
+    old_status, new_status = await archive_campaign(
+        db,
+        campaign_id,
+        changed_by=user_id,
+    )
+    if old_status is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if old_status == new_status:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=409, detail=f"Cannot archive campaign in status '{old_status}'")
+    await enqueue_outbox_event(
+        db,
+        event_type="campaign.archived",
+        aggregate_type="campaign",
+        aggregate_id=campaign_id,
+        payload={
+            "campaign_id": campaign_id,
+            "old_status": old_status,
+            "new_status": "archived",
+        },
+        headers={"source_service": "control-api"},
+    )
+    return CampaignArchiveResponse(
+        campaign_id=campaign_id,
+        old_status=old_status,
+        new_status="archived",
+    )
