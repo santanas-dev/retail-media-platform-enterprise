@@ -16,7 +16,7 @@ Before any architecture, planning, or implementation work, read:
 2. `docs/00-source-of-truth/TZ_Retail_Media_Platform_v2_5_Final_Hermes.extracted.md`
 3. `docs/00-source-of-truth/rmp_rewrite_starting_decisions.md`
 4. `docs/00-source-of-truth/rmp_enterprise_architecture_review.md`
-5. `docs/architecture/adr/ADR-001..ADR-013` — architecture decision records (current)
+5. `docs/architecture/adr/ADR-001..ADR-014` — architecture decision records (current)
 6. `docs/architecture/erd/erd-v2-5.md` — current ERD
 7. `docs/architecture/api/api-groups-v1.md` — current API contracts
 8. `docs/architecture/README.md` — index + superseded doc list
@@ -33,6 +33,10 @@ generation).**  No sync SDK calls in async handlers.  Use native async,
 **ADR-013 (edge runtime safety) must be read before implementing
 device-gateway, player, sidecar, PoP ingestion, manifest delivery,
 kill-switch, or any device-facing runtime code.**
+
+**ADR-014 (layering) must be read before creating new packages,
+modules, or imports.**  If import direction is unclear, stop and
+review the layer hierarchy — do not guess.
 
 The source-of-truth folder overrides older generated phase reports unless a
 newer approved ADR explicitly changes a decision. The original `.docx` in that
@@ -139,6 +143,9 @@ If a fix seems to require touching a protected boundary, stop and explain why.
 - Prefer existing domain modules over new parallel models.
 - **No sync I/O in async handlers.**  Use native async libraries,
   `run_in_threadpool`, background workers, or streaming.  See ADR-012.
+- **Layer discipline.**  Imports flow downward: apps → api → auth → domain.
+  Domain never imports api or fastapi.  No cross-service imports between
+  apps/.  No shared package may import from apps/.  See ADR-014.
 
 ## Editing Rules
 

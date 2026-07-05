@@ -27,6 +27,7 @@ When decisions conflict, resolve in this order:
 | `adr/ADR-011` | Transactional outbox and event delivery |
 | `adr/ADR-012` | Async I/O and blocking work |
 | `adr/ADR-013` | Edge runtime safety |
+| `adr/ADR-014` | Layering and import boundaries |
 | `erd/erd-v2-5.md` | Current entity-relationship diagram |
 | `api/api-groups-v1.md` | Current API endpoint catalog |
 | `contracts/` | Manifest v1, proof event v1 schemas |
