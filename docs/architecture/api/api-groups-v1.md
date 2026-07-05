@@ -236,6 +236,9 @@ scoped access (403 / 200), RLS row visibility, and the contacts PII gate
 > | POST | `/api/v1/identity/campaigns` | JWT | `campaigns.manage` + advertiser scope | ✅ 4.1c | Create draft campaign. Writes outbox event `campaign.created` + status history. Scoped advertiser can only create for own org. Brand/contract must belong to same org. |
 > | PATCH | `/api/v1/identity/campaigns/{campaign_id}` | JWT | `campaigns.manage` + advertiser scope | ✅ 4.1c | Update draft campaign. Only draft status allowed. Writes outbox event `campaign.updated`. |
 > | POST | `/api/v1/identity/campaigns/{campaign_id}/archive` | JWT | `campaigns.manage` + advertiser scope | ✅ 4.1c | Archive draft/rejected campaign. Writes outbox event `campaign.archived` + status history. |
+> | POST | `/api/v1/identity/campaigns/{campaign_id}/request-approval` | JWT | `campaigns.manage` + advertiser scope | ✅ 4.1d | Request approval: draft → pending_approval. Requires ≥1 flight + placement + creative. |
+> | POST | `/api/v1/identity/campaigns/{campaign_id}/approve` | JWT | `campaigns.approve` + advertiser scope | ✅ 4.1d | Approve: pending_approval → approved. Creates approval record + outbox. |
+> | POST | `/api/v1/identity/campaigns/{campaign_id}/reject` | JWT | `campaigns.approve` + advertiser scope | ✅ 4.1d | Reject: pending_approval → rejected. Reason required. Creates approval record + outbox. |
 >
 > **Mutation security invariants (Phase 4.1c):**
 > - All mutation endpoints require `campaigns.manage` + advertiser scope
@@ -246,7 +249,6 @@ scoped access (403 / 200), RLS row visibility, and the contacts PII gate
 > - No campaign/outbox written on rejection (validated before INSERT)
 >
 > **Deferred (Phase 4.2+):**
-> - Approval workflow (submit/approve/reject)
 > - Delivery/manifest generation
 > - PoP/reporting
 > - Frontend campaign management UI

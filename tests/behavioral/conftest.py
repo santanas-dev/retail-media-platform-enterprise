@@ -260,7 +260,12 @@ _CLEANUP = """
     ; DELETE FROM campaign_approvals WHERE campaign_id IN (
         SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
     )
+    ; DELETE FROM campaign_approvals WHERE campaign_id IN (
+        SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
+    )
     ; DELETE FROM campaigns WHERE created_by LIKE 'beh-%'
+    ; DELETE FROM campaign_approvals WHERE reviewed_by LIKE 'beh-%'
+    ; DELETE FROM campaign_status_history WHERE changed_by LIKE 'beh-%'
     ; DELETE FROM login_attempts WHERE username_or_email_hash LIKE 'beh-test-%'
     ; DELETE FROM refresh_sessions WHERE user_id LIKE 'beh-%'
     ; DELETE FROM advertiser_user_memberships WHERE user_id LIKE 'beh-%'

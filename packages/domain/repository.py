@@ -444,6 +444,199 @@ async def archive_campaign(
 
 
 # ---------------------------------------------------------------------------
+# Approval Workflow (Phase 4.1d — ADR-015)
+# ---------------------------------------------------------------------------
+
+
+async def request_campaign_approval(
+    session: AsyncSession,
+    campaign_id: str,
+    *,
+    changed_by: str,
+    scope_advertiser_ids: frozenset[str] | None = None,
+) -> tuple[str | None, str | None]:
+    """Request approval for a draft campaign. Returns (old_status, new_status).
+
+    Transition: draft → pending_approval.
+    Validates: ≥1 flight, ≥1 placement, ≥1 creative.
+
+    Returns (None, None) if campaign not found or not in draft status.
+    Returns (old, old) if validation fails (no flights/placements/creatives).
+    """
+    import uuid
+    from datetime import datetime, timezone as tz
+    from packages.domain.models import (
+        Campaign, CampaignStatusHistory,
+        CampaignFlight, CampaignPlacement, CampaignCreative,
+    )
+
+    result = await session.execute(
+        select(Campaign).where(Campaign.id == campaign_id)
+    )
+    campaign = result.scalar_one_or_none()
+    if campaign is None:
+        return None, None
+    if campaign.status != "draft":
+        return None, None
+
+    _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    # Validation: ≥1 flight, ≥1 placement, ≥1 creative
+    flights = await session.scalar(
+        select(func.count()).select_from(CampaignFlight)
+        .where(CampaignFlight.campaign_id == campaign_id)
+    )
+    placements = await session.scalar(
+        select(func.count()).select_from(CampaignPlacement)
+        .where(CampaignPlacement.campaign_id == campaign_id)
+    )
+    creatives = await session.scalar(
+        select(func.count()).select_from(CampaignCreative)
+        .where(CampaignCreative.campaign_id == campaign_id)
+    )
+    if not flights or not placements or not creatives:
+        return campaign.status, campaign.status  # validation failed
+
+    now = datetime.now(tz.utc)
+    old_status = campaign.status
+    campaign.status = "pending_approval"
+    campaign.updated_at = now
+
+    history = CampaignStatusHistory(
+        id=str(uuid.uuid4()),
+        campaign_id=campaign_id,
+        old_status=old_status,
+        new_status="pending_approval",
+        changed_by=changed_by,
+        changed_at=now,
+        reason="Approval requested",
+    )
+    session.add(history)
+
+    return old_status, "pending_approval"
+
+
+async def approve_campaign(
+    session: AsyncSession,
+    campaign_id: str,
+    *,
+    reviewed_by: str,
+    scope_advertiser_ids: frozenset[str] | None = None,
+) -> tuple[str | None, str | None]:
+    """Approve a pending_approval campaign. Returns (old_status, new_status).
+
+    Transition: pending_approval → approved.
+    Creates campaign_approvals row + status history.
+    """
+    import uuid
+    from datetime import datetime, timezone as tz
+    from packages.domain.models import (
+        Campaign, CampaignApproval, CampaignStatusHistory,
+    )
+
+    result = await session.execute(
+        select(Campaign).where(Campaign.id == campaign_id)
+    )
+    campaign = result.scalar_one_or_none()
+    if campaign is None:
+        return None, None
+    if campaign.status != "pending_approval":
+        return None, None
+
+    _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    now = datetime.now(tz.utc)
+    old_status = campaign.status
+    campaign.status = "approved"
+    campaign.updated_at = now
+
+    approval = CampaignApproval(
+        id=str(uuid.uuid4()),
+        campaign_id=campaign_id,
+        requested_by=campaign.created_by or "",
+        requested_at=now,
+        reviewed_by=reviewed_by,
+        reviewed_at=now,
+        decision="approved",
+    )
+    session.add(approval)
+
+    history = CampaignStatusHistory(
+        id=str(uuid.uuid4()),
+        campaign_id=campaign_id,
+        old_status=old_status,
+        new_status="approved",
+        changed_by=reviewed_by,
+        changed_at=now,
+        reason="Campaign approved",
+    )
+    session.add(history)
+
+    return old_status, "approved"
+
+
+async def reject_campaign(
+    session: AsyncSession,
+    campaign_id: str,
+    *,
+    reviewed_by: str,
+    reason: str,
+    scope_advertiser_ids: frozenset[str] | None = None,
+) -> tuple[str | None, str | None]:
+    """Reject a pending_approval campaign. Returns (old_status, new_status).
+
+    Transition: pending_approval → rejected.
+    Creates campaign_approvals row + status history.
+    """
+    import uuid
+    from datetime import datetime, timezone as tz
+    from packages.domain.models import (
+        Campaign, CampaignApproval, CampaignStatusHistory,
+    )
+
+    result = await session.execute(
+        select(Campaign).where(Campaign.id == campaign_id)
+    )
+    campaign = result.scalar_one_or_none()
+    if campaign is None:
+        return None, None
+    if campaign.status != "pending_approval":
+        return None, None
+
+    _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    now = datetime.now(tz.utc)
+    old_status = campaign.status
+    campaign.status = "rejected"
+    campaign.updated_at = now
+
+    approval = CampaignApproval(
+        id=str(uuid.uuid4()),
+        campaign_id=campaign_id,
+        requested_by=campaign.created_by or "",
+        requested_at=now,
+        reviewed_by=reviewed_by,
+        reviewed_at=now,
+        decision="rejected",
+        rejection_reason=reason[:1000],
+    )
+    session.add(approval)
+
+    history = CampaignStatusHistory(
+        id=str(uuid.uuid4()),
+        campaign_id=campaign_id,
+        old_status=old_status,
+        new_status="rejected",
+        changed_by=reviewed_by,
+        changed_at=now,
+        reason=f"Campaign rejected: {reason[:200]}",
+    )
+    session.add(history)
+
+    return old_status, "rejected"
+
+
+# ---------------------------------------------------------------------------
 # Transactional Outbox (Phase 4.1c — ADR-011)
 # ---------------------------------------------------------------------------
 

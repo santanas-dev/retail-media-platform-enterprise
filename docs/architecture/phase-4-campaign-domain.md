@@ -1,8 +1,8 @@
 # Phase 4 — Campaign Domain
 
 **Date:** 2026-07-05
-**Phase:** 4.1c (Campaign Mutation Foundation)
-**Commits:** `aab040e` (read-only implementation), `8280d54` (hardening), `1c5e013` (model/migration alignment), `4b19637` (mutation foundation), `7dd05a3` (tenant isolation), `861d082` (existence oracle)
+**Phase:** 4.1d (Campaign Approval Workflow)
+**Commits:** `aab040e` (read-only), `8280d54` (hardening), `1c5e013` (alignment), `4b19637` (mutations), `7dd05a3` (tenant isolation), `861d082` (existence oracle), `...` (approval workflow)
 **Previous:** Phase 4.0b (Advertiser Read-Only Foundation)
 
 ## Purpose
@@ -146,6 +146,22 @@ preserved (`scope_advertiser_ids=None` → no restriction).
 | Successful archive writes outbox `campaign.archived` | `outbox_events` row exists |
 | Non-draft update → 409 | seed campaign set to 'active', PATCH rejected |
 | Status history written on create + archive | `campaign_status_history` rows verified |
+
+### Phase 4.1d — Approval Workflow ✅
+
+| Deliverable | Status |
+|-------------|--------|
+| Repository methods (3) | ✅ `request_campaign_approval`, `approve_campaign`, `reject_campaign` |
+| API endpoints (3) | ✅ POST `request-approval`, POST `approve`, POST `reject` |
+| Status transitions | ✅ draft→pending_approval, pending_approval→approved, pending_approval→rejected |
+| Validation | ✅ ≥1 flight + placement + creative before request |
+| Approval records | ✅ `campaign_approvals` row on approve/reject with decision + reviewer |
+| Status history | ✅ row on every transition |
+| Outbox | ✅ `campaign.approval_requested/approved/rejected` in same transaction |
+| Permission separation | ✅ `campaigns.manage` for request, `campaigns.approve` for approve/reject |
+| Advertiser cannot self-approve | ✅ scoped advertiser gets 403 on approve/reject |
+| Unit tests | ✅ 15 (schemas, permissions, transitions, compliance) |
+| Behavioral tests | ✅ 16 (401, 403, request/approve/reject, non-draft, validation, no-outbox, self-approve) |
 
 ### Deferred (Phase 4.2–4.4)
 

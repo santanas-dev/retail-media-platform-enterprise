@@ -362,3 +362,21 @@ class CampaignArchiveResponse(BaseModel):
     campaign_id: str
     old_status: str
     new_status: str = "archived"
+
+
+# ---------------------------------------------------------------------------
+# Approval Workflow Schemas (Phase 4.1d — ADR-015)
+# ---------------------------------------------------------------------------
+
+
+class CampaignRejectRequest(BaseModel):
+    """Reject a pending_approval campaign. Reason is required per ADR-015."""
+    reason: str = Field(..., min_length=1, max_length=1000)
+
+
+class CampaignApprovalResponse(BaseModel):
+    """Response after an approval action (approve/reject/request)."""
+    message: str
+    campaign_id: str
+    old_status: str
+    new_status: str

@@ -437,3 +437,161 @@ async def archive_campaign_endpoint(
         old_status=old_status,
         new_status="archived",
     )
+
+
+# ---------------------------------------------------------------------------
+# Campaign Approval Workflow (Phase 4.1d — ADR-015)
+# ---------------------------------------------------------------------------
+
+from packages.domain.schemas import (
+    CampaignApprovalResponse,
+    CampaignRejectRequest,
+)
+from packages.domain.repository import (
+    approve_campaign,
+    reject_campaign,
+    request_campaign_approval,
+)
+
+
+@router.post("/campaigns/{campaign_id}/request-approval",
+             response_model=CampaignApprovalResponse)
+async def request_approval_endpoint(
+    campaign_id: str,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Request approval for a draft campaign. Requires ≥1 flight + ≥1 placement + ≥1 creative."""
+    user_id = claims["sub"]
+    try:
+        old_status, new_status = await request_campaign_approval(
+            db,
+            campaign_id,
+            changed_by=user_id,
+            scope_advertiser_ids=_scope_ids(scope),
+        )
+    except ScopeError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    if old_status is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Campaign not found or not in draft status",
+        )
+    if old_status == new_status:
+        raise HTTPException(
+            status_code=422,
+            detail="Campaign must have at least one flight, one placement, and one creative",
+        )
+    await enqueue_outbox_event(
+        db,
+        event_type="campaign.approval_requested",
+        aggregate_type="campaign",
+        aggregate_id=campaign_id,
+        payload={
+            "campaign_id": campaign_id,
+            "old_status": old_status,
+            "new_status": new_status,
+        },
+        headers={"source_service": "control-api"},
+    )
+    return CampaignApprovalResponse(
+        message="Approval requested",
+        campaign_id=campaign_id,
+        old_status=old_status,
+        new_status=new_status,
+    )
+
+
+@router.post("/campaigns/{campaign_id}/approve",
+             response_model=CampaignApprovalResponse)
+async def approve_endpoint(
+    campaign_id: str,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    scope=Depends(require_scoped_permission("campaigns.approve", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Approve a pending_approval campaign. Requires campaigns.approve permission."""
+    user_id = claims["sub"]
+    try:
+        old_status, new_status = await approve_campaign(
+            db,
+            campaign_id,
+            reviewed_by=user_id,
+            scope_advertiser_ids=_scope_ids(scope),
+        )
+    except ScopeError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    if old_status is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Campaign not found or not in pending_approval status",
+        )
+    await enqueue_outbox_event(
+        db,
+        event_type="campaign.approved",
+        aggregate_type="campaign",
+        aggregate_id=campaign_id,
+        payload={
+            "campaign_id": campaign_id,
+            "old_status": old_status,
+            "new_status": new_status,
+        },
+        headers={"source_service": "control-api"},
+    )
+    return CampaignApprovalResponse(
+        message="Campaign approved",
+        campaign_id=campaign_id,
+        old_status=old_status,
+        new_status=new_status,
+    )
+
+
+@router.post("/campaigns/{campaign_id}/reject",
+             response_model=CampaignApprovalResponse)
+async def reject_endpoint(
+    campaign_id: str,
+    body: CampaignRejectRequest,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    scope=Depends(require_scoped_permission("campaigns.approve", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Reject a pending_approval campaign. Requires campaigns.approve + reason."""
+    user_id = claims["sub"]
+    try:
+        old_status, new_status = await reject_campaign(
+            db,
+            campaign_id,
+            reviewed_by=user_id,
+            reason=body.reason,
+            scope_advertiser_ids=_scope_ids(scope),
+        )
+    except ScopeError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    if old_status is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Campaign not found or not in pending_approval status",
+        )
+    await enqueue_outbox_event(
+        db,
+        event_type="campaign.rejected",
+        aggregate_type="campaign",
+        aggregate_id=campaign_id,
+        payload={
+            "campaign_id": campaign_id,
+            "old_status": old_status,
+            "new_status": new_status,
+            "rejection_reason": body.reason[:200],
+        },
+        headers={"source_service": "control-api"},
+    )
+    return CampaignApprovalResponse(
+        message="Campaign rejected",
+        campaign_id=campaign_id,
+        old_status=old_status,
+        new_status=new_status,
+    )
