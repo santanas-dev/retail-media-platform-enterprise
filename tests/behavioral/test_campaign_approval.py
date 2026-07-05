@@ -586,6 +586,7 @@ class TestApprovalTenantIsolation:
 
         Creates a temporary user with campaigns.approve + advertiser scope
         on ADV-002, then tries to approve CAMP-2026-001 (ADV-001 org).
+        Uses try/finally so role_permissions cleanup runs even on assertion failure.
         """
         _draft()
         _pending()
@@ -598,8 +599,8 @@ class TestApprovalTenantIsolation:
             ON CONFLICT (id) DO NOTHING
         """, {"oid": ADV2_ORG_ID})
 
-        # Create a temporary user with campaigns.approve + advertiser scope on ADV-002
         approver_id = "beh-xa-00000000000000000001"
+        # Pre-cleanup in case previous run aborted
         _raw_exec("""
             DELETE FROM campaign_status_history WHERE changed_by = :uid
             ; DELETE FROM campaign_approvals WHERE reviewed_by = :uid
@@ -607,55 +608,63 @@ class TestApprovalTenantIsolation:
             ; DELETE FROM local_credentials WHERE user_id = :uid
             ; DELETE FROM user_roles WHERE user_id = :uid
             ; DELETE FROM users WHERE id = :uid
-            ; INSERT INTO users (id, code, username, email, display_name, auth_provider, status)
-              VALUES (:uid, 'BEH-XA', 'beh-xapprover', 'beh-xa@t.local', 'Beh XA', 'local_advertiser', 'active')
-            ; INSERT INTO local_credentials (id, user_id, credential_type, password_hash, status)
-              VALUES ('lc-beh-xa', :uid, 'local_advertiser', '$2b$04$test', 'active')
-            ; INSERT INTO advertiser_user_memberships (id, user_id, advertiser_organization_id, status, created_at)
-              VALUES ('aum-beh-xa', :uid, :oid2, 'active', NOW())
-            ; INSERT INTO user_roles (id, user_id, role_id)
-              SELECT 'ur-beh-xa', :uid, id FROM roles WHERE code = 'advertiser'
-            ; INSERT INTO role_permissions (id, role_id, permission_id)
-              SELECT gen_random_uuid(), r.id, p.id FROM roles r, permissions p
-              WHERE r.code = 'advertiser' AND p.code = 'campaigns.approve'
-              AND NOT EXISTS (
-                SELECT 1 FROM role_permissions rp
-                WHERE rp.role_id = r.id AND rp.permission_id = p.id
-              )
-        """, {"uid": approver_id, "oid2": ADV2_ORG_ID})
-
-        token = _token(approver_id)
-        # Try to approve ADV-001's campaign — should get 403 (scope mismatch)
-        resp = client.post(
-            f"/api/v1/identity/campaigns/{cid}/approve",
-            headers=_auth(token),
-        )
-        assert resp.status_code == 403, (
-            f"Cross-org approve: expected 403, got {resp.status_code}: {resp.text}"
-        )
-
-        # Campaign unchanged
-        rows = _raw_sql("SELECT status FROM campaigns WHERE id = :cid", {"cid": cid})
-        assert rows[0][0] == "pending_approval"
-
-        # No approval record from cross-org attempt
-        rows = _raw_sql(
-            "SELECT id FROM campaign_approvals WHERE reviewed_by = :uid",
-            {"uid": approver_id},
-        )
-        assert len(rows) == 0, f"Expected 0 approval rows for cross-org approver, got {len(rows)}"
-
-        # Cleanup
-        _raw_exec("""
-            DELETE FROM campaign_status_history WHERE changed_by = :uid
-            ; DELETE FROM campaign_approvals WHERE reviewed_by = :uid
-            ; DELETE FROM advertiser_user_memberships WHERE user_id = :uid
-            ; DELETE FROM local_credentials WHERE user_id = :uid
-            ; DELETE FROM user_roles WHERE user_id = :uid
             ; DELETE FROM role_permissions WHERE role_id = (SELECT id FROM roles WHERE code = 'advertiser')
               AND permission_id = (SELECT id FROM permissions WHERE code = 'campaigns.approve')
-            ; DELETE FROM users WHERE id = :uid
         """, {"uid": approver_id})
+
+        # Grant campaigns.approve to advertiser role — wrapped in finally
+        _raw_exec("""
+            INSERT INTO role_permissions (id, role_id, permission_id)
+            SELECT gen_random_uuid(), r.id, p.id FROM roles r, permissions p
+            WHERE r.code = 'advertiser' AND p.code = 'campaigns.approve'
+            AND NOT EXISTS (
+                SELECT 1 FROM role_permissions rp
+                WHERE rp.role_id = r.id AND rp.permission_id = p.id
+            )
+        """)
+        try:
+            _raw_exec("""
+                INSERT INTO users (id, code, username, email, display_name, auth_provider, status)
+                  VALUES (:uid, 'BEH-XA', 'beh-xapprover', 'beh-xa@t.local', 'Beh XA', 'local_advertiser', 'active')
+                ; INSERT INTO local_credentials (id, user_id, credential_type, password_hash, status)
+                  VALUES ('lc-beh-xa', :uid, 'local_advertiser', '$2b$04$test', 'active')
+                ; INSERT INTO advertiser_user_memberships (id, user_id, advertiser_organization_id, status, created_at)
+                  VALUES ('aum-beh-xa', :uid, :oid2, 'active', NOW())
+                ; INSERT INTO user_roles (id, user_id, role_id)
+                  SELECT 'ur-beh-xa', :uid, id FROM roles WHERE code = 'advertiser'
+            """, {"uid": approver_id, "oid2": ADV2_ORG_ID})
+
+            token = _token(approver_id)
+            resp = client.post(
+                f"/api/v1/identity/campaigns/{cid}/approve",
+                headers=_auth(token),
+            )
+            assert resp.status_code == 403, (
+                f"Cross-org approve: expected 403, got {resp.status_code}: {resp.text}"
+            )
+
+            # Campaign unchanged
+            rows = _raw_sql("SELECT status FROM campaigns WHERE id = :cid", {"cid": cid})
+            assert rows[0][0] == "pending_approval"
+
+            # No approval record from cross-org attempt
+            rows = _raw_sql(
+                "SELECT id FROM campaign_approvals WHERE reviewed_by = :uid",
+                {"uid": approver_id},
+            )
+            assert len(rows) == 0, f"Expected 0 approval rows for cross-org approver, got {len(rows)}"
+        finally:
+            # Cleanup — always runs, even if assertions fail
+            _raw_exec("""
+                DELETE FROM campaign_status_history WHERE changed_by = :uid
+                ; DELETE FROM campaign_approvals WHERE reviewed_by = :uid
+                ; DELETE FROM advertiser_user_memberships WHERE user_id = :uid
+                ; DELETE FROM local_credentials WHERE user_id = :uid
+                ; DELETE FROM user_roles WHERE user_id = :uid
+                ; DELETE FROM users WHERE id = :uid
+                ; DELETE FROM role_permissions WHERE role_id = (SELECT id FROM roles WHERE code = 'advertiser')
+                  AND permission_id = (SELECT id FROM permissions WHERE code = 'campaigns.approve')
+            """, {"uid": approver_id})
 
         _draft()
 
@@ -703,6 +712,61 @@ class TestFlightContractValidation:
 
         # Clean up the out-of-contract flight
         _raw_exec("DELETE FROM campaign_flights WHERE id = 'flight-outside-01'")
+        _draft()
+
+    def test_flight_past_valid_until_blocked(self, client, user_ids):
+        """Campaign with flight past contract valid_until → 422, no outbox."""
+        _draft()
+        cid = _cid()
+        token = _token(user_ids["readonly"])
+
+        # Create temp contract with finite valid_until, swap campaign to it
+        _raw_exec("""
+            INSERT INTO advertiser_contracts (id, advertiser_organization_id, code, name,
+                valid_from, valid_until, status, created_at, updated_at)
+            VALUES ('contract-temp-end', :oid, 'TEMP-END', 'Contract with end date',
+                    '2025-06-01T00:00:00Z', '2025-12-31T23:59:59Z', 'active', NOW(), NOW())
+            ON CONFLICT (id) DO NOTHING
+        """, {"oid": ADV1_ORG_ID})
+        _raw_exec(
+            "UPDATE campaigns SET advertiser_contract_id = 'contract-temp-end' WHERE id = :cid",
+            {"cid": cid},
+        )
+
+        # Create a flight whose end_at exceeds valid_until (2025-12-31)
+        _raw_exec("""
+            INSERT INTO campaign_flights (id, campaign_id, name, start_at, end_at, created_at)
+            VALUES ('flight-past-end', :cid, 'Past-end flight',
+                    '2025-07-01T00:00:00Z', '2026-06-01T00:00:00Z', NOW())
+        """, {"cid": cid})
+
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{cid}/request-approval",
+            headers=_auth(token),
+        )
+        assert resp.status_code == 422, (
+            f"Flight past valid_until: expected 422, got {resp.status_code}: {resp.text}"
+        )
+
+        # Campaign still in draft
+        rows = _raw_sql("SELECT status FROM campaigns WHERE id = :cid", {"cid": cid})
+        assert rows[0][0] == "draft"
+
+        # No outbox event from failed request
+        rows = _raw_sql(
+            "SELECT id FROM outbox_events WHERE aggregate_id = :aid "
+            "AND event_type = 'campaign.approval_requested'",
+            {"aid": cid},
+        )
+        assert len(rows) == 0, f"Expected 0 outbox events, got {len(rows)}"
+
+        # Restore
+        _raw_exec("DELETE FROM campaign_flights WHERE id = 'flight-past-end'")
+        _raw_exec(
+            "UPDATE campaigns SET advertiser_contract_id = :ctr WHERE id = :cid",
+            {"cid": cid, "ctr": ADV1_CONTRACT_ID},
+        )
+        _raw_exec("DELETE FROM advertiser_contracts WHERE id = 'contract-temp-end'")
         _draft()
 
 
