@@ -36,6 +36,7 @@ When decisions conflict, resolve in this order:
 | `phase-1-skeleton.md` | Phase 1 deliverable summary |
 | `phase-2-foundation.md` | Phase 2 deliverable summary |
 | `phase-4-advertiser-domain.md` | Phase 4 (advertiser domain) close-out summary |
+| `phase-4-campaign-domain.md` | Phase 4 (campaign domain) close-out summary |
 | `legacy-reference.md` | Old platform reference pointer |
 
 ## Superseded Documents (Historical Only)

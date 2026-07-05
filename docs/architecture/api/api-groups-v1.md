@@ -224,15 +224,15 @@ scoped access (403 / 200), RLS row visibility, and the contacts PII gate
 >
 > **Current (Phase 4.1b) endpoints:**
 >
-> | Method | Endpoint | Auth | Permission | Description |
-> |--------|----------|------|------------|-------------|
-> | GET | `/api/v1/identity/campaigns` | JWT | `campaigns.read` | List all campaigns (scoped + RLS) |
-> | GET | `/api/v1/identity/campaign-flights` | JWT | `campaigns.read` | List all flights (scoped + RLS) |
-> | GET | `/api/v1/identity/campaign-creatives` | JWT | `campaigns.read` | List campaign-creative links |
-> | GET | `/api/v1/identity/creative-assets` | JWT | `creatives.read` | List creative assets (metadata only) |
-> | GET | `/api/v1/identity/campaign-placements` | JWT | `campaigns.read` | List placements |
-> | GET | `/api/v1/identity/campaign-approvals` | JWT | `campaigns.read` | List approval records |
-> | GET | `/api/v1/identity/campaign-status-history` | JWT | `campaigns.read` | List status history |
+> | Method | Endpoint | Auth | Permission | Status | Description |
+> |--------|----------|------|------------|--------|-------------|
+> | GET | `/api/v1/identity/campaigns` | JWT | `campaigns.read` | ✅ 4.1b | List all campaigns (scoped + RLS) |
+> | GET | `/api/v1/identity/campaign-flights` | JWT | `campaigns.read` | ✅ 4.1b | List all flights (scoped + RLS) |
+> | GET | `/api/v1/identity/campaign-creatives` | JWT | `campaigns.read` | ✅ 4.1b | List campaign-creative links |
+> | GET | `/api/v1/identity/creative-assets` | JWT | `creatives.read` | ✅ 4.1b | List creative assets (metadata only) |
+> | GET | `/api/v1/identity/campaign-placements` | JWT | `campaigns.read` | ✅ 4.1b | List placements |
+> | GET | `/api/v1/identity/campaign-approvals` | JWT | `campaigns.read` | ✅ 4.1b | List approval records |
+> | GET | `/api/v1/identity/campaign-status-history` | JWT | `campaigns.read` | ✅ 4.1b | List status history |
 >
 > **Future REST paths (Phase 4.1c+):**
 
