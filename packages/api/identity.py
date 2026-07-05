@@ -7,7 +7,6 @@ Phase 3.5b: Advertiser organizations endpoint with RLS.
 """
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
 
 from packages.api.dependencies import (
     get_current_active_user,
@@ -17,7 +16,6 @@ from packages.api.dependencies import (
     set_rls_context,
 )
 from packages.domain import repository
-from packages.domain.models import AdvertiserOrganization
 from packages.domain.schemas import (
     MAX_LIMIT,
     DEFAULT_LIMIT,
@@ -124,6 +122,5 @@ async def list_advertiser_organizations(
       → global permission OR advertiser scope
     - DB: PostgreSQL RLS filters rows by app.rmp_scope_advertiser_ids
     """
-    result = await db.execute(select(AdvertiserOrganization))
-    items = result.scalars().all()
+    items = await repository.list_advertiser_organizations(db)
     return [AdvertiserOrganizationOut.model_validate(o) for o in items]

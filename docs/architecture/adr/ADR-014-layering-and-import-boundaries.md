@@ -98,9 +98,9 @@ packages/contracts/ ──may import──► (nothing at runtime)
                     ──MUST NOT──►  any runtime package
 ```
 
-**Rationale for domain → security (config only):** `packages/domain/database.py`
-needs `get_security_config()` to read `DATABASE_URL`.  This is a narrow,
-justified exception.  Domain modules must not import `jwt`, `password`,
+**Rationale for domain → security (config only):** Domain modules that need
+`DATABASE_URL` or other environment-driven settings read them from `os.environ`
+directly.  They must not import `jwt`, `password`,
 `sanitize`, or `tokens` — those are auth-layer concerns.
 
 ### 3. Explicitly Forbidden Imports
@@ -221,14 +221,15 @@ As of Phase 4.0a, the existing codebase complies with these rules:
 | Package | Imports from | Compliant? |
 |---------|-------------|:----------:|
 | `packages/domain/` | `packages.domain.models` only (self) | ✅ |
-| `packages/security/` | stdlib + `os` only | ✅ |
+| `packages/security/` | stdlib + approved crypto/JWT libraries only | ✅ |
 | `packages/observability/` | stdlib only | ✅ |
 | `packages/auth/` | `domain.*` models, `security.*`, `auth.*` | ✅ |
-| `packages/api/` | `domain.*`, `security.*`, `auth.*`, `fastapi` | ✅ |
+| `packages/api/` | `domain.*` (repository), `security.*`, `auth.*`, `fastapi` | ✅ |
 | `apps/control-api/` | `packages.*`, `fastapi` | ✅ |
 
-No forbidden imports exist.  This ADR codifies the current compliance
-as the permanent rule.
+No forbidden imports exist.  Router endpoints delegate all DB queries
+to `packages/domain/repository.py` — no `db.execute()` calls in route
+handlers.  This ADR codifies the current compliance as the permanent rule.
 
 ## Consequences
 
@@ -241,10 +242,11 @@ as the permanent rule.
   changes.  A developer adding a two-line helper may need to decide
   which package it belongs to.  Import-linter adds CI latency (future).
 
-- **Risk:** The "config-only" exception for domain → security could
-  expand over time ("just this one more import").  Mitigation: any new
-  domain → security import beyond `get_security_config()` requires
-  explicit approval and an ADR amendment.
+- **Risk:** The rule allowing domain modules to read environment settings
+  directly could be misunderstood as permission for broader domain →
+  security imports.  Mitigation: any new domain import from
+  `packages.security` (beyond what's already prohibited) requires explicit
+  approval and an ADR amendment.
 
 ## References
 

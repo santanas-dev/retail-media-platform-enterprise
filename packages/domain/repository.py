@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from packages.domain.models import (
+    AdvertiserOrganization,
     AuditEventOperational,
     Permission,
     Role,
@@ -96,3 +97,12 @@ async def get_user_permissions(
     )
     result = await session.execute(stmt)
     return {row[0] for row in result}
+
+
+async def list_advertiser_organizations(
+    session: AsyncSession,
+) -> list[AdvertiserOrganization]:
+    """Return all advertiser organizations, ordered by code."""
+    stmt = select(AdvertiserOrganization).order_by(AdvertiserOrganization.code)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
