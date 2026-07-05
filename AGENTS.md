@@ -16,7 +16,7 @@ Before any architecture, planning, or implementation work, read:
 2. `docs/00-source-of-truth/TZ_Retail_Media_Platform_v2_5_Final_Hermes.extracted.md`
 3. `docs/00-source-of-truth/rmp_rewrite_starting_decisions.md`
 4. `docs/00-source-of-truth/rmp_enterprise_architecture_review.md`
-5. `docs/architecture/adr/ADR-001..ADR-011` — architecture decision records (current)
+5. `docs/architecture/adr/ADR-001..ADR-012` — architecture decision records (current)
 6. `docs/architecture/erd/erd-v2-5.md` — current ERD
 7. `docs/architecture/api/api-groups-v1.md` — current API contracts
 8. `docs/architecture/README.md` — index + superseded doc list
@@ -24,6 +24,11 @@ Before any architecture, planning, or implementation work, read:
 **ADR-011 (transactional outbox) must be read before implementing any
 event producer, outbox relay worker, or NATS publishing code.**  Every
 domain event from an OLTP transaction requires the outbox pattern.
+
+**ADR-012 (async I/O) must be read before implementing any external
+I/O integration (LDAP, S3/MinIO, file uploads, external APIs, report
+generation).**  No sync SDK calls in async handlers.  Use native async,
+`run_in_threadpool`, background workers, or streaming as appropriate.
 
 The source-of-truth folder overrides older generated phase reports unless a
 newer approved ADR explicitly changes a decision. The original `.docx` in that
@@ -128,6 +133,8 @@ If a fix seems to require touching a protected boundary, stop and explain why.
 - Portal pages must use backend data or clearly marked safe demo data.
 - Portal route guards must match backend permissions.
 - Prefer existing domain modules over new parallel models.
+- **No sync I/O in async handlers.**  Use native async libraries,
+  `run_in_threadpool`, background workers, or streaming.  See ADR-012.
 
 ## Editing Rules
 
