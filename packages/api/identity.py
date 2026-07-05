@@ -297,8 +297,6 @@ from packages.domain.repository import (
 )
 from packages.domain.exceptions import (
     CrossOrgReferenceError,
-    DomainError,
-    EntityNotFoundError,
     ScopeError,
 )
 
@@ -307,7 +305,8 @@ def _scope_ids(scope) -> frozenset[str] | None:
     """Return advertiser scope IDs for scoped users, None for admins."""
     if scope.is_admin:
         return None  # admin — no scope restriction
-    return scope.advertiser_scope_ids if scope else frozenset()
+    ids = scope.advertiser_scope_ids if scope else set()
+    return frozenset(ids) if ids else frozenset()
 
 
 @router.post("/campaigns", response_model=CampaignOut, status_code=201)
@@ -338,8 +337,6 @@ async def create_campaign_endpoint(
             priority=body.priority,
             scope_advertiser_ids=_scope_ids(scope),
         )
-    except EntityNotFoundError as e:
-        raise HTTPException(status_code=422, detail=str(e))
     except CrossOrgReferenceError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except ScopeError as e:

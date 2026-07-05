@@ -235,7 +235,6 @@ class TestRouterScopeWiring(unittest.TestCase):
         content = self._router_content()
         self.assertIn("from packages.domain.exceptions import", content)
         self.assertIn("ScopeError", content)
-        self.assertIn("EntityNotFoundError", content)
         self.assertIn("CrossOrgReferenceError", content)
 
     def test_router_has_scope_ids_helper(self):
@@ -252,9 +251,10 @@ class TestRouterScopeWiring(unittest.TestCase):
         self.assertIn("except CrossOrgReferenceError", content)
         self.assertIn("status_code=422", content)
 
-    def test_router_catches_entity_not_found_as_422(self):
+    def test_router_does_not_import_entity_not_found(self):
+        """EntityNotFoundError is no longer caught — existence oracle removed."""
         content = self._router_content()
-        self.assertIn("except EntityNotFoundError", content)
+        self.assertNotIn("EntityNotFoundError", content)
 
 
 if __name__ == "__main__":

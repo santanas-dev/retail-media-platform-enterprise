@@ -231,21 +231,21 @@ async def _validate_contract_belongs_to_org(
     contract_id: str,
     advertiser_organization_id: str,
 ) -> None:
-    """Raise CrossOrgReferenceError if contract doesn't belong to the org."""
+    """Raise CrossOrgReferenceError if contract doesn't belong to the org.
+
+    Does NOT distinguish between "not found" and "wrong org" —
+    both return the same generic error to avoid existence oracle.
+    """
     from packages.domain.models import AdvertiserContract
-    from packages.domain.exceptions import CrossOrgReferenceError, EntityNotFoundError
+    from packages.domain.exceptions import CrossOrgReferenceError
 
     stmt = select(AdvertiserContract).where(
         AdvertiserContract.id == contract_id,
     )
     result = await session.execute(stmt)
     contract = result.scalar_one_or_none()
-    if contract is None:
-        raise EntityNotFoundError("Contract not found")
-    if contract.advertiser_organization_id != advertiser_organization_id:
-        raise CrossOrgReferenceError(
-            "Contract does not belong to the specified organization"
-        )
+    if contract is None or contract.advertiser_organization_id != advertiser_organization_id:
+        raise CrossOrgReferenceError("Invalid advertiser contract reference")
 
 
 async def _validate_brand_belongs_to_org(
@@ -253,19 +253,19 @@ async def _validate_brand_belongs_to_org(
     brand_id: str,
     advertiser_organization_id: str,
 ) -> None:
-    """Raise CrossOrgReferenceError if brand doesn't belong to the org."""
+    """Raise CrossOrgReferenceError if brand doesn't belong to the org.
+
+    Does NOT distinguish between "not found" and "wrong org" —
+    both return the same generic error to avoid existence oracle.
+    """
     from packages.domain.models import AdvertiserBrand
-    from packages.domain.exceptions import CrossOrgReferenceError, EntityNotFoundError
+    from packages.domain.exceptions import CrossOrgReferenceError
 
     stmt = select(AdvertiserBrand).where(AdvertiserBrand.id == brand_id)
     result = await session.execute(stmt)
     brand = result.scalar_one_or_none()
-    if brand is None:
-        raise EntityNotFoundError("Brand not found")
-    if brand.advertiser_organization_id != advertiser_organization_id:
-        raise CrossOrgReferenceError(
-            "Brand does not belong to the specified organization"
-        )
+    if brand is None or brand.advertiser_organization_id != advertiser_organization_id:
+        raise CrossOrgReferenceError("Invalid advertiser brand reference")
 
 
 def _assert_org_in_scope(

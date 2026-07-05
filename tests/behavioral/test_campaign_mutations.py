@@ -323,6 +323,53 @@ class TestCreateCampaignTenantIsolation:
         )
         assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
 
+    def test_nonexistent_contract_same_as_cross_org(self, client, user_ids):
+        """Nonexistent contract → 422 with same generic message as cross-org.
+        No existence oracle: indistinguishable from cross-org reference."""
+        token = self._token_for(user_ids, "readonly")
+        nonexistent_id = "00000000-0000-0000-0000-ffffffffffff"
+
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV1_ORG_ID,
+                "advertiser_contract_id": nonexistent_id,
+                "code": "CAMP-NOEX-CTR",
+                "name": "Nonexistent Contract",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+        # Must be same message as cross-org
+        assert "Invalid advertiser contract reference" in resp.text
+
+        # No campaign created
+        rows = _raw_sql("SELECT id FROM campaigns WHERE code = 'CAMP-NOEX-CTR'")
+        assert len(rows) == 0
+
+    def test_nonexistent_brand_same_as_cross_org(self, client, user_ids):
+        """Nonexistent brand → 422 with same generic message as cross-org."""
+        token = self._token_for(user_ids, "readonly")
+        nonexistent_id = "00000000-0000-0000-0000-eeeeeeeeeeee"
+
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV1_ORG_ID,
+                "advertiser_brand_id": nonexistent_id,
+                "advertiser_contract_id": ADV1_CONTRACT_ID,
+                "code": "CAMP-NOEX-BR",
+                "name": "Nonexistent Brand",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+        assert "Invalid advertiser brand reference" in resp.text
+
+        # No campaign created
+        rows = _raw_sql("SELECT id FROM campaigns WHERE code = 'CAMP-NOEX-BR'")
+        assert len(rows) == 0
+
     def test_wrong_org_rejection_does_not_write_outbox(self, client, user_ids):
         """P2: scope rejection → no campaign, no outbox event."""
         token = self._token_for(user_ids, "advertiser")
