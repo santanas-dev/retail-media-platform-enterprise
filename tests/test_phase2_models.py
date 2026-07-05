@@ -383,7 +383,7 @@ class TestPhase21SeedIdentity(unittest.TestCase):
         self.assertIsNotNone(m, "Cannot find SEED_SQL")
         sql = m.group(1)
         inserts = [l for l in sql.split("\n") if l.strip().upper().startswith("INSERT")]
-        self.assertEqual(len(inserts), 84, f"Expected 84 INSERTs, got {len(inserts)}")
+        self.assertEqual(len(inserts), 83, f"Expected 83 INSERTs, got {len(inserts)}")
 
 
 class TestPhase21AuditEventModel(unittest.TestCase):

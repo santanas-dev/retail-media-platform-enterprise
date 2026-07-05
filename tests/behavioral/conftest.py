@@ -142,6 +142,48 @@ def _setup_sql(ph):
         WHERE role_id='00000000-0000-0000-0000-000000000114'
         AND permission_id=(SELECT id FROM permissions WHERE code='advertisers.contacts.read')
       )
+    -- Phase 4.1b: advertiser role needs campaigns.read for campaign endpoints
+    ; INSERT INTO role_permissions (id,role_id,permission_id)
+      SELECT 'rp-beh-adv-campread','00000000-0000-0000-0000-000000000114',id
+      FROM permissions WHERE code='campaigns.read'
+      AND NOT EXISTS (
+        SELECT 1 FROM role_permissions
+        WHERE role_id='00000000-0000-0000-0000-000000000114'
+        AND permission_id=(SELECT id FROM permissions WHERE code='campaigns.read')
+      )
+    -- Phase 4.1b: advertiser role needs creatives.read for creative asset access
+    ; INSERT INTO role_permissions (id,role_id,permission_id)
+      SELECT 'rp-beh-adv-creatread','00000000-0000-0000-0000-000000000114',id
+      FROM permissions WHERE code='creatives.read'
+      AND NOT EXISTS (
+        SELECT 1 FROM role_permissions
+        WHERE role_id='00000000-0000-0000-0000-000000000114'
+        AND permission_id=(SELECT id FROM permissions WHERE code='creatives.read')
+      )
+    -- Phase 4.1b: ensure campaign-related permissions exist (idempotent)
+    ; INSERT INTO permissions (id, code, name) VALUES
+      ('00000000-0000-0000-0000-00000000010c','campaigns.read','Просмотр кампаний')
+      ON CONFLICT (code) DO NOTHING
+    ; INSERT INTO permissions (id, code, name) VALUES
+      ('00000000-0000-0000-0000-00000000010f','creatives.read','Просмотр креативов')
+      ON CONFLICT (code) DO NOTHING
+    -- Phase 4.1b: ensure campaign permissions on system_admin (idempotent)
+    ; INSERT INTO role_permissions (id,role_id,permission_id)
+      SELECT 'rp-beh-sa-campread',r.id,p.id
+      FROM roles r CROSS JOIN permissions p
+      WHERE r.code='system_admin' AND p.code='campaigns.read'
+      AND NOT EXISTS (
+        SELECT 1 FROM role_permissions
+        WHERE role_id=r.id AND permission_id=p.id
+      )
+    ; INSERT INTO role_permissions (id,role_id,permission_id)
+      SELECT 'rp-beh-sa-creatread',r.id,p.id
+      FROM roles r CROSS JOIN permissions p
+      WHERE r.code='system_admin' AND p.code='creatives.read'
+      AND NOT EXISTS (
+        SELECT 1 FROM role_permissions
+        WHERE role_id=r.id AND permission_id=p.id
+      )
     ; INSERT INTO advertiser_user_memberships (id,user_id,advertiser_organization_id,status)
       SELECT 'aum-beh-av','{u["advertiser"]}',id,'active'
       FROM advertiser_organizations WHERE code='ADV-001'

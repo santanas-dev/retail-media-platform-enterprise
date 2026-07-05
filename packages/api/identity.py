@@ -26,8 +26,6 @@ from packages.domain.schemas import (
     CreativeAssetOut,
     MAX_LIMIT,
     DEFAULT_LIMIT,
-    MAX_LIMIT,
-    DEFAULT_LIMIT,
     AdvertiserBrandOut,
     AdvertiserContactOut,
     AdvertiserContractOut,

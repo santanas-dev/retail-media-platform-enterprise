@@ -216,22 +216,25 @@ scoped access (403 / 200), RLS row visibility, and the contacts PII gate
 
 ## 7. Campaigns & Placements API
 
-> **Status: Phase 4.1a — Architecture Lock (ADR-015).**
-> Endpoints are planned, not implemented.  All campaign endpoints require
-> JWT + `require_scoped_permission` + PostgreSQL RLS (two-layer defense
-> per ADR-009).  Campaign mutations produce outbox events (ADR-011) —
-> no direct NATS publish.  Architecture locked in ADR-015.
-
-### Phase 4.1b — Read-Only (planned)
-
-| Method | Endpoint | Auth | Permission | Description |
-|--------|----------|------|------------|-------------|
-| GET | `/api/v1/campaigns` | JWT | `campaigns.read` | List campaigns (paginated, filterable by org/status/brand) |
-| GET | `/api/v1/campaigns/{code}` | JWT | `campaigns.read` | Campaign detail |
-| GET | `/api/v1/campaigns/{code}/placements` | JWT | `campaigns.read` | List placements for campaign |
-| GET | `/api/v1/campaigns/{code}/creatives` | JWT | `campaigns.read` | List creatives linked to campaign |
-| GET | `/api/v1/campaigns/{code}/flights` | JWT | `campaigns.read` | List flights/periods for campaign |
-| GET | `/api/v1/creatives` | JWT | `creatives.read` | List creative assets (paginated, filterable by org) |
+> **Status: Phase 4.1b — Implemented (read-only).**
+> All campaign endpoints live under `/api/v1/identity/` in Phase 4.1b
+> (provisional flat list-all paths).  Nested REST paths under
+> `/api/v1/campaigns/{code}/...` are planned for mutation/detail phases
+> (4.1c+).  Architecture locked in ADR-015.
+>
+> **Current (Phase 4.1b) endpoints:**
+>
+> | Method | Endpoint | Auth | Permission | Description |
+> |--------|----------|------|------------|-------------|
+> | GET | `/api/v1/identity/campaigns` | JWT | `campaigns.read` | List all campaigns (scoped + RLS) |
+> | GET | `/api/v1/identity/campaign-flights` | JWT | `campaigns.read` | List all flights (scoped + RLS) |
+> | GET | `/api/v1/identity/campaign-creatives` | JWT | `campaigns.read` | List campaign-creative links |
+> | GET | `/api/v1/identity/creative-assets` | JWT | `creatives.read` | List creative assets (metadata only) |
+> | GET | `/api/v1/identity/campaign-placements` | JWT | `campaigns.read` | List placements |
+> | GET | `/api/v1/identity/campaign-approvals` | JWT | `campaigns.read` | List approval records |
+> | GET | `/api/v1/identity/campaign-status-history` | JWT | `campaigns.read` | List status history |
+>
+> **Future REST paths (Phase 4.1c+):**
 
 ### Phase 4.1c — Mutations (planned, deferred)
 

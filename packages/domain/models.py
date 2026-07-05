@@ -55,6 +55,13 @@ __all__ = [
     "RefreshSession",
     "LoginAttempt",
     "PasswordResetToken",
+    "Campaign",
+    "CampaignFlight",
+    "CampaignPlacement",
+    "CreativeAsset",
+    "CampaignCreative",
+    "CampaignApproval",
+    "CampaignStatusHistory",
 ]
 
 
@@ -771,4 +778,7 @@ REQUIRED_TABLES = frozenset({
     "advertiser_brands", "advertiser_contracts", "advertiser_contacts",
     "local_credentials", "refresh_sessions",
     "login_attempts", "password_reset_tokens",
+    "campaigns", "campaign_flights", "campaign_placements",
+    "creative_assets", "campaign_creatives",
+    "campaign_approvals", "campaign_status_history",
 })

@@ -127,6 +127,10 @@ def upgrade() -> None:
                   server_default=sa.text("NOW()")),
     )
     op.create_index("ix_campaign_flights_cid", "campaign_flights", ["campaign_id"])
+    op.create_check_constraint(
+        "ck_cf_start_before_end", "campaign_flights",
+        "start_at < end_at",
+    )
     op.execute("ALTER TABLE campaign_flights ENABLE ROW LEVEL SECURITY")
     op.execute("ALTER TABLE campaign_flights FORCE ROW LEVEL SECURITY")
     op.execute(RLS_VIA_CAMPAIGN.format(table="campaign_flights"))
@@ -147,8 +151,8 @@ def upgrade() -> None:
                   sa.ForeignKey("branches.id"), nullable=True),
         sa.Column("share_of_voice_pct", sa.Integer, nullable=False,
                   server_default=sa.text("100")),
-        sa.Column("max_impressions", sa.Integer, nullable=True),
-        sa.Column("impressions_delivered", sa.Integer, nullable=False,
+        sa.Column("max_impressions", sa.BigInteger, nullable=True),
+        sa.Column("impressions_delivered", sa.BigInteger, nullable=False,
                   server_default=sa.text("0")),
         sa.Column("status", sa.String(32), nullable=False,
                   server_default="active"),

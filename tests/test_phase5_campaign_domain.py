@@ -184,6 +184,16 @@ class TestMigration006(unittest.TestCase):
         # sub-tables use RLS_VIA_CAMPAIGN
         self.assertIn('RLS_VIA_CAMPAIGN.format(table="campaign_flights")', content)
 
+    def test_flight_start_before_end_constraint(self):
+        mig_path = os.path.join(
+            os.path.dirname(__file__), "..",
+            "apps", "control-api", "alembic", "versions",
+            "006_campaign_domain.py",
+        )
+        content = open(mig_path).read()
+        self.assertIn("ck_cf_start_before_end", content)
+        self.assertIn("start_at < end_at", content)
+
     def test_placement_check_constraint(self):
         mig_path = os.path.join(
             os.path.dirname(__file__), "..",
@@ -241,8 +251,11 @@ class TestSeedCampaignPermissions(unittest.TestCase):
         self.assertIn("creative_assets", self.content)
         self.assertIn("campaign_creatives", self.content)
         self.assertIn("campaign_placements", self.content)
-        self.assertIn("campaign_approvals", self.content)
         self.assertIn("campaign_status_history", self.content)
+
+    def test_seed_has_no_orphan_approval(self):
+        """Draft campaign in seed should not have an approval record."""
+        self.assertNotIn("campaign_approvals", self.content)
 
 
 class TestCampaignSchemas(unittest.TestCase):

@@ -501,14 +501,6 @@ VALUES ('{SEED_CAMPAIGN_PLACEMENT_ID}', '{SEED_CAMPAIGN_ID}',
     '{SEED_SURFACE_ID}', 100, 'active')
 ON CONFLICT DO NOTHING;
 
--- Test approval record
-INSERT INTO campaign_approvals (id, campaign_id, requested_by, requested_at,
-    reviewed_by, reviewed_at, decision)
-VALUES ('{SEED_CAMPAIGN_APPROVAL_ID}', '{SEED_CAMPAIGN_ID}',
-    '{SEED_ADV_USER_ID}', '2026-07-05 12:00:00+03',
-    '{SEED_BG_USER_ID}', '2026-07-05 14:30:00+03', 'approved')
-ON CONFLICT DO NOTHING;
-
 -- Test status history (creation + submission)
 INSERT INTO campaign_status_history (id, campaign_id, old_status, new_status,
     changed_by, reason)
@@ -530,7 +522,7 @@ async def seed():
     print("Seed complete: 1 branch → 1 cluster → 1 store → 1 KSO device → 1 surface "
           "+ 16 permissions, 4 roles, campaign role-permissions, 1 break-glass admin, "
           "1 advertiser org + 1 advertiser user, 2 brands, 1 contract, 2 contacts, "
-          "1 campaign + 1 flight + 1 creative + 1 placement + 1 approval + 1 status history")
+          "1 campaign + 1 flight + 1 creative + 1 placement + 1 status history")
 
 
 if __name__ == "__main__":
