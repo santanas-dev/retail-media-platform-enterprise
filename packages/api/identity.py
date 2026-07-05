@@ -6,7 +6,7 @@ Phase 3.3: Endpoints now protected with JWT + permission checks.
 Phase 3.5b: Advertiser organizations endpoint with RLS.
 """
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from packages.api.dependencies import (
     get_current_active_user,
@@ -289,12 +289,25 @@ from packages.domain.schemas import (
     CampaignUpdateRequest,
 )
 from packages.domain.repository import (
-archive_campaign,
-create_campaign,
-enqueue_outbox_event,
-get_campaign,
-update_campaign,
+    archive_campaign,
+    create_campaign,
+    enqueue_outbox_event,
+    get_campaign,
+    update_campaign,
 )
+from packages.domain.exceptions import (
+    CrossOrgReferenceError,
+    DomainError,
+    EntityNotFoundError,
+    ScopeError,
+)
+
+
+def _scope_ids(scope) -> frozenset[str] | None:
+    """Return advertiser scope IDs for scoped users, None for admins."""
+    if scope.is_admin:
+        return None  # admin — no scope restriction
+    return scope.advertiser_scope_ids if scope else frozenset()
 
 
 @router.post("/campaigns", response_model=CampaignOut, status_code=201)
@@ -302,27 +315,35 @@ async def create_campaign_endpoint(
     body: CampaignCreateRequest,
     db=Depends(get_db),
     claims: dict = Depends(get_current_active_user),
-    _perm=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
     """Create a draft campaign. Writes status history + outbox event."""
     user_id = claims["sub"]
-    campaign_id = await create_campaign(
-        db,
-        advertiser_organization_id=body.advertiser_organization_id,
-        advertiser_brand_id=body.advertiser_brand_id,
-        advertiser_contract_id=body.advertiser_contract_id,
-        code=body.code,
-        name=body.name,
-        description=body.description,
-        created_by=user_id,
-        start_at=body.start_at,
-        end_at=body.end_at,
-        timezone=body.timezone,
-        budget_limit_amount=body.budget_limit_amount,
-        budget_limit_currency=body.budget_limit_currency,
-        priority=body.priority,
-    )
+    try:
+        campaign_id = await create_campaign(
+            db,
+            advertiser_organization_id=body.advertiser_organization_id,
+            advertiser_brand_id=body.advertiser_brand_id,
+            advertiser_contract_id=body.advertiser_contract_id,
+            code=body.code,
+            name=body.name,
+            description=body.description,
+            created_by=user_id,
+            start_at=body.start_at,
+            end_at=body.end_at,
+            timezone=body.timezone,
+            budget_limit_amount=body.budget_limit_amount,
+            budget_limit_currency=body.budget_limit_currency,
+            priority=body.priority,
+            scope_advertiser_ids=_scope_ids(scope),
+        )
+    except EntityNotFoundError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except CrossOrgReferenceError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except ScopeError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     await enqueue_outbox_event(
         db,
         event_type="campaign.created",
@@ -347,19 +368,22 @@ async def update_campaign_endpoint(
     body: CampaignUpdateRequest,
     db=Depends(get_db),
     claims: dict = Depends(get_current_active_user),
-    _perm=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
     """Update a draft campaign. Only draft status allowed."""
     user_id = claims["sub"]
-    status = await update_campaign(
-        db,
-        campaign_id,
-        changed_by=user_id,
-        **body.model_dump(exclude_unset=True),
-    )
+    try:
+        status = await update_campaign(
+            db,
+            campaign_id,
+            changed_by=user_id,
+            scope_advertiser_ids=_scope_ids(scope),
+            **body.model_dump(exclude_unset=True),
+        )
+    except ScopeError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     if status is None:
-        from fastapi import HTTPException
         raise HTTPException(status_code=409, detail="Campaign not found or not in draft status")
     await enqueue_outbox_event(
         db,
@@ -381,21 +405,23 @@ async def archive_campaign_endpoint(
     campaign_id: str,
     db=Depends(get_db),
     claims: dict = Depends(get_current_active_user),
-    _perm=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
     """Archive a draft or rejected campaign. Writes status history + outbox event."""
     user_id = claims["sub"]
-    old_status, new_status = await archive_campaign(
-        db,
-        campaign_id,
-        changed_by=user_id,
-    )
+    try:
+        old_status, new_status = await archive_campaign(
+            db,
+            campaign_id,
+            changed_by=user_id,
+            scope_advertiser_ids=_scope_ids(scope),
+        )
+    except ScopeError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     if old_status is None:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Campaign not found")
     if old_status == new_status:
-        from fastapi import HTTPException
         raise HTTPException(status_code=409, detail=f"Cannot archive campaign in status '{old_status}'")
     await enqueue_outbox_event(
         db,

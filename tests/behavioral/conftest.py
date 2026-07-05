@@ -226,6 +226,18 @@ def _setup_sql(ph):
         SELECT 1 FROM role_permissions
         WHERE role_id=r.id AND permission_id=p.id
       )
+    -- Phase 4.2: campaign.manage permission + advertiser role grant
+    ; INSERT INTO permissions (id, code, name) VALUES
+      ('00000000-0000-0000-0000-00000000010d','campaigns.manage','Управление кампаниями')
+      ON CONFLICT (code) DO NOTHING
+    ; INSERT INTO role_permissions (id,role_id,permission_id)
+      SELECT 'rp-beh-adv-campmg','00000000-0000-0000-0000-000000000114',id
+      FROM permissions WHERE code='campaigns.manage'
+      AND NOT EXISTS (
+        SELECT 1 FROM role_permissions
+        WHERE role_id='00000000-0000-0000-0000-000000000114'
+        AND permission_id=(SELECT id FROM permissions WHERE code='campaigns.manage')
+      )
     """
 
 

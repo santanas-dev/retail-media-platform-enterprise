@@ -226,6 +226,59 @@ async def list_campaign_status_history(session: AsyncSession) -> list:
 # ---------------------------------------------------------------------------
 
 
+async def _validate_contract_belongs_to_org(
+    session: AsyncSession,
+    contract_id: str,
+    advertiser_organization_id: str,
+) -> None:
+    """Raise CrossOrgReferenceError if contract doesn't belong to the org."""
+    from packages.domain.models import AdvertiserContract
+    from packages.domain.exceptions import CrossOrgReferenceError, EntityNotFoundError
+
+    stmt = select(AdvertiserContract).where(
+        AdvertiserContract.id == contract_id,
+    )
+    result = await session.execute(stmt)
+    contract = result.scalar_one_or_none()
+    if contract is None:
+        raise EntityNotFoundError("Contract not found")
+    if contract.advertiser_organization_id != advertiser_organization_id:
+        raise CrossOrgReferenceError(
+            "Contract does not belong to the specified organization"
+        )
+
+
+async def _validate_brand_belongs_to_org(
+    session: AsyncSession,
+    brand_id: str,
+    advertiser_organization_id: str,
+) -> None:
+    """Raise CrossOrgReferenceError if brand doesn't belong to the org."""
+    from packages.domain.models import AdvertiserBrand
+    from packages.domain.exceptions import CrossOrgReferenceError, EntityNotFoundError
+
+    stmt = select(AdvertiserBrand).where(AdvertiserBrand.id == brand_id)
+    result = await session.execute(stmt)
+    brand = result.scalar_one_or_none()
+    if brand is None:
+        raise EntityNotFoundError("Brand not found")
+    if brand.advertiser_organization_id != advertiser_organization_id:
+        raise CrossOrgReferenceError(
+            "Brand does not belong to the specified organization"
+        )
+
+
+def _assert_org_in_scope(
+    advertiser_organization_id: str,
+    scope_advertiser_ids: frozenset[str] | None,
+) -> None:
+    """Raise ScopeError if scope is set and org is not in scope."""
+    from packages.domain.exceptions import ScopeError
+
+    if scope_advertiser_ids is not None and advertiser_organization_id not in scope_advertiser_ids:
+        raise ScopeError("Organization not in scope")
+
+
 async def create_campaign(
     session: AsyncSession,
     *,
@@ -242,11 +295,30 @@ async def create_campaign(
     budget_limit_amount=None,
     budget_limit_currency: str = "RUB",
     priority: int = 0,
+    scope_advertiser_ids: frozenset[str] | None = None,
 ) -> str:
-    """Create a new campaign in draft status. Returns campaign id."""
+    """Create a new campaign in draft status. Returns campaign id.
+
+    Raises:
+        ScopeError: if ``scope_advertiser_ids`` is set and the org is not in scope.
+        CrossOrgReferenceError: if brand/contract belong to a different org.
+        EntityNotFoundError: if contract or brand does not exist.
+    """
     import uuid
     from datetime import datetime, timezone as tz
     from packages.domain.models import Campaign, CampaignStatusHistory
+
+    # --- Tenant isolation: brand/contract must belong to the request org ---
+    await _validate_contract_belongs_to_org(
+        session, advertiser_contract_id, advertiser_organization_id,
+    )
+    if advertiser_brand_id is not None:
+        await _validate_brand_belongs_to_org(
+            session, advertiser_brand_id, advertiser_organization_id,
+        )
+
+    # --- Tenant isolation: scoped user can only create for own org ---
+    _assert_org_in_scope(advertiser_organization_id, scope_advertiser_ids)
 
     campaign_id = str(uuid.uuid4())
     now = datetime.now(tz.utc)
@@ -292,13 +364,16 @@ async def update_campaign(
     campaign_id: str,
     *,
     changed_by: str,
+    scope_advertiser_ids: frozenset[str] | None = None,
     **kwargs,
 ) -> str | None:
     """Update a draft campaign. Returns new status if status changed, else None.
 
     Only draft campaigns can be updated.  Only non-None kwargs are applied.
+    Raises ScopeError if the campaign's org is not in the caller's scope.
     """
     from packages.domain.models import Campaign
+    from packages.domain.exceptions import ScopeError
     from datetime import datetime, timezone as tz
 
     result = await session.execute(
@@ -309,6 +384,9 @@ async def update_campaign(
         return None
     if campaign.status != "draft":
         return None
+
+    # --- Tenant isolation: scoped user can only mutate own org ---
+    _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
 
     for key, value in kwargs.items():
         if value is not None and hasattr(campaign, key):
@@ -323,10 +401,12 @@ async def archive_campaign(
     campaign_id: str,
     *,
     changed_by: str,
+    scope_advertiser_ids: frozenset[str] | None = None,
 ) -> tuple[str | None, str]:
     """Archive a draft or rejected campaign. Returns (old_status, new_status).
 
     Only draft and rejected campaigns can be archived.
+    Raises ScopeError if the campaign's org is not in the caller's scope.
     """
     import uuid
     from datetime import datetime, timezone as tz
@@ -341,6 +421,9 @@ async def archive_campaign(
     old_status = campaign.status
     if old_status not in ("draft", "rejected"):
         return old_status, old_status  # no change
+
+    # --- Tenant isolation: scoped user can only mutate own org ---
+    _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
 
     now = datetime.now(tz.utc)
     campaign.status = "archived"

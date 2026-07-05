@@ -149,5 +149,113 @@ class TestCampaignMutationValidation(unittest.TestCase):
         self.assertNotIn("description", data)
 
 
+class TestDomainExceptions(unittest.TestCase):
+    """Phase 4.2 — domain exceptions for tenant isolation."""
+
+    def test_exceptions_exist(self):
+        from packages.domain.exceptions import (
+            DomainError,
+            ScopeError,
+            CrossOrgReferenceError,
+            EntityNotFoundError,
+        )
+        self.assertTrue(issubclass(ScopeError, DomainError))
+        self.assertTrue(issubclass(CrossOrgReferenceError, DomainError))
+        self.assertTrue(issubclass(EntityNotFoundError, DomainError))
+
+    def test_exceptions_can_be_raised(self):
+        from packages.domain.exceptions import ScopeError, CrossOrgReferenceError
+        with self.assertRaises(ScopeError):
+            raise ScopeError("test")
+        with self.assertRaises(CrossOrgReferenceError):
+            raise CrossOrgReferenceError("test")
+
+
+class TestRepositoryScopeHelpers(unittest.TestCase):
+    """Phase 4.2 — _assert_org_in_scope + validation helpers exist."""
+
+    def test_assert_org_in_scope_exists(self):
+        from packages.domain.repository import _assert_org_in_scope
+        self.assertTrue(callable(_assert_org_in_scope))
+
+    def test_assert_org_in_scope_allows_when_none(self):
+        """None scope means admin — no restriction."""
+        from packages.domain.repository import _assert_org_in_scope
+        _assert_org_in_scope("any-org", None)  # should not raise
+
+    def test_assert_org_in_scope_allows_match(self):
+        from packages.domain.repository import _assert_org_in_scope
+        _assert_org_in_scope("org-a", frozenset({"org-a", "org-b"}))
+
+    def test_assert_org_in_scope_rejects_mismatch(self):
+        from packages.domain.repository import _assert_org_in_scope
+        from packages.domain.exceptions import ScopeError
+        with self.assertRaises(ScopeError):
+            _assert_org_in_scope("org-x", frozenset({"org-a", "org-b"}))
+
+    def test_validate_helpers_exist(self):
+        from packages.domain.repository import (
+            _validate_contract_belongs_to_org,
+            _validate_brand_belongs_to_org,
+        )
+        self.assertTrue(callable(_validate_contract_belongs_to_org))
+        self.assertTrue(callable(_validate_brand_belongs_to_org))
+
+    def test_create_campaign_accepts_scope_param(self):
+        """create_campaign now has scope_advertiser_ids parameter."""
+        import inspect
+        from packages.domain.repository import create_campaign
+        sig = inspect.signature(create_campaign)
+        self.assertIn("scope_advertiser_ids", sig.parameters)
+
+    def test_update_campaign_accepts_scope_param(self):
+        import inspect
+        from packages.domain.repository import update_campaign
+        sig = inspect.signature(update_campaign)
+        self.assertIn("scope_advertiser_ids", sig.parameters)
+
+    def test_archive_campaign_accepts_scope_param(self):
+        import inspect
+        from packages.domain.repository import archive_campaign
+        sig = inspect.signature(archive_campaign)
+        self.assertIn("scope_advertiser_ids", sig.parameters)
+
+
+class TestRouterScopeWiring(unittest.TestCase):
+    """Phase 4.2 — router passes ScopeContext, catches domain errors."""
+
+    def _router_content(self):
+        router_path = os.path.join(
+            os.path.dirname(__file__), "..",
+            "packages", "api", "identity.py",
+        )
+        return open(router_path).read()
+
+    def test_router_imports_domain_exceptions(self):
+        content = self._router_content()
+        self.assertIn("from packages.domain.exceptions import", content)
+        self.assertIn("ScopeError", content)
+        self.assertIn("EntityNotFoundError", content)
+        self.assertIn("CrossOrgReferenceError", content)
+
+    def test_router_has_scope_ids_helper(self):
+        content = self._router_content()
+        self.assertIn("def _scope_ids(scope)", content)
+
+    def test_router_catches_scope_error_as_403(self):
+        content = self._router_content()
+        self.assertIn("except ScopeError", content)
+        self.assertIn("status_code=403", content)
+
+    def test_router_catches_cross_org_as_422(self):
+        content = self._router_content()
+        self.assertIn("except CrossOrgReferenceError", content)
+        self.assertIn("status_code=422", content)
+
+    def test_router_catches_entity_not_found_as_422(self):
+        content = self._router_content()
+        self.assertIn("except EntityNotFoundError", content)
+
+
 if __name__ == "__main__":
     unittest.main()
