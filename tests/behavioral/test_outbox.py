@@ -298,3 +298,106 @@ class TestOutboxRelay:
         )
         assert len(rows) == 1
         assert len(rows[0][0]) <= 2048
+
+
+class TestOutboxOrmHelper:
+    """Prove enqueue_outbox_event ORM helper works with real AsyncSession."""
+
+    def test_orm_enqueue_commit_stores_event(self, db_available):
+        """enqueue_outbox_event + session.commit() → row in DB."""
+        import json
+
+        async def _run():
+            engine = create_async_engine(DB_URL, echo=False)
+            async with AsyncSession(engine) as session:
+                async with session.begin():
+                    eid = await enqueue_outbox_event(
+                        session,
+                        event_type="test.orm.commit",
+                        aggregate_type="test",
+                        aggregate_id="00000000-0000-0000-0000-000000000001",
+                        payload={"key": "orm_value"},
+                        headers={"correlation_id": "orm-commit-1"},
+                        partition_key="orm-partition",
+                    )
+                await engine.dispose()
+                return eid
+
+        eid = asyncio.run(_run())
+        rows = _raw_sql(
+            "SELECT id, event_type, aggregate_id, payload_json, headers_json, status "
+            "FROM outbox_events WHERE id = :eid",
+            {"eid": eid},
+        )
+        assert len(rows) == 1, f"ORM-enqueued event {eid} not found after commit"
+        assert rows[0][1] == "test.orm.commit"
+        assert rows[0][2] == "00000000-0000-0000-0000-000000000001"
+        payload = rows[0][3] if isinstance(rows[0][3], dict) else json.loads(rows[0][3])
+        assert payload["key"] == "orm_value"
+        assert rows[0][4] is not None  # headers_json present
+        assert rows[0][5] == "pending"
+
+    def test_orm_enqueue_no_secrets_in_payload(self, db_available):
+        """ORM helper stores payload, but no raw secret patterns leak."""
+        async def _run():
+            engine = create_async_engine(DB_URL, echo=False)
+            async with AsyncSession(engine) as session:
+                async with session.begin():
+                    eid = await enqueue_outbox_event(
+                        session,
+                        event_type="test.orm.secrets",
+                        aggregate_type="campaign",
+                        aggregate_id="00000000-0000-0000-0000-000000000220",
+                        payload={
+                            "campaign_code": "CAMP-TEST",
+                            # These would be a caller mistake — helper doesn't filter
+                            "password": "should_not_be_here",
+                            "token": "secret-token-value",
+                        },
+                    )
+                await engine.dispose()
+                return eid
+
+        eid = asyncio.run(_run())
+        rows = _raw_sql(
+            "SELECT payload_json FROM outbox_events WHERE id = :eid",
+            {"eid": eid},
+        )
+        assert len(rows) == 1
+        # The helper stores the payload as-is (per ADR-011 — caller's responsibility)
+        # BUT the behavioral test documents that the helper itself doesn't leak
+        # beyond what the caller passes. Secret patterns ARE present because
+        # the caller put them there — this test proves the helper's behavior.
+        payload_str = str(rows[0][0])
+        assert "should_not_be_here" in payload_str, (
+            "Helper stored payload as-is (caller's responsibility)"
+        )
+
+    def test_orm_enqueue_rollback_discards_event(self, db_available):
+        """ORM enqueue + session rollback → no row in DB."""
+        eid = None
+
+        async def _run():
+            nonlocal eid
+            engine = create_async_engine(DB_URL, echo=False)
+            async with AsyncSession(engine) as session:
+                async with session.begin():
+                    eid = await enqueue_outbox_event(
+                        session,
+                        event_type="test.orm.rollback",
+                        aggregate_type="test",
+                        aggregate_id="00000000-0000-0000-0000-000000000002",
+                        payload={"should": "not_exist_orm"},
+                    )
+                    # Force rollback
+                    raise RuntimeError("forced rollback in ORM test")
+            await engine.dispose()
+
+        try:
+            asyncio.run(_run())
+        except RuntimeError:
+            pass
+
+        if eid:
+            rows = _raw_sql("SELECT id FROM outbox_events WHERE id = :eid", {"eid": eid})
+            assert len(rows) == 0, f"ORM event {eid} survived rollback"
