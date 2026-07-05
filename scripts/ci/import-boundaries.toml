@@ -1,0 +1,70 @@
+# Import Boundary Rules — ADR-014 enforcement
+#
+# Each [[rule]] checks that files under `path` do not contain
+# imports matching `forbidden` patterns.
+#
+# Patterns are regex-matched against `from X import ...` and
+# `import X` lines (excluding comments/docstrings).
+#
+# See: docs/architecture/adr/ADR-014-layering-and-import-boundaries.md
+
+[[rule]]
+path = "packages/domain"
+label = "domain must not depend on api/auth/HTTP"
+forbidden = [
+    "packages\\.api",
+    "packages\\.auth",
+    "^fastapi$",
+]
+
+[[rule]]
+path = "packages/security"
+label = "security must not depend on api/auth/domain"
+forbidden = [
+    "packages\\.api",
+    "packages\\.auth",
+    "packages\\.domain",
+]
+
+[[rule]]
+path = "packages/observability"
+label = "observability must not depend on any business/domain/api package"
+forbidden = [
+    "packages\\.api",
+    "packages\\.auth",
+    "packages\\.domain",
+    "packages\\.security",
+]
+
+[[rule]]
+path = "packages/contracts"
+label = "contracts must not import runtime packages"
+forbidden = [
+    "packages\\.",
+    "^fastapi$",
+    "^sqlalchemy$",
+    "^pydantic$",
+]
+
+# Cross-app imports: each apps/* may only import packages/*, not apps/*
+[[rule]]
+path = "apps"
+label = "cross-app imports forbidden"
+forbidden = [
+    "apps\\.",
+]
+
+# Legacy imports — never allowed
+[[rule]]
+path = "apps"
+label = "no legacy backend imports"
+forbidden = [
+    "^backend\\.",
+]
+
+[[rule]]
+path = "packages"
+label = "no legacy backend imports"
+forbidden = [
+    "^backend\\.",
+]

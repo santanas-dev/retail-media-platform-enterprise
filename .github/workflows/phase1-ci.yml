@@ -96,6 +96,16 @@ jobs:
         run: pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT
       - name: Run tests
         run: python -m pytest tests/ -v
+  import-boundaries:
+    name: Import Boundaries — ADR‑014
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check import boundaries
+        run: python scripts/ci/check-import-boundaries.py
   json-schema:
     name: JSON Schema Validation
     runs-on: ubuntu-latest
