@@ -2,7 +2,8 @@
 Phase 4.1d — Campaign Approval Workflow Unit Tests.
 
 Tests: schemas, permission dependencies, valid/invalid transitions,
-approval row creation, outbox payload shape, router compliance.
+approval row creation, outbox payload shape, router compliance,
+requested_at semantics, contract validation guards.
 """
 
 import os
@@ -138,6 +139,49 @@ class TestApprovalRepositoryFunctions(unittest.TestCase):
         for func in ("request_campaign_approval", "approve_campaign", "reject_campaign"):
             self.assertIn(f"async def {func}", content,
                           f"Missing: {func}")
+
+    def test_approve_looks_up_requested_at(self):
+        """approve_campaign queries campaign_status_history for the
+        draft→pending_approval transition timestamp — does NOT use
+        decision time."""
+        repo_path = os.path.join(
+            os.path.dirname(__file__), "..",
+            "packages", "domain", "repository.py",
+        )
+        content = open(repo_path).read()
+        # Should query CampaignStatusHistory for the request transition
+        self.assertIn("CampaignStatusHistory.old_status == \"draft\"", content)
+        self.assertIn("CampaignStatusHistory.new_status == \"pending_approval\"", content)
+        # requested_at should NOT be set to "now" — it comes from the query
+        self.assertIn("requested_at=requested_at", content)
+        # Verify the function uses the looked-up timestamp variable
+        self.assertIn("requested_at = request_row", content)
+
+    def test_reject_looks_up_requested_at(self):
+        """reject_campaign also queries the request transition timestamp."""
+        repo_path = os.path.join(
+            os.path.dirname(__file__), "..",
+            "packages", "domain", "repository.py",
+        )
+        content = open(repo_path).read()
+        # reject_campaign also uses CampaignStatusHistory lookup
+        # (count occurrences — should be 2: one in approve, one in reject)
+        self.assertGreaterEqual(
+            content.count("CampaignStatusHistory.old_status == \"draft\""),
+            2,
+            "Both approve_campaign and reject_campaign should look up request timestamp"
+        )
+
+    def test_request_approval_validates_contract(self):
+        """request_campaign_approval checks flight windows against contract."""
+        repo_path = os.path.join(
+            os.path.dirname(__file__), "..",
+            "packages", "domain", "repository.py",
+        )
+        content = open(repo_path).read()
+        self.assertIn("AdvertiserContract", content)
+        self.assertIn("valid_from", content)
+        self.assertIn("valid_until", content)
 
 
 if __name__ == "__main__":

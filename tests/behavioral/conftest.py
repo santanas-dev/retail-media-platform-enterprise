@@ -260,9 +260,6 @@ _CLEANUP = """
     ; DELETE FROM campaign_approvals WHERE campaign_id IN (
         SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
     )
-    ; DELETE FROM campaign_approvals WHERE campaign_id IN (
-        SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
-    )
     ; DELETE FROM campaigns WHERE created_by LIKE 'beh-%'
     ; DELETE FROM campaign_approvals WHERE reviewed_by LIKE 'beh-%'
     ; DELETE FROM campaign_status_history WHERE changed_by LIKE 'beh-%'

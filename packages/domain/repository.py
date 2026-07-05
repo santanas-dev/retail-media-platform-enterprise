@@ -458,14 +458,16 @@ async def request_campaign_approval(
     """Request approval for a draft campaign. Returns (old_status, new_status).
 
     Transition: draft → pending_approval.
-    Validates: ≥1 flight, ≥1 placement, ≥1 creative.
+    Validates: ≥1 flight, ≥1 placement, ≥1 creative, flights within contract window.
 
     Returns (None, None) if campaign not found or not in draft status.
-    Returns (old, old) if validation fails (no flights/placements/creatives).
+    Returns (old, old) if validation fails (no flights/placements/creatives, or
+        flights outside contract validity window).
     """
     import uuid
     from datetime import datetime, timezone as tz
     from packages.domain.models import (
+        AdvertiserContract,
         Campaign, CampaignStatusHistory,
         CampaignFlight, CampaignPlacement, CampaignCreative,
     )
@@ -482,7 +484,7 @@ async def request_campaign_approval(
     _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
 
     # Validation: ≥1 flight, ≥1 placement, ≥1 creative
-    flights = await session.scalar(
+    flight_count = await session.scalar(
         select(func.count()).select_from(CampaignFlight)
         .where(CampaignFlight.campaign_id == campaign_id)
     )
@@ -494,8 +496,22 @@ async def request_campaign_approval(
         select(func.count()).select_from(CampaignCreative)
         .where(CampaignCreative.campaign_id == campaign_id)
     )
-    if not flights or not placements or not creatives:
+    if not flight_count or not placements or not creatives:
         return campaign.status, campaign.status  # validation failed
+
+    # Validate flight windows against contract (ADR-015 §3.5)
+    contract = await session.get(AdvertiserContract, campaign.advertiser_contract_id)
+    if contract is not None:
+        flights_result = await session.execute(
+            select(CampaignFlight).where(CampaignFlight.campaign_id == campaign_id)
+        )
+        for flight in flights_result.scalars().all():
+            if flight.start_at and contract.valid_from and flight.start_at < contract.valid_from:
+                return campaign.status, campaign.status
+            if flight.start_at and flight.end_at and flight.end_at < flight.start_at:
+                return campaign.status, campaign.status
+            if flight.end_at and contract.valid_until and flight.end_at > contract.valid_until:
+                return campaign.status, campaign.status
 
     now = datetime.now(tz.utc)
     old_status = campaign.status
@@ -527,6 +543,8 @@ async def approve_campaign(
 
     Transition: pending_approval → approved.
     Creates campaign_approvals row + status history.
+    ``requested_at`` is taken from the draft→pending_approval status history
+    transition, not from decision time.
     """
     import uuid
     from datetime import datetime, timezone as tz
@@ -545,6 +563,24 @@ async def approve_campaign(
 
     _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
 
+    # Look up the request timestamp from the draft→pending_approval transition.
+    # Fail if no such transition exists (never requested approval legitimately).
+    request_result = await session.execute(
+        select(CampaignStatusHistory.changed_at)
+        .where(
+            CampaignStatusHistory.campaign_id == campaign_id,
+            CampaignStatusHistory.old_status == "draft",
+            CampaignStatusHistory.new_status == "pending_approval",
+        )
+        .order_by(CampaignStatusHistory.changed_at.desc())
+        .limit(1)
+    )
+    request_row = request_result.scalar_one_or_none()
+    if request_row is None:
+        return None, None  # safety: no request transition found
+
+    requested_at = request_row
+
     now = datetime.now(tz.utc)
     old_status = campaign.status
     campaign.status = "approved"
@@ -554,7 +590,7 @@ async def approve_campaign(
         id=str(uuid.uuid4()),
         campaign_id=campaign_id,
         requested_by=campaign.created_by or "",
-        requested_at=now,
+        requested_at=requested_at,
         reviewed_by=reviewed_by,
         reviewed_at=now,
         decision="approved",
@@ -587,6 +623,8 @@ async def reject_campaign(
 
     Transition: pending_approval → rejected.
     Creates campaign_approvals row + status history.
+    ``requested_at`` is taken from the draft→pending_approval status history
+    transition, not from decision time.
     """
     import uuid
     from datetime import datetime, timezone as tz
@@ -605,6 +643,24 @@ async def reject_campaign(
 
     _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
 
+    # Look up the request timestamp from the draft→pending_approval transition.
+    # Fail if no such transition exists (never requested approval legitimately).
+    request_result = await session.execute(
+        select(CampaignStatusHistory.changed_at)
+        .where(
+            CampaignStatusHistory.campaign_id == campaign_id,
+            CampaignStatusHistory.old_status == "draft",
+            CampaignStatusHistory.new_status == "pending_approval",
+        )
+        .order_by(CampaignStatusHistory.changed_at.desc())
+        .limit(1)
+    )
+    request_row = request_result.scalar_one_or_none()
+    if request_row is None:
+        return None, None  # safety: no request transition found
+
+    requested_at = request_row
+
     now = datetime.now(tz.utc)
     old_status = campaign.status
     campaign.status = "rejected"
@@ -614,7 +670,7 @@ async def reject_campaign(
         id=str(uuid.uuid4()),
         campaign_id=campaign_id,
         requested_by=campaign.created_by or "",
-        requested_at=now,
+        requested_at=requested_at,
         reviewed_by=reviewed_by,
         reviewed_at=now,
         decision="rejected",
