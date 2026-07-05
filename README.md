@@ -2,7 +2,7 @@
 
 Мультиканальная платформа управления рекламой на цифровых носителях розничной сети.
 
-**Статус:** 🏗️ Phase 2 — Enterprise Foundation (идентичность, RBAC, RLS, аудит).
+**Статус:** 🏗️ Phase 4.0b — Advertiser Domain (read-only foundation: brands, contracts, contacts).
 
 ## Architecture
 

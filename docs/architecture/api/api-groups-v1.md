@@ -147,21 +147,28 @@ Login and password-reset endpoints return **identical responses** whether the us
 
 ## 4. Advertiser API
 
-> **Status: Phase 4.0a — Architecture Lock (ADR-010).**
-> Endpoints are planned, not implemented.  All advertiser endpoints
-> require two-layer defense: app-layer `require_scoped_permission` +
-> PostgreSQL RLS (ADR-009 pattern, proven in Phase 3.5c).
->
-> **Phase 4.0b target (read-only):**
+> **Status: Phase 4.0b — Read-only foundation complete.**
+> All advertiser endpoints require JWT + `require_scoped_permission` +
+> PostgreSQL RLS (two-layer defense per ADR-009).  Contacts are PII-gated
+> behind `advertisers.contacts.read` (separate from `advertisers.read`).
+> Architecture locked in ADR-010.
 
-| Method | Endpoint | Auth | Permission | Scope |
-|--------|----------|------|------------|-------|
-| GET | `/api/v1/advertisers/organizations` | JWT | `advertisers.read` | Global: all orgs. Advertiser: own org only (RLS). |
-| GET | `/api/v1/advertisers/organizations/{id}` | JWT | `advertisers.read` | Same. 404 if not in scope. |
-| GET | `/api/v1/advertisers/brands` | JWT | `advertisers.read` | Filtered by org scope (RLS). |
-| GET | `/api/v1/advertisers/contracts` | JWT | `advertisers.read` | Filtered by org scope (RLS). |
+### Read-Only Endpoints (Phase 4.0b — ✅ Implemented)
 
-> **Phase 4.0c+ (mutations, deferred):**
+All live under `/api/v1/identity/`.
+
+| Method | Endpoint | Auth | Permission | Scope | Status |
+|--------|----------|------|------------|-------|--------|
+| GET | `/api/v1/identity/advertiser-organizations` | JWT | `organization.read` | Global: all orgs. Advertiser scoped: own org only (RLS). | ✅ 4.0b |
+| GET | `/api/v1/identity/advertiser-brands` | JWT | `advertisers.read` | Filtered by org scope (RLS). | ✅ 4.0b |
+| GET | `/api/v1/identity/advertiser-contracts` | JWT | `advertisers.read` | Filtered by org scope (RLS). | ✅ 4.0b |
+| GET | `/api/v1/identity/advertiser-contacts` | JWT | `advertisers.contacts.read` | Filtered by org scope (RLS). PII-gated. | ✅ 4.0b |
+
+**Behavioral proof:** 31 tests covering 401 (no token), 403 (missing permission,
+wrong scope, PII gate without `contacts.read`), 200 scoped (advertiser sees only
+own), 200 global (admin sees all).
+
+### Mutations (deferred — Phase 4.0c+)
 
 | Method | Endpoint | Auth | Permission | Description |
 |--------|----------|------|------------|-------------|
@@ -169,8 +176,8 @@ Login and password-reset endpoints return **identical responses** whether the us
 | PATCH | `/api/v1/advertisers/organizations/{id}` | JWT | `advertisers.manage` | Update organization |
 | POST | `/api/v1/advertisers/brands` | JWT | `advertisers.manage` | Create brand |
 | POST | `/api/v1/advertisers/contracts` | JWT | `advertisers.manage` | Create contract |
-| GET | `/api/v1/advertisers/organizations/{id}/contacts` | JWT | `advertisers.contacts.read` | List contacts (PII-gated) |
-| POST | `/api/v1/advertisers/organizations/{id}/contacts` | JWT | `advertisers.contacts.manage` | Add contact |
+| POST | `/api/v1/advertisers/{id}/contacts` | JWT | `advertisers.contacts.manage` | Add contact |
+| PATCH | `/api/v1/advertisers/contacts/{id}` | JWT | `advertisers.contacts.manage` | Update contact |
 
 > **Security invariants (from ADR-010):**
 > - Every endpoint: negative behavioral test required before acceptance
