@@ -26,6 +26,7 @@ When decisions conflict, resolve in this order:
 | `adr/ADR-010` | Advertiser domain foundation (Phase 4.0a) |
 | `adr/ADR-011` | Transactional outbox and event delivery |
 | `adr/ADR-012` | Async I/O and blocking work |
+| `adr/ADR-013` | Edge runtime safety |
 | `erd/erd-v2-5.md` | Current entity-relationship diagram |
 | `api/api-groups-v1.md` | Current API endpoint catalog |
 | `contracts/` | Manifest v1, proof event v1 schemas |

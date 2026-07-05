@@ -16,7 +16,7 @@ Before any architecture, planning, or implementation work, read:
 2. `docs/00-source-of-truth/TZ_Retail_Media_Platform_v2_5_Final_Hermes.extracted.md`
 3. `docs/00-source-of-truth/rmp_rewrite_starting_decisions.md`
 4. `docs/00-source-of-truth/rmp_enterprise_architecture_review.md`
-5. `docs/architecture/adr/ADR-001..ADR-012` — architecture decision records (current)
+5. `docs/architecture/adr/ADR-001..ADR-013` — architecture decision records (current)
 6. `docs/architecture/erd/erd-v2-5.md` — current ERD
 7. `docs/architecture/api/api-groups-v1.md` — current API contracts
 8. `docs/architecture/README.md` — index + superseded doc list
@@ -29,6 +29,10 @@ domain event from an OLTP transaction requires the outbox pattern.
 I/O integration (LDAP, S3/MinIO, file uploads, external APIs, report
 generation).**  No sync SDK calls in async handlers.  Use native async,
 `run_in_threadpool`, background workers, or streaming as appropriate.
+
+**ADR-013 (edge runtime safety) must be read before implementing
+device-gateway, player, sidecar, PoP ingestion, manifest delivery,
+kill-switch, or any device-facing runtime code.**
 
 The source-of-truth folder overrides older generated phase reports unless a
 newer approved ADR explicitly changes a decision. The original `.docx` in that
