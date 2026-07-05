@@ -163,11 +163,23 @@ handle extended offline periods:
 After expiry, the device must NOT play campaign content.  This prevents
 a disconnected device from playing stale ads indefinitely.
 
+**Offline duration tracking:** the duration since last successful
+gateway contact is tracked via monotonic clock (`time.monotonic()`),
+not wall clock.  A power outage that resets the wall clock does not
+reset the offline counter.
+
+**Restart after power loss:** if the device reboots and monotonic state
+is lost (fresh boot), the runtime must fail closed — halt campaign
+content, show fallback or blank — until a successful gateway contact
+re-establishes the last-contact timestamp and manifest validity can
+be verified.
+
 **Clock drift tolerance:** if the device cannot reach NTP and its
 wall clock differs from last sync by > 1 hour, time-of-day
 constraints (`start_time`, `days_of_week`) are suspended — only
 non-scheduled playlist items play.  Prevents «10 AM ad at 3 AM.»
-Monotonic clock (`time.monotonic()`) is always trusted for durations.
+Wall clock is used for schedule/dayparting only after drift validation
+(< 1 hour from last known-good time source).
 
 ### 6. Proof-of-Play Integrity
 
@@ -176,8 +188,7 @@ PoP events must be truthful and complete:
 | Rule | Rationale |
 |------|-----------|
 | Emit PoP **only after actual render** | Never emit for skipped, failed, or pre-fetched content |
-| PoP includes `manifest_id`, `surface_id`, `media_id`, `creative_version_id`, `rendered_at`, `duration_ms`, `device_id` | Full trace from manifest to render |
-| PoP includes `pop_mode` per contract | `real_playback`, `screen_render`, etc. |
+| PoP includes `manifest_id`, `surface_id`, `media_id`, `creative_version_id`, `duration_ms`, `device_id`, `pop_mode`, `timestamps.event_recorded_at` (conceptual names; implementation MUST use canonical field names from `proof-event-v1.md`) | Full trace from manifest to render |
 | No PoP for fallback unless `fallback_rules.emit_pop = true` | Distinguish real campaign delivery from filler |
 | Dedup key: `event_id` (UUID) | Backend deduplicates; retried PoP events are harmless |
 | PoP emitted even if offline | Queued in local buffer (§7); delivered when connectivity returns |
