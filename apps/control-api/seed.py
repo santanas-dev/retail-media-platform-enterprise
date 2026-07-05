@@ -42,6 +42,10 @@ SEED_PERM_IDS = {
     "advertisers.manage":     "00000000-0000-0000-0000-000000000109",
     "advertisers.contacts.read":  "00000000-0000-0000-0000-00000000010a",
     "advertisers.contacts.manage": "00000000-0000-0000-0000-00000000010b",
+    "campaigns.read":     "00000000-0000-0000-0000-00000000010c",
+    "campaigns.manage":   "00000000-0000-0000-0000-00000000010d",
+    "campaigns.approve":  "00000000-0000-0000-0000-00000000010e",
+    "creatives.read":     "00000000-0000-0000-0000-00000000010f",
 }
 SEED_ROLE_IDS = {
     "system_admin":    "00000000-0000-0000-0000-000000000110",
@@ -63,6 +67,15 @@ SEED_ADV_BRAND_2_ID =    "00000000-0000-0000-0000-000000000211"
 SEED_ADV_CONTRACT_ID =   "00000000-0000-0000-0000-000000000212"
 SEED_ADV_CONTACT_1_ID =  "00000000-0000-0000-0000-000000000213"
 SEED_ADV_CONTACT_2_ID =  "00000000-0000-0000-0000-000000000214"
+
+# Campaign domain seed IDs (Phase 4.1b)
+SEED_CAMPAIGN_ID =        "00000000-0000-0000-0000-000000000220"
+SEED_CAMPAIGN_FLIGHT_ID = "00000000-0000-0000-0000-000000000221"
+SEED_CREATIVE_ASSET_ID =  "00000000-0000-0000-0000-000000000222"
+SEED_CAMPAIGN_CREATIVE_ID = "00000000-0000-0000-0000-000000000223"
+SEED_CAMPAIGN_PLACEMENT_ID = "00000000-0000-0000-0000-000000000224"
+SEED_CAMPAIGN_APPROVAL_ID  = "00000000-0000-0000-0000-000000000225"
+SEED_CAMPAIGN_STATUS_HIST_ID = "00000000-0000-0000-0000-000000000226"
 
 
 def _rp(n: int) -> str:
@@ -173,6 +186,22 @@ INSERT INTO permissions (id, code, name)
 VALUES ('{SEED_PERM_IDS["advertisers.contacts.manage"]}', 'advertisers.contacts.manage', 'Управление контактами рекламодателей')
 ON CONFLICT (code) DO NOTHING;
 
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["campaigns.read"]}', 'campaigns.read', 'Просмотр кампаний')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["campaigns.manage"]}', 'campaigns.manage', 'Управление кампаниями')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["campaigns.approve"]}', 'campaigns.approve', 'Согласование кампаний')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["creatives.read"]}', 'creatives.read', 'Просмотр креативов')
+ON CONFLICT (code) DO NOTHING;
+
 -- Roles
 INSERT INTO roles (id, code, name, description, is_system)
 VALUES ('{SEED_ROLE_IDS["system_admin"]}', 'system_admin',
@@ -245,6 +274,22 @@ INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(202)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["advertisers.contacts.manage"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(205)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["campaigns.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(206)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["campaigns.manage"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(207)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["campaigns.approve"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(208)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["creatives.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
 -- security_admin: users.read, users.manage, roles.read, roles.manage, audit.read
 INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(131)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["users.read"]}')
@@ -274,6 +319,23 @@ INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(204)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["advertisers.contacts.read"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(209)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["campaigns.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(210)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["campaigns.manage"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(211)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["campaigns.approve"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(212)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["creatives.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+
 -- operator: organization.read, channels.read, devices.read
 INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(141)}', '{SEED_ROLE_IDS["operator"]}', '{SEED_PERM_IDS["organization.read"]}')
@@ -291,6 +353,11 @@ INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(205)}', '{SEED_ROLE_IDS["operator"]}', '{SEED_PERM_IDS["advertisers.read"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(213)}', '{SEED_ROLE_IDS["operator"]}', '{SEED_PERM_IDS["campaigns.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+
 -- analyst: audit.read, organization.read, channels.read, devices.read
 INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(151)}', '{SEED_ROLE_IDS["analyst"]}', '{SEED_PERM_IDS["audit.read"]}')
@@ -298,6 +365,14 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(152)}', '{SEED_ROLE_IDS["analyst"]}', '{SEED_PERM_IDS["organization.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(214)}', '{SEED_ROLE_IDS["analyst"]}', '{SEED_PERM_IDS["campaigns.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(215)}', '{SEED_ROLE_IDS["analyst"]}', '{SEED_PERM_IDS["creatives.read"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
@@ -382,6 +457,65 @@ VALUES ('{SEED_ADV_CONTACT_2_ID}', '{SEED_ADV_ORG_ID}', 'billing',
         'Мария Счетоводова', 'maria@advertiser.example.com',
         '+7 (999) 765-43-21', false, 'active')
 ON CONFLICT DO NOTHING;
+
+-- Campaign domain foundation (Phase 4.1b)
+
+-- Test campaign for ADV-001
+INSERT INTO campaigns (id, advertiser_organization_id, advertiser_brand_id,
+    advertiser_contract_id, code, name, status, priority,
+    start_at, end_at, timezone, created_by)
+VALUES ('{SEED_CAMPAIGN_ID}', '{SEED_ADV_ORG_ID}', '{SEED_ADV_BRAND_1_ID}',
+    '{SEED_ADV_CONTRACT_ID}', 'CAMP-2026-001', 'Тестовая кампания №1',
+    'draft', 5,
+    '2026-08-01 00:00:00+03', '2026-08-31 23:59:59+03', 'Europe/Moscow',
+    '{SEED_ADV_USER_ID}')
+ON CONFLICT DO NOTHING;
+
+-- Test flight for CAMP-2026-001
+INSERT INTO campaign_flights (id, campaign_id, name, start_at, end_at, priority)
+VALUES ('{SEED_CAMPAIGN_FLIGHT_ID}', '{SEED_CAMPAIGN_ID}',
+    'Основной пролёт', '2026-08-01 08:00:00+03', '2026-08-07 22:00:00+03', 0)
+ON CONFLICT DO NOTHING;
+
+-- Test creative asset (metadata only — no binary)
+INSERT INTO creative_assets (id, advertiser_organization_id, code, name,
+    media_type, storage_bucket, storage_key, sha256_checksum, file_size_bytes,
+    duration_ms, resolution_w, resolution_h, status, created_by)
+VALUES ('{SEED_CREATIVE_ASSET_ID}', '{SEED_ADV_ORG_ID}', 'CREATIVE-001',
+    'Приветственный баннер', 'image/png', 'retail-media-creatives',
+    'adv-001/creatives/001/welcome.png',
+    'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    245760, null, 1440, 1080, 'ready', '{SEED_ADV_USER_ID}')
+ON CONFLICT DO NOTHING;
+
+-- Link creative to campaign
+INSERT INTO campaign_creatives (id, campaign_id, creative_asset_id, sort_order)
+VALUES ('{SEED_CAMPAIGN_CREATIVE_ID}', '{SEED_CAMPAIGN_ID}',
+    '{SEED_CREATIVE_ASSET_ID}', 0)
+ON CONFLICT DO NOTHING;
+
+-- Test placement (targets display surface)
+INSERT INTO campaign_placements (id, campaign_id, display_surface_id,
+    share_of_voice_pct, status)
+VALUES ('{SEED_CAMPAIGN_PLACEMENT_ID}', '{SEED_CAMPAIGN_ID}',
+    '{SEED_SURFACE_ID}', 100, 'active')
+ON CONFLICT DO NOTHING;
+
+-- Test approval record
+INSERT INTO campaign_approvals (id, campaign_id, requested_by, requested_at,
+    reviewed_by, reviewed_at, decision)
+VALUES ('{SEED_CAMPAIGN_APPROVAL_ID}', '{SEED_CAMPAIGN_ID}',
+    '{SEED_ADV_USER_ID}', '2026-07-05 12:00:00+03',
+    '{SEED_BG_USER_ID}', '2026-07-05 14:30:00+03', 'approved')
+ON CONFLICT DO NOTHING;
+
+-- Test status history (creation + submission)
+INSERT INTO campaign_status_history (id, campaign_id, old_status, new_status,
+    changed_by, reason)
+VALUES ('{SEED_CAMPAIGN_STATUS_HIST_ID}', '{SEED_CAMPAIGN_ID}',
+    null, 'draft', '{SEED_ADV_USER_ID}', 'Campaign created via seed')
+ON CONFLICT DO NOTHING;
+
 """
 
 
@@ -394,8 +528,9 @@ async def seed():
                 await conn.execute(text(stmt + ";"))
     await engine.dispose()
     print("Seed complete: 1 branch → 1 cluster → 1 store → 1 KSO device → 1 surface "
-          "+ 12 permissions, 4 roles, 25 role-permissions, 1 break-glass admin, "
-          "1 advertiser org + 1 advertiser user, 2 brands, 1 contract, 2 contacts")
+          "+ 16 permissions, 4 roles, campaign role-permissions, 1 break-glass admin, "
+          "1 advertiser org + 1 advertiser user, 2 brands, 1 contract, 2 contacts, "
+          "1 campaign + 1 flight + 1 creative + 1 placement + 1 approval + 1 status history")
 
 
 if __name__ == "__main__":

@@ -523,6 +523,176 @@ class AdvertiserContact(Base):
     updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
 
 
+# ---------------------------------------------------------------------------
+# Campaign Domain (Phase 4.1 — ADR-015)
+# ---------------------------------------------------------------------------
+
+
+class Campaign(Base):
+    __tablename__ = "campaigns"
+    __table_args__ = (
+        UniqueConstraint("advertiser_organization_id", "code",
+                         name="uq_campaign_code_per_org"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    advertiser_organization_id = Column(
+        String(36), ForeignKey("advertiser_organizations.id"), nullable=False, index=True,
+    )
+    advertiser_brand_id = Column(
+        String(36), ForeignKey("advertiser_brands.id"), nullable=True,
+    )
+    advertiser_contract_id = Column(
+        String(36), ForeignKey("advertiser_contracts.id"), nullable=False,
+    )
+    code = Column(String(64), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(String(32), nullable=False, default="draft")
+    priority = Column(Integer, nullable=False, default=0)
+    budget_limit_amount = Column(Numeric(18, 2), nullable=True)
+    budget_limit_currency = Column(String(3), nullable=False, default="RUB")
+    start_at = Column(DateTime(timezone=True), nullable=True)
+    end_at = Column(DateTime(timezone=True), nullable=True)
+    timezone = Column(String(64), nullable=False, default="Europe/Moscow")
+    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
+class CampaignFlight(Base):
+    __tablename__ = "campaign_flights"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    campaign_id = Column(
+        String(36), ForeignKey("campaigns.id"), nullable=False, index=True,
+    )
+    name = Column(String(255), nullable=True)
+    start_at = Column(DateTime(timezone=True), nullable=False)
+    end_at = Column(DateTime(timezone=True), nullable=False)
+    dayparting_json = Column(JSONB, nullable=True)
+    days_of_week = Column(ARRAY(Integer), nullable=True)
+    priority = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
+class CampaignPlacement(Base):
+    __tablename__ = "campaign_placements"
+    __table_args__ = (
+        CheckConstraint(
+            "display_surface_id IS NOT NULL OR store_id IS NOT NULL "
+            "OR cluster_id IS NOT NULL OR branch_id IS NOT NULL",
+            name="ck_cp_at_least_one_target",
+        ),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    campaign_id = Column(
+        String(36), ForeignKey("campaigns.id"), nullable=False, index=True,
+    )
+    display_surface_id = Column(
+        String(36), ForeignKey("display_surfaces.id"), nullable=True,
+    )
+    store_id = Column(
+        String(36), ForeignKey("stores.id"), nullable=True,
+    )
+    cluster_id = Column(
+        String(36), ForeignKey("clusters.id"), nullable=True,
+    )
+    branch_id = Column(
+        String(36), ForeignKey("branches.id"), nullable=True,
+    )
+    share_of_voice_pct = Column(Integer, nullable=False, default=100)
+    max_impressions = Column(Integer, nullable=True)
+    impressions_delivered = Column(Integer, nullable=False, default=0)
+    status = Column(String(32), nullable=False, default="active")
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
+class CreativeAsset(Base):
+    __tablename__ = "creative_assets"
+    __table_args__ = (
+        UniqueConstraint("advertiser_organization_id", "code",
+                         name="uq_creative_asset_code_per_org"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    advertiser_organization_id = Column(
+        String(36), ForeignKey("advertiser_organizations.id"), nullable=False, index=True,
+    )
+    code = Column(String(64), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    media_type = Column(String(32), nullable=False)
+    storage_bucket = Column(String(128), nullable=False)
+    storage_key = Column(String(512), nullable=False)
+    sha256_checksum = Column(String(64), nullable=False)
+    file_size_bytes = Column(Integer, nullable=False)
+    duration_ms = Column(Integer, nullable=True)
+    resolution_w = Column(Integer, nullable=True)
+    resolution_h = Column(Integer, nullable=True)
+    status = Column(String(32), nullable=False, default="ready")
+    moderation_status = Column(String(32), nullable=False, default="approved")
+    moderation_notes = Column(Text, nullable=True)
+    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
+class CampaignCreative(Base):
+    __tablename__ = "campaign_creatives"
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "creative_asset_id",
+                         name="uq_campaign_creative"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    campaign_id = Column(
+        String(36), ForeignKey("campaigns.id"), nullable=False, index=True,
+    )
+    creative_asset_id = Column(
+        String(36), ForeignKey("creative_assets.id"), nullable=False,
+    )
+    sort_order = Column(Integer, nullable=False, default=0)
+    duration_override_ms = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
+class CampaignApproval(Base):
+    __tablename__ = "campaign_approvals"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    campaign_id = Column(
+        String(36), ForeignKey("campaigns.id"), nullable=False, index=True,
+    )
+    requested_by = Column(
+        String(36), ForeignKey("users.id"), nullable=False,
+    )
+    requested_at = Column(DateTime(timezone=True), nullable=False)
+    reviewed_by = Column(
+        String(36), ForeignKey("users.id"), nullable=True,
+    )
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    decision = Column(String(32), nullable=True)
+    rejection_reason = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
+class CampaignStatusHistory(Base):
+    __tablename__ = "campaign_status_history"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    campaign_id = Column(
+        String(36), ForeignKey("campaigns.id"), nullable=False, index=True,
+    )
+    old_status = Column(String(32), nullable=True)
+    new_status = Column(String(32), nullable=False)
+    changed_by = Column(
+        String(36), ForeignKey("users.id"), nullable=False,
+    )
+    changed_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    reason = Column(Text, nullable=True)
+
+
 class LocalCredential(Base):
     __tablename__ = "local_credentials"
     __table_args__ = (

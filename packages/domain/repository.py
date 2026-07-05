@@ -138,3 +138,72 @@ async def list_advertiser_contacts(
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+# ---------------------------------------------------------------------------
+# Campaign Domain (Phase 4.1b — ADR-015)
+# ---------------------------------------------------------------------------
+
+
+async def list_campaigns(session: AsyncSession) -> list:
+    """Return all campaigns, ordered by code."""
+    from packages.domain.models import Campaign
+    stmt = select(Campaign).order_by(Campaign.code)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def list_campaign_flights(session: AsyncSession) -> list:
+    """Return all campaign flights, ordered by campaign_id + start_at."""
+    from packages.domain.models import CampaignFlight
+    stmt = select(CampaignFlight).order_by(
+        CampaignFlight.campaign_id, CampaignFlight.start_at,
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def list_campaign_creatives(session: AsyncSession) -> list:
+    """Return all campaign-creative links, ordered by campaign_id + sort_order."""
+    from packages.domain.models import CampaignCreative
+    stmt = select(CampaignCreative).order_by(
+        CampaignCreative.campaign_id, CampaignCreative.sort_order,
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def list_creative_assets(session: AsyncSession) -> list:
+    """Return all creative assets (metadata only), ordered by code."""
+    from packages.domain.models import CreativeAsset
+    stmt = select(CreativeAsset).order_by(CreativeAsset.code)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def list_campaign_placements(session: AsyncSession) -> list:
+    """Return all campaign placements, ordered by campaign_id."""
+    from packages.domain.models import CampaignPlacement
+    stmt = select(CampaignPlacement).order_by(CampaignPlacement.campaign_id)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def list_campaign_approvals(session: AsyncSession) -> list:
+    """Return all campaign approvals, ordered by campaign_id + requested_at."""
+    from packages.domain.models import CampaignApproval
+    stmt = select(CampaignApproval).order_by(
+        CampaignApproval.campaign_id, CampaignApproval.requested_at,
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def list_campaign_status_history(session: AsyncSession) -> list:
+    """Return all campaign status history, ordered by campaign_id + changed_at."""
+    from packages.domain.models import CampaignStatusHistory
+    stmt = select(CampaignStatusHistory).order_by(
+        CampaignStatusHistory.campaign_id, CampaignStatusHistory.changed_at,
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())

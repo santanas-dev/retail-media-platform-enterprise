@@ -17,6 +17,15 @@ from packages.api.dependencies import (
 )
 from packages.domain import repository
 from packages.domain.schemas import (
+    CampaignApprovalOut,
+    CampaignCreativeOut,
+    CampaignFlightOut,
+    CampaignOut,
+    CampaignPlacementOut,
+    CampaignStatusHistoryOut,
+    CreativeAssetOut,
+    MAX_LIMIT,
+    DEFAULT_LIMIT,
     MAX_LIMIT,
     DEFAULT_LIMIT,
     AdvertiserBrandOut,
@@ -175,3 +184,98 @@ async def list_advertiser_contacts(
     """List advertiser contacts — scoped + RLS protected. PII-gated."""
     items = await repository.list_advertiser_contacts(db)
     return [AdvertiserContactOut.model_validate(c) for c in items]
+
+
+# ---------------------------------------------------------------------------
+
+def _serialize_campaign(c):
+    """Safe serialization — strip storage_pii fields if any."""
+    return CampaignOut.model_validate(c)
+
+
+def _serialize_creative_asset(c):
+    """Safe serialization — never expose storage_bucket/storage_key."""
+    return CreativeAssetOut.model_validate(c)
+
+
+# Campaign Domain (Phase 4.1b — ADR-015)
+# ---------------------------------------------------------------------------
+
+@router.get("/campaigns", response_model=list[CampaignOut])
+async def list_campaigns(
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """List campaigns — scoped + RLS protected."""
+    items = await repository.list_campaigns(db)
+    return [_serialize_campaign(item) for item in items]
+
+
+@router.get("/campaign-flights", response_model=list[CampaignFlightOut])
+async def list_campaign_flights(
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """List campaign flights — scoped + RLS protected."""
+    items = await repository.list_campaign_flights(db)
+    return [CampaignFlightOut.model_validate(item) for item in items]
+
+
+@router.get("/campaign-creatives", response_model=list[CampaignCreativeOut])
+async def list_campaign_creatives(
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """List campaign-creative links — scoped + RLS protected."""
+    items = await repository.list_campaign_creatives(db)
+    return [CampaignCreativeOut.model_validate(item) for item in items]
+
+
+@router.get("/creative-assets", response_model=list[CreativeAssetOut])
+async def list_creative_assets(
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("creatives.read", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """List creative assets (metadata only) — scoped + RLS protected.
+
+    No presigned URLs or storage keys exposed.
+    """
+    items = await repository.list_creative_assets(db)
+    return [_serialize_creative_asset(item) for item in items]
+
+
+@router.get("/campaign-placements", response_model=list[CampaignPlacementOut])
+async def list_campaign_placements(
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """List campaign placements — scoped + RLS protected."""
+    items = await repository.list_campaign_placements(db)
+    return [CampaignPlacementOut.model_validate(item) for item in items]
+
+
+@router.get("/campaign-approvals", response_model=list[CampaignApprovalOut])
+async def list_campaign_approvals(
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """List campaign approvals — scoped + RLS protected."""
+    items = await repository.list_campaign_approvals(db)
+    return [CampaignApprovalOut.model_validate(item) for item in items]
+
+
+@router.get("/campaign-status-history", response_model=list[CampaignStatusHistoryOut])
+async def list_campaign_status_history(
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """List campaign status history — scoped + RLS protected."""
+    items = await repository.list_campaign_status_history(db)
+    return [CampaignStatusHistoryOut.model_validate(item) for item in items]

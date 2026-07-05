@@ -203,3 +203,118 @@ class AdvertiserContactOut(BaseModel):
     phone: str | None = None
     is_primary: bool
     status: str
+
+
+# ---------------------------------------------------------------------------
+# Campaign Domain (Phase 4.1b — ADR-015)
+# ---------------------------------------------------------------------------
+
+
+class CampaignOut(BaseModel):
+    """Campaign read-only DTO. No PII, no storage secrets."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    advertiser_organization_id: str
+    advertiser_brand_id: str | None = None
+    advertiser_contract_id: str
+    code: str
+    name: str
+    description: str | None = None
+    status: str
+    priority: int = 0
+    budget_limit_amount: float | None = None
+    budget_limit_currency: str = "RUB"
+    start_at: datetime | None = None
+    end_at: datetime | None = None
+    timezone: str = "Europe/Moscow"
+    created_by: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class CampaignFlightOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    campaign_id: str
+    name: str | None = None
+    start_at: datetime
+    end_at: datetime
+    dayparting_json: Any | None = None
+    days_of_week: list[int] | None = None
+    priority: int = 0
+    created_at: datetime
+
+
+class CreativeAssetOut(BaseModel):
+    """Creative asset metadata DTO. No presigned URLs, no raw binary."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    advertiser_organization_id: str
+    code: str
+    name: str
+    media_type: str
+    sha256_checksum: str
+    file_size_bytes: int
+    duration_ms: int | None = None
+    resolution_w: int | None = None
+    resolution_h: int | None = None
+    status: str
+    moderation_status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class CampaignCreativeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    campaign_id: str
+    creative_asset_id: str
+    sort_order: int = 0
+    duration_override_ms: int | None = None
+    created_at: datetime
+
+
+class CampaignPlacementOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    campaign_id: str
+    display_surface_id: str | None = None
+    store_id: str | None = None
+    cluster_id: str | None = None
+    branch_id: str | None = None
+    share_of_voice_pct: int = 100
+    max_impressions: int | None = None
+    impressions_delivered: int = 0
+    status: str
+    created_at: datetime
+
+
+class CampaignApprovalOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    campaign_id: str
+    requested_by: str
+    requested_at: datetime
+    reviewed_by: str | None = None
+    reviewed_at: datetime | None = None
+    decision: str | None = None
+    rejection_reason: str | None = None
+    created_at: datetime
+
+
+class CampaignStatusHistoryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    campaign_id: str
+    old_status: str | None = None
+    new_status: str
+    changed_by: str
+    changed_at: datetime
+    reason: str | None = None
