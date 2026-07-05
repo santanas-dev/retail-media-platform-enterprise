@@ -72,8 +72,9 @@ outbox_events
 │ headers_json (JSONB)        │  -- correlation_id, source_service, etc.
 │ status (VARCHAR 32)         │  -- pending|published|failed|dead_letter
 │ attempts (INT, DEFAULT 0)   │
-│ next_attempt_at (TIMESTAMPTZ)│
-│ published_at (TIMESTAMPTZ,  │
+│ next_attempt_at (TIMESTAMPTZ │
+│   NOT NULL DEFAULT NOW())    │  -- immediate eligibility; producers
+│ published_at (TIMESTAMPTZ,   │     may defer by setting a future time
 │   nullable)                 │
 │ last_error (TEXT, nullable) │
 │ created_at (TIMESTAMPTZ)    │
