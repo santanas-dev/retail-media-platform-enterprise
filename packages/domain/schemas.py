@@ -154,3 +154,52 @@ class AdvertiserOrganizationOut(BaseModel):
     legal_name: str
     display_name: str
     status: str
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.0b — Advertiser domain (brands, contracts, contacts)
+# ---------------------------------------------------------------------------
+
+
+class AdvertiserBrandOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    advertiser_organization_id: str
+    code: str
+    name: str
+    description: str | None = None
+    status: str
+
+
+class AdvertiserContractOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    advertiser_organization_id: str
+    code: str
+    name: str
+    contract_number: str | None = None
+    budget_limit_amount: float | None = None
+    budget_limit_currency: str
+    valid_from: datetime
+    valid_until: datetime | None = None
+    status: str
+    terms_url: str | None = None
+
+
+class AdvertiserContactOut(BaseModel):
+    """Public contact — PII-gated by permission check in router.
+
+    email/phone exposed only after require_scoped_permission('advertisers.contacts.read').
+    """
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    advertiser_organization_id: str
+    contact_type: str
+    full_name: str
+    email: str
+    phone: str | None = None
+    is_primary: bool
+    status: str

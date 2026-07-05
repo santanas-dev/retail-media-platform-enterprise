@@ -24,17 +24,17 @@ class TestPhase2Metadata(unittest.TestCase):
         self.assertIsNotNone(REQUIRED_TABLES)
 
     def test_all_required_tables_present(self):
-        """Base.metadata contains all 25 required foundation tables."""
+        """Base.metadata contains all required foundation tables."""
         from packages.domain.models import REQUIRED_TABLES, Base
         actual = set(Base.metadata.tables.keys())
         missing = REQUIRED_TABLES - actual
         self.assertSetEqual(missing, set(), f"Missing tables: {missing}")
 
     def test_exact_table_count(self):
-        """Metadata has exactly 25 tables (Phase 2 + Phase 2.1 + Phase 3.2a)."""
+        """Metadata has exactly 28 tables (Phase 2 + Phase 2.1 + Phase 3.2a + Phase 4.0b)."""
         from packages.domain.models import Base
         count = len(Base.metadata.tables)
-        self.assertEqual(count, 25, f"Expected 25 tables, got {count}")
+        self.assertEqual(count, 28, f"Expected 28 tables, got {count}")
 
 
 class TestPhase2ModelColumns(unittest.TestCase):
@@ -377,13 +377,13 @@ class TestPhase21SeedIdentity(unittest.TestCase):
                          f"INSERT count {insert_count} != ON CONFLICT count {conflict_count}")
 
     def test_seed_insert_count(self):
-        """Seed has exactly 46 INSERT statements (9 phase 2 + 34 phase 2.1 + 3 phase 3.2a)."""
+        """Seed has exactly 62 INSERT statements (Phase 2 + 2.1 + 3.2a + 4.0b)."""
         src = self._SEED_SRC
         m = re.search(r'SEED_SQL = f"""(.+?)"""', src, re.DOTALL)
         self.assertIsNotNone(m, "Cannot find SEED_SQL")
         sql = m.group(1)
         inserts = [l for l in sql.split("\n") if l.strip().upper().startswith("INSERT")]
-        self.assertEqual(len(inserts), 46, f"Expected 46 INSERTs, got {len(inserts)}")
+        self.assertEqual(len(inserts), 62, f"Expected 62 INSERTs, got {len(inserts)}")
 
 
 class TestPhase21AuditEventModel(unittest.TestCase):

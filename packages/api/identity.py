@@ -19,6 +19,9 @@ from packages.domain import repository
 from packages.domain.schemas import (
     MAX_LIMIT,
     DEFAULT_LIMIT,
+    AdvertiserBrandOut,
+    AdvertiserContactOut,
+    AdvertiserContractOut,
     AdvertiserOrganizationOut,
     AuditEventOut,
     PaginatedAuditEvents,
@@ -124,3 +127,51 @@ async def list_advertiser_organizations(
     """
     items = await repository.list_advertiser_organizations(db)
     return [AdvertiserOrganizationOut.model_validate(o) for o in items]
+
+
+# ---------------------------------------------------------------------------
+# Advertiser Brands (Phase 4.0b)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/advertiser-brands", response_model=list[AdvertiserBrandOut])
+async def list_advertiser_brands(
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("advertisers.read", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """List advertiser brands — scoped + RLS protected."""
+    items = await repository.list_advertiser_brands(db)
+    return [AdvertiserBrandOut.model_validate(b) for b in items]
+
+
+# ---------------------------------------------------------------------------
+# Advertiser Contracts (Phase 4.0b)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/advertiser-contracts", response_model=list[AdvertiserContractOut])
+async def list_advertiser_contracts(
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("advertisers.read", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """List advertiser contracts — scoped + RLS protected."""
+    items = await repository.list_advertiser_contracts(db)
+    return [AdvertiserContractOut.model_validate(c) for c in items]
+
+
+# ---------------------------------------------------------------------------
+# Advertiser Contacts (Phase 4.0b)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/advertiser-contacts", response_model=list[AdvertiserContactOut])
+async def list_advertiser_contacts(
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("advertisers.contacts.read", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """List advertiser contacts — scoped + RLS protected. PII-gated."""
+    items = await repository.list_advertiser_contacts(db)
+    return [AdvertiserContactOut.model_validate(c) for c in items]

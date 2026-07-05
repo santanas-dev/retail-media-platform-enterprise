@@ -16,6 +16,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -47,6 +48,9 @@ __all__ = [
     "AuditEventOperational",
     "AdvertiserOrganization",
     "AdvertiserUserMembership",
+    "AdvertiserBrand",
+    "AdvertiserContract",
+    "AdvertiserContact",
     "LocalCredential",
     "RefreshSession",
     "LoginAttempt",
@@ -453,6 +457,72 @@ class AdvertiserUserMembership(Base):
     organization = relationship("AdvertiserOrganization", back_populates="memberships")
 
 
+class AdvertiserBrand(Base):
+    __tablename__ = "advertiser_brands"
+    __table_args__ = (
+        UniqueConstraint("advertiser_organization_id", "code",
+                         name="uq_adv_brand_code_per_org"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    advertiser_organization_id = Column(
+        String(36), ForeignKey("advertiser_organizations.id"), nullable=False, index=True,
+    )
+    code = Column(String(64), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(String(32), nullable=False, default="draft")
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
+class AdvertiserContract(Base):
+    __tablename__ = "advertiser_contracts"
+    __table_args__ = (
+        UniqueConstraint("advertiser_organization_id", "code",
+                         name="uq_adv_contract_code_per_org"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    advertiser_organization_id = Column(
+        String(36), ForeignKey("advertiser_organizations.id"), nullable=False, index=True,
+    )
+    code = Column(String(64), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    contract_number = Column(String(128), nullable=True)
+    budget_limit_amount = Column(Numeric(18, 2), nullable=True)
+    budget_limit_currency = Column(String(3), nullable=False, default="RUB")
+    valid_from = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    valid_until = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String(32), nullable=False, default="draft")
+    terms_url = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
+class AdvertiserContact(Base):
+    __tablename__ = "advertiser_contacts"
+    __table_args__ = (
+        Index("ix_adv_contacts_primary",
+              "advertiser_organization_id", "contact_type",
+              unique=True,
+              postgresql_where=text("is_primary IS TRUE AND status = 'active'")),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    advertiser_organization_id = Column(
+        String(36), ForeignKey("advertiser_organizations.id"), nullable=False, index=True,
+    )
+    contact_type = Column(String(32), nullable=False, default="primary")
+    full_name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=False)
+    phone = Column(String(32), nullable=True)
+    is_primary = Column(Boolean, nullable=False, default=False)
+    status = Column(String(32), nullable=False, default="active")
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
 class LocalCredential(Base):
     __tablename__ = "local_credentials"
     __table_args__ = (
@@ -528,6 +598,7 @@ REQUIRED_TABLES = frozenset({
     "users", "roles", "permissions", "role_permissions", "user_roles",
     "access_scopes", "user_access_scopes", "audit_events_operational",
     "advertiser_organizations", "advertiser_user_memberships",
+    "advertiser_brands", "advertiser_contracts", "advertiser_contacts",
     "local_credentials", "refresh_sessions",
     "login_attempts", "password_reset_tokens",
 })

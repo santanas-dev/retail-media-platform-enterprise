@@ -9,6 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from packages.domain.models import (
+    AdvertiserBrand,
+    AdvertiserContact,
+    AdvertiserContract,
     AdvertiserOrganization,
     AuditEventOperational,
     Permission,
@@ -104,5 +107,34 @@ async def list_advertiser_organizations(
 ) -> list[AdvertiserOrganization]:
     """Return all advertiser organizations, ordered by code."""
     stmt = select(AdvertiserOrganization).order_by(AdvertiserOrganization.code)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def list_advertiser_brands(
+    session: AsyncSession,
+) -> list[AdvertiserBrand]:
+    """Return all advertiser brands, ordered by code."""
+    stmt = select(AdvertiserBrand).order_by(AdvertiserBrand.code)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def list_advertiser_contracts(
+    session: AsyncSession,
+) -> list[AdvertiserContract]:
+    """Return all advertiser contracts, ordered by code."""
+    stmt = select(AdvertiserContract).order_by(AdvertiserContract.code)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def list_advertiser_contacts(
+    session: AsyncSession,
+) -> list[AdvertiserContact]:
+    """Return all advertiser contacts, ordered by contact_type + full_name."""
+    stmt = select(AdvertiserContact).order_by(
+        AdvertiserContact.contact_type, AdvertiserContact.full_name,
+    )
     result = await session.execute(stmt)
     return list(result.scalars().all())

@@ -38,6 +38,10 @@ SEED_PERM_IDS = {
     "organization.read": "00000000-0000-0000-0000-000000000105",
     "channels.read":   "00000000-0000-0000-0000-000000000106",
     "devices.read":    "00000000-0000-0000-0000-000000000107",
+    "advertisers.read":       "00000000-0000-0000-0000-000000000108",
+    "advertisers.manage":     "00000000-0000-0000-0000-000000000109",
+    "advertisers.contacts.read":  "00000000-0000-0000-0000-00000000010a",
+    "advertisers.contacts.manage": "00000000-0000-0000-0000-00000000010b",
 }
 SEED_ROLE_IDS = {
     "system_admin":    "00000000-0000-0000-0000-000000000110",
@@ -52,6 +56,13 @@ SEED_BG_USER_ROLE_ID = "00000000-0000-0000-0000-000000000160"
 SEED_ADV_ORG_ID =         "00000000-0000-0000-0000-000000000200"
 SEED_ADV_MEMBERSHIP_ID =  "00000000-0000-0000-0000-000000000201"
 SEED_ADV_USER_ID =        "00000000-0000-0000-0000-000000000202"
+
+# Advertiser domain seed IDs (Phase 4.0b)
+SEED_ADV_BRAND_1_ID =    "00000000-0000-0000-0000-000000000210"
+SEED_ADV_BRAND_2_ID =    "00000000-0000-0000-0000-000000000211"
+SEED_ADV_CONTRACT_ID =   "00000000-0000-0000-0000-000000000212"
+SEED_ADV_CONTACT_1_ID =  "00000000-0000-0000-0000-000000000213"
+SEED_ADV_CONTACT_2_ID =  "00000000-0000-0000-0000-000000000214"
 
 
 def _rp(n: int) -> str:
@@ -146,6 +157,22 @@ INSERT INTO permissions (id, code, name)
 VALUES ('{SEED_PERM_IDS["devices.read"]}', 'devices.read', 'Просмотр устройств')
 ON CONFLICT (code) DO NOTHING;
 
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["advertisers.read"]}', 'advertisers.read', 'Просмотр рекламодателей')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["advertisers.manage"]}', 'advertisers.manage', 'Управление рекламодателями')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["advertisers.contacts.read"]}', 'advertisers.contacts.read', 'Просмотр контактов рекламодателей')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["advertisers.contacts.manage"]}', 'advertisers.contacts.manage', 'Управление контактами рекламодателей')
+ON CONFLICT (code) DO NOTHING;
+
 -- Roles
 INSERT INTO roles (id, code, name, description, is_system)
 VALUES ('{SEED_ROLE_IDS["system_admin"]}', 'system_admin',
@@ -202,6 +229,22 @@ INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(127)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["devices.read"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(128)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["advertisers.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(129)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["advertisers.manage"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(201)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["advertisers.contacts.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(202)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["advertisers.contacts.manage"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
 -- security_admin: users.read, users.manage, roles.read, roles.manage, audit.read
 INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(131)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["users.read"]}')
@@ -223,6 +266,14 @@ INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(135)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["audit.read"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(203)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["advertisers.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(204)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["advertisers.contacts.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
 -- operator: organization.read, channels.read, devices.read
 INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(141)}', '{SEED_ROLE_IDS["operator"]}', '{SEED_PERM_IDS["organization.read"]}')
@@ -234,6 +285,10 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(143)}', '{SEED_ROLE_IDS["operator"]}', '{SEED_PERM_IDS["devices.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(205)}', '{SEED_ROLE_IDS["operator"]}', '{SEED_PERM_IDS["advertisers.read"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- analyst: audit.read, organization.read, channels.read, devices.read
@@ -291,6 +346,42 @@ ON CONFLICT (user_id, advertiser_organization_id) DO NOTHING;
 -- NOTE: No local_credentials, refresh_sessions, login_attempts,
 --       or password_reset_tokens are seeded — these contain sensitive
 --       material (password hashes, tokens) and must NOT appear in dev seed.
+
+-- Advertiser domain foundation (Phase 4.0b)
+
+-- Test brands for ADV-001
+INSERT INTO advertiser_brands (id, advertiser_organization_id, code, name, description, status)
+VALUES ('{SEED_ADV_BRAND_1_ID}', '{SEED_ADV_ORG_ID}', 'BRAND-COLA',
+        'Cola Classic', 'Основной бренд — классическая кола', 'active')
+ON CONFLICT (advertiser_organization_id, code) DO NOTHING;
+
+INSERT INTO advertiser_brands (id, advertiser_organization_id, code, name, description, status)
+VALUES ('{SEED_ADV_BRAND_2_ID}', '{SEED_ADV_ORG_ID}', 'BRAND-ZERO',
+        'Cola Zero', 'Без сахара', 'active')
+ON CONFLICT (advertiser_organization_id, code) DO NOTHING;
+
+-- Test contract for ADV-001
+INSERT INTO advertiser_contracts (id, advertiser_organization_id, code, name,
+    contract_number, budget_limit_amount, budget_limit_currency, valid_from, status)
+VALUES ('{SEED_ADV_CONTRACT_ID}', '{SEED_ADV_ORG_ID}', 'CTR-2026-001',
+        'Годовой контракт 2026', '2026/ADV-001',
+        5000000.00, 'RUB', '2026-01-01T00:00:00+03:00', 'active')
+ON CONFLICT (advertiser_organization_id, code) DO NOTHING;
+
+-- Test contacts for ADV-001
+INSERT INTO advertiser_contacts (id, advertiser_organization_id, contact_type,
+    full_name, email, phone, is_primary, status)
+VALUES ('{SEED_ADV_CONTACT_1_ID}', '{SEED_ADV_ORG_ID}', 'primary',
+        'Иван Петров', 'ivan@advertiser.example.com',
+        '+7 (999) 123-45-67', true, 'active')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO advertiser_contacts (id, advertiser_organization_id, contact_type,
+    full_name, email, phone, is_primary, status)
+VALUES ('{SEED_ADV_CONTACT_2_ID}', '{SEED_ADV_ORG_ID}', 'billing',
+        'Мария Счетоводова', 'maria@advertiser.example.com',
+        '+7 (999) 765-43-21', false, 'active')
+ON CONFLICT DO NOTHING;
 """
 
 
@@ -303,8 +394,8 @@ async def seed():
                 await conn.execute(text(stmt + ";"))
     await engine.dispose()
     print("Seed complete: 1 branch → 1 cluster → 1 store → 1 KSO device → 1 surface "
-          "+ 8 permissions, 4 roles, 20 role-permissions, 1 break-glass admin, "
-          "1 advertiser org + 1 advertiser user")
+          "+ 12 permissions, 4 roles, 25 role-permissions, 1 break-glass admin, "
+          "1 advertiser org + 1 advertiser user, 2 brands, 1 contract, 2 contacts")
 
 
 if __name__ == "__main__":
