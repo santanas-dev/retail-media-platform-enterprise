@@ -641,10 +641,10 @@ campaign_flights (Phase 4.1)          campaign_placements (Phase 4.1)
 ┌──────────────────────────────┐     ┌──────────────────────────────┐
 │ id (UUID)                    │     │ id (UUID)                    │
 │ campaign_id FK → campaigns   │     │ campaign_id FK → campaigns   │
-│ name (VARCHAR 255 nullable)  │     │ display_surface_id FK        │
+│ name (VARCHAR 255 nullable)  │     │ display_surface_id FK        │── nullable — exact surface
 │ start_at (TIMESTAMPTZ)       │     │   → display_surfaces.id      │
-│ end_at (TIMESTAMPTZ)         │     │ store_id FK (nullable)       │
-│ dayparting_json (JSONB)      │     │ cluster_id FK (nullable)     │
+│ end_at (TIMESTAMPTZ)         │     │ store_id FK (nullable)       │── store-level
+│ dayparting_json (JSONB)      │     │ cluster_id FK (nullable)     │── cluster-level
 │ days_of_week (SMALLINT[])    │     │ branch_id FK (nullable)      │
 │ priority (INT DEFAULT 0)     │     │ share_of_voice_pct (INT 100) │
 │ created_at (TIMESTAMPTZ)     │     │ max_impressions (BIGINT)     │
@@ -654,9 +654,9 @@ campaign_creatives (Phase 4.1)       │ created_at (TIMESTAMPTZ)     │
 ┌──────────────────────────────┐     └──────────────────────────────┘
 │ id (UUID)                    │     CONSTRAINT: at least one of
 │ campaign_id FK → campaigns   │     display_surface_id, store_id,
-│ creative_asset_id FK →       │     cluster_id, branch_id NOT NULL
-│   creative_assets.id         │
-│ sort_order (INT DEFAULT 0)   │
+│ creative_asset_id FK →       │     cluster_id, branch_id NOT NULL.  Broad
+│   creative_assets.id         │     targets (store/cluster/branch) resolved
+│ sort_order (INT DEFAULT 0)   │     to surface IDs at manifest generation.
 │ duration_override_ms (INT)   │
 │ created_at (TIMESTAMPTZ)     │
 └──────────────────────────────┘
@@ -708,8 +708,9 @@ NOTE: All campaign tables have ENABLE ROW LEVEL SECURITY + FORCE RLS
       with fail-closed SELECT policies (ADR-009 pattern).
       Campaign mutations produce outbox_events (ADR-011) — no direct
       NATS publish.
-      Placements target display_surfaces, not physical_devices
-      (ADR-015 §5).  Hierarchy resolved at manifest generation time.
+      Placements target at surface level or above (store/cluster/
+      branch); resolved to concrete surface IDs at manifest generation
+      time (ADR-015 §5).
 ```
 
 ## 3. Relational Summary

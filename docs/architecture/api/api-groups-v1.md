@@ -264,7 +264,8 @@ scoped access (403 / 200), RLS row visibility, and the contacts PII gate
 > - All campaign mutations produce outbox events in the same transaction.
 > - Advertiser users see only their organization's campaigns (RLS).
 > - Contact PII never exposed through campaign endpoints.
-> - Placements target `display_surfaces`, not `physical_devices`.
+> - Placements target at surface level or above (store/cluster/branch);
+>   resolved to concrete surface IDs at manifest generation time.
 > - `storage_key` is opaque — presigned URLs generated at read time, never stored.
 
 ---
