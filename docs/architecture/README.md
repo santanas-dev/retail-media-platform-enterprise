@@ -24,6 +24,7 @@ When decisions conflict, resolve in this order:
 | `adr/ADR-008` | Testing strategy and phase gates |
 | `adr/ADR-009` | Fail-closed scopes and PostgreSQL RLS |
 | `adr/ADR-010` | Advertiser domain foundation (Phase 4.0a) |
+| `adr/ADR-011` | Transactional outbox and event delivery |
 | `erd/erd-v2-5.md` | Current entity-relationship diagram |
 | `api/api-groups-v1.md` | Current API endpoint catalog |
 | `contracts/` | Manifest v1, proof event v1 schemas |

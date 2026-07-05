@@ -41,6 +41,13 @@ All services publish/consume through `packages/events/` — a thin abstraction t
 - Allows replacing NATS with RabbitMQ/Kafka/Redpanda without touching business logic
 - Supports mock implementation for local development and testing
 
+**Producer-side requirement (ADR-011):** every service that publishes
+domain events as a side effect of an OLTP write MUST use the
+transactional outbox pattern.  Direct `nats.publish()` inside a
+request/business transaction is prohibited.  The outbox relay worker
+reads `outbox_events` and publishes to NATS after PostgreSQL commit.
+See ADR-011 for full design.
+
 ### Core Subjects
 
 | Subject Pattern | Publisher | Consumer(s) | JetStream |
@@ -74,3 +81,4 @@ All services publish/consume through `packages/events/` — a thin abstraction t
 - TZ v2.5 §24.9 (Event-driven architecture)
 - `rmp_rewrite_starting_decisions.md` — Confirmed event broker baseline
 - `rmp_enterprise_architecture_review.md` — Technology choices
+- ADR-011 — Transactional outbox and event delivery (mandatory producer pattern)
