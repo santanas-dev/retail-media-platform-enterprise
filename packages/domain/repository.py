@@ -207,3 +207,141 @@ async def list_campaign_status_history(session: AsyncSession) -> list:
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+# ---------------------------------------------------------------------------
+# Transactional Outbox (Phase 4.1c — ADR-011)
+# ---------------------------------------------------------------------------
+
+
+async def enqueue_outbox_event(
+    session: AsyncSession,
+    *,
+    event_type: str,
+    event_version: str = "1.0",
+    aggregate_type: str,
+    aggregate_id: str,
+    payload: dict,
+    headers: dict | None = None,
+    partition_key: str | None = None,
+) -> str:
+    """Enqueue an outbox event in the current transaction.
+
+    Does NOT commit — caller owns the transaction boundary.
+    Does NOT publish to NATS — relay worker handles delivery.
+    Returns the event id.
+
+    The payload/headers dicts are stored as-is in JSONB columns.
+    Caller is responsible for ensuring no secrets/PII in payload
+    before calling this function (per ADR-011 §2).
+    """
+    import uuid
+    from packages.domain.models import OutboxEvent
+
+    event_id = str(uuid.uuid4())
+    event = OutboxEvent(
+        id=event_id,
+        event_type=event_type,
+        event_version=event_version,
+        aggregate_type=aggregate_type,
+        aggregate_id=aggregate_id,
+        partition_key=partition_key,
+        payload_json=payload,
+        headers_json=headers or {},
+    )
+    session.add(event)
+    return event_id
+
+
+async def fetch_pending_events(
+    session: AsyncSession,
+    *,
+    limit: int = 100,
+) -> list:
+    """Fetch pending/failed events for relay worker polling.
+
+    Ordered by next_attempt_at, limited to `limit` rows.
+    """
+    from packages.domain.models import OutboxEvent
+    from sqlalchemy import or_
+
+    stmt = (
+        select(OutboxEvent)
+        .where(
+            or_(
+                OutboxEvent.status == "pending",
+                OutboxEvent.status == "failed",
+            )
+        )
+        .order_by(OutboxEvent.next_attempt_at)
+        .limit(limit)
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def mark_event_published(
+    session: AsyncSession,
+    event_id: str,
+) -> None:
+    """Mark an outbox event as published."""
+    from packages.domain.models import OutboxEvent
+    from sqlalchemy import update
+    from datetime import datetime, timezone
+
+    await session.execute(
+        update(OutboxEvent)
+        .where(OutboxEvent.id == event_id)
+        .values(
+            status="published",
+            published_at=datetime.now(timezone.utc),
+        )
+    )
+
+
+async def mark_event_failed(
+    session: AsyncSession,
+    event_id: str,
+    *,
+    last_error: str,
+    max_attempts: int = 7,
+) -> None:
+    """Mark an outbox event as failed, with backoff.
+    Moves to dead_letter after max_attempts.
+    """
+    from packages.domain.models import OutboxEvent
+    from sqlalchemy import update
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
+    result = await session.execute(
+        select(OutboxEvent.attempts).where(OutboxEvent.id == event_id)
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
+        return
+    current_attempts = row + 1
+
+    if current_attempts >= max_attempts:
+        await session.execute(
+            update(OutboxEvent)
+            .where(OutboxEvent.id == event_id)
+            .values(
+                status="dead_letter",
+                attempts=current_attempts,
+                last_error=last_error[:2048],
+            )
+        )
+    else:
+        backoff_seconds = min(2 ** (current_attempts - 1), 64)
+        next_attempt = now + timedelta(seconds=backoff_seconds)
+        await session.execute(
+            update(OutboxEvent)
+            .where(OutboxEvent.id == event_id)
+            .values(
+                status="failed",
+                attempts=current_attempts,
+                next_attempt_at=next_attempt,
+                last_error=last_error[:2048],
+            )
+        )

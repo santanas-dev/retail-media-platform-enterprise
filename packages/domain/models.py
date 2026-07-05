@@ -63,6 +63,7 @@ __all__ = [
     "CampaignCreative",
     "CampaignApproval",
     "CampaignStatusHistory",
+    "OutboxEvent",
 ]
 
 
@@ -771,6 +772,36 @@ class PasswordResetToken(Base):
 
 
 # ---------------------------------------------------------------------------
+# Transactional Outbox (Phase 4.1c — ADR-011)
+# ---------------------------------------------------------------------------
+
+
+class OutboxEvent(Base):
+    __tablename__ = "outbox_events"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending','publishing','published','failed','dead_letter')",
+            name="ck_outbox_status",
+        ),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    event_type = Column(String(128), nullable=False)
+    event_version = Column(String(16), nullable=False, default="1.0")
+    aggregate_type = Column(String(64), nullable=False)
+    aggregate_id = Column(String(36), nullable=False)
+    partition_key = Column(String(128), nullable=True)
+    payload_json = Column(JSONB, nullable=False)
+    headers_json = Column(JSONB, nullable=False, default=dict)
+    status = Column(String(32), nullable=False, default="pending")
+    attempts = Column(Integer, nullable=False, default=0)
+    next_attempt_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    published_at = Column(DateTime(timezone=True), nullable=True)
+    last_error = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
+# ---------------------------------------------------------------------------
 # Required Table Count
 # ---------------------------------------------------------------------------
 
@@ -788,4 +819,5 @@ REQUIRED_TABLES = frozenset({
     "campaigns", "campaign_flights", "campaign_placements",
     "creative_assets", "campaign_creatives",
     "campaign_approvals", "campaign_status_history",
+    "outbox_events",
 })
