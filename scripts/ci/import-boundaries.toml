@@ -37,6 +37,14 @@ forbidden = [
 ]
 
 [[rule]]
+path = "packages/auth"
+label = "auth must not depend on api/HTTP layer"
+forbidden = [
+    "packages\\.api",
+    "^fastapi$",
+]
+
+[[rule]]
 path = "packages/contracts"
 label = "contracts must not import runtime packages"
 forbidden = [
@@ -59,12 +67,14 @@ forbidden = [
 path = "apps"
 label = "no legacy backend imports"
 forbidden = [
-    "^backend\\.",
+    "^backend(\\.|$)",
+    "^kso(\\.|$)",
 ]
 
 [[rule]]
 path = "packages"
 label = "no legacy backend imports"
 forbidden = [
-    "^backend\\.",
+    "^backend(\\.|$)",
+    "^kso(\\.|$)",
 ]

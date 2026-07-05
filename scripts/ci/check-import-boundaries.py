@@ -30,7 +30,39 @@ CONFIG_PATH = Path(__file__).resolve().parent / "import-boundaries.toml"
 
 # Patterns that look like imports
 RE_FROM = re.compile(r"^\s*from\s+([\w.]+)\s+import")
-RE_IMPORT = re.compile(r"^\s*import\s+([\w.]+)")
+RE_IMPORT = re.compile(r"^\s*import\s+(.+)$")
+
+
+def _extract_imported_modules(line: str) -> list[str]:
+    """Extract all top-level module names from an import line.
+
+    Handles:
+        import os                           → ['os']
+        import os, fastapi                  → ['os', 'fastapi']
+        import packages.api as api          → ['packages.api']
+        from fastapi import APIRouter       → ['fastapi']
+        from packages.api import a, b       → ['packages.api']
+    """
+    m = RE_FROM.match(line)
+    if m:
+        return [m.group(1)]
+
+    m = RE_IMPORT.match(line)
+    if m:
+        names_part = m.group(1)
+        modules = []
+        for segment in names_part.split(","):
+            # Strip whitespace and `as alias` suffix
+            segment = segment.strip()
+            if not segment:
+                continue
+            # Remove 'as alias' if present
+            if " as " in segment:
+                segment = segment.split(" as ", 1)[0].strip()
+            modules.append(segment)
+        return modules
+
+    return []
 
 
 def scan_file(filepath: Path, forbidden_patterns: list[str]) -> list[str]:
@@ -47,15 +79,12 @@ def scan_file(filepath: Path, forbidden_patterns: list[str]) -> list[str]:
         if stripped.startswith("#"):
             continue
 
-        match = RE_FROM.match(line) or RE_IMPORT.match(line)
-        if not match:
-            continue
-
-        imported = match.group(1)
-        for pattern in forbidden_patterns:
-            if re.search(pattern, imported):
-                violations.append(f"  {filepath.relative_to(REPO_ROOT)}:{lineno}: imports '{imported}' (matches forbidden '{pattern}')")
-                break  # one violation per line is enough
+        modules = _extract_imported_modules(line)
+        for imported in modules:
+            for pattern in forbidden_patterns:
+                if re.search(pattern, imported):
+                    violations.append(f"  {filepath.relative_to(REPO_ROOT)}:{lineno}: imports '{imported}' (matches forbidden '{pattern}')")
+                    break  # one violation per module per pattern
 
     return violations
 
