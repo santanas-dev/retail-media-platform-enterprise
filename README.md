@@ -2,7 +2,7 @@
 
 Мультиканальная платформа управления рекламой на цифровых носителях розничной сети.
 
-**Статус:** 🏗️ Phase 4.0b — Advertiser Domain (read-only foundation: brands, contracts, contacts).
+**Статус:** 🏗️ Phase 4.1a — Campaign Domain Architecture Lock (ADR-015).
 
 ## Architecture
 

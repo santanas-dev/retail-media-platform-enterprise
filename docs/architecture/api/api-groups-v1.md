@@ -216,19 +216,56 @@ scoped access (403 / 200), RLS row visibility, and the contacts PII gate
 
 ## 7. Campaigns & Placements API
 
+> **Status: Phase 4.1a — Architecture Lock (ADR-015).**
+> Endpoints are planned, not implemented.  All campaign endpoints require
+> JWT + `require_scoped_permission` + PostgreSQL RLS (two-layer defense
+> per ADR-009).  Campaign mutations produce outbox events (ADR-011) —
+> no direct NATS publish.  Architecture locked in ADR-015.
+
+### Phase 4.1b — Read-Only (planned)
+
 | Method | Endpoint | Auth | Permission | Description |
 |--------|----------|------|------------|-------------|
-| GET | `/api/v1/campaigns` | JWT | `campaigns.read` | List campaigns (paginated, filterable) |
-| POST | `/api/v1/campaigns` | JWT | `campaigns.create` | Create campaign (draft) |
+| GET | `/api/v1/campaigns` | JWT | `campaigns.read` | List campaigns (paginated, filterable by org/status/brand) |
 | GET | `/api/v1/campaigns/{code}` | JWT | `campaigns.read` | Campaign detail |
-| PATCH | `/api/v1/campaigns/{code}` | JWT | `campaigns.manage` | Update campaign |
-| POST | `/api/v1/campaigns/{code}/submit` | JWT | `campaigns.submit` | Submit for approval |
-| POST | `/api/v1/campaigns/{code}/pause` | JWT | `campaigns.manage` | Pause campaign |
-| POST | `/api/v1/campaigns/{code}/archive` | JWT | `campaigns.manage` | Archive campaign |
-| GET | `/api/v1/placements` | JWT | `placements.read` | List placements |
-| POST | `/api/v1/placements` | JWT | `placements.manage` | Create placement |
-| PATCH | `/api/v1/placements/{id}` | JWT | `placements.manage` | Update placement |
-| POST | `/api/v1/placements/{id}/check` | JWT | `inventory.read` | Check conflicts |
+| GET | `/api/v1/campaigns/{code}/placements` | JWT | `campaigns.read` | List placements for campaign |
+| GET | `/api/v1/campaigns/{code}/creatives` | JWT | `campaigns.read` | List creatives linked to campaign |
+| GET | `/api/v1/campaigns/{code}/flights` | JWT | `campaigns.read` | List flights/periods for campaign |
+| GET | `/api/v1/creatives` | JWT | `creatives.read` | List creative assets (paginated, filterable by org) |
+
+### Phase 4.1c — Mutations (planned, deferred)
+
+| Method | Endpoint | Auth | Permission | Description |
+|--------|----------|------|------------|-------------|
+| POST | `/api/v1/campaigns` | JWT | `campaigns.create` | Create campaign (draft) |
+| PATCH | `/api/v1/campaigns/{code}` | JWT | `campaigns.manage` or owner | Update campaign (draft/rejected only) |
+| POST | `/api/v1/campaigns/{code}/submit` | JWT | `campaigns.create` or owner | Submit for approval |
+| PATCH | `/api/v1/campaigns/{code}/status` | JWT | `campaigns.manage` | Force status transition |
+| POST | `/api/v1/campaigns/{code}/placements` | JWT | `campaigns.manage` or owner | Add placement |
+| DELETE | `/api/v1/campaigns/{code}/placements/{id}` | JWT | `campaigns.manage` or owner | Remove placement |
+| POST | `/api/v1/campaigns/{code}/creatives` | JWT | `campaigns.manage` or owner | Link creative |
+| DELETE | `/api/v1/campaigns/{code}/creatives/{id}` | JWT | `campaigns.manage` or owner | Unlink creative |
+| POST | `/api/v1/campaigns/{code}/flights` | JWT | `campaigns.manage` or owner | Add flight/period |
+| PATCH | `/api/v1/campaigns/{code}/flights/{id}` | JWT | `campaigns.manage` or owner | Update flight |
+| DELETE | `/api/v1/campaigns/{code}/flights/{id}` | JWT | `campaigns.manage` or owner | Remove flight |
+| POST | `/api/v1/creatives/upload` | JWT | `creatives.upload` | Upload creative asset (presigned) |
+
+### Phase 4.1d — Approval Workflow (planned, deferred)
+
+| Method | Endpoint | Auth | Permission | Description |
+|--------|----------|------|------------|-------------|
+| POST | `/api/v1/campaigns/{code}/approve` | JWT | `campaigns.approve` | Approve campaign (operator/admin) |
+| POST | `/api/v1/campaigns/{code}/reject` | JWT | `campaigns.approve` | Reject campaign with reason |
+| GET | `/api/v1/campaigns/{code}/approvals` | JWT | `campaigns.read` | Approval history |
+
+> **Security invariants (from ADR-015):**
+> - Every endpoint: negative behavioral test required before acceptance.
+> - Campaign cannot reach `scheduled`/`active` without an approval record.
+> - All campaign mutations produce outbox events in the same transaction.
+> - Advertiser users see only their organization's campaigns (RLS).
+> - Contact PII never exposed through campaign endpoints.
+> - Placements target `display_surfaces`, not `physical_devices`.
+> - `storage_key` is opaque — presigned URLs generated at read time, never stored.
 
 ---
 

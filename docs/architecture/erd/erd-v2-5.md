@@ -191,7 +191,7 @@ advertisers             brands                contracts
        │                                 │
 ```
 
-### 1.3 Campaigns & Placements
+### 1.3 Campaigns & Placements *(Phase 0 — superseded by ADR-015. See §1.10.)*
 
 ```
 campaigns                          placements
@@ -235,7 +235,7 @@ campaign_status_history│   campaign_creative_links
 └──────────────────┘   │
 ```
 
-### 1.4 Content & Creatives
+### 1.4 Content & Creatives *(Phase 0 — superseded by ADR-015. See §1.10.)*
 
 ```
 media_assets                    creative_versions
@@ -602,6 +602,116 @@ NOTE: No raw passwords, tokens, or secrets are stored in any of these tables.
       login_attempts, or password_reset_tokens.
 ```
 
+---
+
+### 1.10 Campaign Domain (Phase 4.1a — ADR-015)
+
+```
+campaigns (Phase 4.1)
+┌──────────────────────────────────┐
+│ id (UUID)                        │
+│ advertiser_organization_id FK    │──┐ tenant root (NOT NULL)
+│   → advertiser_organizations.id  │  │
+│ advertiser_brand_id FK (nullable)│──┤ optional brand scope
+│   → advertiser_brands.id         │  │
+│ advertiser_contract_id FK        │──┤ budget tracking (NOT NULL)
+│   → advertiser_contracts.id      │  │
+│ code (VARCHAR 64)                │  │ unique per org
+│ name (VARCHAR 255)               │  │
+│ description (TEXT nullable)      │  │
+│ status (campaign_status ENUM)    │  │ §3 lifecycle
+│ priority (INT DEFAULT 0)         │  │
+│ budget_limit_amount (NUMERIC)    │  │ nullable = uncapped
+│ budget_limit_currency (VARCHAR 3)│  │
+│ start_at (TIMESTAMPTZ nullable)  │  │
+│ end_at (TIMESTAMPTZ nullable)    │  │
+│ timezone (VARCHAR 64)            │  │ IANA, default Europe/Moscow
+│ created_by FK → users.id         │  │
+│ created_at (TIMESTAMPTZ)         │  │
+│ updated_at (TIMESTAMPTZ)         │  │
+└──────────────────────────────────┘
+UNIQUE (advertiser_organization_id, code)
+ENABLE ROW LEVEL SECURITY + FORCE RLS
+│
+│ 1:N
+├──────────────────────────────────────┐
+│                                      │
+▼                                      ▼
+campaign_flights (Phase 4.1)          campaign_placements (Phase 4.1)
+┌──────────────────────────────┐     ┌──────────────────────────────┐
+│ id (UUID)                    │     │ id (UUID)                    │
+│ campaign_id FK → campaigns   │     │ campaign_id FK → campaigns   │
+│ name (VARCHAR 255 nullable)  │     │ display_surface_id FK        │
+│ start_at (TIMESTAMPTZ)       │     │   → display_surfaces.id      │
+│ end_at (TIMESTAMPTZ)         │     │ store_id FK (nullable)       │
+│ dayparting_json (JSONB)      │     │ cluster_id FK (nullable)     │
+│ days_of_week (SMALLINT[])    │     │ branch_id FK (nullable)      │
+│ priority (INT DEFAULT 0)     │     │ share_of_voice_pct (INT 100) │
+│ created_at (TIMESTAMPTZ)     │     │ max_impressions (BIGINT)     │
+└──────────────────────────────┘     │ impressions_delivered(BIGINT)│
+                                     │ status (placement_status)    │
+campaign_creatives (Phase 4.1)       │ created_at (TIMESTAMPTZ)     │
+┌──────────────────────────────┐     └──────────────────────────────┘
+│ id (UUID)                    │     CONSTRAINT: at least one of
+│ campaign_id FK → campaigns   │     display_surface_id, store_id,
+│ creative_asset_id FK →       │     cluster_id, branch_id NOT NULL
+│   creative_assets.id         │
+│ sort_order (INT DEFAULT 0)   │
+│ duration_override_ms (INT)   │
+│ created_at (TIMESTAMPTZ)     │
+└──────────────────────────────┘
+UNIQUE (campaign_id, creative_asset_id)
+
+creative_assets (Phase 4.1)
+┌──────────────────────────────┐
+│ id (UUID)                    │
+│ advertiser_organization_id FK│── tenant ownership
+│   → advertiser_organizations │
+│ code (VARCHAR 64)            │── unique per org
+│ name (VARCHAR 255)           │
+│ media_type (VARCHAR 32)      │── image/png, image/jpeg,
+│                              │   video/mp4, video/webm,
+│                              │   html/widget
+│ storage_bucket (VARCHAR 128) │── MinIO/S3 bucket
+│ storage_key (VARCHAR 512)    │── opaque key, NOT presigned URL
+│ sha256_checksum (VARCHAR 64) │
+│ file_size_bytes (BIGINT)     │
+│ duration_ms (INT nullable)   │── null for static images
+│ resolution_w (INT nullable)  │
+│ resolution_h (INT nullable)  │
+│ status (asset_status ENUM)   │── uploading|ready|failed|archived
+│ moderation_status            │── pending|approved|rejected
+│   (moderation_status ENUM)   │
+│ moderation_notes (TEXT)      │
+│ created_by FK → users.id     │
+│ created_at (TIMESTAMPTZ)     │
+│ updated_at (TIMESTAMPTZ)     │
+└──────────────────────────────┘
+UNIQUE (advertiser_organization_id, code)
+ENABLE ROW LEVEL SECURITY + FORCE RLS
+
+campaign_approvals (Phase 4.1)         campaign_status_history (Phase 4.1)
+┌──────────────────────────────┐      ┌──────────────────────────────┐
+│ id (UUID)                    │      │ id (UUID)                    │
+│ campaign_id FK → campaigns   │      │ campaign_id FK → campaigns   │
+│ requested_by FK → users.id   │      │ old_status (nullable)        │
+│ requested_at (TIMESTAMPTZ)   │      │ new_status (campaign_status) │
+│ reviewed_by FK (nullable)    │      │ changed_by FK → users.id     │
+│ reviewed_at (TIMESTAMPTZ)    │      │ changed_at (TIMESTAMPTZ)     │
+│ decision (approval_decision) │      │ reason (TEXT nullable)       │
+│   approved|rejected          │      └──────────────────────────────┘
+│ rejection_reason (TEXT)      │
+│ created_at (TIMESTAMPTZ)     │
+└──────────────────────────────┘
+
+NOTE: All campaign tables have ENABLE ROW LEVEL SECURITY + FORCE RLS
+      with fail-closed SELECT policies (ADR-009 pattern).
+      Campaign mutations produce outbox_events (ADR-011) — no direct
+      NATS publish.
+      Placements target display_surfaces, not physical_devices
+      (ADR-015 §5).  Hierarchy resolved at manifest generation time.
+```
+
 ## 3. Relational Summary
 
 - `branches` 1→N `clusters` 1→N `stores` 1→N `store_zones`
@@ -611,12 +721,18 @@ NOTE: No raw passwords, tokens, or secrets are stored in any of these tables.
 - `physical_devices` 1→N `device_status_history`
 - `device_types` → `physical_devices`
 - `advertiser_organizations` 1→N `advertiser_brands` 1→N (opt) `campaigns`
-- `advertiser_organizations` 1→N `advertiser_contracts` 1→N (opt) `campaigns`
+- `advertiser_organizations` 1→N `advertiser_contracts` 1→N `campaigns`
 - `advertiser_organizations` 1→N `advertiser_contacts`
-- `advertisers` 1→N `brands` 1→N `contracts` 1→N `orders` *(Phase 0 — superseded by lines 612–614 above)*
-- `campaigns` N→1 `advertisers`, `campaigns` 1→N `placements` 1→N `placement_targets`
-- `campaigns` N→M `creative_versions` (via `campaign_creative_links`)
-- `media_assets` 1→N `creative_versions` 1→N `renditions`
+- `advertiser_organizations` 1→N `creative_assets`
+- `campaigns` 1→N `campaign_flights`
+- `campaigns` 1→N `campaign_placements` → `display_surfaces`
+- `campaigns` 1→N `campaign_creatives` → `creative_assets`
+- `campaigns` 1→N `campaign_approvals`
+- `campaigns` 1→N `campaign_status_history`
+- `advertisers` 1→N `brands` 1→N `contracts` 1→N `orders` *(Phase 0 — superseded by ADR-010, ADR-015)*
+- `campaigns` N→1 `advertisers`, `campaigns` 1→N `placements` 1→N `placement_targets` *(Phase 0 — superseded by ADR-015)*
+- `campaigns` N→M `creative_versions` (via `campaign_creative_links`) *(Phase 0 — superseded by ADR-015)*
+- `media_assets` 1→N `creative_versions` 1→N `renditions` *(Phase 0 — superseded by ADR-015)*
 - `playlists` 1→N `playlist_versions` 1→N `playlist_items`
 - `playlist_versions` 1→N `manifests` 1→N `manifest_items`
 - `emergency_events` N→M `devices/surfaces` (via `emergency_targets`)

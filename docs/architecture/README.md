@@ -5,7 +5,7 @@
 When decisions conflict, resolve in this order:
 
 1. **`docs/00-source-of-truth/`** — ТЗ v2.5 extraction + rewrite starting decisions
-2. **`docs/architecture/adr/ADR-001..ADR-010`** — architecture decision records (current)
+2. **`docs/architecture/adr/ADR-001..ADR-015`** — architecture decision records (current)
 3. **`docs/architecture/erd/erd-v2-5.md`** + **`docs/architecture/api/api-groups-v1.md`** — current ERD and API contracts
 4. **`docs/architecture/contracts/`** — manifest/proof event schemas
 5. **`docs/architecture/*.md` (superseded)** — historical design gates, retained for context only
@@ -28,6 +28,7 @@ When decisions conflict, resolve in this order:
 | `adr/ADR-012` | Async I/O and blocking work |
 | `adr/ADR-013` | Edge runtime safety |
 | `adr/ADR-014` | Layering and import boundaries |
+| `adr/ADR-015` | Campaign domain foundation (Phase 4.1a) |
 | `erd/erd-v2-5.md` | Current entity-relationship diagram |
 | `api/api-groups-v1.md` | Current API endpoint catalog |
 | `contracts/` | Manifest v1, proof event v1 schemas |

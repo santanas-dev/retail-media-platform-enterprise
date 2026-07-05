@@ -16,7 +16,7 @@ Before any architecture, planning, or implementation work, read:
 2. `docs/00-source-of-truth/TZ_Retail_Media_Platform_v2_5_Final_Hermes.extracted.md`
 3. `docs/00-source-of-truth/rmp_rewrite_starting_decisions.md`
 4. `docs/00-source-of-truth/rmp_enterprise_architecture_review.md`
-5. `docs/architecture/adr/ADR-001..ADR-014` — architecture decision records (current)
+5. `docs/architecture/adr/ADR-001..ADR-015` — architecture decision records (current)
 6. `docs/architecture/erd/erd-v2-5.md` — current ERD
 7. `docs/architecture/api/api-groups-v1.md` — current API contracts
 8. `docs/architecture/README.md` — index + superseded doc list
@@ -37,6 +37,12 @@ kill-switch, or any device-facing runtime code.**
 **ADR-014 (layering) must be read before creating new packages,
 modules, or imports.**  If import direction is unclear, stop and
 review the layer hierarchy — do not guess.
+
+**ADR-015 (campaign domain) must be read before implementing any
+campaign, creative, placement, scheduling, approval, or PoP reporting
+code.**  This ADR locks the entity graph, status lifecycle, placement
+model (surfaces, not devices), outbox integration, and behavioral
+test requirements for the entire campaign domain.
 
 The source-of-truth folder overrides older generated phase reports unless a
 newer approved ADR explicitly changes a decision. The original `.docx` in that
