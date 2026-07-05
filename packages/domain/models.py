@@ -9,6 +9,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     Column,
@@ -569,6 +570,12 @@ class Campaign(Base):
 
 class CampaignFlight(Base):
     __tablename__ = "campaign_flights"
+    __table_args__ = (
+        CheckConstraint(
+            "start_at < end_at",
+            name="ck_cf_start_before_end",
+        ),
+    )
 
     id = Column(String(36), primary_key=True, default=_new_uuid)
     campaign_id = Column(
@@ -610,8 +617,8 @@ class CampaignPlacement(Base):
         String(36), ForeignKey("branches.id"), nullable=True,
     )
     share_of_voice_pct = Column(Integer, nullable=False, default=100)
-    max_impressions = Column(Integer, nullable=True)
-    impressions_delivered = Column(Integer, nullable=False, default=0)
+    max_impressions = Column(BigInteger, nullable=True)
+    impressions_delivered = Column(BigInteger, nullable=False, default=0)
     status = Column(String(32), nullable=False, default="active")
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
 

@@ -51,6 +51,12 @@ class TestCampaignDomainModels(unittest.TestCase):
         fks = {fk.column.table.name for fk in self.m.CampaignFlight.__table__.foreign_keys}
         self.assertIn("campaigns", fks)
 
+    def test_flight_model_has_start_before_end_check(self):
+        """CampaignFlight model declares ck_cf_start_before_end CHECK."""
+        constraints = {c.name for c in self.m.CampaignFlight.__table__.constraints}
+        self.assertIn("ck_cf_start_before_end", constraints,
+                      "CampaignFlight model missing ck_cf_start_before_end")
+
     # --- CampaignPlacement ---
     def test_placement_columns(self):
         cols = {c.name for c in self.m.CampaignPlacement.__table__.columns}
@@ -66,6 +72,14 @@ class TestCampaignDomainModels(unittest.TestCase):
     def test_placement_at_least_one_target_constraint(self):
         constraints = {c.name for c in self.m.CampaignPlacement.__table__.constraints}
         self.assertIn("ck_cp_at_least_one_target", constraints)
+
+    def test_placement_impressions_are_biginteger(self):
+        """max_impressions and impressions_delivered are BigInteger (match migration)."""
+        import sqlalchemy as sa
+        for col_name in ("max_impressions", "impressions_delivered"):
+            col = self.m.CampaignPlacement.__table__.columns[col_name]
+            self.assertIsInstance(col.type, sa.BigInteger,
+                                  f"{col_name} should be BigInteger, got {type(col.type)}")
 
     def test_placement_no_device_id(self):
         """No physical_device_id column on placements."""
