@@ -34,7 +34,7 @@ class TestPhase2Metadata(unittest.TestCase):
         """Metadata table count — grows with each phase."""
         from packages.domain.models import Base
         count = len(Base.metadata.tables)
-        self.assertEqual(count, 41, f"Expected 36 tables, got {count}")
+        self.assertEqual(count, 44, f"Expected 44 tables, got {count}")
 
 
 class TestPhase2ModelColumns(unittest.TestCase):
@@ -130,6 +130,79 @@ class TestPhase2ModelColumns(unittest.TestCase):
         self.assertTrue(cols >= {"id", "actor_user_id", "action", "target_type",
                                   "target_id", "correlation_id", "ip_address",
                                   "details_json", "created_at"})
+
+    # --- Phase 4.3b PoP tables ---
+
+    def test_pop_event_raw_columns(self):
+        cols = {c.name for c in self.m.PopEventRaw.__table__.columns}
+        self.assertTrue(cols >= {
+            "id", "event_id", "schema_version", "device_id",
+            "manifest_id", "campaign_id", "campaign_verified",
+            "creative_asset_id", "surface_id", "rendered_at",
+            "event_recorded_at", "duration_ms", "playback_result",
+            "status", "quarantine_reason", "expires_at",
+            "received_at", "batch_id",
+        })
+
+    def test_pop_dedup_index_columns(self):
+        cols = {c.name for c in self.m.PopDedupIndex.__table__.columns}
+        self.assertTrue(cols >= {"event_id", "created_at"})
+
+    def test_pop_ingestion_batch_columns(self):
+        cols = {c.name for c in self.m.PopIngestionBatch.__table__.columns}
+        self.assertTrue(cols >= {
+            "id", "device_id", "received_at", "event_count",
+            "accepted_count", "rejected_count", "quarantined_count",
+        })
+
+    def test_pop_event_raw_unique_event_id(self):
+        """event_id has unique constraint."""
+        cols = self.m.PopEventRaw.__table__.columns["event_id"]
+        self.assertTrue(cols.unique)
+
+    def test_pop_event_raw_no_secret_columns(self):
+        """No storage_bucket, storage_key, presigned_url, token, password."""
+        forbidden = {"storage_bucket", "storage_key", "presigned_url",
+                     "token", "password", "secret", "api_key", "jwt"}
+        actual = {c.name for c in self.m.PopEventRaw.__table__.columns}
+        overlap = forbidden & actual
+        self.assertSetEqual(overlap, set(),
+                            f"PoP table has forbidden columns: {overlap}")
+
+    def test_pop_event_raw_no_pii_columns(self):
+        """No email, phone, contact PII in PoP events."""
+        forbidden = {"email", "phone", "contact", "advertiser_contact", "name"}
+        actual = {c.name for c in self.m.PopEventRaw.__table__.columns}
+        overlap = forbidden & actual
+        self.assertSetEqual(overlap, set(),
+                            f"PoP table has PII columns: {overlap}")
+
+    def test_pop_event_raw_fk_device(self):
+        fks = [fk for fk in self.m.PopEventRaw.__table__.foreign_keys
+               if fk.parent.name == "device_id"]
+        self.assertTrue(fks, "device_id must have FK to physical_devices.id")
+        self.assertIn("physical_devices.id", {fk.target_fullname for fk in fks})
+
+    def test_pop_event_raw_fk_creative(self):
+        fks = [fk for fk in self.m.PopEventRaw.__table__.foreign_keys
+               if fk.parent.name == "creative_asset_id"]
+        self.assertTrue(fks, "creative_asset_id must have FK to creative_assets.id")
+        self.assertIn("creative_assets.id", {fk.target_fullname for fk in fks})
+
+    def test_pop_event_raw_campaign_id_nullable(self):
+        col = self.m.PopEventRaw.__table__.columns["campaign_id"]
+        self.assertTrue(col.nullable,
+                        "campaign_id must be nullable for quarantine events")
+
+    def test_pop_event_raw_manifest_id_nullable(self):
+        col = self.m.PopEventRaw.__table__.columns["manifest_id"]
+        self.assertTrue(col.nullable,
+                        "manifest_id must be nullable for quarantine events")
+
+    def test_pop_event_raw_campaign_verified_default_false(self):
+        col = self.m.PopEventRaw.__table__.columns["campaign_verified"]
+        self.assertFalse(col.default.arg if col.default else True,
+                         "campaign_verified must default to False")
 
 
 class TestPhase2ForeignKeys(unittest.TestCase):

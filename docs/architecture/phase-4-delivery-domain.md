@@ -8,7 +8,7 @@
 - **4.2d** Device Gateway Delivery Endpoint — ✅ done (`c34d5fa` + `c8a369e` + `08b099e`)
 - **4.2e** Runtime Simulator Behavioral Tests — ✅ done (`52a50fc` + fix)
 - **4.3a** PoP and Reporting Architecture Lock (ADR-017) — 🔒 locked
-- **4.3b** PoP Persistence Schema — open
+- **4.3b** PoP Persistence Schema — ✅ done
 - **4.3c** PoP Ingestion Endpoint — open
 - **4.3d** Reporting Read-Only Endpoints — open
 - **4.3e** Materialized Views / Exports — open
@@ -29,7 +29,55 @@ ADR-017 locks the PoP pipeline architecture:
 | Outbox | All ingestion events via outbox (ADR-011). No direct NATS |
 | Audit | Ingestion attempts, quarantine reasons, dedup hits — all audit-logged |
 | Phase split | 4.3b (schema) → 4.3c (ingestion) → 4.3d (reporting) → 4.3e (views/exports) |
-| Behavioral proof | 9 required tests before 4.3c acceptance |
+| Behavioral proof | 12 required tests before 4.3c acceptance |
+
+## Phase 4.3b: PoP Persistence Schema (done)
+
+### Deliverable
+
+Migration 009 — `pop_events_raw`, `pop_dedup_index`, `pop_ingestion_batches`.
+
+| Asset | Details |
+|-------|---------|
+| Migration | `apps/control-api/alembic/versions/009_pop_persistence_schema.py` |
+| Models | `PopEventRaw`, `PopDedupIndex`, `PopIngestionBatch` in `packages/domain/models.py` |
+| Repository | 6 helpers in `packages/domain/repository.py`: `record_pop_raw_event`, `insert_pop_dedup_key`, `is_pop_event_duplicate`, `accept_pop_event`, `quarantine_pop_event`, `expire_pop_quarantine_events` |
+| Constraints | `duration_ms` [1, 86400000], `status` ∈ {accepted,quarantined,rejected}, `playback_result` ∈ {success,fallback,interrupted,failed}, `event_id` UNIQUE |
+| Indexes | 7 on raw table + 2 on batches |
+| No RLS | Device-owned events, internal service ingestion |
+| No FK on campaign_id/manifest_id | Quarantine path — events arrive before manifest |
+
+### Key Decisions
+
+- **No RLS** — events ingested by internal service, reporting APIs enforce scoping via JOINs.
+- **campaign_id/manifest_id soft links** — no FK constraints to allow quarantine (unknown manifest).
+- **campaign_verified defaults FALSE** — only `accept_pop_event` sets TRUE.
+- **Caller-owned transactions** — no commit inside helpers. Rollback → no partial state.
+- **No ClickHouse, no NATS, no FastAPI** in domain layer.
+- **accepted = billing-grade** — `status='accepted'` AND `campaign_verified=true` AND `playback_result='success'`.
+
+### Test Coverage
+
+| Suite | Count | What |
+|-------|-------|------|
+| Unit (models) | 15 | Columns, constraints, secrets/PII, nullable rules, FKs, REQUIRED_TABLES, table count=44 |
+| Unit (repo) | 6 | Helper signatures, import boundaries — no NATS/FastAPI/ClickHouse |
+| Behavioral | 10 | Commit/rollback, dedup detection, quarantine (campaign_verified=false), duration constraints, status constraints, expire, accepted=playback_result success |
+
+### Behavioral Proofs
+
+| # | Test | What it proves |
+|---|------|---------------|
+| 1 | `test_accept_commit_stores_raw_and_dedup` | Accepted event creates raw + dedup entries, campaign_verified=true |
+| 2 | `test_rollback_creates_nothing` | Rollback produces zero rows in both tables |
+| 3 | `test_duplicate_detected` | `is_pop_event_duplicate` returns True after insert |
+| 4 | `test_new_event_id_not_duplicate` | Unknown event_id returns False |
+| 5 | `test_quarantine_sets_campaign_verified_false` | Quarantine stores campaign_verified=false, expires_at, null campaign/manifest |
+| 6 | `test_quarantine_with_campaign_from_payload` | campaign_id from device payload stored but unverified |
+| 7 | `test_expire_quarantine_events` | Expired quarantine → status=rejected, reason=quarantine_expired |
+| 8 | `test_duration_too_small_rejected` | duration_ms=0 violates DB CHECK |
+| 9 | `test_duration_too_large_rejected` | duration_ms=86400001 violates DB CHECK |
+| 10 | `test_accepted_event_must_be_success` | accept_pop_event forces playback_result='success' |
 
 ## Phase 4.2c: Manifest Generator Worker Skeleton (closed)
 

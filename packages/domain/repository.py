@@ -1213,3 +1213,211 @@ async def get_latest_manifest_for_device(
         "generated_at": manifest.generated_at.isoformat() if manifest.generated_at else None,
         "content_hash": manifest.content_hash,
     }
+
+
+# ---------------------------------------------------------------------------
+# PoP Persistence (Phase 4.3b — ADR-017)
+# ---------------------------------------------------------------------------
+
+
+async def record_pop_raw_event(
+    session: AsyncSession,
+    *,
+    event_id: str,
+    schema_version: str,
+    device_id: str,
+    manifest_id: str | None,
+    campaign_id: str | None,
+    campaign_verified: bool,
+    creative_asset_id: str,
+    surface_id: str,
+    rendered_at,
+    event_recorded_at,
+    duration_ms: int,
+    playback_result: str,
+    status: str,
+    quarantine_reason: str | None = None,
+    expires_at=None,
+    batch_id: str | None = None,
+) -> str:
+    """Insert a raw PoP event into pop_events_raw.
+
+    Does NOT commit — caller owns the transaction boundary.
+    Does NOT insert into pop_dedup_index — caller must call
+    insert_pop_dedup_key in the same transaction.
+    Returns the internal row id.
+    """
+    from packages.domain.models import PopEventRaw
+    import uuid
+
+    row_id = str(uuid.uuid4())
+    event = PopEventRaw(
+        id=row_id,
+        event_id=event_id,
+        schema_version=schema_version,
+        device_id=device_id,
+        manifest_id=manifest_id,
+        campaign_id=campaign_id,
+        campaign_verified=campaign_verified,
+        creative_asset_id=creative_asset_id,
+        surface_id=surface_id,
+        rendered_at=rendered_at,
+        event_recorded_at=event_recorded_at,
+        duration_ms=duration_ms,
+        playback_result=playback_result,
+        status=status,
+        quarantine_reason=quarantine_reason,
+        expires_at=expires_at,
+        batch_id=batch_id,
+    )
+    session.add(event)
+    return row_id
+
+
+async def insert_pop_dedup_key(
+    session: AsyncSession,
+    event_id: str,
+) -> str:
+    """Insert a dedup key into pop_dedup_index.
+
+    Does NOT commit — caller owns the transaction boundary.
+    Must be called in the same transaction as record_pop_raw_event.
+    Returns the event_id.
+    """
+    from packages.domain.models import PopDedupIndex
+
+    dedup = PopDedupIndex(event_id=event_id)
+    session.add(dedup)
+    return event_id
+
+
+async def is_pop_event_duplicate(
+    session: AsyncSession,
+    event_id: str,
+) -> bool:
+    """Check if event_id already exists in pop_dedup_index.
+
+    Returns True if duplicate, False if new.
+    """
+    from sqlalchemy import exists
+    from packages.domain.models import PopDedupIndex
+
+    stmt = select(exists().where(PopDedupIndex.event_id == event_id))
+    result = await session.execute(stmt)
+    return result.scalar() is True
+
+
+async def accept_pop_event(
+    session: AsyncSession,
+    *,
+    event_id: str,
+    schema_version: str,
+    device_id: str,
+    manifest_id: str,
+    campaign_id: str,
+    creative_asset_id: str,
+    surface_id: str,
+    rendered_at,
+    event_recorded_at,
+    duration_ms: int,
+    batch_id: str | None = None,
+) -> str:
+    """Record an accepted (billing-grade) PoP event.
+
+    Inserts pop_events_raw with status='accepted' + campaign_verified=True
+    AND inserts into pop_dedup_index — in caller-owned transaction.
+    Caller must commit.
+    Returns the internal row id.
+    """
+    return await record_pop_raw_event(
+        session,
+        event_id=event_id,
+        schema_version=schema_version,
+        device_id=device_id,
+        manifest_id=manifest_id,
+        campaign_id=campaign_id,
+        campaign_verified=True,
+        creative_asset_id=creative_asset_id,
+        surface_id=surface_id,
+        rendered_at=rendered_at,
+        event_recorded_at=event_recorded_at,
+        duration_ms=duration_ms,
+        playback_result="success",
+        status="accepted",
+        batch_id=batch_id,
+    )
+
+
+async def quarantine_pop_event(
+    session: AsyncSession,
+    *,
+    event_id: str,
+    schema_version: str,
+    device_id: str,
+    manifest_id: str | None,
+    campaign_id: str | None,
+    creative_asset_id: str,
+    surface_id: str,
+    rendered_at,
+    event_recorded_at,
+    duration_ms: int,
+    playback_result: str,
+    quarantine_reason: str,
+    expires_at,
+    batch_id: str | None = None,
+) -> str:
+    """Record a quarantined PoP event with campaign_verified=False.
+
+    Inserts pop_events_raw with status='quarantined' + campaign_verified=False
+    AND inserts into pop_dedup_index.
+    Caller owns the transaction boundary.
+    Returns the internal row id.
+    """
+    return await record_pop_raw_event(
+        session,
+        event_id=event_id,
+        schema_version=schema_version,
+        device_id=device_id,
+        manifest_id=manifest_id,
+        campaign_id=campaign_id,
+        campaign_verified=False,
+        creative_asset_id=creative_asset_id,
+        surface_id=surface_id,
+        rendered_at=rendered_at,
+        event_recorded_at=event_recorded_at,
+        duration_ms=duration_ms,
+        playback_result=playback_result,
+        status="quarantined",
+        quarantine_reason=quarantine_reason,
+        expires_at=expires_at,
+        batch_id=batch_id,
+    )
+
+
+async def expire_pop_quarantine_events(
+    session: AsyncSession,
+    *,
+    before,
+) -> int:
+    """Expire quarantine events whose expires_at has passed.
+
+    Sets status='rejected' and quarantine_reason='quarantine_expired'
+    for all quarantined events with expires_at < before.
+    Caller owns the transaction boundary.
+    Returns count of expired events.
+    """
+    from sqlalchemy import update
+    from packages.domain.models import PopEventRaw
+
+    result = await session.execute(
+        update(PopEventRaw)
+        .where(
+            PopEventRaw.status == "quarantined",
+            PopEventRaw.expires_at < before,
+        )
+        .values(
+            status="rejected",
+            quarantine_reason="quarantine_expired",
+        )
+    )
+    return result.rowcount

@@ -69,6 +69,9 @@ __all__ = [
     "DeliveryManifestSurface",
     "DeliveryManifestAsset",
     "DeliveryAttempt",
+    "PopEventRaw",
+    "PopDedupIndex",
+    "PopIngestionBatch",
 ]
 
 
@@ -916,6 +919,82 @@ class DeliveryAttempt(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
 
 
+# ---------------------------------------------------------------------------
+# PoP Persistence (Phase 4.3b — ADR-017)
+# ---------------------------------------------------------------------------
+# Device-owned events ingested by internal service.  No RLS.
+# campaign_id and manifest_id have NO FK constraints — quarantine events
+# arrive before the manifest record reaches the backend.
+# Cross-entity consistency checks happen at the application layer.
+# No UPDATE after acceptance except campaign_verified transition.
+
+
+class PopEventRaw(Base):
+    __tablename__ = "pop_events_raw"
+    __table_args__ = (
+        CheckConstraint(
+            "playback_result IN ('success','fallback','interrupted','failed')",
+            name="ck_pop_playback_result",
+        ),
+        CheckConstraint(
+            "duration_ms >= 1 AND duration_ms <= 86400000",
+            name="ck_pop_duration",
+        ),
+        CheckConstraint(
+            "status IN ('accepted','quarantined','rejected')",
+            name="ck_pop_status",
+        ),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    event_id = Column(String(36), nullable=False, unique=True, index=True)
+    schema_version = Column(String(8), nullable=False)
+    device_id = Column(
+        String(36), ForeignKey("physical_devices.id"), nullable=False, index=True,
+    )
+    manifest_id = Column(String(128), nullable=True, index=True)
+    campaign_id = Column(String(36), nullable=True, index=True)
+    campaign_verified = Column(Boolean, nullable=False, default=False)
+    creative_asset_id = Column(
+        String(36), ForeignKey("creative_assets.id"), nullable=False, index=True,
+    )
+    surface_id = Column(String(36), nullable=False)
+    rendered_at = Column(DateTime(timezone=True), nullable=False)
+    event_recorded_at = Column(DateTime(timezone=True), nullable=False)
+    duration_ms = Column(Integer, nullable=False)
+    playback_result = Column(String(32), nullable=False)
+    status = Column(String(32), nullable=False, index=True)
+    quarantine_reason = Column(String(128), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    received_at = Column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, index=True,
+    )
+    batch_id = Column(String(36), nullable=True, index=True)
+
+
+class PopDedupIndex(Base):
+    __tablename__ = "pop_dedup_index"
+
+    event_id = Column(String(36), primary_key=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
+class PopIngestionBatch(Base):
+    __tablename__ = "pop_ingestion_batches"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    device_id = Column(
+        String(36), ForeignKey("physical_devices.id"), nullable=False, index=True,
+    )
+    received_at = Column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, index=True,
+    )
+    event_count = Column(Integer, nullable=False, default=0)
+    accepted_count = Column(Integer, nullable=False, default=0)
+    rejected_count = Column(Integer, nullable=False, default=0)
+    quarantined_count = Column(Integer, nullable=False, default=0)
+
+
 REQUIRED_TABLES = frozenset({
     "branches", "clusters", "stores",
     "channels", "device_types", "capability_profiles",
@@ -934,4 +1013,7 @@ REQUIRED_TABLES = frozenset({
     "delivery_plans", "delivery_manifests",
     "delivery_manifest_surfaces", "delivery_manifest_assets",
     "delivery_attempts",
+    "pop_events_raw",
+    "pop_dedup_index",
+    "pop_ingestion_batches",
 })
