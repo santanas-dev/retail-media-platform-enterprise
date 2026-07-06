@@ -72,8 +72,9 @@ Every accepted PoP event MUST contain these fields (per
 |-------|------|----------|-------------|
 | `event_id` | UUID | Yes | Globally unique dedup key |
 | `event_type` | string | Yes | Always `"proof"` |
+| `schema_version` | string | Yes | Event schema version — `"1.0"` for v1 events. Used to route/validate v1 vs future versions |
 | `manifest_id` | string | Yes | Manifest that scheduled this play |
-| `campaign_id` | UUID | Yes | Owning campaign (resolved from manifest at ingest) |
+| `campaign_id` | UUID | Yes | Owning campaign — see §4.1 for sourcing rules |
 | `creative_asset_id` | UUID | Yes | Media asset that was rendered |
 | `surface_id` | string | Yes | Display surface |
 | `device_id` | UUID | Yes | Physical device |
@@ -94,6 +95,7 @@ Events are validated synchronously at ingestion before any DB write:
 
 | Rule | Violation → Action |
 |------|-------------------|
+| `schema_version` not `"1.0"` | **Reject 422** — unsupported schema. Future schemas (v2+) require explicit ingest support before acceptance |
 | `event_id` already exists in dedup index | Reject 409, do not double-count |
 | `device_id` ≠ JWT `sub` | Reject 403 |
 | `manifest_id` unknown (not in `delivery_manifests`) | **Quarantine** — accept, mark `pending_verification`. Do not count in reporting until manifest is confirmed. Quarantine TTL: 72 hours, then discard |
@@ -103,6 +105,49 @@ Events are validated synchronously at ingestion before any DB write:
 | `duration_ms` ∉ [1, 86_400_000] (1ms to 24h) | Reject 422 |
 | `playback_result` ≠ `success` | Reject — only successes are billable |
 | `event_type` ≠ `proof` | Reject 422 |
+
+#### 4.1 Campaign ID Sourcing
+
+`campaign_id` has two sourcing paths depending on whether the manifest
+is known at ingestion time:
+
+| Path | manifest_id known | Source | Trusted for billing? |
+|------|-------------------|--------|---------------------|
+| **Accepted** | Yes | Resolved from `delivery_manifests.campaign_id` | ✅ Yes — server-authoritative |
+| **Quarantine** | No | Event payload `campaign_id` from device | ❌ No — stored for indexing/debugging only. Billing after manifest recovery confirms consistency |
+
+The `pop_events_raw` table stores an additional `campaign_verified`
+boolean column:
+
+- `campaign_verified = true` when manifest is known AND
+  `event.campaign_id = manifest.campaign_id` confirmed.
+- `campaign_verified = false` during quarantine or when mismatch
+  detected; events with `campaign_verified = false` are excluded
+  from all reporting/billing queries.
+
+On manifest recovery (quarantine → accepted transition):
+1. Look up manifest → confirm `campaign_id` matches.
+2. If match: set `campaign_verified = true`, status = `accepted`.
+3. If mismatch: reject the event (422), log audit `pop.event.campaign_mismatch`.
+
+#### 4.2 Cross-Entity Consistency Checks
+
+After manifest resolution (for both accepted and quarantine-recovery
+paths), the following consistency checks are enforced:
+
+| Check | Violation → Action |
+|-------|-------------------|
+| `event.campaign_id` ≠ `manifest.campaign_id` | Reject — campaign mismatch |
+| `event.surface_id` not in manifest's `display_surfaces[].surface_id` | Reject — surface not targeted by this manifest |
+| `event.creative_asset_id` not in manifest's `playlist[].creative_asset_id` | Reject — asset not in manifest playlist for this device |
+| `event.device_id` ≠ manifest's `physical_device_id` AND ≠ JWT `sub` | Reject — device mismatch (double-check: manifest is device-specific per ADR-016) |
+| Any inconsistency | Reject 422 — do not quarantine. Quarantine is for *missing* data, not *contradictory* data |
+
+**Rationale:** quarantine handles missing information (manifest not yet
+persisted).  Contradictory information (campaign/surface mismatch) is
+always a sign of a misconfigured device, a replayed manifest, or a
+malicious submission — reject immediately to avoid polluting the data
+pipeline.
 
 **Quarantine rationale:** a device may receive a manifest, render
 content, and submit PoP before the manifest record reaches the backend
@@ -126,9 +171,11 @@ PostgreSQL as the initial OLTP source of truth for PoP data.
 pop_events_raw
 ├── id (UUID, PK)
 ├── event_id (UUID, UNIQUE INDEX)    ← dedup key
+├── schema_version (VARCHAR 8)       ← "1.0"; used for routing/validation
 ├── device_id (UUID, FK → physical_devices.id)
 ├── manifest_id (VARCHAR, FK → delivery_manifests.manifest_id)
 ├── campaign_id (UUID, FK → campaigns.id)
+├── campaign_verified (BOOLEAN DEFAULT FALSE) ← true only after manifest resolution + consistency check
 ├── creative_asset_id (UUID, FK → creative_assets.id)
 ├── surface_id (VARCHAR)
 ├── rendered_at (TIMESTAMPTZ)
@@ -148,14 +195,16 @@ pop_dedup_index
 internal service.  Reporting APIs enforce their own RLS via JOINs to
 campaign/placement visibility rules.
 
-**No soft-delete / no UPDATE after acceptance.**  Accepted events are
-immutable.  Quarantined events may transition to accepted or expired.
+**No soft-delete / no UPDATE after acceptance (except campaign_verified).**
+Accepted events are immutable.  Quarantined events may transition to
+accepted or expired; `campaign_verified` may transition from false to
+true on manifest recovery.
 
 ### 6. Reporting — Billing-Grade Integrity
 
 | Principle | Rule |
 |-----------|------|
-| **Only successes count** | `playback_result = success` AND `status = accepted` |
+| **Only successes count** | `playback_result = success` AND `status = accepted` AND `campaign_verified = true` |
 | **No fallback in billing** | `emit_pop = false` by default; only explicit opt-in counts |
 | **No scheduled-but-not-rendered** | Campaign schedules are not a billing signal |
 | **No duplicates** | Dedup by `event_id` eliminates double-counting |
@@ -230,11 +279,14 @@ Before Phase 4.3c (ingestion endpoint) is accepted:
 | 2 | Duplicate event ignored | Same `event_id` → 409, no second row |
 | 3 | Event from wrong device rejected | `event.device_id ≠ JWT sub` → 403 |
 | 4 | Fallback/skipped event rejected | `playback_result ≠ success` → 422 |
-| 5 | Unknown manifest quarantined | `manifest_id ∉ delivery_manifests` → 202 quarantine |
+| 5 | Unknown manifest quarantined | `manifest_id ∉ delivery_manifests` → 202 quarantine, `campaign_verified=false` |
 | 6 | Future timestamp quarantined | `rendered_at > now + 5min` → 202 quarantine |
-| 7 | Reporting count = accepted unique successes | `SELECT COUNT(*) WHERE status='accepted'` matches expected |
-| 8 | Batch partial acceptance | Valid events accepted, invalid rejected, response reflects both |
-| 9 | Device can resubmit after quarantine resolution | After manifest appears, previously quarantined event is accepted |
+| 7 | Unsupported schema_version rejected | `schema_version ≠ "1.0"` → 422 |
+| 8 | Campaign mismatch rejected | `event.campaign_id ≠ manifest.campaign_id` → 422 after resolution |
+| 9 | Surface not in manifest rejected | `event.surface_id` not in manifest `display_surfaces` → 422 |
+| 10 | Reporting count = accepted unique successes | `SELECT COUNT(*) WHERE status='accepted' AND campaign_verified=true` matches expected |
+| 11 | Batch partial acceptance | Valid events accepted, invalid rejected, response reflects both |
+| 12 | Device can resubmit after quarantine resolution | After manifest appears, previously quarantined event transitions to accepted if consistency passes |
 
 ## Consequences
 
