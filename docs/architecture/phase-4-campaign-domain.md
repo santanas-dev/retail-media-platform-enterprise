@@ -154,19 +154,44 @@ preserved (`scope_advertiser_ids=None` → no restriction).
 | Repository methods (3) | ✅ `request_campaign_approval`, `approve_campaign`, `reject_campaign` |
 | API endpoints (3) | ✅ POST `request-approval`, POST `approve`, POST `reject` |
 | Status transitions | ✅ draft→pending_approval, pending_approval→approved, pending_approval→rejected |
-| Validation | ✅ ≥1 flight + placement + creative before request |
+| Validation | ✅ ≥1 flight + placement + creative; flights within contract `valid_from..valid_until` |
 | Approval records | ✅ `campaign_approvals` row on approve/reject with decision + reviewer |
 | Status history | ✅ row on every transition |
 | Outbox | ✅ `campaign.approval_requested/approved/rejected` in same transaction |
 | Permission separation | ✅ `campaigns.manage` for request, `campaigns.approve` for approve/reject |
 | Advertiser cannot self-approve | ✅ scoped advertiser gets 403 on approve/reject |
-| Unit tests | ✅ 15 (schemas, permissions, transitions, compliance) |
-| Behavioral tests | ✅ 16 (401, 403, request/approve/reject, non-draft, validation, no-outbox, self-approve) |
+| Cross-org approver blocked | ✅ scoped approver for other org gets 403, no outbox/side-effects |
+| `requested_at` semantics | ✅ taken from draft→pending_approval status_history.changed_at, not decision time |
+| Flight/contract validation | ✅ request approval validates flights against contract `valid_from..valid_until` |
+| Idempotency | ✅ repeated request/approve/reject → 409, no outbox |
+| Unit tests | ✅ 18 (schemas, permissions, transitions, compliance, requested_at lookup, contract validation) |
+| Behavioral tests | ✅ 24 (401, 403, request/approve/reject, idempotency, cross-org, contract valid_until/from, self-approve) |
+
+**Commits:** `fc09f4b` (initial), `c405bdc` (hardening), `0fea6ac` (robustness)
+
+#### Behavioral Proof
+
+| Test | Proves |
+|------|--------|
+| No token → 401 | 3/3 approval endpoints |
+| No campaigns.manage → 403 on request | `noperms` user |
+| No campaigns.approve → 403 on approve/reject | `advertiser` user |
+| Admin approves → 200 + approval row + outbox | `system_admin` |
+| Admin rejects → 200 + rejection reason + outbox | `system_admin` |
+| Advertiser cannot self-approve | scoped advertiser → 403 |
+| Cross-org approver blocked | scoped ADV-002 approver → 403 on ADV-001 campaign, no side effects |
+| Flight outside contract valid_from → 422 | flight before contract start blocked |
+| Flight past contract valid_until → 422 | flight past finite contract end blocked |
+| Duplicate request → 409 | pending_approval re-request rejected, outbox unchanged |
+| Duplicate approve → 409 | approved re-approve rejected, outbox unchanged |
+| Duplicate reject → 409 | rejected re-reject rejected, outbox unchanged |
+| Archived approve/reject → 409 | archived campaign blocked on approve + reject |
+| `requested_at < reviewed_at` | approval record timestamps from different instants |
+| No outbox on rejection paths | 422/403/409 leave no `campaign.approval_requested` event |
 
 ### Deferred (Phase 4.2–4.4)
 
 - **Mutations:** create/update/submit/status-change for campaigns, placements, creatives, flights
-- **Approval workflow:** approve/reject actions, approval history by campaign
 - **Outbox producers:** `campaign.*` events via transactional outbox (ADR-011)
 - **Manifest generation:** resolve hierarchy → surfaces → devices
 - **PoP/reporting:** campaign performance dashboards, advertiser reporting

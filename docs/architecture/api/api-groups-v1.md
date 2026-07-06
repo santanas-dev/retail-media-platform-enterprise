@@ -216,7 +216,7 @@ scoped access (403 / 200), RLS row visibility, and the contacts PII gate
 
 ## 7. Campaigns & Placements API
 
-> **Status: Phase 4.1c — Implemented (read-only + mutations).**
+> **Status: Phase 4.1d — Implemented (read-only + mutations + approval workflow).**
 > All campaign endpoints live under `/api/v1/identity/` in Phase 4.1
 > (provisional flat list-all paths).  Nested REST paths under
 > `/api/v1/campaigns/{code}/...` are planned for detail/mutation phases
@@ -240,13 +240,22 @@ scoped access (403 / 200), RLS row visibility, and the contacts PII gate
 > | POST | `/api/v1/identity/campaigns/{campaign_id}/approve` | JWT | `campaigns.approve` + advertiser scope | ✅ 4.1d | Approve: pending_approval → approved. Creates approval record + outbox. |
 > | POST | `/api/v1/identity/campaigns/{campaign_id}/reject` | JWT | `campaigns.approve` + advertiser scope | ✅ 4.1d | Reject: pending_approval → rejected. Reason required. Creates approval record + outbox. |
 >
-> **Mutation security invariants (Phase 4.1c):**
-> - All mutation endpoints require `campaigns.manage` + advertiser scope
+> **Mutation security invariants (Phase 4.1c–4.1d):**
+> - All mutation endpoints require `campaigns.manage` or `campaigns.approve` + advertiser scope
 > - Tenant isolation: scoped advertiser can only mutate own org's campaigns
 > - Cross-org brand/contract → 422 (generic — no existence oracle)
 > - Scope violation → 403
 > - All mutations produce outbox events in the same DB transaction
 > - No campaign/outbox written on rejection (validated before INSERT)
+>
+> **Approval workflow invariants (Phase 4.1d):**
+> - `request-approval` requires `campaigns.manage`; `approve`/`reject` require `campaigns.approve`
+> - Advertiser cannot self-approve (403)
+> - Cross-org approver blocked (403 — scope + permission defense)
+> - Flight windows must fit within contract `valid_from..valid_until` before entering `pending_approval` (422)
+> - `requested_at` taken from draft→pending_approval transition timestamp, not decision time
+> - Repeated request/approve/reject → 409 (idempotent), no outbox
+> - Outbox events: `campaign.approval_requested`, `campaign.approved`, `campaign.rejected`
 >
 > **Deferred (Phase 4.2+):**
 > - Delivery/manifest generation
