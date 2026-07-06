@@ -279,10 +279,7 @@ class TestDeviceManifestEndpoint:
             "/api/v1/device/manifest/latest",
             headers={"Authorization": f"Bearer {token}"},
         )
-        # Device not found → 404 (no manifest for this device)
-        # The endpoint checks device existence first, but the token's sub
-        # identifies the device. A non-existent device gets 404.
-        assert response.status_code in (401, 403, 404)
+        assert response.status_code == 404
 
     def test_inactive_device_rejected(self):
         """Inactive/offline device must not receive manifest."""
