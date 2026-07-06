@@ -91,6 +91,8 @@ class TestManifestResponseSafety(unittest.TestCase):
             "device_code": "DEV-001",
             "store_id": "s1",
             "store_code": "ST-001",
+            "channel_type": "KSO",
+            "device_type": "KSO-DEVICE",
             "display_surfaces": [
                 {"surface_id": "sf1", "surface_code": "SURF-1"},
             ],
@@ -102,8 +104,21 @@ class TestManifestResponseSafety(unittest.TestCase):
                     "media_type": "video/mp4",
                 },
             ],
+            "media_files": [],
+            "adapter_payload": {},
             "valid_from": "2026-08-01T00:00:00+00:00",
             "valid_to": "2026-08-07T23:59:59+00:00",
+            "offline_ttl_hours": 168,
+            "fallback_rules": {
+                "on_manifest_expired": "show_fallback",
+                "on_network_lost": "continue_last_valid",
+                "filler_media_ids": [],
+                "emit_pop": False,
+            },
+            "signature": {
+                "algorithm": "HMAC-SHA256",
+                "value": "",
+            },
             "generated_at": "2026-08-01T00:00:00+00:00",
             "content_hash": "sha256:def456",
         }
@@ -147,11 +162,30 @@ class TestManifestResponseSafety(unittest.TestCase):
 
     def test_manifest_response_shape(self):
         """get_latest_manifest_for_device returns correct top-level fields."""
-        from packages.domain.repository import get_latest_manifest_for_device
         manifest = self._mock_manifest()
-        required = {"manifest_id", "device_id", "store_id", "display_surfaces", "playlist"}
+        required = {
+            "manifest_id", "device_id", "store_id", "display_surfaces",
+            "playlist", "channel_type", "device_type", "media_files",
+            "adapter_payload", "fallback_rules", "signature",
+            "offline_ttl_hours",
+        }
         for field in required:
             self.assertIn(field, manifest, f"Missing field: {field}")
+
+    def test_manifest_schema_compatible(self):
+        """Manifest response validates against manifest_v1.schema.json required fields."""
+        import json
+        schema_path = os.path.join(
+            os.path.dirname(__file__), "..",
+            "packages", "contracts", "manifest_v1.schema.json",
+        )
+        schema = json.load(open(schema_path))
+        manifest = self._mock_manifest()
+
+        # Check all required fields from schema are present
+        for field in schema.get("required", []):
+            self.assertIn(field, manifest,
+                          f"Schema requires '{field}' but response is missing it")
 
 
 class TestNoGenerationInEndpoint(unittest.TestCase):

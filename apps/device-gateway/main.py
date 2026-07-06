@@ -107,39 +107,46 @@ async def health_ready():
 
 @app.get("/api/v1/device/manifest/latest")
 async def get_latest_manifest(
+    request: Request,
     device_id: str = Depends(get_device_id_from_token),
     session: AsyncSession = Depends(get_session),
 ):
-    """Return the latest generated manifest for the authenticated device.
+    """Return the latest manifest for the authenticated device, or 404.
 
-    200: manifest JSON
-    404: no manifest generated yet for this device
+    200: manifest JSON with ETag header
+    304: If-None-Match matches current content_hash
+    404: no manifest or device not found
     401: invalid/expired/missing device token
+    403: device not active
     """
-    # Check device exists and is active
-    from packages.domain.models import PhysicalDevice
-    device = (
-        await session.execute(
-            sa_select(PhysicalDevice).where(
-                PhysicalDevice.id == device_id,
-            )
-        )
-    ).scalar_one_or_none()
+    from packages.domain.repository import get_latest_manifest_for_device, get_physical_device_for_manifest_delivery
 
-    if device is None:
+    device_status = await get_physical_device_for_manifest_delivery(session, device_id)
+    if device_status is None:
         raise HTTPException(status_code=404, detail="Device not found")
-
-    if device.status not in ("active", "online"):
+    if device_status not in ("active", "online"):
         raise HTTPException(
             status_code=403,
-            detail=f"Device is {device.status}",
+            detail=f"Device is {device_status}",
         )
+
+    # Check If-None-Match for 304
+    if_none_match = request.headers.get("If-None-Match", "")
+    if if_none_match and if_none_match not in ("*", ""):
+        manifest_check = await get_latest_manifest_for_device(session, device_id)
+        if manifest_check is not None and manifest_check.get("content_hash") == if_none_match:
+            not_modified = JSONResponse(content=None, status_code=304)
+            not_modified.headers["ETag"] = manifest_check["content_hash"]
+            return not_modified
 
     manifest = await get_latest_manifest_for_device(session, device_id)
     if manifest is None:
         raise HTTPException(status_code=404, detail="No manifest available")
 
-    return manifest
+    response_obj = JSONResponse(content=manifest)
+    if manifest.get("content_hash"):
+        response_obj.headers["ETag"] = manifest["content_hash"]
+    return response_obj
 
 
 # ---------------------------------------------------------------------------

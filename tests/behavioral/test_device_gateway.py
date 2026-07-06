@@ -184,6 +184,36 @@ class TestDeviceManifestEndpoint:
         assert "manifest_id" in data
         assert data["device_id"] == SEED_DEVICE_ID
         assert len(data.get("display_surfaces", [])) >= 1
+        # Verify ETag header present
+        assert "etag" in response.headers
+        assert response.headers["etag"] == data.get("content_hash", "")
+
+    def test_if_none_match_returns_304(self):
+        """If-None-Match matching current content_hash returns 304."""
+        client = self._client()
+        token = _create_device_token()
+
+        # First fetch to get ETag
+        response1 = client.get(
+            "/api/v1/device/manifest/latest",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response1.status_code == 200
+        etag = response1.headers.get("etag", "")
+
+        # Second fetch with If-None-Match
+        response2 = client.get(
+            "/api/v1/device/manifest/latest",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "If-None-Match": etag,
+            },
+        )
+        assert response2.status_code == 304
+        # 304 must have no body
+        assert response2.content == b"" or response2.content == b"null"
+        # ETag should still be present on 304
+        assert "etag" in response2.headers
 
     def test_no_auth_returns_401(self):
         client = self._client()

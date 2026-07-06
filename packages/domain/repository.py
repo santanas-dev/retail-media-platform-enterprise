@@ -1036,6 +1036,28 @@ async def create_delivery_attempt(
     return attempt_id
 
 
+
+
+async def get_physical_device_for_manifest_delivery(
+    session: AsyncSession,
+    physical_device_id: str,
+) -> str | None:
+    """Return device status for manifest delivery gating, or None if not found.
+
+    Returns the status string (e.g., 'active', 'online', 'offline')
+    Only for read-only existence + status check — no update.
+    """
+    from packages.domain.models import PhysicalDevice
+    device = (
+        await session.execute(
+            select(PhysicalDevice).where(
+                PhysicalDevice.id == physical_device_id,
+            )
+        )
+    ).scalar_one_or_none()
+    return device.status if device else None
+
+
 async def get_latest_manifest_for_device(
     session: AsyncSession,
     physical_device_id: str,
@@ -1056,6 +1078,8 @@ async def get_latest_manifest_for_device(
         DisplaySurface,
         PhysicalDevice,
         Store,
+        DeviceType,
+        Channel,
     )
 
     manifest = (
@@ -1132,6 +1156,27 @@ async def get_latest_manifest_for_device(
         if store:
             store_code = store.code
 
+    # Resolve channel_type from device → device_type → channel
+    channel_type = ""
+    device_type_code = ""
+    if device and device.device_type_id:
+        dt = (
+            await session.execute(
+                select(DeviceType)
+                .where(DeviceType.id == device.device_type_id)
+            )
+        ).scalar_one_or_none()
+        if dt:
+            device_type_code = dt.code or ""
+            ch = (
+                await session.execute(
+                    select(Channel)
+                    .where(Channel.id == dt.channel_id)
+                )
+            ).scalar_one_or_none()
+            if ch:
+                channel_type = ch.code or ""
+
     return {
         "manifest_id": manifest.manifest_id,
         "manifest_version": manifest.manifest_version,
@@ -1140,10 +1185,25 @@ async def get_latest_manifest_for_device(
         "device_code": device_code,
         "store_id": device_store_id,
         "store_code": store_code,
+        "channel_type": channel_type,
+        "device_type": device_type_code,
         "display_surfaces": display_surfaces,
         "playlist": playlist,
+        "media_files": [],
+        "adapter_payload": {},
         "valid_from": campaign.start_at.isoformat() if campaign and campaign.start_at else None,
         "valid_to": campaign.end_at.isoformat() if campaign and campaign.end_at else None,
+        "offline_ttl_hours": 168,
+        "fallback_rules": {
+            "on_manifest_expired": "show_fallback",
+            "on_network_lost": "continue_last_valid",
+            "filler_media_ids": [],
+            "emit_pop": False,
+        },
+        "signature": {
+            "algorithm": "HMAC-SHA256",
+            "value": "",
+        },
         "generated_at": manifest.generated_at.isoformat() if manifest.generated_at else None,
         "content_hash": manifest.content_hash,
     }
