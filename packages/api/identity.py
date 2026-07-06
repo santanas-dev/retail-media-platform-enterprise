@@ -11,11 +11,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from packages.api.dependencies import (
     get_current_active_user,
     get_db,
+    get_scope_context,
     require_permission,
     require_scoped_permission,
     set_rls_context,
 )
 from packages.domain import repository
+from packages.domain.scopes import ScopeContext
 from packages.domain.schemas import (
     CampaignApprovalOut,
     CampaignCreativeOut,
@@ -605,10 +607,28 @@ async def reject_endpoint(
 # ---------------------------------------------------------------------------
 
 
+async def _require_campaign_visible(
+    db, campaign_id: str, scope: ScopeContext,
+):
+    """Return campaign if visible to caller, else raise 404.
+
+    Checks both RLS (via get_campaign) and explicit org scope for defense-in-depth.
+    Admin users bypass the org-id check.
+    """
+    campaign = await repository.get_campaign(db, campaign_id)
+    if campaign is None:
+        raise HTTPException(status_code=404, detail={"code": "CAMPAIGN_NOT_FOUND", "message": "Campaign not found"})
+    if not scope.is_admin:
+        if str(campaign.advertiser_organization_id) not in scope.advertiser_scope_ids:
+            raise HTTPException(status_code=404, detail={"code": "CAMPAIGN_NOT_FOUND", "message": "Campaign not found"})
+    return campaign
+
+
 @router.get("/campaigns/{campaign_id}/pop/summary", response_model=CampaignPopSummaryOut)
 async def get_campaign_pop_summary(
     campaign_id: str,
     db=Depends(get_db),
+    scope: ScopeContext = Depends(get_scope_context),
     _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -617,6 +637,7 @@ async def get_campaign_pop_summary(
     Only accepted, campaign_verified, playback_result=success events count.
     Quarantined, rejected, duplicate, fallback events are excluded.
     """
+    await _require_campaign_visible(db, campaign_id, scope)
     result = await repository.get_campaign_pop_summary(db, campaign_id)
     return CampaignPopSummaryOut(
         campaign_id=campaign_id,
@@ -633,10 +654,12 @@ async def get_campaign_pop_summary(
 async def get_campaign_pop_by_day(
     campaign_id: str,
     db=Depends(get_db),
+    scope: ScopeContext = Depends(get_scope_context),
     _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
     """Daily PoP breakdown for a campaign. Ordered by date ascending."""
+    await _require_campaign_visible(db, campaign_id, scope)
     rows = await repository.list_campaign_pop_by_day(db, campaign_id)
     return [
         CampaignPopByDayOut(
@@ -652,10 +675,12 @@ async def get_campaign_pop_by_day(
 async def get_campaign_pop_by_surface(
     campaign_id: str,
     db=Depends(get_db),
+    scope: ScopeContext = Depends(get_scope_context),
     _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
     """Per-surface PoP breakdown for a campaign. Ordered by impressions descending."""
+    await _require_campaign_visible(db, campaign_id, scope)
     rows = await repository.list_campaign_pop_by_surface(db, campaign_id)
     return [
         CampaignPopBySurfaceOut(
