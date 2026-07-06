@@ -29,6 +29,8 @@ When decisions conflict, resolve in this order:
 | `adr/ADR-013` | Edge runtime safety |
 | `adr/ADR-014` | Layering and import boundaries |
 | `adr/ADR-015` | Campaign domain foundation (Phase 4.1a) |
+| `adr/ADR-016` | Campaign delivery and manifest pipeline (Phase 4.2a) |
+| `adr/ADR-017` | Proof-of-Play and reporting (Phase 4.3a) |
 | `erd/erd-v2-5.md` | Current entity-relationship diagram |
 | `api/api-groups-v1.md` | Current API endpoint catalog |
 | `contracts/` | Manifest v1, proof event v1 schemas |
@@ -37,6 +39,7 @@ When decisions conflict, resolve in this order:
 | `phase-2-foundation.md` | Phase 2 deliverable summary |
 | `phase-4-advertiser-domain.md` | Phase 4 (advertiser domain) close-out summary |
 | `phase-4-campaign-domain.md` | Phase 4 (campaign domain) close-out summary |
+| `phase-4-delivery-domain.md` | Phase 4.2–4.3 (delivery + PoP/reporting) status |
 | `legacy-reference.md` | Old platform reference pointer |
 
 ## Superseded Documents (Historical Only)

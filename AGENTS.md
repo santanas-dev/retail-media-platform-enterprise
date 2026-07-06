@@ -44,6 +44,18 @@ code.**  This ADR locks the entity graph, status lifecycle, placement
 model (surfaces, not devices), outbox integration, and behavioral
 test requirements for the entire campaign domain.
 
+**ADR-016 (delivery/manifest) must be read before implementing any
+manifest generation, delivery pipeline, or device manifest endpoint
+code.**  This ADR locks eligibility, target resolution, manifest
+schemas, versioning, outbox events, and the phase split (4.2b→4.2e).
+
+**ADR-017 (PoP/reporting) must be read before implementing any PoP
+ingestion endpoint, PoP storage tables, reporting API, or analytics
+code.**  This ADR locks PoP source (runtime only), ingestion validation
+(quarantine, dedup, clock drift), storage (PostgreSQL, ClickHouse
+deferred), billing-grade reporting rules, outbox integration, and
+behavioral proof requirements for Phase 4.3b→4.3e.
+
 The source-of-truth folder overrides older generated phase reports unless a
 newer approved ADR explicitly changes a decision. The original `.docx` in that
 folder is traceability-only; agents should use the markdown extraction.

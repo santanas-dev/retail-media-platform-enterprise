@@ -1,4 +1,4 @@
-# Phase 4.2 — Delivery Domain
+# Phase 4.2–4.3 — Delivery Domain + PoP/Reporting
 
 ## Status: In Progress
 
@@ -7,6 +7,29 @@
 - **4.2c** Manifest Generator Worker Skeleton — ✅ done (`e467543` + `e05b960` + `0154681`)
 - **4.2d** Device Gateway Delivery Endpoint — ✅ done (`c34d5fa` + `c8a369e` + `08b099e`)
 - **4.2e** Runtime Simulator Behavioral Tests — ✅ done (`52a50fc` + fix)
+- **4.3a** PoP and Reporting Architecture Lock (ADR-017) — 🔒 locked
+- **4.3b** PoP Persistence Schema — open
+- **4.3c** PoP Ingestion Endpoint — open
+- **4.3d** Reporting Read-Only Endpoints — open
+- **4.3e** Materialized Views / Exports — open
+
+## Phase 4.3a: Proof-of-Play and Reporting Architecture (locked)
+
+### Decision
+
+ADR-017 locks the PoP pipeline architecture:
+
+| Decision | Detail |
+|----------|--------|
+| PoP source | Device runtime only — after successful render |
+| Ingestion endpoint | `POST /api/v1/pop/batch`, device JWT, idempotent by `event_id` |
+| Validation | manifest_id known or quarantined, device_id = JWT sub, clock drift ±5min, duration bounds |
+| Storage | PostgreSQL `pop_events_raw` + `pop_dedup_index`. ClickHouse deferred (ADR-007) |
+| Reporting | Only `status=accepted` + `playback_result=success`. No fallback, no duplicates, no synthesized |
+| Outbox | All ingestion events via outbox (ADR-011). No direct NATS |
+| Audit | Ingestion attempts, quarantine reasons, dedup hits — all audit-logged |
+| Phase split | 4.3b (schema) → 4.3c (ingestion) → 4.3d (reporting) → 4.3e (views/exports) |
+| Behavioral proof | 9 required tests before 4.3c acceptance |
 
 ## Phase 4.2c: Manifest Generator Worker Skeleton (closed)
 
@@ -109,10 +132,10 @@ pipeline.
 | Unit (Phase 4.2d) | 10 | Auth dependency (5), response shape + schema validation (3), no-generation-in-endpoint (2) |
 | Behavioral (Phase 4.2d) | 7 | Real PostgreSQL: valid fetch, 304 ETag, 401 no-auth, 401 user token, isolation, inactive 403, no manifest 404 |
 
-### Deferred to Phase 4.2e+
+### Deferred to Phase 4.3b+
 
 - Runtime/player implementation
-- PoP ingestion and reporting
+- PoP ingestion and reporting (4.3c–4.3e)
 - NATS relay worker (actual JetStream publishing)
 - Presigned URL generation (MinIO/S3)
 - Manifest signature computation (real HMAC)
