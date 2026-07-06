@@ -136,6 +136,7 @@ async def ingest_pop_event(
             batch_id=batch_id,
         )
         await repository.insert_pop_dedup_key(session, event.event_id)
+        await session.flush()
         # Outbox — quarantine
         await repository.enqueue_outbox_event(
             session,
@@ -173,6 +174,7 @@ async def ingest_pop_event(
             batch_id=batch_id,
         )
         await repository.insert_pop_dedup_key(session, event.event_id)
+        await session.flush()
         await repository.enqueue_outbox_event(
             session,
             event_type="pop.event.quarantined",
@@ -227,6 +229,7 @@ async def ingest_pop_event(
         batch_id=batch_id,
     )
     await repository.insert_pop_dedup_key(session, event.event_id)
+    await session.flush()
     await repository.enqueue_outbox_event(
         session,
         event_type="pop.event.accepted",

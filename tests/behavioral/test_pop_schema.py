@@ -58,7 +58,7 @@ def db_available():
         pytest.skip(SKIP_REASON)
 
 
-_TEST_EVENT_BASE = "beh-pop-00000000000000000001"
+_TEST_EVENT_BASE = "beh-pop-00000000000000001"
 _NOW = datetime.now(timezone.utc)
 
 

@@ -319,3 +319,30 @@ class TestPopIngestionBatch:
 
         outbox = _raw_sql("SELECT event_type FROM outbox_events WHERE aggregate_id = :eid", {"eid": "beh-pop-batch-test-001"})
         assert any(r.event_type == "pop.batch.ingested" for r in outbox)
+
+    def test_batch_duplicate_in_batch(self, db_available, pop_fixtures):
+        """Two events with same event_id in one batch — first accepted, second duplicate."""
+        first = _make_event(pop_fixtures, 50)
+        second = _make_event(pop_fixtures, 50)  # same idx → same event_id
+
+        async def _fn(session):
+            return await ingest_pop_batch(
+                session,
+                [first, second],
+                jwt_device_id=pop_fixtures["device"],
+                now=_NOW,
+                batch_id="beh-pop-batch-dedup-test",
+            )
+        result = asyncio.run(_run_in_session(_fn))
+        assert result["accepted_count"] == 1
+        assert result["duplicate_count"] == 1
+        assert result["rejected_count"] == 0
+        assert result["quarantined_count"] == 0
+        assert len(result["results"]) == 2
+        assert result["results"][0]["status"] == "accepted"
+        assert result["results"][1]["status"] == "duplicate"
+        assert result["results"][1]["reason"] == "duplicate_event_id"
+
+        # Only one raw event row persisted
+        raw = _raw_sql("SELECT count(*) AS c FROM pop_events_raw WHERE event_id = :eid", {"eid": first.event_id})
+        assert raw[0].c == 1
