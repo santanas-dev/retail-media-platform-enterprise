@@ -44,6 +44,20 @@ USER_IDS = {
     "analyst":    "beh-an-00000000000000000006",
 }
 
+# Phase 4.3b — PoP persistence fixture IDs
+POP_IDS = {
+    "branch":      "beh-pop-br-000000000000000001",
+    "cluster":     "beh-pop-cl-000000000000000001",
+    "store":       "beh-pop-st-000000000000000001",
+    "channel":     "beh-pop-ch-000000000000000001",
+    "device_type": "beh-pop-dt-000000000000000001",
+    "device":      "beh-pop-dev-000000000000000001",
+    "adv_org":     "beh-pop-adv-000000000000000001",
+    "creative":    "beh-pop-cr-000000000000000001",
+    "campaign":    "beh-pop-camp-00000000000000001",
+    "manifest":    "beh-pop-manifest-pop-test-001",
+}
+
 TEST_PASSWORD = "TestPassword123!"
 
 
@@ -343,3 +357,85 @@ def test_users(db_available):
     asyncio.run(_run_sql(_setup_sql(ph)))
     yield {**USER_IDS, "password": TEST_PASSWORD}
     asyncio.run(_run_sql(_CLEANUP))
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.3b — PoP persistence fixtures
+# ---------------------------------------------------------------------------
+
+
+def _setup_pop_sql():
+    p = POP_IDS
+    return f"""
+    -- Device chain: branch → cluster → store → channel → device_type → physical_device
+    INSERT INTO branches (id,code,name,timezone,is_active) VALUES
+      ('{p["branch"]}','BEH-POP-BR','PoP Test Branch','Europe/Moscow',true)
+      ON CONFLICT (code) DO NOTHING
+    ; INSERT INTO clusters (id,branch_id,code,name,is_active) VALUES
+      ('{p["cluster"]}','{p["branch"]}','BEH-POP-CL','PoP Test Cluster',true)
+      ON CONFLICT (code) DO NOTHING
+    ; INSERT INTO stores (id,cluster_id,code,name,address,timezone,is_active) VALUES
+      ('{p["store"]}','{p["cluster"]}','BEH-POP-ST','PoP Test Store','Test Address','Europe/Moscow',true)
+      ON CONFLICT (code) DO NOTHING
+    ; INSERT INTO channels (id,code,name,is_active) VALUES
+      ('{p["channel"]}','BEH-POP-CH','PoP Test Channel',true)
+      ON CONFLICT (code) DO NOTHING
+    ; INSERT INTO device_types (id,channel_id,code,name,is_active) VALUES
+      ('{p["device_type"]}','{p["channel"]}','BEH-POP-DT','PoP Test DeviceType',true)
+      ON CONFLICT (code) DO NOTHING
+    ; INSERT INTO physical_devices (id,store_id,device_type_id,code,serial_number,status) VALUES
+      ('{p["device"]}','{p["store"]}','{p["device_type"]}','BEH-POP-DEV','POP-SN-001','active')
+      ON CONFLICT (code) DO NOTHING
+    -- Advertiser org + creative asset
+    ; INSERT INTO advertiser_organizations (id,code,legal_name,display_name,status) VALUES
+      ('{p["adv_org"]}','BEH-POP-ADV','PoP Test Advertiser LLC','PoP Test Advertiser','active')
+      ON CONFLICT (code) DO NOTHING
+    ; INSERT INTO creative_assets (id,advertiser_organization_id,code,name,media_type,
+        storage_bucket,storage_key,sha256_checksum,file_size_bytes,duration_ms,status,moderation_status)
+      VALUES
+      ('{p["creative"]}','{p["adv_org"]}','BEH-POP-CR','PoP Test Creative','video/mp4',
+       'test-bucket','test-key.mp4','sha256:deadbeef',1024,5000,'ready','approved')
+      ON CONFLICT (advertiser_organization_id,code) DO NOTHING
+    -- Campaign (for campaign_id FK — soft, but useful for accepted-event tests)
+    ; INSERT INTO campaigns (id,advertiser_organization_id,code,name,status,created_by) VALUES
+      ('{p["campaign"]}','{p["adv_org"]}','BEH-POP-CAMP','PoP Test Campaign','approved','{USER_IDS["advertiser"]}')
+      ON CONFLICT (code) DO NOTHING
+    """
+
+
+_POP_CLEANUP = """
+    DELETE FROM pop_events_raw WHERE event_id LIKE 'beh-pop-%'
+    ; DELETE FROM pop_dedup_index WHERE event_id LIKE 'beh-pop-%'
+    ; DELETE FROM pop_ingestion_batches WHERE id LIKE 'beh-pop-%'
+    ; DELETE FROM physical_devices WHERE code='BEH-POP-DEV'
+    ; DELETE FROM device_types WHERE code='BEH-POP-DT'
+    ; DELETE FROM channels WHERE code='BEH-POP-CH'
+    ; DELETE FROM stores WHERE code='BEH-POP-ST'
+    ; DELETE FROM clusters WHERE code='BEH-POP-CL'
+    ; DELETE FROM branches WHERE code='BEH-POP-BR'
+    ; DELETE FROM campaign_creatives WHERE campaign_id IN (
+        SELECT id FROM campaigns WHERE code='BEH-POP-CAMP'
+    )
+    ; DELETE FROM campaign_flights WHERE campaign_id IN (
+        SELECT id FROM campaigns WHERE code='BEH-POP-CAMP'
+    )
+    ; DELETE FROM campaign_placements WHERE campaign_id IN (
+        SELECT id FROM campaigns WHERE code='BEH-POP-CAMP'
+    )
+    ; DELETE FROM campaign_approvals WHERE campaign_id IN (
+        SELECT id FROM campaigns WHERE code='BEH-POP-CAMP'
+    )
+    ; DELETE FROM campaign_status_history WHERE campaign_id IN (
+        SELECT id FROM campaigns WHERE code='BEH-POP-CAMP'
+    )
+    ; DELETE FROM campaigns WHERE code='BEH-POP-CAMP'
+    ; DELETE FROM creative_assets WHERE code='BEH-POP-CR'
+    ; DELETE FROM advertiser_organizations WHERE code='BEH-POP-ADV'
+"""
+
+
+@pytest.fixture
+def pop_fixtures(db_available):
+    asyncio.run(_run_sql(_setup_pop_sql()))
+    yield POP_IDS
+    asyncio.run(_run_sql(_POP_CLEANUP))
