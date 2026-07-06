@@ -5,7 +5,7 @@
 - **4.2a** Architecture Lock (ADR-016) — 🔒 locked
 - **4.2b** Delivery DB/Model Foundation — ✅ done (`46cfe71` + `137ae0b`)
 - **4.2c** Manifest Generator Worker Skeleton — ✅ done (`e467543` + `e05b960` + `0154681`)
-- **4.2d** Device Gateway Delivery Endpoint — ✅ done
+- **4.2d** Device Gateway Delivery Endpoint — ✅ done (`c34d5fa` + `c8a369e` + `08b099e`)
 - **4.2e** Runtime Simulator Behavioral Tests — open
 
 ## Phase 4.2c: Manifest Generator Worker Skeleton (closed)
@@ -64,9 +64,53 @@ pipeline.
 | `delivery.manifest.generated` | Manifest created and marked generated for a device |
 | `delivery.manifest.failed` | No targets resolved, or per-device generation failure |
 
-### Deferred to Phase 4.2d+
+## Phase 4.2d: Device Gateway Delivery Endpoint (closed)
 
-- Device-gateway `GET /device/v1/manifest` delivery endpoint
+### Deliverable
+
+`apps/device-gateway/main.py` — `GET /api/v1/device/manifest/latest`
+
+| Property | Implementation |
+|----------|---------------|
+| Auth | Device JWT only (`auth_provider=device`). User/admin tokens → 401 |
+| Device ID | From token `sub` claim only. No query/path param |
+| Status gate | `active` or `online` only. Offline/revoked/unregistered → 403 |
+| Orphan detection | INNER JOIN Store — devices assigned to deleted stores → 404 |
+| Manifest source | `get_latest_manifest_for_device(session, device_id)` in repository |
+| Manifest filter | `physical_device_id` + `status=generated`, `generated_at DESC LIMIT 1` |
+| Response shape | All 18 fields from `generate_manifest_json()` + `generated_at`/`content_hash` metadata |
+| Schema validation | Response validates against `manifest_v1.schema.json` via `jsonschema.validate()` |
+| `channel_type` | Resolved from device → device_type → channel (real DB chain, not hardcoded) |
+| `offline_ttl_hours` | 168 (ADR-013 default) |
+| Secrets/PII | No `storage_bucket`, `storage_key`, `presigned_url`, tokens, passwords, contact PII |
+| ETag | `ETag` header = `content_hash` on 200 |
+| If-None-Match | Match → `304 Not Modified` with empty body + ETag header |
+| Direct SQL | Zero `session.execute`/`select` calls in router — all delegated to repository |
+| No generation | No import/call of `check_eligibility`, `resolve_targets`, `compute_manifest_id`, `generate_manifest_json`, `generate_manifests_for_campaign` |
+| No NATS/PoP | No NATS imports, no outbox/attempt/runtime/player code |
+
+### Behavioral Proofs
+
+| Proof | Test |
+|-------|------|
+| Valid device fetches manifest with required fields | `test_valid_device_fetches_manifest` |
+| Cross-device isolation (non-existent device → 404) | `test_another_device_manifest_isolation` |
+| No manifest → 404 | `test_no_manifest_returns_404` |
+| Inactive device → 403 | `test_inactive_device_rejected` |
+| ETag → 304 round-trip | `test_if_none_match_returns_304` |
+| Missing auth → 401 | `test_no_auth_returns_401` |
+| User token rejected → 401 | `test_user_token_rejected` |
+| Response has zero secrets/storage/PII | `test_valid_device_fetches_manifest` (inline assertion) |
+
+### Test Coverage
+
+| Suite | Count | What |
+|-------|-------|------|
+| Unit (Phase 4.2d) | 10 | Auth dependency (5), response shape + schema validation (3), no-generation-in-endpoint (2) |
+| Behavioral (Phase 4.2d) | 7 | Real PostgreSQL: valid fetch, 304 ETag, 401 no-auth, 401 user token, isolation, inactive 403, no manifest 404 |
+
+### Deferred to Phase 4.2e+
+
 - Runtime/player implementation
 - PoP ingestion and reporting
 - NATS relay worker (actual JetStream publishing)

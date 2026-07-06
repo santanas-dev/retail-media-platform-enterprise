@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
 **Last updated:** 2026-07-06
-**Current phase:** 4.2c (Manifest Generator Worker Skeleton — closed)
+**Current phase:** 4.2d (Device Gateway Manifest Endpoint — closed)
 
 | ID | Phase | Priority | Status | Owner | Evidence | Next Action |
 |----|-------|----------|--------|-------|----------|-------------|

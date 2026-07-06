@@ -2,7 +2,7 @@
 
 Мультиканальная платформа управления рекламой на цифровых носителях розничной сети.
 
-**Статус:** 🏗️ Phase 4.2c — Manifest Generator Worker Skeleton (closed).
+**Статус:** 🏗️ Phase 4.2d — Device Gateway Manifest Endpoint (closed).
 
 ## Architecture
 
