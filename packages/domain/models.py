@@ -64,6 +64,11 @@ __all__ = [
     "CampaignApproval",
     "CampaignStatusHistory",
     "OutboxEvent",
+    "DeliveryPlan",
+    "DeliveryManifest",
+    "DeliveryManifestSurface",
+    "DeliveryManifestAsset",
+    "DeliveryAttempt",
 ]
 
 
@@ -805,6 +810,111 @@ class OutboxEvent(Base):
 # Required Table Count
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Delivery Foundation (Phase 4.2b — ADR-016)
+# ---------------------------------------------------------------------------
+# Worker-owned tables.  No RLS — delivery workers need cross-tenant
+# visibility to generate manifests for any campaign/device.  These tables
+# are not exposed through user-facing API endpoints.
+
+
+class DeliveryPlan(Base):
+    __tablename__ = "delivery_plans"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('planned','in_progress','completed','failed')",
+            name="ck_dp_status",
+        ),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    campaign_id = Column(
+        String(36), ForeignKey("campaigns.id"), nullable=False, index=True,
+    )
+    campaign_version_hash = Column(String(128), nullable=False)
+    status = Column(String(32), nullable=False, default="planned")
+    reason = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow,
+                        onupdate=_utcnow)
+
+
+class DeliveryManifest(Base):
+    __tablename__ = "delivery_manifests"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('planned','generated','delivered','failed','revoked')",
+            name="ck_dm_status",
+        ),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    manifest_id = Column(String(128), nullable=False, unique=True, index=True)
+    campaign_id = Column(
+        String(36), ForeignKey("campaigns.id"), nullable=False, index=True,
+    )
+    physical_device_id = Column(
+        String(36), ForeignKey("physical_devices.id"), nullable=False, index=True,
+    )
+    content_hash = Column(String(128), nullable=False)
+    manifest_version = Column(Integer, nullable=False, default=1)
+    status = Column(String(32), nullable=False, default="planned")
+    generated_at = Column(DateTime(timezone=True), nullable=True)
+    delivered_at = Column(DateTime(timezone=True), nullable=True)
+    last_error = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
+class DeliveryManifestSurface(Base):
+    __tablename__ = "delivery_manifest_surfaces"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    manifest_id = Column(
+        String(36), ForeignKey("delivery_manifests.id"), nullable=False, index=True,
+    )
+    display_surface_id = Column(
+        String(36), ForeignKey("display_surfaces.id"), nullable=False, index=True,
+    )
+    slot_order = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
+class DeliveryManifestAsset(Base):
+    __tablename__ = "delivery_manifest_assets"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    manifest_id = Column(
+        String(36), ForeignKey("delivery_manifests.id"), nullable=False, index=True,
+    )
+    creative_asset_id = Column(
+        String(36), ForeignKey("creative_assets.id"), nullable=False, index=True,
+    )
+    sha256_checksum = Column(String(64), nullable=False)
+    duration_ms = Column(Integer, nullable=True)
+    media_type = Column(String(32), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
+class DeliveryAttempt(Base):
+    __tablename__ = "delivery_attempts"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending','delivered','failed')",
+            name="ck_da_status",
+        ),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    manifest_id = Column(
+        String(36), ForeignKey("delivery_manifests.id"), nullable=False, index=True,
+    )
+    status = Column(String(32), nullable=False, default="pending")
+    attempted_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    error_code = Column(String(64), nullable=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
 REQUIRED_TABLES = frozenset({
     "branches", "clusters", "stores",
     "channels", "device_types", "capability_profiles",
@@ -820,4 +930,7 @@ REQUIRED_TABLES = frozenset({
     "creative_assets", "campaign_creatives",
     "campaign_approvals", "campaign_status_history",
     "outbox_events",
+    "delivery_plans", "delivery_manifests",
+    "delivery_manifest_surfaces", "delivery_manifest_assets",
+    "delivery_attempts",
 })

@@ -828,3 +828,215 @@ async def mark_event_failed(
                 last_error=last_error[:2048],
             )
         )
+
+
+# ---------------------------------------------------------------------------
+# Delivery Foundation (Phase 4.2b — ADR-016)
+# ---------------------------------------------------------------------------
+
+
+async def create_delivery_plan(
+    session: AsyncSession,
+    *,
+    campaign_id: str,
+    campaign_version_hash: str,
+    reason: str | None = None,
+) -> str:
+    """Create a delivery_plans row. Returns the plan id.
+
+    Does NOT commit — caller owns the transaction boundary.
+    """
+    import uuid
+    from packages.domain.models import DeliveryPlan
+
+    plan_id = str(uuid.uuid4())
+    plan = DeliveryPlan(
+        id=plan_id,
+        campaign_id=campaign_id,
+        campaign_version_hash=campaign_version_hash,
+        status="planned",
+        reason=reason,
+    )
+    session.add(plan)
+    return plan_id
+
+
+async def create_delivery_manifest_record(
+    session: AsyncSession,
+    *,
+    manifest_id_external: str,
+    campaign_id: str,
+    physical_device_id: str,
+    content_hash: str,
+    manifest_version: int = 1,
+    surface_ids: list[str] | None = None,
+    asset_records: list[dict] | None = None,
+) -> str:
+    """Create a delivery_manifests row with optional surfaces and assets.
+
+    Does NOT commit — caller owns the transaction boundary.
+    Does NOT publish NATS.  Does NOT generate manifest JSON.
+
+    Returns the internal manifest id (PK).
+    """
+    import uuid
+    from packages.domain.models import (
+        DeliveryManifest,
+        DeliveryManifestAsset,
+        DeliveryManifestSurface,
+    )
+
+    internal_id = str(uuid.uuid4())
+    manifest = DeliveryManifest(
+        id=internal_id,
+        manifest_id=manifest_id_external,
+        campaign_id=campaign_id,
+        physical_device_id=physical_device_id,
+        content_hash=content_hash,
+        manifest_version=manifest_version,
+        status="planned",
+    )
+    session.add(manifest)
+
+    if surface_ids:
+        for idx, sid in enumerate(surface_ids):
+            session.add(DeliveryManifestSurface(
+                id=str(uuid.uuid4()),
+                manifest_id=internal_id,
+                display_surface_id=sid,
+                slot_order=idx,
+            ))
+
+    if asset_records:
+        for a in asset_records:
+            session.add(DeliveryManifestAsset(
+                id=str(uuid.uuid4()),
+                manifest_id=internal_id,
+                creative_asset_id=a["creative_asset_id"],
+                sha256_checksum=a["sha256_checksum"],
+                duration_ms=a.get("duration_ms"),
+                media_type=a["media_type"],
+            ))
+
+    return internal_id
+
+
+async def list_delivery_manifests(
+    session: AsyncSession,
+    *,
+    campaign_id: str | None = None,
+    physical_device_id: str | None = None,
+    status: str | None = None,
+    limit: int = 50,
+) -> list:
+    """List delivery manifests, optionally filtered."""
+    from packages.domain.models import DeliveryManifest
+
+    stmt = select(DeliveryManifest).order_by(DeliveryManifest.created_at.desc())
+    if campaign_id:
+        stmt = stmt.where(DeliveryManifest.campaign_id == campaign_id)
+    if physical_device_id:
+        stmt = stmt.where(DeliveryManifest.physical_device_id == physical_device_id)
+    if status:
+        stmt = stmt.where(DeliveryManifest.status == status)
+    stmt = stmt.limit(limit)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def mark_manifest_generated(
+    session: AsyncSession,
+    manifest_id_external: str,
+    *,
+    content_hash: str,
+) -> None:
+    """Mark a manifest as generated.  Idempotent — no-op if already generated."""
+    from packages.domain.models import DeliveryManifest
+    from datetime import datetime, timezone as tz
+
+    await session.execute(
+        select(DeliveryManifest).where(
+            DeliveryManifest.manifest_id == manifest_id_external
+        )
+    )
+    # Use update for idempotency — only if status is 'planned'
+    from sqlalchemy import update as sa_update
+    await session.execute(
+        sa_update(DeliveryManifest)
+        .where(
+            DeliveryManifest.manifest_id == manifest_id_external,
+            DeliveryManifest.status == "planned",
+        )
+        .values(
+            status="generated",
+            content_hash=content_hash,
+            generated_at=datetime.now(tz.utc),
+        )
+    )
+
+
+async def mark_manifest_failed(
+    session: AsyncSession,
+    manifest_id_external: str,
+    *,
+    last_error: str,
+) -> None:
+    """Mark a manifest as failed.  Idempotent."""
+    from packages.domain.models import DeliveryManifest
+    from sqlalchemy import update as sa_update
+
+    await session.execute(
+        sa_update(DeliveryManifest)
+        .where(
+            DeliveryManifest.manifest_id == manifest_id_external,
+            DeliveryManifest.status.in_(["planned", "generated"]),
+        )
+        .values(
+            status="failed",
+            last_error=last_error[:2048],
+        )
+    )
+
+
+async def mark_manifest_delivered(
+    session: AsyncSession,
+    manifest_id_external: str,
+) -> None:
+    """Mark a manifest as delivered.  Idempotent."""
+    from packages.domain.models import DeliveryManifest
+    from datetime import datetime, timezone as tz
+    from sqlalchemy import update as sa_update
+
+    await session.execute(
+        sa_update(DeliveryManifest)
+        .where(
+            DeliveryManifest.manifest_id == manifest_id_external,
+            DeliveryManifest.status.in_(["generated", "delivered"]),
+        )
+        .values(
+            status="delivered",
+            delivered_at=datetime.now(tz.utc),
+        )
+    )
+
+
+async def create_delivery_attempt(
+    session: AsyncSession,
+    *,
+    manifest_id_external: str,
+) -> str:
+    """Create a delivery_attempts row.  Returns the attempt id.
+
+    Does NOT commit — caller owns the transaction boundary.
+    """
+    import uuid
+    from packages.domain.models import DeliveryAttempt
+
+    attempt_id = str(uuid.uuid4())
+    attempt = DeliveryAttempt(
+        id=attempt_id,
+        manifest_id=manifest_id_external,
+        status="pending",
+    )
+    session.add(attempt)
+    return attempt_id
