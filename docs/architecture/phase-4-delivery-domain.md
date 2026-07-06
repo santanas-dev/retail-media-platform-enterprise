@@ -5,7 +5,7 @@
 - **4.2a** Architecture Lock (ADR-016) — 🔒 locked
 - **4.2b** Delivery DB/Model Foundation — ✅ done (`46cfe71` + `137ae0b`)
 - **4.2c** Manifest Generator Worker Skeleton — ✅ done (`e467543` + `e05b960` + `0154681`)
-- **4.2d** Device Gateway Delivery Endpoint — open
+- **4.2d** Device Gateway Delivery Endpoint — ✅ done
 - **4.2e** Runtime Simulator Behavioral Tests — open
 
 ## Phase 4.2c: Manifest Generator Worker Skeleton (closed)

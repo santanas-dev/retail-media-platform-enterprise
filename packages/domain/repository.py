@@ -1034,3 +1034,116 @@ async def create_delivery_attempt(
     )
     session.add(attempt)
     return attempt_id
+
+
+async def get_latest_manifest_for_device(
+    session: AsyncSession,
+    physical_device_id: str,
+) -> dict | None:
+    """Return the latest generated manifest payload for a device, or None.
+
+    Only returns manifests with status='generated', ordered by generated_at DESC.
+    Reconstructs manifest JSON from delivery_manifests + surfaces + assets.
+    Does NOT regenerate from campaign — reads from persisted delivery tables.
+    """
+    from packages.domain.models import (
+        DeliveryManifest,
+        DeliveryManifestSurface,
+        DeliveryManifestAsset,
+        Campaign,
+        CreativeAsset,
+        CampaignCreative,
+        DisplaySurface,
+        PhysicalDevice,
+        Store,
+    )
+
+    manifest = (
+        await session.execute(
+            select(DeliveryManifest)
+            .where(
+                DeliveryManifest.physical_device_id == physical_device_id,
+                DeliveryManifest.status == "generated",
+            )
+            .order_by(DeliveryManifest.generated_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+    if manifest is None:
+        return None
+
+    # Load surfaces
+    surfaces_result = await session.execute(
+        select(DeliveryManifestSurface, DisplaySurface)
+        .join(DisplaySurface, DeliveryManifestSurface.display_surface_id == DisplaySurface.id)
+        .where(DeliveryManifestSurface.manifest_id == manifest.id)
+        .order_by(DeliveryManifestSurface.slot_order)
+    )
+    surface_rows = surfaces_result.all()
+
+    # Load assets
+    assets_result = await session.execute(
+        select(DeliveryManifestAsset)
+        .where(DeliveryManifestAsset.manifest_id == manifest.id)
+    )
+    asset_rows = assets_result.scalars().all()
+
+    # Load campaign
+    campaign = (
+        await session.execute(
+            select(Campaign).where(Campaign.id == manifest.campaign_id)
+        )
+    ).scalar_one_or_none()
+
+    # Load device
+    device = (
+        await session.execute(
+            select(PhysicalDevice).where(PhysicalDevice.id == physical_device_id)
+        )
+    ).scalar_one_or_none()
+
+    # Build manifest JSON
+    display_surfaces = []
+    for _, surf in surface_rows:
+        display_surfaces.append({
+            "surface_id": surf.id,
+            "surface_code": surf.code,
+        })
+
+    playlist = []
+    for asset in asset_rows:
+        playlist.append({
+            "creative_asset_id": asset.creative_asset_id,
+            "sha256_checksum": asset.sha256_checksum,
+            "duration_ms": asset.duration_ms,
+            "media_type": asset.media_type,
+        })
+
+    device_code = device.code if device else ""
+    device_store_id = device.store_id if device else ""
+    store_code = ""
+    if device_store_id:
+        store = (
+            await session.execute(
+                select(Store).where(Store.id == device_store_id)
+            )
+        ).scalar_one_or_none()
+        if store:
+            store_code = store.code
+
+    return {
+        "manifest_id": manifest.manifest_id,
+        "manifest_version": manifest.manifest_version,
+        "schema_version": "1.0",
+        "device_id": physical_device_id,
+        "device_code": device_code,
+        "store_id": device_store_id,
+        "store_code": store_code,
+        "display_surfaces": display_surfaces,
+        "playlist": playlist,
+        "valid_from": campaign.start_at.isoformat() if campaign and campaign.start_at else None,
+        "valid_to": campaign.end_at.isoformat() if campaign and campaign.end_at else None,
+        "generated_at": manifest.generated_at.isoformat() if manifest.generated_at else None,
+        "content_hash": manifest.content_hash,
+    }
