@@ -189,7 +189,25 @@ preserved (`scope_advertiser_ids=None` → no restriction).
 | `requested_at < reviewed_at` | approval record timestamps from different instants |
 | No outbox on rejection paths | 422/403/409 leave no `campaign.approval_requested` event |
 
-### Deferred (Phase 4.2–4.4)
+**Commits:** `fc09f4b` (initial), `c405bdc` (hardening), `0fea6ac` (robustness)
+
+### Phase 4.2a — Delivery Architecture Lock 🔒
+
+| Deliverable | Status |
+|-------------|--------|
+| ADR-016 — Campaign delivery and manifest pipeline | ✅ accepted |
+| Delivery trigger events | ✅ `campaign.approved/scheduled/updated/archived/paused/completed` + placement/creative/flight changes |
+| Eligibility rules | ✅ status ≥ approved, flight window, contract valid, ≥1 resolved target, ≥1 valid creative |
+| Target resolution | ✅ branch→cluster→store→display_surface→logical_carrier→physical_device; one manifest per device |
+| Manifest schema | ✅ signed JSON, `manifest_id` (content-hash), monotonic `manifest_version`, `display_surfaces[]`, `presigned_url`, `fallback_rules` |
+| Outbox event catalog | ✅ `delivery.manifest.requested/generated/failed` via ADR-011 pattern |
+| Idempotency | ✅ `manifest_id` deterministic, monotonic version guard, event dedup by `event_id` |
+| Observability | ✅ 8 metrics: generation count/failure/duration, target resolution, queue age, device lag, rollback |
+| Security | ✅ no secrets/PII/storage credentials in manifest; time-limited presigned URLs |
+| Phase split | 🔒 4.2b (DB foundation) → 4.2c (worker skeleton) → 4.2d (device gateway) → 4.2e (runtime simulator) |
+| Behavioral proof | 🔒 10 tests required before acceptance: unapproved→no manifest, archive→removal, broad→surfaces, 1 device=1 manifest, fail-closed, schema validation, rollback safety, idempotency, kill-switch runtime check, presigned URL expiry |
+
+### Deferred (Phase 4.2b–4.4)
 
 - **Mutations:** create/update/submit/status-change for campaigns, placements, creatives, flights
 - **Outbox producers:** `campaign.*` events via transactional outbox (ADR-011)

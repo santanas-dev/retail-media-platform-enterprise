@@ -392,6 +392,13 @@ scoped access (403 / 200), RLS row visibility, and the contacts PII gate
 
 ## 15. Device Gateway API (separate auth)
 
+> **Status: Architecture locked — ADR-016.** Manifest delivery pipeline
+> designed (trigger → eligibility → target resolution → manifest generation
+> → device gateway delivery).  Implementation deferred to Phase 4.2b–4.2d.
+> Device manifest endpoint (`GET /device/v1/manifest`) returns per-device
+> manifests with display_surfaces[], presigned media URLs, fallback_rules,
+> and signed manifest envelope.  See ADR-016 for full delivery pipeline.
+
 | Method | Endpoint | Auth | Permission | Description |
 |--------|----------|------|------------|-------------|
 | POST | `/device/v1/register` | device_code | — | Register device, get credentials |
