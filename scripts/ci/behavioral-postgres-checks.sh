@@ -97,10 +97,10 @@ echo "  DB: ${BEHAVIORAL_DB_URL:-postgresql+asyncpg://...localhost:5432/retail_m
 echo "  RUN_BEHAVIORAL_TESTS: $RUN_BEHAVIORAL_TESTS"
 echo ""
 
-# Quick connectivity check
+# Quick connectivity check + RLS safety audit
 echo -n "  [db check] "
-if python3 -c "
-import asyncio, os
+DB_CHECK_OUTPUT=$(python3 -c "
+import asyncio, os, sys
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 url = os.environ.get('BEHAVIORAL_DB_URL', 'postgresql+asyncpg://retail_media:***@localhost:5432/retail_media_platform')
@@ -108,11 +108,18 @@ async def check():
     engine = create_async_engine(url, echo=False)
     async with engine.connect() as conn:
         await conn.execute(text('SELECT 1'))
+        row = (await conn.execute(text(
+            'SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user'
+        ))).fetchone()
+        if row:
+            print(f'OK superuser={row[0]} bypassrls={row[1]}')
+        else:
+            print('OK role_unknown')
     await engine.dispose()
 asyncio.run(check())
-print('OK')
-" 2>/dev/null; then
-    echo -e "${GREEN}PASS${NC}"
+" 2>/dev/null)
+if [ $? -eq 0 ] && [ -n "$DB_CHECK_OUTPUT" ]; then
+    echo -e "${GREEN}PASS${NC} ($DB_CHECK_OUTPUT)"
 else
     echo -e "${RED}FAIL — PostgreSQL not reachable${NC}"
     echo ""
@@ -124,6 +131,15 @@ else
     exit 1
 fi
 
+# Warn if running as superuser/BYPASSRLS (RLS policies not enforced at DB level)
+if echo "$DB_CHECK_OUTPUT" | grep -qE 'superuser=True|bypassrls=True'; then
+    echo ""
+    echo -e "  ${YELLOW}WARNING: DB user has superuser/BYPASSRLS — RLS policies not enforced${NC}"
+    echo "  Application-layer guards still tested, but PostgreSQL RLS bypassed."
+    echo "  CI uses a non-BYPASSRLS app role. Local dev: this is expected."
+    echo ""
+fi
+
 echo ""
 echo "--- Behavioral Tests ---"
 
@@ -131,17 +147,26 @@ if [ ${#BEHAVIORAL_ARGS[@]} -eq 0 ]; then
     BEHAVIORAL_ARGS=("tests/behavioral/")
 fi
 
-FAIL=0
-if python3 -m pytest "${BEHAVIORAL_ARGS[@]}" -v 2>&1; then
+pytest_output=$(python3 -m pytest "${BEHAVIORAL_ARGS[@]}" -v --tb=short 2>&1)
+PYTEST_EXIT=$?
+echo "$pytest_output"
+
+# Guard: fail if zero tests passed (all skipped or zero collected)
+if ! echo "$pytest_output" | grep -qE '[0-9]+ passed'; then
+    echo ""
+    echo -e "${RED}ERROR: No behavioral tests passed — all skipped or zero collected${NC}"
+    exit 1
+fi
+
+if [ $PYTEST_EXIT -eq 0 ]; then
     echo ""
     echo -e "${GREEN}=== All behavioral tests passed ===${NC}"
 else
-    FAIL=$?
     echo ""
-    echo -e "${RED}=== Behavioral tests FAILED (exit $FAIL) ===${NC}"
+    echo -e "${RED}=== Behavioral tests FAILED (exit $PYTEST_EXIT) ===${NC}"
 fi
 
 echo ""
 echo "============================================"
 
-exit $FAIL
+exit $PYTEST_EXIT
