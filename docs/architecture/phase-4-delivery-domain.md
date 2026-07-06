@@ -10,7 +10,7 @@
 - **4.3a** PoP and Reporting Architecture Lock (ADR-017) — 🔒 locked
 - **4.3b** PoP Persistence Schema — ✅ done
 - **4.3c** PoP Ingestion Endpoint — ✅ done
-- **4.3d** Reporting Read-Only Endpoints — open
+- **4.3d** Reporting Read-Only Endpoints — ✅ done
 - **4.3e** Materialized Views / Exports — open
 
 ## Phase 4.3a: Proof-of-Play and Reporting Architecture (locked)
@@ -148,6 +148,60 @@ Migration 009 — `pop_events_raw`, `pop_dedup_index`, `pop_ingestion_batches`.
 - Reporting API (4.3d): read-only endpoints, aggregation queries, billing-grade reports
 - Materialized views / exports (4.3e)
 - ClickHouse analytics pipeline
+- Frontend analytics dashboards
+
+## Phase 4.3d: PoP Reporting Read Models (done)
+
+### Deliverable
+
+Read-only reporting queries over accepted PoP events. PostgreSQL only — no ClickHouse, no billing invoice logic, no frontend.
+
+| Property | Detail |
+|----------|--------|
+| Router | `packages/api/identity.py` — under `/api/v1/identity/campaigns/{id}/pop/...` |
+| Domain | `packages/domain/repository.py` — 3 reporting helpers |
+| Auth | JWT required. `require_scoped_permission("campaigns.read", "advertiser")` + `set_rls_context` |
+| Filters | `status='accepted' AND campaign_verified=true AND playback_result='success'` — no quarantined, rejected, duplicate, or fallback events |
+| No ClickHouse | ADR-007 — PostgreSQL only, ClickHouse deferred |
+
+### Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/v1/identity/campaigns/{id}/pop/summary` | impressions_count, total_duration_ms, first/last_rendered_at, unique_devices, unique_surfaces |
+| `GET /api/v1/identity/campaigns/{id}/pop/by-day` | Daily breakdown: date, impressions_count, total_duration_ms |
+| `GET /api/v1/identity/campaigns/{id}/pop/by-surface` | Per-surface breakdown: surface_id, impressions_count, total_duration_ms |
+
+### Repository Helpers
+
+| Helper | Query |
+|--------|-------|
+| `get_campaign_pop_summary(session, campaign_id)` | Aggregate: COUNT, SUM, MIN, MAX, COUNT DISTINCT |
+| `list_campaign_pop_by_day(session, campaign_id)` | GROUP BY cast(rendered_at, Date), ORDER BY date ASC |
+| `list_campaign_pop_by_surface(session, campaign_id)` | GROUP BY surface_id, ORDER BY count DESC |
+
+### Schemas
+
+| Schema | Fields |
+|--------|--------|
+| `CampaignPopSummaryOut` | campaign_id, impressions_count, total_duration_ms, first_rendered_at, last_rendered_at, unique_devices, unique_surfaces |
+| `CampaignPopByDayOut` | date (YYYY-MM-DD), impressions_count, total_duration_ms |
+| `CampaignPopBySurfaceOut` | surface_id, impressions_count, total_duration_ms |
+
+No PII, no secrets, no storage URLs, no contact info exposed.
+
+### Test Coverage
+
+| Suite | Count | What |
+|-------|-------|------|
+| Unit | 13 | Schemas (8), import boundaries (5) — no FastAPI/NATS/ClickHouse, no db.execute in router |
+| Behavioral | 8 | Empty campaign → zeros, accepted counted, quarantined excluded, campaign_verified=false excluded, playback_result≠success excluded, different campaign isolation, by-day grouping, by-surface grouping |
+
+### Deferred
+
+- RLS cross-tenant behavioral tests (requires advertiser user + token for second org)
+- Auth negative tests (401/403) via HTTP layer
+- Materialized views / exports (4.3e)
 - Frontend analytics dashboards
 
 ## Phase 4.2c: Manifest Generator Worker Skeleton (closed)

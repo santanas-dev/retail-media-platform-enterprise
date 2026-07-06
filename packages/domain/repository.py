@@ -1421,3 +1421,128 @@ async def expire_pop_quarantine_events(
         )
     )
     return result.rowcount
+
+
+# ---------------------------------------------------------------------------
+# PoP Reporting Queries (Phase 4.3d — ADR-017 §6)
+# ---------------------------------------------------------------------------
+# All reporting queries filter:
+#   status = 'accepted' AND campaign_verified = true AND playback_result = 'success'
+# No quarantined, rejected, duplicate, fallback, or synthetic events count.
+
+
+async def get_campaign_pop_summary(
+    session: AsyncSession,
+    campaign_id: str,
+) -> dict:
+    """Return billing-grade summary for a campaign.
+
+    Returns dict with keys: impressions_count, total_duration_ms,
+    first_rendered_at, last_rendered_at, unique_devices, unique_surfaces.
+    All numbers are zero/None if no accepted events exist.
+    """
+    from sqlalchemy import func
+    from packages.domain.models import PopEventRaw
+
+    stmt = (
+        select(
+            func.count().label("impressions_count"),
+            func.coalesce(func.sum(PopEventRaw.duration_ms), 0).label("total_duration_ms"),
+            func.min(PopEventRaw.rendered_at).label("first_rendered_at"),
+            func.max(PopEventRaw.rendered_at).label("last_rendered_at"),
+            func.count(func.distinct(PopEventRaw.device_id)).label("unique_devices"),
+            func.count(func.distinct(PopEventRaw.surface_id)).label("unique_surfaces"),
+        )
+        .where(
+            PopEventRaw.campaign_id == campaign_id,
+            PopEventRaw.status == "accepted",
+            PopEventRaw.campaign_verified == True,
+            PopEventRaw.playback_result == "success",
+        )
+    )
+    result = await session.execute(stmt)
+    row = result.one()
+    return {
+        "impressions_count": row.impressions_count,
+        "total_duration_ms": row.total_duration_ms,
+        "first_rendered_at": row.first_rendered_at,
+        "last_rendered_at": row.last_rendered_at,
+        "unique_devices": row.unique_devices,
+        "unique_surfaces": row.unique_surfaces,
+    }
+
+
+async def list_campaign_pop_by_day(
+    session: AsyncSession,
+    campaign_id: str,
+) -> list[dict]:
+    """Return daily PoP breakdown for a campaign.
+
+    Returns list of dicts with: date, impressions_count, total_duration_ms.
+    Ordered by date ascending.
+    """
+    from sqlalchemy import func, cast, Date
+    from packages.domain.models import PopEventRaw
+
+    stmt = (
+        select(
+            cast(PopEventRaw.rendered_at, Date).label("date"),
+            func.count().label("impressions_count"),
+            func.coalesce(func.sum(PopEventRaw.duration_ms), 0).label("total_duration_ms"),
+        )
+        .where(
+            PopEventRaw.campaign_id == campaign_id,
+            PopEventRaw.status == "accepted",
+            PopEventRaw.campaign_verified == True,
+            PopEventRaw.playback_result == "success",
+        )
+        .group_by(cast(PopEventRaw.rendered_at, Date))
+        .order_by(cast(PopEventRaw.rendered_at, Date).asc())
+    )
+    result = await session.execute(stmt)
+    return [
+        {
+            "date": row.date,
+            "impressions_count": row.impressions_count,
+            "total_duration_ms": row.total_duration_ms,
+        }
+        for row in result.fetchall()
+    ]
+
+
+async def list_campaign_pop_by_surface(
+    session: AsyncSession,
+    campaign_id: str,
+) -> list[dict]:
+    """Return per-surface PoP breakdown for a campaign.
+
+    Returns list of dicts with: surface_id, impressions_count, total_duration_ms.
+    Ordered by impressions_count descending.
+    """
+    from sqlalchemy import func
+    from packages.domain.models import PopEventRaw
+
+    stmt = (
+        select(
+            PopEventRaw.surface_id,
+            func.count().label("impressions_count"),
+            func.coalesce(func.sum(PopEventRaw.duration_ms), 0).label("total_duration_ms"),
+        )
+        .where(
+            PopEventRaw.campaign_id == campaign_id,
+            PopEventRaw.status == "accepted",
+            PopEventRaw.campaign_verified == True,
+            PopEventRaw.playback_result == "success",
+        )
+        .group_by(PopEventRaw.surface_id)
+        .order_by(func.count().desc())
+    )
+    result = await session.execute(stmt)
+    return [
+        {
+            "surface_id": row.surface_id,
+            "impressions_count": row.impressions_count,
+            "total_duration_ms": row.total_duration_ms,
+        }
+        for row in result.fetchall()
+    ]

@@ -2,7 +2,7 @@
 
 Мультиканальная платформа управления рекламой на цифровых носителях розничной сети.
 
-**Статус:** 🏗️ Phase 4.3c — PoP Ingestion Endpoint (closed). Next: 4.3d Reporting.
+**Статус:** 🏗️ Phase 4.3d — PoP Reporting Read Models (closed). Next: 4.3e Materialized Views.
 
 ## Architecture
 

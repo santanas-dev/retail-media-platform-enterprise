@@ -22,6 +22,9 @@ from packages.domain.schemas import (
     CampaignFlightOut,
     CampaignOut,
     CampaignPlacementOut,
+    CampaignPopByDayOut,
+    CampaignPopBySurfaceOut,
+    CampaignPopSummaryOut,
     CampaignStatusHistoryOut,
     CreativeAssetOut,
     MAX_LIMIT,
@@ -595,3 +598,70 @@ async def reject_endpoint(
         old_status=old_status,
         new_status=new_status,
     )
+
+
+# ---------------------------------------------------------------------------
+# PoP Reporting Endpoints (Phase 4.3d — ADR-017 §6)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/campaigns/{campaign_id}/pop/summary", response_model=CampaignPopSummaryOut)
+async def get_campaign_pop_summary(
+    campaign_id: str,
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Billing-grade PoP summary for a campaign.
+
+    Only accepted, campaign_verified, playback_result=success events count.
+    Quarantined, rejected, duplicate, fallback events are excluded.
+    """
+    result = await repository.get_campaign_pop_summary(db, campaign_id)
+    return CampaignPopSummaryOut(
+        campaign_id=campaign_id,
+        impressions_count=result["impressions_count"],
+        total_duration_ms=result["total_duration_ms"],
+        first_rendered_at=result["first_rendered_at"],
+        last_rendered_at=result["last_rendered_at"],
+        unique_devices=result["unique_devices"],
+        unique_surfaces=result["unique_surfaces"],
+    )
+
+
+@router.get("/campaigns/{campaign_id}/pop/by-day", response_model=list[CampaignPopByDayOut])
+async def get_campaign_pop_by_day(
+    campaign_id: str,
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Daily PoP breakdown for a campaign. Ordered by date ascending."""
+    rows = await repository.list_campaign_pop_by_day(db, campaign_id)
+    return [
+        CampaignPopByDayOut(
+            date=str(row["date"]),
+            impressions_count=row["impressions_count"],
+            total_duration_ms=row["total_duration_ms"],
+        )
+        for row in rows
+    ]
+
+
+@router.get("/campaigns/{campaign_id}/pop/by-surface", response_model=list[CampaignPopBySurfaceOut])
+async def get_campaign_pop_by_surface(
+    campaign_id: str,
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Per-surface PoP breakdown for a campaign. Ordered by impressions descending."""
+    rows = await repository.list_campaign_pop_by_surface(db, campaign_id)
+    return [
+        CampaignPopBySurfaceOut(
+            surface_id=row["surface_id"],
+            impressions_count=row["impressions_count"],
+            total_duration_ms=row["total_duration_ms"],
+        )
+        for row in rows
+    ]

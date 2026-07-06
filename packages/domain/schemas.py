@@ -427,3 +427,33 @@ class PopBatchResponse(BaseModel):
     quarantined_count: int = 0
     duplicate_count: int = 0
     results: list[PopEventResult] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# PoP Reporting Schemas (Phase 4.3d — ADR-017 §6)
+# ---------------------------------------------------------------------------
+
+
+class CampaignPopSummaryOut(BaseModel):
+    """Billing-grade campaign PoP summary. No PII, no secrets."""
+    campaign_id: str
+    impressions_count: int = 0
+    total_duration_ms: int = 0
+    first_rendered_at: datetime | None = None
+    last_rendered_at: datetime | None = None
+    unique_devices: int = 0
+    unique_surfaces: int = 0
+
+
+class CampaignPopByDayOut(BaseModel):
+    """Daily PoP breakdown row."""
+    date: str  # YYYY-MM-DD
+    impressions_count: int = 0
+    total_duration_ms: int = 0
+
+
+class CampaignPopBySurfaceOut(BaseModel):
+    """Per-surface PoP breakdown row."""
+    surface_id: str
+    impressions_count: int = 0
+    total_duration_ms: int = 0
