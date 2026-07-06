@@ -183,3 +183,50 @@ jobs:
               print(f'FAIL: {e}')
               sys.exit(1)
           "
+
+  behavioral-postgres-tests:
+    name: Behavioral PostgreSQL Tests — ADR‑008 Gate
+    runs-on: ubuntu-latest
+    needs: [python-tests, import-boundaries]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: retail_media
+          POSTGRES_PASSWORD: retail_media_dev
+          POSTGRES_DB: retail_media_platform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://retail_media:retail_media_dev@localhost:5432/retail_media_platform
+      BEHAVIORAL_DB_URL: postgresql+asyncpg://retail_media:retail_media_dev@localhost:5432/retail_media_platform
+      RUN_BEHAVIORAL_TESTS: "1"
+      ENVIRONMENT: dev
+      JWT_SECRET: behavioral-test-secret-at-least-32-chars
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT psycopg2-binary greenlet
+      - name: Wait for PostgreSQL
+        run: |
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -U retail_media -d retail_media_platform && break
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
+      - name: Run migrations
+        working-directory: apps/control-api
+        run: alembic upgrade head
+      - name: Seed database
+        run: python3 apps/control-api/seed.py
+      - name: Run behavioral tests
+        run: python3 -m pytest tests/behavioral/ -v
