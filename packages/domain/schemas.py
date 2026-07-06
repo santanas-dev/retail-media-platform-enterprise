@@ -380,3 +380,50 @@ class CampaignApprovalResponse(BaseModel):
     campaign_id: str
     old_status: str
     new_status: str
+
+
+# ---------------------------------------------------------------------------
+# PoP Ingestion Schemas (Phase 4.3c — ADR-017)
+# ---------------------------------------------------------------------------
+
+POP_MAX_BATCH_SIZE = 500
+POP_SCHEMA_VERSION = "1.0"
+POP_MAX_DURATION_MS = 86_400_000
+POP_QUARANTINE_TTL_HOURS = 72
+POP_CLOCK_DRIFT_MINUTES = 5
+
+
+class PopEventIn(BaseModel):
+    """Single PoP event in a batch request. Device-submitted, validated server-side."""
+    event_id: str = Field(..., min_length=1, max_length=64)
+    schema_version: str = Field(default=POP_SCHEMA_VERSION, min_length=1, max_length=8)
+    device_id: str = Field(..., min_length=1, max_length=64)
+    manifest_id: str | None = Field(default=None, max_length=128)
+    campaign_id: str | None = Field(default=None, max_length=64)
+    creative_asset_id: str = Field(..., min_length=1, max_length=64)
+    surface_id: str = Field(..., min_length=1, max_length=64)
+    duration_ms: int = Field(..., ge=1, le=POP_MAX_DURATION_MS)
+    playback_result: Literal["success", "fallback", "interrupted", "failed"]
+    rendered_at: datetime
+    event_recorded_at: datetime
+
+
+class PopBatchRequest(BaseModel):
+    """Batch of PoP events from a device."""
+    events: list[PopEventIn] = Field(..., min_length=1, max_length=POP_MAX_BATCH_SIZE)
+
+
+class PopEventResult(BaseModel):
+    """Per-event ingestion result."""
+    event_id: str
+    status: Literal["accepted", "quarantined", "rejected", "duplicate"]
+    reason: str | None = None
+
+
+class PopBatchResponse(BaseModel):
+    """Batch ingestion response."""
+    accepted_count: int = 0
+    rejected_count: int = 0
+    quarantined_count: int = 0
+    duplicate_count: int = 0
+    results: list[PopEventResult] = Field(default_factory=list)

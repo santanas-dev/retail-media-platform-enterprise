@@ -56,6 +56,7 @@ POP_IDS = {
     "creative":    "beh-pop-cr-000000000000000001",
     "campaign":    "beh-pop-camp-00000000000000001",
     "manifest":    "beh-pop-manifest-pop-test-001",
+    "surface":     "beh-pop-ds-000000000000000001",
 }
 
 TEST_PASSWORD = "TestPassword123!"
@@ -386,6 +387,14 @@ def _setup_pop_sql():
     ; INSERT INTO physical_devices (id,store_id,device_type_id,code,serial_number,status) VALUES
       ('{p["device"]}','{p["store"]}','{p["device_type"]}','BEH-POP-DEV','POP-SN-001','active')
       ON CONFLICT (code) DO NOTHING
+    -- Logical carrier + display surface for cross-entity tests
+    ; INSERT INTO logical_carriers (id,physical_device_id,code,carrier_type) VALUES
+      ('beh-pop-lc-000000000000000001','{p["device"]}','BEH-POP-LC','direct')
+      ON CONFLICT (code) DO NOTHING
+    ; INSERT INTO display_surfaces (id,logical_carrier_id,store_id,code,resolution_w,resolution_h,is_active)
+      SELECT '{p["surface"]}',id,'{p["store"]}','BEH-POP-DS',1920,1080,true
+      FROM logical_carriers WHERE code='BEH-POP-LC'
+      ON CONFLICT (code) DO NOTHING
     -- Advertiser org + creative asset
     ; INSERT INTO advertiser_organizations (id,code,legal_name,display_name,status) VALUES
       ('{p["adv_org"]}','BEH-POP-ADV','PoP Test Advertiser LLC','PoP Test Advertiser','active')
@@ -400,13 +409,36 @@ def _setup_pop_sql():
     ; INSERT INTO campaigns (id,advertiser_organization_id,code,name,status,created_by) VALUES
       ('{p["campaign"]}','{p["adv_org"]}','BEH-POP-CAMP','PoP Test Campaign','approved','{USER_IDS["advertiser"]}')
       ON CONFLICT (code) DO NOTHING
+    -- Delivery manifest for PoP ingestion cross-entity tests
+    ; INSERT INTO delivery_manifests (id,manifest_id,campaign_id,physical_device_id,content_hash,manifest_version,status,generated_at)
+      VALUES
+      ('beh-pop-dm-000000000000000001','{p["manifest"]}','{p["campaign"]}','{p["device"]}','sha256:pop-test-hash',1,'generated',NOW())
+      ON CONFLICT (manifest_id) DO NOTHING
+    ; INSERT INTO delivery_manifest_surfaces (id,manifest_id,display_surface_id,slot_order)
+      SELECT 'beh-pop-dms-00000000000000001',id,'{p["surface"]}',0
+      FROM delivery_manifests WHERE manifest_id='{p["manifest"]}'
+      AND NOT EXISTS (SELECT 1 FROM delivery_manifest_surfaces WHERE manifest_id=(SELECT id FROM delivery_manifests WHERE manifest_id='{p["manifest"]}'))
+    ; INSERT INTO delivery_manifest_assets (id,manifest_id,creative_asset_id,sha256_checksum,media_type)
+      SELECT 'beh-pop-dma-00000000000000001',id,'{p["creative"]}','sha256:pop-test-hash','video/mp4'
+      FROM delivery_manifests WHERE manifest_id='{p["manifest"]}'
+      AND NOT EXISTS (SELECT 1 FROM delivery_manifest_assets WHERE manifest_id=(SELECT id FROM delivery_manifests WHERE manifest_id='{p["manifest"]}'))
     """
 
 
 _POP_CLEANUP = """
-    DELETE FROM pop_events_raw WHERE event_id LIKE 'beh-pop-%'
+    ; DELETE FROM pop_events_raw WHERE event_id LIKE 'beh-pop-%'
     ; DELETE FROM pop_dedup_index WHERE event_id LIKE 'beh-pop-%'
     ; DELETE FROM pop_ingestion_batches WHERE id LIKE 'beh-pop-%'
+    ; DELETE FROM outbox_events WHERE aggregate_id LIKE 'beh-pop-%'
+    ; DELETE FROM delivery_manifest_assets WHERE manifest_id IN (
+        SELECT id FROM delivery_manifests WHERE manifest_id LIKE 'beh-pop-manifest-%'
+    )
+    ; DELETE FROM delivery_manifest_surfaces WHERE manifest_id IN (
+        SELECT id FROM delivery_manifests WHERE manifest_id LIKE 'beh-pop-manifest-%'
+    )
+    ; DELETE FROM delivery_manifests WHERE manifest_id LIKE 'beh-pop-manifest-%'
+    ; DELETE FROM display_surfaces WHERE code='BEH-POP-DS'
+    ; DELETE FROM logical_carriers WHERE code='BEH-POP-LC'
     ; DELETE FROM physical_devices WHERE code='BEH-POP-DEV'
     ; DELETE FROM device_types WHERE code='BEH-POP-DT'
     ; DELETE FROM channels WHERE code='BEH-POP-CH'

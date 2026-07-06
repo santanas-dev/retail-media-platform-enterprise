@@ -244,3 +244,41 @@ def require_scoped_permission(permission_code: str, scope_type: str | None = Non
         )
 
     return enforce
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.3c — Device JWT auth for PoP ingestion
+# ---------------------------------------------------------------------------
+
+
+async def get_device_id_from_token(request: Request) -> str:
+    """Extract physical_device_id from Authorization: Bearer ***    ADR-003/ADR-017: device JWT has sub=<device_id>, auth_provider="device".
+    Rejects user/admin tokens, expired/invalid tokens.
+    Returns physical_device_id (UUID string).
+    """
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "NOT_AUTHENTICATED", "message": "Missing or invalid Authorization header"},
+        )
+    token = auth[7:]
+    try:
+        claims = verify_access_token(token)
+    except Exception:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "INVALID_TOKEN", "message": "Invalid or expired device token"},
+        )
+    if claims.get("auth_provider") != "device":
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "NOT_DEVICE_TOKEN", "message": "Token is not a device token"},
+        )
+    device_id = claims.get("sub")
+    if not device_id:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "INVALID_TOKEN", "message": "Token missing sub claim"},
+        )
+    return device_id

@@ -61,9 +61,11 @@ app.middleware("http")(log_request_middleware)
 
 from packages.api.identity import router as identity_router
 from packages.api.auth import router as auth_router
+from packages.api.pop import router as pop_router
 
 app.include_router(identity_router)
 app.include_router(auth_router)
+app.include_router(pop_router)
 
 
 # ---------------------------------------------------------------------------

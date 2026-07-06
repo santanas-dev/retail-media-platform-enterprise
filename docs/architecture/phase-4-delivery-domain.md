@@ -9,7 +9,7 @@
 - **4.2e** Runtime Simulator Behavioral Tests — ✅ done (`52a50fc` + fix)
 - **4.3a** PoP and Reporting Architecture Lock (ADR-017) — 🔒 locked
 - **4.3b** PoP Persistence Schema — ✅ done
-- **4.3c** PoP Ingestion Endpoint — open
+- **4.3c** PoP Ingestion Endpoint — ✅ done
 - **4.3d** Reporting Read-Only Endpoints — open
 - **4.3e** Materialized Views / Exports — open
 
