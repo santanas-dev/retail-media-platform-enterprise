@@ -187,6 +187,15 @@ class TestDeviceManifestEndpoint:
         # Verify ETag header present
         assert "etag" in response.headers
         assert response.headers["etag"] == data.get("content_hash", "")
+        # Required skeleton fields from generate_manifest_json
+        assert "channel_type" in data, "Missing channel_type in device manifest"
+        assert "offline_ttl_hours" in data, "Missing offline_ttl_hours"
+        # No secrets/storage/PII leakage
+        unsafe = ("storage_bucket", "storage_key", "presigned_url",
+                  "access_key", "secret_key", "token", "password")
+        body = str(data).lower()
+        for term in unsafe:
+            assert term not in body, f"Manifest leaks {term}"
 
     def test_if_none_match_returns_304(self):
         """If-None-Match matching current content_hash returns 304."""

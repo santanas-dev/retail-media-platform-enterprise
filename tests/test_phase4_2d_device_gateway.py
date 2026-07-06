@@ -161,31 +161,38 @@ class TestManifestResponseSafety(unittest.TestCase):
             )
 
     def test_manifest_response_shape(self):
-        """get_latest_manifest_for_device returns correct top-level fields."""
+        """get_latest_manifest_for_device returns all generate_manifest_json fields."""
         manifest = self._mock_manifest()
+        # All fields from generate_manifest_json() in packages/domain/delivery.py
         required = {
-            "manifest_id", "device_id", "store_id", "display_surfaces",
-            "playlist", "channel_type", "device_type", "media_files",
-            "adapter_payload", "fallback_rules", "signature",
+            "manifest_id", "manifest_version", "schema_version",
+            "device_id", "device_code", "store_id", "store_code",
+            "channel_type", "device_type",
+            "display_surfaces", "playlist",
+            "media_files", "adapter_payload",
+            "valid_from", "valid_to",
             "offline_ttl_hours",
+            "fallback_rules", "signature",
         }
-        for field in required:
-            self.assertIn(field, manifest, f"Missing field: {field}")
+        missing = required - set(manifest.keys())
+        self.assertFalse(
+            missing, f"Manifest response missing fields: {missing}",
+        )
 
     def test_manifest_schema_compatible(self):
-        """Manifest response validates against manifest_v1.schema.json required fields."""
+        """Manifest response validates against manifest_v1.schema.json."""
         import json
+        import jsonschema
         schema_path = os.path.join(
             os.path.dirname(__file__), "..",
             "packages", "contracts", "manifest_v1.schema.json",
         )
         schema = json.load(open(schema_path))
         manifest = self._mock_manifest()
-
-        # Check all required fields from schema are present
-        for field in schema.get("required", []):
-            self.assertIn(field, manifest,
-                          f"Schema requires '{field}' but response is missing it")
+        try:
+            jsonschema.validate(instance=manifest, schema=schema)
+        except jsonschema.ValidationError as e:
+            self.fail(f"Schema validation failed: {e.message}")
 
 
 class TestNoGenerationInEndpoint(unittest.TestCase):
