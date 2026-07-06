@@ -60,6 +60,20 @@ class TestDeliveryModels(unittest.TestCase):
                      "attempted_at", "error_code", "error_message", "created_at"}
         self.assertTrue(required <= cols)
 
+    def test_attempt_fk_targets_manifest_external_id(self):
+        """DeliveryAttempt.manifest_id FK must reference delivery_manifests.manifest_id."""
+        from packages.domain.models import DeliveryAttempt
+        col = DeliveryAttempt.__table__.columns["manifest_id"]
+        # Type must be String(128) to match external manifest_id format
+        self.assertIn("128", str(col.type))
+        # FK must target delivery_manifests.manifest_id, not delivery_manifests.id
+        fks = [fk for fk in DeliveryAttempt.__table__.foreign_keys
+               if fk.parent.name == "manifest_id"]
+        self.assertTrue(fks, "DeliveryAttempt.manifest_id must have FK")
+        for fk in fks:
+            self.assertIn("delivery_manifests.manifest_id", fk.target_fullname,
+                          f"FK must target delivery_manifests.manifest_id, got {fk.target_fullname}")
+
     def test_no_secrets_fields(self):
         """Delivery tables must not contain storage credentials or PII."""
         from packages.domain.models import (

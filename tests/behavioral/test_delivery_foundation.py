@@ -236,3 +236,202 @@ class TestDeliveryManifest:
             " DELETE FROM delivery_manifests WHERE id = :mid",
             {"mid": mid},
         )
+
+
+class TestMarkManifestHelpers:
+
+    def _make_manifest(self):
+        """Create a planned manifest and return (internal_id, external_id)."""
+        from packages.domain.repository import create_delivery_manifest_record
+        external = "sha256:test-mark-fn-001"
+
+        async def _run():
+            engine = create_async_engine(DB_URL, echo=False)
+            AsyncSessionLocal = sessionmaker(
+                engine, class_=AsyncSession, expire_on_commit=False,
+            )
+            async with AsyncSessionLocal() as session:
+                mid = await create_delivery_manifest_record(
+                    session,
+                    manifest_id_external=external,
+                    campaign_id="00000000-0000-0000-0000-000000000220",
+                    physical_device_id="00000000-0000-0000-0000-000000000020",
+                    content_hash="sha256:content-test",
+                )
+                await session.commit()
+                return mid
+            await engine.dispose()
+
+        return asyncio.run(_run()), external
+
+    def _cleanup(self, mid):
+        _raw_exec("DELETE FROM delivery_manifests WHERE id = :mid", {"mid": mid})
+
+    def test_mark_generated(self, db_available):
+        from packages.domain.repository import mark_manifest_generated
+        mid, external = self._make_manifest()
+
+        async def _run():
+            engine = create_async_engine(DB_URL, echo=False)
+            AsyncSessionLocal = sessionmaker(
+                engine, class_=AsyncSession, expire_on_commit=False,
+            )
+            async with AsyncSessionLocal() as session:
+                await mark_manifest_generated(session, external,
+                                              content_hash="sha256:gen-content")
+                await session.commit()
+            await engine.dispose()
+        asyncio.run(_run())
+
+        rows = _raw_sql(
+            "SELECT status, generated_at FROM delivery_manifests WHERE id = :mid",
+            {"mid": mid},
+        )
+        assert rows[0][0] == "generated"
+        assert rows[0][1] is not None
+
+        self._cleanup(mid)
+
+    def test_mark_failed_stores_error(self, db_available):
+        from packages.domain.repository import mark_manifest_failed
+        mid, external = self._make_manifest()
+
+        async def _run():
+            engine = create_async_engine(DB_URL, echo=False)
+            AsyncSessionLocal = sessionmaker(
+                engine, class_=AsyncSession, expire_on_commit=False,
+            )
+            async with AsyncSessionLocal() as session:
+                await mark_manifest_failed(session, external,
+                                           last_error="Target resolution: no surfaces")
+                await session.commit()
+            await engine.dispose()
+        asyncio.run(_run())
+
+        rows = _raw_sql(
+            "SELECT status, last_error FROM delivery_manifests WHERE id = :mid",
+            {"mid": mid},
+        )
+        assert rows[0][0] == "failed"
+        assert "no surfaces" in rows[0][1]
+
+        self._cleanup(mid)
+
+    def test_mark_delivered(self, db_available):
+        from packages.domain.repository import (
+            mark_manifest_generated, mark_manifest_delivered,
+        )
+        mid, external = self._make_manifest()
+
+        # First mark as generated
+        async def _gen():
+            engine = create_async_engine(DB_URL, echo=False)
+            AsyncSessionLocal = sessionmaker(
+                engine, class_=AsyncSession, expire_on_commit=False,
+            )
+            async with AsyncSessionLocal() as session:
+                await mark_manifest_generated(session, external,
+                                              content_hash="sha256:gen-content")
+                await session.commit()
+            await engine.dispose()
+        asyncio.run(_gen())
+
+        # Then mark as delivered
+        async def _del():
+            engine = create_async_engine(DB_URL, echo=False)
+            AsyncSessionLocal = sessionmaker(
+                engine, class_=AsyncSession, expire_on_commit=False,
+            )
+            async with AsyncSessionLocal() as session:
+                await mark_manifest_delivered(session, external)
+                await session.commit()
+            await engine.dispose()
+        asyncio.run(_del())
+
+        rows = _raw_sql(
+            "SELECT status, delivered_at FROM delivery_manifests WHERE id = :mid",
+            {"mid": mid},
+        )
+        assert rows[0][0] == "delivered"
+        assert rows[0][1] is not None
+
+        self._cleanup(mid)
+
+    def test_mark_generated_idempotent(self, db_available):
+        """Second mark_generated on an already generated manifest is no-op."""
+        from packages.domain.repository import mark_manifest_generated
+        mid, external = self._make_manifest()
+
+        async def _run():
+            engine = create_async_engine(DB_URL, echo=False)
+            AsyncSessionLocal = sessionmaker(
+                engine, class_=AsyncSession, expire_on_commit=False,
+            )
+            async with AsyncSessionLocal() as session:
+                await mark_manifest_generated(session, external,
+                                              content_hash="sha256:gen-1")
+                await mark_manifest_generated(session, external,
+                                              content_hash="sha256:gen-2")
+                await session.commit()
+            await engine.dispose()
+        asyncio.run(_run())
+
+        rows = _raw_sql(
+            "SELECT status, content_hash FROM delivery_manifests WHERE id = :mid",
+            {"mid": mid},
+        )
+        assert rows[0][0] == "generated"
+        # Second call should not overwrite — content_hash stays from first call
+        assert rows[0][1] == "sha256:gen-1"
+
+        self._cleanup(mid)
+
+
+class TestDeliveryAttempt:
+
+    def test_create_attempt_succeeds(self, db_available):
+        """create_delivery_attempt with valid external manifest_id."""
+        from packages.domain.repository import (
+            create_delivery_manifest_record, create_delivery_attempt,
+        )
+
+        async def _run():
+            engine = create_async_engine(DB_URL, echo=False)
+            AsyncSessionLocal = sessionmaker(
+                engine, class_=AsyncSession, expire_on_commit=False,
+            )
+            async with AsyncSessionLocal() as session:
+                # Create manifest first
+                mid = await create_delivery_manifest_record(
+                    session,
+                    manifest_id_external="sha256:attempt-test",
+                    campaign_id="00000000-0000-0000-0000-000000000220",
+                    physical_device_id="00000000-0000-0000-0000-000000000020",
+                    content_hash="sha256:content-attempt",
+                )
+                await session.flush()  # ensure manifest row is visible for FK
+                # Create attempt using external manifest_id
+                aid = await create_delivery_attempt(
+                    session,
+                    manifest_id_external="sha256:attempt-test",
+                )
+                await session.commit()
+                return mid, aid
+            await engine.dispose()
+
+        mid, aid = asyncio.run(_run())
+
+        rows = _raw_sql(
+            "SELECT manifest_id, status FROM delivery_attempts WHERE id = :aid",
+            {"aid": aid},
+        )
+        assert len(rows) == 1
+        assert rows[0][0] == "sha256:attempt-test"
+        assert rows[0][1] == "pending"
+
+        # Cleanup
+        _raw_exec(
+            "DELETE FROM delivery_attempts WHERE id = :aid;"
+            " DELETE FROM delivery_manifests WHERE id = :mid",
+            {"aid": aid, "mid": mid},
+        )

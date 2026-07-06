@@ -953,14 +953,8 @@ async def mark_manifest_generated(
     """Mark a manifest as generated.  Idempotent — no-op if already generated."""
     from packages.domain.models import DeliveryManifest
     from datetime import datetime, timezone as tz
-
-    await session.execute(
-        select(DeliveryManifest).where(
-            DeliveryManifest.manifest_id == manifest_id_external
-        )
-    )
-    # Use update for idempotency — only if status is 'planned'
     from sqlalchemy import update as sa_update
+
     await session.execute(
         sa_update(DeliveryManifest)
         .where(

@@ -123,8 +123,8 @@ def upgrade() -> None:
     op.create_table(
         "delivery_attempts",
         sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("manifest_id", sa.String(36),
-                  sa.ForeignKey("delivery_manifests.id"), nullable=False),
+        sa.Column("manifest_id", sa.String(128),
+                  sa.ForeignKey("delivery_manifests.manifest_id"), nullable=False),
         sa.Column("status", sa.String(32), nullable=False,
                   server_default="pending"),
         sa.Column("attempted_at", sa.DateTime(timezone=True), nullable=False,

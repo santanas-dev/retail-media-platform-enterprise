@@ -906,7 +906,8 @@ class DeliveryAttempt(Base):
 
     id = Column(String(36), primary_key=True, default=_new_uuid)
     manifest_id = Column(
-        String(36), ForeignKey("delivery_manifests.id"), nullable=False, index=True,
+        String(128), ForeignKey("delivery_manifests.manifest_id"),
+        nullable=False, index=True,
     )
     status = Column(String(32), nullable=False, default="pending")
     attempted_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
