@@ -338,6 +338,21 @@ class TestOfflineTTLExpiry(unittest.TestCase):
         self.assertFalse(result.played)
         self.assertEqual(result.failure_reason, "offline_ttl_expired")
 
+    def test_ttl_expired_fallback_plays(self):
+        """ADR-013 §5: fallback content allowed after offline TTL."""
+        self.sim.set_offline(True)
+        self.sim.advance_offline_clock(hours=2)
+        result = self.sim.render_slot(campaign_id=TEST_CAMPAIGN_ID, is_fallback=True)
+        self.assertTrue(result.played)
+        self.assertEqual(result.event_id, "")  # no PoP for fallback
+
+    def test_ttl_expired_fallback_no_pop(self):
+        """Fallback after TTL expiry plays but emits no PoP."""
+        self.sim.set_offline(True)
+        self.sim.advance_offline_clock(hours=2)
+        self.sim.render_slot(campaign_id=TEST_CAMPAIGN_ID, is_fallback=True)
+        self.assertEqual(len(self.sim.event_queue), 0)
+
     def test_ttl_expired_no_pop(self):
         self.sim.set_offline(True)
         self.sim.advance_offline_clock(hours=2)

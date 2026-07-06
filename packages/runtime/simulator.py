@@ -24,17 +24,6 @@ REQUIRED_MANIFEST_FIELDS = {
     "manifest_id", "device_id", "store_id", "channel_type",
 }
 
-MANIFEST_SKELETON_FIELDS = {
-    "manifest_id", "manifest_version", "schema_version",
-    "device_id", "device_code", "store_id", "store_code",
-    "channel_type", "device_type",
-    "display_surfaces", "playlist",
-    "media_files", "adapter_payload",
-    "valid_from", "valid_to",
-    "offline_ttl_hours",
-    "fallback_rules", "signature",
-}
-
 FORBIDDEN_MANIFEST_TERMS = [
     "storage_bucket", "storage_key", "access_key",
     "secret_key", "presigned_url", "token",
@@ -273,12 +262,15 @@ class RuntimeSimulator:
                 failure_reason="kill_switch_active",
             )
 
-        # Gate 2: offline TTL
+        # Gate 2: offline TTL (ADR-013 §5)
+        # Campaign content blocked. Fallback may play per fallback_rules.
         if self.is_offline_ttl_expired():
-            return RenderResult(
-                played=False,
-                failure_reason="offline_ttl_expired",
-            )
+            if not is_fallback:
+                return RenderResult(
+                    played=False,
+                    failure_reason="offline_ttl_expired",
+                )
+            # Fallback allowed — falls through to Gate 6 for no-PoP handling
 
         # Gate 3: no manifest
         manifest = self._current_manifest
