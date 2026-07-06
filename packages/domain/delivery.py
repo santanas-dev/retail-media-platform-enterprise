@@ -330,6 +330,44 @@ def compute_manifest_id(
     parts.extend(sorted(surface_ids))
     parts.append(device_id)
 
+    return _hash_parts(parts)
+
+
+def compute_campaign_version_hash(
+    campaign_id: str,
+    campaign_status: str,
+    campaign_updated_at: str,
+    creative_asset_ids: list[str],
+    creative_checksums: list[str],
+    flight_ids: list[str],
+    flight_data: list[str],
+    placement_ids: list[str],
+) -> str:
+    """Compute deterministic campaign version hash for delivery plan idempotency.
+
+    SHA-256 of: campaign_id ‖ campaign.status ‖ campaign.updated_at
+    ‖ sorted(creative_asset.id) ‖ sorted(creative_asset.sha256_checksum)
+    ‖ sorted(flight.id) ‖ sorted(flight.start_at‖end_at‖dayparting_json‖days_of_week)
+    ‖ sorted(placement.id)
+
+    Excludes device_id and surface_ids — campaign content only, not resolution-specific.
+    """
+    parts: list[str] = [
+        campaign_id,
+        campaign_status,
+        campaign_updated_at,
+    ]
+    parts.extend(sorted(creative_asset_ids))
+    parts.extend(sorted(creative_checksums))
+    parts.extend(sorted(flight_ids))
+    parts.extend(sorted(flight_data))
+    parts.extend(sorted(placement_ids))
+
+    return _hash_parts(parts)
+
+
+def _hash_parts(parts: list[str]) -> str:
+    """SHA-256 over ‖-separated parts, prefixed with 'sha256:'."""
     input_bytes = _SEP.join(parts).encode("utf-8")
     return "sha256:" + hashlib.sha256(input_bytes).hexdigest()
 
@@ -562,17 +600,16 @@ async def generate_manifests_for_campaign(
     )
 
     # Compute campaign version hash for idempotency
-    version_hash_input = _SEP.join([
-        campaign_id,
-        campaign.status,
-        campaign_updated_at,
-        *creative_asset_ids,
-        *creative_checksums,
-        *flight_ids,
-        *flight_data_parts,
-        *placement_ids,
-    ]).encode("utf-8")
-    campaign_version_hash = "sha256:" + hashlib.sha256(version_hash_input).hexdigest()
+    campaign_version_hash = compute_campaign_version_hash(
+        campaign_id=campaign_id,
+        campaign_status=campaign.status,
+        campaign_updated_at=campaign_updated_at,
+        creative_asset_ids=creative_asset_ids,
+        creative_checksums=creative_checksums,
+        flight_ids=flight_ids,
+        flight_data=flight_data_parts,
+        placement_ids=placement_ids,
+    )
 
     # Flight windows for valid_from/valid_to
     flight_starts = [f.start_at for f in flights if f.start_at]

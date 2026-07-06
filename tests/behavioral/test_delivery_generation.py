@@ -297,6 +297,8 @@ class TestApprovedCampaignGeneratesManifest:
 
     def test_no_outbox_generated_for_unapproved(self, db_available):
         """Unapproved campaign must not produce delivery.manifest.generated events."""
+        from packages.domain.delivery import generate_manifests_for_campaign
+
         _prepare_approved_campaign()
         _reset_manifest_state()
         _raw_exec(
@@ -304,9 +306,89 @@ class TestApprovedCampaignGeneratesManifest:
             {"cid": SEED_CAMPAIGN_ID},
         )
 
-        # Direct check: no outbox event should be created
+        async def _run():
+            engine = create_async_engine(DB_URL, echo=False)
+            AsyncSessionLocal = sessionmaker(
+                engine, class_=AsyncSession, expire_on_commit=False,
+            )
+            async with AsyncSessionLocal() as session:
+                result = await generate_manifests_for_campaign(
+                    session, SEED_CAMPAIGN_ID,
+                )
+                await session.commit()
+                return result
+            await engine.dispose()
+
+        result = asyncio.run(_run())
+
+        assert result.eligible is False
+        assert result.manifest_count == 0
         assert _count_outbox("delivery.manifest.generated") == 0
         assert _count_outbox("delivery.manifest.failed") == 0
+
+    def test_completed_status_no_manifest(self, db_available):
+        """Campaign with status=completed must not generate manifests per ADR-016 §1."""
+        from packages.domain.delivery import generate_manifests_for_campaign
+
+        _prepare_approved_campaign()
+        _reset_manifest_state()
+        _raw_exec(
+            "UPDATE campaigns SET status = 'completed' WHERE id = :cid",
+            {"cid": SEED_CAMPAIGN_ID},
+        )
+
+        async def _run():
+            engine = create_async_engine(DB_URL, echo=False)
+            AsyncSessionLocal = sessionmaker(
+                engine, class_=AsyncSession, expire_on_commit=False,
+            )
+            async with AsyncSessionLocal() as session:
+                result = await generate_manifests_for_campaign(
+                    session, SEED_CAMPAIGN_ID,
+                )
+                await session.commit()
+                return result
+            await engine.dispose()
+
+        result = asyncio.run(_run())
+
+        assert result.eligible is False
+        assert "completed" in (result.skip_reason or "")
+        assert result.manifest_count == 0
+        assert _count_manifests() == 0
+        assert _count_outbox("delivery.manifest.generated") == 0
+
+    def test_live_status_no_manifest(self, db_available):
+        """Unknown/noncanonical status 'live' must not generate manifests."""
+        from packages.domain.delivery import generate_manifests_for_campaign
+
+        _prepare_approved_campaign()
+        _reset_manifest_state()
+        _raw_exec(
+            "UPDATE campaigns SET status = 'live' WHERE id = :cid",
+            {"cid": SEED_CAMPAIGN_ID},
+        )
+
+        async def _run():
+            engine = create_async_engine(DB_URL, echo=False)
+            AsyncSessionLocal = sessionmaker(
+                engine, class_=AsyncSession, expire_on_commit=False,
+            )
+            async with AsyncSessionLocal() as session:
+                result = await generate_manifests_for_campaign(
+                    session, SEED_CAMPAIGN_ID,
+                )
+                await session.commit()
+                return result
+            await engine.dispose()
+
+        result = asyncio.run(_run())
+
+        assert result.eligible is False
+        assert "live" in (result.skip_reason or "")
+        assert result.manifest_count == 0
+        assert _count_manifests() == 0
+        assert _count_outbox("delivery.manifest.generated") == 0
 
     def test_one_device_one_manifest(self, db_available):
         """One physical device gets one manifest with surfaces inside."""

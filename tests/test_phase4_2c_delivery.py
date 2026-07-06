@@ -34,17 +34,6 @@ class TestEligibilityHelpers(unittest.TestCase):
         self.assertEqual(r.surface_device_map, {})
         self.assertEqual(r.device_surfaces, {})
 
-    def test_completed_status_ineligible(self):
-        from packages.domain.delivery import EligibilityResult
-        r = EligibilityResult(False, "Campaign status is 'completed', not in ['active', 'approved', 'scheduled']")
-        self.assertFalse(r.eligible)
-        self.assertIn("completed", r.reason)
-
-    def test_live_status_ineligible(self):
-        from packages.domain.delivery import EligibilityResult
-        r = EligibilityResult(False, "Campaign status is 'live'")
-        self.assertFalse(r.eligible)
-
     def test_manifest_result_not_eligible(self):
         from packages.domain.delivery import ManifestGenerationResult
         r = ManifestGenerationResult(
@@ -54,6 +43,54 @@ class TestEligibilityHelpers(unittest.TestCase):
         self.assertEqual(r.skip_reason, "status=draft")
         self.assertEqual(r.manifest_count, 0)
         self.assertEqual(r.manifest_ids, [])
+
+
+class TestCampaignVersionHash(unittest.TestCase):
+    """campaign_version_hash determinism."""
+
+    def setUp(self):
+        from packages.domain.delivery import compute_campaign_version_hash
+        self.compute = compute_campaign_version_hash
+
+    def _base_args(self):
+        return dict(
+            campaign_id="00000000-0000-0000-0000-000000000220",
+            campaign_status="approved",
+            campaign_updated_at="2026-07-01T00:00:00+00:00",
+            creative_asset_ids=["ca-001"],
+            creative_checksums=["deadbeef"],
+            flight_ids=["fl-001"],
+            flight_data=["2026-08-01T08:00:00+03:00‖2026-08-07T22:00:00+03:00‖‖"],
+            placement_ids=["pl-001"],
+        )
+
+    def test_same_input_same_hash(self):
+        a1 = self._base_args()
+        a2 = self._base_args()
+        self.assertEqual(self.compute(**a1), self.compute(**a2))
+
+    def test_changed_status_different_hash(self):
+        a1 = self._base_args()
+        a2 = self._base_args()
+        a2["campaign_status"] = "scheduled"
+        self.assertNotEqual(self.compute(**a1), self.compute(**a2))
+
+    def test_changed_flight_different_hash(self):
+        a1 = self._base_args()
+        a2 = self._base_args()
+        a2["flight_data"] = ["2027-01-01T00:00:00+00:00‖2027-01-02T00:00:00+00:00‖‖"]
+        self.assertNotEqual(self.compute(**a1), self.compute(**a2))
+
+    def test_changed_creative_checksum_different_hash(self):
+        a1 = self._base_args()
+        a2 = self._base_args()
+        a2["creative_checksums"] = ["beefdead"]
+        self.assertNotEqual(self.compute(**a1), self.compute(**a2))
+
+    def test_output_format_sha256(self):
+        result = self.compute(**self._base_args())
+        self.assertTrue(result.startswith("sha256:"))
+        self.assertEqual(len(result), len("sha256:") + 64)
 
 
 class TestManifestIdDeterminism(unittest.TestCase):
@@ -256,6 +293,7 @@ class TestDeliveryModuleExport(unittest.TestCase):
             check_eligibility,
             resolve_targets,
             compute_manifest_id,
+            compute_campaign_version_hash,
             generate_manifest_json,
             generate_manifests_for_campaign,
             EligibilityResult,
