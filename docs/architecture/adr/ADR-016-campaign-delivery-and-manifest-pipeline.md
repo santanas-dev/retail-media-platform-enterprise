@@ -176,8 +176,24 @@ device_id match, media download).
 
 | Field | Semantics | Source |
 |-------|-----------|--------|
-| `manifest_id` | Deterministic: `SHA-256(campaign_version_vector + device_id + generated_at_epoch)` | Content-addressed |
+| `manifest_id` | Content-addressed: `SHA-256(input_concat)` where `input_concat` is the byte-concatenation of the fields below, sorted where applicable | Deterministic, no wall-clock dependency |
 | `manifest_version` | Monotonic counter per `device_id` | Incremented on each generated manifest |
+
+**`manifest_id` input (canonical order):**
+
+```
+campaign.id ‖ campaign.status ‖ campaign.updated_at
+‖ sorted(linked creative_asset.id) ‖ sorted(creative_asset.sha256_checksum)
+‖ sorted(linked campaign_flight.id) ‖
+  sorted(flight.start_at ‖ flight.end_at ‖ flight.dayparting_json ‖ flight.days_of_week)
+‖ sorted(linked campaign_placement.id) ‖
+  sorted(resolved display_surface.id for this device)
+‖ device_id
+```
+
+All fields are concatenated as UTF-8 bytes with `‖` (U+2016) as the field separator. Lists are sorted lexicographically by their natural key before concatenation.
+
+**Rationale for excluding `generated_at` from `manifest_id`:** including wall-clock time in the content hash makes the manifest ID non-deterministic — generating the same manifest twice produces different IDs, breaking idempotency. `manifest_version` (monotonic counter) already provides temporal ordering. `campaign.updated_at` in the hash captures the campaign's logical version; the manifest ID is stable for the same campaign/device content regardless of when generation runs.
 
 **Version bump triggers:** any change to campaign content, flight window,
 placement set, creative assets, or share-of-voice for that device.
@@ -194,7 +210,7 @@ placement set, creative assets, or share-of-voice for that device.
   `manifest.apply.failed` event.
 
 **Idempotency:** generating the same manifest for the same
-`(campaign_state, device_id)` twice produces the same `manifest_id`.
+campaign/device content twice produces the same `manifest_id`.
 The delivery worker can re-generate without creating duplicate manifests.
 The device rejects manifests with `manifest_version <= current_version`
 (unless emergency).
@@ -214,7 +230,11 @@ Outbox Relay Worker (background)
   └── mark published
 
 Delivery Planner Worker (NATS consumer)
-  ├── on campaign.approved / campaign.updated / campaign.placement.changed
+  ├── consumes all campaign delivery triggers from §1:
+  │     campaign.approved, campaign.updated, campaign.scheduled,
+  │     campaign.activated, campaign.paused, campaign.completed,
+  │     campaign.archived, campaign.placement.changed,
+  │     campaign.creative.changed, campaign.flight.changed
   ├── check eligibility (§2)
   ├── if eligible: resolve targets (§3), produce delivery.manifest.requested
   └── if ineligible: log, no manifest
@@ -267,14 +287,13 @@ delivery planner consume from NATS via JetStream durable consumers.
 |-------|-----------|
 | Outbox relay | `outbox_events.event_id` — at-least-once, consumer dedupes by event_id |
 | Delivery planner | `campaign_id + campaign.updated_at` — skip if no change since last plan |
-| Manifest generator | `manifest_id = SHA-256(campaign_state + device_id + generated_at)` — same input → same manifest_id, no duplicate generation |
+| Manifest generator | `manifest_id = SHA-256(input_concat)` per §5 — same input → same `manifest_id`, no duplicate generation |
 | Device | Monotonic `manifest_version` — rejects duplicate/downgrade |
 
 **Re-delivery is safe.**  The delivery planner can run multiple times
 for the same campaign version without generating duplicate manifests.
-The manifest generator checks whether a manifest for the same
-`(campaign_version, device_id)` already exists and is current before
-regenerating.
+The manifest generator checks whether a manifest with the same
+`manifest_id` already exists before storing a new one.
 
 ### 8. Observability
 
