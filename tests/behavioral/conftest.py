@@ -459,6 +459,7 @@ _POP_CLEANUP = """
     ; DELETE FROM outbox_events WHERE
         (aggregate_id LIKE 'beh-pop-%'
          OR event_type IN ('pop.event.accepted', 'pop.event.quarantined', 'pop.batch.ingested'))
+        AND created_at > NOW() - INTERVAL '10 minutes'
     ; DELETE FROM delivery_manifest_assets WHERE manifest_id IN (
         SELECT id FROM delivery_manifests WHERE manifest_id LIKE 'beh-pop-manifest-%'
     )
