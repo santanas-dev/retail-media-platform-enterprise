@@ -2,7 +2,7 @@
 
 Мультиканальная платформа управления рекламой на цифровых носителях розничной сети.
 
-**Статус:** 🏗️ Phase 4.2d — Device Gateway Manifest Endpoint (closed).
+**Статус:** 🏗️ Phase 4.3c — PoP Ingestion Endpoint (closed). Next: 4.3d Reporting.
 
 ## Architecture
 

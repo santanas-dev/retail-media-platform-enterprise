@@ -79,6 +79,77 @@ Migration 009 — `pop_events_raw`, `pop_dedup_index`, `pop_ingestion_batches`.
 | 9 | `test_duration_too_large_rejected` | duration_ms=86400001 violates DB CHECK |
 | 10 | `test_accepted_event_must_be_success` | accept_pop_event forces playback_result='success' |
 
+## Phase 4.3c: PoP Ingestion Endpoint (done)
+
+### Deliverable
+
+`POST /api/v1/pop/batch` on control-api — device-submitted proof-of-play events.
+
+| Property | Detail |
+|----------|--------|
+| Endpoint | `POST /api/v1/pop/batch` on `apps/control-api` |
+| Auth | Device JWT only (`auth_provider=device`). User/admin tokens → 403 |
+| Router | `packages/api/pop.py` — thin, no `db.execute`, delegates to domain |
+| Service | `packages/domain/pop_ingestion.py` — pure domain, no FastAPI/NATS/ClickHouse |
+| Batch max | 500 events (Pydantic `min_length=1, max_length=500`) |
+| Batch semantics | Partial success per event. Response includes counts + per-event `(status, reason)` |
+| Empty batch | Pydantic `min_length=1` → single 422 path (no redundant API guard) |
+
+### Validation Pipeline (11-step per ADR-017)
+
+| Step | Check | Failure |
+|------|-------|---------|
+| 1 | `schema_version` == `"1.0"` | reject: `unsupported_schema_version` |
+| 2 | `event.device_id` == JWT `sub` | reject: `device_mismatch` |
+| 3 | Dedup: `is_pop_event_duplicate` | duplicate (no insert) |
+| 4 | `duration_ms` ∈ [1, 86400000] | reject: `invalid_duration` |
+| 5 | `playback_result` == `"success"` | reject: `non_success_playback` |
+| 6 | `rendered_at` ≥ `now - 30 days` | reject: `stale_event` |
+| 7 | Clock drift: `rendered_at` ≤ `now + 5 min` | quarantine: `clock_drift` |
+| 8 | Manifest resolution: lookup by `manifest_id` | unknown → quarantine: `unknown_manifest` (72h, `campaign_verified=false`) |
+| 9 | Known manifest → cross-entity consistency: `campaign_id`, `device_id` vs `physical_device_id`, `surface_id` ∈ manifest surfaces, `creative_asset_id` ∈ manifest assets | reject: `campaign_mismatch` / `device_manifest_mismatch` / `surface_not_in_manifest` / `asset_not_in_manifest` |
+| 10 | Accept: `accept_pop_event` with resolved `campaign_id` from manifest (trusted), `campaign_verified=true` | — |
+| 11 | Dedup key: `insert_pop_dedup_key` + `session.flush()` before outbox | prevents same-tx race |
+
+### Persistence
+
+| Table | Role |
+|-------|------|
+| `pop_events_raw` | Accepted + quarantined events. `campaign_verified=true` only for accepted billing-grade events |
+| `pop_dedup_index` | Dedup by `event_id` (UNIQUE PK). Same-tx flush ensures visibility |
+| `pop_ingestion_batches` | Batch audit trail |
+| `outbox_events` | Transactional outbox (ADR-011). No direct NATS |
+
+### Outbox Events
+
+| Event | When |
+|-------|------|
+| `pop.event.accepted` | Event passes all validation + cross-entity checks |
+| `pop.event.quarantined` | Unknown manifest or clock drift (72h TTL, `campaign_verified=false`) |
+| `pop.batch.ingested` | Per-batch summary with counts |
+
+### Fixes Included
+
+| Fix | Commit | What |
+|-----|--------|------|
+| Dedup flush | `59060ad` | `session.flush()` after `insert_pop_dedup_key` in all 3 paths — prevents same-tx/batch UniqueViolation |
+| Fixture hardening | `d1d7bb5` | 4 behavioral proofs (clock_drift, device_manifest_mismatch, stale_event, duration_out_of_range), redundant API guard removed, outbox cleanup broadened, event_id overflow fixed |
+| Cleanup time fence | `d97be76` | `AND created_at > NOW() - INTERVAL '10 minutes'` on PoP outbox cleanup |
+
+### Test Coverage
+
+| Suite | Count | What |
+|-------|-------|------|
+| Unit | 29 | Schemas (13), batch request (3), batch response (2), import boundaries (6), constants (5) |
+| Behavioral | 27 | Accept, reject ×6 (schema, device, playback, campaign, surface, asset), device_manifest_mismatch, stale_event, duration_out_of_range, quarantine ×2 (unknown_manifest, clock_drift), dedup (same-tx), batch (mixed + dedup) |
+
+### Deferred
+
+- Reporting API (4.3d): read-only endpoints, aggregation queries, billing-grade reports
+- Materialized views / exports (4.3e)
+- ClickHouse analytics pipeline
+- Frontend analytics dashboards
+
 ## Phase 4.2c: Manifest Generator Worker Skeleton (closed)
 
 ### Deliverable
