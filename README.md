@@ -2,7 +2,7 @@
 
 Мультиканальная платформа управления рекламой на цифровых носителях розничной сети.
 
-**Статус:** 🏗️ Phase 4.1d — Campaign Approval Workflow.
+**Статус:** 🏗️ Phase 4.2c — Manifest Generator Worker Skeleton (closed).
 
 ## Architecture
 
