@@ -1044,13 +1044,19 @@ async def get_physical_device_for_manifest_delivery(
 ) -> str | None:
     """Return device status for manifest delivery gating, or None if not found.
 
-    Returns the status string (e.g., 'active', 'online', 'offline')
-    Only for read-only existence + status check — no update.
+    Returns the status string (e.g., 'active', 'online', 'offline') if the
+    device exists and its assigned store is still present in the DB.
+    Returns None when the device is missing, has been soft-deleted, or its
+    store has been removed (orphaned device).
+
+    Only for read-only existence + status + store check — no update.
     """
-    from packages.domain.models import PhysicalDevice
+    from packages.domain.models import PhysicalDevice, Store
     device = (
         await session.execute(
-            select(PhysicalDevice).where(
+            select(PhysicalDevice)
+            .join(Store, PhysicalDevice.store_id == Store.id)
+            .where(
                 PhysicalDevice.id == physical_device_id,
             )
         )

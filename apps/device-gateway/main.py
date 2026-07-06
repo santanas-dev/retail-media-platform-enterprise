@@ -12,8 +12,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from fastapi import FastAPI, Request, Depends, HTTPException
-from fastapi.responses import JSONResponse
-from sqlalchemy import select as sa_select
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.domain.database import get_session
@@ -130,18 +129,17 @@ async def get_latest_manifest(
             detail=f"Device is {device_status}",
         )
 
-    # Check If-None-Match for 304
-    if_none_match = request.headers.get("If-None-Match", "")
-    if if_none_match and if_none_match not in ("*", ""):
-        manifest_check = await get_latest_manifest_for_device(session, device_id)
-        if manifest_check is not None and manifest_check.get("content_hash") == if_none_match:
-            not_modified = JSONResponse(content=None, status_code=304)
-            not_modified.headers["ETag"] = manifest_check["content_hash"]
-            return not_modified
-
     manifest = await get_latest_manifest_for_device(session, device_id)
     if manifest is None:
         raise HTTPException(status_code=404, detail="No manifest available")
+
+    # If-None-Match → 304 Not Modified
+    if_none_match = request.headers.get("If-None-Match", "")
+    if if_none_match and manifest.get("content_hash") == if_none_match:
+        return Response(
+            status_code=304,
+            headers={"ETag": if_none_match},
+        )
 
     response_obj = JSONResponse(content=manifest)
     if manifest.get("content_hash"):

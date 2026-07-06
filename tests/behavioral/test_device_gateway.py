@@ -211,8 +211,8 @@ class TestDeviceManifestEndpoint:
         )
         assert response2.status_code == 304
         # 304 must have no body
-        assert response2.content == b"" or response2.content == b"null"
-        # ETag should still be present on 304
+        assert response2.content == b""
+        # ETag must be present on 304
         assert "etag" in response2.headers
 
     def test_no_auth_returns_401(self):
