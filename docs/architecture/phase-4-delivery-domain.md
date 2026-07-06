@@ -190,19 +190,56 @@ Read-only reporting queries over accepted PoP events. PostgreSQL only — no Cli
 
 No PII, no secrets, no storage URLs, no contact info exposed.
 
+### Tenant Isolation (P1 Fix)
+
+Campaign ownership guard (`_require_campaign_visible`) runs before any PoP query:
+
+|| Scenario | Result |
+||----------|--------|
+|| Campaign does not exist | 404 |
+|| Scoped advertiser → foreign campaign | 404 (same as nonexistent — no leak) |
+|| Admin / global scope → any campaign | bypass org-id check |
+|| No token | 401 |
+|| User without `campaigns.read` | 403 |
+
+Guard uses `get_campaign(campaign_id)` + explicit `advertiser_organization_id ∈ scope.advertiser_scope_ids` check.
+`pop_events_raw` has no RLS (ADR-017 §5) — application-layer guard compensates.
+
+Commit: `1f3e98d` — `fix: enforce pop reporting campaign scope`.
+
 ### Test Coverage
 
-| Suite | Count | What |
-|-------|-------|------|
-| Unit | 13 | Schemas (8), import boundaries (5) — no FastAPI/NATS/ClickHouse, no db.execute in router |
-| Behavioral | 8 | Empty campaign → zeros, accepted counted, quarantined excluded, campaign_verified=false excluded, playback_result≠success excluded, different campaign isolation, by-day grouping, by-surface grouping |
+|| Suite | Count | What |
+||-------|-------|------|
+|| Unit | 13 | Schemas (8), import boundaries (5) — no FastAPI/NATS/ClickHouse, no db.execute in router |
+|| Behavioral (reporting) | 8 | Empty campaign → zeros, accepted counted, quarantined excluded, campaign_verified=false excluded, playback_result≠success excluded, different campaign isolation, by-day grouping, by-surface grouping |
+|| Behavioral (scope) | 15 | All 3 endpoints × 5 scenarios: no-token→401, no-permission→403, own→200, foreign→404, admin→200 |
+
+### Behavioral Proofs (4.3d)
+
+|| # | Test | What it proves |
+||---|------|---------------|
+|| 1 | `test_empty_campaign_returns_zeros` | Summary returns 0/None for campaigns with no accepted events |
+|| 2 | `test_accepted_events_counted` | Only status=accepted events contribute to summary |
+|| 3 | `test_quarantined_excluded` | Quarantined events (campaign_verified=false) excluded from counts |
+|| 4 | `test_campaign_verified_false_excluded` | Accepted but campaign_verified=false excluded |
+|| 5 | `test_non_success_playback_excluded` | playback_result≠success excluded |
+|| 6 | `test_different_campaign_isolation` | Campaign A events don't appear in campaign B report |
+|| 7 | `test_by_day_groups_by_date` | Daily breakdown groups by UTC date |
+|| 8 | `test_by_surface_groups_by_surface_id` | Surface breakdown groups by surface_id, ordered desc |
+|| 9 | `test_no_token_returns_401` | All 3 endpoints reject unauthenticated requests |
+|| 10 | `test_no_permission_returns_403` | Disabled user (no campaigns.read) → 403 on all 3 endpoints |
+|| 11 | `test_advertiser_can_read_own_campaign` | Scoped advertiser → 200 on own campaign |
+|| 12 | `test_advertiser_cannot_read_foreign_campaign` | Scoped advertiser → 404 on foreign campaign (no leak) |
+|| 13 | `test_admin_can_read_foreign_campaign` | Admin bypasses org check → 200 on foreign campaign |
 
 ### Deferred
 
-- RLS cross-tenant behavioral tests (requires advertiser user + token for second org)
-- Auth negative tests (401/403) via HTTP layer
 - Materialized views / exports (4.3e)
+- ClickHouse analytics pipeline
 - Frontend analytics dashboards
+- Billing invoice logic
+- Timezone-aware reporting (by-day grouped by UTC)
 
 ## Phase 4.2c: Manifest Generator Worker Skeleton (closed)
 
