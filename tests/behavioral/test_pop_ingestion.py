@@ -163,6 +163,68 @@ class TestPopIngestionReject:
         assert result["status"] == "rejected"
         assert result["reason"] == "asset_not_in_manifest"
 
+    # --- P2 #1: missing behavioral proofs ---
+
+    def test_device_manifest_mismatch_rejected(self, db_available, pop_fixtures):
+        """Event device_id matches JWT, but resolved manifest belongs to a
+        different physical_device — must reject, not quarantine."""
+        event = _make_event(
+            pop_fixtures, 17,
+            manifest_id=pop_fixtures["manifest_mismatch"],
+            campaign_id=pop_fixtures["campaign"],
+        )
+
+        async def _fn(session):
+            return await ingest_pop_event(session, event, jwt_device_id=pop_fixtures["device"], now=_NOW)
+        result = asyncio.run(_run_in_session(_fn))
+        assert result["status"] == "rejected"
+        assert result["reason"] == "device_manifest_mismatch"
+
+        # No raw row persisted for rejected events
+        raw = _raw_sql("SELECT count(*) AS c FROM pop_events_raw WHERE event_id = :eid", {"eid": event.event_id})
+        assert raw[0].c == 0
+
+    def test_stale_event_rejected(self, db_available, pop_fixtures):
+        """Event rendered_at older than 30 days — must reject."""
+        stale_time = _NOW - timedelta(days=31)
+        event = _make_event(
+            pop_fixtures, 18,
+            rendered_at=stale_time,
+            event_recorded_at=stale_time,
+        )
+
+        async def _fn(session):
+            return await ingest_pop_event(session, event, jwt_device_id=pop_fixtures["device"], now=_NOW)
+        result = asyncio.run(_run_in_session(_fn))
+        assert result["status"] == "rejected"
+        assert result["reason"] == "stale_event"
+
+    def test_duration_out_of_range_rejected(self, db_available, pop_fixtures):
+        """Service-layer duration guard — bypass Pydantic to hit domain check.
+        duration_ms=0 triggers service-level rejection."""
+        # Use model_construct to bypass Pydantic validation and exercise the
+        # service-level duration check in pop_ingestion.py line 97-98.
+        from packages.domain.schemas import POP_MAX_DURATION_MS
+        event = PopEventIn.model_construct(
+            event_id=f"{_TEST_EVENT_BASE}-019",
+            schema_version="1.0",
+            device_id=pop_fixtures["device"],
+            manifest_id=pop_fixtures["manifest"],
+            campaign_id=pop_fixtures["campaign"],
+            creative_asset_id=pop_fixtures["creative"],
+            surface_id=pop_fixtures["surface"],
+            duration_ms=0,
+            playback_result="success",
+            rendered_at=_NOW - timedelta(minutes=1),
+            event_recorded_at=_NOW - timedelta(minutes=1),
+        )
+
+        async def _fn(session):
+            return await ingest_pop_event(session, event, jwt_device_id=pop_fixtures["device"], now=_NOW)
+        result = asyncio.run(_run_in_session(_fn))
+        assert result["status"] == "rejected"
+        assert result["reason"] == "invalid_duration"
+
 
 class TestPopIngestionQuarantine:
 
@@ -181,6 +243,38 @@ class TestPopIngestionQuarantine:
         assert raw[0].campaign_verified is False
         assert raw[0].quarantine_reason == "unknown_manifest"
         assert raw[0].expires_at is not None
+
+    # --- P2 #1: clock drift quarantine ---
+
+    def test_clock_drift_quarantined(self, db_available, pop_fixtures):
+        """Event rendered_at is > server_time + 5 min — must quarantine
+        per ADR-017 clock drift handling."""
+        from packages.domain.schemas import POP_CLOCK_DRIFT_MINUTES
+        drift_time = _NOW + timedelta(minutes=POP_CLOCK_DRIFT_MINUTES + 2)
+        event = _make_event(
+            pop_fixtures, 21,
+            rendered_at=drift_time,
+            event_recorded_at=drift_time,
+        )
+
+        async def _fn(session):
+            return await ingest_pop_event(session, event, jwt_device_id=pop_fixtures["device"], now=_NOW)
+        result = asyncio.run(_run_in_session(_fn))
+        assert result["status"] == "quarantined"
+        assert result["reason"] == "clock_drift"
+
+        raw = _raw_sql(
+            "SELECT status, campaign_verified, quarantine_reason, expires_at FROM pop_events_raw WHERE event_id = :eid",
+            {"eid": event.event_id},
+        )
+        assert len(raw) == 1
+        assert raw[0].status == "quarantined"
+        assert raw[0].campaign_verified is False
+        assert raw[0].quarantine_reason == "clock_drift"
+        assert raw[0].expires_at is not None
+
+        outbox = _raw_sql("SELECT event_type FROM outbox_events WHERE aggregate_id = :eid", {"eid": event.event_id})
+        assert any(r.event_type == "pop.event.quarantined" for r in outbox)
 
 
 class TestPopIngestionDup:

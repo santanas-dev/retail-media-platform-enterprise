@@ -54,9 +54,13 @@ POP_IDS = {
     "device":      "beh-pop-dev-000000000000000001",
     "adv_org":     "beh-pop-adv-000000000000000001",
     "creative":    "beh-pop-cr-000000000000000001",
+    "contract":    "beh-pop-ctr-00000000000000001",
     "campaign":    "beh-pop-camp-00000000000000001",
     "manifest":    "beh-pop-manifest-pop-test-001",
     "surface":     "beh-pop-ds-000000000000000001",
+    # Second device + manifest for device_manifest_mismatch behavioral proof
+    "device2":     "beh-pop-dev-000000000000000002",
+    "manifest_mismatch": "beh-pop-manifest-mismatch-001",
 }
 
 TEST_PASSWORD = "TestPassword123!"
@@ -369,7 +373,7 @@ def _setup_pop_sql():
     p = POP_IDS
     return f"""
     -- Device chain: branch → cluster → store → channel → device_type → physical_device
-    INSERT INTO branches (id,code,name,timezone,is_active) VALUES
+    ; INSERT INTO branches (id,code,name,timezone,is_active) VALUES
       ('{p["branch"]}','BEH-POP-BR','PoP Test Branch','Europe/Moscow',true)
       ON CONFLICT (code) DO NOTHING
     ; INSERT INTO clusters (id,branch_id,code,name,is_active) VALUES
@@ -405,10 +409,14 @@ def _setup_pop_sql():
       ('{p["creative"]}','{p["adv_org"]}','BEH-POP-CR','PoP Test Creative','video/mp4',
        'test-bucket','test-key.mp4','sha256:deadbeef',1024,5000,'ready','approved')
       ON CONFLICT (advertiser_organization_id,code) DO NOTHING
+    -- Contract for campaigns (NOT NULL requirement)
+    ; INSERT INTO advertiser_contracts (id,advertiser_organization_id,code,name,valid_from,status) VALUES
+      ('{p["contract"]}','{p["adv_org"]}','BEH-POP-CTR','PoP Test Contract',NOW(),'active')
+      ON CONFLICT (advertiser_organization_id, code) DO NOTHING
     -- Campaign (for campaign_id FK — soft, but useful for accepted-event tests)
-    ; INSERT INTO campaigns (id,advertiser_organization_id,code,name,status,created_by) VALUES
-      ('{p["campaign"]}','{p["adv_org"]}','BEH-POP-CAMP','PoP Test Campaign','approved','{USER_IDS["advertiser"]}')
-      ON CONFLICT (code) DO NOTHING
+    ; INSERT INTO campaigns (id,advertiser_organization_id,advertiser_contract_id,code,name,status,created_by) VALUES
+      ('{p["campaign"]}','{p["adv_org"]}','{p["contract"]}','BEH-POP-CAMP','PoP Test Campaign','approved',NULL)
+      ON CONFLICT (advertiser_organization_id, code) DO NOTHING
     -- Delivery manifest for PoP ingestion cross-entity tests
     ; INSERT INTO delivery_manifests (id,manifest_id,campaign_id,physical_device_id,content_hash,manifest_version,status,generated_at)
       VALUES
@@ -422,14 +430,35 @@ def _setup_pop_sql():
       SELECT 'beh-pop-dma-00000000000000001',id,'{p["creative"]}','sha256:pop-test-hash','video/mp4'
       FROM delivery_manifests WHERE manifest_id='{p["manifest"]}'
       AND NOT EXISTS (SELECT 1 FROM delivery_manifest_assets WHERE manifest_id=(SELECT id FROM delivery_manifests WHERE manifest_id='{p["manifest"]}'))
+    -- Second physical_device + manifest for device_manifest_mismatch behavioral proof
+    ; INSERT INTO physical_devices (id,store_id,device_type_id,code,serial_number,status) VALUES
+      ('{p["device2"]}','{p["store"]}','{p["device_type"]}','BEH-POP-DEV2','POP-SN-002','active')
+      ON CONFLICT (code) DO NOTHING
+    ; INSERT INTO delivery_manifests (id,manifest_id,campaign_id,physical_device_id,content_hash,manifest_version,status,generated_at)
+      VALUES
+      ('beh-pop-dm-000000000000000002','{p["manifest_mismatch"]}','{p["campaign"]}','{p["device2"]}','sha256:pop-mismatch-hash',1,'generated',NOW())
+      ON CONFLICT (manifest_id) DO NOTHING
+    ; INSERT INTO delivery_manifest_surfaces (id,manifest_id,display_surface_id,slot_order)
+      SELECT 'beh-pop-dms-00000000000000002',id,'{p["surface"]}',0
+      FROM delivery_manifests WHERE manifest_id='{p["manifest_mismatch"]}'
+      AND NOT EXISTS (SELECT 1 FROM delivery_manifest_surfaces WHERE manifest_id=(SELECT id FROM delivery_manifests WHERE manifest_id='{p["manifest_mismatch"]}'))
+    ; INSERT INTO delivery_manifest_assets (id,manifest_id,creative_asset_id,sha256_checksum,media_type)
+      SELECT 'beh-pop-dma-00000000000000002',id,'{p["creative"]}','sha256:pop-mismatch-hash','video/mp4'
+      FROM delivery_manifests WHERE manifest_id='{p["manifest_mismatch"]}'
+      AND NOT EXISTS (SELECT 1 FROM delivery_manifest_assets WHERE manifest_id=(SELECT id FROM delivery_manifests WHERE manifest_id='{p["manifest_mismatch"]}'))
     """
 
 
 _POP_CLEANUP = """
-    ; DELETE FROM pop_events_raw WHERE event_id LIKE 'beh-pop-%'
+    DELETE FROM pop_events_raw WHERE event_id LIKE 'beh-pop-%'
     ; DELETE FROM pop_dedup_index WHERE event_id LIKE 'beh-pop-%'
     ; DELETE FROM pop_ingestion_batches WHERE id LIKE 'beh-pop-%'
-    ; DELETE FROM outbox_events WHERE aggregate_id LIKE 'beh-pop-%'
+    -- Clean up PoP outbox rows -- both prefix-matched (event-level) and
+    -- type-matched (batch-level, where aggregate_id is a UUID from the router).
+    -- Time fence prevents deleting non-test data from concurrent runs.
+    ; DELETE FROM outbox_events WHERE
+        (aggregate_id LIKE 'beh-pop-%'
+         OR event_type IN ('pop.event.accepted', 'pop.event.quarantined', 'pop.batch.ingested'))
     ; DELETE FROM delivery_manifest_assets WHERE manifest_id IN (
         SELECT id FROM delivery_manifests WHERE manifest_id LIKE 'beh-pop-manifest-%'
     )
@@ -440,6 +469,7 @@ _POP_CLEANUP = """
     ; DELETE FROM display_surfaces WHERE code='BEH-POP-DS'
     ; DELETE FROM logical_carriers WHERE code='BEH-POP-LC'
     ; DELETE FROM physical_devices WHERE code='BEH-POP-DEV'
+    ; DELETE FROM physical_devices WHERE code='BEH-POP-DEV2'
     ; DELETE FROM device_types WHERE code='BEH-POP-DT'
     ; DELETE FROM channels WHERE code='BEH-POP-CH'
     ; DELETE FROM stores WHERE code='BEH-POP-ST'
@@ -461,6 +491,7 @@ _POP_CLEANUP = """
         SELECT id FROM campaigns WHERE code='BEH-POP-CAMP'
     )
     ; DELETE FROM campaigns WHERE code='BEH-POP-CAMP'
+    ; DELETE FROM advertiser_contracts WHERE code='BEH-POP-CTR'
     ; DELETE FROM creative_assets WHERE code='BEH-POP-CR'
     ; DELETE FROM advertiser_organizations WHERE code='BEH-POP-ADV'
 """

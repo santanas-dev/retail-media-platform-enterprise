@@ -7,7 +7,7 @@ Thin router — all business logic in packages/domain/pop_ingestion.py.
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends
 
 from packages.api.dependencies import get_db, get_device_id_from_token
 from packages.domain import pop_ingestion
@@ -40,9 +40,6 @@ async def ingest_batch(
     - known manifest → cross-entity consistency checks
     - contradictions → reject per event
     """
-    if not request.events:
-        raise HTTPException(status_code=422, detail="Batch must contain at least one event")
-
     batch_id = str(uuid.uuid4())
 
     # db is an active session+transaction from get_db dependency
