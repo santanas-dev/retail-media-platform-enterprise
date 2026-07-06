@@ -33,7 +33,9 @@ SKIP_REASON = "RUN_BEHAVIORAL_TESTS=1 not set."
 SEED_CAMPAIGN_ID = "00000000-0000-0000-0000-000000000220"
 SEED_DEVICE_ID = "00000000-0000-0000-0000-000000000020"
 SEED_SURFACE_ID = "00000000-0000-0000-0000-000000000031"
+SEED_STORE_ID = "00000000-0000-0000-0000-000000000003"
 SEED_ADV_ORG_ID = "00000000-0000-0000-0000-000000000200"
+SEED_PLACEMENT_ID = "00000000-0000-0000-0000-000000000224"
 
 
 def _raw_sql(sql: str, params=None):
@@ -378,3 +380,108 @@ class TestApprovedCampaignGeneratesManifest:
         assert result.skip_reason is not None
         assert result.manifest_count == 0
         assert _count_outbox("delivery.manifest.failed") >= 1
+
+    def test_store_placement_resolves(self, db_available):
+        """Store-level placement resolves to display_surfaces → manifests."""
+        from packages.domain.delivery import generate_manifests_for_campaign
+
+        _prepare_approved_campaign()
+        _reset_manifest_state()
+        # Change placement to target store_id instead of display_surface_id
+        _raw_exec(
+            "UPDATE campaign_placements "
+            "SET display_surface_id = NULL, store_id = :sid "
+            "WHERE id = :pid",
+            {"sid": SEED_STORE_ID, "pid": SEED_PLACEMENT_ID},
+        )
+
+        async def _run():
+            engine = create_async_engine(DB_URL, echo=False)
+            AsyncSessionLocal = sessionmaker(
+                engine, class_=AsyncSession, expire_on_commit=False,
+            )
+            async with AsyncSessionLocal() as session:
+                result = await generate_manifests_for_campaign(
+                    session, SEED_CAMPAIGN_ID,
+                )
+                await session.commit()
+                return result
+            await engine.dispose()
+
+        result = asyncio.run(_run())
+
+        assert result.eligible is True
+        assert result.device_count >= 1
+        assert result.manifest_count >= 1
+        assert result.failure_count == 0
+
+        # Verify manifest surface references the correct surface (resolved via store)
+        manifest_rows = _raw_sql(
+            "SELECT dm.manifest_id, dms.display_surface_id "
+            "FROM delivery_manifests dm "
+            "JOIN delivery_manifest_surfaces dms ON dms.manifest_id = dm.id"
+        )
+        surface_ids = {r[1] for r in manifest_rows}
+        assert SEED_SURFACE_ID in surface_ids
+
+        # Restore placement to original state
+        _raw_exec(
+            "UPDATE campaign_placements "
+            "SET display_surface_id = :surface_id, store_id = NULL "
+            "WHERE id = :pid",
+            {"surface_id": SEED_SURFACE_ID, "pid": SEED_PLACEMENT_ID},
+        )
+
+    def test_plan_idempotent_on_rerun(self, db_available):
+        """Repeated generation with no changes must not duplicate delivery_plans or outbox."""
+        from packages.domain.delivery import generate_manifests_for_campaign
+
+        _prepare_approved_campaign()
+        _reset_manifest_state()
+
+        # First run — creates manifests, plan, outbox
+        async def _run():
+            engine = create_async_engine(DB_URL, echo=False)
+            AsyncSessionLocal = sessionmaker(
+                engine, class_=AsyncSession, expire_on_commit=False,
+            )
+            async with AsyncSessionLocal() as session:
+                result = await generate_manifests_for_campaign(
+                    session, SEED_CAMPAIGN_ID,
+                )
+                await session.commit()
+                return result
+            await engine.dispose()
+
+        result1 = asyncio.run(_run())
+        plan_count_1 = _raw_sql("SELECT COUNT(*) FROM delivery_plans")[0][0]
+        gen_count_1 = _count_outbox("delivery.manifest.generated")
+
+        assert result1.manifest_count >= 1
+        assert plan_count_1 >= 1
+        assert gen_count_1 >= 1
+
+        # Second run — idempotent, no new manifests/plans/outbox
+        async def _run2():
+            engine = create_async_engine(DB_URL, echo=False)
+            AsyncSessionLocal = sessionmaker(
+                engine, class_=AsyncSession, expire_on_commit=False,
+            )
+            async with AsyncSessionLocal() as session:
+                result = await generate_manifests_for_campaign(
+                    session, SEED_CAMPAIGN_ID,
+                )
+                await session.commit()
+                return result
+            await engine.dispose()
+
+        result2 = asyncio.run(_run2())
+
+        plan_count_2 = _raw_sql("SELECT COUNT(*) FROM delivery_plans")[0][0]
+        gen_count_2 = _count_outbox("delivery.manifest.generated")
+
+        assert result2.manifest_count == 0
+        # No new delivery_plan rows
+        assert plan_count_2 == plan_count_1
+        # No new outbox events
+        assert gen_count_2 == gen_count_1

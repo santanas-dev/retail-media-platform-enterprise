@@ -97,8 +97,9 @@ async def check_eligibility(
     if campaign is None:
         return EligibilityResult(False, "Campaign not found")
 
-    # 1. Status check: >= 'approved' (per ADR-016 §2: approved, scheduled, active, etc.)
-    eligible_statuses = {"approved", "scheduled", "active", "live", "completed"}
+    # 1. Status check: >= 'approved', excluding terminal/revoker states.
+    # Per ADR-016 §1: completed/archived/paused go to Manifest revoker, NOT generator.
+    eligible_statuses = {"approved", "scheduled", "active"}
     if campaign.status not in eligible_statuses:
         return EligibilityResult(
             False,
@@ -560,6 +561,19 @@ async def generate_manifests_for_campaign(
         if campaign.updated_at else ""
     )
 
+    # Compute campaign version hash for idempotency
+    version_hash_input = _SEP.join([
+        campaign_id,
+        campaign.status,
+        campaign_updated_at,
+        *creative_asset_ids,
+        *creative_checksums,
+        *flight_ids,
+        *flight_data_parts,
+        *placement_ids,
+    ]).encode("utf-8")
+    campaign_version_hash = "sha256:" + hashlib.sha256(version_hash_input).hexdigest()
+
     # Flight windows for valid_from/valid_to
     flight_starts = [f.start_at for f in flights if f.start_at]
     flight_ends = [f.end_at for f in flights if f.end_at]
@@ -571,14 +585,6 @@ async def generate_manifests_for_campaign(
     manifest_count = 0
     failure_count = 0
     manifest_ids: list[str] = []
-
-    # Create delivery plan (one per campaign)
-    await create_delivery_plan(
-        session,
-        campaign_id=campaign_id,
-        campaign_version_hash="sha256:placeholder",  # Will be recomputed on re-generation
-        reason=f"Auto-planned: {device_count} device(s), {len(all_surface_ids)} surface(s)",
-    )
 
     for device_id, surfaces in targets.device_surfaces.items():
         device_surface_ids = sorted(surfaces)
@@ -711,6 +717,16 @@ async def generate_manifests_for_campaign(
                 },
             )
             failure_count += 1
+
+    # Create delivery plan only if work was produced (idempotent: no duplicates on re-run)
+    if manifest_count > 0:
+        await create_delivery_plan(
+            session,
+            campaign_id=campaign_id,
+            campaign_version_hash=campaign_version_hash,
+            reason=f"Auto-planned: {device_count} device(s), {len(all_surface_ids)} surface(s), "
+                   f"{manifest_count} manifest(s) generated",
+        )
 
     return ManifestGenerationResult(
         campaign_id=campaign_id,

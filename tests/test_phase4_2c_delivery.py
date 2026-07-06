@@ -34,6 +34,17 @@ class TestEligibilityHelpers(unittest.TestCase):
         self.assertEqual(r.surface_device_map, {})
         self.assertEqual(r.device_surfaces, {})
 
+    def test_completed_status_ineligible(self):
+        from packages.domain.delivery import EligibilityResult
+        r = EligibilityResult(False, "Campaign status is 'completed', not in ['active', 'approved', 'scheduled']")
+        self.assertFalse(r.eligible)
+        self.assertIn("completed", r.reason)
+
+    def test_live_status_ineligible(self):
+        from packages.domain.delivery import EligibilityResult
+        r = EligibilityResult(False, "Campaign status is 'live'")
+        self.assertFalse(r.eligible)
+
     def test_manifest_result_not_eligible(self):
         from packages.domain.delivery import ManifestGenerationResult
         r = ManifestGenerationResult(
