@@ -154,6 +154,61 @@ nats stream ls
 nats consumer ls RMP
 ```
 
+## DB readiness
+
+The worker verifies actual PostgreSQL connectivity at startup with a `SELECT 1` query.
+If the DB is unreachable, the worker fails-fast with:
+
+```
+RuntimeError: Database unreachable at postgresql+asyncpg://...: Connection refused.
+Check DATABASE_URL and PostgreSQL availability.
+```
+
+DB status is reflected in `/health/ready` under `checks.database` (`"ok"` / `"fail"`).
+
+## Dead-letter counter
+
+The `dead_letter` counter in `/health/ready` increments each time an outbox event
+exhausts all retry attempts and transitions to `dead_letter` status.  A nonzero
+dead-letter count means events are permanently failing and require manual
+investigation:
+
+```sql
+SELECT id, event_type, aggregate_id, attempts, last_error
+FROM outbox_events
+WHERE status = 'dead_letter'
+ORDER BY created_at DESC LIMIT 10;
+```
+
+Dead-letter events will NOT be retried automatically.  They must be manually
+replayed or discarded.
+
+## Graceful shutdown
+
+Send SIGTERM or SIGINT to the worker process for clean shutdown:
+
+```bash
+kill -TERM <pid>
+# or Ctrl+C in the terminal
+```
+
+The shutdown sequence:
+1. Sets health status to `shutting_down` → `/health/ready` returns 503
+2. Stops the outbox relay polling loop
+3. Stops the campaign event consumer fetch loop
+4. Drains/disconnects NATS publisher and consumer
+5. Logs "Shutdown complete"
+
+In-flight publish/ack operations complete normally — no messages are lost.
+Shutdown is idempotent — sending the signal again does not cause errors.
+
+### Stuck shutdown
+
+If the worker does not exit within ~10 seconds after SIGTERM, check:
+1. NATS connection state — a hung NATS drain may block shutdown
+2. DB connection pool — long-running queries may delay exit
+3. Check logs for "Relay stopped", "Consumer stopped", "NATS publisher disconnected"
+
 ## Integration tests
 
 ```bash

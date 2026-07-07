@@ -1,14 +1,16 @@
 """
 Retail Media Platform — Orchestrator Worker.
 
-Phase S-012/S-013: Outbox relay worker + campaign event consumer +
-health HTTP server + JetStream provisioning.
+Phase S-012/S-013/S-014: Outbox relay worker + campaign event consumer +
+health HTTP server + JetStream provisioning + graceful shutdown.
 
 Runs continuous outbox relay loop when NATS_URL and DATABASE_URL are configured.
+Handles SIGTERM/SIGINT for graceful shutdown.
 """
 
 import asyncio
 import os
+import signal
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -17,6 +19,21 @@ from packages.observability import setup_logging
 
 SERVICE_NAME = "orchestrator-worker"
 logger = setup_logging(SERVICE_NAME)
+
+# ---------------------------------------------------------------------------
+# Shutdown coordination
+# ---------------------------------------------------------------------------
+
+_shutdown_event = asyncio.Event()
+_relay_ref: object | None = None  # OutboxRelay instance for stop()
+_consumer_ref: object | None = None  # CampaignEventConsumer for stop()
+_publisher_ref: object | None = None  # NatsJetStreamPublisher for disconnect()
+
+
+def _handle_signal(sig_name: str) -> None:
+    """Set shutdown event so the async main loop can exit cleanly."""
+    logger.info("Received %s — initiating graceful shutdown", sig_name)
+    _shutdown_event.set()
 
 
 # ---------------------------------------------------------------------------
@@ -193,6 +210,8 @@ async def _start_relay() -> bool:
         from packages.services.health_state import set_nats_connected, set_publisher_ready
         set_nats_connected(True)
         set_publisher_ready(True)
+        global _publisher_ref
+        _publisher_ref = publisher
     except Exception as exc:
         from packages.services.health_state import set_nats_connected
         set_nats_connected(False)
@@ -220,8 +239,21 @@ async def _start_relay_loop(db_url: str, publisher) -> bool:
     from packages.services.health_state import set_relay_running, set_db_ok
 
     engine = create_engine(db_url)
-    set_db_ok(True)
-    logger.info("Database engine created for outbox relay")
+
+    # Real DB connectivity check
+    try:
+        from sqlalchemy import text
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        set_db_ok(True)
+        logger.info("Database connectivity verified")
+    except Exception as exc:
+        set_db_ok(False)
+        logger.error("Database connectivity check failed: %s", exc)
+        raise RuntimeError(
+            f"Database unreachable at {db_url}: {exc}. "
+            f"Check DATABASE_URL and PostgreSQL availability."
+        ) from exc
 
     poll_interval = float(os.environ.get("RELAY_POLL_INTERVAL", "0.5"))
     batch_size = int(os.environ.get("RELAY_BATCH_SIZE", "100"))
@@ -241,6 +273,8 @@ async def _start_relay_loop(db_url: str, publisher) -> bool:
 
     set_relay_running(True)
     asyncio.create_task(relay.run())
+    global _relay_ref
+    _relay_ref = relay
     return True
 
 
@@ -378,6 +412,8 @@ async def _start_real_consumer(nats_url: str, engine) -> bool:
     logger.info("Campaign event consumer started (JetStream pull)")
     set_consumer_running(True)
     asyncio.create_task(consumer.run())
+    global _consumer_ref
+    _consumer_ref = consumer
     return True
 
 
@@ -436,6 +472,14 @@ async def main():
     logger.info("Starting %s", SERVICE_NAME)
     server = await health_http_server()
 
+    # Register signal handlers
+    loop = asyncio.get_running_loop()
+    for sig_name, sig in [("SIGTERM", signal.SIGTERM), ("SIGINT", signal.SIGINT)]:
+        try:
+            loop.add_signal_handler(sig, lambda n=sig_name: _handle_signal(n))
+        except NotImplementedError:
+            logger.warning("Signal handler not supported on this platform")
+
     nats_url = os.environ.get("NATS_URL", "").strip()
     db_url = os.environ.get("DATABASE_URL", "").strip()
     consumer_enabled = (
@@ -465,8 +509,43 @@ async def main():
 
     logger.info("%s running — health :8003", SERVICE_NAME)
 
-    while True:
-        await asyncio.sleep(60)
+    # --- Wait for shutdown signal ---
+    await _shutdown_event.wait()
+
+    # --- Graceful shutdown ---
+    logger.info("Shutting down orchestrator-worker")
+    from packages.services.health_state import set_shutting_down
+    set_shutting_down()
+
+    # Stop relay
+    if _relay_ref is not None:
+        _relay_ref.stop()  # type: ignore[union-attr]
+        logger.info("Relay stopped")
+
+    # Stop consumer
+    if _consumer_ref is not None:
+        await _consumer_ref.stop()  # type: ignore[union-attr]
+        logger.info("Consumer stopped")
+
+    # Drain NATS publisher
+    if _publisher_ref is not None:
+        try:
+            await _publisher_ref.disconnect()  # type: ignore[union-attr]
+            logger.info("NATS publisher disconnected")
+        except Exception:
+            logger.exception("Error disconnecting NATS publisher")
+
+    # Drain NATS consumer
+    if _consumer_ref is not None:
+        try:
+            await _consumer_ref.disconnect()  # type: ignore[union-attr]
+            logger.info("NATS consumer disconnected")
+        except Exception:
+            logger.exception("Error disconnecting NATS consumer")
+
+    # Allow pending log flushes
+    await asyncio.sleep(0.5)
+    logger.info("Shutdown complete")
 
 
 if __name__ == "__main__":

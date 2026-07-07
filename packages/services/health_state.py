@@ -50,11 +50,18 @@ class HealthState:
     # --- Service metadata ---
     service: str = "orchestrator-worker"
     started_at: float = field(default_factory=time.time)
+    shutting_down: bool = False
 
     def to_dict(self) -> dict:
         """Return a JSON-serializable readiness snapshot."""
+        if self.shutting_down:
+            status = "shutting_down"
+        elif self.db_ok and self.nats_connected:
+            status = "ok"
+        else:
+            status = "degraded"
         return {
-            "status": "ok" if (self.db_ok and self.nats_connected) else "degraded",
+            "status": status,
             "service": self.service,
             "uptime_seconds": round(time.time() - self.started_at, 1),
             "checks": {
@@ -120,6 +127,7 @@ def get_health_state() -> HealthState:
             consumer_manifest_skipped=_state.consumer_manifest_skipped,
             service=_state.service,
             started_at=_state.started_at,
+            shutting_down=_state.shutting_down,
         )
 
 
@@ -141,6 +149,10 @@ def set_publisher_ready(ready: bool) -> None:
 def set_consumer_ready(ready: bool) -> None:
     with _lock:
         _state.consumer_ready = ready
+
+def set_shutting_down() -> None:
+    with _lock:
+        _state.shutting_down = True
 
 
 def bump_relay_published() -> None:

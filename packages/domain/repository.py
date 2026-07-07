@@ -795,9 +795,11 @@ async def mark_event_failed(
     *,
     last_error: str,
     max_attempts: int = 7,
-) -> None:
+) -> bool:
     """Mark an outbox event as failed, with backoff.
     Moves to dead_letter after max_attempts.
+
+    Returns True if the event transitioned to dead_letter.
     """
     from packages.domain.models import OutboxEvent
     from sqlalchemy import update
@@ -809,7 +811,7 @@ async def mark_event_failed(
     )
     row = result.scalar_one_or_none()
     if row is None:
-        return
+        return False
     current_attempts = row + 1
 
     if current_attempts >= max_attempts:
@@ -822,6 +824,7 @@ async def mark_event_failed(
                 last_error=last_error[:2048],
             )
         )
+        return True
     else:
         backoff_seconds = min(2 ** (current_attempts - 1), 64)
         next_attempt = now + timedelta(seconds=backoff_seconds)
@@ -835,6 +838,7 @@ async def mark_event_failed(
                 last_error=last_error[:2048],
             )
         )
+        return False
 
 
 # ---------------------------------------------------------------------------

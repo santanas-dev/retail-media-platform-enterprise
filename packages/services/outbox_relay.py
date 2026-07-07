@@ -59,20 +59,21 @@ class OutboxRelay:
         self._poll_interval = poll_interval
         self._batch_size = batch_size
         self._max_attempts = max_attempts
+        self._running: bool = True
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
     async def run(self) -> None:
-        """Run relay continuously until cancelled."""
+        """Run relay continuously until stop() is called."""
         logger.info(
             "Outbox relay started: interval=%.1fs, batch=%d, max_attempts=%d",
             self._poll_interval,
             self._batch_size,
             self._max_attempts,
         )
-        while True:
+        while self._running:
             try:
                 count = await self.run_once()
                 if count > 0:
@@ -80,6 +81,11 @@ class OutboxRelay:
             except Exception:
                 logger.exception("Outbox relay iteration failed")
             await asyncio.sleep(self._poll_interval)
+        logger.info("Outbox relay stopped")
+
+    def stop(self) -> None:
+        """Signal the relay loop to stop (graceful shutdown)."""
+        self._running = False
 
     async def run_once(self) -> int:
         """Poll and process one batch of pending events.
@@ -153,7 +159,7 @@ class OutboxRelay:
             from packages.services.health_state import bump_relay_published
             bump_relay_published()
         else:
-            await mark_event_failed(
+            is_dead = await mark_event_failed(
                 session,
                 event.id,
                 last_error=result.error or "publish failed",
@@ -161,3 +167,6 @@ class OutboxRelay:
             )
             from packages.services.health_state import bump_relay_failed
             bump_relay_failed(result.error)
+            if is_dead:
+                from packages.services.health_state import bump_relay_dead_letter
+                bump_relay_dead_letter()

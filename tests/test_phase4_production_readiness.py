@@ -547,5 +547,85 @@ class TestHealthStateImports(unittest.TestCase):
         self.assertNotIn("from nats", src)
 
 
+# ---------------------------------------------------------------------------
+# S-014: Shutdown + DB check + health
+# ---------------------------------------------------------------------------
+
+
+class TestShutdownHealth(unittest.TestCase):
+    """HealthState during shutdown and DB check verification."""
+
+    def test_shutting_down_status(self):
+        """When shutting_down=True, ready status is 'shutting_down'."""
+        from packages.services.health_state import HealthState
+        state = HealthState(db_ok=True, nats_connected=True, shutting_down=True)
+        d = state.to_dict()
+        self.assertEqual(d["status"], "shutting_down")
+
+    def test_shutting_down_not_ok_even_when_healthy(self):
+        """Shutting down status is never 'ok'."""
+        from packages.services.health_state import HealthState
+        state = HealthState(db_ok=True, nats_connected=True, shutting_down=True)
+        d = state.to_dict()
+        self.assertNotEqual(d["status"], "ok")
+
+    def test_shutting_down_overrides_degraded(self):
+        """Shutting down takes priority over degraded."""
+        from packages.services.health_state import HealthState
+        state = HealthState(db_ok=False, shutting_down=True)
+        d = state.to_dict()
+        self.assertEqual(d["status"], "shutting_down")
+
+    def test_set_shutting_down(self):
+        """set_shutting_down() marks the singleton."""
+        from packages.services.health_state import set_shutting_down, get_health_state
+        set_shutting_down()
+        state = get_health_state()
+        self.assertTrue(state.shutting_down)
+
+    def test_worker_has_signal_handlers(self):
+        """Worker main.py must register SIGTERM and SIGINT handlers."""
+        path = os.path.join(
+            os.path.dirname(__file__), "..", "apps",
+            "orchestrator-worker", "main.py",
+        )
+        with open(path) as f:
+            src = f.read()
+        self.assertIn("SIGTERM", src)
+        self.assertIn("SIGINT", src)
+        self.assertIn("add_signal_handler", src)
+
+    def test_db_check_source_has_select_1(self):
+        """Worker must have real DB SELECT 1 connectivity check."""
+        path = os.path.join(
+            os.path.dirname(__file__), "..", "apps",
+            "orchestrator-worker", "main.py",
+        )
+        with open(path) as f:
+            src = f.read()
+        self.assertIn("SELECT 1", src)
+        self.assertIn("Database unreachable", src)
+
+    def test_shutdown_calls_stop_on_relay(self):
+        """Shutdown path must call relay.stop()."""
+        path = os.path.join(
+            os.path.dirname(__file__), "..", "apps",
+            "orchestrator-worker", "main.py",
+        )
+        with open(path) as f:
+            src = f.read()
+        self.assertIn("_relay_ref.stop()", src)
+
+    def test_shutdown_calls_set_shutting_down(self):
+        """Shutdown path must call set_shutting_down."""
+        path = os.path.join(
+            os.path.dirname(__file__), "..", "apps",
+            "orchestrator-worker", "main.py",
+        )
+        with open(path) as f:
+            src = f.read()
+        self.assertIn("set_shutting_down", src)
+
+
 if __name__ == "__main__":
     unittest.main()

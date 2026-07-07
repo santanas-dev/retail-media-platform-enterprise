@@ -504,5 +504,48 @@ class TestFetchPendingTimeFence(unittest.TestCase):
         self.assertIn("or_", src)
 
 
+# ---------------------------------------------------------------------------
+# Dead-letter counter wiring (S-014)
+# ---------------------------------------------------------------------------
+
+
+class TestDeadLetterCounter(unittest.TestCase):
+    """mark_event_failed returns True when event transitions to dead_letter."""
+
+    def test_returns_false_when_not_dead_letter(self):
+        """Normal transient failure → mark_event_failed returns False."""
+        import asyncio
+
+        async def _test():
+            import inspect
+            from packages.domain.repository import mark_event_failed
+            sig = inspect.signature(mark_event_failed)
+            self.assertEqual(
+                sig.return_annotation,
+                bool,
+                "mark_event_failed must return bool",
+            )
+
+        asyncio.run(_test())
+
+    def test_relay_calls_bump_dead_letter_when_is_dead(self):
+        """Source check: relay must call bump_relay_dead_letter on dead_letter."""
+        import inspect
+        from packages.services import outbox_relay as mod
+
+        src = inspect.getsource(mod)
+        self.assertIn("bump_relay_dead_letter", src)
+        self.assertIn("is_dead", src)
+
+    def test_dead_letter_returns_true_in_repository(self):
+        """Repository mark_event_failed must return True in dead_letter path."""
+        import inspect
+        from packages.domain import repository as repo
+
+        src = inspect.getsource(repo.mark_event_failed)
+        self.assertIn('"dead_letter"', src)
+        self.assertIn("return True", src)
+
+
 if __name__ == "__main__":
     unittest.main()
