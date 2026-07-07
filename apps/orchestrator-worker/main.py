@@ -187,10 +187,14 @@ async def _start_relay_with_stub(db_url: str, nats_url: str) -> bool:
 
 
 async def _start_consumer(db_url: str) -> bool:
-    """Start the campaign event consumer if configured.
+    """Start the campaign event consumer if CAMPAIGN_CONSUMER_ENABLED=true.
 
-    Gated by CAMPAIGN_CONSUMER_ENABLED=true.  Uses StubCampaignEventConsumer
-    for tests — real JetStream consumer is deferred (Phase 2c).
+    Consumer selection:
+      - NATS_URL set + CAMPAIGN_CONSUMER_ALLOW_STUB != true →
+          NatsJetStreamCampaignConsumer (real JetStream pull).
+          Fails fast if nats-py missing or NATS unreachable.
+      - CAMPAIGN_CONSUMER_ALLOW_STUB=true or no NATS_URL →
+          StubCampaignEventConsumer (test/skeleton mode).
 
     Returns True if consumer was started, False if disabled.
     """
@@ -204,9 +208,107 @@ async def _start_consumer(db_url: str) -> bool:
         return False
 
     from packages.domain.database import create_engine
-    from packages.services.campaign_event_handler import StubCampaignEventConsumer
 
     engine = create_engine(db_url)
+    nats_url = os.environ.get("NATS_URL", "").strip()
+    allow_stub = (
+        os.environ.get("CAMPAIGN_CONSUMER_ALLOW_STUB", "").strip().lower()
+        == "true"
+    )
+
+    if nats_url and not allow_stub:
+        return await _start_real_consumer(nats_url, engine)
+
+    return await _start_stub_consumer(engine)
+
+
+async def _start_real_consumer(nats_url: str, engine) -> bool:
+    """Start NatsJetStreamCampaignConsumer with real NATS JetStream.
+
+    Raises RuntimeError if nats-py missing or connect fails,
+    unless CAMPAIGN_CONSUMER_ALLOW_STUB=true.
+    """
+    from packages.services.campaign_event_handler import (
+        NatsJetStreamCampaignConsumer,
+    )
+
+    try:
+        from nats.aio.client import Client as NATS  # noqa: F401
+    except ImportError:
+        allow_stub = (
+            os.environ.get("CAMPAIGN_CONSUMER_ALLOW_STUB", "")
+            .strip()
+            .lower()
+            == "true"
+        )
+        if allow_stub:
+            logger.warning(
+                "nats-py not installed — falling back to "
+                "StubCampaignEventConsumer "
+                "(CAMPAIGN_CONSUMER_ALLOW_STUB=true). "
+                "Campaign events will NOT be consumed from NATS."
+            )
+            return await _start_stub_consumer(engine)
+        raise RuntimeError(
+            "NATS_URL is configured but nats-py is not installed. "
+            "Install nats-py for JetStream consumption, "
+            "or set CAMPAIGN_CONSUMER_ALLOW_STUB=true for stub (dev/test only)."
+        )
+
+    consumer = NatsJetStreamCampaignConsumer(
+        nats_url=nats_url,
+        engine=engine,
+        durable=os.environ.get(
+            "CAMPAIGN_CONSUMER_DURABLE", "rmp-campaign-consumer",
+        ),
+        subject=os.environ.get("CAMPAIGN_CONSUMER_SUBJECT", "campaign.>"),
+        stream=os.environ.get("CAMPAIGN_CONSUMER_STREAM", "RMP"),
+        batch_size=int(os.environ.get("CAMPAIGN_CONSUMER_BATCH_SIZE", "10")),
+        fetch_timeout=float(
+            os.environ.get("CAMPAIGN_CONSUMER_FETCH_TIMEOUT", "5.0"),
+        ),
+    )
+
+    try:
+        await consumer.connect()
+        logger.info(
+            "Connected to NATS JetStream for campaign consumer: "
+            "url=%s, durable=%s",
+            nats_url,
+            consumer._durable,
+        )
+    except Exception as exc:
+        allow_stub = (
+            os.environ.get("CAMPAIGN_CONSUMER_ALLOW_STUB", "")
+            .strip()
+            .lower()
+            == "true"
+        )
+        if allow_stub:
+            logger.error(
+                "NATS connection failed: %s. Falling back to "
+                "StubCampaignEventConsumer "
+                "(CAMPAIGN_CONSUMER_ALLOW_STUB=true). "
+                "Campaign events will NOT be consumed from NATS.",
+                exc,
+            )
+            return await _start_stub_consumer(engine)
+        raise RuntimeError(
+            f"NATS_URL is configured but connection failed: {exc}. "
+            "Set CAMPAIGN_CONSUMER_ALLOW_STUB=true for stub (dev/test only)."
+        ) from exc
+
+    logger.info("Campaign event consumer started (JetStream pull)")
+    asyncio.create_task(consumer.run())
+    return True
+
+
+async def _start_stub_consumer(engine) -> bool:
+    """Start StubCampaignEventConsumer (test/skeleton mode)."""
+    from packages.services.campaign_event_handler import (
+        StubCampaignEventConsumer,
+    )
+
     consumer = StubCampaignEventConsumer(engine)
     logger.info("Campaign event consumer started (stub mode)")
     asyncio.create_task(consumer.run())

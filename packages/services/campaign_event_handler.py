@@ -1,9 +1,13 @@
-"""Campaign delivery event handler (ADR-016, Phase S-012 Phase 2b).
+"""Campaign delivery event handler (ADR-016, S-012 Phases 2b + 2c).
 
 Consumes campaign outbox events from NATS (via outbox relay envelope)
 and triggers manifest generation for delivery planning.
 
 Layer: packages/services/ — uses domain/delivery.py, no api/auth/fastapi.
+
+Consumers:
+  - StubCampaignEventConsumer — fake queue for unit/behavioral tests
+  - NatsJetStreamCampaignConsumer (Phase 2c) — real JetStream pull consumer
 """
 
 from __future__ import annotations
@@ -216,3 +220,229 @@ class StubCampaignEventConsumer(CampaignEventConsumer):
                 await session.rollback()
                 self._nakd += 1
                 logger.exception("Unhandled consumer error")
+
+
+# ---------------------------------------------------------------------------
+# Real JetStream consumer (S-012 Phase 2c)
+# ---------------------------------------------------------------------------
+
+
+class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
+    """Real NATS JetStream pull-based campaign event consumer (ADR-002, ADR-012).
+
+    Pull-based: explicit flow control.  Each message is processed through
+    the existing handler in its own transaction.  Ack only after DB commit
+    succeeds; nak with delay on handler failure; term+ack on malformed
+    messages (poison pill — don't retry forever).
+
+    Lifecycle:
+        consumer = NatsJetStreamCampaignConsumer(
+            nats_url="nats://localhost:4222",
+            engine=engine,
+            durable="rmp-campaign-consumer",
+            subject="campaign.>",
+            batch_size=10,
+            fetch_timeout=5.0,
+        )
+        await consumer.connect()
+        asyncio.create_task(consumer.run())
+        # ... on shutdown:
+        await consumer.stop()
+        await consumer.disconnect()
+    """
+
+    def __init__(
+        self,
+        nats_url: str,
+        engine: AsyncEngine,
+        *,
+        durable: str = "rmp-campaign-consumer",
+        subject: str = "campaign.>",
+        stream: str = "RMP",
+        batch_size: int = 10,
+        fetch_timeout: float = 5.0,
+        nak_delay: float = 5.0,
+        connect_timeout: float = 5.0,
+    ) -> None:
+        self._nats_url = nats_url
+        self._engine = engine
+        self._durable = durable
+        self._subject = subject
+        self._stream = stream
+        self._batch_size = batch_size
+        self._fetch_timeout = fetch_timeout
+        self._nak_delay = nak_delay
+        self._connect_timeout = connect_timeout
+
+        self._nc: object | None = None
+        self._js: object | None = None
+        self._sub: object | None = None
+        self._running: bool = False
+
+        # Stats (for tests + observability)
+        self.acked: int = 0
+        self.nakd: int = 0
+        self.terminated: int = 0
+        self.errors: int = 0
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    async def connect(self) -> None:
+        """Connect to NATS and create a JetStream pull subscription."""
+        from nats.aio.client import Client as NATS
+
+        self._nc = NATS()
+        await self._nc.connect(
+            servers=[self._nats_url],
+            connect_timeout=self._connect_timeout,
+        )
+        self._js = self._nc.jetstream()
+
+        # Create or bind to pull subscription
+        self._sub = await self._js.pull_subscribe(
+            subject=self._subject,
+            durable=self._durable,
+            stream=self._stream,
+        )
+        logger.info(
+            "JetStream pull consumer subscribed: subject=%s, durable=%s, stream=%s",
+            self._subject,
+            self._durable,
+            self._stream,
+        )
+
+    async def disconnect(self) -> None:
+        """Drain and close the NATS connection."""
+        if self._nc is not None:
+            await self._nc.drain()
+            self._nc = None
+            self._js = None
+            self._sub = None
+
+    # ------------------------------------------------------------------
+    # Loop
+    # ------------------------------------------------------------------
+
+    async def run(self) -> None:
+        """Pull-based consumer loop — fetch batches, process messages.
+
+        Runs until stop() is called or CancelledError is received.
+        Each message is processed in its own transaction.
+        """
+        if self._sub is None:
+            logger.error("Not connected — call connect() before run()")
+            return
+
+        self._running = True
+        logger.info(
+            "Campaign event consumer started (JetStream pull): "
+            "durable=%s, batch=%d",
+            self._durable,
+            self._batch_size,
+        )
+
+        try:
+            while self._running:
+                try:
+                    msgs = await self._sub.fetch(
+                        batch=self._batch_size,
+                        timeout=self._fetch_timeout,
+                    )
+                except TimeoutError:
+                    # fetch() raises built-in TimeoutError when batch
+                    # timeout expires with no messages — normal idle
+                    continue
+                except Exception:
+                    logger.exception("Fetch error — retrying in 1s")
+                    await asyncio.sleep(1)
+                    continue
+
+                for msg in msgs:
+                    if not self._running:
+                        break
+                    await self._process_one(msg)
+
+        except asyncio.CancelledError:
+            logger.info("Campaign event consumer cancelled")
+        except Exception:
+            logger.exception("Campaign event consumer loop crashed")
+        finally:
+            self._running = False
+
+    async def stop(self) -> None:
+        """Signal the consumer loop to stop (graceful shutdown)."""
+        self._running = False
+
+    # ------------------------------------------------------------------
+    # Internal — message processing
+    # ------------------------------------------------------------------
+
+    async def _process_one(self, msg: object) -> None:
+        """Process a single NATS message through the handler.
+
+        Ack/nak semantics:
+          - Handler success + commit  → ack  (msg.ack())
+          - Handler failure            → nak  (msg.nak(delay)) — retryable
+          - Malformed envelope         → term (msg.term()) + ack — poison pill
+          - Unhandled exception        → nak  (msg.nak(delay)) — retryable
+        """
+        try:
+            raw_data: bytes = msg.data  # type: ignore[union-attr]
+        except Exception:
+            logger.warning("Message has no .data — term+ack")
+            await self._safe_term(msg)
+            return
+
+        envelope = parse_envelope(raw_data)
+        if envelope is None:
+            logger.warning("Unparseable envelope — term+ack (poison pill)")
+            await self._safe_term(msg)
+            self.terminated += 1
+            return
+
+        async with AsyncSession(self._engine) as session:
+            try:
+                success = await handle_campaign_delivery_event(session, envelope)
+                if success:
+                    await session.commit()
+                    await self._safe_ack(msg)
+                    self.acked += 1
+                else:
+                    await session.rollback()
+                    await self._safe_nak(msg)
+                    self.nakd += 1
+            except Exception:
+                await session.rollback()
+                await self._safe_nak(msg)
+                self.nakd += 1
+                logger.exception(
+                    "Unhandled error processing event %s",
+                    envelope.get("event_id", "?"),
+                )
+
+    # ------------------------------------------------------------------
+    # Safe JetStream helpers (never crash on ack/nak/term)
+    # ------------------------------------------------------------------
+
+    async def _safe_ack(self, msg: object) -> None:
+        try:
+            await msg.ack()  # type: ignore[union-attr]
+        except Exception:
+            self.errors += 1
+            logger.exception("ack() failed")
+
+    async def _safe_nak(self, msg: object) -> None:
+        try:
+            await msg.nak(delay=self._nak_delay)  # type: ignore[union-attr]
+        except Exception:
+            self.errors += 1
+            logger.exception("nak() failed")
+
+    async def _safe_term(self, msg: object) -> None:
+        try:
+            await msg.term()  # type: ignore[union-attr]
+        except Exception:
+            self.errors += 1
+            logger.exception("term() failed")
