@@ -743,17 +743,24 @@ async def fetch_pending_events(
 ) -> list:
     """Fetch pending/failed events for relay worker polling.
 
+    Only returns events whose next_attempt_at has passed (ADR-011 §3).
     Ordered by next_attempt_at, limited to `limit` rows.
     """
-    from packages.domain.models import OutboxEvent
-    from sqlalchemy import or_
+    from datetime import datetime, timezone
 
+    from packages.domain.models import OutboxEvent
+    from sqlalchemy import and_, or_
+
+    now = datetime.now(timezone.utc)
     stmt = (
         select(OutboxEvent)
         .where(
-            or_(
-                OutboxEvent.status == "pending",
-                OutboxEvent.status == "failed",
+            and_(
+                or_(
+                    OutboxEvent.status == "pending",
+                    OutboxEvent.status == "failed",
+                ),
+                OutboxEvent.next_attempt_at <= now,
             )
         )
         .order_by(OutboxEvent.next_attempt_at)

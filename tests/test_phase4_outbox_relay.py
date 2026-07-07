@@ -232,5 +232,32 @@ class TestOutboxRelayImports(unittest.TestCase):
         self.assertNotIn("fastapi", src.lower())
 
 
+# ---------------------------------------------------------------------------
+# fetch_pending_events time-fence (P1 fix)
+# ---------------------------------------------------------------------------
+
+
+class TestFetchPendingTimeFence(unittest.TestCase):
+    """fetch_pending_events must filter by next_attempt_at <= NOW()."""
+
+    def test_query_includes_time_condition(self):
+        """The generated SQL must include next_attempt_at <= now."""
+        import inspect
+        from packages.domain import repository as repo
+
+        src = inspect.getsource(repo.fetch_pending_events)
+        self.assertIn("next_attempt_at", src)
+        self.assertIn("now", src.lower() or src)
+
+    def test_query_uses_and_operator(self):
+        """Both status filter and time filter must be AND-ed."""
+        import inspect
+        from packages.domain import repository as repo
+
+        src = inspect.getsource(repo.fetch_pending_events)
+        self.assertIn("and_", src)
+        self.assertIn("or_", src)
+
+
 if __name__ == "__main__":
     unittest.main()

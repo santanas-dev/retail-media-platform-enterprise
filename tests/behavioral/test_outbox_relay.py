@@ -270,3 +270,55 @@ class TestOutboxRelayBehavioral:
                 await engine.dispose()
 
         asyncio.run(_test())
+
+    def test_backoff_respected_on_second_run(self, db_available):
+        """Transient failure → backoff set → second run_once skips the event."""
+        pub = StubNatsPublisher()
+        pub.fail_next(1)
+        event_id = str(uuid.uuid4())
+
+        async def _test():
+            engine = await _make_engine_and_clean()
+            try:
+                relay = OutboxRelay(pub, engine)
+                await _insert(engine, event_type="test.relay.backoff",
+                              event_id=event_id)
+
+                count1 = await relay.run_once()
+                assert count1 == 1
+                assert pub.publish_count == 0
+
+                count2 = await relay.run_once()
+                assert count2 == 0, (
+                    f"Expected 0 (event skipped due to future next_attempt_at), "
+                    f"got {count2}"
+                )
+            finally:
+                await engine.dispose()
+
+        asyncio.run(_test())
+
+    def test_backoff_expired_retries(self, db_available):
+        """Manually set next_attempt_at to past → run_once retries successfully."""
+        pub = StubNatsPublisher()
+        event_id = str(uuid.uuid4())
+
+        async def _test():
+            from datetime import datetime, timedelta, timezone
+
+            engine = await _make_engine_and_clean()
+            try:
+                relay = OutboxRelay(pub, engine)
+                past = datetime.now(timezone.utc) - timedelta(hours=1)
+                await _insert(engine, event_type="test.relay.expired",
+                              event_id=event_id, status="failed",
+                              attempts=1, next_attempt_at=past,
+                              last_error="previous")
+
+                count = await relay.run_once()
+                assert count == 1
+                assert pub.publish_count == 1
+            finally:
+                await engine.dispose()
+
+        asyncio.run(_test())
