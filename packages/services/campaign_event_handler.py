@@ -26,6 +26,8 @@ logger = logging.getLogger("rmp.campaign_event_handler")
 DELIVERY_EVENT_TYPES: frozenset[str] = frozenset({
     "campaign.approved",
     "campaign.updated",
+    "campaign.scheduled",
+    "campaign.activated",
     "campaign.placement.changed",
     "campaign.creative.changed",
     "campaign.flight.changed",

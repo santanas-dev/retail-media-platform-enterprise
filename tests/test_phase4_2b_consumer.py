@@ -77,13 +77,32 @@ class TestEnvelopeParsing(unittest.TestCase):
 
 
 class TestDeliveryEventTypes(unittest.TestCase):
-    """DELIVERY_EVENT_TYPES frozenset contains expected types."""
+    """DELIVERY_EVENT_TYPES frozenset contains expected ADR-016 triggers."""
+
+    def test_contains_all_adr016_triggers(self):
+        """All 7 delivery triggers from ADR-016 §1 must be present."""
+        required = {
+            "campaign.approved",
+            "campaign.updated",
+            "campaign.scheduled",
+            "campaign.activated",
+            "campaign.placement.changed",
+            "campaign.creative.changed",
+            "campaign.flight.changed",
+        }
+        self.assertEqual(DELIVERY_EVENT_TYPES, required)
 
     def test_contains_approved(self):
         self.assertIn("campaign.approved", DELIVERY_EVENT_TYPES)
 
     def test_contains_updated(self):
         self.assertIn("campaign.updated", DELIVERY_EVENT_TYPES)
+
+    def test_contains_scheduled(self):
+        self.assertIn("campaign.scheduled", DELIVERY_EVENT_TYPES)
+
+    def test_contains_activated(self):
+        self.assertIn("campaign.activated", DELIVERY_EVENT_TYPES)
 
     def test_contains_placement_changed(self):
         self.assertIn("campaign.placement.changed", DELIVERY_EVENT_TYPES)
