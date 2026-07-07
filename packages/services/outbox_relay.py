@@ -150,6 +150,8 @@ class OutboxRelay:
 
         if result.success:
             await mark_event_published(session, event.id)
+            from packages.services.health_state import bump_relay_published
+            bump_relay_published()
         else:
             await mark_event_failed(
                 session,
@@ -157,3 +159,5 @@ class OutboxRelay:
                 last_error=result.error or "publish failed",
                 max_attempts=self._max_attempts,
             )
+            from packages.services.health_state import bump_relay_failed
+            bump_relay_failed(result.error)

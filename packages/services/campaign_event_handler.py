@@ -115,6 +115,12 @@ async def handle_campaign_delivery_event(
             result.eligible,
             result.manifest_count,
         )
+        if result.manifest_count > 0:
+            from packages.services.health_state import bump_manifest_success
+            bump_manifest_success()
+        else:
+            from packages.services.health_state import bump_manifest_skipped
+            bump_manifest_skipped()
         return True
     except Exception:
         logger.exception(
@@ -122,6 +128,8 @@ async def handle_campaign_delivery_event(
             campaign_id,
             envelope.get("event_id", "?"),
         )
+        from packages.services.health_state import bump_manifest_failed
+        bump_manifest_failed()
         return False
 
 
@@ -393,6 +401,7 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
         except Exception:
             logger.warning("Message has no .data — term")
             await self._safe_term(msg)
+            self.terminated += 1
             return
 
         envelope = parse_envelope(raw_data)
@@ -409,14 +418,20 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
                     await session.commit()
                     if await self._safe_ack(msg):
                         self.acked += 1
+                        from packages.services.health_state import bump_consumer_acked
+                        bump_consumer_acked()
                 else:
                     await session.rollback()
                     await self._safe_nak(msg)
                     self.nakd += 1
+                    from packages.services.health_state import bump_consumer_nakd
+                    bump_consumer_nakd()
             except Exception:
                 await session.rollback()
                 await self._safe_nak(msg)
                 self.nakd += 1
+                from packages.services.health_state import bump_consumer_nakd
+                bump_consumer_nakd()
                 logger.exception(
                     "Unhandled error processing event %s",
                     envelope.get("event_id", "?"),
@@ -433,6 +448,8 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
             return True
         except Exception:
             self.errors += 1
+            from packages.services.health_state import bump_consumer_errors
+            bump_consumer_errors()
             logger.exception("ack() failed")
             return False
 
@@ -441,6 +458,8 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
             await msg.nak(delay=self._nak_delay)  # type: ignore[union-attr]
         except Exception:
             self.errors += 1
+            from packages.services.health_state import bump_consumer_errors
+            bump_consumer_errors()
             logger.exception("nak() failed")
 
     async def _safe_term(self, msg: object) -> None:
@@ -448,4 +467,6 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
             await msg.term()  # type: ignore[union-attr]
         except Exception:
             self.errors += 1
+            from packages.services.health_state import bump_consumer_errors
+            bump_consumer_errors()
             logger.exception("term() failed")

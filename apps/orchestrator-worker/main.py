@@ -1,7 +1,9 @@
 """
 Retail Media Platform — Orchestrator Worker.
 
-Phase S-012: Outbox relay worker + health HTTP server.
+Phase S-012/S-013: Outbox relay worker + campaign event consumer +
+health HTTP server + JetStream provisioning.
+
 Runs continuous outbox relay loop when NATS_URL and DATABASE_URL are configured.
 """
 
@@ -18,7 +20,7 @@ logger = setup_logging(SERVICE_NAME)
 
 
 # ---------------------------------------------------------------------------
-# Health HTTP server
+# Health HTTP server (sync — reads from thread-safe HealthState singleton)
 # ---------------------------------------------------------------------------
 
 
@@ -29,23 +31,25 @@ async def health_http_server():
 
     class HealthHandler(BaseHTTPRequestHandler):
         def do_GET(self):
-            if self.path in ("/health/live", "/health/ready"):
-                body = json_mod.dumps({
-                    "status": "ok",
-                    "service": SERVICE_NAME,
-                    "checks": {
-                        "database": "not_configured",
-                        "nats": "not_configured",
-                    },
-                }).encode()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.send_header("Content-Length", str(len(body)))
-                self.end_headers()
-                self.wfile.write(body)
+            from packages.services.health_state import get_health_state
+
+            if self.path == "/health/live":
+                body = json_mod.dumps({"status": "ok", "service": SERVICE_NAME}).encode()
+                code = 200
+            elif self.path == "/health/ready":
+                state = get_health_state()
+                body = json_mod.dumps(state.to_dict()).encode()
+                code = 200
             else:
                 self.send_response(404)
                 self.end_headers()
+                return
+
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
 
         def log_message(self, fmt, *args):
             pass
@@ -56,6 +60,71 @@ async def health_http_server():
     thread.start()
     logger.info("Health HTTP server on port %s", port)
     return server
+
+
+# ---------------------------------------------------------------------------
+# Provisioning
+# ---------------------------------------------------------------------------
+
+
+async def _run_provisioning(nats_url: str) -> bool:
+    """Provision NATS JetStream if NATS_AUTO_PROVISION=true.
+
+    Returns True if provisioning succeeded (or was not needed).
+
+    Raises RuntimeError if:
+      - NATS_AUTO_PROVISION=true but provisioning fails.
+      - NATS_AUTO_PROVISION is unset/false and the stream does NOT exist.
+    """
+    auto_provision = (
+        os.environ.get("NATS_AUTO_PROVISION", "").strip().lower() == "true"
+    )
+
+    from packages.services.jetstream_provisioning import (
+        provision_campaign_delivery,
+        check_stream_exists,
+    )
+
+    stream = os.environ.get("CAMPAIGN_CONSUMER_STREAM", "RMP")
+    durable = os.environ.get("CAMPAIGN_CONSUMER_DURABLE", "rmp-campaign-consumer")
+    subject = os.environ.get("CAMPAIGN_CONSUMER_SUBJECT", "campaign.>")
+
+    if auto_provision:
+        logger.info(
+            "NATS_AUTO_PROVISION=true — provisioning stream=%s durable=%s",
+            stream, durable,
+        )
+        try:
+            result = await provision_campaign_delivery(
+                nats_url,
+                stream=stream,
+                subjects=[subject],
+                durable=durable,
+            )
+            logger.info(
+                "Provisioning complete: stream=%s durable=%s",
+                result["stream"], result["durable"],
+            )
+            return True
+        except Exception as exc:
+            raise RuntimeError(
+                f"NATS auto-provisioning failed: {exc}. "
+                f"Check that NATS is running with JetStream enabled "
+                f"(nats-server -js) and credentials are correct."
+            ) from exc
+
+    # Auto-provision is off — verify stream exists
+    exists = await check_stream_exists(nats_url, stream=stream)
+    if not exists:
+        raise RuntimeError(
+            f"JetStream stream '{stream}' not found at {nats_url}. "
+            f"Run provisioning first: set NATS_AUTO_PROVISION=true, or run "
+            f"provision_campaign_delivery() from jetstream_provisioning.py. "
+            f"See docs/runbook/delivery-runtime.md."
+        )
+
+    logger.info("JetStream stream '%s' found — skipping provisioning.", stream)
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -87,9 +156,6 @@ async def _start_relay() -> bool:
         )
         return False
 
-    # When NATS_URL is configured, we require a real publisher.
-    # StubNatsPublisher is NOT an acceptable fallback unless the
-    # operator explicitly overrides via OUTBOX_RELAY_ALLOW_STUB=true.
     allow_stub = os.environ.get("OUTBOX_RELAY_ALLOW_STUB", "").strip().lower() == "true"
 
     from packages.domain.database import create_engine
@@ -123,7 +189,12 @@ async def _start_relay() -> bool:
     try:
         await publisher.connect()
         logger.info("Connected to NATS JetStream at %s", nats_url)
+        from packages.services.health_state import set_nats_connected, set_publisher_ready
+        set_nats_connected(True)
+        set_publisher_ready(True)
     except Exception as exc:
+        from packages.services.health_state import set_nats_connected
+        set_nats_connected(False)
         if allow_stub:
             logger.error(
                 "NATS connection failed: %s. Falling back to StubNatsPublisher "
@@ -145,8 +216,10 @@ async def _start_relay_loop(db_url: str, publisher) -> bool:
     """Start the outbox relay loop with the given publisher."""
     from packages.domain.database import create_engine
     from packages.services.outbox_relay import OutboxRelay
+    from packages.services.health_state import set_relay_running, set_db_ok
 
     engine = create_engine(db_url)
+    set_db_ok(True)
     logger.info("Database engine created for outbox relay")
 
     poll_interval = float(os.environ.get("RELAY_POLL_INTERVAL", "0.5"))
@@ -165,6 +238,7 @@ async def _start_relay_loop(db_url: str, publisher) -> bool:
         type(publisher).__name__,
     )
 
+    set_relay_running(True)
     asyncio.create_task(relay.run())
     return True
 
@@ -231,6 +305,7 @@ async def _start_real_consumer(nats_url: str, engine) -> bool:
     from packages.services.campaign_event_handler import (
         NatsJetStreamCampaignConsumer,
     )
+    from packages.services.health_state import set_consumer_ready, set_consumer_running
 
     try:
         from nats.aio.client import Client as NATS  # noqa: F401
@@ -271,6 +346,7 @@ async def _start_real_consumer(nats_url: str, engine) -> bool:
 
     try:
         await consumer.connect()
+        set_consumer_ready(True)
         logger.info(
             "Connected to NATS JetStream for campaign consumer: "
             "url=%s, durable=%s",
@@ -299,6 +375,7 @@ async def _start_real_consumer(nats_url: str, engine) -> bool:
         ) from exc
 
     logger.info("Campaign event consumer started (JetStream pull)")
+    set_consumer_running(True)
     asyncio.create_task(consumer.run())
     return True
 
@@ -316,6 +393,40 @@ async def _start_stub_consumer(engine) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Observability summary logger
+# ---------------------------------------------------------------------------
+
+
+async def _observability_reporter(interval: float = 60.0) -> None:
+    """Periodically log health state summary for ops visibility."""
+    from packages.services.health_state import get_health_state
+
+    while True:
+        await asyncio.sleep(interval)
+        state = get_health_state()
+        logger.info(
+            "Health summary: db=%s nats=%s publisher=%s consumer=%s "
+            "relay(pub=%d fail=%d dlq=%d) "
+            "consumer(ack=%d nak=%d term=%d err=%d) "
+            "manifest(ok=%d fail=%d skip=%d)",
+            "ok" if state.db_ok else "fail",
+            "ok" if state.nats_connected else "fail",
+            "ready" if state.publisher_ready else "no",
+            "ready" if state.consumer_ready else "no",
+            state.relay_published,
+            state.relay_failed,
+            state.relay_dead_letter,
+            state.consumer_acked,
+            state.consumer_nakd,
+            state.consumer_terminated,
+            state.consumer_errors,
+            state.consumer_manifest_success,
+            state.consumer_manifest_failed,
+            state.consumer_manifest_skipped,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -323,10 +434,33 @@ async def _start_stub_consumer(engine) -> bool:
 async def main():
     logger.info("Starting %s", SERVICE_NAME)
     server = await health_http_server()
-    await _start_relay()
-    await _start_consumer(
-        os.environ.get("DATABASE_URL", "").strip(),
+
+    nats_url = os.environ.get("NATS_URL", "").strip()
+    db_url = os.environ.get("DATABASE_URL", "").strip()
+    consumer_enabled = (
+        os.environ.get("CAMPAIGN_CONSUMER_ENABLED", "").strip().lower()
+        == "true"
     )
+
+    # --- Provisioning ---
+    if nats_url and consumer_enabled:
+        try:
+            await _run_provisioning(nats_url)
+        except RuntimeError:
+            logger.exception("Provisioning failed — worker will start degraded")
+            # Don't crash — relay/consumer will fail-fast with clear errors
+
+    # --- Start relay ---
+    await _start_relay()
+
+    # --- Start consumer ---
+    if consumer_enabled:
+        await _start_consumer(db_url)
+
+    # --- Observability reporter ---
+    asyncio.create_task(_observability_reporter())
+
+    logger.info("%s running — health :8003", SERVICE_NAME)
 
     while True:
         await asyncio.sleep(60)
