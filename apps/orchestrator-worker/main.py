@@ -234,26 +234,24 @@ async def _start_relay() -> bool:
 
 async def _start_relay_loop(db_url: str, publisher) -> bool:
     """Start the outbox relay loop with the given publisher."""
-    from packages.domain.database import create_engine
+    from packages.domain.database import check_db_health, create_engine
     from packages.services.outbox_relay import OutboxRelay
     from packages.services.health_state import set_relay_running, set_db_ok
 
     engine = create_engine(db_url)
 
-    # Real DB connectivity check
-    try:
-        from sqlalchemy import text
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
+    # Real DB connectivity check (S-014 — no DATABASE_URL in error messages)
+    ok, err = await check_db_health(engine, timeout=2.0)
+    if ok:
         set_db_ok(True)
         logger.info("Database connectivity verified")
-    except Exception as exc:
+    else:
         set_db_ok(False)
-        logger.error("Database connectivity check failed: %s", exc)
+        logger.error("Database connectivity check failed: %s", err)
         raise RuntimeError(
-            f"Database unreachable at {db_url}: {exc}. "
+            f"Database unreachable ({err}). "
             f"Check DATABASE_URL and PostgreSQL availability."
-        ) from exc
+        ) from None
 
     poll_interval = float(os.environ.get("RELAY_POLL_INTERVAL", "0.5"))
     batch_size = int(os.environ.get("RELAY_BATCH_SIZE", "100"))
@@ -316,9 +314,22 @@ async def _start_consumer(db_url: str) -> bool:
         )
         return False
 
-    from packages.domain.database import create_engine
+    from packages.domain.database import check_db_health, create_engine
+    from packages.services.health_state import set_db_ok
 
     engine = create_engine(db_url)
+
+    # Real DB connectivity check (S-014 — no DATABASE_URL in error messages)
+    ok, err = await check_db_health(engine, timeout=2.0)
+    if not ok:
+        set_db_ok(False)
+        logger.error("Consumer DB connectivity check failed: %s", err)
+        raise RuntimeError(
+            f"Database unreachable ({err}). "
+            f"Check DATABASE_URL and PostgreSQL availability."
+        ) from None
+    set_db_ok(True)
+    logger.info("Consumer database connectivity verified")
     nats_url = os.environ.get("NATS_URL", "").strip()
     allow_stub = (
         os.environ.get("CAMPAIGN_CONSUMER_ALLOW_STUB", "").strip().lower()

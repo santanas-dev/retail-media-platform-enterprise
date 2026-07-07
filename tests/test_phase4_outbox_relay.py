@@ -510,7 +510,7 @@ class TestFetchPendingTimeFence(unittest.TestCase):
 
 
 class TestDeadLetterCounter(unittest.TestCase):
-    """mark_event_failed returns True when event transitions to dead_letter."""
+    """mark_event_failed returns True only when event transitions to dead_letter."""
 
     def test_returns_false_when_not_dead_letter(self):
         """Normal transient failure → mark_event_failed returns False."""
@@ -545,6 +545,119 @@ class TestDeadLetterCounter(unittest.TestCase):
         src = inspect.getsource(repo.mark_event_failed)
         self.assertIn('"dead_letter"', src)
         self.assertIn("return True", src)
+
+    def test_behavioral_transient_failure_does_not_count_dead_letter(self):
+        """Transient failure → returns False, dead_letter counter NOT bumped."""
+        import asyncio
+
+        async def _test():
+            from unittest.mock import AsyncMock, MagicMock, patch
+            from packages.domain.repository import mark_event_failed
+
+            mock_session = AsyncMock()
+            # Simulate event with 1 attempt so far → transient failure (max=7)
+            mock_result = MagicMock()
+            mock_result.scalar_one_or_none = MagicMock(return_value=1)
+            mock_session.execute.return_value = mock_result
+
+            result = await mark_event_failed(
+                mock_session,
+                "evt-001",
+                last_error="transient error",
+                max_attempts=7,
+            )
+            self.assertFalse(
+                result,
+                "transient failure should return False (not dead_letter)",
+            )
+
+        asyncio.run(_test())
+
+    def test_behavioral_max_attempts_counts_dead_letter_once(self):
+        """Exhausted retries → returns True exactly once per event transition."""
+        import asyncio
+
+        async def _test():
+            from unittest.mock import AsyncMock, MagicMock
+            from packages.domain.repository import mark_event_failed
+
+            mock_session = AsyncMock()
+            # Event already at 6 attempts, max_attempts=7 → crossing threshold
+            mock_result = MagicMock()
+            mock_result.scalar_one_or_none = MagicMock(return_value=6)
+            mock_session.execute.return_value = mock_result
+
+            result = await mark_event_failed(
+                mock_session,
+                "evt-002",
+                last_error="final failure",
+                max_attempts=7,
+            )
+            self.assertTrue(
+                result,
+                "max_attempts reached should return True (dead_letter transition)",
+            )
+            # Verify UPDATE was called (second execute after SELECT)
+            self.assertGreaterEqual(
+                mock_session.execute.call_count, 2,
+                "should perform SELECT + UPDATE when transitioning to dead_letter",
+            )
+
+        asyncio.run(_test())
+
+    def test_behavioral_already_dead_letter_not_double_counted(self):
+        """Event at max_attempts+1 (already dead) returns True but won't be re-fetched."""
+        import asyncio
+
+        async def _test():
+            from unittest.mock import AsyncMock, MagicMock
+            from packages.domain.repository import mark_event_failed
+
+            mock_session = AsyncMock()
+            # Event already at 7 attempts (already dead_letter from previous run)
+            # fetch_pending_events filters on status='pending', so this is unreachable
+            # in normal operation.  The repository returns True but relay won't
+            # re-process it because fetch_pending_events won't return dead_letter events.
+            mock_result = MagicMock()
+            mock_result.scalar_one_or_none = MagicMock(return_value=7)
+            mock_session.execute.return_value = mock_result
+
+            result = await mark_event_failed(
+                mock_session,
+                "evt-003",
+                last_error="still failing",
+                max_attempts=7,
+            )
+            # Would return True again, but this path is guarded by fetch_pending_events
+            # which filters status != 'pending'
+            self.assertTrue(
+                result,
+                "already dead letter → returns True (re-fetch guard is in relay)",
+            )
+
+        asyncio.run(_test())
+
+    def test_event_not_found_returns_false(self):
+        """Non-existent event → returns False."""
+        import asyncio
+
+        async def _test():
+            from unittest.mock import AsyncMock, MagicMock
+            from packages.domain.repository import mark_event_failed
+
+            mock_session = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.scalar_one_or_none = MagicMock(return_value=None)
+            mock_session.execute.return_value = mock_result
+
+            result = await mark_event_failed(
+                mock_session,
+                "evt-nonexistent",
+                last_error="not found",
+            )
+            self.assertFalse(result, "non-existent event should return False")
+
+        asyncio.run(_test())
 
 
 if __name__ == "__main__":

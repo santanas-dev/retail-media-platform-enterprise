@@ -579,9 +579,17 @@ class TestShutdownHealth(unittest.TestCase):
     def test_set_shutting_down(self):
         """set_shutting_down() marks the singleton."""
         from packages.services.health_state import set_shutting_down, get_health_state
-        set_shutting_down()
-        state = get_health_state()
-        self.assertTrue(state.shutting_down)
+        # Save original state to prevent cross-test contamination
+        old = get_health_state()
+        try:
+            set_shutting_down()
+            state = get_health_state()
+            self.assertTrue(state.shutting_down)
+        finally:
+            # Restore original shutting_down value
+            from packages.services.health_state import _state as _singleton, _lock
+            with _lock:
+                _singleton.shutting_down = old.shutting_down
 
     def test_worker_has_signal_handlers(self):
         """Worker main.py must register SIGTERM and SIGINT handlers."""
@@ -595,16 +603,19 @@ class TestShutdownHealth(unittest.TestCase):
         self.assertIn("SIGINT", src)
         self.assertIn("add_signal_handler", src)
 
-    def test_db_check_source_has_select_1(self):
-        """Worker must have real DB SELECT 1 connectivity check."""
+    def test_db_check_uses_check_db_health(self):
+        """Worker must use check_db_health() for DB connectivity (S-014 fix)."""
         path = os.path.join(
             os.path.dirname(__file__), "..", "apps",
             "orchestrator-worker", "main.py",
         )
         with open(path) as f:
             src = f.read()
-        self.assertIn("SELECT 1", src)
+        self.assertIn("check_db_health", src)
         self.assertIn("Database unreachable", src)
+        # Security regression: no DATABASE_URL interpolation in error messages
+        self.assertNotIn("{db_url}", src)
+        self.assertNotIn("Database unreachable at", src)
 
     def test_shutdown_calls_stop_on_relay(self):
         """Shutdown path must call relay.stop()."""
@@ -625,6 +636,137 @@ class TestShutdownHealth(unittest.TestCase):
         with open(path) as f:
             src = f.read()
         self.assertIn("set_shutting_down", src)
+
+
+# ---------------------------------------------------------------------------
+# S-014: DB health fail-fast behavioral tests
+# ---------------------------------------------------------------------------
+
+
+class TestDBHealthFailFast(unittest.IsolatedAsyncioTestCase):
+    """DB connectivity check must fail-fast without leaking DATABASE_URL."""
+
+    async def _load_worker_module(self):
+        """Import orchestrator-worker main module for testing."""
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "worker_main",
+            os.path.join(
+                os.path.dirname(__file__), "..", "apps",
+                "orchestrator-worker", "main.py",
+            ),
+            submodule_search_locations=[],
+        )
+        worker_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(worker_mod)
+        return worker_mod
+
+    @patch("packages.domain.database.check_db_health")
+    async def test_relay_loop_fails_fast_on_db_unreachable(self, mock_check):
+        """_start_relay_loop raises RuntimeError without DATABASE_URL when DB down."""
+        import importlib.util
+
+        mock_check.return_value = (False, "connection_failed")
+
+        spec = importlib.util.spec_from_file_location(
+            "worker_main",
+            os.path.join(
+                os.path.dirname(__file__), "..", "apps",
+                "orchestrator-worker", "main.py",
+            ),
+            submodule_search_locations=[],
+        )
+        worker_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(worker_mod)
+
+        class FakePublisher:
+            pass
+
+        with self.assertRaises(RuntimeError) as ctx:
+            await worker_mod._start_relay_loop(
+                "postgresql+asyncpg://user:secret@localhost/db",
+                FakePublisher(),
+            )
+        msg = str(ctx.exception)
+        self.assertIn("Database unreachable", msg)
+        # Security: no DATABASE_URL in error message
+        self.assertNotIn("postgresql", msg)
+        self.assertNotIn("secret", msg)
+        self.assertNotIn("user:", msg)
+
+    @patch("packages.domain.database.check_db_health")
+    async def test_consumer_fails_fast_on_db_unreachable(self, mock_check):
+        """_start_consumer raises RuntimeError without DATABASE_URL when DB down."""
+        import importlib.util
+
+        mock_check.return_value = (False, "timeout")
+
+        spec = importlib.util.spec_from_file_location(
+            "worker_main",
+            os.path.join(
+                os.path.dirname(__file__), "..", "apps",
+                "orchestrator-worker", "main.py",
+            ),
+            submodule_search_locations=[],
+        )
+        worker_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(worker_mod)
+
+        with patch.dict(os.environ, {
+            "CAMPAIGN_CONSUMER_ENABLED": "true",
+            "DATABASE_URL": "postgresql+asyncpg://user:pwd123@localhost/db",
+        }):
+            with self.assertRaises(RuntimeError) as ctx:
+                await worker_mod._start_consumer(
+                    "postgresql+asyncpg://user:pwd123@localhost/db",
+                )
+        msg = str(ctx.exception)
+        self.assertIn("Database unreachable", msg)
+        # Security: no DATABASE_URL in error message
+        self.assertNotIn("postgresql", msg)
+        self.assertNotIn("pwd123", msg)
+
+    @patch("packages.domain.database.check_db_health")
+    async def test_relay_loop_sets_db_ok_on_success(self, mock_check):
+        """_start_relay_loop sets db_ok=True when DB is reachable."""
+        import importlib.util
+
+        mock_check.return_value = (True, None)
+
+        spec = importlib.util.spec_from_file_location(
+            "worker_main",
+            os.path.join(
+                os.path.dirname(__file__), "..", "apps",
+                "orchestrator-worker", "main.py",
+            ),
+            submodule_search_locations=[],
+        )
+        worker_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(worker_mod)
+
+        from packages.services.health_state import get_health_state, set_db_ok
+        # Reset for clean test
+        set_db_ok(False)
+        try:
+            # OutboxRelay is imported lazily inside _start_relay_loop
+            with patch("packages.services.outbox_relay.OutboxRelay") as mock_relay_cls:
+                mock_relay = MagicMock()
+                mock_relay.run = AsyncMock()
+                mock_relay_cls.return_value = mock_relay
+
+                class FakePublisher:
+                    pass
+
+                result = await worker_mod._start_relay_loop(
+                    "postgresql+asyncpg://u:p@localhost/db",
+                    FakePublisher(),
+                )
+                self.assertTrue(result)
+                state = get_health_state()
+                self.assertTrue(state.db_ok, "DB should be marked ok after successful check")
+        finally:
+            set_db_ok(False)
 
 
 if __name__ == "__main__":

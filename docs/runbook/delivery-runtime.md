@@ -156,11 +156,13 @@ nats consumer ls RMP
 
 ## DB readiness
 
-The worker verifies actual PostgreSQL connectivity at startup with a `SELECT 1` query.
-If the DB is unreachable, the worker fails-fast with:
+The worker verifies actual PostgreSQL connectivity at startup via
+`check_db_health()` (timeout 2.0s).  If the DB is unreachable, the worker
+fails-fast with a safe error message — no database URL or credentials are
+included in logs or error output:
 
 ```
-RuntimeError: Database unreachable at postgresql+asyncpg://...: Connection refused.
+RuntimeError: Database unreachable (connection_failed).
 Check DATABASE_URL and PostgreSQL availability.
 ```
 
