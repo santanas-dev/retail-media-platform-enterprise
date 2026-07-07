@@ -182,6 +182,38 @@ async def _start_relay_with_stub(db_url: str, nats_url: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Campaign event consumer
+# ---------------------------------------------------------------------------
+
+
+async def _start_consumer(db_url: str) -> bool:
+    """Start the campaign event consumer if configured.
+
+    Gated by CAMPAIGN_CONSUMER_ENABLED=true.  Uses StubCampaignEventConsumer
+    for tests — real JetStream consumer is deferred (Phase 2c).
+
+    Returns True if consumer was started, False if disabled.
+    """
+    enabled = os.environ.get("CAMPAIGN_CONSUMER_ENABLED", "").strip().lower()
+    if enabled != "true":
+        logger.info(
+            "Campaign event consumer NOT started — "
+            "CAMPAIGN_CONSUMER_ENABLED=%s (set 'true' to enable)",
+            enabled or "not set",
+        )
+        return False
+
+    from packages.domain.database import create_engine
+    from packages.services.campaign_event_handler import StubCampaignEventConsumer
+
+    engine = create_engine(db_url)
+    consumer = StubCampaignEventConsumer(engine)
+    logger.info("Campaign event consumer started (stub mode)")
+    asyncio.create_task(consumer.run())
+    return True
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -190,6 +222,9 @@ async def main():
     logger.info("Starting %s", SERVICE_NAME)
     server = await health_http_server()
     await _start_relay()
+    await _start_consumer(
+        os.environ.get("DATABASE_URL", "").strip(),
+    )
 
     while True:
         await asyncio.sleep(60)
