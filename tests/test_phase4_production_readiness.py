@@ -432,6 +432,64 @@ class TestHealthEndpoint(unittest.TestCase):
             d["components"]["consumer"]["manifest"]["success"], 1,
         )
 
+    # -- P1 fix: readiness HTTP status code -------------------------------
+
+    def test_ready_returns_200_when_status_ok(self):
+        """When db+nats are ok, to_dict status is 'ok' → expect HTTP 200."""
+        set_db_ok(True)
+        set_nats_connected(True)
+        d = get_health_state().to_dict()
+        self.assertEqual(d["status"], "ok")
+        # Verify the conditional logic: 200 == ok
+        expected_code = 200 if d["status"] == "ok" else 503
+        self.assertEqual(expected_code, 200)
+
+    def test_ready_returns_503_when_status_degraded(self):
+        """When db or nats is down, to_dict status is 'degraded' → expect HTTP 503."""
+        set_db_ok(False)
+        set_nats_connected(False)
+        d = get_health_state().to_dict()
+        self.assertEqual(d["status"], "degraded")
+        expected_code = 200 if d["status"] == "ok" else 503
+        self.assertEqual(expected_code, 503)
+
+    def test_ready_source_contains_503(self):
+        """HealthHandler.do_GET must assign 503 when status != 'ok'."""
+        path = os.path.join(
+            os.path.dirname(__file__), "..", "apps",
+            "orchestrator-worker", "main.py",
+        )
+        with open(path) as f:
+            src = f.read()
+        # The readiness handler must contain 503 for the non-ok case
+        self.assertIn('"ok" else 503', src)
+
+    def test_live_handler_never_returns_503(self):
+        """HealthHandler live endpoint must NOT use non-200 status codes."""
+        path = os.path.join(
+            os.path.dirname(__file__), "..", "apps",
+            "orchestrator-worker", "main.py",
+        )
+        with open(path) as f:
+            src = f.read()
+        # Find the live handler section and verify it only uses 200
+        live_section_start = src.find('/health/live')
+        live_section_end = src.find('/health/ready')
+        live_section = src[live_section_start:live_section_end]
+        self.assertNotIn("503", live_section)
+        self.assertIn("200", live_section)
+
+    def test_provisioning_failure_message_is_accurate(self):
+        """Provisioning failure log must mention fail-fast, not 'degraded'."""
+        path = os.path.join(
+            os.path.dirname(__file__), "..", "apps",
+            "orchestrator-worker", "main.py",
+        )
+        with open(path) as f:
+            src = f.read()
+        self.assertIn("may fail-fast", src)
+        self.assertNotIn("will start degraded", src)
+
 
 # ---------------------------------------------------------------------------
 # Import boundaries

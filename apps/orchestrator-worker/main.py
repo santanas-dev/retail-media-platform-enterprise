@@ -38,8 +38,9 @@ async def health_http_server():
                 code = 200
             elif self.path == "/health/ready":
                 state = get_health_state()
-                body = json_mod.dumps(state.to_dict()).encode()
-                code = 200
+                payload = state.to_dict()
+                body = json_mod.dumps(payload).encode()
+                code = 200 if payload["status"] == "ok" else 503
             else:
                 self.send_response(404)
                 self.end_headers()
@@ -447,8 +448,10 @@ async def main():
         try:
             await _run_provisioning(nats_url)
         except RuntimeError:
-            logger.exception("Provisioning failed — worker will start degraded")
-            # Don't crash — relay/consumer will fail-fast with clear errors
+            logger.exception(
+                "Provisioning failed — worker will attempt to start "
+                "relay/consumer (may fail-fast if NATS is unreachable)"
+            )
 
     # --- Start relay ---
     await _start_relay()
