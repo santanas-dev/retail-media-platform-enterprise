@@ -331,5 +331,150 @@ class _MockResult:
         return self._rows[0] if self._rows else None
 
 
+# ---------------------------------------------------------------------------
+# CORS tests
+# ---------------------------------------------------------------------------
+
+
+class TestCorsHeaders(unittest.TestCase):
+    """CORS middleware returns correct headers for allowed/disallowed origins."""
+
+    def setUp(self):
+        from packages.security.config import reset_security_config
+        reset_security_config()
+        # Set dev mode with explicit origins for testing
+        os.environ["ENVIRONMENT"] = "dev"
+        os.environ["JWT_SECRET"] = "test-cors-secret-at-least-32-chars!!!"
+        os.environ["CORS_ALLOWED_ORIGINS"] = "http://localhost:5173,http://app.example.com"
+
+    def tearDown(self):
+        from packages.security.config import reset_security_config
+        reset_security_config()
+        for key in ("CORS_ALLOWED_ORIGINS", "CORS_ALLOW_CREDENTIALS",
+                     "ENVIRONMENT", "JWT_SECRET"):
+            os.environ.pop(key, None)
+
+    def test_allowed_origin_gets_cors_headers(self):
+        """Request from an allowed origin returns access-control headers."""
+        client = TestClient(_get_app())
+        resp = client.get(
+            "/health/live",
+            headers={"Origin": "http://localhost:5173"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            resp.headers.get("access-control-allow-origin"),
+            "http://localhost:5173",
+        )
+
+    def test_disallowed_origin_no_allow_origin_header(self):
+        """Request from a disallowed origin does NOT get allow-origin."""
+        client = TestClient(_get_app())
+        resp = client.get(
+            "/health/live",
+            headers={"Origin": "https://evil.example.com"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotIn("access-control-allow-origin", resp.headers)
+
+    def test_preflight_options_returns_cors_headers(self):
+        """OPTIONS preflight from allowed origin returns CORS headers."""
+        client = TestClient(_get_app())
+        resp = client.options(
+            "/health/live",
+            headers={
+                "Origin": "http://localhost:5173",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            resp.headers.get("access-control-allow-origin"),
+            "http://localhost:5173",
+        )
+        self.assertIn("GET", resp.headers.get("access-control-allow-methods", ""))
+
+    def test_preflight_disallowed_origin_no_cors(self):
+        """OPTIONS from disallowed origin returns 400 (no CORS headers)."""
+        client = TestClient(_get_app())
+        resp = client.options(
+            "/health/live",
+            headers={
+                "Origin": "https://evil.example.com",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        # Disallowed origin — should not get CORS headers
+        self.assertNotIn("access-control-allow-origin", resp.headers)
+
+
+class TestCorsConfig(unittest.TestCase):
+    """CORS configuration validation — dev defaults, production safety."""
+
+    def setUp(self):
+        from packages.security.config import reset_security_config
+        reset_security_config()
+
+    def tearDown(self):
+        from packages.security.config import reset_security_config
+        reset_security_config()
+        for key in ("CORS_ALLOWED_ORIGINS", "CORS_ALLOW_CREDENTIALS",
+                     "ENVIRONMENT", "JWT_SECRET"):
+            os.environ.pop(key, None)
+
+    def test_dev_defaults_include_localhost(self):
+        """Dev mode without CORS_ALLOWED_ORIGINS defaults to localhost:5173."""
+        os.environ["ENVIRONMENT"] = "dev"
+        os.environ["JWT_SECRET"] = "test-cors-dev-secret-at-least-32-chars"
+        from packages.security.config import SecurityConfig
+        cfg = SecurityConfig()
+        self.assertTrue(cfg.dev_mode)
+        self.assertIn("http://localhost:5173", cfg.cors_allowed_origins)
+        self.assertIn("http://127.0.0.1:5173", cfg.cors_allowed_origins)
+
+    def test_no_wildcard_with_credentials_raises(self):
+        """Config with ['*'] + credentials=True raises ValueError."""
+        os.environ["ENVIRONMENT"] = "dev"
+        os.environ["JWT_SECRET"] = "test-cors-wc-secret-at-least-32-chars!!"
+        os.environ["CORS_ALLOWED_ORIGINS"] = "*"
+        os.environ["CORS_ALLOW_CREDENTIALS"] = "true"
+        from packages.security.config import SecurityConfig
+        with self.assertRaises(ValueError) as ctx:
+            SecurityConfig()
+        self.assertIn("allow_credentials", str(ctx.exception).lower())
+
+    def test_production_requires_explicit_origins(self):
+        """Production with empty CORS origins raises ValueError."""
+        os.environ["ENVIRONMENT"] = "production"
+        os.environ["JWT_SECRET"] = "prod-test-secret-at-least-32-characters!!"
+        from packages.security.config import SecurityConfig
+        with self.assertRaises(ValueError) as ctx:
+            SecurityConfig()
+        self.assertIn("CORS_ALLOWED_ORIGINS", str(ctx.exception))
+
+    def test_production_explicit_origins_valid(self):
+        """Production with explicit origins + credentials is valid."""
+        os.environ["ENVIRONMENT"] = "production"
+        os.environ["JWT_SECRET"] = "prod-test-secret-at-least-32-characters!!"
+        os.environ["CORS_ALLOWED_ORIGINS"] = "https://portal.example.com"
+        os.environ["CORS_ALLOW_CREDENTIALS"] = "true"
+        from packages.security.config import SecurityConfig
+        cfg = SecurityConfig()
+        self.assertFalse(cfg.dev_mode)
+        self.assertEqual(cfg.cors_allowed_origins, ["https://portal.example.com"])
+        self.assertTrue(cfg.cors_allow_credentials)
+
+    def test_production_no_wildcard_with_credentials_raises(self):
+        """Production with ['*'] + credentials=True raises ValueError."""
+        os.environ["ENVIRONMENT"] = "production"
+        os.environ["JWT_SECRET"] = "prod-test-secret-at-least-32-characters!!"
+        os.environ["CORS_ALLOWED_ORIGINS"] = "*"
+        os.environ["CORS_ALLOW_CREDENTIALS"] = "true"
+        from packages.security.config import SecurityConfig
+        with self.assertRaises(ValueError) as ctx:
+            SecurityConfig()
+        self.assertIn("allow_credentials", str(ctx.exception).lower())
+
+
 if __name__ == "__main__":
     unittest.main()

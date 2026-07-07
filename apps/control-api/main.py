@@ -13,10 +13,12 @@ from contextlib import asynccontextmanager
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from packages.observability import log_request_middleware, setup_logging
 from packages.domain.database import check_db_health, check_db_role_safety, create_engine, set_global_engine
+from packages.security.config import get_security_config
 
 SERVICE_NAME = "control-api"
 logger = setup_logging(SERVICE_NAME)
@@ -54,6 +56,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.middleware("http")(log_request_middleware)
+
+# ---------------------------------------------------------------------------
+# CORS — must be configured before routers
+# ---------------------------------------------------------------------------
+_cors_cfg = get_security_config()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_cfg.cors_allowed_origins,
+    allow_credentials=_cors_cfg.cors_allow_credentials,
+    allow_methods=_cors_cfg.cors_allowed_methods,
+    allow_headers=_cors_cfg.cors_allowed_headers,
+)
 
 # ---------------------------------------------------------------------------
 # API Routers

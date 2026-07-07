@@ -73,6 +73,16 @@ class SecurityConfig:
     # Audit
     audit_correlation_id_header: str = "X-Correlation-ID"
 
+    # CORS
+    cors_allowed_origins: list[str] = field(default_factory=list)
+    cors_allow_credentials: bool = False
+    cors_allowed_methods: list[str] = field(default_factory=lambda: [
+        "GET", "POST", "PUT", "DELETE", "OPTIONS",
+    ])
+    cors_allowed_headers: list[str] = field(default_factory=lambda: [
+        "Authorization", "Content-Type",
+    ])
+
     def __post_init__(self) -> None:
         # Load JWT_SECRET from env if not provided
         if not self.jwt_secret:
@@ -80,6 +90,16 @@ class SecurityConfig:
         # Load JWT_AUDIENCE from env if not provided
         if not self.jwt_audience:
             self.jwt_audience = os.environ.get("JWT_AUDIENCE", "")
+        # Load CORS origins from env
+        if not self.cors_allowed_origins:
+            cors_env = os.environ.get("CORS_ALLOWED_ORIGINS", "").strip()
+            if cors_env:
+                self.cors_allowed_origins = [
+                    o.strip() for o in cors_env.split(",") if o.strip()
+                ]
+        if not self.cors_allow_credentials:
+            cred_env = os.environ.get("CORS_ALLOW_CREDENTIALS", "").strip()
+            self.cors_allow_credentials = cred_env.lower() in ("true", "1", "yes")
         self._validate()
 
     def _validate(self) -> None:
@@ -99,9 +119,16 @@ class SecurityConfig:
         # In dev mode, allow non-HTTPS cookies
         if self.dev_mode:
             self.refresh_token_cookie_secure = False
+        # CORS dev defaults: allow localhost Vite dev server
+        if not self.cors_allowed_origins:
+            self.cors_allowed_origins = [
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+            ]
+        self._validate_cors()
 
     def _validate_production(self) -> None:
-        """Production mode: require strong JWT secret."""
+        """Production mode: require strong JWT secret and explicit CORS."""
         if not self.jwt_secret or self.jwt_secret == "CHANGE_ME":
             raise ValueError(
                 "JWT_SECRET must be set to a strong random value in production"
@@ -115,6 +142,22 @@ class SecurityConfig:
         if self.jwt_secret.lower().strip() in weak:
             raise ValueError(
                 "JWT_SECRET must not be a common weak value in production"
+            )
+        self._validate_cors()
+
+    def _validate_cors(self) -> None:
+        """Validate CORS configuration — safe defaults, no wildcard+credentials."""
+        # Reject wildcard origins with credentials (browser blocks this anyway,
+        # but we fail early to catch misconfiguration).
+        if self.cors_allow_credentials and "*" in self.cors_allowed_origins:
+            raise ValueError(
+                "CORS: allow_origins=['*'] is incompatible with "
+                "allow_credentials=True. Use explicit origins."
+            )
+        # In production, require explicit origins
+        if not self.dev_mode and not self.cors_allowed_origins:
+            raise ValueError(
+                "CORS_ALLOWED_ORIGINS must be set to an explicit list in production"
             )
 
     def __repr__(self) -> str:
