@@ -81,15 +81,41 @@ async def _start_relay() -> bool:
         return False
 
     from packages.domain.database import create_engine
-    from packages.services.nats_publisher import StubNatsPublisher
     from packages.services.outbox_relay import OutboxRelay
 
-    # TODO: use real NatsJetStreamPublisher when nats-py dependency is added
-    publisher = StubNatsPublisher()
-    logger.warning(
-        "Using StubNatsPublisher — NATS messages will NOT be delivered. "
-        "Install nats-py and use NatsJetStreamPublisher for production."
-    )
+    # Try real JetStream publisher first; fall back to stub only when
+    # nats-py is not installed.
+    try:
+        from packages.services.nats_publisher import NatsJetStreamPublisher  # noqa: F401
+        _nats_available = True
+    except ImportError:
+        _nats_available = False
+
+    if _nats_available:
+        from packages.services.nats_publisher import NatsJetStreamPublisher
+
+        publisher = NatsJetStreamPublisher(
+            nats_url,
+            timeout=float(os.environ.get("NATS_TIMEOUT", "5.0")),
+        )
+        try:
+            await publisher.connect()
+            logger.info("Connected to NATS JetStream at %s", nats_url)
+        except Exception as exc:
+            logger.error("NATS connection failed: %s. Running without NATS.", exc)
+            publisher = None
+    else:
+        logger.warning("nats-py not installed — using stub publisher")
+        publisher = None
+
+    if publisher is None:
+        from packages.services.nats_publisher import StubNatsPublisher
+
+        publisher = StubNatsPublisher()
+        logger.warning(
+            "Using StubNatsPublisher — NATS messages will NOT be delivered. "
+            "Install nats-py for real JetStream publishing."
+        )
 
     engine = create_engine(db_url)
     logger.info("Database engine created for outbox relay")
@@ -104,8 +130,10 @@ async def _start_relay() -> bool:
         batch_size=batch_size,
     )
     logger.info(
-        "Outbox relay started: poll=%.1fs, batch=%d, nats=%s",
-        poll_interval, batch_size, nats_url,
+        "Outbox relay started: poll=%.1fs, batch=%d, publisher=%s",
+        poll_interval,
+        batch_size,
+        type(publisher).__name__,
     )
 
     asyncio.create_task(relay.run())

@@ -97,3 +97,97 @@ class StubNatsPublisher(NatsPublisher):
     @property
     def last_published(self) -> dict[str, object] | None:
         return self.published[-1] if self.published else None
+
+
+class NatsJetStreamPublisher(NatsPublisher):
+    """Real async NATS JetStream publisher (ADR-002, ADR-012).
+
+    Uses nats-py async client.  Sets Nats-Msg-Id header for JetStream
+    deduplication (ADR-011 §3).
+
+    Lifecycle:
+        pub = NatsJetStreamPublisher("nats://localhost:4222", timeout=5.0)
+        await pub.connect()
+        result = await pub.publish("subject", payload, msg_id="evt-1")
+        await pub.disconnect()
+    """
+
+    def __init__(
+        self,
+        url: str,
+        *,
+        timeout: float = 5.0,
+        stream: str | None = None,
+        **connect_kwargs,
+    ) -> None:
+        self._url = url
+        self._timeout = timeout
+        self._stream = stream
+        self._connect_kwargs = connect_kwargs
+        self._nc: object | None = None
+        self._js: object | None = None
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    async def connect(self) -> None:
+        """Connect to NATS server and create JetStream context."""
+        from nats.aio.client import Client as NATS
+
+        self._nc = NATS()
+        await self._nc.connect(
+            servers=[self._url],
+            connect_timeout=self._timeout,
+            **self._connect_kwargs,
+        )
+        self._js = self._nc.jetstream()
+
+    async def disconnect(self) -> None:
+        """Drain and close the NATS connection."""
+        if self._nc is not None:
+            await self._nc.drain()
+            self._nc = None
+            self._js = None
+
+    # ------------------------------------------------------------------
+    # Publish
+    # ------------------------------------------------------------------
+
+    async def publish(
+        self,
+        subject: str,
+        payload: bytes,
+        msg_id: str,
+    ) -> PublishResult:
+        """Publish to NATS JetStream with Nats-Msg-Id dedup header.
+
+        Returns PublishResult(success=True) only after JetStream ack.
+        Returns PublishResult(success=False) on any failure.
+        """
+        if self._js is None:
+            return PublishResult(
+                success=False,
+                error="not connected — call connect() first",
+            )
+
+        try:
+            ack = await self._js.publish(
+                subject,
+                payload,
+                headers={"Nats-Msg-Id": msg_id},
+                stream=self._stream,
+                timeout=self._timeout,
+            )
+            # ack.stream is set on successful JetStream publish
+            if ack is not None and getattr(ack, "stream", None):
+                return PublishResult(success=True)
+            return PublishResult(
+                success=False,
+                error="JetStream publish returned no ack",
+            )
+        except Exception as exc:
+            return PublishResult(
+                success=False,
+                error=f"{type(exc).__name__}: {exc}",
+            )

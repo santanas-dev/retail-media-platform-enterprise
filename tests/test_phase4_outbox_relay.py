@@ -5,6 +5,7 @@ Phase S-012 Phase 1: relay foundation — no real NATS, no real DB.
 
 from __future__ import annotations
 
+import os
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -67,6 +68,115 @@ class TestStubNatsPublisher(unittest.IsolatedAsyncioTestCase):
         payload = b'{"event_type":"campaign.created","payload":{"id":"x"}}'
         await pub.publish("test", payload, "1")
         self.assertEqual(pub.last_published["payload"], payload)
+
+
+# ---------------------------------------------------------------------------
+# NatsJetStreamPublisher — unit tests (mocked NATS client)
+# ---------------------------------------------------------------------------
+
+
+class TestNatsJetStreamPublisher(unittest.IsolatedAsyncioTestCase):
+    """NatsJetStreamPublisher — real publisher with mocked nats-py client."""
+
+    async def _make_pub(self, **kwargs):
+        from packages.services.nats_publisher import NatsJetStreamPublisher
+        return NatsJetStreamPublisher("nats://localhost:4222", timeout=5.0, **kwargs)
+
+    @staticmethod
+    def _mock_ack(stream_name="RMP"):
+        """Create a mock PubAck with .stream attribute set."""
+        ack = MagicMock()
+        ack.stream = stream_name
+        ack.seq = 42
+        return ack
+
+    async def test_publish_sets_msg_id_header(self):
+        """Nats-Msg-Id header must be passed to JetStream publish."""
+        pub = await self._make_pub()
+        mock_js = AsyncMock()
+        mock_js.publish.return_value = self._mock_ack()
+        pub._nc = MagicMock()
+        pub._js = mock_js
+
+        result = await pub.publish("test.subject", b"payload", "evt-abc-123")
+
+        self.assertTrue(result.success)
+        mock_js.publish.assert_called_once()
+        _subject, _payload, kwargs = self._unpack_publish_call(mock_js.publish)
+        self.assertEqual(kwargs.get("headers", {}).get("Nats-Msg-Id"), "evt-abc-123")
+
+    async def test_success_only_after_jetstream_ack(self):
+        """PublishResult(success=True) only when JetStream ack has .stream."""
+        pub = await self._make_pub()
+        mock_js = AsyncMock()
+        pub._nc = MagicMock()
+        pub._js = mock_js
+
+        # Case 1: valid ack
+        mock_js.publish.return_value = self._mock_ack()
+        r1 = await pub.publish("s1", b"p1", "id1")
+        self.assertTrue(r1.success)
+
+        # Case 2: ack without stream attribute (no ack)
+        mock_js.publish.return_value = MagicMock(spec=[])  # no .stream
+        r2 = await pub.publish("s2", b"p2", "id2")
+        self.assertFalse(r2.success)
+        self.assertIn("no ack", r2.error)
+
+    async def test_failure_returns_success_false(self):
+        """Publish exception → PublishResult(success=False)."""
+        pub = await self._make_pub()
+        mock_js = AsyncMock()
+        mock_js.publish.side_effect = TimeoutError("publish timed out")
+        pub._nc = MagicMock()
+        pub._js = mock_js
+
+        result = await pub.publish("s", b"p", "id")
+        self.assertFalse(result.success)
+        self.assertIn("TimeoutError", result.error)
+        self.assertIn("publish timed out", result.error)
+
+    async def test_not_connected_returns_error(self):
+        """Calling publish() before connect() returns failure."""
+        pub = await self._make_pub()
+        result = await pub.publish("s", b"p", "id")
+        self.assertFalse(result.success)
+        self.assertIn("not connected", result.error)
+
+    async def test_connect_disconnect_lifecycle(self):
+        """connect() and disconnect() manage NATS client correctly."""
+        pub = await self._make_pub()
+        self.assertIsNone(pub._nc)
+        self.assertIsNone(pub._js)
+
+        # Mock the NATS client
+        mock_nc = AsyncMock()
+        mock_nc.jetstream.return_value = AsyncMock()
+
+        with patch.object(pub.__class__, "connect", new=AsyncMock()) as mock_connect:
+            mock_connect.side_effect = lambda: setattr(pub, "_nc", mock_nc) or setattr(pub, "_js", mock_nc.jetstream.return_value)
+            await pub.connect()
+            self.assertIsNotNone(pub._nc)
+            self.assertIsNotNone(pub._js)
+
+        with patch.object(pub.__class__, "disconnect", new=AsyncMock()) as mock_disconnect:
+            mock_disconnect.side_effect = lambda: setattr(pub, "_nc", None) or setattr(pub, "_js", None)
+            await pub.disconnect()
+            self.assertIsNone(pub._nc)
+            self.assertIsNone(pub._js)
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _unpack_publish_call(mock_call):
+        """Extract (subject, payload, kwargs) from a mock JS publish call."""
+        args = mock_call.call_args[0] if mock_call.call_args else ()
+        kwargs = mock_call.call_args[1] if mock_call.call_args else {}
+        subject = args[0] if len(args) > 0 else kwargs.get("subject")
+        payload = args[1] if len(args) > 1 else kwargs.get("payload")
+        return subject, payload, kwargs
 
 
 # ---------------------------------------------------------------------------
@@ -230,6 +340,17 @@ class TestOutboxRelayImports(unittest.TestCase):
 
         src = inspect.getsource(mod)
         self.assertNotIn("fastapi", src.lower())
+
+    def test_control_api_has_no_nats_import(self):
+        """Control API must not import NATS (ADR-002: outbox relay only)."""
+        path = os.path.join(
+            os.path.dirname(__file__), "..", "apps", "control-api", "main.py",
+        )
+        with open(path) as f:
+            src = f.read()
+        self.assertNotIn("import nats", src)
+        self.assertNotIn("from nats", src)
+        self.assertNotIn("NatsJetStreamPublisher", src)
 
 
 # ---------------------------------------------------------------------------
