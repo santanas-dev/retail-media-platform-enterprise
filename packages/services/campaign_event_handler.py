@@ -385,19 +385,19 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
         Ack/nak semantics:
           - Handler success + commit  → ack  (msg.ack())
           - Handler failure            → nak  (msg.nak(delay)) — retryable
-          - Malformed envelope         → term (msg.term()) + ack — poison pill
+          - Malformed envelope         → term (msg.term()) — poison pill, no retry
           - Unhandled exception        → nak  (msg.nak(delay)) — retryable
         """
         try:
             raw_data: bytes = msg.data  # type: ignore[union-attr]
         except Exception:
-            logger.warning("Message has no .data — term+ack")
+            logger.warning("Message has no .data — term")
             await self._safe_term(msg)
             return
 
         envelope = parse_envelope(raw_data)
         if envelope is None:
-            logger.warning("Unparseable envelope — term+ack (poison pill)")
+            logger.warning("Unparseable envelope — term (poison pill)")
             await self._safe_term(msg)
             self.terminated += 1
             return
@@ -407,8 +407,8 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
                 success = await handle_campaign_delivery_event(session, envelope)
                 if success:
                     await session.commit()
-                    await self._safe_ack(msg)
-                    self.acked += 1
+                    if await self._safe_ack(msg):
+                        self.acked += 1
                 else:
                     await session.rollback()
                     await self._safe_nak(msg)
@@ -426,12 +426,15 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
     # Safe JetStream helpers (never crash on ack/nak/term)
     # ------------------------------------------------------------------
 
-    async def _safe_ack(self, msg: object) -> None:
+    async def _safe_ack(self, msg: object) -> bool:
+        """Ack a message. Returns True on success, False on failure."""
         try:
             await msg.ack()  # type: ignore[union-attr]
+            return True
         except Exception:
             self.errors += 1
             logger.exception("ack() failed")
+            return False
 
     async def _safe_nak(self, msg: object) -> None:
         try:
