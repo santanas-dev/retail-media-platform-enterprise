@@ -85,8 +85,9 @@ Fix critical platform risks first:
 - PostgreSQL readiness must be real, not optimistic.
 - Admin audit events must use valid actor UUIDs.
 - Alembic configuration must use valid URLs and load model metadata.
-- Production secrets, CORS, portal sessions, and rate limiting must be hardened.
+- Production secrets must be hardened.
 - Portal/backend RBAC must not drift.
+- Outbox relay + orchestration runtime wiring is pending (S-012).
 
 Do not start Android TV, ESL, LED, mobile, or broad UI redesign work until the
 stabilization backlog is green or the user explicitly overrides this.

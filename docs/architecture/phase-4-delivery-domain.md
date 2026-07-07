@@ -2,6 +2,21 @@
 
 ## Status: In Progress
 
+> **⚠️ Runtime wiring gap:** All delivery/PoP/reporting **components** listed
+> below are implemented and tested individually. However, the **end-to-end
+> async event chain** is not yet connected:
+> - **Outbox relay worker** — not implemented (ADR-011 specifies it, S-012 tracks it)
+> - **NATS JetStream publish path** — outbox events are stored but not published to NATS
+> - **Orchestrator-worker** — skeleton only (`apps/orchestrator-worker/main.py`,
+>   `/health` endpoints exist, no business logic)
+> - **Manifest generation trigger** — `generate_manifests_for_campaign` is tested
+>   but not invoked by a running worker
+> - **PoP ingestor** — no separate runtime service; PoP ingestion endpoint runs
+>   inside `control-api`
+>
+> See `docs/architecture/stabilization-tracker.md` S-006e (orchestrator),
+> S-012 (outbox relay + orchestration wiring).
+
 - **4.2a** Architecture Lock (ADR-016) — 🔒 locked
 - **4.2b** Delivery DB/Model Foundation — ✅ done (`46cfe71` + `137ae0b`)
 - **4.2c** Manifest Generator Worker Skeleton — ✅ done (`e467543` + `e05b960` + `0154681`)

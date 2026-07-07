@@ -2,7 +2,14 @@
 
 Мультиканальная платформа управления рекламой на цифровых носителях розничной сети.
 
-**Статус:** 🏗️ Phase 4.3d — PoP Reporting Read Models (closed). Next: 4.3e Materialized Views.
+**Статус:** 🏗️ Phase 4.3d — PoP Reporting Read Models (component-complete). Next: 4.3e Materialized Views.
+
+> **Runtime wiring note:** Auth, RBAC, RLS, API, and database layers are implemented.
+> Campaign approval/mutation/read, delivery planning, manifest generation, device
+> manifest endpoint, PoP ingestion, and reporting read models are all implemented
+> and tested as individual components. The **end-to-end async runtime chain**
+> (outbox → relay worker → NATS → orchestrator-worker → manifest generation)
+> is **not yet connected**. See `docs/architecture/stabilization-tracker.md` S-012.
 
 ## Architecture
 
