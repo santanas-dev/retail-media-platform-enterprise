@@ -1,8 +1,8 @@
 """
 Retail Media Platform — Orchestrator Worker.
 
-Phase 1: Minimal async worker skeleton. No NATS, no DB yet.
-Health-check only via embedded HTTP server.
+Phase S-012: Outbox relay worker + health HTTP server.
+Runs continuous outbox relay loop when NATS_URL and DATABASE_URL are configured.
 """
 
 import asyncio
@@ -15,6 +15,11 @@ from packages.observability import setup_logging
 
 SERVICE_NAME = "orchestrator-worker"
 logger = setup_logging(SERVICE_NAME)
+
+
+# ---------------------------------------------------------------------------
+# Health HTTP server
+# ---------------------------------------------------------------------------
 
 
 async def health_http_server():
@@ -53,9 +58,70 @@ async def health_http_server():
     return server
 
 
+# ---------------------------------------------------------------------------
+# Outbox relay
+# ---------------------------------------------------------------------------
+
+
+async def _start_relay() -> bool:
+    """Start the outbox relay if NATS and DB are configured.
+
+    Returns True if relay was started, False if running in skeleton mode.
+    """
+    nats_url = os.environ.get("NATS_URL", "").strip()
+    db_url = os.environ.get("DATABASE_URL", "").strip()
+
+    if not nats_url or not db_url:
+        logger.info(
+            "Outbox relay NOT started — NATS_URL=%s, DATABASE_URL=%s. "
+            "Running in skeleton mode (health server only).",
+            "set" if nats_url else "not set",
+            "set" if db_url else "not set",
+        )
+        return False
+
+    from packages.domain.database import create_engine
+    from packages.services.nats_publisher import StubNatsPublisher
+    from packages.services.outbox_relay import OutboxRelay
+
+    # TODO: use real NatsJetStreamPublisher when nats-py dependency is added
+    publisher = StubNatsPublisher()
+    logger.warning(
+        "Using StubNatsPublisher — NATS messages will NOT be delivered. "
+        "Install nats-py and use NatsJetStreamPublisher for production."
+    )
+
+    engine = create_engine(db_url)
+    logger.info("Database engine created for outbox relay")
+
+    poll_interval = float(os.environ.get("RELAY_POLL_INTERVAL", "0.5"))
+    batch_size = int(os.environ.get("RELAY_BATCH_SIZE", "100"))
+
+    relay = OutboxRelay(
+        publisher=publisher,
+        engine=engine,
+        poll_interval=poll_interval,
+        batch_size=batch_size,
+    )
+    logger.info(
+        "Outbox relay started: poll=%.1fs, batch=%d, nats=%s",
+        poll_interval, batch_size, nats_url,
+    )
+
+    asyncio.create_task(relay.run())
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+
 async def main():
-    logger.info("Starting %s (phase 1 skeleton)", SERVICE_NAME)
+    logger.info("Starting %s", SERVICE_NAME)
     server = await health_http_server()
+    await _start_relay()
+
     while True:
         await asyncio.sleep(60)
 
