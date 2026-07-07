@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from packages.auth.ad_provider import ADAuthProvider, StubADAuthProvider
 from packages.auth.repository import (
     count_active_sessions,
+    count_recent_failed_attempts,
     create_login_attempt,
     create_password_reset_token,
     create_refresh_session,
@@ -77,6 +78,26 @@ class AuthService:
         Always records a login attempt. Never reveals whether the user exists.
         """
         identifier_hash = hash_identifier(username_or_email)
+
+        # Rate limiting — check BEFORE user lookup / expensive verification
+        cfg = get_security_config()
+        recent_failures = await count_recent_failed_attempts(
+            session, identifier_hash, cfg.login_rate_limit_window_minutes,
+        )
+        if recent_failures >= cfg.login_rate_limit_max_attempts:
+            await create_login_attempt(
+                session,
+                username_or_email_hash=identifier_hash,
+                auth_provider="unknown",
+                success=False,
+                failure_reason="rate_limited",
+                ip_address=ip_address,
+                correlation_id=correlation_id,
+            )
+            return auth_failure(
+                internal_code="RATE_LIMITED",
+                debug_context={"window_minutes": cfg.login_rate_limit_window_minutes},
+            )
 
         # Normalize lookup: try username first, then email
         user = await find_user_by_username(session, username_or_email)

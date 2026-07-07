@@ -98,6 +98,15 @@ async def login(
     )
 
     if isinstance(result, AuthFailure):
+        if result.internal_code == "RATE_LIMITED":
+            await db.commit()
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "code": "TOO_MANY_REQUESTS",
+                    "message": "Too many login attempts. Please try again later.",
+                },
+            )
         if _is_ad_unavailable(result):
             raise HTTPException(
                 status_code=503,

@@ -11,7 +11,7 @@ import hashlib
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.domain.models import (
@@ -109,6 +109,31 @@ def hash_identifier(value: str) -> str:
     SHA-256 — consistent with token hashing.
     """
     return hashlib.sha256(value.lower().encode("utf-8")).hexdigest()
+
+
+async def count_recent_failed_attempts(
+    session: AsyncSession,
+    identifier_hash: str,
+    window_minutes: int,
+) -> int:
+    """Count failed login attempts for a hashed identifier within the window.
+
+    Used for rate limiting — doesn't leak user existence.
+    """
+    from datetime import timedelta
+
+    cutoff = _now() - timedelta(minutes=window_minutes)
+    stmt = (
+        select(func.count())
+        .select_from(LoginAttempt)
+        .where(
+            LoginAttempt.username_or_email_hash == identifier_hash,
+            LoginAttempt.success == False,  # noqa: E712
+            LoginAttempt.created_at > cutoff,
+        )
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one()
 
 
 # ---------------------------------------------------------------------------

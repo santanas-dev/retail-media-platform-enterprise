@@ -303,3 +303,117 @@ class TestRBACBehavioral:
         for ep in endpoints:
             resp = client.get(ep, headers=_auth(token))
             assert resp.status_code == 403, f"Expected 403 on {ep}, got {resp.status_code}"
+
+
+# ---------------------------------------------------------------------------
+# Auth - login rate limiting (ADR-006 §8)
+# ---------------------------------------------------------------------------
+
+
+class TestLoginRateLimitBehavioral:
+    """Login rate limiting — real DB, real login attempts."""
+
+    RATE_LIMIT_USER = "beh-ratelimit-test-user"
+    RATE_LIMIT_ALT_USER = "beh-ratelimit-other-user"
+
+    @pytest.fixture(autouse=True)
+    def setup_config(self):
+        reset_security_config()
+
+    def test_five_wrong_then_429(self, client):
+        """5 wrong attempts → 401 each, 6th → 429."""
+        for i in range(5):
+            resp = client.post("/api/v1/auth/login", json={
+                "username_or_email": self.RATE_LIMIT_USER,
+                "password": f"WrongPassword{i}!",
+                "auth_provider": "local_advertiser",
+            })
+            assert resp.status_code == 401, (
+                f"Attempt {i+1}: expected 401, got {resp.status_code}: {resp.text}"
+            )
+
+        # 6th attempt → rate limited
+        resp = client.post("/api/v1/auth/login", json={
+            "username_or_email": self.RATE_LIMIT_USER,
+            "password": "WrongPassword5!",
+            "auth_provider": "local_advertiser",
+        })
+        assert resp.status_code == 429, (
+            f"6th attempt: expected 429, got {resp.status_code}: {resp.text}"
+        )
+        body = resp.json()
+        assert body["detail"]["code"] == "TOO_MANY_REQUESTS"
+
+    def test_different_username_not_blocked(self, client):
+        """Rate limit for user-A does not block user-B."""
+        # Rate-limit user A
+        for _ in range(5):
+            client.post("/api/v1/auth/login", json={
+                "username_or_email": self.RATE_LIMIT_USER,
+                "password": "WrongPassword!",
+                "auth_provider": "local_advertiser",
+            })
+        # Verify A is rate-limited
+        resp_a = client.post("/api/v1/auth/login", json={
+            "username_or_email": self.RATE_LIMIT_USER,
+            "password": "WrongPassword!",
+            "auth_provider": "local_advertiser",
+        })
+        assert resp_a.status_code == 429
+
+        # User B — still gets 401 (wrong password, not rate-limited)
+        resp_b = client.post("/api/v1/auth/login", json={
+            "username_or_email": self.RATE_LIMIT_ALT_USER,
+            "password": "WrongPassword!",
+            "auth_provider": "local_advertiser",
+        })
+        assert resp_b.status_code == 401, (
+            f"User B: expected 401, got {resp_b.status_code}: {resp_b.text}"
+        )
+
+    def test_rate_limited_attempts_persisted(self, client):
+        """Rate-limited attempts appear in login_attempts."""
+        # Exhaust rate limit
+        for _ in range(5):
+            client.post("/api/v1/auth/login", json={
+                "username_or_email": self.RATE_LIMIT_USER,
+                "password": "WrongPassword!",
+                "auth_provider": "local_advertiser",
+            })
+        # 6th — rate-limited
+        client.post("/api/v1/auth/login", json={
+            "username_or_email": self.RATE_LIMIT_USER,
+            "password": "WrongPassword!",
+            "auth_provider": "local_advertiser",
+        })
+
+        from packages.auth.repository import hash_identifier
+
+        h = hash_identifier(self.RATE_LIMIT_USER)
+        attempts = _db_login_attempts(h)
+        assert len(attempts) >= 6, f"Expected ≥6 attempts, got {len(attempts)}"
+        # Last attempt should be rate-limited
+        last = attempts[0]
+        assert last["success"] is False
+        assert last["failure_reason"] == "rate_limited"
+
+    def test_no_enumeration_on_rate_limit(self, client):
+        """429 response is generic — no user enumeration."""
+        # Rate-limit with a completely unknown username
+        for _ in range(5):
+            client.post("/api/v1/auth/login", json={
+                "username_or_email": "totally-unknown-user-xyz",
+                "password": "WrongPassword!",
+                "auth_provider": "local_advertiser",
+            })
+        resp = client.post("/api/v1/auth/login", json={
+            "username_or_email": "totally-unknown-user-xyz",
+            "password": "WrongPassword!",
+            "auth_provider": "local_advertiser",
+        })
+        assert resp.status_code == 429
+        body = resp.json()
+        assert body["detail"]["code"] == "TOO_MANY_REQUESTS"
+        # Must not reveal whether user exists
+        assert "not found" not in str(body).lower()
+        assert "unknown" not in str(body).lower()

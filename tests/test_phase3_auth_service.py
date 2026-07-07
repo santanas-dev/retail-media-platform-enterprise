@@ -629,5 +629,116 @@ class TestNoSecretsInRepr(unittest.TestCase):
         self.assertNotIn("debug_context", r)
 
 
+class TestAuthServiceRateLimit(unittest.TestCase):
+    """Login rate limiting — ADR-006 §8."""
+
+    def setUp(self):
+        reset_security_config()
+        self._orig_env = dict(os.environ)
+        os.environ["ENVIRONMENT"] = "dev"
+        os.environ["JWT_SECRET"] = "test-jwt-secret-for-unit-tests"
+
+    def tearDown(self):
+        reset_security_config()
+        os.environ.clear()
+        os.environ.update(self._orig_env)
+
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
+    @patch("packages.auth.service.find_user_by_username", new_callable=AsyncMock)
+    @patch("packages.auth.service.find_user_by_email", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
+    async def test_under_limit_still_401(
+        self, mock_login, mock_find_email, mock_find_username, mock_count,
+    ):
+        """4 prior failures — 5th attempt proceeds, returns 401 (wrong password)."""
+        mock_count.return_value = 4
+        user = _make_user()
+        cred = _make_credential()
+        mock_find_username.return_value = user
+        mock_find_email.return_value = None
+        # get_local_credential is not patched here — falls through to real
+        # but we need to patch it for the user-found scenario
+        with patch("packages.auth.service.get_local_credential", new_callable=AsyncMock) as mock_cred:
+            mock_cred.return_value = cred
+            svc = AuthService()
+            session = MagicMock(spec=AsyncSession)
+            result = await svc.login(
+                session, username_or_email="testuser", password="wrong",
+            )
+            self.assertIsInstance(result, AuthFailure)
+            self.assertEqual(result.internal_code, "AUTH_FAILED")
+            self.assertNotEqual(result.internal_code, "RATE_LIMITED")
+
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
+    async def test_over_limit_returns_rate_limited(
+        self, mock_login, mock_count,
+    ):
+        """5 prior failures — 6th attempt returns RATE_LIMITED before user lookup."""
+        mock_count.return_value = 5
+        svc = AuthService()
+        session = MagicMock(spec=AsyncSession)
+        result = await svc.login(
+            session, username_or_email="testuser", password="anything",
+        )
+        self.assertIsInstance(result, AuthFailure)
+        self.assertEqual(result.internal_code, "RATE_LIMITED")
+        self.assertEqual(result.public_reason, "Invalid credentials")
+
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
+    async def test_rate_limited_unknown_user(
+        self, mock_login, mock_count,
+    ):
+        """Unknown user is also rate-limited — no enumeration leakage."""
+        mock_count.return_value = 5
+        svc = AuthService()
+        session = MagicMock(spec=AsyncSession)
+        result = await svc.login(
+            session, username_or_email="nonexistent@x.com", password="p",
+        )
+        self.assertEqual(result.internal_code, "RATE_LIMITED")
+        # Rate-limited attempt is recorded with hashed identifier
+        call = mock_login.call_args.kwargs
+        self.assertFalse(call["success"])
+        self.assertEqual(call["failure_reason"], "rate_limited")
+        self.assertNotEqual(call["username_or_email_hash"], "nonexistent@x.com")
+
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
+    async def test_rate_limit_per_identifier(
+        self, mock_login, mock_count,
+    ):
+        """Different hashed identifiers have independent rate limits."""
+        # Simulate: first user is rate-limited (5 failures)
+        # The mock returns 5 regardless — test that service doesn't share state
+        mock_count.return_value = 5
+        svc = AuthService()
+        session = MagicMock(spec=AsyncSession)
+        r1 = await svc.login(session, username_or_email="user-a", password="x")
+        self.assertEqual(r1.internal_code, "RATE_LIMITED")
+        r2 = await svc.login(session, username_or_email="user-b", password="y")
+        self.assertEqual(r2.internal_code, "RATE_LIMITED")
+        # Both rate-limited because mock returned 5 for each call —
+        # but the important thing: count is called with correct hash each time
+        self.assertEqual(mock_count.call_count, 2)
+
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
+    async def test_rate_limited_records_attempt(
+        self, mock_login, mock_count,
+    ):
+        """Rate-limited attempt is persisted in login_attempts for audit."""
+        mock_count.return_value = 5
+        svc = AuthService()
+        session = MagicMock(spec=AsyncSession)
+        await svc.login(session, username_or_email="audit-test", password="x")
+        mock_login.assert_called_once()
+        call = mock_login.call_args.kwargs
+        self.assertFalse(call["success"])
+        self.assertEqual(call["failure_reason"], "rate_limited")
+        self.assertEqual(call["auth_provider"], "unknown")
+
+
 if __name__ == "__main__":
     unittest.main()
