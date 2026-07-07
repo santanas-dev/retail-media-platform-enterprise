@@ -100,11 +100,15 @@ async def login(
     if isinstance(result, AuthFailure):
         if result.internal_code == "RATE_LIMITED":
             await db.commit()
+            cfg = get_security_config()
             raise HTTPException(
                 status_code=429,
                 detail={
                     "code": "TOO_MANY_REQUESTS",
                     "message": "Too many login attempts. Please try again later.",
+                },
+                headers={
+                    "Retry-After": str(cfg.login_rate_limit_window_minutes * 60),
                 },
             )
         if _is_ad_unavailable(result):

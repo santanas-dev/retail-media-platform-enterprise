@@ -92,7 +92,11 @@ async def _run_sql(sql: str):
 def _setup_sql(ph):
     u = USER_IDS
     return f"""
-    DELETE FROM login_attempts WHERE username_or_email_hash LIKE 'beh-test-%'
+    DELETE FROM login_attempts WHERE username_or_email_hash IN (
+        '5b9c885f442ac229912f3de35150dae613772d018d6f73d44179ae1b7a59ece8',
+        '2c14c73a3a4d5519dac3809508c33ba11dd72754094b58b5ff5d62ec7a0a754d',
+        'b0e060d9221f9a96c5655c17ce2159ad81abcb8d173d2a28d7af7305ec7a3911'
+    ) OR username_or_email_hash LIKE 'beh-test-%'
     ; DELETE FROM refresh_sessions WHERE user_id LIKE 'beh-%'
     ; DELETE FROM local_credentials WHERE user_id LIKE 'beh-%'
     ; DELETE FROM user_roles WHERE user_id LIKE 'beh-%'

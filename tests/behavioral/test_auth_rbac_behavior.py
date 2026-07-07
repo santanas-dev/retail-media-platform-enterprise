@@ -41,7 +41,7 @@ def _db_login_attempts(username_hash: str):
                         "username_or_email_hash "
                         "FROM login_attempts "
                         "WHERE username_or_email_hash = :h "
-                        "ORDER BY created_at DESC LIMIT 5"
+                        "ORDER BY created_at DESC LIMIT 20"
                     ),
                     {"h": username_hash},
                 )
@@ -317,7 +317,7 @@ class TestLoginRateLimitBehavioral:
     RATE_LIMIT_ALT_USER = "beh-ratelimit-other-user"
 
     @pytest.fixture(autouse=True)
-    def setup_config(self):
+    def setup_config(self, test_users):
         reset_security_config()
 
     def test_five_wrong_then_429(self, client):
@@ -417,3 +417,55 @@ class TestLoginRateLimitBehavioral:
         # Must not reveal whether user exists
         assert "not found" not in str(body).lower()
         assert "unknown" not in str(body).lower()
+
+    def test_success_does_not_reset_failed_window(self, client, test_users):
+        """4 fails + 1 success (different user) + 2 more fails → 401 then 429.
+
+        Proves that success=True login_attempt rows are NOT counted by the
+        rate-limit query (which filters success=false).  A successful login
+        for user-B does not reset the failed-attempt window for user-A.
+        """
+        rate_user = "beh-rate-window-verify"
+
+        # 4 failed attempts → each 401
+        for i in range(4):
+            resp = client.post("/api/v1/auth/login", json={
+                "username_or_email": rate_user,
+                "password": f"Wrong{i}!",
+                "auth_provider": "local_advertiser",
+            })
+            assert resp.status_code == 401, (
+                f"Fail {i+1}: expected 401, got {resp.status_code}"
+            )
+
+        # Successful login for a DIFFERENT user
+        resp = client.post("/api/v1/auth/login", json={
+            "username_or_email": "beh-advertiser",
+            "password": test_users["password"],
+            "auth_provider": "local_advertiser",
+        })
+        assert resp.status_code == 200, (
+            f"Success: expected 200, got {resp.status_code}: {resp.text}"
+        )
+
+        # 5th failed — should still be 401 (count is 4, not reset by success)
+        resp = client.post("/api/v1/auth/login", json={
+            "username_or_email": rate_user,
+            "password": "Wrong4!",
+            "auth_provider": "local_advertiser",
+        })
+        assert resp.status_code == 401, (
+            f"5th fail after success: expected 401, got {resp.status_code}: {resp.text}"
+        )
+
+        # 6th failed — now hits limit (5 in window → 429)
+        resp = client.post("/api/v1/auth/login", json={
+            "username_or_email": rate_user,
+            "password": "Wrong5!",
+            "auth_provider": "local_advertiser",
+        })
+        assert resp.status_code == 429, (
+            f"6th fail: expected 429, got {resp.status_code}: {resp.text}"
+        )
+        body = resp.json()
+        assert body["detail"]["code"] == "TOO_MANY_REQUESTS"
