@@ -102,7 +102,9 @@ class TestNatsJetStreamPublisher(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(result.success)
         mock_js.publish.assert_called_once()
-        _subject, _payload, kwargs = self._unpack_publish_call(mock_js.publish)
+        subject, payload, kwargs = self._unpack_publish_call(mock_js.publish)
+        self.assertEqual(subject, "test.subject")
+        self.assertEqual(payload, b"payload")
         self.assertEqual(kwargs.get("headers", {}).get("Nats-Msg-Id"), "evt-abc-123")
 
     async def test_success_only_after_jetstream_ack(self):
@@ -351,6 +353,128 @@ class TestOutboxRelayImports(unittest.TestCase):
         self.assertNotIn("import nats", src)
         self.assertNotIn("from nats", src)
         self.assertNotIn("NatsJetStreamPublisher", src)
+
+
+# ---------------------------------------------------------------------------
+# _start_relay fail-fast (P2 fix — no silent Stub fallback)
+# ---------------------------------------------------------------------------
+
+
+class TestStartRelayFailFast(unittest.IsolatedAsyncioTestCase):
+    """_start_relay must fail when NATS_URL is set but publisher unavailable."""
+
+    async def _call_start_relay(self, env_overrides=None):
+        """Import and call _start_relay with environment overrides.
+
+        Uses mock to isolate from real DB/NATS dependencies.
+        """
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "worker_main",
+            os.path.join(
+                os.path.dirname(__file__), "..", "apps",
+                "orchestrator-worker", "main.py",
+            ),
+            submodule_search_locations=[],
+        )
+        worker_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(worker_mod)
+
+        with patch.dict(os.environ, env_overrides or {}, clear=False):
+            with (
+                patch.object(worker_mod, "_start_relay_loop", new=AsyncMock()) as mock_loop,
+                patch.object(worker_mod, "_start_relay_with_stub", new=AsyncMock()) as mock_stub,
+            ):
+                mock_loop.return_value = True
+                mock_stub.return_value = True
+                try:
+                    result = await worker_mod._start_relay()
+                    return result, mock_loop, mock_stub, None
+                except RuntimeError as exc:
+                    return None, mock_loop, mock_stub, exc
+
+    async def test_no_nats_url_returns_false(self):
+        """No NATS_URL → skeleton mode, returns False."""
+        result, mock_loop, mock_stub, exc = await self._call_start_relay({
+            "NATS_URL": "",
+            "DATABASE_URL": "postgresql://localhost/db",
+        })
+        self.assertIsNone(exc)
+        self.assertFalse(result)
+        mock_loop.assert_not_called()
+        mock_stub.assert_not_called()
+
+    async def test_connect_failure_raises_without_allow_stub(self):
+        """NATS_URL set + connect failure → RuntimeError (no silent Stub)."""
+        with patch(
+            "packages.services.nats_publisher.NatsJetStreamPublisher.connect",
+            side_effect=ConnectionRefusedError("no NATS"),
+        ):
+            result, mock_loop, mock_stub, exc = await self._call_start_relay({
+                "NATS_URL": "nats://localhost:4222",
+                "DATABASE_URL": "postgresql://localhost/db",
+            })
+            self.assertIsNotNone(exc)
+            self.assertIsNone(result)
+            self.assertIn("connection failed", str(exc))
+            mock_stub.assert_not_called()
+
+    async def test_connect_failure_allows_stub_with_flag(self):
+        """NATS_URL set + connect failure + ALLOW_STUB=true → Stub fallback."""
+        with patch(
+            "packages.services.nats_publisher.NatsJetStreamPublisher.connect",
+            side_effect=ConnectionRefusedError("no NATS"),
+        ):
+            result, mock_loop, mock_stub, exc = await self._call_start_relay({
+                "NATS_URL": "nats://localhost:4222",
+                "DATABASE_URL": "postgresql://localhost/db",
+                "OUTBOX_RELAY_ALLOW_STUB": "true",
+            })
+            self.assertIsNone(exc)
+            self.assertTrue(result)
+            mock_stub.assert_called_once()
+            mock_loop.assert_not_called()
+
+    async def test_import_error_raises_without_allow_stub(self):
+        """nats-py ImportError + NATS_URL set → RuntimeError (no silent Stub)."""
+        # Simulate nats-py not installed by hiding NatsJetStreamPublisher import
+        real_import = __import__
+
+        def _fake_import(name, *args, **kwargs):
+            if name == "packages.services.nats_publisher":
+                raise ImportError("No module named 'nats'")
+            return real_import(name, *args, **kwargs)
+
+        with patch("builtins.__import__", side_effect=_fake_import):
+            result, mock_loop, mock_stub, exc = await self._call_start_relay({
+                "NATS_URL": "nats://localhost:4222",
+                "DATABASE_URL": "postgresql://localhost/db",
+            })
+            self.assertIsNotNone(exc)
+            self.assertIsNone(result)
+            self.assertIn("nats-py is not installed", str(exc))
+            mock_stub.assert_not_called()
+
+    async def test_import_error_allows_stub_with_flag(self):
+        """nats-py ImportError + ALLOW_STUB=true → Stub fallback."""
+        real_import = __import__
+
+        def _fake_import(name, *args, **kwargs):
+            if name == "packages.services.nats_publisher":
+                raise ImportError("No module named 'nats'")
+            return real_import(name, *args, **kwargs)
+
+        with patch("builtins.__import__", side_effect=_fake_import):
+            result, mock_loop, mock_stub, exc = await self._call_start_relay({
+                "NATS_URL": "nats://localhost:4222",
+                "DATABASE_URL": "postgresql://localhost/db",
+                "OUTBOX_RELAY_ALLOW_STUB": "true",
+            })
+            self.assertIsNone(exc)
+            self.assertTrue(result)
+            mock_stub.assert_called_once()
+            mock_loop.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

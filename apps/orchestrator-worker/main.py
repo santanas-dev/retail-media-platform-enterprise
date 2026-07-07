@@ -66,7 +66,14 @@ async def health_http_server():
 async def _start_relay() -> bool:
     """Start the outbox relay if NATS and DB are configured.
 
-    Returns True if relay was started, False if running in skeleton mode.
+    Returns:
+        True if relay was started.
+        False if running in skeleton mode (no NATS_URL configured).
+
+    Raises:
+        RuntimeError: if NATS_URL is configured but a real publisher
+            cannot be established (nats-py missing or connect failure).
+            Only bypassed by explicit OUTBOX_RELAY_ALLOW_STUB=true.
     """
     nats_url = os.environ.get("NATS_URL", "").strip()
     db_url = os.environ.get("DATABASE_URL", "").strip()
@@ -80,42 +87,64 @@ async def _start_relay() -> bool:
         )
         return False
 
+    # When NATS_URL is configured, we require a real publisher.
+    # StubNatsPublisher is NOT an acceptable fallback unless the
+    # operator explicitly overrides via OUTBOX_RELAY_ALLOW_STUB=true.
+    allow_stub = os.environ.get("OUTBOX_RELAY_ALLOW_STUB", "").strip().lower() == "true"
+
     from packages.domain.database import create_engine
     from packages.services.outbox_relay import OutboxRelay
 
-    # Try real JetStream publisher first; fall back to stub only when
-    # nats-py is not installed.
+    # --- Resolve publisher ---
+
     try:
         from packages.services.nats_publisher import NatsJetStreamPublisher  # noqa: F401
-        _nats_available = True
     except ImportError:
-        _nats_available = False
-
-    if _nats_available:
-        from packages.services.nats_publisher import NatsJetStreamPublisher
-
-        publisher = NatsJetStreamPublisher(
-            nats_url,
-            timeout=float(os.environ.get("NATS_TIMEOUT", "5.0")),
+        if allow_stub:
+            logger.warning(
+                "nats-py not installed — falling back to StubNatsPublisher "
+                "(OUTBOX_RELAY_ALLOW_STUB=true). Messages will NOT be delivered."
+            )
+            return await _start_relay_with_stub(
+                db_url, nats_url,
+            )
+        raise RuntimeError(
+            "NATS_URL is configured but nats-py is not installed. "
+            "Install nats-py for JetStream publishing, "
+            "or set OUTBOX_RELAY_ALLOW_STUB=true to use stub (dev/test only)."
         )
-        try:
-            await publisher.connect()
-            logger.info("Connected to NATS JetStream at %s", nats_url)
-        except Exception as exc:
-            logger.error("NATS connection failed: %s. Running without NATS.", exc)
-            publisher = None
-    else:
-        logger.warning("nats-py not installed — using stub publisher")
-        publisher = None
 
-    if publisher is None:
-        from packages.services.nats_publisher import StubNatsPublisher
+    from packages.services.nats_publisher import NatsJetStreamPublisher
 
-        publisher = StubNatsPublisher()
-        logger.warning(
-            "Using StubNatsPublisher — NATS messages will NOT be delivered. "
-            "Install nats-py for real JetStream publishing."
-        )
+    publisher = NatsJetStreamPublisher(
+        nats_url,
+        timeout=float(os.environ.get("NATS_TIMEOUT", "5.0")),
+    )
+    try:
+        await publisher.connect()
+        logger.info("Connected to NATS JetStream at %s", nats_url)
+    except Exception as exc:
+        if allow_stub:
+            logger.error(
+                "NATS connection failed: %s. Falling back to StubNatsPublisher "
+                "(OUTBOX_RELAY_ALLOW_STUB=true). Messages will NOT be delivered.",
+                exc,
+            )
+            return await _start_relay_with_stub(
+                db_url, nats_url,
+            )
+        raise RuntimeError(
+            f"NATS_URL is configured but connection failed: {exc}. "
+            "Set OUTBOX_RELAY_ALLOW_STUB=true to use stub (dev/test only)."
+        ) from exc
+
+    return await _start_relay_loop(db_url, publisher)
+
+
+async def _start_relay_loop(db_url: str, publisher) -> bool:
+    """Start the outbox relay loop with the given publisher."""
+    from packages.domain.database import create_engine
+    from packages.services.outbox_relay import OutboxRelay
 
     engine = create_engine(db_url)
     logger.info("Database engine created for outbox relay")
@@ -138,6 +167,18 @@ async def _start_relay() -> bool:
 
     asyncio.create_task(relay.run())
     return True
+
+
+async def _start_relay_with_stub(db_url: str, nats_url: str) -> bool:
+    """Start relay with StubNatsPublisher (explicit dev/test override)."""
+    from packages.services.nats_publisher import StubNatsPublisher
+
+    publisher = StubNatsPublisher()
+    logger.warning(
+        "Using StubNatsPublisher — NATS messages will NOT be delivered. "
+        "Install nats-py for real JetStream publishing."
+    )
+    return await _start_relay_loop(db_url, publisher)
 
 
 # ---------------------------------------------------------------------------
