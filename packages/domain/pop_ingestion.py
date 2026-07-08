@@ -8,6 +8,7 @@ Caller owns the database transaction boundary.
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.domain import repository
@@ -58,6 +59,39 @@ async def _get_manifest_assets(
     )
     result = await session.execute(stmt)
     return {row[0] for row in result.fetchall()}
+
+
+async def _write_pop_event(
+    session: AsyncSession,
+    *,
+    write_fn,
+    event_type: str,
+    aggregate_id: str,
+    outbox_payload: dict,
+) -> dict[str, str] | None:
+    """Execute a PoP write path inside a savepoint.
+
+    If the dedup key insert raises IntegrityError (race condition
+    with concurrent ingest), rolls back the savepoint and returns
+    duplicate status so the batch can continue.
+    """
+    sp = await session.begin_nested()
+    try:
+        await write_fn()
+        await repository.insert_pop_dedup_key(session, aggregate_id)
+        await session.flush()
+        await sp.commit()
+        await repository.enqueue_outbox_event(
+            session,
+            event_type=event_type,
+            aggregate_type="pop_event",
+            aggregate_id=aggregate_id,
+            payload=outbox_payload,
+        )
+        return None  # success — caller sets exact status
+    except IntegrityError:
+        await sp.rollback()
+        return {"status": "duplicate", "reason": "duplicate_event_id"}
 
 
 async def ingest_pop_event(
@@ -118,32 +152,32 @@ async def ingest_pop_event(
     if manifest is None:
         # Unknown manifest → quarantine
         expires_at = now + timedelta(hours=POP_QUARANTINE_TTL_HOURS)
-        await repository.quarantine_pop_event(
+
+        async def _write():
+            await repository.quarantine_pop_event(
+                session,
+                event_id=event.event_id,
+                schema_version=event.schema_version,
+                device_id=event.device_id,
+                manifest_id=event.manifest_id,
+                campaign_id=event.campaign_id,
+                creative_asset_id=event.creative_asset_id,
+                surface_id=event.surface_id,
+                rendered_at=event.rendered_at,
+                event_recorded_at=event.event_recorded_at,
+                duration_ms=event.duration_ms,
+                playback_result=event.playback_result,
+                quarantine_reason="unknown_manifest",
+                expires_at=expires_at,
+                batch_id=batch_id,
+            )
+
+        dup = await _write_pop_event(
             session,
-            event_id=event.event_id,
-            schema_version=event.schema_version,
-            device_id=event.device_id,
-            manifest_id=event.manifest_id,
-            campaign_id=event.campaign_id,
-            creative_asset_id=event.creative_asset_id,
-            surface_id=event.surface_id,
-            rendered_at=event.rendered_at,
-            event_recorded_at=event.event_recorded_at,
-            duration_ms=event.duration_ms,
-            playback_result=event.playback_result,
-            quarantine_reason="unknown_manifest",
-            expires_at=expires_at,
-            batch_id=batch_id,
-        )
-        await repository.insert_pop_dedup_key(session, event.event_id)
-        await session.flush()
-        # Outbox — quarantine
-        await repository.enqueue_outbox_event(
-            session,
+            write_fn=_write,
             event_type="pop.event.quarantined",
-            aggregate_type="pop_event",
             aggregate_id=event.event_id,
-            payload={
+            outbox_payload={
                 "event_id": event.event_id,
                 "manifest_id": event.manifest_id,
                 "device_id": event.device_id,
@@ -151,36 +185,39 @@ async def ingest_pop_event(
                 "expires_at": expires_at.isoformat(),
             },
         )
+        if dup is not None:
+            return dup
         return {"status": "quarantined", "reason": "unknown_manifest"}
 
     # 9. Clock drift quarantine (manifest known but clock is ahead)
     if clock_drift:
         expires_at = now + timedelta(hours=POP_QUARANTINE_TTL_HOURS)
-        await repository.quarantine_pop_event(
+
+        async def _write():
+            await repository.quarantine_pop_event(
+                session,
+                event_id=event.event_id,
+                schema_version=event.schema_version,
+                device_id=event.device_id,
+                manifest_id=event.manifest_id,
+                campaign_id=event.campaign_id,
+                creative_asset_id=event.creative_asset_id,
+                surface_id=event.surface_id,
+                rendered_at=event.rendered_at,
+                event_recorded_at=event.event_recorded_at,
+                duration_ms=event.duration_ms,
+                playback_result=event.playback_result,
+                quarantine_reason="clock_drift",
+                expires_at=expires_at,
+                batch_id=batch_id,
+            )
+
+        dup = await _write_pop_event(
             session,
-            event_id=event.event_id,
-            schema_version=event.schema_version,
-            device_id=event.device_id,
-            manifest_id=event.manifest_id,
-            campaign_id=event.campaign_id,
-            creative_asset_id=event.creative_asset_id,
-            surface_id=event.surface_id,
-            rendered_at=event.rendered_at,
-            event_recorded_at=event.event_recorded_at,
-            duration_ms=event.duration_ms,
-            playback_result=event.playback_result,
-            quarantine_reason="clock_drift",
-            expires_at=expires_at,
-            batch_id=batch_id,
-        )
-        await repository.insert_pop_dedup_key(session, event.event_id)
-        await session.flush()
-        await repository.enqueue_outbox_event(
-            session,
+            write_fn=_write,
             event_type="pop.event.quarantined",
-            aggregate_type="pop_event",
             aggregate_id=event.event_id,
-            payload={
+            outbox_payload={
                 "event_id": event.event_id,
                 "manifest_id": event.manifest_id,
                 "device_id": event.device_id,
@@ -188,6 +225,8 @@ async def ingest_pop_event(
                 "rendered_at": event.rendered_at.isoformat(),
             },
         )
+        if dup is not None:
+            return dup
         return {"status": "quarantined", "reason": "clock_drift"}
 
     # 10. Cross-entity consistency checks (manifest known, not clock-drifted)
@@ -214,28 +253,29 @@ async def ingest_pop_event(
     # manifest_id and campaign_id from the resolved manifest (trusted)
     manifest_id_str: str = str(manifest.manifest_id)
     campaign_id_str: str = str(manifest.campaign_id)
-    await repository.accept_pop_event(
+
+    async def _write():
+        await repository.accept_pop_event(
+            session,
+            event_id=event.event_id,
+            schema_version=event.schema_version,
+            device_id=event.device_id,
+            manifest_id=manifest_id_str,
+            campaign_id=campaign_id_str,  # trusted from manifest
+            creative_asset_id=event.creative_asset_id,
+            surface_id=event.surface_id,
+            rendered_at=event.rendered_at,
+            event_recorded_at=event.event_recorded_at,
+            duration_ms=event.duration_ms,
+            batch_id=batch_id,
+        )
+
+    dup = await _write_pop_event(
         session,
-        event_id=event.event_id,
-        schema_version=event.schema_version,
-        device_id=event.device_id,
-        manifest_id=manifest_id_str,
-        campaign_id=campaign_id_str,  # trusted from manifest
-        creative_asset_id=event.creative_asset_id,
-        surface_id=event.surface_id,
-        rendered_at=event.rendered_at,
-        event_recorded_at=event.event_recorded_at,
-        duration_ms=event.duration_ms,
-        batch_id=batch_id,
-    )
-    await repository.insert_pop_dedup_key(session, event.event_id)
-    await session.flush()
-    await repository.enqueue_outbox_event(
-        session,
+        write_fn=_write,
         event_type="pop.event.accepted",
-        aggregate_type="pop_event",
         aggregate_id=event.event_id,
-        payload={
+        outbox_payload={
             "event_id": event.event_id,
             "manifest_id": manifest_id_str,
             "campaign_id": campaign_id_str,
@@ -245,6 +285,8 @@ async def ingest_pop_event(
             "duration_ms": event.duration_ms,
         },
     )
+    if dup is not None:
+        return dup
     return {"status": "accepted", "reason": None}
 
 

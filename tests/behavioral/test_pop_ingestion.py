@@ -348,3 +348,150 @@ class TestPopIngestionBatch:
         # Only one raw event row persisted
         raw = _raw_sql("SELECT count(*) AS c FROM pop_events_raw WHERE event_id = :eid", {"eid": first.event_id})
         assert raw[0].c == 1
+
+
+# ---------------------------------------------------------------------------
+# Retry robustness — savepoint-based dedup on concurrent/retried events
+# ---------------------------------------------------------------------------
+
+
+class TestPopIngestionRetry:
+    """Events retried across sessions must not duplicate raw data or outbox."""
+
+    def test_retry_accepted_returns_duplicate(self, db_available, pop_fixtures):
+        """First ingest accepted → retry returns duplicate, no new raw/outbox."""
+        event = _make_event(pop_fixtures, 60)
+
+        # First ingest — accepted
+        r1 = asyncio.run(_run_in_session(
+            lambda s: ingest_pop_event(s, event,
+                                       jwt_device_id=pop_fixtures["device"],
+                                       now=_NOW),
+        ))
+        assert r1["status"] == "accepted"
+
+        # Retry — must be duplicate across a new session
+        r2 = asyncio.run(_run_in_session(
+            lambda s: ingest_pop_event(s, event,
+                                       jwt_device_id=pop_fixtures["device"],
+                                       now=_NOW),
+        ))
+        assert r2["status"] == "duplicate"
+        assert r2["reason"] == "duplicate_event_id"
+
+        # Only one raw event
+        raw = _raw_sql(
+            "SELECT count(*) AS c FROM pop_events_raw WHERE event_id = :eid",
+            {"eid": event.event_id},
+        )
+        assert raw[0].c == 1
+
+        # Only one outbox event (accepted, not duplicate)
+        outbox = _raw_sql(
+            "SELECT event_type FROM outbox_events WHERE aggregate_id = :eid",
+            {"eid": event.event_id},
+        )
+        assert len(outbox) == 1
+        assert outbox[0].event_type == "pop.event.accepted"
+
+    def test_retry_quarantined_returns_duplicate(self, db_available, pop_fixtures):
+        """First ingest quarantined → retry returns duplicate, no new raw/outbox."""
+        event = _make_event(pop_fixtures, 61,
+                            manifest_id="unknown-retry-manifest")
+
+        # First ingest — quarantined (unknown manifest)
+        r1 = asyncio.run(_run_in_session(
+            lambda s: ingest_pop_event(s, event,
+                                       jwt_device_id=pop_fixtures["device"],
+                                       now=_NOW),
+        ))
+        assert r1["status"] == "quarantined"
+
+        # Retry — must be duplicate
+        r2 = asyncio.run(_run_in_session(
+            lambda s: ingest_pop_event(s, event,
+                                       jwt_device_id=pop_fixtures["device"],
+                                       now=_NOW),
+        ))
+        assert r2["status"] == "duplicate"
+        assert r2["reason"] == "duplicate_event_id"
+
+        # Only one raw event
+        raw = _raw_sql(
+            "SELECT count(*) AS c FROM pop_events_raw WHERE event_id = :eid",
+            {"eid": event.event_id},
+        )
+        assert raw[0].c == 1
+
+        # Only one outbox event (quarantined, not duplicate)
+        outbox = _raw_sql(
+            "SELECT event_type FROM outbox_events WHERE aggregate_id = :eid",
+            {"eid": event.event_id},
+        )
+        assert len(outbox) == 1
+        assert outbox[0].event_type == "pop.event.quarantined"
+
+    def test_mixed_batch_valid_plus_duplicate(self, db_available, pop_fixtures):
+        """Batch with valid + duplicate events — valid persists, dup reported."""
+        event = _make_event(pop_fixtures, 62)
+
+        # Ingest once to make it duplicate for the batch
+        asyncio.run(_run_in_session(
+            lambda s: ingest_pop_event(s, event,
+                                       jwt_device_id=pop_fixtures["device"],
+                                       now=_NOW),
+        ))
+
+        # Now batch with the same event + a new valid event
+        new_event = _make_event(pop_fixtures, 63)
+        batch_events = [event, new_event]
+
+        result = asyncio.run(_run_in_session(
+            lambda s: ingest_pop_batch(
+                s, batch_events,
+                jwt_device_id=pop_fixtures["device"],
+                now=_NOW,
+                batch_id="beh-pop-batch-retry-test",
+            ),
+        ))
+        assert result["accepted_count"] == 1
+        assert result["duplicate_count"] == 1
+        assert len(result["results"]) == 2
+        assert result["results"][0]["status"] == "duplicate"
+        assert result["results"][1]["status"] == "accepted"
+
+        # Both events have exactly 1 raw row each
+        raw1 = _raw_sql(
+            "SELECT count(*) AS c FROM pop_events_raw WHERE event_id = :eid",
+            {"eid": event.event_id},
+        )
+        raw2 = _raw_sql(
+            "SELECT count(*) AS c FROM pop_events_raw WHERE event_id = :eid",
+            {"eid": new_event.event_id},
+        )
+        assert raw1[0].c == 1
+        assert raw2[0].c == 1
+
+    def test_forced_same_batch_duplicate_does_not_abort(self, db_available,
+                                                         pop_fixtures):
+        """Two identical events in one batch — both reported, batch commits."""
+        event = _make_event(pop_fixtures, 64)
+
+        result = asyncio.run(_run_in_session(
+            lambda s: ingest_pop_batch(
+                s, [event, event],
+                jwt_device_id=pop_fixtures["device"],
+                now=_NOW,
+                batch_id="beh-pop-batch-same-dup",
+            ),
+        ))
+        assert result["accepted_count"] == 1
+        assert result["duplicate_count"] == 1
+        assert len(result["results"]) == 2
+
+        # Only 1 raw row
+        raw = _raw_sql(
+            "SELECT count(*) AS c FROM pop_events_raw WHERE event_id = :eid",
+            {"eid": event.event_id},
+        )
+        assert raw[0].c == 1
