@@ -94,55 +94,64 @@ async def resolve_scope_context(
         text("SELECT set_config('app.rmp_is_admin', 'true', true)")
     )
 
-    # Verify user exists and is active
-    user = await _get_user(session, user_id)
-    if user is None or user.status != "active":
-        return ScopeContext.deny_all(user_id)
+    try:
+        # Verify user exists and is active
+        user = await _get_user(session, user_id)
+        if user is None or user.status != "active":
+            return ScopeContext.deny_all(user_id)
 
-    # Load role codes + permissions (scoped and unscoped)
-    role_rows = await _load_user_roles(session, user_id)
-    if not role_rows:
-        return ScopeContext.deny_all(user_id)
+        # Load role codes + permissions (scoped and unscoped)
+        role_rows = await _load_user_roles(session, user_id)
+        if not role_rows:
+            return ScopeContext.deny_all(user_id)
 
-    is_admin = False
-    role_codes: set[str] = set()
-    global_permissions: set[str] = set()
-    all_permissions: set[str] = set()
-    advertiser_scope_ids: set[str] = set()
+        is_admin = False
+        role_codes: set[str] = set()
+        global_permissions: set[str] = set()
+        all_permissions: set[str] = set()
+        advertiser_scope_ids: set[str] = set()
 
-    for ur in role_rows:
-        scope_type = ur.scope_type  # None = unscoped
-        perm_code = ur.perm_code
-        role_code = ur.role_code
+        for ur in role_rows:
+            scope_type = ur.scope_type  # None = unscoped
+            perm_code = ur.perm_code
+            role_code = ur.role_code
 
-        role_codes.add(role_code)
+            role_codes.add(role_code)
 
-        if perm_code is not None:
-            all_permissions.add(perm_code)
-
-        if scope_type is None:
-            # Unscoped role → global permissions
             if perm_code is not None:
-                global_permissions.add(perm_code)
-            if role_code in ADMIN_ROLE_CODES:
-                is_admin = True
-        elif scope_type == "advertiser" and ur.scope_id:
-            advertiser_scope_ids.add(ur.scope_id)
-        # Other scope types (branch, cluster, store) are deferred to
-        # future hierarchy expansion phases
+                all_permissions.add(perm_code)
 
-    # Also load advertiser memberships (direct user→org link)
-    membership_ids = await _load_advertiser_memberships(session, user_id)
-    advertiser_scope_ids.update(membership_ids)
+            if scope_type is None:
+                # Unscoped role → global permissions
+                if perm_code is not None:
+                    global_permissions.add(perm_code)
+                if role_code in ADMIN_ROLE_CODES:
+                    is_admin = True
+            elif scope_type == "advertiser" and ur.scope_id:
+                advertiser_scope_ids.add(ur.scope_id)
+            # Other scope types (branch, cluster, store) are deferred to
+            # future hierarchy expansion phases
 
-    return ScopeContext(
-        user_id=user_id,
-        is_admin=is_admin,
-        role_codes=role_codes,
-        global_permissions=global_permissions,
-        all_permissions=all_permissions,
-        advertiser_scope_ids=advertiser_scope_ids,
-    )
+        # Also load advertiser memberships (direct user→org link)
+        membership_ids = await _load_advertiser_memberships(session, user_id)
+        advertiser_scope_ids.update(membership_ids)
+
+        return ScopeContext(
+            user_id=user_id,
+            is_admin=is_admin,
+            role_codes=role_codes,
+            global_permissions=global_permissions,
+            all_permissions=all_permissions,
+            advertiser_scope_ids=advertiser_scope_ids,
+        )
+    finally:
+        # Reset admin elevation — the scope lookup is complete.
+        # set_rls_context will re-enable admin when scope.is_admin is True.
+        # This ensures the admin flag cannot leak into request handlers
+        # if set_rls_context is accidentally skipped or reordered.
+        await conn.execute(
+            text("SELECT set_config('app.rmp_is_admin', 'false', true)")
+        )
 
 
 # ---------------------------------------------------------------------------

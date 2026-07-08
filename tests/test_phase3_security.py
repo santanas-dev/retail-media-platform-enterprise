@@ -5,6 +5,7 @@ Tests: config, password, token, JWT, sanitization helpers.
 No database required.
 """
 
+import asyncio
 import os
 import sys
 import time
@@ -488,6 +489,88 @@ class TestSanitizeHelpers(unittest.TestCase):
         self.assertEqual(clean["access_token"], "***MASKED***")
         self.assertEqual(clean["set_cookie"], "***MASKED***")
         self.assertEqual(clean["api_key"], "***MASKED***")
+
+
+# ---------------------------------------------------------------------------
+# S-008 hardening: prove admin flag reset after scope resolution
+# ---------------------------------------------------------------------------
+
+
+class TestScopeAdminReset:
+    """Prove app.rmp_is_admin does not leak after resolve_scope_context.
+
+    Uses a self-contained DB engine (not shared fixtures) to test the
+    exact behavior of resolve_scope_context in isolation.
+    """
+
+    @staticmethod
+    def _make_session():
+        from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, \
+            create_async_engine
+
+        import os
+        url = os.environ.get(
+            "DATABASE_URL",
+            "postgresql+asyncpg://retail_media:retail_media_dev"
+            "@localhost:5432/retail_media_platform",
+        )
+        engine = create_async_engine(url, echo=False)
+        return async_sessionmaker(engine, class_=AsyncSession,
+                                  expire_on_commit=False)
+
+    def test_non_admin_resets_admin_flag(self):
+        """After scope resolution for non-admin, raw DB sees admin=false."""
+        from packages.domain.scopes import resolve_scope_context
+        from sqlalchemy import text
+
+        sf = self._make_session()
+
+        async def _test():
+            async with sf() as session:
+                async with session.begin():
+                    ctx = await resolve_scope_context(
+                        session, "00000000-0000-0000-0000-0000000000ff",
+                    )
+                    row = await session.execute(
+                        text("SELECT current_setting('app.rmp_is_admin', true)")
+                    )
+                    val = row.scalar()
+                return ctx, val
+
+        ctx, flag = asyncio.run(_test())
+        assert ctx.is_admin is False, "test user should not be admin"
+        assert flag == "false", (
+            f"Admin flag should be reset to false after scope resolution, "
+            f"got {flag}"
+        )
+
+    def test_admin_resets_flag_before_return(self):
+        """Even admin scope resolution resets flag; set_rls_context re-sets it."""
+        from packages.domain.scopes import resolve_scope_context
+        from sqlalchemy import text
+
+        sf = self._make_session()
+
+        async def _test():
+            async with sf() as session:
+                async with session.begin():
+                    ctx = await resolve_scope_context(
+                        session, "00000000-0000-0000-0000-000000000150",
+                    )
+                    row = await session.execute(
+                        text("SELECT current_setting('app.rmp_is_admin', true)")
+                    )
+                    val = row.scalar()
+                return ctx, val
+
+        ctx, flag = asyncio.run(_test())
+        # Seed admin user IS admin
+        assert ctx.is_admin is True, "seed superadmin should be admin"
+        # But the DB flag must be false — scope resolution resets it
+        assert flag == "false", (
+            f"Admin flag must be false after scope resolution (set_rls_context "
+            f"will re-set it), got {flag}"
+        )
 
 
 if __name__ == "__main__":
