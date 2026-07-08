@@ -292,5 +292,138 @@ class TestPopDedupViolationDetection(unittest.TestCase):
         self.assertFalse(_is_pop_dedup_unique_violation(exc))
 
 
+# ═══════════════════════════════════════════════════════════════════
+# Campaign Flight / Placement / Creative schema validation (Pilot B1)
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestCampaignFlightSchema(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        from packages.domain.schemas import (
+            CampaignFlightCreateRequest,
+            CampaignFlightUpdateRequest,
+        )
+        cls.Create = CampaignFlightCreateRequest
+        cls.Update = CampaignFlightUpdateRequest
+
+    def test_create_valid_flight(self):
+        now = datetime.now(timezone.utc)
+        f = self.Create(
+            start_at=now,
+            end_at=now.replace(hour=now.hour + 1),
+        )
+        self.assertIsNotNone(f.start_at)
+        self.assertEqual(f.priority, 0)
+
+    def test_create_start_after_end_rejected_by_db_check_not_pydantic(self):
+        """start_at > end_at is not enforced by Pydantic — DB CHECK handles it."""
+        now = datetime.now(timezone.utc)
+        f = self.Create(
+            start_at=now,
+            end_at=now.replace(hour=now.hour - 1),
+        )
+        self.assertIsNotNone(f)
+
+    def test_update_empty_body_allowed(self):
+        f = self.Update()
+        self.assertIsNone(f.start_at)
+        self.assertIsNone(f.end_at)
+
+
+class TestCampaignPlacementSchema(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        from packages.domain.schemas import (
+            CampaignPlacementCreateRequest,
+            CampaignPlacementUpdateRequest,
+        )
+        cls.Create = CampaignPlacementCreateRequest
+        cls.Update = CampaignPlacementUpdateRequest
+
+    def test_create_store_target(self):
+        p = self.Create(store_id="st-001")
+        self.assertEqual(p.store_id, "st-001")
+
+    def test_create_branch_target(self):
+        p = self.Create(branch_id="br-001")
+        self.assertEqual(p.branch_id, "br-001")
+
+    def test_create_surface_target(self):
+        p = self.Create(display_surface_id="ds-001")
+        self.assertEqual(p.display_surface_id, "ds-001")
+
+    def test_share_of_voice_bounds(self):
+        from pydantic import ValidationError
+        p = self.Create(store_id="st-001", share_of_voice_pct=50)
+        self.assertEqual(p.share_of_voice_pct, 50)
+        with self.assertRaises(ValidationError):
+            self.Create(store_id="st-001", share_of_voice_pct=101)
+        with self.assertRaises(ValidationError):
+            self.Create(store_id="st-001", share_of_voice_pct=-1)
+
+    def test_max_impressions_non_negative(self):
+        from pydantic import ValidationError
+        p = self.Create(store_id="st-001", max_impressions=1000)
+        self.assertEqual(p.max_impressions, 1000)
+        with self.assertRaises(ValidationError):
+            self.Create(store_id="st-001", max_impressions=-1)
+
+    def test_no_physical_device_id_field(self):
+        """CampaignPlacementCreateRequest must not accept physical_device_id."""
+        from packages.domain.schemas import CampaignPlacementCreateRequest
+        fields = CampaignPlacementCreateRequest.model_fields
+        self.assertNotIn("physical_device_id", fields)
+        self.assertIn("display_surface_id", fields)
+
+
+class TestCampaignCreativeSchema(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        from packages.domain.schemas import CampaignCreativeCreateRequest
+        cls.Create = CampaignCreativeCreateRequest
+
+    def test_create_valid_creative(self):
+        c = self.Create(
+            code="VID-001",
+            name="Summer Promo 30s",
+            media_type="video/mp4",
+            sha256_checksum="a" * 64,
+            file_size_bytes=1024000,
+        )
+        self.assertEqual(c.code, "VID-001")
+        self.assertEqual(c.sort_order, 0)
+
+    def test_duration_ms_optional(self):
+        c = self.Create(
+            code="VID-002",
+            name="Test",
+            media_type="image/png",
+            sha256_checksum="b" * 64,
+            file_size_bytes=500,
+            duration_ms=15000,
+        )
+        self.assertEqual(c.duration_ms, 15000)
+
+    def test_no_storage_fields_in_schema(self):
+        """CampaignCreativeCreateRequest must not expose storage_bucket/storage_key."""
+        from packages.domain.schemas import CampaignCreativeCreateRequest
+        fields = CampaignCreativeCreateRequest.model_fields
+        self.assertNotIn("storage_bucket", fields)
+        self.assertNotIn("storage_key", fields)
+        self.assertIn("sha256_checksum", fields)
+
+    def test_creative_out_no_storage_secrets(self):
+        """CreativeAssetOut must not expose storage_bucket/storage_key."""
+        from packages.domain.schemas import CreativeAssetOut
+        fields = CreativeAssetOut.model_fields
+        self.assertNotIn("storage_bucket", fields)
+        self.assertNotIn("storage_key", fields)
+        self.assertIn("sha256_checksum", fields)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -146,6 +146,17 @@ def _setup_sql(ph):
     ; DELETE FROM campaign_approvals WHERE campaign_id IN (
         SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
     )
+    ; DELETE FROM campaign_creatives WHERE campaign_id IN (
+        SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
+    )
+    -- Creative assets created by behavioral users may be linked to seed campaigns.
+    ; DELETE FROM campaign_creatives WHERE creative_asset_id IN (
+        SELECT id FROM creative_assets WHERE created_by LIKE 'beh-%'
+    )
+    -- Pilot B1: creative_assets created by behavioral users
+    -- must be cleaned before deleting users (FK constraint).
+    -- campaign_creatives must be deleted first (FK on creative_asset_id).
+    ; DELETE FROM creative_assets WHERE created_by LIKE 'beh-%'
     ; DELETE FROM campaigns WHERE created_by LIKE 'beh-%'
     ; INSERT INTO local_credentials (id,user_id,credential_type,password_hash,status) VALUES
       ('lc-beh-ro','{u["readonly"]}','local_advertiser','{ph}','active'),
@@ -301,6 +312,10 @@ _CLEANUP = """
     ; DELETE FROM campaign_approvals WHERE campaign_id IN (
         SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
     )
+    ; DELETE FROM campaign_creatives WHERE creative_asset_id IN (
+        SELECT id FROM creative_assets WHERE created_by LIKE 'beh-%'
+    )
+    ; DELETE FROM creative_assets WHERE created_by LIKE 'beh-%'
     ; DELETE FROM campaigns WHERE created_by LIKE 'beh-%'
     ; DELETE FROM campaign_approvals WHERE reviewed_by LIKE 'beh-%'
     ; DELETE FROM campaign_status_history WHERE changed_by LIKE 'beh-%'

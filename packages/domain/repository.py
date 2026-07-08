@@ -4,6 +4,8 @@ Retail Media Platform — Async Repository Helpers.
 Phase 3.0: Read-only query functions for identity/RBAC tables.
 """
 
+from datetime import datetime
+
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -161,6 +163,42 @@ async def get_campaign(
     from packages.domain.models import Campaign
     result = await session.execute(
         select(Campaign).where(Campaign.id == campaign_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_campaign_flight(
+    session: AsyncSession,
+    flight_id: str,
+):
+    """Get a single campaign flight by id. Returns CampaignFlight or None."""
+    from packages.domain.models import CampaignFlight
+    result = await session.execute(
+        select(CampaignFlight).where(CampaignFlight.id == flight_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_campaign_placement(
+    session: AsyncSession,
+    placement_id: str,
+):
+    """Get a single placement by id. Returns CampaignPlacement or None."""
+    from packages.domain.models import CampaignPlacement
+    result = await session.execute(
+        select(CampaignPlacement).where(CampaignPlacement.id == placement_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_creative_asset(
+    session: AsyncSession,
+    asset_id: str,
+):
+    """Get a single creative asset by id. Returns CreativeAsset or None."""
+    from packages.domain.models import CreativeAsset
+    result = await session.execute(
+        select(CreativeAsset).where(CreativeAsset.id == asset_id)
     )
     return result.scalar_one_or_none()
 
@@ -690,6 +728,275 @@ async def reject_campaign(
     session.add(history)
 
     return old_status, "rejected"
+
+
+# ---------------------------------------------------------------------------
+# Campaign Flight / Placement / Creative  (Pilot B1)
+# ---------------------------------------------------------------------------
+
+
+async def create_campaign_flight(
+    session: AsyncSession,
+    *,
+    campaign_id: str,
+    name: str | None = None,
+    start_at: datetime,
+    end_at: datetime,
+    dayparting_json: dict | None = None,
+    days_of_week: list[int] | None = None,
+    priority: int = 0,
+    scope_advertiser_ids: frozenset[str] | None = None,
+) -> str | None:
+    """Create a flight for a draft campaign. Returns flight id.
+
+    Enforces: campaign exists, status == 'draft', start_at < end_at,
+    org is in scope (RLS defense-in-depth).
+
+    Returns None if campaign not found or not in draft.
+    Raises ScopeError if org is not in scope.
+    """
+    import uuid
+
+    from packages.domain.models import Campaign, CampaignFlight
+
+    campaign = (
+        await session.execute(
+            select(Campaign).where(Campaign.id == campaign_id)
+        )
+    ).scalar_one_or_none()
+    if campaign is None or campaign.status != "draft":
+        return None
+
+    _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    flight_id = str(uuid.uuid4())
+    flight = CampaignFlight(
+        id=flight_id,
+        campaign_id=campaign_id,
+        name=name,
+        start_at=start_at,
+        end_at=end_at,
+        dayparting_json=dayparting_json,
+        days_of_week=days_of_week,
+        priority=priority,
+    )
+    session.add(flight)
+    return flight_id
+
+
+async def update_campaign_flight(
+    session: AsyncSession,
+    flight_id: str,
+    *,
+    scope_advertiser_ids: frozenset[str] | None = None,
+    **kwargs,
+) -> str | None:
+    """Partial update of a flight. Returns campaign_id on success, None if blocked.
+
+    Enforces: flight exists, owning campaign is in draft, org is in scope.
+    """
+    from packages.domain.models import Campaign, CampaignFlight
+    from datetime import datetime, timezone as tz
+
+    flight = (
+        await session.execute(
+            select(CampaignFlight).where(CampaignFlight.id == flight_id)
+        )
+    ).scalar_one_or_none()
+    if flight is None:
+        return None
+
+    campaign = (
+        await session.execute(
+            select(Campaign).where(Campaign.id == flight.campaign_id)
+        )
+    ).scalar_one_or_none()
+    if campaign is None or campaign.status != "draft":
+        return None
+
+    _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    for key, value in kwargs.items():
+        if value is not None and hasattr(flight, key):
+            setattr(flight, key, value)
+
+    campaign.updated_at = datetime.now(tz.utc)
+    return flight.campaign_id
+
+
+async def create_campaign_placement(
+    session: AsyncSession,
+    *,
+    campaign_id: str,
+    display_surface_id: str | None = None,
+    store_id: str | None = None,
+    cluster_id: str | None = None,
+    branch_id: str | None = None,
+    share_of_voice_pct: int = 100,
+    max_impressions: int | None = None,
+    scope_advertiser_ids: frozenset[str] | None = None,
+) -> str | None:
+    """Create a placement for a draft campaign. Returns placement id.
+
+    Enforces: campaign in draft, at least one target non-null,
+    org is in scope.  The DB CHECK provides the second line of defense.
+    Returns None if campaign not found or not in draft.
+    """
+    import uuid
+
+    from packages.domain.models import Campaign, CampaignPlacement
+
+    campaign = (
+        await session.execute(
+            select(Campaign).where(Campaign.id == campaign_id)
+        )
+    ).scalar_one_or_none()
+    if campaign is None or campaign.status != "draft":
+        return None
+
+    _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    placement_id = str(uuid.uuid4())
+    placement = CampaignPlacement(
+        id=placement_id,
+        campaign_id=campaign_id,
+        display_surface_id=display_surface_id,
+        store_id=store_id,
+        cluster_id=cluster_id,
+        branch_id=branch_id,
+        share_of_voice_pct=share_of_voice_pct,
+        max_impressions=max_impressions,
+        status="active",
+    )
+    session.add(placement)
+    return placement_id
+
+
+async def update_campaign_placement(
+    session: AsyncSession,
+    placement_id: str,
+    *,
+    scope_advertiser_ids: frozenset[str] | None = None,
+    **kwargs,
+) -> str | None:
+    """Partial update of a placement. Returns campaign_id on success, None if blocked."""
+    from packages.domain.models import Campaign, CampaignPlacement
+    from datetime import datetime, timezone as tz
+
+    placement = (
+        await session.execute(
+            select(CampaignPlacement).where(CampaignPlacement.id == placement_id)
+        )
+    ).scalar_one_or_none()
+    if placement is None:
+        return None
+
+    campaign = (
+        await session.execute(
+            select(Campaign).where(Campaign.id == placement.campaign_id)
+        )
+    ).scalar_one_or_none()
+    if campaign is None or campaign.status != "draft":
+        return None
+
+    _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    for key, value in kwargs.items():
+        if value is not None and hasattr(placement, key):
+            setattr(placement, key, value)
+
+    campaign.updated_at = datetime.now(tz.utc)
+    return placement.campaign_id
+
+
+async def create_campaign_creative(
+    session: AsyncSession,
+    *,
+    campaign_id: str,
+    advertiser_organization_id: str,
+    code: str,
+    name: str,
+    media_type: str,
+    sha256_checksum: str,
+    file_size_bytes: int,
+    duration_ms: int | None = None,
+    resolution_w: int | None = None,
+    resolution_h: int | None = None,
+    sort_order: int = 0,
+    duration_override_ms: int | None = None,
+    scope_advertiser_ids: frozenset[str] | None = None,
+    created_by: str | None = None,
+    storage_bucket: str = "pilot",
+) -> tuple[str, str] | None:
+    """Create a CreativeAsset + CampaignCreative in one call. Returns (asset_id, link_id).
+
+    Pilot: storage_key is auto-derived; storage_bucket defaults to \"pilot\".
+    The response schemas (CreativeAssetOut) never expose storage fields.
+
+    Enforces: campaign in draft, advertiser_organization_id matches campaign org,
+    org is in scope.
+
+    Returns None if campaign not found or not in draft.
+    Raises CrossOrgReferenceError if advertiser_organization_id mismatches.
+    """
+    import uuid
+    from datetime import datetime, timezone as tz
+
+    from packages.domain.exceptions import CrossOrgReferenceError
+    from packages.domain.models import Campaign, CampaignCreative, CreativeAsset
+
+    campaign = (
+        await session.execute(
+            select(Campaign).where(Campaign.id == campaign_id)
+        )
+    ).scalar_one_or_none()
+    if campaign is None or campaign.status != "draft":
+        return None
+
+    if str(campaign.advertiser_organization_id) != str(advertiser_organization_id):
+        raise CrossOrgReferenceError(
+            "Campaign advertiser_organization_id does not match creative owner"
+        )
+
+    _assert_org_in_scope(advertiser_organization_id, scope_advertiser_ids)
+
+    asset_id = str(uuid.uuid4())
+    storage_key = f"pilot/creatives/{asset_id}"
+    now = datetime.now(tz.utc)
+
+    asset = CreativeAsset(
+        id=asset_id,
+        advertiser_organization_id=advertiser_organization_id,
+        code=code,
+        name=name,
+        media_type=media_type,
+        storage_bucket=storage_bucket,
+        storage_key=storage_key,
+        sha256_checksum=sha256_checksum,
+        file_size_bytes=file_size_bytes,
+        duration_ms=duration_ms,
+        resolution_w=resolution_w,
+        resolution_h=resolution_h,
+        status="ready",
+        moderation_status="approved",
+        created_by=created_by,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(asset)
+    await session.flush()  # ensure asset id is visible to FK on CampaignCreative
+
+    link_id = str(uuid.uuid4())
+    link = CampaignCreative(
+        id=link_id,
+        campaign_id=campaign_id,
+        creative_asset_id=asset_id,
+        sort_order=sort_order,
+        duration_override_ms=duration_override_ms,
+    )
+    session.add(link)
+
+    return (asset_id, link_id)
 
 
 # ---------------------------------------------------------------------------

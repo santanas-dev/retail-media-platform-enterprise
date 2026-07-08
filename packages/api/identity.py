@@ -603,6 +603,269 @@ async def reject_endpoint(
 
 
 # ---------------------------------------------------------------------------
+# Campaign Setup Mutations — Flights / Placements / Creatives (Pilot B1)
+# ---------------------------------------------------------------------------
+
+from packages.domain.schemas import (
+    CampaignFlightCreateRequest,
+    CampaignFlightUpdateRequest,
+    CampaignPlacementCreateRequest,
+    CampaignPlacementUpdateRequest,
+    CampaignCreativeCreateRequest,
+)
+from packages.domain.repository import (
+    create_campaign_flight,
+    create_campaign_placement,
+    create_campaign_creative,
+    update_campaign_flight,
+    update_campaign_placement,
+)
+
+
+async def _require_draft_campaign(db, campaign_id: str, scope) -> None:
+    """Load campaign, raise 404/409 if not found or not in draft."""
+    campaign = await repository.get_campaign(db, campaign_id)
+    if campaign is None:
+        raise HTTPException(status_code=404, detail={"code": "CAMPAIGN_NOT_FOUND"})
+    if campaign.status != "draft":
+        raise HTTPException(status_code=409, detail="Campaign is not in draft status")
+    if not scope.is_admin:
+        org_str = str(campaign.advertiser_organization_id)
+        if org_str not in (scope.advertiser_scope_ids or frozenset()):
+            raise HTTPException(status_code=404, detail={"code": "CAMPAIGN_NOT_FOUND"})
+
+
+# ── Flights ──
+
+
+@router.post("/campaigns/{campaign_id}/flights",
+             response_model=CampaignFlightOut, status_code=201)
+async def create_flight_endpoint(
+    campaign_id: str,
+    body: CampaignFlightCreateRequest,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Create a flight for a draft campaign."""
+    await _require_draft_campaign(db, campaign_id, scope)
+
+    flight_id = await create_campaign_flight(
+        db,
+        campaign_id=campaign_id,
+        name=body.name,
+        start_at=body.start_at,
+        end_at=body.end_at,
+        dayparting_json=body.dayparting_json,
+        days_of_week=body.days_of_week,
+        priority=body.priority,
+        scope_advertiser_ids=_scope_ids(scope),
+    )
+    if flight_id is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    await enqueue_outbox_event(
+        db,
+        event_type="campaign.flight.changed",
+        aggregate_type="campaign",
+        aggregate_id=campaign_id,
+        payload={"campaign_id": campaign_id, "flight_id": flight_id},
+        headers={"source_service": "control-api"},
+    )
+    flight = await repository.get_campaign_flight(db, flight_id)
+    return CampaignFlightOut.model_validate(flight)
+
+
+@router.patch("/campaigns/{campaign_id}/flights/{flight_id}",
+              response_model=CampaignFlightOut)
+async def update_flight_endpoint(
+    campaign_id: str,
+    flight_id: str,
+    body: CampaignFlightUpdateRequest,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Partial update of a flight."""
+    await _require_draft_campaign(db, campaign_id, scope)
+
+    result_campaign_id = await update_campaign_flight(
+        db,
+        flight_id,
+        scope_advertiser_ids=_scope_ids(scope),
+        **body.model_dump(exclude_unset=True),
+    )
+    if result_campaign_id is None:
+        raise HTTPException(status_code=404, detail="Flight not found or campaign not in draft")
+
+    if str(result_campaign_id) != str(campaign_id):
+        raise HTTPException(status_code=404, detail="Flight does not belong to this campaign")
+
+    await enqueue_outbox_event(
+        db,
+        event_type="campaign.flight.changed",
+        aggregate_type="campaign",
+        aggregate_id=campaign_id,
+        payload={"campaign_id": campaign_id, "flight_id": flight_id},
+        headers={"source_service": "control-api"},
+    )
+    flight = await repository.get_campaign_flight(db, flight_id)
+    return CampaignFlightOut.model_validate(flight)
+
+
+# ── Placements ──
+
+
+@router.post("/campaigns/{campaign_id}/placements",
+             response_model=CampaignPlacementOut, status_code=201)
+async def create_placement_endpoint(
+    campaign_id: str,
+    body: CampaignPlacementCreateRequest,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Create a placement for a draft campaign. At least one target required."""
+    await _require_draft_campaign(db, campaign_id, scope)
+
+    if not any([
+        body.display_surface_id, body.store_id, body.cluster_id, body.branch_id,
+    ]):
+        raise HTTPException(status_code=422, detail="At least one target is required")
+
+    placement_id = await create_campaign_placement(
+        db,
+        campaign_id=campaign_id,
+        display_surface_id=body.display_surface_id,
+        store_id=body.store_id,
+        cluster_id=body.cluster_id,
+        branch_id=body.branch_id,
+        share_of_voice_pct=body.share_of_voice_pct,
+        max_impressions=body.max_impressions,
+        scope_advertiser_ids=_scope_ids(scope),
+    )
+    if placement_id is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    await enqueue_outbox_event(
+        db,
+        event_type="campaign.placement.changed",
+        aggregate_type="campaign",
+        aggregate_id=campaign_id,
+        payload={"campaign_id": campaign_id, "placement_id": placement_id},
+        headers={"source_service": "control-api"},
+    )
+    placement = await repository.get_campaign_placement(db, placement_id)
+    return CampaignPlacementOut.model_validate(placement)
+
+
+@router.patch("/campaigns/{campaign_id}/placements/{placement_id}",
+              response_model=CampaignPlacementOut)
+async def update_placement_endpoint(
+    campaign_id: str,
+    placement_id: str,
+    body: CampaignPlacementUpdateRequest,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Partial update of a placement."""
+    await _require_draft_campaign(db, campaign_id, scope)
+
+    result_campaign_id = await update_campaign_placement(
+        db,
+        placement_id,
+        scope_advertiser_ids=_scope_ids(scope),
+        **body.model_dump(exclude_unset=True),
+    )
+    if result_campaign_id is None:
+        raise HTTPException(status_code=404, detail="Placement not found or campaign not in draft")
+
+    if str(result_campaign_id) != str(campaign_id):
+        raise HTTPException(status_code=404, detail="Placement does not belong to this campaign")
+
+    await enqueue_outbox_event(
+        db,
+        event_type="campaign.placement.changed",
+        aggregate_type="campaign",
+        aggregate_id=campaign_id,
+        payload={"campaign_id": campaign_id, "placement_id": placement_id},
+        headers={"source_service": "control-api"},
+    )
+    placement = await repository.get_campaign_placement(db, placement_id)
+    return CampaignPlacementOut.model_validate(placement)
+
+
+# ── Creatives ──
+
+
+@router.post("/campaigns/{campaign_id}/creatives",
+             response_model=CreativeAssetOut, status_code=201)
+async def create_creative_endpoint(
+    campaign_id: str,
+    body: CampaignCreativeCreateRequest,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Create a creative asset and attach it to a draft campaign.
+
+    Storage bucket/key are pilot-safe auto-filled values — never returned
+    in the response.
+    """
+    user_id = claims["sub"]
+
+    # Resolve campaign to get org_id for scope enforcement
+    campaign = await repository.get_campaign(db, campaign_id)
+    if campaign is None:
+        raise HTTPException(status_code=404, detail={"code": "CAMPAIGN_NOT_FOUND"})
+    if campaign.status != "draft":
+        raise HTTPException(status_code=409, detail="Campaign is not in draft status")
+
+    try:
+        result = await create_campaign_creative(
+            db,
+            campaign_id=campaign_id,
+            advertiser_organization_id=str(campaign.advertiser_organization_id),
+            code=body.code,
+            name=body.name,
+            media_type=body.media_type,
+            sha256_checksum=body.sha256_checksum,
+            file_size_bytes=body.file_size_bytes,
+            duration_ms=body.duration_ms,
+            resolution_w=body.resolution_w,
+            resolution_h=body.resolution_h,
+            sort_order=body.sort_order,
+            duration_override_ms=body.duration_override_ms,
+            scope_advertiser_ids=_scope_ids(scope),
+            created_by=user_id,
+        )
+    except CrossOrgReferenceError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    asset_id, _link_id = result
+
+    await enqueue_outbox_event(
+        db,
+        event_type="campaign.creative.changed",
+        aggregate_type="campaign",
+        aggregate_id=campaign_id,
+        payload={"campaign_id": campaign_id, "creative_asset_id": asset_id},
+        headers={"source_service": "control-api"},
+    )
+    asset = await repository.get_creative_asset(db, asset_id)
+    return _serialize_creative_asset(asset)
+
+
+# ---------------------------------------------------------------------------
 # PoP Reporting Endpoints (Phase 4.3d — ADR-017 §6)
 # ---------------------------------------------------------------------------
 

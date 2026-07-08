@@ -364,6 +364,68 @@ class CampaignArchiveResponse(BaseModel):
     new_status: str = "archived"
 
 
+# ── Campaign Flight / Placement / Creative Mutation Schemas (Pilot B1) ──
+
+
+class CampaignFlightCreateRequest(BaseModel):
+    """Create a flight for a draft campaign."""
+    name: str | None = Field(None, max_length=255)
+    start_at: datetime
+    end_at: datetime
+    dayparting_json: Any | None = None
+    days_of_week: list[int] | None = None
+    priority: int = 0
+
+
+class CampaignFlightUpdateRequest(BaseModel):
+    """Partial update for a flight. All fields optional."""
+    name: str | None = Field(None, max_length=255)
+    start_at: datetime | None = None
+    end_at: datetime | None = None
+    dayparting_json: Any | None = None
+    days_of_week: list[int] | None = None
+    priority: int | None = None
+
+
+class CampaignPlacementCreateRequest(BaseModel):
+    """Create a placement for a draft campaign. At least one target required."""
+    display_surface_id: str | None = None
+    store_id: str | None = None
+    cluster_id: str | None = None
+    branch_id: str | None = None
+    share_of_voice_pct: int = Field(default=100, ge=0, le=100)
+    max_impressions: int | None = Field(None, ge=0)
+
+
+class CampaignPlacementUpdateRequest(BaseModel):
+    """Partial update for a placement. All fields optional."""
+    display_surface_id: str | None = None
+    store_id: str | None = None
+    cluster_id: str | None = None
+    branch_id: str | None = None
+    share_of_voice_pct: int | None = Field(None, ge=0, le=100)
+    max_impressions: int | None = Field(None, ge=0)
+
+
+class CampaignCreativeCreateRequest(BaseModel):
+    """Create a creative asset and attach it to a draft campaign.
+
+    Storage fields (storage_bucket, storage_key) are auto-filled with
+    pilot-safe defaults.  The response (CreativeAssetOut) never exposes
+    them.
+    """
+    code: str = Field(..., min_length=1, max_length=64)
+    name: str = Field(..., min_length=1, max_length=255)
+    media_type: str = Field(..., min_length=1, max_length=32)
+    sha256_checksum: str = Field(..., min_length=1, max_length=64)
+    file_size_bytes: int = Field(..., ge=0)
+    duration_ms: int | None = Field(None, ge=1)
+    resolution_w: int | None = Field(None, ge=1)
+    resolution_h: int | None = Field(None, ge=1)
+    sort_order: int = 0
+    duration_override_ms: int | None = Field(None, ge=1)
+
+
 # ---------------------------------------------------------------------------
 # Approval Workflow Schemas (Phase 4.1d — ADR-015)
 # ---------------------------------------------------------------------------

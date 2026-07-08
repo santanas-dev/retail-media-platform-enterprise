@@ -41,6 +41,10 @@ ADV2_ORG_ID = "00000000-0000-0000-0000-000000000201"  # matches seed
 ADV2_BRAND_ID = "00000000-0000-0000-0000-000000000311"
 ADV2_CONTRACT_ID = "00000000-0000-0000-0000-000000000313"
 
+# Seed IDs from apps/control-api/seed.py
+SEED_CAMPAIGN_ID = "00000000-0000-0000-0000-000000000220"
+SEED_STORE_ID = "00000000-0000-0000-0000-000000000003"
+
 
 @pytest.fixture
 def app(db_available):
@@ -736,3 +740,368 @@ class TestRLSWriteEnforcement:
             "(SELECT id FROM campaigns WHERE code = 'RLS-NOOUTBOX')",
         )
         assert rows[0][0] == 0, "Outbox row found for rejected campaign"
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Campaign Setup Mutations — Flight / Placement / Creative (Pilot B1)
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestCampaignSetupFlights:
+    """Flight create/update behavioral tests."""
+
+    def test_create_flight_on_draft_campaign(self, client, user_ids):
+        """Advertiser creates a flight on their own draft campaign."""
+        token = _token(user_ids["advertiser"])
+        # Create a draft campaign first
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV1_ORG_ID,
+                "advertiser_contract_id": ADV1_CONTRACT_ID,
+                "code": "BEH-FLIGHT-001",
+                "name": "Flight Test Campaign",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, resp.text
+        campaign_id = resp.json()["id"]
+
+        now = "2026-06-01T00:00:00Z"
+        end = "2026-07-01T00:00:00Z"
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{campaign_id}/flights",
+            json={"start_at": now, "end_at": end, "name": "Summer Flight"},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["campaign_id"] == campaign_id
+        assert body["name"] == "Summer Flight"
+
+        # Outbox event written
+        rows = _raw_sql(
+            f"SELECT COUNT(*) FROM outbox_events "
+            f"WHERE aggregate_id = '{campaign_id}' AND event_type = 'campaign.flight.changed'"
+        )
+        assert rows[0][0] >= 1, "Outbox event not written for flight creation"
+
+    def test_update_flight(self, client, user_ids):
+        token = _token(user_ids["advertiser"])
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV1_ORG_ID,
+                "advertiser_contract_id": ADV1_CONTRACT_ID,
+                "code": "BEH-FLIGHT-UPD",
+                "name": "Flight Update Campaign",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201
+        campaign_id = resp.json()["id"]
+
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{campaign_id}/flights",
+            json={"start_at": "2026-06-01T00:00:00Z", "end_at": "2026-07-01T00:00:00Z"},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201
+        flight_id = resp.json()["id"]
+
+        resp = client.patch(
+            f"/api/v1/identity/campaigns/{campaign_id}/flights/{flight_id}",
+            json={"name": "Updated Flight Name"},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["name"] == "Updated Flight Name"
+
+    def test_cross_org_flight_create_rejected(self, client, user_ids):
+        """Advertiser cannot create a flight on another org's campaign."""
+        token = _token(user_ids["advertiser"])
+        # Advertiser is scoped to ADV1; trying with ADV2 org should fail
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV2_ORG_ID,
+                "advertiser_contract_id": ADV2_CONTRACT_ID,
+                "code": "BEH-FL-XORG",
+                "name": "Cross Org Camp",
+            },
+            headers=_auth(token),
+        )
+        # Advertiser scoped to ADV1 cannot create under ADV2
+        assert resp.status_code in (403, 422), (
+            f"Expected 403/422 cross-org create rejected, got {resp.status_code}"
+        )
+
+    def test_flight_on_non_draft_campaign_rejected(self, client, user_ids):
+        """Cannot add flight to a non-draft campaign."""
+        token = _token(user_ids["advertiser"])
+        # Create + approve a campaign first
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV1_ORG_ID,
+                "advertiser_contract_id": ADV1_CONTRACT_ID,
+                "code": "BEH-FL-NODRAFT",
+                "name": "No Draft Flight",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201
+        campaign_id = resp.json()["id"]
+
+        # Need flight + placement + creative to request approval
+        client.post(
+            f"/api/v1/identity/campaigns/{campaign_id}/flights",
+            json={"start_at": "2026-06-01T00:00:00Z", "end_at": "2026-07-01T00:00:00Z"},
+            headers=_auth(token),
+        )
+        client.post(
+            f"/api/v1/identity/campaigns/{campaign_id}/placements",
+            json={"store_id": SEED_STORE_ID},
+            headers=_auth(token),
+        )
+        client.post(
+            f"/api/v1/identity/campaigns/{campaign_id}/creatives",
+            json={
+                "code": "BEH-CR-NODRAFT",
+                "name": "Creative",
+                "media_type": "video/mp4",
+                "sha256_checksum": "a" * 64,
+                "file_size_bytes": 1000,
+            },
+            headers=_auth(token),
+        )
+        # Request approval
+        client.post(
+            f"/api/v1/identity/campaigns/{campaign_id}/request-approval",
+            headers=_auth(token),
+        )
+
+        # Now try to add a flight — should fail (not draft)
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{campaign_id}/flights",
+            json={"start_at": "2026-06-01T00:00:00Z", "end_at": "2026-07-01T00:00:00Z"},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 409, (
+            f"Expected 409 for non-draft flight creation, got {resp.status_code}"
+        )
+
+
+class TestCampaignSetupPlacements:
+    """Placement create/update behavioral tests."""
+
+    def test_create_placement_store_target(self, client, user_ids):
+        token = _token(user_ids["advertiser"])
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV1_ORG_ID,
+                "advertiser_contract_id": ADV1_CONTRACT_ID,
+                "code": "BEH-PLAC-001",
+                "name": "Placement Test",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201
+        campaign_id = resp.json()["id"]
+
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{campaign_id}/placements",
+            json={"store_id": SEED_STORE_ID},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["campaign_id"] == campaign_id
+
+        # Outbox
+        rows = _raw_sql(
+            f"SELECT COUNT(*) FROM outbox_events "
+            f"WHERE aggregate_id = '{campaign_id}' AND event_type = 'campaign.placement.changed'"
+        )
+        assert rows[0][0] >= 1
+
+    def test_placement_no_target_rejected(self, client, user_ids):
+        token = _token(user_ids["advertiser"])
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV1_ORG_ID,
+                "advertiser_contract_id": ADV1_CONTRACT_ID,
+                "code": "BEH-PLAC-BAD",
+                "name": "Bad Placement",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201
+        campaign_id = resp.json()["id"]
+
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{campaign_id}/placements",
+            json={},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 422, (
+            f"Expected 422 for no-target placement, got {resp.status_code}"
+        )
+
+    def test_cross_org_placement_rejected(self, client, user_ids):
+        token = _token(user_ids["advertiser"])
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV2_ORG_ID,
+                "advertiser_contract_id": ADV2_CONTRACT_ID,
+                "code": "BEH-PLAC-XORG",
+                "name": "Cross Org Place Camp",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code in (403, 422), (
+            f"Expected 403/422 cross-org campaign create, got {resp.status_code}"
+        )
+
+
+class TestCampaignSetupCreatives:
+    """Creative asset create + attach behavioral tests."""
+
+    def test_create_creative_on_draft(self, client, user_ids):
+        token = _token(user_ids["advertiser"])
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV1_ORG_ID,
+                "advertiser_contract_id": ADV1_CONTRACT_ID,
+                "code": "BEH-CR-001",
+                "name": "Creative Test",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201
+        campaign_id = resp.json()["id"]
+
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{campaign_id}/creatives",
+            json={
+                "code": "BEH-CR-VID01",
+                "name": "Test Video",
+                "media_type": "video/mp4",
+                "sha256_checksum": "b" * 64,
+                "file_size_bytes": 2048000,
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["code"] == "BEH-CR-VID01"
+        # No storage secrets
+        assert "storage_bucket" not in body
+        assert "storage_key" not in body
+
+        # Outbox
+        rows = _raw_sql(
+            f"SELECT COUNT(*) FROM outbox_events "
+            f"WHERE aggregate_id = '{campaign_id}' AND event_type = 'campaign.creative.changed'"
+        )
+        assert rows[0][0] >= 1
+
+    def test_cross_org_creative_rejected(self, client, user_ids):
+        token = _token(user_ids["advertiser"])
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV2_ORG_ID,
+                "advertiser_contract_id": ADV2_CONTRACT_ID,
+                "code": "BEH-CR-XORG-CAMP",
+                "name": "Cross Org Creative Camp",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code in (403, 422), (
+            f"Expected 403/422 cross-org campaign create, got {resp.status_code}"
+        )
+
+
+class TestCampaignFullPilotSetup:
+    """End-to-end campaign setup: create → flight → placement → creative → request approval."""
+
+    def test_full_pilot_setup_flow(self, client, user_ids):
+        token = _token(user_ids["advertiser"])
+
+        # 1. Create campaign
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV1_ORG_ID,
+                "advertiser_contract_id": ADV1_CONTRACT_ID,
+                "code": "BEH-PILOT-FULL",
+                "name": "Pilot Full Flow",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, f"Campaign create: {resp.text}"
+        campaign_id = resp.json()["id"]
+
+        # 2. Add flight
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{campaign_id}/flights",
+            json={
+                "start_at": "2026-07-01T00:00:00Z",
+                "end_at": "2026-08-01T00:00:00Z",
+                "name": "July Flight",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, f"Flight create: {resp.text}"
+        flight_id = resp.json()["id"]
+
+        # 3. Add placement
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{campaign_id}/placements",
+            json={"store_id": SEED_STORE_ID},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, f"Placement create: {resp.text}"
+        placement_id = resp.json()["id"]
+
+        # 4. Add creative
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{campaign_id}/creatives",
+            json={
+                "code": "BEH-PILOT-CR01",
+                "name": "Pilot Creative",
+                "media_type": "video/mp4",
+                "sha256_checksum": "d" * 64,
+                "file_size_bytes": 5000000,
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, f"Creative create: {resp.text}"
+        asset_id = resp.json()["id"]
+
+        # 5. Request approval
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{campaign_id}/request-approval",
+            headers=_auth(token),
+        )
+        assert resp.status_code == 200, f"Request approval: {resp.text}"
+        body = resp.json()
+        assert body["old_status"] == "draft"
+        assert body["new_status"] == "pending_approval"
+
+        # Verify outbox events for each step
+        for ev_type in [
+            "campaign.flight.changed",
+            "campaign.placement.changed",
+            "campaign.creative.changed",
+            "campaign.approval_requested",
+        ]:
+            rows = _raw_sql(
+                f"SELECT COUNT(*) FROM outbox_events "
+                f"WHERE aggregate_id = '{campaign_id}' AND event_type = '{ev_type}'"
+            )
+            assert rows[0][0] >= 1, f"Missing outbox event: {ev_type}"
