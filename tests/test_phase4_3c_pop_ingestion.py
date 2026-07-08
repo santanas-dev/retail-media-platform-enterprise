@@ -226,5 +226,71 @@ class TestPopConstants(unittest.TestCase):
         self.assertEqual(POP_CLOCK_DRIFT_MINUTES, 5)
 
 
+class TestPopDedupViolationDetection(unittest.TestCase):
+    """Unit tests for _is_pop_dedup_unique_violation.
+
+    No database required — the helper duck-types the DB-API exception
+    chain, so we test with lightweight mocks.
+    """
+
+    def _mock_integrity_error(self, cls_name, constraint_name=None):
+        """Construct an IntegrityError wrapping a mock DB-API exception."""
+        from sqlalchemy.exc import IntegrityError
+
+        class MockDBAPIError(Exception):
+            pass
+
+        # Attach class name dynamically
+        MockDBAPIError.__name__ = cls_name
+        orig = MockDBAPIError("duplicate key")
+        if constraint_name is not None:
+            orig.constraint_name = constraint_name  # type: ignore[attr-defined]
+        exc = IntegrityError("stmt", {}, orig)
+        return exc
+
+    def test_dedup_pkey_violation_returns_true(self):
+        from packages.domain.pop_ingestion import _is_pop_dedup_unique_violation
+        exc = self._mock_integrity_error(
+            "UniqueViolationError", "pop_dedup_index_pkey",
+        )
+        self.assertTrue(_is_pop_dedup_unique_violation(exc))
+
+    def test_dedup_with_prefix_returns_true(self):
+        """Constraint name like 'uq_pop_dedup_index_event' should match."""
+        from packages.domain.pop_ingestion import _is_pop_dedup_unique_violation
+        exc = self._mock_integrity_error(
+            "UniqueViolationError", "uq_pop_dedup_index_event_id",
+        )
+        self.assertTrue(_is_pop_dedup_unique_violation(exc))
+
+    def test_unrelated_unique_violation_returns_false(self):
+        from packages.domain.pop_ingestion import _is_pop_dedup_unique_violation
+        exc = self._mock_integrity_error(
+            "UniqueViolationError", "campaigns_pkey",
+        )
+        self.assertFalse(_is_pop_dedup_unique_violation(exc))
+
+    def test_fk_violation_returns_false(self):
+        from packages.domain.pop_ingestion import _is_pop_dedup_unique_violation
+        exc = self._mock_integrity_error("ForeignKeyViolationError")
+        self.assertFalse(_is_pop_dedup_unique_violation(exc))
+
+    def test_check_violation_returns_false(self):
+        from packages.domain.pop_ingestion import _is_pop_dedup_unique_violation
+        exc = self._mock_integrity_error("CheckViolationError")
+        self.assertFalse(_is_pop_dedup_unique_violation(exc))
+
+    def test_not_null_violation_returns_false(self):
+        from packages.domain.pop_ingestion import _is_pop_dedup_unique_violation
+        exc = self._mock_integrity_error("NotNullViolationError")
+        self.assertFalse(_is_pop_dedup_unique_violation(exc))
+
+    def test_no_orig_returns_false(self):
+        from sqlalchemy.exc import IntegrityError
+        from packages.domain.pop_ingestion import _is_pop_dedup_unique_violation
+        exc = IntegrityError("bare statement", {}, Exception("inner"))
+        self.assertFalse(_is_pop_dedup_unique_violation(exc))
+
+
 if __name__ == "__main__":
     unittest.main()

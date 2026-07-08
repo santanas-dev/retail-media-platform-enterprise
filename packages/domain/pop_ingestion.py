@@ -28,6 +28,26 @@ from packages.domain.schemas import (
 STALE_EVENT_DAYS = 30
 
 
+def _is_pop_dedup_unique_violation(exc: IntegrityError) -> bool:
+    """Return True if exc is a UniqueViolation on pop_dedup_index.
+
+    Duck-types asyncpg's UniqueViolationError via .orig without a hard
+    import, so the domain stays decoupled from the DB-API driver.
+
+    Safety: only returns True when the constraint name contains
+    "pop_dedup".  FK violations, check violations, and other unique
+    constraints are not matched.
+    """
+    orig = getattr(exc, "orig", None)
+    if orig is None:
+        return False
+    cls_name = type(orig).__name__
+    if "UniqueViolation" not in cls_name:
+        return False
+    constraint_name = getattr(orig, "constraint_name", "") or ""
+    return "pop_dedup" in constraint_name
+
+
 async def _resolve_manifest(
     session: AsyncSession, manifest_id: str,
 ) -> DeliveryManifest | None:
@@ -89,9 +109,11 @@ async def _write_pop_event(
             payload=outbox_payload,
         )
         return None  # success — caller sets exact status
-    except IntegrityError:
+    except IntegrityError as exc:
         await sp.rollback()
-        return {"status": "duplicate", "reason": "duplicate_event_id"}
+        if _is_pop_dedup_unique_violation(exc):
+            return {"status": "duplicate", "reason": "duplicate_event_id"}
+        raise
 
 
 async def ingest_pop_event(
