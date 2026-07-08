@@ -72,7 +72,7 @@ jobs:
         run: |
           # Test that service modules import correctly.
           # pip deps are installed in CI (setup-python does not auto-install them).
-          pip install fastapi uvicorn sqlalchemy PyJWT 2>&1 | tail -1
+          pip install fastapi uvicorn sqlalchemy PyJWT bcrypt 2>&1 | tail -1
           python -c "
           import sys, os
           sys.path.insert(0, '.')

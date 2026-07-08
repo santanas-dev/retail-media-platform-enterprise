@@ -350,7 +350,7 @@ VALUES ('{_rp(143)}', '{SEED_ROLE_IDS["operator"]}', '{SEED_PERM_IDS["devices.re
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
-VALUES ('{_rp(206)}', '{SEED_ROLE_IDS["operator"]}', '{SEED_PERM_IDS["advertisers.read"]}')
+VALUES ('{_rp(216)}', '{SEED_ROLE_IDS["operator"]}', '{SEED_PERM_IDS["advertisers.read"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
