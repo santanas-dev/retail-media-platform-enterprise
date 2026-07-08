@@ -21,6 +21,8 @@ os.environ["JWT_SECRET"] = "behavioral-test-secret-at-least-32-chars"
 # Behavioral test *fixtures* use a separate DB_URL (owner) with admin
 # bypass for setup/cleanup only.
 _APP_DB_URL = os.environ.get("BEHAVIORAL_APP_DB_URL", "").strip()
+if not _APP_DB_URL:
+    _APP_DB_URL = os.environ.get("DATABASE_URL", "").strip()
 if _APP_DB_URL:
     os.environ["DATABASE_URL"] = _APP_DB_URL
 else:
@@ -114,6 +116,9 @@ def _setup_sql(ph):
     ; DELETE FROM local_credentials WHERE user_id LIKE 'beh-%'
     ; DELETE FROM user_roles WHERE user_id LIKE 'beh-%'
     ; DELETE FROM advertiser_user_memberships WHERE user_id LIKE 'beh-%'
+    -- Clean FK references from app-layer operations on seed campaigns
+    ; DELETE FROM campaign_status_history WHERE changed_by LIKE 'beh-%'
+    ; DELETE FROM campaign_approvals WHERE reviewed_by LIKE 'beh-%'
     ; DELETE FROM users WHERE id LIKE 'beh-%'
     ; INSERT INTO users (id,code,username,email,display_name,auth_provider,status) VALUES
       ('{u["readonly"]}','BEH-RO','beh-readonly','beh-ro@t.local','Beh RO','local_advertiser','active'),
