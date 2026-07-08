@@ -57,10 +57,12 @@ def db_available():
 
 
 def _raw_sql(sql: str, params: dict | None = None):
-    """Run raw SQL via engine.begin() and return fetched rows."""
+    """Run raw SQL via engine.connect() and return fetched rows."""
     async def _run():
         engine = create_async_engine(DB_URL, echo=False)
         async with engine.connect() as conn:
+            await conn.execute(text("SELECT set_config('app.rmp_is_admin', 'true', false)"))
+            await conn.commit()
             result = await conn.execute(text(sql), params or {})
             rows = result.fetchall()
         await engine.dispose()
@@ -73,6 +75,7 @@ def _raw_exec(sql: str, params: dict | None = None):
     async def _run():
         engine = create_async_engine(DB_URL, echo=False)
         async with engine.begin() as conn:
+            await conn.execute(text("SELECT set_config('app.rmp_is_admin', 'true', true)"))
             await conn.execute(text(sql), params or {})
         await engine.dispose()
     asyncio.run(_run())
@@ -85,6 +88,7 @@ def _enqueue(**kw) -> str:
         eid = str(uuid.uuid4())
         engine = create_async_engine(DB_URL, echo=False)
         async with engine.begin() as conn:
+            await conn.execute(text("SELECT set_config('app.rmp_is_admin', 'true', true)"))
             await conn.execute(
                 text("INSERT INTO outbox_events "
                      "(id, event_type, event_version, aggregate_type, aggregate_id, "

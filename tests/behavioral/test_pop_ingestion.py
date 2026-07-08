@@ -39,6 +39,8 @@ def _raw_sql(sql: str, params=None):
     async def _run():
         engine = create_async_engine(DB_URL, echo=False)
         async with engine.connect() as conn:
+            await conn.execute(text("SELECT set_config('app.rmp_is_admin', 'true', false)"))
+            await conn.commit()
             result = await conn.execute(text(sql), params or {})
             rows = result.fetchall()
         await engine.dispose()
