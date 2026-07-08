@@ -11,6 +11,7 @@ on:
       - "apps/admin-web/**"
       - "packages/**"
       - "infra/compose/**"
+      - "tests/**"
       - "scripts/ci/**"
       - ".github/workflows/phase1-ci.yml"
   pull_request:
