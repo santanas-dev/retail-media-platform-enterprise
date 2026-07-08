@@ -69,7 +69,7 @@ jobs:
         run: |
           # Test that service modules import correctly.
           # pip deps are installed in CI (setup-python does not auto-install them).
-          pip install fastapi uvicorn 2>&1 | tail -1
+          pip install fastapi uvicorn sqlalchemy 2>&1 | tail -1
           python -c "
           import sys, os
           sys.path.insert(0, '.')
@@ -93,7 +93,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install deps
-        run: pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT
+        run: pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT nats-py jsonschema pyyaml
       - name: Run tests
         run: python -m pytest tests/ -v
   import-boundaries:
