@@ -61,6 +61,7 @@ class TestSecurityConfig(unittest.TestCase):
         """Production mode raises on weak JWT_SECRET."""
         os.environ["ENVIRONMENT"] = "production"
         os.environ["JWT_SECRET"] = "short"
+        os.environ["CORS_ALLOWED_ORIGINS"] = "https://example.com"
         with self.assertRaises(ValueError):
             sec_config.SecurityConfig()
 
@@ -68,6 +69,7 @@ class TestSecurityConfig(unittest.TestCase):
         """Production mode rejects common weak JWT_SECRET values."""
         os.environ["ENVIRONMENT"] = "production"
         os.environ["JWT_SECRET"] = "secret"
+        os.environ["CORS_ALLOWED_ORIGINS"] = "https://example.com"
         with self.assertRaises(ValueError):
             sec_config.SecurityConfig()
 
@@ -75,6 +77,7 @@ class TestSecurityConfig(unittest.TestCase):
         """Production mode accepts JWT_SECRET >= 32 chars."""
         os.environ["ENVIRONMENT"] = "production"
         os.environ["JWT_SECRET"] = "a" * 32
+        os.environ["CORS_ALLOWED_ORIGINS"] = "https://example.com"
         cfg = sec_config.SecurityConfig()
         self.assertFalse(cfg.dev_mode)
         self.assertEqual(cfg.jwt_secret, "a" * 32)
