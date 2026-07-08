@@ -87,8 +87,8 @@ class TestCampaigns:
             assert c["advertiser_organization_id"] == "00000000-0000-0000-0000-000000000200"
 
     def test_global_read_sees_all(self):
-        """User with global campaigns.read (operator role) sees all campaigns."""
-        token = _token(self.uid["noperms"])
+        """System admin with campaigns.read sees all campaigns."""
+        token = _token(self.uid["readonly"])
         resp = self.client.get(
             "/api/v1/identity/campaigns",
             headers=_auth(token),

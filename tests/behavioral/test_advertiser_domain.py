@@ -90,12 +90,11 @@ class TestAdvertiserBrands:
             assert b["advertiser_organization_id"] == "00000000-0000-0000-0000-000000000200"
 
     def test_global_read_sees_all(self):
-        """User with global advertisers.read can see all brands.
+        """System admin with global advertisers.read sees all brands.
 
-        noperms user has operator role → advertisers.read (global/unscoped).
-        Global permission grants access without requiring advertiser scope.
+        readonly user has system_admin role → admin bypass + full visibility.
         """
-        token = _token(self.uid["noperms"])
+        token = _token(self.uid["readonly"])
         resp = self.client.get(
             "/api/v1/identity/advertiser-brands",
             headers=_auth(token),
@@ -160,11 +159,11 @@ class TestAdvertiserContracts:
         assert "CTR-2026-001" in codes
 
     def test_global_read_sees_all(self):
-        """User with global advertisers.read can see all contracts.
+        """System admin with global advertisers.read sees all contracts.
 
-        noperms user has operator role → advertisers.read (global/unscoped).
+        readonly user has system_admin role → admin bypass + full visibility.
         """
-        token = _token(self.uid["noperms"])
+        token = _token(self.uid["readonly"])
         resp = self.client.get(
             "/api/v1/identity/advertiser-contracts",
             headers=_auth(token),

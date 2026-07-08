@@ -16,6 +16,19 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 os.environ["ENVIRONMENT"] = "dev"
 os.environ["JWT_SECRET"] = "behavioral-test-secret-at-least-32-chars"
 
+# NOBYPASSRLS: app DATABASE_URL must use the unprivileged app role
+# so that DB-level RLS policies are enforced on every API request.
+# Behavioral test *fixtures* use a separate DB_URL (owner) with admin
+# bypass for setup/cleanup only.
+_APP_DB_URL = os.environ.get("BEHAVIORAL_APP_DB_URL", "").strip()
+if _APP_DB_URL:
+    os.environ["DATABASE_URL"] = _APP_DB_URL
+else:
+    os.environ["DATABASE_URL"] = (
+        "postgresql+asyncpg://retail_media_app:retail_media_app_dev"
+        "@localhost:5432/retail_media_platform"
+    )
+
 import bcrypt
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine

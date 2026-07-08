@@ -117,9 +117,14 @@ class TestOutboxRelayBehavioral:
                 await _insert(engine, event_type="test.relay.success",
                               event_id=event_id, payload={"test": True})
                 count = await relay.run_once()
-                assert count == 1
-                assert pub.publish_count == 1
-                assert pub.last_published["msg_id"] == event_id
+                # Under NOBYPASSRLS there may be pre-existing pending events
+                assert count >= 1, f"Expected >=1, got {count}"
+                assert pub.publish_count >= 1
+                # The specific test event must have been published
+                our_event = next(
+                    (m for m in pub.published if m["msg_id"] == event_id), None
+                )
+                assert our_event is not None, f"Event {event_id} not published"
                 async with engine.connect() as conn:
                     result = await conn.execute(
                         text("SELECT status, published_at FROM outbox_events "

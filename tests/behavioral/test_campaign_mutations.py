@@ -37,9 +37,9 @@ SKIP_REASON = "RUN_BEHAVIORAL_TESTS=1 not set."
 ADV1_ORG_ID = "00000000-0000-0000-0000-000000000200"
 ADV1_BRAND1_ID = "00000000-0000-0000-0000-000000000210"
 ADV1_CONTRACT_ID = "00000000-0000-0000-0000-000000000212"
-ADV2_ORG_ID = "00000000-0000-0000-0000-000000000300"
-ADV2_BRAND_ID = "00000000-0000-0000-0000-000000000310"
-ADV2_CONTRACT_ID = "00000000-0000-0000-0000-000000000312"
+ADV2_ORG_ID = "00000000-0000-0000-0000-000000000201"  # matches seed
+ADV2_BRAND_ID = "00000000-0000-0000-0000-000000000311"
+ADV2_CONTRACT_ID = "00000000-0000-0000-0000-000000000313"
 
 
 @pytest.fixture
@@ -102,25 +102,21 @@ def _raw_exec(sql: str, params=None):
 
 
 _ADV2_SETUP_SQL = """
-    INSERT INTO advertiser_organizations (id, code, legal_name, display_name) VALUES
-    ('00000000-0000-0000-0000-000000000300','ADV-002',
-     'ООО «Тест-Орг 2»', 'Тест-Орг 2')
-    ON CONFLICT (code) DO NOTHING
-    ; INSERT INTO advertiser_brands (id, advertiser_organization_id, code, name, status) VALUES
-    ('00000000-0000-0000-0000-000000000310','00000000-0000-0000-0000-000000000300',
-     'BRAND-002','Бренд ADV-002','active')
+    -- ADV-002 org already exists in seed (id=201), just ensure brand+contract
+    INSERT INTO advertiser_brands (id, advertiser_organization_id, code, name, status) VALUES
+    ('00000000-0000-0000-0000-000000000311','00000000-0000-0000-0000-000000000201',
+     'BRAND-ADV2','Бренд ADV-002','active')
     ON CONFLICT (advertiser_organization_id, code) DO NOTHING
     ; INSERT INTO advertiser_contracts (id, advertiser_organization_id, code, name,
         contract_number, budget_limit_amount, budget_limit_currency, valid_from, status) VALUES
-    ('00000000-0000-0000-0000-000000000312','00000000-0000-0000-0000-000000000300',
-     'CONTRACT-002','Контракт ADV-002','2026/ADV-002',500000,'RUB','2026-01-01','active')
+    ('00000000-0000-0000-0000-000000000313','00000000-0000-0000-0000-000000000201',
+     'CTR-ADV2','Контракт ADV-002','2026/ADV-002',500000,'RUB','2026-01-01','active')
     ON CONFLICT (advertiser_organization_id, code) DO NOTHING
 """
 
 _ADV2_CLEANUP_SQL = """
-    DELETE FROM advertiser_contracts WHERE id='00000000-0000-0000-0000-000000000312'
-    ; DELETE FROM advertiser_brands WHERE id='00000000-0000-0000-0000-000000000310'
-    ; DELETE FROM advertiser_organizations WHERE id='00000000-0000-0000-0000-000000000300'
+    DELETE FROM advertiser_contracts WHERE id='00000000-0000-0000-0000-000000000313'
+    ; DELETE FROM advertiser_brands WHERE id='00000000-0000-0000-0000-000000000311'
 """
 
 
@@ -226,7 +222,7 @@ class TestCreateCampaignTenantIsolation:
 
     @pytest.fixture(autouse=True)
     def _setup_adv2(self, db_available):
-        """Create ADV-002 test org with brand/contract for cross-org tests."""
+        """Create ADV-002 test brand/contract for cross-org tests."""
         _raw_exec(_ADV2_SETUP_SQL)
         yield
         _raw_exec(_ADV2_CLEANUP_SQL)
@@ -235,7 +231,9 @@ class TestCreateCampaignTenantIsolation:
         return _token(user_ids[key])
 
     def test_scoped_advertiser_cannot_create_for_other_org(self, client, user_ids):
-        """Scoped advertiser (ADV-001) cannot create campaign for ADV-002."""
+        """Scoped advertiser (ADV-001) blocked from creating for ADV-002.
+        Under NOBYPASSRLS, contract validation (422) fires before scope check
+        because the scoped user cannot see ADV-002 contracts via RLS."""
         token = self._token_for(user_ids, "advertiser")
         resp = client.post(
             "/api/v1/identity/campaigns",
@@ -247,7 +245,9 @@ class TestCreateCampaignTenantIsolation:
             },
             headers=_auth(token),
         )
-        assert resp.status_code == 403, f"Expected 403, got {resp.status_code}: {resp.text}"
+        assert resp.status_code in (403, 422), (
+            f"Expected 403 or 422, got {resp.status_code}: {resp.text}"
+        )
 
     def test_scoped_advertiser_cannot_use_cross_org_brand(self, client, user_ids):
         """Scoped advertiser (ADV-001) cannot create campaign with ADV-002 brand."""
@@ -375,7 +375,8 @@ class TestCreateCampaignTenantIsolation:
         assert len(rows) == 0
 
     def test_wrong_org_rejection_does_not_write_outbox(self, client, user_ids):
-        """P2: scope rejection → no campaign, no outbox event."""
+        """P2: rejection → no campaign, no outbox event.
+        Under NOBYPASSRLS, contract validation (422) may fire before scope check."""
         token = self._token_for(user_ids, "advertiser")
         resp = client.post(
             "/api/v1/identity/campaigns",
@@ -387,14 +388,16 @@ class TestCreateCampaignTenantIsolation:
             },
             headers=_auth(token),
         )
-        assert resp.status_code == 403
+        assert resp.status_code in (403, 422), (
+            f"Expected 403 or 422, got {resp.status_code}: {resp.text}"
+        )
 
         # No campaign with that code
         rows = _raw_sql(
             "SELECT id FROM campaigns WHERE code = :code",
             {"code": "CAMP-NOBOX"},
         )
-        assert len(rows) == 0, "Campaign should not exist after 403 rejection"
+        assert len(rows) == 0, "Campaign should not exist after rejection"
 
         # No outbox event for it either
         outbox_rows = _raw_sql(
@@ -402,7 +405,7 @@ class TestCreateCampaignTenantIsolation:
             "(SELECT id FROM campaigns WHERE code = :code)",
             {"code": "CAMP-NOBOX"},
         )
-        assert len(outbox_rows) == 0, "Outbox event should not exist after 403 rejection"
+        assert len(outbox_rows) == 0, "Outbox event should not exist after rejection"
 
 
 # ---------------------------------------------------------------------------
@@ -447,16 +450,19 @@ class TestUpdateCampaign:
 
     def test_update_non_draft_rejected(self, client, user_ids):
         """P2 fix: cannot update a campaign in non-draft status.
-        Uses seed campaign CAMP-2026-001 — change its status, then PATCH."""
+        Uses seed campaign CAMP-2026-001 — ensure draft, change to active, PATCH."""
         token = _token(user_ids["readonly"])
 
-        # Find the seed campaign
+        # Find the seed campaign and ensure it starts as draft
+        _raw_exec(
+            "UPDATE campaigns SET status = 'draft' WHERE code = 'CAMP-2026-001'"
+        )
         rows = _raw_sql(
             "SELECT id, status FROM campaigns WHERE code = 'CAMP-2026-001'"
         )
         assert len(rows) == 1
-        cid, old_status = rows[0][0], rows[0][1]
-        assert old_status == "draft"
+        cid = rows[0][0]
+        assert rows[0][1] == "draft"
 
         # Change status to 'active' via direct SQL (simulating approved state)
         _raw_exec(
@@ -497,7 +503,7 @@ class TestUpdateArchiveTenantIsolation:
 
     @pytest.fixture(autouse=True)
     def _setup_adv2(self, db_available):
-        """Create ADV-002 test org with brand/contract for cross-org tests."""
+        """Create ADV-002 test brand/contract for cross-org tests."""
         _raw_exec(_ADV2_SETUP_SQL)
         yield
         _raw_exec(_ADV2_CLEANUP_SQL)
@@ -516,7 +522,8 @@ class TestUpdateArchiveTenantIsolation:
         return resp.json()["id"]
 
     def test_scoped_advertiser_cannot_update_other_org_campaign(self, client, user_ids):
-        """Scoped advertiser (ADV-001) cannot PATCH a campaign owned by ADV-002."""
+        """Scoped advertiser (ADV-001) cannot PATCH a campaign owned by ADV-002.
+        Under NOBYPASSRLS, RLS hides the campaign → 409 (not found/draft)."""
         # Admin creates a campaign for ADV-002
         admin_token = _token(user_ids["readonly"])
         cid = self._create_draft(
@@ -531,12 +538,13 @@ class TestUpdateArchiveTenantIsolation:
             json={"name": "Hijack Attempt"},
             headers=_auth(scoped_token),
         )
-        assert resp.status_code == 403, (
-            f"Expected 403 (scope), got {resp.status_code}: {resp.text}"
+        assert resp.status_code in (403, 409), (
+            f"Under RLS expected 403 or 409 (hidden), got {resp.status_code}: {resp.text}"
         )
 
     def test_scoped_advertiser_cannot_archive_other_org_campaign(self, client, user_ids):
-        """Scoped advertiser (ADV-001) cannot archive a campaign owned by ADV-002."""
+        """Scoped advertiser (ADV-001) cannot archive a campaign owned by ADV-002.
+        Under NOBYPASSRLS, RLS hides the campaign → 404 (not found)."""
         admin_token = _token(user_ids["readonly"])
         cid = self._create_draft(
             client, admin_token, "CAMP-ISO-ARCH",
@@ -548,8 +556,8 @@ class TestUpdateArchiveTenantIsolation:
             f"/api/v1/identity/campaigns/{cid}/archive",
             headers=_auth(scoped_token),
         )
-        assert resp.status_code == 403, (
-            f"Expected 403 (scope), got {resp.status_code}: {resp.text}"
+        assert resp.status_code in (403, 404, 409), (
+            f"Under RLS expected 403/404/409 (hidden), got {resp.status_code}: {resp.text}"
         )
 
     def test_admin_can_update_any_org_campaign(self, client, user_ids):
@@ -685,11 +693,10 @@ class TestRLSWriteEnforcement:
         assert resp.status_code == 201, resp.text
 
     def test_cross_org_create_rejected_by_rls(self, client, user_ids):
-        """Scoped advertiser → foreign org → DB RLS blocks INSERT.
+        """Scoped advertiser → foreign org → rejected.
 
-        The app-layer check (S-004) returns 403 first, but even if
-        bypassed, the DB RLS would reject the INSERT.
-        """
+        Under NOBYPASSRLS, contract validation (422) fires first because
+        the scoped user cannot see foreign contracts via RLS."""
         token = _token(user_ids["advertiser"])
         # ADV2_ORG_ID is not in the advertiser's scope
         resp = client.post(
@@ -702,8 +709,8 @@ class TestRLSWriteEnforcement:
             },
             headers=_auth(token),
         )
-        assert resp.status_code == 403, (
-            f"Expected 403 cross-org rejection, got {resp.status_code}: {resp.text}"
+        assert resp.status_code in (403, 422), (
+            f"Expected 403 or 422 cross-org rejection, got {resp.status_code}: {resp.text}"
         )
 
     def test_no_outbox_on_rejected_write(self, client, user_ids):
@@ -719,7 +726,9 @@ class TestRLSWriteEnforcement:
             },
             headers=_auth(token),
         )
-        assert resp.status_code == 403
+        assert resp.status_code in (403, 422), (
+            f"Expected 403 or 422, got {resp.status_code}: {resp.text}"
+        )
 
         # Verify no outbox event for rejected campaign
         rows = _raw_sql(
@@ -727,4 +736,3 @@ class TestRLSWriteEnforcement:
             "(SELECT id FROM campaigns WHERE code = 'RLS-NOOUTBOX')",
         )
         assert rows[0][0] == 0, "Outbox row found for rejected campaign"
-
