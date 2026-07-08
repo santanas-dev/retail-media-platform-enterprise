@@ -67,6 +67,8 @@ jobs:
         run: python -m py_compile ${{ matrix.path }}
       - name: Import smoke (service entrypoints only)
         if: startsWith(matrix.path, 'apps/')
+        env:
+          ENVIRONMENT: dev
         run: |
           # Test that service modules import correctly.
           # pip deps are installed in CI (setup-python does not auto-install them).
@@ -237,6 +239,8 @@ jobs:
         working-directory: apps/control-api
         run: alembic upgrade head
       - name: Seed database
+        env:
+          DATABASE_URL: postgresql+asyncpg://retail_media_owner:retail_media_owner_pass@localhost:5432/retail_media_platform
         run: python3 apps/control-api/seed.py
       - name: Create app runtime role (non-superuser NOBYPASSRLS)
         run: |
