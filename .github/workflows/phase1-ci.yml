@@ -272,7 +272,23 @@ jobs:
           engine.dispose()
           "
       - name: Run behavioral tests (non-BYPASSRLS app role)
+        env:
+          DATABASE_URL: postgresql+asyncpg://retail_media_app:retail_media_app@localhost:5432/retail_media_platform
         run: |
+          # Verify app role has NOBYPASSRLS
+          python3 -c "
+          import os
+          from sqlalchemy import create_engine, text
+          engine = create_engine(os.environ['DATABASE_URL'].replace('+asyncpg',''), echo=False)
+          with engine.connect() as conn:
+              row = conn.execute(text(\"SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = 'retail_media_app'\")).fetchone()
+              assert row is not None, 'retail_media_app role not found'
+              assert not row[0], 'retail_media_app must not be superuser'
+              assert not row[1], 'retail_media_app must not have BYPASSRLS'
+              print(f'S-008 gate: app role superuser={row[0]}, bypassrls={row[1]} — OK')
+          engine.dispose()
+          "
+          # Run behavioral tests with NOBYPASSRLS app connection
           python3 -m pytest tests/behavioral/ -v --tb=short 2>&1 | tee /tmp/behavioral-output.txt
           PYTEST_EXIT=${PIPESTATUS[0]}
           # Fail if zero tests passed (all skipped or zero collected)

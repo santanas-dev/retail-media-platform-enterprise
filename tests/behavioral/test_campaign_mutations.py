@@ -633,3 +633,94 @@ class TestArchiveCampaign:
     def test_no_token_archive_returns_401(self, client):
         resp = client.post("/api/v1/identity/campaigns/some-id/archive")
         assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# S-008: DB write RLS enforcement (Phase 4.1e)
+# ---------------------------------------------------------------------------
+# Tests prove campaign mutations succeed/fail correctly under
+# NOBYPASSRLS when the app connects as retail_media_app.
+
+
+class TestRLSWriteEnforcement:
+    """DB-layer RLS must allow in-scope writes and reject cross-scope.
+
+    These tests send HTTP requests through the FastAPI app (TestClient).
+    When DATABASE_URL points to a NOBYPASSRLS role (CI), the DB RLS
+    policies enforce the same tenant isolation as the app-layer checks.
+    """
+
+    def test_admin_creates_campaign_rls_pass(self, client, user_ids):
+        """Admin creates campaign — RLS INSERT policy allows (admin bypass)."""
+        token = _token(user_ids["readonly"])  # system_admin
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV1_ORG_ID,
+                "advertiser_contract_id": ADV1_CONTRACT_ID,
+                "code": "RLS-ADMIN-001",
+                "name": "RLS Admin Create",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, resp.text
+
+    def test_scoped_advertiser_creates_in_own_org_rls_pass(self, client, user_ids):
+        """Scoped advertiser creates campaign in own org — RLS allows."""
+        token = _token(user_ids["advertiser"])
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV1_ORG_ID,
+                "advertiser_contract_id": ADV1_CONTRACT_ID,
+                "code": "RLS-SCOPED-001",
+                "name": "RLS Scoped Create",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, resp.text
+
+    def test_cross_org_create_rejected_by_rls(self, client, user_ids):
+        """Scoped advertiser → foreign org → DB RLS blocks INSERT.
+
+        The app-layer check (S-004) returns 403 first, but even if
+        bypassed, the DB RLS would reject the INSERT.
+        """
+        token = _token(user_ids["advertiser"])
+        # ADV2_ORG_ID is not in the advertiser's scope
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV2_ORG_ID,
+                "advertiser_contract_id": ADV2_CONTRACT_ID,
+                "code": "RLS-XORG-001",
+                "name": "RLS Cross Org",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 403, (
+            f"Expected 403 cross-org rejection, got {resp.status_code}: {resp.text}"
+        )
+
+    def test_no_outbox_on_rejected_write(self, client, user_ids):
+        """Rejected campaign create must not leave outbox rows."""
+        token = _token(user_ids["advertiser"])
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV2_ORG_ID,
+                "advertiser_contract_id": ADV2_CONTRACT_ID,
+                "code": "RLS-NOOUTBOX",
+                "name": "No Outbox",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 403
+
+        # Verify no outbox event for rejected campaign
+        rows = _raw_sql(
+            "SELECT COUNT(*) FROM outbox_events WHERE aggregate_id IN "
+            "(SELECT id FROM campaigns WHERE code = 'RLS-NOOUTBOX')",
+        )
+        assert rows[0][0] == 0, "Outbox row found for rejected campaign"
+
