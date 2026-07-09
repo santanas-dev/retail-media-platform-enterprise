@@ -102,20 +102,30 @@ POP_IDS = {
 
 TEST_PASSWORD = "TestPassword123!"
 
+# Single cached engine for all fixture setup/teardown — avoids
+# the O(N×2) engine creation that exhausts max_connections.
+_setup_engine = None
+
+
+def _get_setup_engine():
+    global _setup_engine
+    if _setup_engine is None:
+        _setup_engine = create_async_engine(DB_URL, echo=False)
+    return _setup_engine
+
 
 async def _check_db():
     try:
-        engine = create_async_engine(DB_URL, echo=False)
+        engine = _get_setup_engine()
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-        await engine.dispose()
         return True
     except Exception:
         return False
 
 
 async def _run_sql(sql: str):
-    engine = create_async_engine(DB_URL, echo=False)
+    engine = _get_setup_engine()
     async with engine.begin() as conn:
         # Bypass RLS for test fixture setup/cleanup
         await conn.execute(text("SELECT set_config('app.rmp_is_admin', 'true', true)"))
@@ -123,7 +133,6 @@ async def _run_sql(sql: str):
             s = stmt.strip()
             if s and not s.startswith("--"):
                 await conn.execute(text(s))
-    await engine.dispose()
 
 
 def _setup_sql(ph):
@@ -405,9 +414,35 @@ def _load_control_api_app():
 
 @pytest.fixture(scope="session")
 def app():
-    """Load the control-api FastAPI app once per test session."""
+    """Load the control-api FastAPI app once per test session.
+    Creates a SINGLE shared NullPool engine for all requests,
+    eliminating per-request engine-creation spam that exhausts
+    PostgreSQL connections."""
+    from packages.domain.database import (
+        create_engine, set_global_engine, get_session,
+    )
+    from packages.api.dependencies import get_db
+    from sqlalchemy.ext.asyncio import create_async_engine as _cae
+    from sqlalchemy.pool import NullPool
+
     reset_security_config()
-    return _load_control_api_app()
+
+    app_db_url = os.environ.get("DATABASE_URL", "").strip()
+    if not app_db_url:
+        app_db_url = (
+            "postgresql+asyncpg://retail_media_app:retail_media_app"
+            "@localhost:5432/retail_media_platform"
+        )
+    engine = _cae(app_db_url, echo=False, poolclass=NullPool)
+    set_global_engine(engine)
+
+    async def _override_get_db():
+        async with get_session(engine) as session:
+            yield session
+
+    app_obj = _load_control_api_app()
+    app_obj.dependency_overrides[get_db] = _override_get_db
+    return app_obj
 
 
 @pytest.fixture(scope="session")

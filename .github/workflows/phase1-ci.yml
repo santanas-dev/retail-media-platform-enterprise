@@ -240,9 +240,6 @@ jobs:
             exit 1
           fi
           echo "PostgreSQL ready."
-          # Increase max_connections for behavioral test throughput
-          echo "ALTER SYSTEM SET max_connections = 300; SELECT pg_reload_conf();" | \
-            PGPASSWORD=retail_media_owner_pass psql -h 127.0.0.1 -U retail_media_owner -d retail_media_platform
       - name: Run migrations
         working-directory: apps/control-api
         run: alembic upgrade head
