@@ -438,7 +438,8 @@ def app():
 
     async def _override_get_db():
         async with get_session(engine) as session:
-            yield session
+            async with session.begin():
+                yield session
 
     app_obj = _load_control_api_app()
     app_obj.dependency_overrides[get_db] = _override_get_db
