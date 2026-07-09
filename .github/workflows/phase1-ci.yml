@@ -228,7 +228,7 @@ jobs:
         run: |
           ready=false
           for i in $(seq 1 30); do
-            if pg_isready -h localhost -U retail_media_owner -d retail_media_platform; then
+            if pg_isready -h 127.0.0.1 -U retail_media_owner -d retail_media_platform; then
               ready=true
               break
             fi
