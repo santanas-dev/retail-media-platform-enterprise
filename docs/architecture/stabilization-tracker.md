@@ -5,7 +5,7 @@
 
 ## Pilot Backend Readiness (2026-07-09)
 
-**Backend pilot delivery chain proven through device manifest fetch** (10 July 2026 evidence).
+**Backend pilot delivery chain proven through device manifest fetch** (9 July 2026 evidence).
 
 Separately covered:
 - **Campaign setup/approval APIs** — behavioral tests (42 campaign mutations + 24 approval)
