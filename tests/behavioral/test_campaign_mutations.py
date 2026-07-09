@@ -892,6 +892,112 @@ class TestCampaignSetupFlights:
         )
 
 
+class TestCampaignFlightValidation:
+    """Flight date validation — start_at/end_at, contract window."""
+
+    def _create_campaign(self, client, token, code, name):
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV1_ORG_ID,
+                "advertiser_contract_id": ADV1_CONTRACT_ID,
+                "code": code,
+                "name": name,
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, resp.text
+        return resp.json()["id"]
+
+    def test_create_start_after_end_returns_422(self, client, user_ids):
+        token = _token(user_ids["advertiser"])
+        cid = self._create_campaign(client, token, "BEH-FL-VAL01", "Flight Val 1")
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{cid}/flights",
+            json={"start_at": "2026-07-01T00:00:00Z", "end_at": "2026-06-01T00:00:00Z"},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 422, (
+            f"Expected 422 start >= end, got {resp.status_code}: {resp.text}"
+        )
+        # No outbox
+        rows = _raw_sql(
+            f"SELECT COUNT(*) FROM outbox_events "
+            f"WHERE aggregate_id = '{cid}' AND event_type = 'campaign.flight.changed'"
+        )
+        assert rows[0][0] == 0, "Outbox written for invalid flight"
+
+    def test_update_start_after_end_returns_422(self, client, user_ids):
+        token = _token(user_ids["advertiser"])
+        cid = self._create_campaign(client, token, "BEH-FL-VAL02", "Flight Val 2")
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{cid}/flights",
+            json={"start_at": "2026-07-01T00:00:00Z", "end_at": "2026-08-01T00:00:00Z"},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, resp.text
+        fid = resp.json()["id"]
+
+        resp = client.patch(
+            f"/api/v1/identity/campaigns/{cid}/flights/{fid}",
+            json={"end_at": "2026-06-01T00:00:00Z"},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 422, (
+            f"Expected 422 update start >= end, got {resp.status_code}: {resp.text}"
+        )
+
+    def test_create_before_contract_valid_from_returns_422(self, client, user_ids):
+        """ADV1 contract valid_from = 2026-01-01. Flight start before that should fail."""
+        token = _token(user_ids["advertiser"])
+        cid = self._create_campaign(client, token, "BEH-FL-VAL03", "Flight Val 3")
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{cid}/flights",
+            json={
+                "start_at": "2025-12-01T00:00:00Z",
+                "end_at": "2026-06-01T00:00:00Z",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 422, (
+            f"Expected 422 before contract, got {resp.status_code}: {resp.text}"
+        )
+        rows = _raw_sql(
+            f"SELECT COUNT(*) FROM outbox_events "
+            f"WHERE aggregate_id = '{cid}' AND event_type = 'campaign.flight.changed'"
+        )
+        assert rows[0][0] == 0, "Outbox written for invalid flight"
+
+    def test_valid_flight_within_contract_window_ok(self, client, user_ids):
+        token = _token(user_ids["advertiser"])
+        cid = self._create_campaign(client, token, "BEH-FL-VAL04", "Flight Val 4")
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{cid}/flights",
+            json={
+                "start_at": "2026-07-01T00:00:00Z",
+                "end_at": "2026-08-01T00:00:00Z",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, f"Expected 201, got {resp.status_code}: {resp.text}"
+
+    def test_open_ended_contract_accepts_future_flight(self, client, user_ids):
+        """ADV1 contract has no valid_until (NULL) — any future end_at is OK."""
+        token = _token(user_ids["advertiser"])
+        cid = self._create_campaign(client, token, "BEH-FL-VAL05", "Flight Val 5")
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{cid}/flights",
+            json={
+                "start_at": "2027-06-01T00:00:00Z",
+                "end_at": "2027-08-01T00:00:00Z",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, (
+            f"Expected 201 for open-ended contract, got {resp.status_code}: {resp.text}"
+        )
+
+
 class TestCampaignSetupPlacements:
     """Placement create/update behavioral tests."""
 

@@ -131,6 +131,18 @@ async def list_advertiser_contracts(
     return list(result.scalars().all())
 
 
+async def get_advertiser_contract(
+    session: AsyncSession,
+    contract_id: str,
+):
+    """Get a single advertiser contract by id. Returns AdvertiserContract or None."""
+    from packages.domain.models import AdvertiserContract as ContractModel
+    result = await session.execute(
+        select(ContractModel).where(ContractModel.id == contract_id)
+    )
+    return result.scalar_one_or_none()
+
+
 async def list_advertiser_contacts(
     session: AsyncSession,
 ) -> list[AdvertiserContact]:

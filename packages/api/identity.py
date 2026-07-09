@@ -643,6 +643,34 @@ async def _require_draft_campaign(db, campaign_id: str, scope):
 # ── Flights ──
 
 
+async def _validate_flight_dates(
+    db, campaign, start_at, end_at,
+) -> str | None:
+    """Validate flight start/end against contract window. Returns error string or None.
+
+    Checks:
+    - start_at < end_at
+    - start_at >= contract.valid_from
+    - end_at <= contract.valid_until (if not NULL)
+    """
+    if start_at >= end_at:
+        return "Flight start_at must be before end_at"
+
+    contract = await repository.get_advertiser_contract(
+        db, str(campaign.advertiser_contract_id),
+    )
+    if contract is None:
+        return "Campaign contract not found"
+
+    if contract.valid_from and start_at < contract.valid_from:
+        return "Flight start_at is before contract valid_from"
+
+    if contract.valid_until is not None and end_at > contract.valid_until:
+        return "Flight end_at is after contract valid_until"
+
+    return None
+
+
 @router.post("/campaigns/{campaign_id}/flights",
              response_model=CampaignFlightOut, status_code=201)
 async def create_flight_endpoint(
@@ -654,7 +682,11 @@ async def create_flight_endpoint(
     _rls=Depends(set_rls_context),
 ):
     """Create a flight for a draft campaign."""
-    await _require_draft_campaign(db, campaign_id, scope)
+    campaign = await _require_draft_campaign(db, campaign_id, scope)
+
+    err = await _validate_flight_dates(db, campaign, body.start_at, body.end_at)
+    if err is not None:
+        raise HTTPException(status_code=422, detail=err)
 
     flight_id = await create_campaign_flight(
         db,
@@ -694,7 +726,18 @@ async def update_flight_endpoint(
     _rls=Depends(set_rls_context),
 ):
     """Partial update of a flight."""
-    await _require_draft_campaign(db, campaign_id, scope)
+    campaign = await _require_draft_campaign(db, campaign_id, scope)
+
+    # Resolve effective dates: new values from body, fall back to current flight
+    current = await repository.get_campaign_flight(db, flight_id)
+    if current is None:
+        raise HTTPException(status_code=404, detail="Flight not found")
+    effective_start = body.start_at if body.start_at is not None else current.start_at
+    effective_end = body.end_at if body.end_at is not None else current.end_at
+
+    err = await _validate_flight_dates(db, campaign, effective_start, effective_end)
+    if err is not None:
+        raise HTTPException(status_code=422, detail=err)
 
     result_campaign_id = await update_campaign_flight(
         db,
