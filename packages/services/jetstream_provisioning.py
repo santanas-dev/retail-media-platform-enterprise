@@ -100,7 +100,7 @@ async def _ensure_consumer(
     except Exception:
         # Consumer exists — delete and recreate (nats-py lacks update_consumer)
         try:
-            await js.delete_consumer(stream=stream, durable_name=durable)
+            await js.delete_consumer(stream=stream, consumer=durable)
             await js.add_consumer(
                 stream=stream,
                 durable_name=durable,

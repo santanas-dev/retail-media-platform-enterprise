@@ -3,7 +3,10 @@ E2E integration test: NATS delivery pipeline (B2).
 
 Proves the full path:
   campaign approved → outbox relay → NATS JetStream →
-  campaign consumer → manifest generation → device gateway fetch.
+  campaign consumer → manifest generation.
+
+The manifest row is verified in the delivery_manifests table.
+Device gateway HTTP fetch is deferred to B3.
 
 Requires:
   - RUN_NATS_INTEGRATION_TESTS=1
@@ -32,21 +35,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 os.environ["ENVIRONMENT"] = "dev"
 os.environ["JWT_SECRET"] = "nats-e2e-test-secret-at-least-32-chars"
 
-from fastapi.testclient import TestClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-
-from packages.security.config import reset_security_config
-from packages.security.jwt import create_access_token
 
 DB_URL = os.environ.get(
     "BEHAVIORAL_DB_URL",
     "postgresql+asyncpg://retail_media:retail_media_dev@localhost:5432/retail_media_platform",
-)
-
-APP_DB_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql+asyncpg://retail_media_app:retail_media_app_dev@localhost:5432/retail_media_platform",
 )
 
 NATS_URL = os.environ.get("NATS_E2E_URL", "nats://localhost:4222")
@@ -57,12 +51,6 @@ SKIP_REASON = "RUN_NATS_INTEGRATION_TESTS=1 not set."
 # Seed IDs — must match apps/control-api/seed.py
 SEED_CAMPAIGN_ID = "00000000-0000-0000-0000-000000000220"
 SEED_DEVICE_ID = "00000000-0000-0000-0000-000000000020"
-SEED_ADV_ORG_ID = "00000000-0000-0000-0000-000000000200"
-SEED_ADV_USER_ID = "00000000-0000-0000-0000-000000000202"
-SEED_ADV_CONTRACT_ID = "00000000-0000-0000-0000-000000000212"
-
-# Behavioral test user
-BEH_ADVERTISER_ID = "beh-av-00000000000000000004"
 
 
 # ---------------------------------------------------------------------------
@@ -100,14 +88,6 @@ def _raw_exec(sql: str, params=None):
         await engine.dispose()
 
     asyncio.run(_run())
-
-
-def _token(sub: str, provider: str = "local_advertiser") -> str:
-    return create_access_token(sub, provider)
-
-
-def _auth(token: str) -> dict:
-    return {"Authorization": f"Bearer {token}"}
 
 
 # ---------------------------------------------------------------------------
@@ -168,51 +148,6 @@ def nats_server(ensure_env):
         proc.wait(timeout=5)
     except subprocess.TimeoutExpired:
         proc.kill()
-
-
-@pytest.fixture(scope="module")
-def control_api_client(ensure_env):
-    """TestClient for control-api."""
-    import importlib.util
-
-    reset_security_config()
-    main_path = os.path.join(
-        os.path.dirname(__file__), "..", "..", "apps", "control-api", "main.py"
-    )
-    spec = importlib.util.spec_from_file_location("control_api_main", main_path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return TestClient(mod.app)
-
-
-@pytest.fixture(scope="module")
-def device_gateway_client(ensure_env):
-    """TestClient for device-gateway."""
-    import importlib.util
-
-    main_path = os.path.join(
-        os.path.dirname(__file__), "..", "..", "apps", "device-gateway", "main.py"
-    )
-    spec = importlib.util.spec_from_file_location("device_gateway_main", main_path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-
-    # Wire the DB engine so get_session(engine) resolves
-    from packages.domain.database import create_engine
-    engine = create_engine(DB_URL)
-    mod.app.dependency_overrides[mod.get_session] = lambda: _session_override(engine)
-
-    return TestClient(mod.app)
-
-
-def _session_override(engine):
-    """Async generator replacement for get_session(engine)."""
-    from packages.domain.database import create_session_factory
-    factory = create_session_factory(engine)
-    async def _gen():
-        async with factory() as session:
-            yield session
-    return _gen()
 
 
 # ---------------------------------------------------------------------------
@@ -282,10 +217,10 @@ def _reset_campaign_state():
 
 
 class TestNatsE2EPipeline:
-    """End-to-end: approval → relay → NATS → consumer → manifest → device fetch."""
+    """End-to-end: approval → relay → NATS → consumer → manifest row in DB."""
 
     def test_approval_to_manifest_via_nats(
-        self, nats_server, control_api_client
+        self, nats_server
     ):
         """Full pipeline: real NATS JetStream from outbox to manifest to device fetch."""
         # ── 0. Setup ─────────────────────────────────────────────────
