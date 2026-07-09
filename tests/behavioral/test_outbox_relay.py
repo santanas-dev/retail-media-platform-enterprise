@@ -321,8 +321,22 @@ class TestOutboxRelayBehavioral:
                               last_error="previous")
 
                 count = await relay.run_once()
-                assert count == 1
-                assert pub.publish_count == 1
+                # Other test suites may have due outbox events in the full run
+                assert count >= 1, f"Expected >=1, got {count}"
+                assert pub.publish_count >= 1
+                # The specific test event must have been published
+                our_event = next(
+                    (m for m in pub.published if m["msg_id"] == event_id), None
+                )
+                assert our_event is not None, f"Event {event_id} not published"
+                async with engine.connect() as conn:
+                    result = await conn.execute(
+                        text("SELECT status FROM outbox_events WHERE id = :id"),
+                        {"id": event_id},
+                    )
+                    row = result.fetchone()
+                    assert row is not None
+                    assert row[0] == "published"
             finally:
                 await engine.dispose()
 
