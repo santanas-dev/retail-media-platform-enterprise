@@ -222,7 +222,7 @@ class TestNatsE2EPipeline:
     def test_approval_to_manifest_via_nats(
         self, nats_server
     ):
-        """Full pipeline: real NATS JetStream from outbox to manifest to device fetch."""
+        """Full pipeline: real NATS JetStream from outbox to manifest."""
         # ── 0. Setup ─────────────────────────────────────────────────
         _reset_delivery_state()
         _prepare_campaign()
