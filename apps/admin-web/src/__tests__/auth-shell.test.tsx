@@ -106,7 +106,7 @@ describe("auth shell", () => {
   // ── Login success ──
 
   it("navigates to /campaigns on successful login", async () => {
-    // Order: login → /me
+    // Order: login → /me → campaign API calls (rendered by CampaignListPage)
     vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(
         new Response(
@@ -130,6 +130,11 @@ describe("auth shell", () => {
           { status: 200 },
         ),
       );
+    // CampaignListPage fetches campaigns, flights, orgs, brands
+    // Use mockImplementation to create fresh Response objects each call
+    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+    );
 
     renderWithAuth("/login");
 
@@ -154,22 +159,33 @@ describe("auth shell", () => {
     // 1. Simulate logged-in state: token in localStorage + /me succeeds
     localStorage.setItem("rmp_access_token", "valid-token");
 
-    vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            sub: "u1",
-            auth_provider: "ad",
-            username: "admin",
-            display_name: "Admin",
-          }),
-          { status: 200 },
-        ),
-      )
-      // logout call
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ message: "Logged out" }), { status: 200 }),
+    let callCount = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      callCount++;
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              sub: "u1",
+              auth_provider: "ad",
+              username: "admin",
+              display_name: "Admin",
+            }),
+            { status: 200 },
+          ),
+        );
+      }
+      if (url.endsWith("/logout")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ message: "Logged out" }), { status: 200 }),
+        );
+      }
+      // Campaign list data fetches (empty)
+      return Promise.resolve(
+        new Response(JSON.stringify([]), { status: 200 }),
       );
+    });
 
     renderWithAuth("/campaigns");
 
