@@ -212,7 +212,7 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql://retail_media_owner:retail_media_owner_pass@localhost:5432/retail_media_platform
-      BEHAVIORAL_DB_URL: postgresql+asyncpg://retail_media_app:retail_media_app@localhost:5432/retail_media_platform
+      BEHAVIORAL_DB_URL: postgresql+asyncpg://retail_media_owner:retail_media_owner_pass@localhost:5432/retail_media_platform
       RUN_BEHAVIORAL_TESTS: "1"
       ENVIRONMENT: dev
       JWT_SECRET: behavioral-test-secret-at-least-32-chars
@@ -240,6 +240,9 @@ jobs:
             exit 1
           fi
           echo "PostgreSQL ready."
+          # Increase max_connections for behavioral test throughput
+          echo "ALTER SYSTEM SET max_connections = 300; SELECT pg_reload_conf();" | \
+            PGPASSWORD=retail_media_owner_pass psql -h 127.0.0.1 -U retail_media_owner -d retail_media_platform
       - name: Run migrations
         working-directory: apps/control-api
         run: alembic upgrade head

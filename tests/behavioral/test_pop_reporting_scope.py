@@ -10,10 +10,9 @@ Tests campaign ownership check on PoP reporting endpoints:
 
 Requires: RUN_BEHAVIORAL_TESTS=1, pop_fixtures seeded.
 
-Uses TestClient for single-request tests (no event-loop conflict).
-Multi-request tests (advertiser_can_read_own_campaign et al) loop over
-endpoints with a fresh TestClient per endpoint to avoid the Starlette
-BaseHTTPMiddleware event-loop conflict.
+Uses a single TestClient per test (not per request) to avoid the
+Starlette BaseHTTPMiddleware event-loop conflict from sequential
+anyio portal creations.
 """
 
 import os
@@ -53,13 +52,6 @@ _ENDPOINTS = [
 ]
 
 
-def _new_client(app):
-    """Create a fresh TestClient *per request* to avoid the Starlette
-    BaseHTTPMiddleware event-loop conflict on sequential calls."""
-    reset_security_config()
-    return TestClient(app)
-
-
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -70,13 +62,14 @@ class TestPopReportingScope:
 
     @pytest.fixture(autouse=True)
     def setup(self, app, db_available, test_users, pop_fixtures):
+        reset_security_config()
         self.app = app
         self.uid = test_users
 
     def test_no_token_returns_401(self):
+        client = TestClient(self.app)
         for tmpl in _ENDPOINTS:
             url = tmpl.format(cid=KNOWN_CAMPAIGNS["own"])
-            client = _new_client(self.app)
             resp = client.get(url)
             assert resp.status_code == 401, (
                 f"{url}: expected 401, got {resp.status_code}"
@@ -84,9 +77,9 @@ class TestPopReportingScope:
 
     def test_no_permission_returns_403(self):
         token = _token(self.uid["disabled"])
+        client = TestClient(self.app)
         for tmpl in _ENDPOINTS:
             url = tmpl.format(cid=KNOWN_CAMPAIGNS["own"])
-            client = _new_client(self.app)
             resp = client.get(url, headers=_auth(token))
             assert resp.status_code == 403, (
                 f"{url}: expected 403, got {resp.status_code}: {resp.text}"
@@ -94,9 +87,9 @@ class TestPopReportingScope:
 
     def test_advertiser_can_read_own_campaign(self):
         token = _token(self.uid["advertiser"])
+        client = TestClient(self.app)
         for tmpl in _ENDPOINTS:
             url = tmpl.format(cid=KNOWN_CAMPAIGNS["own"])
-            client = _new_client(self.app)
             resp = client.get(url, headers=_auth(token))
             assert resp.status_code == 200, (
                 f"{url}: expected 200, got {resp.status_code}: {resp.text}"
@@ -104,9 +97,9 @@ class TestPopReportingScope:
 
     def test_advertiser_cannot_read_foreign_campaign(self):
         token = _token(self.uid["advertiser"])
+        client = TestClient(self.app)
         for tmpl in _ENDPOINTS:
             url = tmpl.format(cid=KNOWN_CAMPAIGNS["foreign"])
-            client = _new_client(self.app)
             resp = client.get(url, headers=_auth(token))
             assert resp.status_code == 404, (
                 f"{url}: expected 404, got {resp.status_code}: {resp.text}"
@@ -114,9 +107,9 @@ class TestPopReportingScope:
 
     def test_admin_can_read_foreign_campaign(self):
         token = _token(self.uid["readonly"])
+        client = TestClient(self.app)
         for tmpl in _ENDPOINTS:
             url = tmpl.format(cid=KNOWN_CAMPAIGNS["foreign"])
-            client = _new_client(self.app)
             resp = client.get(url, headers=_auth(token))
             assert resp.status_code == 200, (
                 f"{url}: expected 200, got {resp.status_code}: {resp.text}"

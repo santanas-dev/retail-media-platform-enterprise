@@ -37,6 +37,28 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from packages.security.config import reset_security_config
 
+# ---------------------------------------------------------------------------
+# Monkey-patch: force ALL behavioral-test engines to use NullPool.
+# Each per-request get_session(None)→create_engine() creates a new engine
+# in a different event loop. Pooling doesn't work across loops and the
+# accumulated connection count exhausts PostgreSQL max_connections.
+# NullPool gives a fresh connection per request that closes immediately.
+# ---------------------------------------------------------------------------
+_original_create_async_engine = create_async_engine
+
+from sqlalchemy.pool import NullPool
+
+
+def _patched_create_async_engine(url, **kwargs):
+    kwargs.setdefault("poolclass", NullPool)
+    return _original_create_async_engine(url, **kwargs)
+
+
+# Patch both the local conftest reference AND the packages.domain module
+create_async_engine = _patched_create_async_engine
+import packages.domain.database as _db_module
+_db_module.create_async_engine = _patched_create_async_engine
+
 DB_URL = os.environ.get(
     "BEHAVIORAL_DB_URL",
     "postgresql+asyncpg://retail_media:retail_media_dev@localhost:5432/retail_media_platform",
@@ -83,7 +105,7 @@ TEST_PASSWORD = "TestPassword123!"
 
 async def _check_db():
     try:
-        engine = create_async_engine(DB_URL, echo=False, pool_size=1, max_overflow=0)
+        engine = create_async_engine(DB_URL, echo=False)
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         await engine.dispose()
@@ -93,7 +115,7 @@ async def _check_db():
 
 
 async def _run_sql(sql: str):
-    engine = create_async_engine(DB_URL, echo=False, pool_size=1, max_overflow=0)
+    engine = create_async_engine(DB_URL, echo=False)
     async with engine.begin() as conn:
         # Bypass RLS for test fixture setup/cleanup
         await conn.execute(text("SELECT set_config('app.rmp_is_admin', 'true', true)"))
