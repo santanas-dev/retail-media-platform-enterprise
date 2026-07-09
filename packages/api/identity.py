@@ -622,8 +622,12 @@ from packages.domain.repository import (
 )
 
 
-async def _require_draft_campaign(db, campaign_id: str, scope) -> None:
-    """Load campaign, raise 404/409 if not found or not in draft."""
+async def _require_draft_campaign(db, campaign_id: str, scope):
+    """Load campaign, raise 404/409 if not found or not in draft.
+
+    Returns the Campaign object so callers that need advertiser_organization_id
+    can avoid a second lookup.
+    """
     campaign = await repository.get_campaign(db, campaign_id)
     if campaign is None:
         raise HTTPException(status_code=404, detail={"code": "CAMPAIGN_NOT_FOUND"})
@@ -633,6 +637,7 @@ async def _require_draft_campaign(db, campaign_id: str, scope) -> None:
         org_str = str(campaign.advertiser_organization_id)
         if org_str not in (scope.advertiser_scope_ids or frozenset()):
             raise HTTPException(status_code=404, detail={"code": "CAMPAIGN_NOT_FOUND"})
+    return campaign
 
 
 # ── Flights ──
@@ -819,13 +824,7 @@ async def create_creative_endpoint(
     in the response.
     """
     user_id = claims["sub"]
-
-    # Resolve campaign to get org_id for scope enforcement
-    campaign = await repository.get_campaign(db, campaign_id)
-    if campaign is None:
-        raise HTTPException(status_code=404, detail={"code": "CAMPAIGN_NOT_FOUND"})
-    if campaign.status != "draft":
-        raise HTTPException(status_code=409, detail="Campaign is not in draft status")
+    campaign = await _require_draft_campaign(db, campaign_id, scope)
 
     try:
         result = await create_campaign_creative(

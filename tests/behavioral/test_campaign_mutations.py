@@ -1010,20 +1010,56 @@ class TestCampaignSetupCreatives:
         assert rows[0][0] >= 1
 
     def test_cross_org_creative_rejected(self, client, user_ids):
-        token = _token(user_ids["advertiser"])
+        """Advertiser cannot attach a creative to another org's campaign."""
+        _raw_exec(_ADV2_SETUP_SQL)
+        # Create an ADV2 campaign as admin
+        admin_token = _token(user_ids["readonly"])  # system_admin
         resp = client.post(
             "/api/v1/identity/campaigns",
             json={
                 "advertiser_organization_id": ADV2_ORG_ID,
                 "advertiser_contract_id": ADV2_CONTRACT_ID,
-                "code": "BEH-CR-XORG-CAMP",
-                "name": "Cross Org Creative Camp",
+                "code": "BEH-CR-XORG-ATTACH",
+                "name": "Cross Org Attach Campaign",
+            },
+            headers=_auth(admin_token),
+        )
+        assert resp.status_code == 201, f"Admin campaign create: {resp.text}"
+        adv2_campaign_id = resp.json()["id"]
+
+        # Advertiser (scoped to ADV1) tries to attach creative to ADV2 campaign
+        token = _token(user_ids["advertiser"])
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{adv2_campaign_id}/creatives",
+            json={
+                "code": "BEH-CR-XORG-ATTACH-CR",
+                "name": "Cross Org Creative",
+                "media_type": "video/mp4",
+                "sha256_checksum": "e" * 64,
+                "file_size_bytes": 1000,
             },
             headers=_auth(token),
         )
-        assert resp.status_code in (403, 422), (
-            f"Expected 403/422 cross-org campaign create, got {resp.status_code}"
+        assert resp.status_code in (403, 404), (
+            f"Expected 403/404 cross-org creative attach, "
+            f"got {resp.status_code}: {resp.text}"
         )
+
+        # Verify no outbox event
+        rows = _raw_sql(
+            f"SELECT COUNT(*) FROM outbox_events "
+            f"WHERE aggregate_id = '{adv2_campaign_id}' "
+            f"AND event_type = 'campaign.creative.changed'"
+        )
+        assert rows[0][0] == 0, (
+            "Outbox event written for rejected cross-org creative attach"
+        )
+        # Cleanup: delete campaign first so contract FK doesn't block
+        _raw_exec(
+            f"DELETE FROM campaign_status_history WHERE campaign_id = '{adv2_campaign_id}'"
+            f"; DELETE FROM campaigns WHERE id = '{adv2_campaign_id}'"
+        )
+        _raw_exec(_ADV2_CLEANUP_SQL)
 
 
 class TestCampaignFullPilotSetup:
