@@ -1,22 +1,41 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import { AuthProvider } from "./auth/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Layout from "./components/Layout";
+import LoginPage from "./pages/LoginPage";
+import CampaignListPage from "./pages/CampaignListPage";
+import CampaignCreatePage from "./pages/CampaignCreatePage";
+import CampaignDetailPage from "./pages/CampaignDetailPage";
+import AdvertisersPage from "./pages/AdvertisersPage";
 
-function App() {
-  return (
-    <div style={{ padding: "2rem", fontFamily: "system-ui, sans-serif" }}>
-      <h1>RMP — Центр управления рекламой</h1>
-      <p>Phase 1 skeleton. Business pages will be added in later phases.</p>
-      <p>
-        API: <code>/api/v1/</code> (Control API on :8000)
-        {" | "}
-        Devices: <code>/device/v1/</code> (Device Gateway on :8001)
-      </p>
-    </div>
-  );
-}
+const router = createBrowserRouter([
+  {
+    path: "/login",
+    element: <LoginPage />,
+  },
+  {
+    path: "/",
+    element: (
+      <ProtectedRoute>
+        <Layout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Navigate to="/campaigns" replace /> },
+      { path: "campaigns", element: <CampaignListPage /> },
+      { path: "campaigns/new", element: <CampaignCreatePage /> },
+      { path: "campaigns/:id", element: <CampaignDetailPage /> },
+      { path: "advertisers", element: <AdvertisersPage /> },
+    ],
+  },
+]);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   </StrictMode>,
 );
