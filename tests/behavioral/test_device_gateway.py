@@ -159,21 +159,29 @@ class TestDeviceManifestEndpoint:
         """Create FastAPI TestClient with device-gateway app and DB override."""
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "apps", "device-gateway"))
         from fastapi.testclient import TestClient
+        # Force re-import — module may be cached with stale state
+        import importlib
+        if "main" in sys.modules:
+            del sys.modules["main"]
         main = __import__("main")
-        app = main.app
 
-        # Override get_session to use a real async session
-        async def override_get_session():
-            engine = create_async_engine(DB_URL, echo=False)
+        # Reset any prior dependency overrides
+        main.app.dependency_overrides.clear()
+
+        # Create a real engine and register it as the global engine
+        engine = create_async_engine(DB_URL, echo=False)
+        main.set_global_engine(engine)
+
+        # Override get_db to use the same engine
+        async def override_get_db():
             AsyncSessionLocal = sessionmaker(
                 engine, class_=AsyncSession, expire_on_commit=False,
             )
             async with AsyncSessionLocal() as session:
                 yield session
-            await engine.dispose()
 
-        app.dependency_overrides[main.get_session] = override_get_session
-        return TestClient(app)
+        main.app.dependency_overrides[main.get_db] = override_get_db
+        return TestClient(main.app)
 
     def test_valid_device_fetches_manifest(self):
         client = self._client()

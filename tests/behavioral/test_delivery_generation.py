@@ -122,6 +122,18 @@ def _count_outbox(event_type: str):
     return rows[0][0] if rows else 0
 
 
+# ── RLS scope helper ──
+# Sets the session's RLS scope to the seed advertiser org so campaigns
+# are visible under retail_media_app (NOBYPASSRLS) behavioral tests.
+
+
+async def _set_rls_scope(session):
+    await session.execute(
+        text("SELECT set_config('app.rmp_scope_advertiser_ids', :ids, false)"),
+        {"ids": SEED_ADV_ORG_ID},
+    )
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -141,6 +153,7 @@ class TestApprovedCampaignGeneratesManifest:
                 engine, class_=AsyncSession, expire_on_commit=False,
             )
             async with AsyncSessionLocal() as session:
+                await _set_rls_scope(session)
                 result = await generate_manifests_for_campaign(
                     session, SEED_CAMPAIGN_ID,
                 )
@@ -181,6 +194,7 @@ class TestApprovedCampaignGeneratesManifest:
                 engine, class_=AsyncSession, expire_on_commit=False,
             )
             async with AsyncSessionLocal() as session:
+                await _set_rls_scope(session)
                 result = await generate_manifests_for_campaign(
                     session, SEED_CAMPAIGN_ID,
                 )
@@ -210,6 +224,7 @@ class TestApprovedCampaignGeneratesManifest:
                 engine, class_=AsyncSession, expire_on_commit=False,
             )
             async with AsyncSessionLocal() as session:
+                await _set_rls_scope(session)
                 result1 = await generate_manifests_for_campaign(
                     session, SEED_CAMPAIGN_ID,
                 )
@@ -226,6 +241,7 @@ class TestApprovedCampaignGeneratesManifest:
                 engine, class_=AsyncSession, expire_on_commit=False,
             )
             async with AsyncSessionLocal() as session:
+                await _set_rls_scope(session)
                 result2 = await generate_manifests_for_campaign(
                     session, SEED_CAMPAIGN_ID,
                 )
@@ -255,6 +271,7 @@ class TestApprovedCampaignGeneratesManifest:
                 engine, class_=AsyncSession, expire_on_commit=False,
             )
             async with AsyncSessionLocal() as session:
+                await _set_rls_scope(session)
                 result = await generate_manifests_for_campaign(
                     session, SEED_CAMPAIGN_ID,
                 )
@@ -285,6 +302,7 @@ class TestApprovedCampaignGeneratesManifest:
                 engine, class_=AsyncSession, expire_on_commit=False,
             )
             async with AsyncSessionLocal() as session:
+                await _set_rls_scope(session)
                 result = await generate_manifests_for_campaign(
                     session, SEED_CAMPAIGN_ID,
                 )
@@ -315,6 +333,7 @@ class TestApprovedCampaignGeneratesManifest:
                 engine, class_=AsyncSession, expire_on_commit=False,
             )
             async with AsyncSessionLocal() as session:
+                await _set_rls_scope(session)
                 result = await generate_manifests_for_campaign(
                     session, SEED_CAMPAIGN_ID,
                 )
@@ -346,6 +365,7 @@ class TestApprovedCampaignGeneratesManifest:
                 engine, class_=AsyncSession, expire_on_commit=False,
             )
             async with AsyncSessionLocal() as session:
+                await _set_rls_scope(session)
                 result = await generate_manifests_for_campaign(
                     session, SEED_CAMPAIGN_ID,
                 )
@@ -378,6 +398,7 @@ class TestApprovedCampaignGeneratesManifest:
                 engine, class_=AsyncSession, expire_on_commit=False,
             )
             async with AsyncSessionLocal() as session:
+                await _set_rls_scope(session)
                 result = await generate_manifests_for_campaign(
                     session, SEED_CAMPAIGN_ID,
                 )
@@ -406,6 +427,7 @@ class TestApprovedCampaignGeneratesManifest:
                 engine, class_=AsyncSession, expire_on_commit=False,
             )
             async with AsyncSessionLocal() as session:
+                await _set_rls_scope(session)
                 result = await generate_manifests_for_campaign(
                     session, SEED_CAMPAIGN_ID,
                 )
@@ -451,6 +473,7 @@ class TestApprovedCampaignGeneratesManifest:
                 engine, class_=AsyncSession, expire_on_commit=False,
             )
             async with AsyncSessionLocal() as session:
+                await _set_rls_scope(session)
                 result = await generate_manifests_for_campaign(
                     session, SEED_CAMPAIGN_ID,
                 )
@@ -486,6 +509,7 @@ class TestApprovedCampaignGeneratesManifest:
                 engine, class_=AsyncSession, expire_on_commit=False,
             )
             async with AsyncSessionLocal() as session:
+                await _set_rls_scope(session)
                 result = await generate_manifests_for_campaign(
                     session, SEED_CAMPAIGN_ID,
                 )
@@ -531,6 +555,7 @@ class TestApprovedCampaignGeneratesManifest:
                 engine, class_=AsyncSession, expire_on_commit=False,
             )
             async with AsyncSessionLocal() as session:
+                await _set_rls_scope(session)
                 result = await generate_manifests_for_campaign(
                     session, SEED_CAMPAIGN_ID,
                 )
@@ -553,6 +578,7 @@ class TestApprovedCampaignGeneratesManifest:
                 engine, class_=AsyncSession, expire_on_commit=False,
             )
             async with AsyncSessionLocal() as session:
+                await _set_rls_scope(session)
                 result = await generate_manifests_for_campaign(
                     session, SEED_CAMPAIGN_ID,
                 )

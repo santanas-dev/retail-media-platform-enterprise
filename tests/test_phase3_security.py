@@ -11,6 +11,8 @@ import sys
 import time
 import unittest
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import jwt as pyjwt
@@ -496,27 +498,15 @@ class TestSanitizeHelpers(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-class TestScopeAdminReset(unittest.TestCase):
+class TestScopeAdminReset:
     """Prove app.rmp_is_admin does not leak after resolve_scope_context.
 
     Uses a self-contained DB engine (not shared fixtures) to test the
     exact behavior of resolve_scope_context in isolation.
 
-    Skipped in CI when no PostgreSQL is available (unit test job has no DB;
-    behavioral job provides PostgreSQL and runs these correctly).
+    Requires: real PostgreSQL. Run via behavioral-postgres-tests CI job.
+    Skipped in unit test suite (no guaranteed DB).
     """
-
-    @classmethod
-    def setUpClass(cls):
-        import socket
-        try:
-            s = socket.create_connection(("localhost", 5432), timeout=2)
-            s.close()
-        except OSError:
-            raise unittest.SkipTest(
-                "PostgreSQL not available on localhost:5432 — "
-                "run in behavioral-postgres-tests job instead"
-            )
 
     @staticmethod
     def _make_session():
@@ -532,6 +522,19 @@ class TestScopeAdminReset(unittest.TestCase):
         engine = create_async_engine(url, echo=False)
         return async_sessionmaker(engine, class_=AsyncSession,
                                   expire_on_commit=False)
+
+    @pytest.fixture(autouse=True)
+    def _require_db(self):
+        """Skip in unit suite — requires real PostgreSQL."""
+        import socket
+        try:
+            s = socket.create_connection(("localhost", 5432), timeout=1)
+            s.close()
+        except OSError:
+            pytest.skip(
+                "PostgreSQL not available — "
+                "run via behavioral-postgres-tests CI job"
+            )
 
     def test_non_admin_resets_admin_flag(self):
         """After scope resolution for non-admin, raw DB sees admin=false."""

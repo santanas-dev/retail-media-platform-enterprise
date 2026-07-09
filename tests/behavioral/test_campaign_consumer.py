@@ -36,6 +36,13 @@ SKIP_REASON = "RUN_BEHAVIORAL_TESTS=1 not set."
 # Seed IDs matching apps/control-api/seed.py
 SEED_CAMPAIGN_ID = "00000000-0000-0000-0000-000000000220"
 
+SEED_ADV_ORG_ID = "00000000-0000-0000-0000-000000000200"
+
+# Scoped URL — sets app.rmp_scope_advertiser_ids at connection startup
+# so behavioral tests under retail_media_app (NOBYPASSRLS) can see campaigns.
+_SCOPE_OPTION = f"?options=-c%20app.rmp_scope_advertiser_ids={SEED_ADV_ORG_ID}"
+SCOPED_DB_URL = DB_URL + _SCOPE_OPTION
+
 TEST_EVENT_ID_PREFIX = "evt-bhvr-"
 
 
@@ -60,7 +67,7 @@ async def _cleanup():
 
 async def _check_db():
     try:
-        engine = create_async_engine(DB_URL, echo=False)
+        engine = create_async_engine(SCOPED_DB_URL, echo=False)
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         await engine.dispose()
@@ -70,14 +77,14 @@ async def _check_db():
 
 
 async def _run_sql(sql: str, params=None):
-    engine = create_async_engine(DB_URL, echo=False)
+    engine = create_async_engine(SCOPED_DB_URL, echo=False)
     async with engine.begin() as conn:
         await conn.execute(text(sql), params or {})
     await engine.dispose()
 
 
 async def _fetch(sql: str, params=None):
-    engine = create_async_engine(DB_URL, echo=False)
+    engine = create_async_engine(SCOPED_DB_URL, echo=False)
     async with engine.connect() as conn:
         result = await conn.execute(text(sql), params or {})
         rows = result.fetchall()
@@ -141,7 +148,7 @@ class TestCampaignEventConsumerBehavioral:
         )
 
         async def _test():
-            engine = create_async_engine(DB_URL, echo=False)
+            engine = create_async_engine(SCOPED_DB_URL, echo=False)
             try:
                 await _cleanup()
                 await _run_sql(
@@ -175,7 +182,7 @@ class TestCampaignEventConsumerBehavioral:
         )
 
         async def _test():
-            engine = create_async_engine(DB_URL, echo=False)
+            engine = create_async_engine(SCOPED_DB_URL, echo=False)
             try:
                 before = await _count_manifests()
 
@@ -203,7 +210,7 @@ class TestCampaignEventConsumerBehavioral:
         )
 
         async def _test():
-            engine = create_async_engine(DB_URL, echo=False)
+            engine = create_async_engine(SCOPED_DB_URL, echo=False)
             try:
                 before = await _count_manifests()
 
@@ -236,7 +243,7 @@ class TestCampaignEventConsumerBehavioral:
         )
 
         async def _test():
-            engine = create_async_engine(DB_URL, echo=False)
+            engine = create_async_engine(SCOPED_DB_URL, echo=False)
             try:
                 await _cleanup()
                 await _run_sql(
@@ -288,7 +295,7 @@ class TestCampaignEventConsumerBehavioral:
         )
 
         async def _test():
-            engine = create_async_engine(DB_URL, echo=False)
+            engine = create_async_engine(SCOPED_DB_URL, echo=False)
             try:
                 await _cleanup()
                 await _run_sql(
