@@ -13,13 +13,19 @@ import type {
   CampaignOut,
   CampaignCreateRequest,
   CampaignFlightOut,
+  CampaignFlightCreateRequest,
+  CampaignFlightUpdateRequest,
   CampaignPlacementOut,
+  CampaignPlacementCreateRequest,
+  CampaignPlacementUpdateRequest,
   CampaignCreativeOut,
+  CampaignCreativeCreateRequest,
   CreativeAssetOut,
   AdvertiserOrganizationOut,
   AdvertiserBrandOut,
   AdvertiserContractOut,
   CampaignApprovalOut,
+  CampaignApprovalResponse,
   CampaignStatusHistoryOut,
   CampaignPopSummaryOut,
   CampaignPopByDayOut,
@@ -102,6 +108,65 @@ export function listBrands(): Promise<AdvertiserBrandOut[]> {
 
 export function listContracts(): Promise<AdvertiserContractOut[]> {
   return api.get<AdvertiserContractOut[]>("/advertiser-contracts");
+}
+
+// ── Campaign Mutations ──
+
+export function createFlight(
+  campaignId: string,
+  body: CampaignFlightCreateRequest,
+): Promise<CampaignFlightOut> {
+  return api.post<CampaignFlightOut>(`/campaigns/${campaignId}/flights`, body);
+}
+
+export function updateFlight(
+  campaignId: string,
+  flightId: string,
+  body: CampaignFlightUpdateRequest,
+): Promise<CampaignFlightOut> {
+  return api.patch<CampaignFlightOut>(
+    `/campaigns/${campaignId}/flights/${flightId}`,
+    body,
+  );
+}
+
+export function createPlacement(
+  campaignId: string,
+  body: CampaignPlacementCreateRequest,
+): Promise<CampaignPlacementOut> {
+  return api.post<CampaignPlacementOut>(
+    `/campaigns/${campaignId}/placements`,
+    body,
+  );
+}
+
+export function updatePlacement(
+  campaignId: string,
+  placementId: string,
+  body: CampaignPlacementUpdateRequest,
+): Promise<CampaignPlacementOut> {
+  return api.patch<CampaignPlacementOut>(
+    `/campaigns/${campaignId}/placements/${placementId}`,
+    body,
+  );
+}
+
+export function createCreative(
+  campaignId: string,
+  body: CampaignCreativeCreateRequest,
+): Promise<CreativeAssetOut> {
+  return api.post<CreativeAssetOut>(
+    `/campaigns/${campaignId}/creatives`,
+    body,
+  );
+}
+
+export function requestApproval(
+  campaignId: string,
+): Promise<CampaignApprovalResponse> {
+  return api.post<CampaignApprovalResponse>(
+    `/campaigns/${campaignId}/request-approval`,
+  );
 }
 
 // ── Approvals & History ──

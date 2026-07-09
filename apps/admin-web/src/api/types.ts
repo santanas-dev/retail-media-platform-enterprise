@@ -190,6 +190,70 @@ export interface CampaignCreateRequest {
   priority: number;
 }
 
+// ── Flight Mutation ──
+
+export interface CampaignFlightCreateRequest {
+  name: string | null;
+  start_at: string;
+  end_at: string;
+  dayparting_json?: unknown;
+  days_of_week?: number[];
+  priority: number;
+}
+
+export interface CampaignFlightUpdateRequest {
+  name?: string | null;
+  start_at?: string | null;
+  end_at?: string | null;
+  dayparting_json?: unknown;
+  days_of_week?: number[];
+  priority?: number;
+}
+
+// ── Placement Mutation ──
+
+export interface CampaignPlacementCreateRequest {
+  display_surface_id: string | null;
+  store_id: string | null;
+  cluster_id: string | null;
+  branch_id: string | null;
+  share_of_voice_pct: number;
+  max_impressions: number | null;
+}
+
+export interface CampaignPlacementUpdateRequest {
+  display_surface_id?: string | null;
+  store_id?: string | null;
+  cluster_id?: string | null;
+  branch_id?: string | null;
+  share_of_voice_pct?: number;
+  max_impressions?: number | null;
+}
+
+// ── Creative Mutation (creates new asset + attaches to campaign) ──
+
+export interface CampaignCreativeCreateRequest {
+  code: string;
+  name: string;
+  media_type: string;
+  sha256_checksum: string;
+  file_size_bytes: number;
+  duration_ms: number | null;
+  resolution_w: number | null;
+  resolution_h: number | null;
+  sort_order: number;
+  duration_override_ms: number | null;
+}
+
+// ── Approval ──
+
+export interface CampaignApprovalResponse {
+  message: string;
+  campaign_id: string;
+  old_status: string;
+  new_status: string;
+}
+
 // ── Helper: localized status labels ──
 
 export const STATUS_LABELS: Record<string, string> = {

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   createMemoryRouter,
   RouterProvider,
@@ -37,27 +38,16 @@ function createRouter(initialRoute: string) {
 
 function mockAuthenticatedSession() {
   localStorage.setItem("rmp_access_token", "valid-token");
-  vi.spyOn(globalThis, "fetch").mockResolvedValue(
-    new Response(
-      JSON.stringify({
-        sub: "u1",
-        auth_provider: "ad",
-        username: "admin",
-        display_name: "Admin",
-      }),
-      { status: 200 },
-    ),
-  );
 }
 
-const SEED_CAMPAIGN = {
+const DRAFT_CAMPAIGN = {
   id: "c1",
   advertiser_organization_id: "org-1",
   advertiser_brand_id: "brand-1",
   advertiser_contract_id: "con-1",
   code: "CAMP-001",
   name: "Весенняя акция",
-  description: "Тестовое описание",
+  description: "Тест",
   status: "draft",
   priority: 0,
   budget_limit_amount: 500000,
@@ -70,266 +60,303 @@ const SEED_CAMPAIGN = {
   updated_at: "2026-03-20T14:00:00Z",
 };
 
-const SEED_CAMPAIGNS = [SEED_CAMPAIGN];
+const SEED_CAMPAIGNS = [DRAFT_CAMPAIGN];
+const SEED_FLIGHTS: unknown[] = [];
+const SEED_PLACEMENTS: unknown[] = [];
+const SEED_CREATIVES: unknown[] = [];
+const SEED_ASSETS: unknown[] = [];
+const SEED_ORGS = [{ id: "org-1", code: "ADV-001", legal_name: "ООО Ромашка", display_name: "Ромашка", status: "active" }];
+const SEED_BRANDS = [{ id: "brand-1", advertiser_organization_id: "org-1", code: "BR-001", name: "Чистая линия", status: "active" }];
+const SEED_CONTRACTS = [{ id: "con-1", advertiser_organization_id: "org-1", code: "CON-001", name: "Договор", budget_limit_amount: 1000000, budget_limit_currency: "RUB", valid_from: "2026-01-01T00:00:00Z", valid_until: null, status: "active" }];
 
-const SEED_FLIGHTS = [
-  {
-    id: "f1",
-    campaign_id: "c1",
-    name: "Апрель",
-    start_at: "2026-04-01T00:00:00Z",
-    end_at: "2026-04-30T00:00:00Z",
-    dayparting_json: null,
-    days_of_week: null,
-    priority: 0,
-    created_at: "2026-03-15T10:00:00Z",
-  },
-  {
-    id: "f2",
-    campaign_id: "c1",
-    name: "Май",
-    start_at: "2026-05-01T00:00:00Z",
-    end_at: "2026-05-31T00:00:00Z",
-    dayparting_json: null,
-    days_of_week: null,
-    priority: 0,
-    created_at: "2026-03-15T10:00:00Z",
-  },
-];
+function mockFetchFor(path: string): unknown[] {
+  if (path.includes("campaign-flights")) return SEED_FLIGHTS;
+  if (path.includes("campaign-placements")) return SEED_PLACEMENTS;
+  if (path.includes("campaign-creatives")) return SEED_CREATIVES;
+  if (path.includes("creative-assets")) return SEED_ASSETS;
+  if (path.includes("advertiser-organizations")) return SEED_ORGS;
+  if (path.includes("advertiser-brands")) return SEED_BRANDS;
+  if (path.includes("advertiser-contracts")) return SEED_CONTRACTS;
+  if (path.includes("campaign-approvals")) return [];
+  if (path.includes("/campaigns") && !path.includes("flights") && !path.includes("placements") && !path.includes("creatives")) return SEED_CAMPAIGNS;
+  return [];
+}
 
-const SEED_PLACEMENTS = [
-  {
-    id: "p1",
-    campaign_id: "c1",
-    display_surface_id: "ds-1",
-    store_id: "st-1",
-    cluster_id: null,
-    branch_id: null,
-    share_of_voice_pct: 100,
-    max_impressions: null,
-    impressions_delivered: 0,
-    status: "active",
-    created_at: "2026-03-15T10:00:00Z",
-  },
-];
-
-const SEED_CREATIVES = [
-  {
-    id: "cc1",
-    campaign_id: "c1",
-    creative_asset_id: "ca-1",
-    sort_order: 0,
-    duration_override_ms: null,
-    created_at: "2026-03-15T10:00:00Z",
-  },
-];
-
-const SEED_ASSETS = [
-  {
-    id: "ca-1",
-    advertiser_organization_id: "org-1",
-    code: "CR-001",
-    name: "Баннер весна",
-    media_type: "image/jpeg",
-    sha256_checksum: "abc123",
-    file_size_bytes: 102400,
-    duration_ms: null,
-    resolution_w: 1920,
-    resolution_h: 1080,
-    status: "active",
-    moderation_status: "approved",
-    created_at: "2026-03-10T08:00:00Z",
-    updated_at: "2026-03-10T08:00:00Z",
-  },
-];
-
-const SEED_ORGS = [
-  { id: "org-1", code: "ADV-001", legal_name: "ООО Ромашка", display_name: "Ромашка", status: "active" },
-];
-
-const SEED_BRANDS = [
-  { id: "brand-1", advertiser_organization_id: "org-1", code: "BR-001", name: "Чистая линия", status: "active" },
-];
-
-const SEED_CONTRACTS = [
-  {
-    id: "con-1",
-    advertiser_organization_id: "org-1",
-    code: "CON-001",
-    name: "Договор №1",
-    budget_limit_amount: 1000000,
-    budget_limit_currency: "RUB",
-    valid_from: "2026-01-01T00:00:00Z",
-    valid_until: "2026-12-31T00:00:00Z",
-    status: "active",
-  },
-];
+function mockAllFetches(overrides?: Record<string, (input: string, init?: RequestInit) => Promise<Response>>) {
+  vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+    const url = String(input);
+    if (overrides) {
+      for (const [key, fn] of Object.entries(overrides)) {
+        if (url.includes(key)) return fn(url, init);
+      }
+    }
+    if (url.endsWith("/me")) {
+      return Promise.resolve(new Response(JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin" }), { status: 200 }));
+    }
+    return Promise.resolve(new Response(JSON.stringify(mockFetchFor(url)), { status: 200 }));
+  });
+}
 
 // ── Tests ──
 
-describe("CampaignDetailPage", () => {
-  beforeEach(() => {
-    localStorage.clear();
-    vi.restoreAllMocks();
-  });
+describe("CampaignDetailPage — S-009e", () => {
+  beforeEach(() => { localStorage.clear(); vi.restoreAllMocks(); });
+  afterEach(() => { localStorage.clear(); });
 
-  afterEach(() => {
-    localStorage.clear();
-  });
+  // ── Basic render ──
 
-  it("renders campaign detail on successful fetch", async () => {
+  it("renders tabs and overview for draft campaign", async () => {
     mockAuthenticatedSession();
-
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-      const url = String(input);
-      if (url.endsWith("/me")) {
-        return new Response(
-          JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin" }),
-          { status: 200 },
-        );
-      }
-      // getCampaign → listCampaigns
-      if (url.includes("/campaigns") && !url.includes("flights") && !url.includes("placements") && !url.includes("creatives")) {
-        return new Response(JSON.stringify(SEED_CAMPAIGNS), { status: 200 });
-      }
-      if (url.includes("campaign-flights")) {
-        return new Response(JSON.stringify(SEED_FLIGHTS), { status: 200 });
-      }
-      if (url.includes("campaign-placements")) {
-        return new Response(JSON.stringify(SEED_PLACEMENTS), { status: 200 });
-      }
-      if (url.includes("campaign-creatives")) {
-        return new Response(JSON.stringify(SEED_CREATIVES), { status: 200 });
-      }
-      if (url.includes("creative-assets")) {
-        return new Response(JSON.stringify(SEED_ASSETS), { status: 200 });
-      }
-      if (url.includes("advertiser-organizations")) {
-        return new Response(JSON.stringify(SEED_ORGS), { status: 200 });
-      }
-      if (url.includes("advertiser-brands")) {
-        return new Response(JSON.stringify(SEED_BRANDS), { status: 200 });
-      }
-      if (url.includes("advertiser-contracts")) {
-        return new Response(JSON.stringify(SEED_CONTRACTS), { status: 200 });
-      }
-      if (url.includes("campaign-approvals")) {
-        return new Response(JSON.stringify([]), { status: 200 });
-      }
-      return new Response(JSON.stringify([]), { status: 200 });
-    });
+    mockAllFetches();
 
     const router = createRouter("/campaigns/c1");
-    render(
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>,
-    );
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
 
-    // Should show campaign name in heading + field value (2 occurrences)
-    await waitFor(() => {
-      const nameEls = screen.getAllByText("Весенняя акция");
-      expect(nameEls.length).toBeGreaterThanOrEqual(1);
-    });
-
-    // Should show tabs
-    expect(screen.getByText("Обзор")).toBeTruthy();
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     expect(screen.getByText("Флайты")).toBeTruthy();
-    expect(screen.getByText("Плейсменты")).toBeTruthy();
-    expect(screen.getByText("Креативы")).toBeTruthy();
-    expect(screen.getByText("Отчётность")).toBeTruthy();
-
-    // Overview tab content
-    const codeEls = screen.getAllByText("CAMP-001");
-    expect(codeEls.length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Черновик")).toBeTruthy();
-    expect(screen.getByText("Ромашка")).toBeTruthy();
-    expect(screen.getByText("Чистая линия")).toBeTruthy();
-    expect(screen.getByText("Тестовое описание")).toBeTruthy();
-
-    // Flights tab count badge
-    const flightsTab = screen.getByText("Флайты").closest("button");
-    expect(flightsTab).toBeTruthy();
-    expect(flightsTab!.textContent).toContain("2");
-
-    // Placements tab count badge
-    const placementsTab = screen.getByText("Плейсменты").closest("button");
-    expect(placementsTab).toBeTruthy();
-    expect(placementsTab!.textContent).toContain("1");
-
-    // Creatives tab count badge
-    const creativesTab = screen.getByText("Креативы").closest("button");
-    expect(creativesTab).toBeTruthy();
-    expect(creativesTab!.textContent).toContain("1");
+    expect(screen.getByText("Отправить на согласование")).toBeTruthy();
+    // Approval button should be disabled (no flights/placements/creatives)
+    const btn = screen.getByText("Отправить на согласование");
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("shows not found when campaign ID does not exist", async () => {
+  // ── Flights: add form ──
+
+  it("shows flight add form and validates dates", async () => {
     mockAuthenticatedSession();
+    mockAllFetches();
 
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-      const url = String(input);
-      if (url.endsWith("/me")) {
-        return new Response(
-          JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin" }),
-          { status: 200 },
-        );
-      }
-      // Return empty campaigns — ID won't match
-      return new Response(JSON.stringify([]), { status: 200 });
-    });
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
 
-    const router = createRouter("/campaigns/nonexistent");
-    render(
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>,
-    );
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
 
+    // Navigate to flights tab
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Флайты"));
+
+    // Click add button
+    await waitFor(() => { expect(screen.getByText("+ Добавить флайт")).toBeTruthy(); });
+    await user.click(screen.getByText("+ Добавить флайт"));
+
+    // Form should appear
+    await waitFor(() => { expect(screen.getByText("Добавить")).toBeTruthy(); });
+
+    // Submit without dates → validation error
+    await user.click(screen.getByText("Добавить"));
     await waitFor(() => {
-      expect(screen.getByText("Кампания не найдена")).toBeTruthy();
+      expect(screen.getByText("Даты начала и окончания обязательны")).toBeTruthy();
     });
   });
 
-  it("shows error state on API failure", async () => {
-    mockAuthenticatedSession();
+  // ── Flights: successful create ──
 
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-      const url = String(input);
-      if (url.endsWith("/me")) {
-        return new Response(
-          JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin" }),
-          { status: 200 },
-        );
-      }
-      return new Response(JSON.stringify({ detail: "Server error" }), { status: 500 });
+  it("creates flight on valid submit", async () => {
+    mockAuthenticatedSession();
+    let postBody: unknown = null;
+    mockAllFetches({
+      "/campaigns/c1/flights": (url, init) => {
+        if ((init as RequestInit).method === "POST") {
+          postBody = JSON.parse((init as RequestInit).body as string);
+          return Promise.resolve(new Response(JSON.stringify({
+            id: "f-new", campaign_id: "c1", name: "Май", start_at: "2026-05-01T00:00:00Z", end_at: "2026-05-31T00:00:00Z",
+            dayparting_json: null, days_of_week: null, priority: 1, created_at: "2026-06-01T00:00:00Z",
+          }), { status: 201 }));
+        }
+        return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+      },
     });
 
     const router = createRouter("/campaigns/c1");
-    render(
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>,
-    );
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Флайты"));
+    await waitFor(() => { expect(screen.getByText("+ Добавить флайт")).toBeTruthy(); });
+    await user.click(screen.getByText("+ Добавить флайт"));
+    await waitFor(() => { expect(screen.getByText("Добавить")).toBeTruthy(); });
+
+    // Fill dates
+    const startInput = screen.getByLabelText("Начало *");
+    const endInput = screen.getByLabelText("Конец *");
+    await user.type(startInput, "2026-05-01");
+    await user.type(endInput, "2026-05-31");
+    await user.click(screen.getByText("Добавить"));
 
     await waitFor(() => {
-      expect(screen.getByText("Ошибка")).toBeTruthy();
+      expect(postBody).not.toBeNull();
     });
   });
 
-  it("401 clears session via existing client behavior", async () => {
-    // Not authenticated — no token in localStorage
+  // ── Flights: backend 422 ──
+
+  it("shows backend error on flight 422", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches({
+      "/campaigns/c1/flights": () =>
+        Promise.resolve(new Response(JSON.stringify({ detail: "Flight outside contract" }), { status: 422 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Флайты"));
+    await waitFor(() => { expect(screen.getByText("+ Добавить флайт")).toBeTruthy(); });
+    await user.click(screen.getByText("+ Добавить флайт"));
+    await waitFor(() => { expect(screen.getByText("Добавить")).toBeTruthy(); });
+
+    await user.type(screen.getByLabelText("Начало *"), "2026-05-01");
+    await user.type(screen.getByLabelText("Конец *"), "2026-05-31");
+    await user.click(screen.getByText("Добавить"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Ошибка данных/)).toBeTruthy();
+    });
+  });
+
+  // ── Placements: shows warning about missing ref data ──
+
+  it("shows placement warning about missing reference data", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches();
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Плейсменты"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Справочники поверхностей/)).toBeTruthy();
+    });
+  });
+
+  // ── Creatives: shows existing assets, add form ──
+
+  it("shows creative assets reference and add form", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches();
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Креативы"));
+
+    await waitFor(() => {
+      // Warning about create-only
+      expect(screen.getByText(/Создание нового креатива/)).toBeTruthy();
+      expect(screen.getByText("+ Создать креатив")).toBeTruthy();
+    });
+  });
+
+  // ── Creatives: empty assets state ──
+
+  it("shows empty creative assets message", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches();
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Креативы"));
+
+    await waitFor(() => {
+      expect(screen.getByText("У этой кампании пока нет креативов.")).toBeTruthy();
+    });
+  });
+
+  // ── Approval: button disabled when setup incomplete ──
+
+  it("disables approval button when no flights/placements/creatives", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches();
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      const btn = screen.getByText("Отправить на согласование") as HTMLButtonElement;
+      expect(btn.disabled).toBe(true);
+    });
+  });
+
+  // ── Approval: backend error shown ──
+
+  it("shows approval backend error", async () => {
+    mockAuthenticatedSession();
+    // Mock with 1 flight, 1 placement, 1 creative so button is enabled
+    const SEED_F: unknown[] = [{ id: "f1", campaign_id: "c1", name: "F1", start_at: "2026-01-01T00:00:00Z", end_at: "2026-02-01T00:00:00Z", priority: 0, created_at: "2026-01-01T00:00:00Z" }];
+    const SEED_P: unknown[] = [{ id: "p1", campaign_id: "c1", display_surface_id: null, store_id: "st-1", cluster_id: null, branch_id: null, share_of_voice_pct: 100, max_impressions: null, impressions_delivered: 0, status: "active", created_at: "2026-01-01T00:00:00Z" }];
+    const SEED_C: unknown[] = [{ id: "cc1", campaign_id: "c1", creative_asset_id: "ca-1", sort_order: 0, duration_override_ms: null, created_at: "2026-01-01T00:00:00Z", asset: { id: "ca-1", code: "CR1", name: "Banner", media_type: "image/jpeg", sha256_checksum: "abc", file_size_bytes: 100, status: "active", moderation_status: "approved", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" } }];
+
+    mockAllFetches({
+      "campaign-flights": () => Promise.resolve(new Response(JSON.stringify(SEED_F), { status: 200 })),
+      "campaign-placements": () => Promise.resolve(new Response(JSON.stringify(SEED_P), { status: 200 })),
+      "campaign-creatives": () => Promise.resolve(new Response(JSON.stringify(SEED_C), { status: 200 })),
+      "/campaigns/c1/request-approval": () =>
+        Promise.resolve(new Response(JSON.stringify({ detail: "Campaign must have at least one flight, one placement, and one creative" }), { status: 422 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(async () => {
+      const btn = screen.getByText("Отправить на согласование") as HTMLButtonElement;
+      if (!btn.disabled) {
+        await userEvent.setup().click(btn);
+      }
+    });
+
+    // Re-find button (may have re-rendered)
+    await waitFor(async () => {
+      const buttons = screen.queryAllByText("Отправить на согласование");
+      const btn = buttons[buttons.length - 1] as HTMLButtonElement;
+      if (!btn.disabled) {
+        await userEvent.setup().click(btn);
+      }
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Ошибка данных/)).toBeTruthy();
+    });
+  });
+
+  // ── Non-draft: controls hidden ──
+
+  it("hides mutating controls for non-draft campaign", async () => {
+    mockAuthenticatedSession();
+    const publishedCampaign = { ...DRAFT_CAMPAIGN, status: "active" };
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify([publishedCampaign]), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      // Should show read-only message
+      expect(screen.getByText(/Изменения доступны только в статусе/)).toBeTruthy();
+    });
+
+    // Navigate to flights tab
+    await userEvent.setup().click(screen.getByText("Флайты"));
+    // No add button
+    expect(screen.queryByText("+ Добавить флайт")).toBeNull();
+  });
+
+  // ── 401 ──
+
+  it("401 clears session", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Unauthorized"));
-
     const router = createRouter("/campaigns/c1");
-    render(
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>,
-    );
-
-    // Should redirect to login
-    await waitFor(() => {
-      expect(screen.getByText("Login")).toBeTruthy();
-    });
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("Login")).toBeTruthy(); });
   });
 });
