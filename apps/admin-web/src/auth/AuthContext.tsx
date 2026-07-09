@@ -19,17 +19,14 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null);
 
 const TOKEN_KEY = "rmp_access_token";
-const REFRESH_KEY = "rmp_refresh_token";
 
-function saveSession(access: string, refresh: string) {
+function saveSession(access: string) {
   localStorage.setItem(TOKEN_KEY, access);
-  localStorage.setItem(REFRESH_KEY, refresh);
   setToken(access);
 }
 
 function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_KEY);
   setToken(null);
 }
 
@@ -66,8 +63,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.login({ username, password });
-      saveSession(res.access_token, res.refresh_token);
+      const res = await api.login({
+        username_or_email: username,
+        password,
+        auth_provider: "ad",
+      });
+      saveSession(res.access_token);
       const me = await api.getMe();
       setUser(me);
     } catch (e) {
@@ -82,14 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    const refresh = localStorage.getItem(REFRESH_KEY);
     clearSession();
     setUser(null);
-    if (refresh) {
-      api.logout(refresh).catch(() => {
-        /* fire-and-forget */
-      });
-    }
+    api.logout().catch(() => {
+      /* fire-and-forget */
+    });
   }, []);
 
   return (

@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { setToken, getToken, onUnauthorized, ApiError, api } from "../api/client";
 
-// ── API Client Tests ──
+// ── API Client — Auth Contract Tests ──
 
-describe("API client", () => {
+describe("API client — auth contract", () => {
   beforeEach(() => {
     setToken(null);
     vi.restoreAllMocks();
   });
+
+  // ── Authorization header ──
 
   it("attaches Authorization header when token set", async () => {
     const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
@@ -15,7 +17,7 @@ describe("API client", () => {
     );
     setToken("test-token");
 
-    await api.get("/identity/campaigns");
+    await api.get("/campaigns");
 
     const [, init] = spy.mock.calls[0];
     const headers = (init as RequestInit).headers as Record<string, string>;
@@ -27,12 +29,14 @@ describe("API client", () => {
       new Response(JSON.stringify({ ok: true }), { status: 200 }),
     );
 
-    await api.get("/identity/campaigns");
+    await api.get("/campaigns");
 
     const [, init] = spy.mock.calls[0];
     const headers = (init as RequestInit).headers as Record<string, string>;
     expect(headers["Authorization"]).toBeUndefined();
   });
+
+  // ── Error handling ──
 
   it("throws ApiError on non-200 with detail message", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
@@ -85,6 +89,8 @@ describe("API client", () => {
     expect(cb).not.toHaveBeenCalled();
   });
 
+  // ── Token helpers ──
+
   it("setToken and getToken round-trip", () => {
     expect(getToken()).toBeNull();
     setToken("abc123");
@@ -93,36 +99,102 @@ describe("API client", () => {
     expect(getToken()).toBeNull();
   });
 
-  it("login sends correct request shape", async () => {
+  // ── Login — contract ──
+
+  it("login uses /api/v1/auth/login and credentials:include", async () => {
     const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
           access_token: "at",
-          refresh_token: "rt",
-          token_type: "bearer",
+          token_type: "Bearer",
+          expires_in: 1800,
+          user: { sub: "u1", auth_provider: "ad" },
         }),
         { status: 200 },
       ),
     );
 
-    const res = await api.login({ username: "admin", password: "pwd" });
-    expect(res.access_token).toBe("at");
-    expect(res.refresh_token).toBe("rt");
+    await api.login({ username_or_email: "admin", password: "pwd", auth_provider: "ad" });
 
-    const [, init] = spy.mock.calls[0];
+    const [url, init] = spy.mock.calls[0];
+    expect(url).toBe("/api/v1/auth/login");
+    expect((init as RequestInit).credentials).toBe("include");
+
     const body = JSON.parse((init as RequestInit).body as string);
-    expect(body.username).toBe("admin");
+    expect(body.username_or_email).toBe("admin");
     expect(body.password).toBe("pwd");
+    expect(body.auth_provider).toBe("ad");
     expect(body.password).not.toContain("Bearer"); // no token leakage
   });
 
-  it("getMe returns user shape after auth", async () => {
+  it("login response has NO refresh_token in JSON", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          access_token: "at",
+          token_type: "Bearer",
+          expires_in: 1800,
+          user: { sub: "u1", auth_provider: "ad" },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const res = await api.login({ username_or_email: "admin", password: "pwd", auth_provider: "ad" });
+
+    expect(res.access_token).toBe("at");
+    expect(res.token_type).toBe("Bearer");
+    expect(res.expires_in).toBe(1800);
+    expect(res.user.sub).toBe("u1");
+    // refresh_token must NOT be on the response object
+    expect((res as unknown as Record<string, unknown>).refresh_token).toBeUndefined();
+  });
+
+  // ── Refresh — contract ──
+
+  it("refresh uses /api/v1/auth/refresh and credentials:include with no body", async () => {
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          access_token: "new-at",
+          token_type: "Bearer",
+          expires_in: 1800,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await api.refresh();
+
+    const [url, init] = spy.mock.calls[0];
+    expect(url).toBe("/api/v1/auth/refresh");
+    expect((init as RequestInit).credentials).toBe("include");
+    expect((init as RequestInit).body).toBeUndefined();
+  });
+
+  // ── Logout — contract ──
+
+  it("logout uses /api/v1/auth/logout and credentials:include with no body", async () => {
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ message: "Logged out" }), { status: 200 }),
+    );
+
+    await api.logout();
+
+    const [url, init] = spy.mock.calls[0];
+    expect(url).toBe("/api/v1/auth/logout");
+    expect((init as RequestInit).credentials).toBe("include");
+    expect((init as RequestInit).body).toBeUndefined();
+  });
+
+  // ── getMe — contract ──
+
+  it("getMe returns user shape matching backend MeResponse", async () => {
     const meData = {
       sub: "u1",
+      auth_provider: "ad",
       username: "admin",
       display_name: "Admin User",
-      permissions: ["campaigns.read"],
-      scope: { is_admin: true, advertiser_scope_ids: [] },
     };
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify(meData), { status: 200 }),
@@ -130,37 +202,25 @@ describe("API client", () => {
     setToken("valid");
 
     const me = await api.getMe();
+    expect(me.sub).toBe("u1");
+    expect(me.auth_provider).toBe("ad");
     expect(me.username).toBe("admin");
-    expect(me.permissions).toContain("campaigns.read");
-    expect(me.scope.is_admin).toBe(true);
+    expect(me.display_name).toBe("Admin User");
+    // permissions and scope must NOT be on the response
+    expect((me as unknown as Record<string, unknown>).permissions).toBeUndefined();
+    expect((me as unknown as Record<string, unknown>).scope).toBeUndefined();
   });
 
-  it("logout sends refresh_token in body", async () => {
-    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(null, { status: 204 }),
-    );
+  // ── Session clear on unauthorized ──
 
-    await api.logout("rt-123");
-
-    const [, init] = spy.mock.calls[0];
-    const body = JSON.parse((init as RequestInit).body as string);
-    expect(body.refresh_token).toBe("rt-123");
-  });
-
-  it("should clear session on unauthorized when token set", () => {
-    // Simulate: token is stored, session invalidated
+  it("clears token when onUnauthorized fires", () => {
     setToken("expired-token");
     expect(getToken()).toBe("expired-token");
 
-    // onUnauthorized callback clears it
     onUnauthorized(() => setToken(null));
 
-    // trigger callback
-    const cb = vi.fn();
-    onUnauthorized(cb);
-    cb(); // simulate 401 callback
+    // simulate 401 callback
     setToken(null);
-
     expect(getToken()).toBeNull();
   });
 });

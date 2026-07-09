@@ -8,10 +8,18 @@
  * - Typed ApiError
  * - No token leakage in logs/UI
  *
- * Routes: /api/v1/auth/* (login, me), /api/v1/identity/* (campaigns, etc.)
+ * Base URLs:
+ *   AUTH_BASE_URL     = /api/v1/auth   (login, refresh, logout, me)
+ *   IDENTITY_BASE_URL = /api/v1/identity (campaigns, advertisers, etc.)
+ *
+ * Cookie-based refresh token:
+ *   login/refresh/logout use credentials: "include" so the HttpOnly
+ *   refresh cookie flows automatically. The frontend never sees the
+ *   refresh token.
  */
 
-const BASE_URL = import.meta.env.VITE_API_BASE || "/api/v1";
+const AUTH_BASE_URL = "/api/v1/auth";
+const IDENTITY_BASE_URL = "/api/v1/identity";
 
 export class ApiError extends Error {
   status: number;
@@ -48,6 +56,8 @@ async function request<T>(
   method: string,
   path: string,
   body?: unknown,
+  baseUrl: string = IDENTITY_BASE_URL,
+  credentials?: RequestCredentials,
 ): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -56,11 +66,16 @@ async function request<T>(
     headers["Authorization"] = `Bearer ${_token}`;
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const init: RequestInit = {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  };
+  if (credentials) {
+    init.credentials = credentials;
+  }
+
+  const res = await fetch(`${baseUrl}${path}`, init);
 
   if (!res.ok) {
     if (res.status === 401 && _onUnauthorized) {
@@ -85,50 +100,86 @@ async function request<T>(
 // ── Public API ──
 
 export const api = {
+  // ── Identity-scoped (Bearer token) ──
+
   get<T>(path: string): Promise<T> {
     return request<T>("GET", path);
   },
+
   post<T>(path: string, body?: unknown): Promise<T> {
     return request<T>("POST", path, body);
   },
+
   patch<T>(path: string, body?: unknown): Promise<T> {
     return request<T>("PATCH", path, body);
   },
 
-  // ── Auth ──
-
-  login(credentials: { username: string; password: string }) {
-    return request<LoginResponse>("POST", "/auth/login", credentials);
+  del<T>(path: string): Promise<T> {
+    return request<T>("DELETE", path);
   },
 
-  refresh(refreshToken: string) {
-    return request<LoginResponse>("POST", "/auth/refresh", { refresh_token: refreshToken });
+  // ── Auth (cookie-based refresh token) ──
+
+  login(credentials: { username_or_email: string; password: string; auth_provider: string }) {
+    return request<LoginResponse>(
+      "POST",
+      "/login",
+      credentials,
+      AUTH_BASE_URL,
+      "include",
+    );
   },
 
-  logout(refreshToken: string) {
-    return request<void>("POST", "/auth/logout", { refresh_token: refreshToken });
+  refresh() {
+    return request<RefreshResponse>(
+      "POST",
+      "/refresh",
+      undefined,
+      AUTH_BASE_URL,
+      "include",
+    );
+  },
+
+  logout() {
+    return request<void>(
+      "POST",
+      "/logout",
+      undefined,
+      AUTH_BASE_URL,
+      "include",
+    );
   },
 
   getMe() {
-    return request<MeResponse>("GET", "/auth/me");
+    return request<MeResponse>("GET", "/me", undefined, AUTH_BASE_URL);
   },
 };
 
-// ── Response types ──
+// ── Response types — match backend schemas exactly ──
+
+export interface UserRefOut {
+  sub: string;
+  auth_provider: string;
+  username?: string;
+  display_name?: string;
+}
 
 export interface LoginResponse {
   access_token: string;
-  refresh_token: string;
   token_type: string;
+  expires_in: number;
+  user: UserRefOut;
+}
+
+export interface RefreshResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
 }
 
 export interface MeResponse {
   sub: string;
+  auth_provider: string;
   username: string;
   display_name: string;
-  permissions: string[];
-  scope: {
-    is_admin: boolean;
-    advertiser_scope_ids: string[];
-  };
 }

@@ -68,11 +68,13 @@ export default function LoginPage() {
         )}
 
         <label
+          htmlFor="login-username"
           style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.875rem" }}
         >
           Имя пользователя
         </label>
         <input
+          id="login-username"
           type="text"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
@@ -90,11 +92,13 @@ export default function LoginPage() {
         />
 
         <label
+          htmlFor="login-password"
           style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.875rem" }}
         >
           Пароль
         </label>
         <input
+          id="login-password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
