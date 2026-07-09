@@ -176,6 +176,10 @@ services:
     environment:
       RMP_SERVICE: orchestrator-worker
       ORCHESTRATOR_PORT: "8003"
+      DATABASE_URL: "postgresql+asyncpg://retail_media:retail_media_dev@postgres:5432/retail_media_platform"
+      NATS_URL: "nats://nats:4222"
+      CAMPAIGN_CONSUMER_ENABLED: "true"
+      NATS_AUTO_PROVISION: "true"
     ports:
       - "8003:8003"
     depends_on:

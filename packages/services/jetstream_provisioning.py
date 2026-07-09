@@ -44,7 +44,6 @@ DEFAULT_CONSUMER_CONFIG: dict = {
     "ack_wait": 30,  # seconds — handler must ack within 30s
     "max_deliver": -1,  # unlimited redeliveries (nak returns for retry)
     "max_ack_pending": 100,
-    "idle_heartbeat": 10.0,
 }
 
 
@@ -99,15 +98,16 @@ async def _ensure_consumer(
             stream, durable,
         )
     except Exception:
-        # Consumer exists — update it
+        # Consumer exists — delete and recreate (nats-py lacks update_consumer)
         try:
-            await js.update_consumer(
+            await js.delete_consumer(stream=stream, durable_name=durable)
+            await js.add_consumer(
                 stream=stream,
                 durable_name=durable,
                 **config,
             )
             logger.info(
-                "JetStream consumer updated: stream=%s durable=%s",
+                "JetStream consumer recreated: stream=%s durable=%s",
                 stream, durable,
             )
         except Exception as exc:
