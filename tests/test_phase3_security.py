@@ -496,12 +496,27 @@ class TestSanitizeHelpers(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-class TestScopeAdminReset:
+class TestScopeAdminReset(unittest.TestCase):
     """Prove app.rmp_is_admin does not leak after resolve_scope_context.
 
     Uses a self-contained DB engine (not shared fixtures) to test the
     exact behavior of resolve_scope_context in isolation.
+
+    Skipped in CI when no PostgreSQL is available (unit test job has no DB;
+    behavioral job provides PostgreSQL and runs these correctly).
     """
+
+    @classmethod
+    def setUpClass(cls):
+        import socket
+        try:
+            s = socket.create_connection(("localhost", 5432), timeout=2)
+            s.close()
+        except OSError:
+            raise unittest.SkipTest(
+                "PostgreSQL not available on localhost:5432 — "
+                "run in behavioral-postgres-tests job instead"
+            )
 
     @staticmethod
     def _make_session():

@@ -99,7 +99,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install deps
-        run: pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT nats-py jsonschema pyyaml
+        run: pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT nats-py jsonschema pyyaml pytest-asyncio greenlet
       - name: Run tests
         run: python -m pytest tests/ -v
   import-boundaries:
