@@ -173,6 +173,25 @@ export interface CampaignPopBySurfaceOut {
 
 // ── Helper: localized status labels ──
 
+// ── Campaign Create Request (matches backend CampaignCreateRequest) ──
+
+export interface CampaignCreateRequest {
+  advertiser_organization_id: string;
+  advertiser_brand_id: string | null;
+  advertiser_contract_id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  start_at: string | null;
+  end_at: string | null;
+  timezone: string;
+  budget_limit_amount: number | null;
+  budget_limit_currency: string;
+  priority: number;
+}
+
+// ── Helper: localized status labels ──
+
 export const STATUS_LABELS: Record<string, string> = {
   draft: "Черновик",
   pending_approval: "На согласовании",

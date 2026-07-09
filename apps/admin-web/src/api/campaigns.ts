@@ -11,6 +11,7 @@
 import { api } from "./client";
 import type {
   CampaignOut,
+  CampaignCreateRequest,
   CampaignFlightOut,
   CampaignPlacementOut,
   CampaignCreativeOut,
@@ -37,6 +38,11 @@ export function listCampaigns(): Promise<CampaignOut[]> {
 export async function getCampaign(id: string): Promise<CampaignOut | null> {
   const all = await listCampaigns();
   return all.find((c) => c.id === id) ?? null;
+}
+
+/** Create a draft campaign. Returns the created campaign with its ID. */
+export function createCampaign(body: CampaignCreateRequest): Promise<CampaignOut> {
+  return api.post<CampaignOut>("/campaigns", body);
 }
 
 // ── Flights ──
