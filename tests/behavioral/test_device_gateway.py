@@ -5,6 +5,10 @@ Tests: valid device fetches manifest, 401/403 errors, 404 no manifest,
 cross-device isolation.
 
 Requires: RUN_BEHAVIORAL_TESTS=1, seed data, migration 008, generated manifest.
+
+Due to a known Starlette BaseHTTPMiddleware + TestClient event-loop
+conflict on the second sequential request, the 304 (ETag) test uses
+asyncio.run() with httpx.AsyncClient directly.
 """
 
 import asyncio
@@ -31,65 +35,61 @@ SKIP_REASON = "RUN_BEHAVIORAL_TESTS=1 not set."
 
 SEED_CAMPAIGN_ID = "00000000-0000-0000-0000-000000000220"
 SEED_DEVICE_ID = "00000000-0000-0000-0000-000000000020"
-SEED_SURFACE_ID = "00000000-0000-0000-0000-000000000031"
 
 
-def _raw_sql(sql: str, params=None):
-    async def _run():
-        engine = create_async_engine(DB_URL, echo=False)
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT set_config('app.rmp_is_admin', 'true', false)"))
-            await conn.commit()
-            result = await conn.execute(text(sql), params or {})
-            rows = result.fetchall()
-        await engine.dispose()
-        return rows
-    return asyncio.run(_run())
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 
-def _raw_exec(sql: str, params=None):
-    async def _run():
-        engine = create_async_engine(DB_URL, echo=False)
-        async with engine.begin() as conn:
-            await conn.execute(text("SELECT set_config('app.rmp_is_admin', 'true', true)"))
-            for stmt in sql.split(";"):
-                s = stmt.strip()
-                if s and not s.startswith("--"):
-                    await conn.execute(text(s), params or {})
-        await engine.dispose()
-    asyncio.run(_run())
+async def _run_raw_dml(sql: str, params=None):
+    engine = create_async_engine(
+        DB_URL, echo=False,
+        connect_args={"command_timeout": 10},
+        pool_size=1, max_overflow=0,
+    )
+    async with engine.begin() as conn:
+        await conn.execute(
+            text("SELECT set_config('app.rmp_is_admin', 'true', true)")
+        )
+        for stmt in sql.split(";"):
+            s = stmt.strip()
+            if s and not s.startswith("--"):
+                await conn.execute(text(s), params or {})
+    await engine.dispose()
 
 
-@pytest.fixture
-def db_available():
-    if not REQUIRE_ENV:
-        pytest.skip(SKIP_REASON)
-
-
-def _prepare_approved_campaign_and_manifest():
-    """Ensure campaign is approved, device active, and a manifest exists."""
+async def _prepare():
     from datetime import datetime, timezone as _tz, timedelta
     now = datetime.now(_tz.utc)
     start = now - timedelta(days=1)
-    end = now + timedelta(days=7)
-
-    _raw_exec(
+    end = now + timedelta(days=365)
+    await _run_raw_dml(
         "UPDATE campaigns SET status = 'approved' WHERE id = :cid",
         {"cid": SEED_CAMPAIGN_ID},
     )
-    _raw_exec(
+    await _run_raw_dml(
         "UPDATE physical_devices SET status = 'active' WHERE id = :did",
         {"did": SEED_DEVICE_ID},
     )
-    _raw_exec(
+    await _run_raw_dml(
         "UPDATE campaign_flights SET start_at = :start, end_at = :end "
         "WHERE campaign_id = :cid",
         {"start": start, "end": end, "cid": SEED_CAMPAIGN_ID},
     )
+    # Update contract validity to cover the flight window
+    await _run_raw_dml(
+        "UPDATE advertiser_contracts SET valid_from = :start, valid_until = :end "
+        "WHERE id IN ("
+        "  SELECT advertiser_contract_id FROM campaigns"
+        "  WHERE id = :cid"
+        ")",
+        {"start": start, "end": end, "cid": SEED_CAMPAIGN_ID},
+    )
 
 
-def _reset_manifest_state():
-    _raw_exec("""
+async def _reset():
+    await _run_raw_dml("""
         DELETE FROM delivery_attempts;
         DELETE FROM delivery_manifest_assets;
         DELETE FROM delivery_manifest_surfaces;
@@ -99,33 +99,42 @@ def _reset_manifest_state():
     """)
 
 
-def _generate_manifest():
-    """Run the manifest generator to produce a real manifest in the DB."""
+async def _generate():
     from packages.domain.delivery import generate_manifests_for_campaign
-
-    async def _run():
-        engine = create_async_engine(DB_URL, echo=False)
-        AsyncSessionLocal = sessionmaker(
-            engine, class_=AsyncSession, expire_on_commit=False,
+    engine = create_async_engine(
+        DB_URL, echo=False,
+        connect_args={"command_timeout": 10},
+        pool_size=1, max_overflow=0,
+    )
+    AsyncSessionLocal = sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False,
+    )
+    async with AsyncSessionLocal() as session:
+        result = await generate_manifests_for_campaign(
+            session, SEED_CAMPAIGN_ID,
         )
-        async with AsyncSessionLocal() as session:
-            result = await generate_manifests_for_campaign(
-                session, SEED_CAMPAIGN_ID,
-            )
-            await session.commit()
-            return result
-        await engine.dispose()
+        await session.commit()
+    await engine.dispose()
+    return result
 
-    return asyncio.run(_run())
+
+def _run_sync(coro):
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+
+
+def _run_setup():
+    _run_sync(_prepare())
+    _run_sync(_reset())
+    _run_sync(_generate())
 
 
 def _create_device_token(device_id: str = SEED_DEVICE_ID) -> str:
-    """Create a valid device JWT for testing."""
-    from packages.security.jwt import create_access_token
-    # create_access_token is user-oriented; we craft a device token manually
     import time, uuid, jwt as pyjwt
     from packages.security.config import get_security_config
-
     cfg = get_security_config()
     now = int(time.time())
     claims = {
@@ -142,6 +151,80 @@ def _create_device_token(device_id: str = SEED_DEVICE_ID) -> str:
     return pyjwt.encode(claims, cfg.jwt_secret, algorithm=cfg.jwt_algorithm)
 
 
+def _make_test_client():
+    sys.path.insert(
+        0,
+        os.path.join(
+            os.path.dirname(__file__), "..", "..", "apps", "device-gateway",
+        ),
+    )
+    from fastapi.testclient import TestClient
+    import importlib
+    if "main" in sys.modules:
+        del sys.modules["main"]
+    main = __import__("main")
+
+    main.app.dependency_overrides.clear()
+
+    engine = create_async_engine(DB_URL, echo=False)
+    main.set_global_engine(engine)
+
+    async def override_get_db():
+        AsyncSessionLocal = sessionmaker(
+            engine, class_=AsyncSession, expire_on_commit=False,
+        )
+        async with AsyncSessionLocal() as session:
+            yield session
+
+    main.app.dependency_overrides[main.get_db] = override_get_db
+    return TestClient(main.app)
+
+
+def _run_async_with_setup(app):
+    """Run async httpx requests in a dedicated event loop with a fresh 
+    engine/lifespan.  Used for multi-request tests that hit the Starlette 
+    TestClient event-loop conflict."""
+    import httpx
+    import importlib
+
+    sys.path.insert(
+        0,
+        os.path.join(
+            os.path.dirname(__file__), "..", "..", "apps", "device-gateway",
+        ),
+    )
+    if "main" in sys.modules:
+        del sys.modules["main"]
+    main = __import__("main")
+    main.app.dependency_overrides.clear()
+
+    engine = create_async_engine(DB_URL, echo=False)
+    main.set_global_engine(engine)
+
+    async def override_get_db():
+        AsyncSessionLocal = sessionmaker(
+            engine, class_=AsyncSession, expire_on_commit=False,
+        )
+        async with AsyncSessionLocal() as session:
+            yield session
+
+    main.app.dependency_overrides[main.get_db] = override_get_db
+
+    async def _run():
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=main.app),
+            base_url="http://testserver",
+        ) as client:
+            return await app(client)
+
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(_run())
+    finally:
+        loop.run_until_complete(engine.dispose())
+        loop.close()
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -151,99 +234,75 @@ class TestDeviceManifestEndpoint:
 
     @pytest.fixture(autouse=True)
     def setup(self, db_available):
-        _prepare_approved_campaign_and_manifest()
-        _reset_manifest_state()
-        _generate_manifest()
-
-    def _client(self):
-        """Create FastAPI TestClient with device-gateway app and DB override."""
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "apps", "device-gateway"))
-        from fastapi.testclient import TestClient
-        # Force re-import — module may be cached with stale state
-        import importlib
-        if "main" in sys.modules:
-            del sys.modules["main"]
-        main = __import__("main")
-
-        # Reset any prior dependency overrides
-        main.app.dependency_overrides.clear()
-
-        # Create a real engine and register it as the global engine
-        engine = create_async_engine(DB_URL, echo=False)
-        main.set_global_engine(engine)
-
-        # Override get_db to use the same engine
-        async def override_get_db():
-            AsyncSessionLocal = sessionmaker(
-                engine, class_=AsyncSession, expire_on_commit=False,
-            )
-            async with AsyncSessionLocal() as session:
-                yield session
-
-        main.app.dependency_overrides[main.get_db] = override_get_db
-        return TestClient(main.app)
+        pass
 
     def test_valid_device_fetches_manifest(self):
-        client = self._client()
+        _run_setup()
+        client = _make_test_client()
         token = _create_device_token()
         response = client.get(
             "/api/v1/device/manifest/latest",
             headers={"Authorization": f"Bearer {token}"},
         )
-        assert response.status_code == 200
+        assert response.status_code == 200, response.text
         data = response.json()
         assert "manifest_id" in data
         assert data["device_id"] == SEED_DEVICE_ID
         assert len(data.get("display_surfaces", [])) >= 1
-        # Verify ETag header present
         assert "etag" in response.headers
         assert response.headers["etag"] == data.get("content_hash", "")
-        # Required skeleton fields from generate_manifest_json
-        assert "channel_type" in data, "Missing channel_type in device manifest"
+        assert "channel_type" in data, "Missing channel_type"
         assert "offline_ttl_hours" in data, "Missing offline_ttl_hours"
-        # No secrets/storage/PII leakage
-        unsafe = ("storage_bucket", "storage_key", "presigned_url",
-                  "access_key", "secret_key", "token", "password")
+        unsafe = (
+            "storage_bucket", "storage_key", "presigned_url",
+            "access_key", "secret_key", "token", "password",
+        )
         body = str(data).lower()
         for term in unsafe:
             assert term not in body, f"Manifest leaks {term}"
 
     def test_if_none_match_returns_304(self):
-        """If-None-Match matching current content_hash returns 304."""
-        client = self._client()
+        """Uses httpx.AsyncClient directly to avoid Starlette
+        TestClient's BaseHTTPMiddleware event-loop conflict on
+        the second sequential request."""
+        import httpx
+        _run_sync(_prepare())
+        _run_sync(_reset())
+        _run_sync(_generate())
         token = _create_device_token()
+        _engine_ref = []
 
-        # First fetch to get ETag
-        response1 = client.get(
-            "/api/v1/device/manifest/latest",
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        assert response1.status_code == 200
-        etag = response1.headers.get("etag", "")
+        async def _test(client):
+            # First fetch
+            resp1 = await client.get(
+                "/api/v1/device/manifest/latest",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert resp1.status_code == 200
+            etag = resp1.headers.get("etag", "")
+            assert etag, "ETag must be non-empty"
 
-        # Second fetch with If-None-Match
-        response2 = client.get(
-            "/api/v1/device/manifest/latest",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "If-None-Match": etag,
-            },
-        )
-        assert response2.status_code == 304
-        # 304 must have no body
-        assert response2.content == b""
-        # ETag must be present on 304
-        assert "etag" in response2.headers
+            # Second fetch with If-None-Match
+            resp2 = await client.get(
+                "/api/v1/device/manifest/latest",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "If-None-Match": etag,
+                },
+            )
+            assert resp2.status_code == 304
+            assert resp2.content == b""
+            assert "etag" in resp2.headers
+
+        _run_async_with_setup(_test)
 
     def test_no_auth_returns_401(self):
-        client = self._client()
+        client = _make_test_client()
         response = client.get("/api/v1/device/manifest/latest")
         assert response.status_code == 401
 
     def test_user_token_rejected(self):
-        """A user token (auth_provider=ad) must not access device endpoint."""
-        client = self._client()
-        # Create a user-style token
+        client = _make_test_client()
         import time, uuid, jwt as pyjwt
         from packages.security.config import get_security_config
         cfg = get_security_config()
@@ -258,7 +317,6 @@ class TestDeviceManifestEndpoint:
             "aud": cfg.jwt_audience,
         }
         user_token = pyjwt.encode(claims, cfg.jwt_secret, algorithm=cfg.jwt_algorithm)
-
         response = client.get(
             "/api/v1/device/manifest/latest",
             headers={"Authorization": f"Bearer {user_token}"},
@@ -266,9 +324,8 @@ class TestDeviceManifestEndpoint:
         assert response.status_code == 401
 
     def test_another_device_manifest_isolation(self):
-        """Device A cannot access Device B's manifest via different device_id in token."""
-        client = self._client()
-        # Create token for a different, non-existent device
+        _run_setup()
+        client = _make_test_client()
         import time, uuid, jwt as pyjwt
         from packages.security.config import get_security_config
         cfg = get_security_config()
@@ -285,7 +342,6 @@ class TestDeviceManifestEndpoint:
             "aud": cfg.jwt_audience,
         }
         token = pyjwt.encode(claims, cfg.jwt_secret, algorithm=cfg.jwt_algorithm)
-
         response = client.get(
             "/api/v1/device/manifest/latest",
             headers={"Authorization": f"Bearer {token}"},
@@ -293,29 +349,25 @@ class TestDeviceManifestEndpoint:
         assert response.status_code == 404
 
     def test_inactive_device_rejected(self):
-        """Inactive/offline device must not receive manifest."""
-        client = self._client()
-        _raw_exec(
-            "UPDATE physical_devices SET status = 'offline' WHERE id = :did",
-            {"did": SEED_DEVICE_ID},
+        _run_setup()
+        _run_sync(
+            _run_raw_dml(
+                "UPDATE physical_devices SET status = 'offline' WHERE id = :did",
+                {"did": SEED_DEVICE_ID},
+            )
         )
+        client = _make_test_client()
         token = _create_device_token()
         response = client.get(
             "/api/v1/device/manifest/latest",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == 403
-        # Restore
-        _raw_exec(
-            "UPDATE physical_devices SET status = 'active' WHERE id = :did",
-            {"did": SEED_DEVICE_ID},
-        )
 
     def test_no_manifest_returns_404(self):
-        """Device with no generated manifests gets 404."""
-        client = self._client()
-        # Reset manifests but keep device active
-        _reset_manifest_state()
+        _run_sync(_prepare())
+        _run_sync(_reset())
+        client = _make_test_client()
         token = _create_device_token()
         response = client.get(
             "/api/v1/device/manifest/latest",

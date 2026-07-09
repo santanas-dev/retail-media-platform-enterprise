@@ -27,7 +27,7 @@ if _APP_DB_URL:
     os.environ["DATABASE_URL"] = _APP_DB_URL
 else:
     os.environ["DATABASE_URL"] = (
-        "postgresql+asyncpg://retail_media_app:retail_media_app_dev"
+        "postgresql+asyncpg://retail_media_app:retail_media_app"
         "@localhost:5432/retail_media_platform"
     )
 
@@ -83,7 +83,7 @@ TEST_PASSWORD = "TestPassword123!"
 
 async def _check_db():
     try:
-        engine = create_async_engine(DB_URL, echo=False)
+        engine = create_async_engine(DB_URL, echo=False, pool_size=1, max_overflow=0)
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         await engine.dispose()
@@ -93,7 +93,7 @@ async def _check_db():
 
 
 async def _run_sql(sql: str):
-    engine = create_async_engine(DB_URL, echo=False)
+    engine = create_async_engine(DB_URL, echo=False, pool_size=1, max_overflow=0)
     async with engine.begin() as conn:
         # Bypass RLS for test fixture setup/cleanup
         await conn.execute(text("SELECT set_config('app.rmp_is_admin', 'true', true)"))
