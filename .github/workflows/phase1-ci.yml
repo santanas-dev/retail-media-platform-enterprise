@@ -90,6 +90,9 @@ jobs:
   python-tests:
     name: Python — Unit Tests
     runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: dev
+      JWT_SECRET: ci-test-secret-at-least-32-chars-ok
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -102,6 +105,8 @@ jobs:
   import-boundaries:
     name: Import Boundaries — ADR‑014
     runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: dev
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

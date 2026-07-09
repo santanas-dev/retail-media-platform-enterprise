@@ -98,6 +98,9 @@ services:
     environment:
       RMP_SERVICE: control-api
       CONTROL_API_PORT: "8000"
+      ENVIRONMENT: dev
+      JWT_SECRET: dev-secret-do-not-use-in-production
+      CORS_ALLOWED_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173"
       DATABASE_URL: "postgresql+asyncpg://retail_media:retail_media_dev@postgres:5432/retail_media_platform"
     ports:
       - "8000:8000"
@@ -128,9 +131,15 @@ services:
     environment:
       RMP_SERVICE: device-gateway
       DEVICE_GATEWAY_PORT: "8001"
+      ENVIRONMENT: dev
+      JWT_SECRET: dev-secret-do-not-use-in-production
+      CORS_ALLOWED_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173"
+      DATABASE_URL: "postgresql+asyncpg://retail_media:retail_media_dev@postgres:5432/retail_media_platform"
     ports:
       - "8001:8001"
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       nats:
@@ -152,6 +161,7 @@ services:
     environment:
       RMP_SERVICE: pop-ingestor
       POP_INGESTOR_PORT: "8002"
+      ENVIRONMENT: dev
     ports:
       - "8002:8002"
     depends_on:
@@ -176,6 +186,8 @@ services:
     environment:
       RMP_SERVICE: orchestrator-worker
       ORCHESTRATOR_PORT: "8003"
+      ENVIRONMENT: dev
+      JWT_SECRET: dev-secret-do-not-use-in-production
       DATABASE_URL: "postgresql+asyncpg://retail_media:retail_media_dev@postgres:5432/retail_media_platform"
       NATS_URL: "nats://nats:4222"
       CAMPAIGN_CONSUMER_ENABLED: "true"

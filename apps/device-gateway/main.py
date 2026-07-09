@@ -8,28 +8,68 @@ No generation, no PoP, no runtime logic.
 
 import os
 import sys
+from contextlib import asynccontextmanager
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from fastapi import FastAPI, Request, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from packages.domain.database import get_session
-from packages.domain.repository import get_latest_manifest_for_device
+from packages.domain.database import (
+    create_engine,
+    get_global_engine,
+    get_session,
+    set_global_engine,
+)
+from packages.domain.repository import get_latest_manifest_for_device, get_physical_device_for_manifest_delivery
 from packages.observability import setup_logging, log_request_middleware
+from packages.security.config import get_security_config
 from packages.security.jwt import verify_access_token
 
 SERVICE_NAME = "device-gateway"
 logger = setup_logging(SERVICE_NAME)
 
-app = FastAPI(
-    title="RMP Device Gateway",
-    version="0.1.0",
-    docs_url=None,
-    redoc_url=None,
-)
-app.middleware("http")(log_request_middleware)
+# ---------------------------------------------------------------------------
+# Engine lifecycle — created once, shared across requests
+# ---------------------------------------------------------------------------
+_engine = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global _engine
+    try:
+        _engine = create_engine()
+        set_global_engine(_engine)
+        logger.info("Database engine created")
+    except Exception:
+        logger.exception(
+            "Failed to create database engine — service will start degraded"
+        )
+        _engine = None
+    yield
+    if _engine:
+        await _engine.dispose()
+        logger.info("Database engine disposed")
+
+
+# ---------------------------------------------------------------------------
+# Dependencies
+# ---------------------------------------------------------------------------
+
+
+async def get_db():
+    """FastAPI dependency — yield an async session."""
+    engine = get_global_engine()
+    if engine is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Database not available",
+        )
+    async with get_session(engine) as session:
+        yield session
 
 
 # ---------------------------------------------------------------------------
@@ -38,7 +78,7 @@ app.middleware("http")(log_request_middleware)
 
 
 async def get_device_id_from_token(request: Request) -> str:
-    """Extract physical_device_id from Authorization: Bearer <device JWT>.
+    """Extract physical_device_id from Authorization: Bearer <JWT>.
 
     ADR-003: device JWT has sub=<device_id>, auth_provider="device".
     Rejects user tokens (auth_provider != "device"), expired/invalid tokens.
@@ -78,6 +118,32 @@ async def get_device_id_from_token(request: Request) -> str:
 
 
 # ---------------------------------------------------------------------------
+# App
+# ---------------------------------------------------------------------------
+
+app = FastAPI(
+    title="RMP Device Gateway",
+    version="0.2.0",
+    docs_url=None,
+    redoc_url=None,
+    lifespan=lifespan,
+)
+app.middleware("http")(log_request_middleware)
+
+# ---------------------------------------------------------------------------
+# CORS — must be configured before routers
+# ---------------------------------------------------------------------------
+_cors_cfg = get_security_config()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_cfg.cors_allowed_origins,
+    allow_credentials=_cors_cfg.cors_allow_credentials,
+    allow_methods=_cors_cfg.cors_allowed_methods,
+    allow_headers=_cors_cfg.cors_allowed_headers,
+)
+
+
+# ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
 
@@ -89,10 +155,13 @@ async def health_live():
 
 @app.get("/health/ready")
 async def health_ready():
+    engine = get_global_engine()
+    db_ok = engine is not None
     return {
-        "status": "ok",
+        "status": "ok" if db_ok else "degraded",
         "service": SERVICE_NAME,
         "checks": {
+            "database": "ok" if db_ok else "no_engine",
             "redis": "not_configured",
             "event_bus": "not_configured",
         },
@@ -108,7 +177,7 @@ async def health_ready():
 async def get_latest_manifest(
     request: Request,
     device_id: str = Depends(get_device_id_from_token),
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_db),
 ):
     """Return the latest manifest for the authenticated device, or 404.
 
@@ -118,8 +187,6 @@ async def get_latest_manifest(
     401: invalid/expired/missing device token
     403: device not active
     """
-    from packages.domain.repository import get_latest_manifest_for_device, get_physical_device_for_manifest_delivery
-
     device_status = await get_physical_device_for_manifest_delivery(session, device_id)
     if device_status is None:
         raise HTTPException(status_code=404, detail="Device not found")

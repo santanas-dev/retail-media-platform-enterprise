@@ -1,0 +1,3 @@
+# PoP Ingestor — Phase 1 skeleton, pure stdlib + packages/observability.
+# No pip dependencies required at this phase.
+# Dockerfile expects this file to exist (empty is fine).
