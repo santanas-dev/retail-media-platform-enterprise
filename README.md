@@ -2,14 +2,18 @@
 
 Мультиканальная платформа управления рекламой на цифровых носителях розничной сети.
 
-**Статус:** 🏗️ Phase 4.3d — PoP Reporting Read Models (component-complete). Next: 4.3e Materialized Views.
+**Статус:** ✅ Backend pilot delivery chain proven (B1/B2/B3, 2026-07-09).
+Phase 4.3d component-complete; 4.3e materialized views deferred.
 
-> **Runtime wiring note:** Auth, RBAC, RLS, API, and database layers are implemented.
-> Campaign approval/mutation/read, delivery planning, manifest generation, device
-> manifest endpoint, PoP ingestion, and reporting read models are all implemented
-> and tested as individual components. The **end-to-end async runtime chain**
-> (outbox → relay worker → NATS → orchestrator-worker → manifest generation)
-> is **not yet connected**. See `docs/architecture/stabilization-tracker.md` S-012.
+> **Backend pilot delivery chain proven through device manifest fetch.**
+> Campaign setup/approval APIs are tested (42 + 24 behavioral).
+> Delivery pipeline tested end-to-end: outbox → NATS JetStream →
+> consumer → manifest → device-gateway HTTP fetch (B2 + B3 E2E, opt-in).
+> See `docs/architecture/stabilization-tracker.md` for full tracker.
+>
+> **Remaining non-backend gaps:** real KSO player/sidecar, frontend,
+> creative upload/presigned URLs, production manifest signing,
+> ClickHouse/materialized reporting, production deployment hardening.
 
 ## Architecture
 

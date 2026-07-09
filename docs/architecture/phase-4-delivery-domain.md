@@ -1,27 +1,24 @@
 # Phase 4.2–4.3 — Delivery Domain + PoP/Reporting
 
-## Status: In Progress
+## Status: Backend pilot delivery chain proven (2026-07-09)
 
-> **⚠️ Runtime wiring gap:** All delivery/PoP/reporting **components** listed
-> below are implemented and tested individually. However, the **end-to-end
-> async event chain** is not yet connected:
-> - **Outbox relay worker** — not implemented (ADR-011 specifies it, S-012 tracks it)
-> - **NATS JetStream publish path** — outbox events are stored but not published to NATS
-> - **Orchestrator-worker** — skeleton only (`apps/orchestrator-worker/main.py`,
->   `/health` endpoints exist, no business logic)
-> - **Manifest generation trigger** — `generate_manifests_for_campaign` is tested
->   but not invoked by a running worker
-> - **PoP ingestor** — no separate runtime service; PoP ingestion endpoint runs
->   inside `control-api`
+> **Delivery chain wired:** The end-to-end async event chain is now
+> connected and tested. Proven path: outbox enqueue → relay worker →
+> NATS JetStream → orchestrator consumer → manifest generation →
+> device-gateway HTTP fetch (B2 + B3 E2E tests, opt-in with
+> `RUN_NATS_INTEGRATION_TESTS=1`).
 >
-> See `docs/architecture/stabilization-tracker.md` S-006e (orchestrator),
-> S-012 (outbox relay + orchestration wiring).
+> See `docs/architecture/stabilization-tracker.md` S-006f (B2 NATS
+> pipeline), S-006g (B3 pilot E2E smoke), S-012 (outbox relay +
+> orchestration wiring).
 
 - **4.2a** Architecture Lock (ADR-016) — 🔒 locked
 - **4.2b** Delivery DB/Model Foundation — ✅ done (`46cfe71` + `137ae0b`)
 - **4.2c** Manifest Generator Worker Skeleton — ✅ done (`e467543` + `e05b960` + `0154681`)
 - **4.2d** Device Gateway Delivery Endpoint — ✅ done (`c34d5fa` + `c8a369e` + `08b099e`)
 - **4.2e** Runtime Simulator Behavioral Tests — ✅ done (`52a50fc` + fix)
+- **4.2f** NATS Delivery Pipeline Wiring (Pilot B2) — ✅ done (`adde7d3` + `4462aac` + `ec12dfb`)
+- **4.2g** Pilot E2E Smoke through Device Fetch (Pilot B3) — ✅ done (`5f6763c`)
 - **4.3a** PoP and Reporting Architecture Lock (ADR-017) — 🔒 locked
 - **4.3b** PoP Persistence Schema — ✅ done
 - **4.3c** PoP Ingestion Endpoint — ✅ done
