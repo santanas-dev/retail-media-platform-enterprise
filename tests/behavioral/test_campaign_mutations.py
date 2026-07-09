@@ -946,6 +946,19 @@ class TestCampaignFlightValidation:
         assert resp.status_code == 422, (
             f"Expected 422 update start >= end, got {resp.status_code}: {resp.text}"
         )
+        # Invalid update did not mutate flight or enqueue a second outbox event
+        rows = _raw_sql(
+            f"SELECT COUNT(*) FROM outbox_events "
+            f"WHERE aggregate_id = '{cid}' AND event_type = 'campaign.flight.changed'"
+        )
+        assert rows[0][0] == 1, (
+            f"Expected 1 outbox from valid create, not {rows[0][0]} "
+            f"(invalid update should not enqueue)"
+        )
+        flight_rows = _raw_sql(
+            f"SELECT COUNT(*) FROM campaign_flights WHERE id = '{fid}'"
+        )
+        assert flight_rows[0][0] == 1, "Flight row should still exist after rejected update"
 
     def test_create_before_contract_valid_from_returns_422(self, client, user_ids):
         """ADV1 contract valid_from = 2026-01-01. Flight start before that should fail."""
@@ -996,6 +1009,60 @@ class TestCampaignFlightValidation:
         assert resp.status_code == 201, (
             f"Expected 201 for open-ended contract, got {resp.status_code}: {resp.text}"
         )
+
+    def test_create_after_finite_valid_until_returns_422(self, client, user_ids):
+        """Contract with finite valid_until blocks flights past that date."""
+        token = _token(user_ids["advertiser"])
+        contract_id = "beh-ctr-finite-0000000000000001"
+
+        # Insert temporary contract with finite valid_until (cleaned by conftest)
+        _raw_exec(f"""
+            INSERT INTO advertiser_contracts (id, advertiser_organization_id, code, name,
+                contract_number, budget_limit_amount, budget_limit_currency,
+                valid_from, valid_until, status)
+            VALUES ('{contract_id}', '{ADV1_ORG_ID}', 'BEH-CTR-CLOSED',
+                'Closed Contract', 'BEH-CLOSED', 100000, 'RUB',
+                '2026-01-01T00:00:00+03:00', '2026-06-30T00:00:00+03:00', 'active')
+            ON CONFLICT (advertiser_organization_id, code) DO NOTHING
+        """)
+
+        # Create campaign pointing to the closed contract
+        resp = client.post(
+            "/api/v1/identity/campaigns",
+            json={
+                "advertiser_organization_id": ADV1_ORG_ID,
+                "advertiser_contract_id": contract_id,
+                "code": "BEH-FL-VAL06",
+                "name": "Flight Val 6",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, resp.text
+        cid = resp.json()["id"]
+
+        # Flight end_at after valid_until (2026-06-30)
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{cid}/flights",
+            json={
+                "start_at": "2026-06-01T00:00:00Z",
+                "end_at": "2026-07-15T00:00:00Z",
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 422, (
+            f"Expected 422 after finite valid_until, got {resp.status_code}: {resp.text}"
+        )
+        # No flight row created
+        rows = _raw_sql(
+            f"SELECT COUNT(*) FROM campaign_flights WHERE campaign_id = '{cid}'"
+        )
+        assert rows[0][0] == 0, "Flight row created for invalid input"
+        # No outbox
+        rows = _raw_sql(
+            f"SELECT COUNT(*) FROM outbox_events "
+            f"WHERE aggregate_id = '{cid}' AND event_type = 'campaign.flight.changed'"
+        )
+        assert rows[0][0] == 0, "Outbox written for invalid flight"
 
 
 class TestCampaignSetupPlacements:

@@ -158,6 +158,8 @@ def _setup_sql(ph):
     -- campaign_creatives must be deleted first (FK on creative_asset_id).
     ; DELETE FROM creative_assets WHERE created_by LIKE 'beh-%'
     ; DELETE FROM campaigns WHERE created_by LIKE 'beh-%'
+    -- B1 P2: clean up test contracts (after campaigns FK is gone)
+    ; DELETE FROM advertiser_contracts WHERE id LIKE 'beh-%'
     ; INSERT INTO local_credentials (id,user_id,credential_type,password_hash,status) VALUES
       ('lc-beh-ro','{u["readonly"]}','local_advertiser','{ph}','active'),
       ('lc-beh-np','{u["noperms"]}','local_advertiser','{ph}','active'),
@@ -317,6 +319,7 @@ _CLEANUP = """
     )
     ; DELETE FROM creative_assets WHERE created_by LIKE 'beh-%'
     ; DELETE FROM campaigns WHERE created_by LIKE 'beh-%'
+    ; DELETE FROM advertiser_contracts WHERE id LIKE 'beh-%'
     ; DELETE FROM campaign_approvals WHERE reviewed_by LIKE 'beh-%'
     ; DELETE FROM campaign_status_history WHERE changed_by LIKE 'beh-%'
     ; DELETE FROM login_attempts WHERE username_or_email_hash LIKE 'beh-test-%'
