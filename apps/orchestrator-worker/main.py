@@ -234,7 +234,7 @@ async def _start_relay() -> bool:
 
 async def _start_relay_loop(db_url: str, publisher) -> bool:
     """Start the outbox relay loop with the given publisher."""
-    from packages.domain.database import check_db_health, create_engine
+    from packages.domain.database import check_db_health, create_engine, set_worker_admin_context
     from packages.services.outbox_relay import OutboxRelay
     from packages.services.health_state import set_relay_running, set_db_ok
 
@@ -261,6 +261,10 @@ async def _start_relay_loop(db_url: str, publisher) -> bool:
         engine=engine,
         poll_interval=poll_interval,
         batch_size=batch_size,
+        # S-019: worker RLS context — set app.rmp_is_admin=true before
+        # each outbox poll batch so RLS policies grant full visibility
+        # (workers operate system-wide, not per-tenant).
+        session_setup=set_worker_admin_context,
     )
     logger.info(
         "Outbox relay started: poll=%.1fs, batch=%d, publisher=%s",
@@ -348,6 +352,7 @@ async def _start_real_consumer(nats_url: str, engine) -> bool:
     Raises RuntimeError if nats-py missing or connect fails,
     unless CAMPAIGN_CONSUMER_ALLOW_STUB=true.
     """
+    from packages.domain.database import set_worker_admin_context
     from packages.services.campaign_event_handler import (
         NatsJetStreamCampaignConsumer,
     )
@@ -388,6 +393,9 @@ async def _start_real_consumer(nats_url: str, engine) -> bool:
         fetch_timeout=float(
             os.environ.get("CAMPAIGN_CONSUMER_FETCH_TIMEOUT", "5.0"),
         ),
+        # S-019: worker RLS context — set app.rmp_is_admin=true before
+        # each message handler so RLS policies grant full visibility.
+        session_setup=set_worker_admin_context,
     )
 
     try:
@@ -430,11 +438,15 @@ async def _start_real_consumer(nats_url: str, engine) -> bool:
 
 async def _start_stub_consumer(engine) -> bool:
     """Start StubCampaignEventConsumer (test/skeleton mode)."""
+    from packages.domain.database import set_worker_admin_context
     from packages.services.campaign_event_handler import (
         StubCampaignEventConsumer,
     )
 
-    consumer = StubCampaignEventConsumer(engine)
+    consumer = StubCampaignEventConsumer(
+        engine,
+        session_setup=set_worker_admin_context,
+    )
     logger.info("Campaign event consumer started (stub mode)")
     asyncio.create_task(consumer.run())
     return True

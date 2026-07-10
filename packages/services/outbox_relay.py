@@ -12,7 +12,9 @@ from __future__ import annotations
 import asyncio
 import json as json_mod
 import logging
+from collections.abc import Awaitable
 from datetime import datetime, timezone
+from typing import Callable
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
@@ -53,6 +55,7 @@ class OutboxRelay:
         poll_interval: float = 0.5,
         batch_size: int = 100,
         max_attempts: int = 7,
+        session_setup: Callable[[AsyncSession], Awaitable[None]] | None = None,
     ) -> None:
         self._publisher = publisher
         self._engine = engine
@@ -60,6 +63,7 @@ class OutboxRelay:
         self._batch_size = batch_size
         self._max_attempts = max_attempts
         self._running: bool = True
+        self._session_setup = session_setup
 
     # ------------------------------------------------------------------
     # Public API
@@ -95,6 +99,8 @@ class OutboxRelay:
         """
         processed = 0
         async with AsyncSession(self._engine) as session:
+            if self._session_setup is not None:
+                await self._session_setup(session)
             events = await fetch_pending_events(session, limit=self._batch_size)
 
             for event in events:

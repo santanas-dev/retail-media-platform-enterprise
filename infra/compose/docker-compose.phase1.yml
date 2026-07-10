@@ -2,6 +2,13 @@
 #
 # Starts all infrastructure and service skeletons.
 # Usage: docker compose -f infra/compose/docker-compose.phase1.yml up -d
+#
+# S-019: Three-role DB architecture.
+#   retail_media_owner — PostgreSQL bootstrap / migrations / seed (superuser).
+#   retail_media_app   — app runtime (NOBYPASSRLS) — control-api, device-gateway,
+#                         orchestrator-worker.
+#   init-db.sql creates retail_media_app at container init.
+#   db-setup grants table/sequence access after migrations + seed.
 
 name: rmp-phase1
 
@@ -13,15 +20,16 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: retail_media
-      POSTGRES_PASSWORD: retail_media_dev
+      POSTGRES_USER: retail_media_owner
+      POSTGRES_PASSWORD: retail_media_owner_pass
       POSTGRES_DB: retail_media_platform
     ports:
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init-roles.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U retail_media -d retail_media_platform"]
+      test: ["CMD-SHELL", "pg_isready -U retail_media_owner -d retail_media_platform"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -100,8 +108,8 @@ services:
       CONTROL_API_PORT: "8000"
       ENVIRONMENT: dev
       JWT_SECRET: dev-secret-do-not-use-in-production
-      CORS_ALLOWED_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173"
-      DATABASE_URL: "postgresql+asyncpg://retail_media:retail_media_dev@postgres:5432/retail_media_platform"
+      CORS_ALLOWED_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000"
+      DATABASE_URL: "postgresql+asyncpg://retail_media_app:retail_media_app_pass@postgres:5432/retail_media_platform"
       MINIO_INTERNAL_ENDPOINT: "minio:9000"
       MINIO_PUBLIC_ENDPOINT: "localhost:9000"
       MINIO_ACCESS_KEY: "minioadmin"
@@ -139,8 +147,7 @@ services:
       DEVICE_GATEWAY_PORT: "8001"
       ENVIRONMENT: dev
       JWT_SECRET: dev-secret-do-not-use-in-production
-      CORS_ALLOWED_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173"
-      DATABASE_URL: "postgresql+asyncpg://retail_media:retail_media_dev@postgres:5432/retail_media_platform"
+      DATABASE_URL: "postgresql+asyncpg://retail_media_app:retail_media_app_pass@postgres:5432/retail_media_platform"
     ports:
       - "8001:8001"
     depends_on:
@@ -194,7 +201,7 @@ services:
       ORCHESTRATOR_PORT: "8003"
       ENVIRONMENT: dev
       JWT_SECRET: dev-secret-do-not-use-in-production
-      DATABASE_URL: "postgresql+asyncpg://retail_media:retail_media_dev@postgres:5432/retail_media_platform"
+      DATABASE_URL: "postgresql+asyncpg://retail_media_app:retail_media_app_pass@postgres:5432/retail_media_platform"
       NATS_URL: "nats://nats:4222"
       CAMPAIGN_CONSUMER_ENABLED: "true"
       NATS_AUTO_PROVISION: "true"
@@ -248,13 +255,15 @@ services:
         SERVICE_MODULE: apps.control-api.main
         SERVICE_PORT: "8000"
     environment:
-      DATABASE_URL: "postgresql+asyncpg://retail_media:retail_media_dev@postgres:5432/retail_media_platform"
+      DATABASE_URL: "postgresql+asyncpg://retail_media_owner:retail_media_owner_pass@postgres:5432/retail_media_platform"
     command: >
       sh -c "
         echo '=== Running migrations ===' &&
         cd apps/control-api && alembic upgrade head &&
         echo '=== Running seed ===' &&
         cd /app && python apps/control-api/seed.py &&
+        echo '=== Granting app role privileges (S-019) ===' &&
+        cd /app && python infra/compose/grant-app-role.py &&
         echo '=== DB setup complete ==='
       "
     depends_on:

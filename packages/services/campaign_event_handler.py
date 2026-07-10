@@ -17,6 +17,7 @@ import json as json_mod
 import logging
 from abc import ABC, abstractmethod
 from collections import deque
+from collections.abc import Awaitable
 from typing import Any, Callable
 
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
@@ -158,8 +159,10 @@ class StubCampaignEventConsumer(CampaignEventConsumer):
     handler return; nak/log-skip on failure.
     """
 
-    def __init__(self, engine: AsyncEngine) -> None:
+    def __init__(self, engine: AsyncEngine, *,
+                 session_setup: Callable[[AsyncSession], Awaitable[None]] | None = None) -> None:
         self._engine = engine
+        self._session_setup = session_setup
         self._queue: deque[bytes] = deque()
         self._acked: int = 0
         self._nakd: int = 0
@@ -216,6 +219,8 @@ class StubCampaignEventConsumer(CampaignEventConsumer):
             return
 
         async with AsyncSession(self._engine) as session:
+            if self._session_setup is not None:
+                await self._session_setup(session)
             try:
                 success = await handle_campaign_delivery_event(session, envelope)
                 if success:
@@ -271,6 +276,7 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
         fetch_timeout: float = 5.0,
         nak_delay: float = 5.0,
         connect_timeout: float = 5.0,
+        session_setup: Callable[[AsyncSession], Awaitable[None]] | None = None,
     ) -> None:
         self._nats_url = nats_url
         self._engine = engine
@@ -286,6 +292,7 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
         self._js: object | None = None
         self._sub: object | None = None
         self._running: bool = False
+        self._session_setup = session_setup
 
         # Stats (for tests + observability)
         self.acked: int = 0
@@ -412,6 +419,8 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
             return
 
         async with AsyncSession(self._engine) as session:
+            if self._session_setup is not None:
+                await self._session_setup(session)
             try:
                 success = await handle_campaign_delivery_event(session, envelope)
                 if success:

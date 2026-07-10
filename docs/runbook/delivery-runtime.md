@@ -8,8 +8,9 @@ How to operate the outbox → NATS → consumer → manifest generation pipeline
 # Start infrastructure
 docker compose -f infra/compose/docker-compose.phase1.yml up -d postgres nats
 
-# Apply migrations + seed
-cd apps/control-api && alembic upgrade head && python seed.py
+# Apply migrations + seed (uses retail_media_owner role)
+docker compose -f infra/compose/docker-compose.phase1.yml \
+  --profile setup run --rm db-setup
 
 # Provision JetStream (only needed once, or set NATS_AUTO_PROVISION=true)
 python -c "
@@ -20,7 +21,7 @@ asyncio.run(provision_campaign_delivery('nats://localhost:4222'))
 
 # Start orchestrator-worker
 NATS_URL=nats://localhost:4222 \
-DATABASE_URL=postgresql+asyncpg://retail_media:retail_media_dev@localhost:5432/retail_media_platform \
+DATABASE_URL=postgresql+asyncpg://retail_media_app:retail_media_app_pass@localhost:5432/retail_media_platform \
 CAMPAIGN_CONSUMER_ENABLED=true \
 NATS_AUTO_PROVISION=true \
 python apps/orchestrator-worker/main.py
@@ -156,6 +157,28 @@ nats consumer ls RMP
 
 ## DB readiness
 
+### Three-role architecture (S-019)
+
+The platform uses three PostgreSQL roles with distinct privileges:
+
+| Role | Purpose | Superuser | BYPASSRLS | DDL |
+|------|---------|:---------:|:---------:|:---:|
+| `retail_media_owner` | Container bootstrap, migrations, seed | yes (dev) | yes (dev) | yes |
+| `retail_media_app` | Runtime services (control-api, device-gateway, orchestrator-worker) | **no** | **no** | no |
+
+**Why:** ADR-009 §9 requires two-layer defence — app-layer RBAC + PostgreSQL RLS.
+If the runtime role were superuser or BYPASSRLS, RLS policies would be silently
+bypassed at the DB level (defence-in-depth lost).
+
+`retail_media_app` is created by `infra/compose/init-db.sql` at container init
+and granted table/sequence access by `infra/compose/grant-app-role.py` after
+migrations + seed (db-setup service).
+
+In CI, `behavioral-postgres-tests` creates the same role structure and verifies
+`rolsuper=false, rolbypassrls=false` before running tests.
+
+### Runtime DB checks
+
 The worker verifies actual PostgreSQL connectivity at startup via
 `check_db_health()` (timeout 2.0s).  If the DB is unreachable, the worker
 fails-fast with a safe error message — no database URL or credentials are
@@ -220,6 +243,6 @@ docker compose -f infra/compose/docker-compose.phase1.yml up -d postgres nats
 # Run opt-in integration tests
 RUN_NATS_INTEGRATION_TESTS=1 \
 NATS_URL=nats://localhost:4222 \
-BEHAVIORAL_DB_URL=postgresql+asyncpg://retail_media:retail_media_dev@localhost:5432/retail_media_platform \
+BEHAVIORAL_DB_URL=postgresql+asyncpg://retail_media_app:retail_media_app_pass@localhost:5432/retail_media_platform \
 python -m pytest tests/integration/test_nats_consumer.py -v
 ```

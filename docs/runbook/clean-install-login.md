@@ -9,7 +9,7 @@
 # 1. Start infrastructure
 docker compose -f infra/compose/docker-compose.phase1.yml up -d
 
-# 2. Apply migrations + seed
+# 2. Apply migrations + seed (uses retail_media_owner role)
 docker compose -f infra/compose/docker-compose.phase1.yml \
   --profile setup run --rm db-setup
 
@@ -46,6 +46,19 @@ The LDAPS interface is defined (ADR-006) and the auth pipeline is ready,
 but a real AD controller has not been provisioned.
 
 ## Production Deployment
+
+### DB roles (S-019)
+
+Runtime services (control-api, device-gateway, orchestrator-worker) connect
+as `retail_media_app` — a **NOBYPASSRLS**, non-superuser role.  This ensures
+PostgreSQL RLS policies (ADR-009, S-008) are enforced at the DB level as a
+second defence layer.
+
+Migrations and seed use `retail_media_owner` (DDL-capable).  The roles are
+created by `infra/compose/init-db.sql` and granted table access by
+`infra/compose/grant-app-role.py` during db-setup.
+
+### Local credentials
 
 In production (`ENVIRONMENT != dev`), the seed script **skips**
 local_credentials by default and logs a clear warning:

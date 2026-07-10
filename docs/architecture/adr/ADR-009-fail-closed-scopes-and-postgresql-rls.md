@@ -351,6 +351,14 @@ mechanism — either a dedicated worker DB role with system-scoped privileges,
 or a per-job `SET LOCAL` preamble that resolves scopes from the job payload.
 This is deferred to Phase 3.6 (worker RLS).
 
+> **S-019 (2026-07-10):** Compose now enforces the three-role architecture:
+> `retail_media_owner` (DDL/migrations/seed) and `retail_media_app`
+> (NOBYPASSRLS — control-api, device-gateway, orchestrator-worker).
+> Background workers call `set_worker_admin_context()` to set
+> `app.rmp_is_admin=true` before each transaction — a pilot-grade
+> system-wide scope.  Per-worker payload-based scope resolution remains
+> deferred to Phase 3.6.  See `docs/runbook/delivery-runtime.md`.
+
 ## Consequences
 
 - **Positive:** Two-layer defense means a missing app-layer filter is caught

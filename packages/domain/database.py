@@ -128,3 +128,78 @@ async def get_session(engine):
     factory = create_session_factory(engine)
     async with factory() as session:
         yield session
+
+
+async def set_worker_admin_context(session) -> None:
+    """Set admin RLS context for background workers.
+
+    S-019: Workers (orchestrator, outbox relay, campaign consumer) do not
+    go through FastAPI middleware and therefore have no ScopeContext.
+    They operate system-wide — reading all tenants' outbox events and
+    campaign data.  This helper sets app.rmp_is_admin=true on the
+    current transaction so RLS policies grant full visibility.
+
+    Call AFTER the transaction has begun (i.e. inside an async session
+    context), before any RLS-protected queries.
+
+    Deferred (ADR-009 §9): per-worker scope resolution from job payloads
+    is Phase 3.6.  For the pilot, a single admin context suffices.
+    """
+    from sqlalchemy import text
+    await session.execute(text("SET LOCAL app.rmp_is_admin = 'true'"))
+
+
+async def grant_app_role_privileges(engine, dev_mode: bool = False) -> dict:
+    """Grant DML privileges to retail_media_app after migrations/seed.
+
+    S-019: Runs as part of db-setup to ensure the app runtime role has
+    access to all tables created by Alembic migrations.  Must execute
+    with the owner/migration role (which owns the tables).
+
+    Returns a dict with counts: {granted_tables, granted_sequences, errors}.
+    Never leaks connection strings or role passwords.
+    """
+    from sqlalchemy import text
+    result = {"granted_tables": 0, "granted_sequences": 0, "errors": 0}
+
+    try:
+        async with engine.connect() as conn:
+            # Grant on all existing tables
+            await conn.execute(text(
+                "GRANT SELECT, INSERT, UPDATE, DELETE "
+                "ON ALL TABLES IN SCHEMA public TO retail_media_app"
+            ))
+            # Grant on all existing sequences
+            await conn.execute(text(
+                "GRANT USAGE, SELECT "
+                "ON ALL SEQUENCES IN SCHEMA public TO retail_media_app"
+            ))
+            await conn.commit()
+
+            # Count tables granted
+            count_row = await conn.execute(text(
+                "SELECT count(*) FROM information_schema.tables "
+                "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
+            ))
+            result["granted_tables"] = count_row.scalar() or 0
+
+            # Count sequences granted
+            seq_row = await conn.execute(text(
+                "SELECT count(*) FROM information_schema.sequences "
+                "WHERE sequence_schema = 'public'"
+            ))
+            result["granted_sequences"] = seq_row.scalar() or 0
+
+    except Exception:
+        if dev_mode:
+            result["errors"] += 1
+            import logging
+            logging.getLogger("rmp.database").warning(
+                "grant_app_role_privileges failed — "
+                "retail_media_app may not have table access. "
+                "Re-run after migrations complete."
+            )
+        else:
+            raise
+
+    return result

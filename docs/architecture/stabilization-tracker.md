@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
 | **Last updated:** 2026-07-10
-| **Current phase:** S-018 manifest/PoP contract alignment. S-017 media upload done. S-016 dual auth done. Backend pilot delivery chain proven (B1/B2/B3). v0.1 tagged.
+| **Current phase:** S-019 runtime/deployment security alignment. S-018 manifest/PoP contract alignment done. Three-role DB architecture deployed. All runtime services use NOBYPASSRLS retail_media_app.
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -62,6 +62,7 @@ Separately covered:
 | S-016 | Dual Auth Readiness — local credentials + AD stub | P1 | ✅ done | P.S. (Hermes) | `/me` DB-backed (username, display_name, must_change_password). Seed: local_credentials for break_glass_admin + advertiser_test with production gate (ENVIRONMENT=dev / SEED_DEV_CREDENTIALS=true). Admin-web: provider selector (ad/local_advertiser/local_break_glass), AD stub → 503 message. E2E tests: dual auth cycle, refresh/logout, break-glass audit. AD stays stub — honest 503. Runbook: `docs/runbook/clean-install-login.md`. | Behavioural proof with real PostgreSQL |
 | S-017 | Creative Media Upload (MinIO presigned URL) | P1 | ✅ done | P.S. (Hermes) | ...
 | S-018 | Manifest / PoP Contract Alignment | P1 | ✅ done | P.S. (Hermes) | Schemas: `manifest_v1.schema.json` (flat playlist per ADR-016 v1 pilot), `proof_event_v1.schema.json` (flat, matches PopEventIn). Simulator: `_build_pop_event` emits `playback_result` + `campaign_id`. Nested per-surface playlist deferred to Manifest v2. Contract tests: 15 manifest + 16 PoP (schema validation, DTO round-trip, full-chain proof). ADR-016/017 updated. | Nested playlist for multi-surface KSO → v2 |
+| S-019 | Runtime / Deployment Security Alignment | P0 | ✅ done | P.S. (Hermes) | Three-role DB architecture: `retail_media_owner` (DDL/migrations/seed), `retail_media_app` (NOBYPASSRLS runtime). `init-db.sql` + `grant-app-role.py`. Worker admin context via `set_worker_admin_context()` → `app.rmp_is_admin=true`. Compose: all runtime services use `retail_media_app`. device-gateway CORS removed. admin-web CORS +:3000. Role safety test suite (7 opt-in tests). Docs: delivery-runtime + clean-install-login updated. | Worker per-scope resolution (ADR-009 §9 Phase 3.6) |
 
 ## Status Legend
 
