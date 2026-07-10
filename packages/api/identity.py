@@ -491,7 +491,7 @@ async def request_approval_endpoint(
     if old_status == new_status:
         raise HTTPException(
             status_code=422,
-            detail="Campaign must have at least one flight, one placement, and one creative",
+            detail="Campaign validation failed: ensure at least one flight, one placement, and one creative with uploaded files exist. Metadata-only creatives (no file uploaded) cannot be approved.",
         )
     await enqueue_outbox_event(
         db,

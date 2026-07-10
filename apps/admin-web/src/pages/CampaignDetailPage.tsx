@@ -904,6 +904,11 @@ export default function CampaignDetailPage() {
       { value: "other", label: "Прочее" },
     ];
 
+    // P1: helper — asset has real file (not metadata-only)
+    function isDeliverable(a: CreativeAssetOut): boolean {
+      return a.sha256_checksum != null && a.sha256_checksum.length === 64;
+    }
+
     // Unattached assets (not yet linked to this campaign)
     const linkedIds = new Set(creatives.map((x) => x.creative_asset_id));
     const unattached = allAssets.filter((a) => !linkedIds.has(a.id));
@@ -937,7 +942,7 @@ export default function CampaignDetailPage() {
                         <option value="">— выберите —</option>
                         {unattached.map((a) => (
                           <option key={a.id} value={a.id}>
-                            {a.name} [{a.code}] — {a.media_type}{a.resolution_w ? " " + a.resolution_w + "x" + a.resolution_h : ""}
+                            {a.name} [{a.code}] — {a.media_type}{a.resolution_w ? " " + a.resolution_w + "x" + a.resolution_h : ""}{!isDeliverable(a) ? " (ожидает загрузки)" : ""}
                           </option>
                         ))}
                       </select>
@@ -947,6 +952,17 @@ export default function CampaignDetailPage() {
                       </p>
                     )}
                   </div>
+                  {attachAssetId && (() => {
+                    const selected = unattached.find((a) => a.id === attachAssetId);
+                    if (selected && !isDeliverable(selected)) {
+                      return (
+                        <div style={{ padding: "0.5rem", background: "#fff7ed", borderRadius: 4, border: "1px solid #fdba74", fontSize: "0.75rem", color: "#9a3412", marginBottom: "0.5rem" }}>
+                          ⚠ Этот креатив ещё не загружен. Кампания с ним не пройдёт согласование — сначала загрузите файл.
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                   {unattached.length > 0 && (
                     <div style={{ display: "flex", gap: "0.25rem", alignItems: "flex-end" }}>
                       <button type="submit" style={css.primaryBtn} disabled={attachSubmitting}>
@@ -1046,6 +1062,7 @@ export default function CampaignDetailPage() {
                   <th style={css.miniTh}>Название</th>
                   <th style={css.miniTh}>Тип</th>
                   <th style={css.miniTh}>Размер</th>
+                  <th style={css.miniTh}>Статус</th>
                 </tr>
               </thead>
               <tbody>
@@ -1055,6 +1072,11 @@ export default function CampaignDetailPage() {
                     <td style={css.miniTd}>{a.name}</td>
                     <td style={css.miniTd}>{a.media_type}</td>
                     <td style={css.miniTd}>{a.resolution_w}×{a.resolution_h}</td>
+                    <td style={css.miniTd}>
+                      {isDeliverable(a)
+                        ? statusLabel(a.status)
+                        : <span style={{ color: "#d97706", fontWeight: 500 }}>⚠ Ожидает загрузки</span>}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1090,7 +1112,13 @@ export default function CampaignDetailPage() {
                   <td style={css.miniTd}>
                     {cc.asset?.duration_ms != null ? `${(cc.asset.duration_ms / 1000).toFixed(1)}с` : "—"}
                   </td>
-                  <td style={css.miniTd}>{cc.asset ? statusLabel(cc.asset.status) : "—"}</td>
+                  <td style={css.miniTd}>
+                    {cc.asset
+                      ? isDeliverable(cc.asset)
+                        ? statusLabel(cc.asset.status)
+                        : <span style={{ color: "#d97706", fontWeight: 500 }}>⚠ Ожидает загрузки</span>
+                      : "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -254,6 +254,15 @@ async def get_creative_asset(
     return result.scalar_one_or_none()
 
 
+def is_deliverable_checksum(sha256: str) -> bool:
+    """Return True if the checksum is a valid 64-char hex string.
+
+    Empty string means metadata-only — no file uploaded yet.
+    Only a 64-char lowercase hex string qualifies as deliverable.
+    """
+    return len(sha256) == 64 and all(c in "0123456789abcdef" for c in sha256)
+
+
 async def list_campaign_flights(session: AsyncSession) -> list:
     """Return all campaign flights, ordered by campaign_id + start_at."""
     from packages.domain.models import CampaignFlight
@@ -559,6 +568,7 @@ async def request_campaign_approval(
         AdvertiserContract,
         Campaign, CampaignStatusHistory,
         CampaignFlight, CampaignPlacement, CampaignCreative,
+        CreativeAsset,
     )
 
     result = await session.execute(
@@ -587,6 +597,22 @@ async def request_campaign_approval(
     )
     if not flight_count or not placements or not creatives:
         return campaign.status, campaign.status  # validation failed
+
+    # P1 fix: reject approval if any attached creative is metadata-only
+    # (empty sha256_checksum = no real file uploaded yet)
+    cc_result = await session.execute(
+        select(CampaignCreative.creative_asset_id)
+        .where(CampaignCreative.campaign_id == campaign_id)
+    )
+    asset_ids = [row[0] for row in cc_result.fetchall()]
+    if asset_ids:
+        asset_rows = await session.execute(
+            select(CreativeAsset.id, CreativeAsset.sha256_checksum)
+            .where(CreativeAsset.id.in_(asset_ids))
+        )
+        for aid, cs in asset_rows.fetchall():
+            if not is_deliverable_checksum(cs):
+                return campaign.status, campaign.status  # reject — metadata only
 
     # Validate flight windows against contract (ADR-015 §3.5)
     contract = await session.get(AdvertiserContract, campaign.advertiser_contract_id)
@@ -1087,7 +1113,9 @@ async def create_creative_asset_metadata(
 
     asset_id = str(uuid.uuid4())
     storage_key_val = f"pilot/creatives/{asset_id}"
-    checksum = sha256_checksum.strip() if sha256_checksum else "0" * 64
+    # P1 fix: empty string = no real checksum — NOT a fake placeholder.
+    # Only a valid 64-char hex string counts as a real file checksum.
+    checksum = sha256_checksum.strip() if sha256_checksum else ""
     now = datetime.now(tz.utc)
 
     asset = CreativeAsset(

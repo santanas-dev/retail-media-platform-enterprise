@@ -320,6 +320,8 @@ export const STATUS_LABELS: Record<string, string> = {
   completed: "Завершена",
   rejected: "Отклонена",
   archived: "Архив",
+  metadata_only: "Ожидает загрузки",
+  ready: "Готов",
 };
 
 export function statusLabel(s: string): string {

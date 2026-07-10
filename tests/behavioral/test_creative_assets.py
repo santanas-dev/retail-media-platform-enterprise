@@ -11,6 +11,7 @@ import asyncio
 import json
 import os
 import sys
+import uuid
 
 import pytest
 
@@ -137,6 +138,9 @@ class TestCreateCreativeAssetBehavioral:
         assert data["resolution_w"] == 1920
         assert data["resolution_h"] == 1080
         assert data["status"] == "metadata_only"
+        # P1 fix: no fake checksum — empty string means "no file uploaded"
+        assert data["sha256_checksum"] == "", \
+            f"Expected empty checksum for metadata-only, got '{data['sha256_checksum']}'"
         aid = data["id"]
         TestCreateCreativeAssetBehavioral._CREATED_ASSET_ID = aid
 
@@ -184,3 +188,161 @@ class TestCreateCreativeAssetBehavioral:
             _raw_exec(
                 f"DELETE FROM creative_assets WHERE id = '{cls._CREATED_ASSET_ID}'"
             )
+
+
+# ---------------------------------------------------------------------------
+# P1 proof: metadata-only creatives block approval
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(not REQUIRE_ENV, reason=SKIP_REASON)
+class TestMetadataOnlyBlocksApproval:
+    """Proof: metadata-only (empty checksum) creative → approval rejected.
+
+    Uses seed campaign CAMP-2026-001 which already has flights, placements,
+    and real creatives.  Attaching a metadata-only creative makes the whole
+    campaign un-approvable.
+    """
+
+    SEED_CID = "00000000-0000-0000-0000-000000000220"
+    _meta_asset_id = None
+
+    def _draft(self):
+        _raw_exec("UPDATE campaigns SET status = 'draft' WHERE code = 'CAMP-2026-001'")
+
+    def _cleanup_meta(self):
+        if self._meta_asset_id:
+            _raw_exec(
+                f"DELETE FROM campaign_creatives WHERE creative_asset_id = '{self._meta_asset_id}';"
+                f"DELETE FROM creative_assets WHERE id = '{self._meta_asset_id}'"
+            )
+            self._meta_asset_id = None
+
+    def test_metadata_only_creative_blocks_approval(self, client, user_ids):
+        """Attach metadata-only creative → request-approval returns 422."""
+        self._draft()
+        token = _token(user_ids["readonly"])
+        cid = self.SEED_CID
+
+        try:
+            # 1. Create metadata-only creative asset (empty checksum)
+            resp = client.post(
+                "/api/v1/identity/creative-assets",
+                json={"code": "CR-PROOF-META", "name": "Proof Metadata Only", "media_type": "image"},
+                headers=_auth(token),
+            )
+            assert resp.status_code == 201, resp.text
+            data = resp.json()
+            assert data["sha256_checksum"] == "", "Must be empty for metadata-only"
+            assert data["status"] == "metadata_only"
+            self._meta_asset_id = data["id"]
+
+            # 2. Attach it to seed campaign
+            resp = client.post(
+                f"/api/v1/identity/campaigns/{cid}/creatives/attach",
+                json={"creative_asset_id": self._meta_asset_id, "sort_order": 99},
+                headers=_auth(token),
+            )
+            assert resp.status_code == 201, f"Attach failed: {resp.text}"
+
+            # 3. Request approval — must be rejected
+            resp = client.post(
+                f"/api/v1/identity/campaigns/{cid}/request-approval",
+                headers=_auth(token),
+            )
+            assert resp.status_code == 422, (
+                f"Expected 422 for metadata-only creative, got {resp.status_code}: {resp.text}"
+            )
+            detail = resp.json().get("detail", "")
+            assert "Metadata-only" in detail or "uploaded files" in detail, (
+                f"Missing metadata-only rejection message in: {detail}"
+            )
+
+            # 4. Campaign must remain in draft
+            rows = _raw_sql("SELECT status FROM campaigns WHERE id = :cid", {"cid": cid})
+            assert rows[0][0] == "draft", f"Expected draft, got {rows[0][0]}"
+
+            # 5. No approval outbox event
+            rows = _raw_sql(
+                "SELECT count(*) FROM outbox_events WHERE aggregate_id = :cid AND event_type = 'campaign.approval_requested'",
+                {"cid": cid},
+            )
+            assert rows[0][0] == 0, f"Expected 0 approval outbox events, got {rows[0][0]}"
+        finally:
+            self._cleanup_meta()
+
+    def test_missing_checksum_no_fake_stored(self, client, user_ids):
+        """Create without checksum → response/DB shows empty string, not fake hash."""
+        token = _token(user_ids["readonly"])
+        code = f"CR-NOFAKE-{uuid.uuid4().hex[:8]}"
+
+        resp = client.post(
+            "/api/v1/identity/creative-assets",
+            json={"code": code, "name": "No Fake Checksum", "media_type": "video"},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, resp.text
+        data = resp.json()
+        assert data["sha256_checksum"] == "", (
+            f"Expected empty checksum, got '{data['sha256_checksum']}'"
+        )
+        assert data["status"] == "metadata_only"
+
+        # Verify DB directly — no fake hash stored
+        db_rows = _raw_sql(
+            "SELECT sha256_checksum FROM creative_assets WHERE code = :code",
+            {"code": code},
+        )
+        assert db_rows[0][0] == "", (
+            f"DB stored '{db_rows[0][0]}' — expected empty string, not fake hash"
+        )
+
+        # Cleanup
+        _raw_exec(f"DELETE FROM creative_assets WHERE code = '{code}'")
+
+    def test_real_checksum_creative_still_attaches(self, client, user_ids):
+        """Real 64-hex checksum creative can be created and attached normally."""
+        token = _token(user_ids["readonly"])
+        code = f"CR-REAL-{uuid.uuid4().hex[:8]}"
+        real_checksum = "a" * 64  # valid 64-char hex
+
+        # Create with real checksum
+        resp = client.post(
+            "/api/v1/identity/creative-assets",
+            json={
+                "code": code, "name": "Real Checksum Creative",
+                "media_type": "image",
+                "sha256_checksum": real_checksum,
+            },
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, resp.text
+        data = resp.json()
+        assert data["sha256_checksum"] == real_checksum, (
+            f"Expected real checksum, got '{data['sha256_checksum']}'"
+        )
+        # Status should NOT be metadata_only — it has a real checksum
+        assert data["status"] != "metadata_only", (
+            f"Real checksum should not produce metadata_only status, got {data['status']}"
+        )
+        asset_id = data["id"]
+
+        # Can attach to seed campaign
+        self._draft()
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{self.SEED_CID}/creatives/attach",
+            json={"creative_asset_id": asset_id, "sort_order": 99},
+            headers=_auth(token),
+        )
+        assert resp.status_code == 201, f"Real creative attach failed: {resp.text}"
+
+        # Cleanup
+        _raw_exec(
+            f"DELETE FROM campaign_creatives WHERE creative_asset_id = '{asset_id}';"
+            f"DELETE FROM creative_assets WHERE id = '{asset_id}'"
+        )
+
+    @classmethod
+    def teardown_class(cls):
+        """Restore seed campaign to draft and remove test artifacts."""
+        _raw_exec("UPDATE campaigns SET status = 'draft' WHERE code = 'CAMP-2026-001'")

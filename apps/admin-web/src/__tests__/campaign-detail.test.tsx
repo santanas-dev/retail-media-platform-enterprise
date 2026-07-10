@@ -508,6 +508,36 @@ describe("CampaignDetailPage — S-009e", () => {
 
       await waitFor(() => { expect(screen.getByText("Login")).toBeTruthy(); });
     });
+
+    // P1: metadata-only assets show "Ожидает загрузки" label
+    it("shows 'Ожидает загрузки' for metadata-only assets in library", async () => {
+      mockAuthenticatedSession();
+      const metadataAsset = {
+        id: "ca-metadata", advertiser_organization_id: "org-1",
+        code: "META-001", name: "Метадата креатив", media_type: "image",
+        sha256_checksum: "",  // empty = metadata only
+        file_size_bytes: 0, duration_ms: null,
+        resolution_w: null, resolution_h: null,
+        status: "metadata_only", moderation_status: "pending_review",
+        created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
+      };
+      mockAllFetches({
+        "/creative-assets": () => Promise.resolve(
+          new Response(JSON.stringify([metadataAsset]), { status: 200 }),
+        ),
+      });
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+      await user.click(screen.getByText("Креативы"));
+
+      // Open the existing assets list
+      await user.click(screen.getByText(/Существующие креативы/));
+      await waitFor(() => {
+        expect(screen.getByText("⚠ Ожидает загрузки")).toBeTruthy();
+      });
+    });
   });
 
   // ── S-009f: Approval workflow ──
