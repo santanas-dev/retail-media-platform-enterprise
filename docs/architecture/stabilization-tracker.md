@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
 | **Last updated:** 2026-07-10
-| **Current phase:** S-016 dual auth readiness in progress. Backend pilot delivery chain proven (B1/B2/B3). v0.1 tagged.
+| **Current phase:** S-017 media upload close-out. S-016 dual auth readiness in progress. Backend pilot delivery chain proven (B1/B2/B3). v0.1 tagged.
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -60,6 +60,7 @@ Separately covered:
 | S-009rr | Runtime truth gate — CI green baseline | P0 | ✅ done (local) | — | **Root cause**: device-gateway used `Depends(get_session)` with no engine wiring; `get_session(engine)` needs an explicit engine arg (not a FastAPI dep). Fix: added lifespan engine creation + `get_db()` dependency (matching control-api pattern). Also: device-gateway/requirements.txt (sqlalchemy, asyncpg, PyJWT), orchestrator-worker/requirements.txt (sqlalchemy, asyncpg), pop-ingestor/requirements.txt (empty, Dockerfile expects file). Compose: added ENVIRONMENT=dev, JWT_SECRET, CORS_ALLOWED_ORIGINS, DATABASE_URL to device-gateway; added ENVIRONMENT to all services; added postgres health dependency to device-gateway. CI: added ENVIRONMENT=dev + JWT_SECRET to python-tests and import-boundaries jobs. Local baseline restored — **GitHub Actions verification pending after push**. | Push + verify GitHub Actions |
 | S-015 | GitHub Release Versioning / Product Milestones | P1 | ✅ done | P.S. (Hermes) | Policy: `docs/architecture/release-versioning.md`. Tag v0.1-admin-campaign-mvp created at d291cfed. | — |
 | S-016 | Dual Auth Readiness — local credentials + AD stub | P1 | 🚧 in progress | P.S. (Hermes) | `/me` DB-backed (username, display_name, must_change_password). Seed: local_credentials for break_glass_admin + advertiser_test with production gate (ENVIRONMENT=dev / SEED_DEV_CREDENTIALS=true). Admin-web: provider selector (ad/local_advertiser/local_break_glass), AD stub → 503 message. E2E tests: dual auth cycle, refresh/logout, break-glass audit. AD stays stub — honest 503. Runbook: `docs/runbook/clean-install-login.md`. | Behavioural proof with real PostgreSQL |
+| S-017 | Creative Media Upload (MinIO presigned URL) | P1 | ✅ done | P.S. (Hermes) | Backend: presigned URL flow (upload-intent → PUT → complete-upload), server SHA-256 streaming, upload sessions, MinIO production credential validation. Frontend: admin-web upload UI — file picker, progress bar, 5-stage flow, error handling, Russian labels. Integration test: full E2E (opt-in, RUN_MINIO_INTEGRATION_TESTS=1). Runbook: `docs/runbook/media-upload.md`. Commits: 01baf57 + fffb243 + 873881d + fbab9d5. 818 unit + 10 behavioural + 1 integration (opt-in) + 64 admin-web tests. | Deferred: malware scan, transcoding, CDN, multipart upload |
 
 ## Status Legend
 
@@ -75,7 +76,7 @@ Separately covered:
 |-----|--------|
 | Real KSO player/sidecar | Out of scope |
 | Frontend advertiser/admin portal | Scaffolded, not wired (S-009) |
-| Real creative upload/storage/presigned URLs | Deferred |
+| Real creative upload/storage/presigned URLs | S-017 done — backend + admin-web upload UI. Deferred: malware scan, transcoding, CDN, multipart upload |
 | Production manifest signing (real HMAC) | Placeholder only |
 | ClickHouse / materialized reporting (4.3e) | Deferred |
 | Production deployment/observability hardening | Prometheus metrics/alerts deferred |

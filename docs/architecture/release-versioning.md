@@ -28,7 +28,7 @@ v{major}.{minor}-{description}
 | Tag | Description |
 |-----|-------------|
 | `v0.1-admin-campaign-mvp` | Admin portal + campaign CRUD, creative attach, approval, basic PoP reporting |
-| `v0.2-media-upload-mvp` | Real media upload, storage, presigned URLs, creative asset serving |
+| `v0.2-media-upload-mvp` | Real media upload (✅ S-017 done), storage, presigned URLs, creative asset serving |
 | `v0.3-player-pilot-mvp` | Real KSO player/sidecar integration, device manifest delivery, PoP ingestion |
 
 Major (0.x) stays at 0 until first production deployment.  Minor
