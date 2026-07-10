@@ -168,6 +168,41 @@ export interface CampaignPopBySurfaceOut {
   total_duration_ms: number;
 }
 
+// ── S-009h: Reference data (branches, clusters, stores, surfaces) ──
+
+export interface BranchOut {
+  id: string;
+  code: string;
+  name: string;
+  is_active: boolean;
+}
+
+export interface ClusterOut {
+  id: string;
+  branch_id: string;
+  code: string;
+  name: string;
+  is_active: boolean;
+}
+
+export interface StoreOut {
+  id: string;
+  cluster_id: string;
+  code: string;
+  name: string;
+  address: string;
+  is_active: boolean;
+}
+
+export interface DisplaySurfaceRefOut {
+  id: string;
+  store_id: string;
+  code: string;
+  resolution_w: number;
+  resolution_h: number;
+  is_active: boolean;
+}
+
 // ── Helper: localized status labels ──
 
 // ── Campaign Create Request (matches backend CampaignCreateRequest) ──

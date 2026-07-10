@@ -20,6 +20,10 @@ import {
   getCampaignPopSummary,
   getCampaignPopByDay,
   getCampaignPopBySurface,
+  listBranches,
+  listClusters,
+  listStores,
+  listDisplaySurfaces,
 } from "../api/campaigns";
 import type {
   CampaignOut,
@@ -38,6 +42,9 @@ import type {
   CampaignPopSummaryOut,
   CampaignPopByDayOut,
   CampaignPopBySurfaceOut,
+  BranchOut,
+  StoreOut,
+  DisplaySurfaceRefOut,
 } from "../api/types";
 import { statusLabel, statusColor } from "../api/types";
 import { ApiError } from "../api/client";
@@ -166,6 +173,13 @@ export default function CampaignDetailPage() {
   const [popLoading, setPopLoading] = useState(false);
   const [popLoaded, setPopLoaded] = useState(false);
   const [popError, setPopError] = useState<string | null>(null);
+
+  // Reference data for placement pickers
+  const [refSurfaces, setRefSurfaces] = useState<DisplaySurfaceRefOut[]>([]);
+  const [refStores, setRefStores] = useState<StoreOut[]>([]);
+  const [refLoading, setRefLoading] = useState(false);
+  const [refLoaded, setRefLoaded] = useState(false);
+  const [refError, setRefError] = useState<string | null>(null);
 
   // ── Load all data ──
 
@@ -299,6 +313,27 @@ export default function CampaignDetailPage() {
       loadPopData(data.campaign.id);
     }
   }, [activeTab, popLoaded, popLoading, data, loadPopData]);
+
+  // Lazy-load reference data when placements tab is activated
+  useEffect(() => {
+    if (activeTab === "placements" && !refLoaded && !refLoading && data) {
+      setRefLoading(true);
+      setRefError(null);
+      Promise.all([
+        listDisplaySurfaces(),
+        listStores(),
+      ])
+        .then(([surfaces, stores]) => {
+          setRefSurfaces(surfaces.filter((s) => s.is_active));
+          setRefStores(stores.filter((s) => s.is_active));
+          setRefLoaded(true);
+        })
+        .catch((e: unknown) => {
+          setRefError(e instanceof Error ? e.message : "Ошибка загрузки справочников");
+        })
+        .finally(() => setRefLoading(false));
+    }
+  }, [activeTab, refLoaded, refLoading, data]);
 
   // ── Render states ──
 
@@ -677,12 +712,33 @@ export default function CampaignDetailPage() {
       setShowPlacementAdd(false);
     }
 
+    // Build helper maps for display
+    const surfaceMap = new Map(refSurfaces.map((s) => [s.id, s]));
+    const storeMap = new Map(refStores.map((s) => [s.id, s]));
+
+    function surfaceLabel(id: string): string {
+      const s = surfaceMap.get(id);
+      return s ? `${s.code} (${s.resolution_w}×${s.resolution_h})` : id;
+    }
+
+    function storeLabel(id: string): string {
+      const s = storeMap.get(id);
+      return s ? `${s.name} [${s.code}]` : id;
+    }
+
+    const hasRefData = refSurfaces.length > 0;
+
     return (
       <div>
-        <div style={{ marginBottom: "0.75rem", padding: "0.5rem", background: "#fffbeb", borderRadius: 4, border: "1px solid #fde68a", fontSize: "0.75rem", color: "#92400e" }}>
-          Справочники поверхностей/магазинов пока не загружены через API. Вводите ID вручную. Поддерживается: display_surface_id, store_id, cluster_id, branch_id.
-        </div>
+        {/* Reference loading/error */}
+        {refLoading && <p style={css.muted}>Загрузка справочников...</p>}
+        {!refLoading && refError && (
+          <div style={{ marginBottom: "0.75rem", padding: "0.5rem", background: "#fef2f2", borderRadius: 4, border: "1px solid #fecaca", fontSize: "0.75rem", color: "#991b1b" }}>
+            {refError}
+          </div>
+        )}
 
+        {/* Add form */}
         {isDraft && (
           <div style={{ marginBottom: "0.75rem" }}>
             {!showPlacementAdd ? (
@@ -692,22 +748,39 @@ export default function CampaignDetailPage() {
             ) : (
               <form onSubmit={handleAddPlacement} style={css.inlineForm}>
                 <div style={css.inlineFields}>
-                  <div>
-                    <label style={css.miniLabel}>Surface ID</label>
-                    <input type="text" value={placementSurface} onChange={(e) => setPlacementSurface(e.target.value)} style={css.miniInput} placeholder="UUID" />
-                  </div>
-                  <div>
-                    <label style={css.miniLabel}>Store ID</label>
-                    <input type="text" value={placementStore} onChange={(e) => setPlacementStore(e.target.value)} style={css.miniInput} placeholder="UUID" />
-                  </div>
-                  <div>
-                    <label style={css.miniLabel}>Cluster ID</label>
-                    <input type="text" value={placementCluster} onChange={(e) => setPlacementCluster(e.target.value)} style={css.miniInput} placeholder="UUID" />
-                  </div>
-                  <div>
-                    <label style={css.miniLabel}>Branch ID</label>
-                    <input type="text" value={placementBranch} onChange={(e) => setPlacementBranch(e.target.value)} style={css.miniInput} placeholder="UUID" />
-                  </div>
+                  {hasRefData ? (
+                    <>
+                      <div>
+                        <label style={css.miniLabel}>Поверхность</label>
+                        <select value={placementSurface} onChange={(e) => setPlacementSurface(e.target.value)} style={{ ...css.miniSelect, minWidth: 200 }}>
+                          <option value="">— не выбрана —</option>
+                          {refSurfaces.map((s) => (
+                            <option key={s.id} value={s.id}>{s.code} — {storeLabel(s.store_id)} ({s.resolution_w}×{s.resolution_h})</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={css.miniLabel}>Магазин</label>
+                        <select value={placementStore} onChange={(e) => setPlacementStore(e.target.value)} style={{ ...css.miniSelect, minWidth: 160 }}>
+                          <option value="">— не выбран —</option>
+                          {refStores.map((s) => (
+                            <option key={s.id} value={s.id}>{s.name} [{s.code}]</option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <label style={css.miniLabel}>Surface ID</label>
+                        <input type="text" value={placementSurface} onChange={(e) => setPlacementSurface(e.target.value)} style={css.miniInput} placeholder="UUID" />
+                      </div>
+                      <div>
+                        <label style={css.miniLabel}>Store ID</label>
+                        <input type="text" value={placementStore} onChange={(e) => setPlacementStore(e.target.value)} style={css.miniInput} placeholder="UUID" />
+                      </div>
+                    </>
+                  )}
                   <div>
                     <label style={css.miniLabel}>SOV %</label>
                     <input type="number" value={placementSov} onChange={(e) => setPlacementSov(e.target.value)} min={0} max={100} style={{ ...css.miniInput, width: 70 }} />
@@ -723,6 +796,11 @@ export default function CampaignDetailPage() {
                     <button type="button" style={css.cancelBtn} onClick={resetPlacementForm}>Отмена</button>
                   </div>
                 </div>
+                {!hasRefData && !refLoading && (
+                  <p style={{ fontSize: "0.7rem", color: "#94a3b8", margin: "0.4rem 0 0" }}>
+                    Нет доступных поверхностей для выбора. Справочники загружаются через API при наличии данных.
+                  </p>
+                )}
                 {placementError && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginTop: "0.5rem" }}>{placementError}</div>}
               </form>
             )}
@@ -735,8 +813,8 @@ export default function CampaignDetailPage() {
           <table style={css.miniTable}>
             <thead>
               <tr>
-                <th style={css.miniTh}>Surface</th>
-                <th style={css.miniTh}>Store</th>
+                <th style={css.miniTh}>Поверхность</th>
+                <th style={css.miniTh}>Магазин</th>
                 <th style={css.miniTh}>SOV</th>
                 <th style={css.miniTh}>Показы</th>
                 <th style={css.miniTh}>Статус</th>
@@ -745,8 +823,8 @@ export default function CampaignDetailPage() {
             <tbody>
               {placements.map((p) => (
                 <tr key={p.id}>
-                  <td style={{ ...css.miniTd, fontFamily: "monospace", fontSize: "0.7rem" }}>{p.display_surface_id?.slice(0, 8) ?? "—"}</td>
-                  <td style={{ ...css.miniTd, fontFamily: "monospace", fontSize: "0.7rem" }}>{p.store_id?.slice(0, 8) ?? "—"}</td>
+                  <td style={css.miniTd}>{p.display_surface_id ? surfaceLabel(p.display_surface_id) : "—"}</td>
+                  <td style={css.miniTd}>{p.store_id ? storeLabel(p.store_id) : "—"}</td>
                   <td style={css.miniTd}>{p.share_of_voice_pct}%</td>
                   <td style={css.miniTd}>{p.impressions_delivered}{p.max_impressions ? ` / ${p.max_impressions}` : ""}</td>
                   <td style={css.miniTd}><Badge s={p.status} /></td>

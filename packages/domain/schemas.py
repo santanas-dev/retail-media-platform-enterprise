@@ -520,3 +520,46 @@ class CampaignPopBySurfaceOut(BaseModel):
     surface_id: str
     impressions_count: int = 0
     total_duration_ms: int = 0
+
+
+# ── S-009h: Reference data read-only DTOs ──
+
+class BranchOut(BaseModel):
+    """Branch reference — no PII, no secrets."""
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    code: str
+    name: str
+    is_active: bool = True
+
+
+class ClusterOut(BaseModel):
+    """Cluster reference — includes parent branch."""
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    branch_id: str
+    code: str
+    name: str
+    is_active: bool = True
+
+
+class StoreOut(BaseModel):
+    """Store reference — includes parent cluster + address."""
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    cluster_id: str
+    code: str
+    name: str
+    address: str
+    is_active: bool = True
+
+
+class DisplaySurfaceOut(BaseModel):
+    """Display surface reference — surface code + store + resolution."""
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    store_id: str
+    code: str
+    resolution_w: int = 1920
+    resolution_h: int = 1080
+    is_active: bool = True

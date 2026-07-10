@@ -19,6 +19,12 @@ from packages.api.dependencies import (
 from packages.domain import repository
 from packages.domain.scopes import ScopeContext
 from packages.domain.schemas import (
+    AdvertiserBrandOut,
+    AdvertiserContactOut,
+    AdvertiserContractOut,
+    AdvertiserOrganizationOut,
+    AuditEventOut,
+    BranchOut,
     CampaignApprovalOut,
     CampaignCreativeOut,
     CampaignFlightOut,
@@ -28,18 +34,16 @@ from packages.domain.schemas import (
     CampaignPopBySurfaceOut,
     CampaignPopSummaryOut,
     CampaignStatusHistoryOut,
+    ClusterOut,
     CreativeAssetOut,
+    DisplaySurfaceOut,
     MAX_LIMIT,
     DEFAULT_LIMIT,
-    AdvertiserBrandOut,
-    AdvertiserContactOut,
-    AdvertiserContractOut,
-    AdvertiserOrganizationOut,
-    AuditEventOut,
     PaginatedAuditEvents,
     PaginatedUsers,
     PermissionOut,
     RoleOut,
+    StoreOut,
     UserOut,
 )
 
@@ -995,3 +999,52 @@ async def get_campaign_pop_by_surface(
         )
         for row in rows
     ]
+
+
+# ---------------------------------------------------------------------------
+# S-009h — Reference data (branches, clusters, stores, surfaces)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/branches", response_model=list[BranchOut])
+async def list_branches(
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("campaigns.read")),
+    _rls=Depends(set_rls_context),
+):
+    """List branches — read-only, JWT + perm + RLS."""
+    items = await repository.list_branches(db)
+    return [BranchOut.model_validate(b) for b in items]
+
+
+@router.get("/clusters", response_model=list[ClusterOut])
+async def list_clusters(
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("campaigns.read")),
+    _rls=Depends(set_rls_context),
+):
+    """List clusters — read-only, JWT + perm + RLS."""
+    items = await repository.list_clusters(db)
+    return [ClusterOut.model_validate(c) for c in items]
+
+
+@router.get("/stores", response_model=list[StoreOut])
+async def list_stores(
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("campaigns.read")),
+    _rls=Depends(set_rls_context),
+):
+    """List stores — read-only, JWT + perm + RLS."""
+    items = await repository.list_stores(db)
+    return [StoreOut.model_validate(s) for s in items]
+
+
+@router.get("/display-surfaces", response_model=list[DisplaySurfaceOut])
+async def list_display_surfaces(
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("campaigns.read")),
+    _rls=Depends(set_rls_context),
+):
+    """List display surfaces — read-only, JWT + perm + RLS."""
+    items = await repository.list_display_surfaces(db)
+    return [DisplaySurfaceOut.model_validate(ds) for ds in items]

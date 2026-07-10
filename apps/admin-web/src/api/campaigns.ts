@@ -30,6 +30,10 @@ import type {
   CampaignPopSummaryOut,
   CampaignPopByDayOut,
   CampaignPopBySurfaceOut,
+  BranchOut,
+  ClusterOut,
+  StoreOut,
+  DisplaySurfaceRefOut,
   CampaignRejectRequest,
 } from "./types";
 
@@ -220,4 +224,24 @@ export function getCampaignPopByDay(campaignId: string): Promise<CampaignPopByDa
 
 export function getCampaignPopBySurface(campaignId: string): Promise<CampaignPopBySurfaceOut[]> {
   return api.get<CampaignPopBySurfaceOut[]>(`/campaigns/${campaignId}/pop/by-surface`);
+}
+
+// ── S-009h: Reference data (branches, clusters, stores, surfaces) ──
+// Backend endpoints: GET /api/v1/identity/branches, /clusters, /stores, /display-surfaces
+// All require campaigns.read permission + RLS.
+
+export function listBranches(): Promise<BranchOut[]> {
+  return api.get<BranchOut[]>("/branches");
+}
+
+export function listClusters(): Promise<ClusterOut[]> {
+  return api.get<ClusterOut[]>("/clusters");
+}
+
+export function listStores(): Promise<StoreOut[]> {
+  return api.get<StoreOut[]>("/stores");
+}
+
+export function listDisplaySurfaces(): Promise<DisplaySurfaceRefOut[]> {
+  return api.get<DisplaySurfaceRefOut[]>("/display-surfaces");
 }

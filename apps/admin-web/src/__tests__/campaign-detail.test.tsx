@@ -78,7 +78,9 @@ function mockFetchFor(path: string): unknown[] {
   if (path.includes("advertiser-brands")) return SEED_BRANDS;
   if (path.includes("advertiser-contracts")) return SEED_CONTRACTS;
   if (path.includes("campaign-approvals")) return [];
-  if (path.includes("/campaigns") && !path.includes("flights") && !path.includes("placements") && !path.includes("creatives")) return SEED_CAMPAIGNS;
+  if (path.includes("/display-surfaces")) return [];
+  if (path.includes("/stores")) return [];
+  if (path.includes("/campaigns") && !path.includes("flights") && !path.includes("placements") && !path.includes("creatives") && !path.includes("/pop/")) return SEED_CAMPAIGNS;
   return [];
 }
 
@@ -235,8 +237,15 @@ describe("CampaignDetailPage — S-009e", () => {
     const user = userEvent.setup();
     await user.click(screen.getByText("Плейсменты"));
 
+    // Wait for ref loading to complete, then open form
     await waitFor(() => {
-      expect(screen.getByText(/Справочники поверхностей/)).toBeTruthy();
+      expect(screen.queryByText("Загрузка справочников...")).toBeNull();
+    });
+
+    await user.click(screen.getByText("+ Добавить плейсмент"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Нет доступных поверхностей/)).toBeTruthy();
     });
   });
 
@@ -659,6 +668,146 @@ describe("CampaignDetailPage — S-009e", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Кампания не найдена.")).toBeTruthy();
+    });
+  });
+
+  // ── S-009h: Placement Reference Pickers ──
+
+  const MOCK_SURFACES = [
+    { id: "s1", store_id: "st1", code: "KSO-01", resolution_w: 1920, resolution_h: 1080, is_active: true },
+    { id: "s2", store_id: "st2", code: "KSO-02", resolution_w: 3840, resolution_h: 2160, is_active: true },
+  ];
+  const MOCK_STORES: unknown[] = [
+    { id: "st1", cluster_id: "cl1", code: "ST001", name: "Магазин 1", address: "ул. Ленина, 1", is_active: true },
+    { id: "st2", cluster_id: "cl1", code: "ST002", name: "Магазин 2", address: "ул. Мира, 2", is_active: true },
+  ];
+
+  it("placement form shows reference pickers when data loaded", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches({
+      "/display-surfaces": () => Promise.resolve(new Response(JSON.stringify(MOCK_SURFACES), { status: 200 })),
+      "/stores": () => Promise.resolve(new Response(JSON.stringify(MOCK_STORES), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Плейсменты"));
+
+    // Wait for ref data to load (loading text disappears)
+    await waitFor(() => {
+      expect(screen.queryByText("Загрузка справочников...")).toBeNull();
+    });
+
+    await user.click(screen.getByText("+ Добавить плейсмент"));
+
+    await waitFor(() => {
+      // Surface picker shows KSO-01 option
+      expect(screen.getByText(/KSO-01/)).toBeTruthy();
+      // Store picker should have options (check count of store names via getAllByText)
+      const storeOptions = screen.getAllByText(/Магазин \d/);
+      expect(storeOptions.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  it("placement form shows empty reference state", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches({
+      "/display-surfaces": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+      "/stores": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Плейсменты"));
+
+    // Wait for ref data to load (loading text disappears)
+    await waitFor(() => {
+      expect(screen.queryByText("Загрузка справочников...")).toBeNull();
+    });
+
+    await user.click(screen.getByText("+ Добавить плейсмент"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Нет доступных поверхностей/)).toBeTruthy();
+    });
+  });
+
+  it("placement form shows ref load error", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches({
+      "/display-surfaces": () => Promise.reject(new Error("Network error")),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Плейсменты"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Network error")).toBeTruthy();
+    });
+  });
+
+  it("creating placement sends selected surface id", async () => {
+    mockAuthenticatedSession();
+    let postBody: unknown = null;
+    mockAllFetches({
+      "/display-surfaces": () => Promise.resolve(new Response(JSON.stringify(MOCK_SURFACES), { status: 200 })),
+      "/stores": () => Promise.resolve(new Response(JSON.stringify(MOCK_STORES), { status: 200 })),
+      "/campaigns/c1/placements": (url, init) => {
+        if ((init as RequestInit).method === "POST") {
+          postBody = JSON.parse((init as RequestInit).body as string);
+          return Promise.resolve(new Response(JSON.stringify({
+            id: "p-new", campaign_id: "c1", display_surface_id: "s1", store_id: "st1",
+            share_of_voice_pct: 100, max_impressions: null, impressions_delivered: 0,
+            status: "active", created_at: "2026-01-01T00:00:00Z",
+          }), { status: 201 }));
+        }
+        return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+      },
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Плейсменты"));
+
+    // Wait for ref data to load (loading text disappears)
+    await waitFor(() => {
+      expect(screen.queryByText("Загрузка справочников...")).toBeNull();
+    });
+
+    await user.click(screen.getByText("+ Добавить плейсмент"));
+
+    await waitFor(() => { expect(screen.getByText("Добавить")).toBeTruthy(); });
+
+    // Select first surface — use label text
+    const surfaceLabel = screen.getByText("Поверхность");
+    const surfaceSelect = surfaceLabel.parentElement!.querySelector("select")!;
+    await user.selectOptions(surfaceSelect, "s1");
+
+    // Select first store
+    const storeLabel = screen.getByText("Магазин");
+    const storeSelect = storeLabel.parentElement!.querySelector("select")!;
+    await user.selectOptions(storeSelect, "st1");
+
+    await user.click(screen.getByText("Добавить"));
+
+    await waitFor(() => {
+      expect(postBody).not.toBeNull();
+      const body = postBody as Record<string, unknown>;
+      expect(body.display_surface_id).toBe("s1");
+      expect(body.store_id).toBe("st1");
     });
   });
 });

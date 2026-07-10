@@ -16,9 +16,13 @@ from packages.domain.models import (
     AdvertiserContract,
     AdvertiserOrganization,
     AuditEventOperational,
+    Branch,
+    Cluster,
+    DisplaySurface,
     Permission,
     Role,
     RolePermission,
+    Store,
     User,
     UserRole,
 )
@@ -150,6 +154,39 @@ async def list_advertiser_contacts(
     stmt = select(AdvertiserContact).order_by(
         AdvertiserContact.contact_type, AdvertiserContact.full_name,
     )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+# ---------------------------------------------------------------------------
+# S-009h — Reference data (branches, clusters, stores, surfaces)
+# ---------------------------------------------------------------------------
+
+
+async def list_branches(session: AsyncSession) -> list[Branch]:
+    """Return all active branches, ordered by code."""
+    stmt = select(Branch).where(Branch.is_active == True).order_by(Branch.code)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def list_clusters(session: AsyncSession) -> list[Cluster]:
+    """Return all active clusters, ordered by code."""
+    stmt = select(Cluster).where(Cluster.is_active == True).order_by(Cluster.code)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def list_stores(session: AsyncSession) -> list[Store]:
+    """Return all active stores, ordered by code."""
+    stmt = select(Store).where(Store.is_active == True).order_by(Store.code)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def list_display_surfaces(session: AsyncSession) -> list[DisplaySurface]:
+    """Return all active display surfaces, ordered by code."""
+    stmt = select(DisplaySurface).where(DisplaySurface.is_active == True).order_by(DisplaySurface.code)
     result = await session.execute(stmt)
     return list(result.scalars().all())
 
