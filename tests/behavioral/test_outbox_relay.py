@@ -290,13 +290,37 @@ class TestOutboxRelayBehavioral:
                               event_id=event_id)
 
                 count1 = await relay.run_once()
-                assert count1 == 1
-                assert pub.publish_count == 0
+                # Other test suites may have due outbox events
+                assert count1 >= 1, f"Expected >=1, got {count1}"
+                # Our event must NOT have been published (simulated transient failure)
+                our_published = any(
+                    m["msg_id"] == event_id for m in pub.published
+                )
+                assert not our_published, (
+                    f"Event {event_id} was published despite fail_next(1)"
+                )
+                async with engine.connect() as conn:
+                    result = await conn.execute(
+                        text("SELECT status, attempts FROM outbox_events WHERE id = :id"),
+                        {"id": event_id},
+                    )
+                    row = result.fetchone()
+                    assert row is not None, f"Event {event_id} not found after first run"
+                    assert row[0] == "failed", f"Expected failed, got {row[0]}"
+                    assert row[1] == 1, f"Expected attempts=1, got {row[1]}"
 
                 count2 = await relay.run_once()
                 assert count2 == 0, (
                     f"Expected 0 (event skipped due to future next_attempt_at), "
                     f"got {count2}"
+                )
+                # Our event must NOT be in the published list after second run
+                our_published2 = any(
+                    m["msg_id"] == event_id for m in pub.published
+                )
+                assert not our_published2, (
+                    f"Event {event_id} was published on second run "
+                    f"(backoff not respected)"
                 )
             finally:
                 await engine.dispose()
