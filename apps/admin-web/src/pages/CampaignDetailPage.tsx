@@ -17,6 +17,9 @@ import {
   requestApproval,
   approveCampaign,
   rejectCampaign,
+  getCampaignPopSummary,
+  getCampaignPopByDay,
+  getCampaignPopBySurface,
 } from "../api/campaigns";
 import type {
   CampaignOut,
@@ -32,6 +35,9 @@ import type {
   AdvertiserBrandOut,
   AdvertiserContractOut,
   CampaignApprovalOut,
+  CampaignPopSummaryOut,
+  CampaignPopByDayOut,
+  CampaignPopBySurfaceOut,
 } from "../api/types";
 import { statusLabel, statusColor } from "../api/types";
 import { ApiError } from "../api/client";
@@ -153,6 +159,14 @@ export default function CampaignDetailPage() {
   const [showReject, setShowReject] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
+  // PoP reporting
+  const [popSummary, setPopSummary] = useState<CampaignPopSummaryOut | null>(null);
+  const [popByDay, setPopByDay] = useState<CampaignPopByDayOut[]>([]);
+  const [popBySurface, setPopBySurface] = useState<CampaignPopBySurfaceOut[]>([]);
+  const [popLoading, setPopLoading] = useState(false);
+  const [popLoaded, setPopLoaded] = useState(false);
+  const [popError, setPopError] = useState<string | null>(null);
+
   // ── Load all data ──
 
   const loadData = useCallback(async () => {
@@ -252,6 +266,39 @@ export default function CampaignDetailPage() {
       setData({ ...data, campaign });
     }
   };
+
+  const loadPopData = useCallback(async (campaignId: string) => {
+    setPopLoading(true);
+    setPopError(null);
+    try {
+      const [summary, byDay, bySurface] = await Promise.all([
+        getCampaignPopSummary(campaignId),
+        getCampaignPopByDay(campaignId),
+        getCampaignPopBySurface(campaignId),
+      ]);
+      setPopSummary(summary);
+      setPopByDay(byDay);
+      setPopBySurface(bySurface);
+      setPopLoaded(true);
+    } catch (e: unknown) {
+      if (e instanceof ApiError) {
+        if (e.status === 404) setPopError("Кампания не найдена.");
+        else if (e.status === 403) setPopError("Нет прав на просмотр отчётности.");
+        else setPopError(`Ошибка загрузки отчётности (${e.status})`);
+      } else {
+        setPopError(e instanceof Error ? e.message : "Ошибка загрузки отчётности");
+      }
+    } finally {
+      setPopLoading(false);
+    }
+  }, []);
+
+  // Lazy-load PoP data when reporting tab is activated
+  useEffect(() => {
+    if (activeTab === "reporting" && !popLoaded && !popLoading && data) {
+      loadPopData(data.campaign.id);
+    }
+  }, [activeTab, popLoaded, popLoading, data, loadPopData]);
 
   // ── Render states ──
 
@@ -891,9 +938,109 @@ export default function CampaignDetailPage() {
   }
 
   function renderReporting() {
+    // ── Card component ──
+    function Card({ label, value }: { label: string; value: string }) {
+      return (
+        <div style={css.reportCard}>
+          <div style={css.reportCardLabel}>{label}</div>
+          <div style={css.reportCardValue}>{value}</div>
+        </div>
+      );
+    }
+
+    const hasData = popSummary && popSummary.impressions_count > 0;
+
     return (
       <div style={css.section}>
-        <p style={css.muted}>Отчётность PoP пока недоступна — эндпоинты в разработке (Phase 4.3b).</p>
+        {/* ── Loading state ── */}
+        {popLoading && <p style={css.muted}>Загрузка отчётности...</p>}
+
+        {/* ── Error state ── */}
+        {!popLoading && popError && (
+          <div style={{ padding: "0.75rem", background: "#fef2f2", borderRadius: 4, border: "1px solid #fecaca", color: "#991b1b", fontSize: "0.875rem" }}>
+            {popError}
+          </div>
+        )}
+
+        {/* ── Empty state ── */}
+        {!popLoading && !popError && !hasData && (
+          <div style={{ padding: "2rem 1rem", textAlign: "center" }}>
+            <p style={{ fontSize: "0.9rem", color: "#94a3b8", margin: "0 0 0.5rem" }}>
+              Пока нет подтверждённых показов
+            </p>
+            <p style={{ fontSize: "0.75rem", color: "#cbd5e1" }}>
+              Отчётность обновится после поступления PoP-событий от устройств
+            </p>
+          </div>
+        )}
+
+        {/* ── Data ── */}
+        {!popLoading && !popError && hasData && popSummary && (
+          <>
+            {/* Summary cards */}
+            <div style={css.reportGrid}>
+              <Card label="Показы" value={popSummary.impressions_count.toLocaleString("ru-RU")} />
+              <Card label="Общее время" value={fmtDuration(popSummary.total_duration_ms)} />
+              <Card label="Устройств" value={popSummary.unique_devices.toLocaleString("ru-RU")} />
+              <Card label="Поверхностей" value={popSummary.unique_surfaces.toLocaleString("ru-RU")} />
+            </div>
+
+            {/* By-Day table */}
+            {popByDay.length > 0 && (
+              <>
+                <h3 style={{ ...css.subheading, marginTop: "1.5rem" }}>По дням</h3>
+                <table style={css.miniTable}>
+                  <thead>
+                    <tr>
+                      <th style={css.miniTh}>Дата</th>
+                      <th style={{ ...css.miniTh, textAlign: "right" }}>Показы</th>
+                      <th style={{ ...css.miniTh, textAlign: "right" }}>Длительность</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {popByDay.map((row, i) => (
+                      <tr key={i}>
+                        <td style={css.miniTd}>{row.date}</td>
+                        <td style={{ ...css.miniTd, textAlign: "right" }}>{row.impressions_count.toLocaleString("ru-RU")}</td>
+                        <td style={{ ...css.miniTd, textAlign: "right" }}>{fmtDuration(row.total_duration_ms)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+
+            {/* By-Surface table */}
+            {popBySurface.length > 0 && (
+              <>
+                <h3 style={{ ...css.subheading, marginTop: "1.5rem" }}>По поверхностям</h3>
+                <table style={css.miniTable}>
+                  <thead>
+                    <tr>
+                      <th style={css.miniTh}>Поверхность</th>
+                      <th style={{ ...css.miniTh, textAlign: "right" }}>Показы</th>
+                      <th style={{ ...css.miniTh, textAlign: "right" }}>Длительность</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {popBySurface.map((row, i) => (
+                      <tr key={i}>
+                        <td style={css.miniTd}>{row.surface_id}</td>
+                        <td style={{ ...css.miniTd, textAlign: "right" }}>{row.impressions_count.toLocaleString("ru-RU")}</td>
+                        <td style={{ ...css.miniTd, textAlign: "right" }}>{fmtDuration(row.total_duration_ms)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+
+            {/* Limitation note */}
+            <p style={{ marginTop: "1.5rem", marginBottom: 0, fontSize: "0.7rem", color: "#94a3b8", borderTop: "1px solid #f1f5f9", paddingTop: "0.75rem" }}>
+              Отчётность построена по подтверждённым PoP-событиям; ClickHouse и экспорт — отдельным этапом.
+            </p>
+          </>
+        )}
       </div>
     );
   }
@@ -943,6 +1090,12 @@ function Badge({ s }: { s: string }) {
   return <span style={{ display: "inline-block", padding: "0.15rem 0.5rem", borderRadius: 999, fontSize: "0.8rem", fontWeight: 500, color: "#fff", background: statusColor(s) }}>{statusLabel(s)}</span>;
 }
 
+function fmtDuration(ms: number): string {
+  if (ms < 1000) return `${ms} мс`;
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)} с`;
+  return `${(ms / 60_000).toFixed(1)} мин`;
+}
+
 function formatApiError(e: unknown): string {
   if (e instanceof ApiError) {
     if (e.status === 422) return `Ошибка данных: ${e.message}`;
@@ -981,4 +1134,8 @@ const css: Record<string, React.CSSProperties> = {
   miniLabel: { display: "block", fontSize: "0.65rem", fontWeight: 600, color: "#64748b", marginBottom: "0.1rem", textTransform: "uppercase" },
   miniInput: { padding: "0.3rem 0.5rem", border: "1px solid #d1d5db", borderRadius: 3, fontSize: "0.8rem", boxSizing: "border-box", fontFamily: "inherit" },
   miniSelect: { padding: "0.3rem 0.5rem", border: "1px solid #d1d5db", borderRadius: 3, fontSize: "0.8rem", background: "#fff", boxSizing: "border-box" },
+  reportGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.5rem", marginBottom: "0.5rem" },
+  reportCard: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "0.75rem 1rem" },
+  reportCardLabel: { fontSize: "0.65rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.25rem" },
+  reportCardValue: { fontSize: "1.25rem", fontWeight: 600, color: "#0f172a" },
 };

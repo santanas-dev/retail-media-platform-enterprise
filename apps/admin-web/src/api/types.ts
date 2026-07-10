@@ -143,32 +143,29 @@ export interface CampaignStatusHistoryOut {
   created_at: string;
 }
 
-// ── PoP Reporting (Phase 4.3b) ──
+// ── PoP Reporting ──
+// Matches backend packages/domain/schemas.py exactly.
 
 export interface CampaignPopSummaryOut {
   campaign_id: string;
-  campaign_code: string;
-  campaign_name: string;
-  total_impressions: number;
-  total_play_time_ms: number;
+  impressions_count: number;
+  total_duration_ms: number;
+  first_rendered_at: string | null;
+  last_rendered_at: string | null;
   unique_devices: number;
-  unique_stores: number;
-  last_play_at: string | null;
+  unique_surfaces: number;
 }
 
 export interface CampaignPopByDayOut {
-  campaign_id: string;
-  date: string;
-  impressions: number;
-  play_time_ms: number;
+  date: string; // YYYY-MM-DD
+  impressions_count: number;
+  total_duration_ms: number;
 }
 
 export interface CampaignPopBySurfaceOut {
-  campaign_id: string;
-  display_surface_id: string;
-  surface_code: string | null;
-  impressions: number;
-  play_time_ms: number;
+  surface_id: string;
+  impressions_count: number;
+  total_duration_ms: number;
 }
 
 // ── Helper: localized status labels ──

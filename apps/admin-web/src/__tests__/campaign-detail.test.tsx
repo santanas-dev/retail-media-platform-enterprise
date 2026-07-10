@@ -513,4 +513,152 @@ describe("CampaignDetailPage — S-009e", () => {
       expect(screen.queryByText("Отклонить")).toBeNull();
     });
   });
+
+  // ── S-009g: PoP Reporting ──
+
+  it("shows empty reporting state when no data", async () => {
+    mockAuthenticatedSession();
+    // PoP endpoints return zero impressions — empty state
+    const zeroSummary = {
+      campaign_id: "c1",
+      impressions_count: 0,
+      total_duration_ms: 0,
+      first_rendered_at: null,
+      last_rendered_at: null,
+      unique_devices: 0,
+      unique_surfaces: 0,
+    };
+    mockAllFetches({
+      "/pop/summary": () => Promise.resolve(new Response(JSON.stringify(zeroSummary), { status: 200 })),
+      "/pop/by-day": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+      "/pop/by-surface": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Отчётность"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Пока нет подтверждённых показов")).toBeTruthy();
+    });
+  });
+
+  it("shows reporting summary cards with data", async () => {
+    mockAuthenticatedSession();
+    const summary = {
+      campaign_id: "c1",
+      impressions_count: 12_540,
+      total_duration_ms: 1_800_000,
+      first_rendered_at: "2026-06-01T08:00:00Z",
+      last_rendered_at: "2026-06-15T20:00:00Z",
+      unique_devices: 48,
+      unique_surfaces: 12,
+    };
+    mockAllFetches({
+      "/pop/summary": () => Promise.resolve(new Response(JSON.stringify(summary), { status: 200 })),
+      "/pop/by-day": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+      "/pop/by-surface": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Отчётность"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/12.540/)).toBeTruthy();
+      expect(screen.getByText(/30.*мин/)).toBeTruthy();
+      expect(screen.getByText("48")).toBeTruthy();
+      expect(screen.getByText("12")).toBeTruthy();
+    });
+  });
+
+  it("shows by-day table rows", async () => {
+    mockAuthenticatedSession();
+    const summary = { campaign_id: "c1", impressions_count: 100, total_duration_ms: 5000, first_rendered_at: null, last_rendered_at: null, unique_devices: 1, unique_surfaces: 1 };
+    const byDay = [
+      { date: "2026-06-01", impressions_count: 50, total_duration_ms: 2500 },
+      { date: "2026-06-02", impressions_count: 50, total_duration_ms: 2500 },
+    ];
+    mockAllFetches({
+      "/pop/summary": () => Promise.resolve(new Response(JSON.stringify(summary), { status: 200 })),
+      "/pop/by-day": () => Promise.resolve(new Response(JSON.stringify(byDay), { status: 200 })),
+      "/pop/by-surface": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Отчётность"));
+
+    await waitFor(() => {
+      expect(screen.getByText("По дням")).toBeTruthy();
+      expect(screen.getByText("2026-06-01")).toBeTruthy();
+      expect(screen.getByText("2026-06-02")).toBeTruthy();
+    });
+  });
+
+  it("shows by-surface table rows", async () => {
+    mockAuthenticatedSession();
+    const summary = { campaign_id: "c1", impressions_count: 100, total_duration_ms: 5000, first_rendered_at: null, last_rendered_at: null, unique_devices: 1, unique_surfaces: 1 };
+    const bySurface = [
+      { surface_id: "surf-a1", impressions_count: 60, total_duration_ms: 3000 },
+      { surface_id: "surf-b2", impressions_count: 40, total_duration_ms: 2000 },
+    ];
+    mockAllFetches({
+      "/pop/summary": () => Promise.resolve(new Response(JSON.stringify(summary), { status: 200 })),
+      "/pop/by-day": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+      "/pop/by-surface": () => Promise.resolve(new Response(JSON.stringify(bySurface), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Отчётность"));
+
+    await waitFor(() => {
+      expect(screen.getByText("По поверхностям")).toBeTruthy();
+      expect(screen.getByText("surf-a1")).toBeTruthy();
+      expect(screen.getByText("surf-b2")).toBeTruthy();
+    });
+  });
+
+  it("shows error on PoP 403", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches({
+      "/pop/summary": () => Promise.resolve(new Response(JSON.stringify({ detail: "Forbidden" }), { status: 403 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Отчётность"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Нет прав на просмотр отчётности.")).toBeTruthy();
+    });
+  });
+
+  it("shows error on PoP 404", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches({
+      "/pop/summary": () => Promise.resolve(new Response(JSON.stringify({ detail: "Not found" }), { status: 404 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Отчётность"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Кампания не найдена.")).toBeTruthy();
+    });
+  });
 });

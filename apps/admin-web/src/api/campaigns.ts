@@ -204,48 +204,20 @@ export async function getApprovalsByCampaign(campaignId: string): Promise<Campai
 }
 
 // ── PoP Reporting ──
-// Note: Backend PoP endpoints may not yet be wired in control-api route tree;
-// these stubs are ready for when /pop/* routes are available.
+// Backend endpoints are on identity router:
+//   GET /api/v1/identity/campaigns/{id}/pop/summary
+//   GET /api/v1/identity/campaigns/{id}/pop/by-day
+//   GET /api/v1/identity/campaigns/{id}/pop/by-surface
+// All require campaigns.read permission + RLS scope.
 
-const POP_BASE = "/api/v1/pop";
-
-let _popAvailable: boolean | null = null;
-
-async function pop<T>(path: string): Promise<T | null> {
-  if (_popAvailable === false) return null;
-  try {
-    const res = await fetch(`${POP_BASE}${path}`);
-    if (!res.ok) {
-      if (res.status === 404) {
-        _popAvailable = false;
-        return null;
-      }
-      return null;
-    }
-    _popAvailable = true;
-    return res.json();
-  } catch {
-    _popAvailable = false;
-    return null;
-  }
+export function getCampaignPopSummary(campaignId: string): Promise<CampaignPopSummaryOut> {
+  return api.get<CampaignPopSummaryOut>(`/campaigns/${campaignId}/pop/summary`);
 }
 
-export function getCampaignPopSummary(campaignId: string): Promise<CampaignPopSummaryOut | null> {
-  return pop<CampaignPopSummaryOut>(`/campaigns/${campaignId}/pop-summary`);
+export function getCampaignPopByDay(campaignId: string): Promise<CampaignPopByDayOut[]> {
+  return api.get<CampaignPopByDayOut[]>(`/campaigns/${campaignId}/pop/by-day`);
 }
 
-export function getCampaignPopByDay(
-  campaignId: string,
-): Promise<CampaignPopByDayOut[] | null> {
-  return pop<CampaignPopByDayOut[]>(
-    `/campaigns/${campaignId}/pop-by-day?limit=30`,
-  );
-}
-
-export function getCampaignPopBySurface(
-  campaignId: string,
-): Promise<CampaignPopBySurfaceOut[] | null> {
-  return pop<CampaignPopBySurfaceOut[]>(
-    `/campaigns/${campaignId}/pop-by-surface?limit=30`,
-  );
+export function getCampaignPopBySurface(campaignId: string): Promise<CampaignPopBySurfaceOut[]> {
+  return api.get<CampaignPopBySurfaceOut[]>(`/campaigns/${campaignId}/pop/by-surface`);
 }
