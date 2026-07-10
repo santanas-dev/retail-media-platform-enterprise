@@ -182,4 +182,5 @@ export interface MeResponse {
   auth_provider: string;
   username: string;
   display_name: string;
+  permissions?: string[];
 }

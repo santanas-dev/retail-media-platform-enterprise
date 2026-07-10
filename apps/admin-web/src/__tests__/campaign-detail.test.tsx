@@ -82,7 +82,10 @@ function mockFetchFor(path: string): unknown[] {
   return [];
 }
 
-function mockAllFetches(overrides?: Record<string, (input: string, init?: RequestInit) => Promise<Response>>) {
+function mockAllFetches(
+  overrides?: Record<string, (input: string, init?: RequestInit) => Promise<Response>>,
+  userPerms?: string[],
+) {
   vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
     const url = String(input);
     if (overrides) {
@@ -91,7 +94,9 @@ function mockAllFetches(overrides?: Record<string, (input: string, init?: Reques
       }
     }
     if (url.endsWith("/me")) {
-      return Promise.resolve(new Response(JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin" }), { status: 200 }));
+      const userData: Record<string, unknown> = { sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin" };
+      if (userPerms) userData.permissions = userPerms;
+      return Promise.resolve(new Response(JSON.stringify(userData), { status: 200 }));
     }
     return Promise.resolve(new Response(JSON.stringify(mockFetchFor(url)), { status: 200 }));
   });
@@ -367,7 +372,7 @@ describe("CampaignDetailPage — S-009e", () => {
     const pendingCampaign = { ...DRAFT_CAMPAIGN, status: "pending_approval" };
     mockAllFetches({
       "/campaigns": () => Promise.resolve(new Response(JSON.stringify([pendingCampaign]), { status: 200 })),
-    });
+    }, ["campaigns.approve"]);
 
     const router = createRouter("/campaigns/c1");
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
@@ -384,7 +389,7 @@ describe("CampaignDetailPage — S-009e", () => {
     const pendingCampaign = { ...DRAFT_CAMPAIGN, status: "pending_approval" };
     mockAllFetches({
       "/campaigns": () => Promise.resolve(new Response(JSON.stringify([pendingCampaign]), { status: 200 })),
-    });
+    }, ["campaigns.approve"]);
 
     const router = createRouter("/campaigns/c1");
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
@@ -410,7 +415,7 @@ describe("CampaignDetailPage — S-009e", () => {
         Promise.resolve(new Response(JSON.stringify({
           message: "Campaign approved", campaign_id: "c1", old_status: "pending_approval", new_status: "approved",
         }), { status: 200 })),
-    });
+    }, ["campaigns.approve"]);
 
     const router = createRouter("/campaigns/c1");
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
@@ -435,7 +440,7 @@ describe("CampaignDetailPage — S-009e", () => {
         Promise.resolve(new Response(JSON.stringify({
           message: "Campaign rejected", campaign_id: "c1", old_status: "pending_approval", new_status: "rejected",
         }), { status: 200 })),
-    });
+    }, ["campaigns.approve"]);
 
     const router = createRouter("/campaigns/c1");
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
@@ -464,7 +469,7 @@ describe("CampaignDetailPage — S-009e", () => {
       const method = (init as RequestInit)?.method;
 
       if (url.endsWith("/me")) {
-        return Promise.resolve(new Response(JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin" }), { status: 200 }));
+        return Promise.resolve(new Response(JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin", permissions: ["campaigns.approve"] }), { status: 200 }));
       }
       // Return pending campaign for list
       if (url.endsWith("/identity/campaigns") && method !== "POST") {
@@ -485,6 +490,27 @@ describe("CampaignDetailPage — S-009e", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Нет прав на это действие.")).toBeTruthy();
+    });
+  });
+
+  it("non-approver sees read-only pending message", async () => {
+    mockAuthenticatedSession();
+    const pendingCampaign = { ...DRAFT_CAMPAIGN, status: "pending_approval" };
+    // No campaigns.approve permission — default /me has no permissions
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify([pendingCampaign]), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      // Should show the pending message with no-rights note
+      expect(screen.getByText(/Кампания ожидает согласования/)).toBeTruthy();
+      expect(screen.getByText(/У вас нет прав на согласование/)).toBeTruthy();
+      // Approve/reject buttons should NOT be visible
+      expect(screen.queryByText("Согласовать")).toBeNull();
+      expect(screen.queryByText("Отклонить")).toBeNull();
     });
   });
 });

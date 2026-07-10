@@ -35,6 +35,7 @@ import type {
 } from "../api/types";
 import { statusLabel, statusColor } from "../api/types";
 import { ApiError } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 
 // ── Delivered types for use in the component ──
 
@@ -97,6 +98,9 @@ function fmtAmount(amount: number | null, currency: string): string {
 export default function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const hasApprovePerm = user?.permissions?.includes("campaigns.approve") ?? false;
 
   // Core data
   const [data, setData] = useState<DetailData | null>(null);
@@ -341,47 +345,52 @@ export default function CampaignDetailPage() {
           </div>
         )}
 
-        {/* ── Pending approval: approve / reject ── */}
+        {/* ── Pending approval: approve / reject or read-only ── */}
         {isPendingApproval && (
-          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#fffbeb", borderRadius: 6, border: "1px solid #fde68a" }}>
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasApprovePerm ? "#fffbeb" : "#f8fafc", borderRadius: 6, border: hasApprovePerm ? "1px solid #fde68a" : "1px solid #e2e8f0" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-              <div style={{ flex: 1, fontSize: "0.825rem", color: "#92400e" }}>
+              <div style={{ flex: 1, fontSize: "0.825rem", color: hasApprovePerm ? "#92400e" : "#64748b" }}>
                 Кампания ожидает согласования.
+                {!hasApprovePerm && " У вас нет прав на согласование."}
               </div>
-              <button
-                type="button"
-                style={{ ...css.primaryBtn, background: "#059669" }}
-                disabled={approvalSubmitting}
-                onClick={async () => {
-                  setApprovalError(null);
-                  setApprovalSubmitting(true);
-                  try {
-                    const res = await approveCampaign(campaign.id);
-                    await refreshCampaign();
-                    if (data) setData({ ...data, campaign: { ...data.campaign, status: res.new_status } });
-                  } catch (e: unknown) {
-                    setApprovalError(formatApiError(e));
-                  } finally {
-                    setApprovalSubmitting(false);
-                  }
-                }}
-              >
-                {approvalSubmitting ? "..." : "Согласовать"}
-              </button>
-              <button
-                type="button"
-                style={{ ...css.cancelBtn, borderColor: "#dc2626", color: "#dc2626" }}
-                disabled={approvalSubmitting}
-                onClick={() => { setShowReject(true); setRejectReason(""); setApprovalError(null); }}
-              >
-                Отклонить
-              </button>
+              {hasApprovePerm && (
+                <>
+                  <button
+                    type="button"
+                    style={{ ...css.primaryBtn, background: "#059669" }}
+                    disabled={approvalSubmitting}
+                    onClick={async () => {
+                      setApprovalError(null);
+                      setApprovalSubmitting(true);
+                      try {
+                        const res = await approveCampaign(campaign.id);
+                        await refreshCampaign();
+                        if (data) setData({ ...data, campaign: { ...data.campaign, status: res.new_status } });
+                      } catch (e: unknown) {
+                        setApprovalError(formatApiError(e));
+                      } finally {
+                        setApprovalSubmitting(false);
+                      }
+                    }}
+                  >
+                    {approvalSubmitting ? "..." : "Согласовать"}
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...css.cancelBtn, borderColor: "#dc2626", color: "#dc2626" }}
+                    disabled={approvalSubmitting}
+                    onClick={() => { setShowReject(true); setRejectReason(""); setApprovalError(null); }}
+                  >
+                    Отклонить
+                  </button>
+                </>
+              )}
             </div>
             {approvalError && (
               <div style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
             )}
             {/* Reject reason dialog */}
-            {showReject && (
+            {hasApprovePerm && showReject && (
               <div style={{ marginTop: "0.75rem", padding: "0.75rem", background: "#fff", borderRadius: 4, border: "1px solid #fecaca" }}>
                 <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 500, marginBottom: "0.25rem" }}>
                   Причина отклонения *

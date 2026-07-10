@@ -133,11 +133,12 @@ class LogoutResponse(BaseModel):
 
 
 class MeResponse(BaseModel):
-    """Current user claims from JWT."""
+    """Current user claims from JWT, enriched with DB data."""
     sub: str
     auth_provider: str
     username: str = ""
     display_name: str = ""
+    permissions: list[str] = []
 
 
 # ---------------------------------------------------------------------------

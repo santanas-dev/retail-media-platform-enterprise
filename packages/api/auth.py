@@ -14,10 +14,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from packages.api.dependencies import (
     get_access_token,
     get_auth_service,
+    get_current_active_user,
     get_current_user,
     get_db,
     get_refresh_token,
 )
+from packages.domain import repository
 from packages.auth.schemas import AuthFailure, AuthSuccess
 from packages.auth.service import AuthService
 from packages.domain.schemas import (
@@ -230,14 +232,22 @@ async def logout(
 
 @router.get("/me", response_model=MeResponse)
 async def me(
-    claims: dict = Depends(get_current_user),
+    claims: dict = Depends(get_current_active_user),
+    db=Depends(get_db),
 ):
-    """Return basic current-user claims from JWT.
+    """Return current-user claims enriched with DB permissions.
 
-    No DB or RBAC lookup required yet.
     401 if token is missing or invalid.
+    403 if user is deactivated.
     """
+    user_id = claims.get("sub", "")
+    perms: list[str] = []
+    if user_id:
+        perms = sorted(await repository.get_user_permissions(db, user_id))
     return MeResponse(
-        sub=claims.get("sub", ""),
+        sub=user_id,
         auth_provider=claims.get("auth_provider", ""),
+        username=claims.get("username", ""),
+        display_name=claims.get("display_name", ""),
+        permissions=perms,
     )
