@@ -35,6 +35,7 @@ REQUIRE_ENV = os.environ.get("RUN_BEHAVIORAL_TESTS", "") == "1"
 SKIP_REASON = "RUN_BEHAVIORAL_TESTS=1 not set."
 
 ADV1_ORG_ID = "00000000-0000-0000-0000-000000000200"
+ADV2_ORG_ID = "00000000-0000-0000-0000-000000000201"  # for cross-org tests
 
 
 def _auth(token):
@@ -117,7 +118,7 @@ class TestCreateCreativeAssetBehavioral:
         assert resp.status_code == 403
 
     def test_authorized_create_succeeds(self, client, user_ids):
-        """readonly (system_admin) creates a creative asset."""
+        """readonly (system_admin) creates a creative asset — must provide org."""
         token = _token(user_ids["readonly"])
         resp = client.post(
             "/api/v1/identity/creative-assets",
@@ -125,6 +126,7 @@ class TestCreateCreativeAssetBehavioral:
                 "code": "CR-BEH-001",
                 "name": "Behavioral Test Creative Asset",
                 "media_type": "image",
+                "advertiser_organization_id": ADV1_ORG_ID,
                 "resolution_w": 1920,
                 "resolution_h": 1080,
             },
@@ -158,7 +160,8 @@ class TestCreateCreativeAssetBehavioral:
         token = _token(user_ids["readonly"])
         resp = client.post(
             "/api/v1/identity/creative-assets",
-            json={"code": "CR-NOSTORAGE", "name": "No Storage", "media_type": "video"},
+            json={"code": "CR-NOSTORAGE", "name": "No Storage", "media_type": "video",
+                  "advertiser_organization_id": ADV1_ORG_ID},
             headers=_auth(token),
         )
         assert resp.status_code == 201
@@ -168,18 +171,20 @@ class TestCreateCreativeAssetBehavioral:
 
     def test_cross_org_create_rejected(self, client, user_ids):
         """Advertiser-scoped user cannot create an asset in another org."""
-        token = _token(user_ids["brand1_advertiser"])  # scoped to ADV1_ORG_ID (200)
+        # 'advertiser' user is scoped to ADV1_ORG_ID (200)
+        token = _token(user_ids["advertiser"])
         resp = client.post(
             "/api/v1/identity/creative-assets",
-            json={"code": "CR-XORG", "name": "Cross Org Attempt", "media_type": "image"},
+            json={
+                "code": "CR-XORG", "name": "Cross Org Attempt", "media_type": "image",
+                "advertiser_organization_id": ADV2_ORG_ID,  # different org
+            },
             headers=_auth(token),
         )
-        # The endpoint uses the first scope advertiser ID from the token.
-        # Cross-org check is handled by repository._assert_org_in_scope.
-        # The asset is created UNDER the scoped org, so this should succeed.
-        # But if another org ID is somehow passed, we'd get 422.
-        # This test verifies the endpoint works at all with scoped users.
-        assert resp.status_code in (201, 422), f"Unexpected status {resp.status_code}: {resp.text}"
+        # Scoped user cannot specify an org outside their scope → 422
+        assert resp.status_code == 422, (
+            f"Expected 422 for cross-org, got {resp.status_code}: {resp.text}"
+        )
 
     @classmethod
     def teardown_class(cls):
@@ -228,7 +233,8 @@ class TestMetadataOnlyBlocksApproval:
             # 1. Create metadata-only creative asset (empty checksum)
             resp = client.post(
                 "/api/v1/identity/creative-assets",
-                json={"code": "CR-PROOF-META", "name": "Proof Metadata Only", "media_type": "image"},
+                json={"code": "CR-PROOF-META", "name": "Proof Metadata Only", "media_type": "image",
+                      "advertiser_organization_id": ADV1_ORG_ID},
                 headers=_auth(token),
             )
             assert resp.status_code == 201, resp.text
@@ -278,7 +284,8 @@ class TestMetadataOnlyBlocksApproval:
 
         resp = client.post(
             "/api/v1/identity/creative-assets",
-            json={"code": code, "name": "No Fake Checksum", "media_type": "video"},
+            json={"code": code, "name": "No Fake Checksum", "media_type": "video",
+                  "advertiser_organization_id": ADV1_ORG_ID},
             headers=_auth(token),
         )
         assert resp.status_code == 201, resp.text
@@ -312,6 +319,7 @@ class TestMetadataOnlyBlocksApproval:
             json={
                 "code": code, "name": "Real Checksum Creative",
                 "media_type": "image",
+                "advertiser_organization_id": ADV1_ORG_ID,
                 "sha256_checksum": real_checksum,
             },
             headers=_auth(token),

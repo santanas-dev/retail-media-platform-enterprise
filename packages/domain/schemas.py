@@ -444,11 +444,16 @@ class CreativeAssetCreateRequest(BaseModel):
     and rendered in a collapsed section in the UI.  Storage bucket/key are
     never part of this schema — they are auto-filled on creation and never
     returned in CreativeAssetOut per ADR-008.
+
+    advertiser_organization_id is optional.  When absent, the endpoint
+    derives it from the caller's JWT scope.  Admins (no scope) must
+    provide it explicitly.
     """
 
     code: str = Field(..., min_length=1, max_length=64)
     name: str = Field(..., min_length=1, max_length=255)
     media_type: str = Field(..., min_length=1, max_length=32)
+    advertiser_organization_id: str | None = Field(None, max_length=36)
     sha256_checksum: str = Field(
         default="",
         min_length=0,

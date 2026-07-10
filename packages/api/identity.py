@@ -973,15 +973,30 @@ async def create_creative_asset_endpoint(
     Standalone asset intake — does NOT attach to a campaign.
     The asset appears in the creative library picker and can be attached
     to any draft campaign later via POST .../creatives/attach.
+
+    advertiser_organization_id is derived from JWT scope for scoped users.
+    Admins must provide it explicitly.
     """
     scope_ids = _scope_ids(scope)
-    if not scope_ids:
-        raise HTTPException(status_code=403, detail="No advertiser scope")
+    org_id = body.advertiser_organization_id
+
+    if org_id:
+        # Explicit org — validate against scope if scoped
+        if scope_ids is not None and org_id not in scope_ids:
+            raise HTTPException(status_code=422, detail="Advertiser organization not in scope")
+    elif scope_ids is not None:
+        # Scoped user — derive from token
+        if not scope_ids:
+            raise HTTPException(status_code=403, detail="No advertiser scope")
+        org_id = next(iter(scope_ids))
+    else:
+        # Admin without explicit org
+        raise HTTPException(status_code=422, detail="Advertiser organization required for admin users")
 
     try:
         asset_id = await repository.create_creative_asset_metadata(
             db,
-            advertiser_organization_id=next(iter(scope_ids)),
+            advertiser_organization_id=org_id,
             code=body.code,
             name=body.name,
             media_type=body.media_type,

@@ -288,6 +288,7 @@ export interface CreativeAssetCreateRequest {
   code: string;
   name: string;
   media_type: string;
+  advertiser_organization_id?: string;
   sha256_checksum?: string;
   file_size_bytes?: number | null;
   resolution_w?: number | null;
