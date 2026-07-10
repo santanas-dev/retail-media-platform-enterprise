@@ -282,6 +282,19 @@ export interface CampaignCreativeAttachRequest {
   sort_order: number;
 }
 
+// ── S-009j: Standalone creative asset creation (library intake) ──
+
+export interface CreativeAssetCreateRequest {
+  code: string;
+  name: string;
+  media_type: string;
+  sha256_checksum?: string;
+  file_size_bytes?: number | null;
+  resolution_w?: number | null;
+  resolution_h?: number | null;
+  duration_ms?: number | null;
+}
+
 // ── Approval ──
 
 export interface CampaignApprovalResponse {

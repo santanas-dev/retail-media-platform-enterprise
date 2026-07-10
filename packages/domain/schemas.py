@@ -436,6 +436,31 @@ class CampaignCreativeAttachRequest(BaseModel):
     sort_order: int = 0
 
 
+class CreativeAssetCreateRequest(BaseModel):
+    """Create a creative asset in the library (metadata only, no file upload).
+
+    Business-friendly: name + code + human media_type label required.
+    Technical params (checksum, dimensions, duration, file size) are optional
+    and rendered in a collapsed section in the UI.  Storage bucket/key are
+    never part of this schema — they are auto-filled on creation and never
+    returned in CreativeAssetOut per ADR-008.
+    """
+
+    code: str = Field(..., min_length=1, max_length=64)
+    name: str = Field(..., min_length=1, max_length=255)
+    media_type: str = Field(..., min_length=1, max_length=32)
+    sha256_checksum: str = Field(
+        default="",
+        min_length=0,
+        max_length=64,
+        description="Auto-filled if empty (pilot-safe placeholder).",
+    )
+    file_size_bytes: int | None = Field(None, ge=0)
+    resolution_w: int | None = Field(None, ge=1)
+    resolution_h: int | None = Field(None, ge=1)
+    duration_ms: int | None = Field(None, ge=1)
+
+
 # ---------------------------------------------------------------------------
 # Approval Workflow Schemas (Phase 4.1d — ADR-015)
 # ---------------------------------------------------------------------------

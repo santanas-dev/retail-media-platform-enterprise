@@ -617,6 +617,7 @@ from packages.domain.schemas import (
     CampaignPlacementUpdateRequest,
     CampaignCreativeCreateRequest,
     CampaignCreativeAttachRequest,
+    CreativeAssetCreateRequest,
 )
 from packages.domain.repository import (
     create_campaign_flight,
@@ -955,6 +956,55 @@ async def attach_creative_endpoint(
         payload={"campaign_id": campaign_id, "creative_asset_id": body.creative_asset_id},
         headers={"source_service": "control-api"},
     )
+    return _serialize_creative_asset(asset)
+
+
+@router.post("/creative-assets",
+             response_model=CreativeAssetOut, status_code=201)
+async def create_creative_asset_endpoint(
+    body: CreativeAssetCreateRequest,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Create a creative asset in the library (metadata only, no file upload).
+
+    Standalone asset intake — does NOT attach to a campaign.
+    The asset appears in the creative library picker and can be attached
+    to any draft campaign later via POST .../creatives/attach.
+    """
+    scope_ids = _scope_ids(scope)
+    if not scope_ids:
+        raise HTTPException(status_code=403, detail="No advertiser scope")
+
+    try:
+        asset_id = await repository.create_creative_asset_metadata(
+            db,
+            advertiser_organization_id=next(iter(scope_ids)),
+            code=body.code,
+            name=body.name,
+            media_type=body.media_type,
+            sha256_checksum=body.sha256_checksum,
+            file_size_bytes=body.file_size_bytes,
+            resolution_w=body.resolution_w,
+            resolution_h=body.resolution_h,
+            duration_ms=body.duration_ms,
+            scope_advertiser_ids=scope_ids,
+            created_by=claims["sub"],
+        )
+    except CrossOrgReferenceError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    await enqueue_outbox_event(
+        db,
+        event_type="creative_asset.created",
+        aggregate_type="creative_asset",
+        aggregate_id=asset_id,
+        payload={"creative_asset_id": asset_id},
+        headers={"source_service": "control-api"},
+    )
+    asset = await repository.get_creative_asset(db, asset_id)
     return _serialize_creative_asset(asset)
 
 

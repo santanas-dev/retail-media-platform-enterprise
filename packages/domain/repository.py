@@ -1050,6 +1050,70 @@ async def create_campaign_creative(
     return (asset_id, link_id)
 
 
+async def create_creative_asset_metadata(
+    session: AsyncSession,
+    *,
+    advertiser_organization_id: str,
+    code: str,
+    name: str,
+    media_type: str,
+    sha256_checksum: str = "",
+    file_size_bytes: int | None = None,
+    resolution_w: int | None = None,
+    resolution_h: int | None = None,
+    duration_ms: int | None = None,
+    scope_advertiser_ids: frozenset[str] | None = None,
+    created_by: str | None = None,
+    storage_bucket: str = "pilot",
+) -> str:
+    """Create CreativeAsset metadata only — no file upload, no campaign link.
+
+    Pilot-safe: storage_key is auto-derived; storage_bucket defaults to "pilot".
+    sha256_checksum is auto-filled with a pilot-safe placeholder if empty.
+    status="metadata_only" to differentiate from ready (uploaded) assets.
+
+    Enforces: advertiser_organization_id is in scope.
+
+    Returns the new asset_id.
+    Raises CrossOrgReferenceError if advertiser_organization_id is not in scope.
+    """
+    import uuid
+    from datetime import datetime, timezone as tz
+
+    from packages.domain.exceptions import CrossOrgReferenceError
+    from packages.domain.models import CreativeAsset
+
+    _assert_org_in_scope(advertiser_organization_id, scope_advertiser_ids)
+
+    asset_id = str(uuid.uuid4())
+    storage_key_val = f"pilot/creatives/{asset_id}"
+    checksum = sha256_checksum.strip() if sha256_checksum else "0" * 64
+    now = datetime.now(tz.utc)
+
+    asset = CreativeAsset(
+        id=asset_id,
+        advertiser_organization_id=advertiser_organization_id,
+        code=code,
+        name=name,
+        media_type=media_type,
+        storage_bucket=storage_bucket,
+        storage_key=storage_key_val,
+        sha256_checksum=checksum,
+        file_size_bytes=file_size_bytes or 0,
+        duration_ms=duration_ms,
+        resolution_w=resolution_w,
+        resolution_h=resolution_h,
+        status="metadata_only",
+        moderation_status="pending_review",
+        created_by=created_by,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(asset)
+    await session.flush()  # ensure id is visible for outbox FK
+    return asset_id
+
+
 # ---------------------------------------------------------------------------
 # Transactional Outbox (Phase 4.1c — ADR-011)
 # ---------------------------------------------------------------------------

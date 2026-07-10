@@ -21,6 +21,7 @@ import type {
   CampaignCreativeOut,
   CampaignCreativeCreateRequest,
   CreativeAssetOut,
+  CreativeAssetCreateRequest,
   AdvertiserOrganizationOut,
   AdvertiserBrandOut,
   AdvertiserContractOut,
@@ -175,6 +176,14 @@ export function attachCreative(
     `/campaigns/${campaignId}/creatives/attach`,
     body,
   );
+}
+
+// ── S-009j: Standalone creative asset creation (library intake) ──
+
+export function createCreativeAsset(
+  body: CreativeAssetCreateRequest,
+): Promise<CreativeAssetOut> {
+  return api.post<CreativeAssetOut>("/creative-assets", body);
 }
 
 export function requestApproval(

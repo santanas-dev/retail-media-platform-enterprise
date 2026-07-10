@@ -263,9 +263,8 @@ describe("CampaignDetailPage — S-009e", () => {
     await user.click(screen.getByText("Креативы"));
 
     await waitFor(() => {
-      // Warning about create-only
-      expect(screen.getByText(/Создание нового креатива/)).toBeTruthy();
-      expect(screen.getByText("+ Создать креатив")).toBeTruthy();
+      // S-009j: business-friendly intake form
+      expect(screen.getByText(/Добавить креатив в библиотеку/)).toBeTruthy();
     });
   });
 
@@ -372,6 +371,143 @@ describe("CampaignDetailPage — S-009e", () => {
     const router = createRouter("/campaigns/c1");
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
     await waitFor(() => { expect(screen.getByText("Login")).toBeTruthy(); });
+  });
+
+  // ── S-009j: Creative Asset Intake UI ──
+
+  describe("S-009j — creative asset intake form", () => {
+    it("renders business labels, not raw MIME types", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches();
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+      await user.click(screen.getByText("Креативы"));
+
+      // Click the intake button to reveal the form
+      await user.click(screen.getByText(/Добавить креатив в библиотеку/));
+
+      // Business labels, not raw MIME
+      expect(screen.getByText("Тип медиа")).toBeTruthy();
+      expect(screen.getByText("Изображение")).toBeTruthy();
+      expect(screen.getByText("Видео")).toBeTruthy();
+      expect(screen.getByText("HTML")).toBeTruthy();
+      expect(screen.getByText("Прочее")).toBeTruthy();
+
+      // No raw MIME types exposed
+      expect(screen.queryByText("image/jpeg")).toBeNull();
+      expect(screen.queryByText("video/mp4")).toBeNull();
+    });
+
+    it("checksum is hidden in collapsed technical section by default", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches();
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText(/Добавить креатив в библиотеку/));
+
+      // Technical section is collapsed
+      expect(screen.getByText("Технические параметры")).toBeTruthy();
+      // SHA input exists but is inside collapsed <details>
+      const shaInput = screen.queryByPlaceholderText("Авто-заглушка");
+      // It exists in the DOM but may not be visible (collapsed)
+      expect(shaInput).toBeTruthy();
+    });
+
+    it("deferred upload message is visible", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches();
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText(/Добавить креатив в библиотеку/));
+
+      expect(screen.getByText(/Файл пока не загружается через интерфейс/)).toBeTruthy();
+      expect(screen.getByText(/загрузка файла будет отдельным этапом/)).toBeTruthy();
+    });
+
+    it("shows validation error when name or code empty", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches();
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText(/Добавить креатив в библиотеку/));
+
+      // Fill code, leave name empty — clear the required temporarily
+      const codeInput = screen.getByLabelText("Код *") as HTMLInputElement;
+      const nameInput = screen.getByLabelText("Название *") as HTMLInputElement;
+      codeInput.removeAttribute("required");
+      nameInput.removeAttribute("required");
+      await user.type(codeInput, "BANNER-001");
+      nameInput.value = "";
+      await user.click(screen.getByText("Добавить в библиотеку"));
+      await waitFor(() => {
+        expect(screen.getByText(/Код и название обязательны/)).toBeTruthy();
+      });
+    });
+
+    it("shows backend 422 error in readable Russian", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches({
+        "/creative-assets": (url, init) => {
+          // Only intercept POST, let GET pass through for page load
+          if (init?.method === "POST") {
+            return Promise.resolve(
+              new Response(JSON.stringify({ detail: "Креатив с таким кодом уже существует в организации" }), { status: 422 }),
+            );
+          }
+          return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        },
+      });
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText(/Добавить креатив в библиотеку/));
+
+      await user.type(screen.getByLabelText("Код *"), "BANNER-001");
+      await user.type(screen.getByLabelText("Название *"), "Главный баннер");
+      await user.click(screen.getByText("Добавить в библиотеку"));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Креатив с таким кодом уже существует/)).toBeTruthy();
+      });
+    });
+
+    it("401 clears session", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches({
+        "/creative-assets": (url, init) => {
+          // Only intercept POST, let GET pass through for page load
+          if (init?.method === "POST") {
+            return Promise.resolve(new Response(JSON.stringify({ detail: "Unauthorized" }), { status: 401 }));
+          }
+          return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        },
+      });
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText(/Добавить креатив в библиотеку/));
+
+      await user.type(screen.getByLabelText("Код *"), "BANNER-001");
+      await user.type(screen.getByLabelText("Название *"), "Главный баннер");
+      await user.click(screen.getByText("Добавить в библиотеку"));
+
+      await waitFor(() => { expect(screen.getByText("Login")).toBeTruthy(); });
+    });
   });
 
   // ── S-009f: Approval workflow ──

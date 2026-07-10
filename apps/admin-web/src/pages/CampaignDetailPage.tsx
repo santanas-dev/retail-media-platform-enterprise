@@ -18,6 +18,7 @@ import {
   approveCampaign,
   rejectCampaign,
   attachCreative,
+  createCreativeAsset,
   getCampaignPopSummary,
   getCampaignPopByDay,
   getCampaignPopBySurface,
@@ -36,6 +37,7 @@ import type {
   CampaignCreativeOut,
   CampaignCreativeCreateRequest,
   CampaignCreativeAttachRequest,
+  CreativeAssetCreateRequest,
   CreativeAssetOut,
   AdvertiserOrganizationOut,
   AdvertiserBrandOut,
@@ -130,7 +132,6 @@ export default function CampaignDetailPage() {
   // Form toggles
   const [showFlightAdd, setShowFlightAdd] = useState(false);
   const [showPlacementAdd, setShowPlacementAdd] = useState(false);
-  const [showCreativeAdd, setShowCreativeAdd] = useState(false);
 
   // Form states
   const [flightName, setFlightName] = useState("");
@@ -149,16 +150,18 @@ export default function CampaignDetailPage() {
   const [placementSubmitting, setPlacementSubmitting] = useState(false);
   const [placementError, setPlacementError] = useState<string | null>(null);
 
-  const [creativeCode, setCreativeCode] = useState("");
-  const [creativeName, setCreativeName] = useState("");
-  const [creativeType, setCreativeType] = useState("image/jpeg");
-  const [creativeSha, setCreativeSha] = useState("");
-  const [creativeSize, setCreativeSize] = useState("");
-  const [creativeW, setCreativeW] = useState("");
-  const [creativeH, setCreativeH] = useState("");
-  const [creativeDur, setCreativeDur] = useState("");
-  const [creativeSubmitting, setCreativeSubmitting] = useState(false);
-  const [creativeError, setCreativeError] = useState<string | null>(null);
+  // S-009j: standalone creative asset intake (library)
+  const [assetCode, setAssetCode] = useState("");
+  const [assetName, setAssetName] = useState("");
+  const [assetMediaType, setAssetMediaType] = useState("image");
+  const [assetW, setAssetW] = useState("");
+  const [assetH, setAssetH] = useState("");
+  const [assetDur, setAssetDur] = useState("");
+  const [assetSize, setAssetSize] = useState("");
+  const [assetChecksum, setAssetChecksum] = useState("");
+  const [assetSubmitting, setAssetSubmitting] = useState(false);
+  const [assetError, setAssetError] = useState<string | null>(null);
+  const [showAssetAdd, setShowAssetAdd] = useState(false);
 
   // Attach existing creative
   const [attachAssetId, setAttachAssetId] = useState("");
@@ -848,52 +851,58 @@ export default function CampaignDetailPage() {
   // ── Creatives tab ──
 
   function renderCreatives() {
-    async function handleAddCreative(e: FormEvent) {
+    // S-009j: standalone asset intake (library) — handle submit
+    async function handleCreateAsset(e: FormEvent) {
       e.preventDefault();
-      setCreativeError(null);
+      setAssetError(null);
 
-      if (!creativeCode.trim() || !creativeName.trim() || !creativeSize) {
-        setCreativeError("Код, название и размер файла обязательны");
+      if (!assetCode.trim() || !assetName.trim()) {
+        setAssetError("Код и название обязательны");
         return;
       }
 
-      setCreativeSubmitting(true);
+      setAssetSubmitting(true);
       try {
-        const body: CampaignCreativeCreateRequest = {
-          code: creativeCode.trim(),
-          name: creativeName.trim(),
-          media_type: creativeType,
-          sha256_checksum: creativeSha.trim() || "0000000000000000000000000000000000000000000000000000000000000000",
-          file_size_bytes: parseInt(creativeSize, 10),
-          duration_ms: creativeDur ? parseInt(creativeDur, 10) : null,
-          resolution_w: creativeW ? parseInt(creativeW, 10) : null,
-          resolution_h: creativeH ? parseInt(creativeH, 10) : null,
-          sort_order: creatives.length,
-          duration_override_ms: null,
+        const body: CreativeAssetCreateRequest = {
+          code: assetCode.trim(),
+          name: assetName.trim(),
+          media_type: assetMediaType,
+          sha256_checksum: assetChecksum.trim() || undefined,
+          file_size_bytes: assetSize ? parseInt(assetSize, 10) : null,
+          resolution_w: assetW ? parseInt(assetW, 10) : null,
+          resolution_h: assetH ? parseInt(assetH, 10) : null,
+          duration_ms: assetDur ? parseInt(assetDur, 10) : null,
         };
-        await createCreative(campaign.id, body);
+        await createCreativeAsset(body);
+        // Refresh the global asset list so the picker sees the new asset
+        try { const fresh = await listCreativeAssets(); setAllAssets(fresh); } catch { /* non-critical */ }
         await refreshCreatives();
-        resetCreativeForm();
+        resetAssetForm();
       } catch (e: unknown) {
-        setCreativeError(formatApiError(e));
+        setAssetError(formatApiError(e));
       } finally {
-        setCreativeSubmitting(false);
+        setAssetSubmitting(false);
       }
     }
 
-    function resetCreativeForm() {
-      setCreativeCode("");
-      setCreativeName("");
-      setCreativeType("image/jpeg");
-      setCreativeSha("");
-      setCreativeSize("");
-      setCreativeW("");
-      setCreativeH("");
-      setCreativeDur("");
-      setShowCreativeAdd(false);
+    function resetAssetForm() {
+      setAssetCode("");
+      setAssetName("");
+      setAssetMediaType("image");
+      setAssetW("");
+      setAssetH("");
+      setAssetDur("");
+      setAssetSize("");
+      setAssetChecksum("");
+      setShowAssetAdd(false);
     }
 
-    const MEDIA_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/webm"];
+    const MEDIA_TYPE_LABELS = [
+      { value: "image", label: "Изображение" },
+      { value: "video", label: "Видео" },
+      { value: "html", label: "HTML" },
+      { value: "other", label: "Прочее" },
+    ];
 
     // Unattached assets (not yet linked to this campaign)
     const linkedIds = new Set(creatives.map((x) => x.creative_asset_id));
@@ -955,69 +964,74 @@ export default function CampaignDetailPage() {
           </div>
         )}
 
-        {/* ── Create new creative manually (collapsed) ── */}
+        {/* ── S-009j: Добавить креатив в библиотеку ── */}
         {isDraft && (
-          <details style={{ marginBottom: "0.75rem", fontSize: "0.8rem" }}>
-            <summary style={{ cursor: "pointer", color: "#475569", fontWeight: 500 }}>
-              Создать новый креатив вручную
-            </summary>
-            <div style={{ marginTop: "0.5rem", padding: "0.5rem", background: "#fffbeb", borderRadius: 4, border: "1px solid #fde68a", fontSize: "0.7rem", color: "#92400e" }}>
-              Создание нового креатива (бэкенд не поддерживает привязку существующих). Загрузка файлов — в следующем срезе.
-            </div>
-            <div style={{ marginTop: "0.5rem" }}>
-              {!showCreativeAdd ? (
-                <button type="button" style={css.addBtn} onClick={() => setShowCreativeAdd(true)}>
-                  + Создать креатив
-                </button>
-              ) : (
-                <form onSubmit={handleAddCreative} style={css.inlineForm}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                    <div>
-                      <label style={css.miniLabel}>Код *</label>
-                      <input type="text" value={creativeCode} onChange={(e) => setCreativeCode(e.target.value)} style={css.miniInput} maxLength={64} required />
-                    </div>
-                    <div>
-                      <label style={css.miniLabel}>Название *</label>
-                      <input type="text" value={creativeName} onChange={(e) => setCreativeName(e.target.value)} style={css.miniInput} maxLength={255} required />
-                    </div>
-                    <div>
-                      <label style={css.miniLabel}>Тип</label>
-                      <select value={creativeType} onChange={(e) => setCreativeType(e.target.value)} style={css.miniSelect}>
-                        {MEDIA_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={css.miniLabel}>Размер файла (байт) *</label>
-                      <input type="number" value={creativeSize} onChange={(e) => setCreativeSize(e.target.value)} style={css.miniInput} min={0} required />
-                    </div>
-                    <div>
-                      <label style={css.miniLabel}>Ширина</label>
-                      <input type="number" value={creativeW} onChange={(e) => setCreativeW(e.target.value)} style={css.miniInput} min={1} />
-                    </div>
-                    <div>
-                      <label style={css.miniLabel}>Высота</label>
-                      <input type="number" value={creativeH} onChange={(e) => setCreativeH(e.target.value)} style={css.miniInput} min={1} />
-                    </div>
-                    <div>
-                      <label style={css.miniLabel}>Длительность (мс)</label>
-                      <input type="number" value={creativeDur} onChange={(e) => setCreativeDur(e.target.value)} style={css.miniInput} min={1} />
-                    </div>
-                    <div>
-                      <label style={css.miniLabel}>SHA-256</label>
-                      <input type="text" value={creativeSha} onChange={(e) => setCreativeSha(e.target.value)} style={css.miniInput} placeholder="Авто-заглушка" maxLength={64} />
-                    </div>
+          <div style={{ marginBottom: "0.75rem" }}>
+            {!showAssetAdd ? (
+              <button type="button" style={css.addBtn} onClick={() => { setShowAssetAdd(true); setAssetError(null); }}>
+                + Добавить креатив в библиотеку
+              </button>
+            ) : (
+              <form onSubmit={handleCreateAsset} style={css.inlineForm}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                  <div>
+                    <label htmlFor="ca-code" style={css.miniLabel}>Код *</label>
+                    <input id="ca-code" type="text" value={assetCode} onChange={(e) => setAssetCode(e.target.value)} style={css.miniInput} maxLength={64} required />
                   </div>
-                  <div style={{ display: "flex", gap: "0.25rem" }}>
-                    <button type="submit" style={css.primaryBtn} disabled={creativeSubmitting}>
-                      {creativeSubmitting ? "..." : "Создать"}
-                    </button>
-                    <button type="button" style={css.cancelBtn} onClick={resetCreativeForm}>Отмена</button>
+                  <div>
+                    <label htmlFor="ca-name" style={css.miniLabel}>Название *</label>
+                    <input id="ca-name" type="text" value={assetName} onChange={(e) => setAssetName(e.target.value)} style={css.miniInput} maxLength={255} required />
                   </div>
-                  {creativeError && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginTop: "0.5rem" }}>{creativeError}</div>}
-                </form>
-              )}
-            </div>
-          </details>
+                  <div>
+                    <label htmlFor="ca-type" style={css.miniLabel}>Тип медиа</label>
+                    <select id="ca-type" value={assetMediaType} onChange={(e) => setAssetMediaType(e.target.value)} style={css.miniSelect}>
+                      {MEDIA_TYPE_LABELS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="ca-size" style={css.miniLabel}>Размер файла (байт)</label>
+                    <input id="ca-size" type="number" value={assetSize} onChange={(e) => setAssetSize(e.target.value)} style={css.miniInput} min={0} placeholder="Опционально" />
+                  </div>
+                  <div>
+                    <label htmlFor="ca-w" style={css.miniLabel}>Ширина</label>
+                    <input id="ca-w" type="number" value={assetW} onChange={(e) => setAssetW(e.target.value)} style={css.miniInput} min={1} placeholder="Опционально" />
+                  </div>
+                  <div>
+                    <label htmlFor="ca-h" style={css.miniLabel}>Высота</label>
+                    <input id="ca-h" type="number" value={assetH} onChange={(e) => setAssetH(e.target.value)} style={css.miniInput} min={1} placeholder="Опционально" />
+                  </div>
+                  <div>
+                    <label htmlFor="ca-dur" style={css.miniLabel}>Длительность (мс)</label>
+                    <input id="ca-dur" type="number" value={assetDur} onChange={(e) => setAssetDur(e.target.value)} style={css.miniInput} min={1} placeholder="Опционально" />
+                  </div>
+                </div>
+
+                {/* Technical params — collapsed */}
+                <details style={{ marginBottom: "0.75rem", fontSize: "0.75rem" }}>
+                  <summary style={{ cursor: "pointer", color: "#64748b" }}>
+                    Технические параметры
+                  </summary>
+                  <div style={{ marginTop: "0.5rem" }}>
+                    <label style={css.miniLabel}>SHA-256</label>
+                    <input type="text" value={assetChecksum} onChange={(e) => setAssetChecksum(e.target.value)} style={css.miniInput} placeholder="Авто-заглушка" maxLength={64} />
+                  </div>
+                </details>
+
+                {/* Deferred upload note */}
+                <div style={{ padding: "0.5rem", background: "#fffbeb", borderRadius: 4, border: "1px solid #fde68a", fontSize: "0.7rem", color: "#92400e", marginBottom: "0.5rem" }}>
+                  Файл пока не загружается через интерфейс. На этом этапе создаётся карточка креатива; загрузка файла будет отдельным этапом.
+                </div>
+
+                <div style={{ display: "flex", gap: "0.25rem" }}>
+                  <button type="submit" style={css.primaryBtn} disabled={assetSubmitting}>
+                    {assetSubmitting ? "..." : "Добавить в библиотеку"}
+                  </button>
+                  <button type="button" style={css.cancelBtn} onClick={resetAssetForm}>Отмена</button>
+                </div>
+                {assetError && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginTop: "0.5rem" }}>{assetError}</div>}
+              </form>
+            )}
+          </div>
         )}
 
         {allAssets.length > 0 && (
