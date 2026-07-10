@@ -359,4 +359,132 @@ describe("CampaignDetailPage — S-009e", () => {
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
     await waitFor(() => { expect(screen.getByText("Login")).toBeTruthy(); });
   });
+
+  // ── S-009f: Approval workflow ──
+
+  it("shows approve/reject buttons for pending_approval campaign", async () => {
+    mockAuthenticatedSession();
+    const pendingCampaign = { ...DRAFT_CAMPAIGN, status: "pending_approval" };
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify([pendingCampaign]), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByText("Кампания ожидает согласования.")).toBeTruthy();
+      expect(screen.getByText("Согласовать")).toBeTruthy();
+      expect(screen.getByText("Отклонить")).toBeTruthy();
+    });
+  });
+
+  it("reject requires reason before submit", async () => {
+    mockAuthenticatedSession();
+    const pendingCampaign = { ...DRAFT_CAMPAIGN, status: "pending_approval" };
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify([pendingCampaign]), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Отклонить")).toBeTruthy(); });
+
+    // Click reject
+    await userEvent.setup().click(screen.getByText("Отклонить"));
+
+    // Reject dialog appears, confirm button should be disabled
+    await waitFor(() => {
+      const confirmBtn = screen.getByText("Подтвердить отклонение") as HTMLButtonElement;
+      expect(confirmBtn.disabled).toBe(true);
+    });
+  });
+
+  it("approve success refreshes campaign status", async () => {
+    mockAuthenticatedSession();
+    const pendingCampaign = { ...DRAFT_CAMPAIGN, status: "pending_approval" };
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify([pendingCampaign]), { status: 200 })),
+      "/approve": () =>
+        Promise.resolve(new Response(JSON.stringify({
+          message: "Campaign approved", campaign_id: "c1", old_status: "pending_approval", new_status: "approved",
+        }), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Согласовать")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Согласовать"));
+
+    // After approve, campaign status should update (button disappears, status badge changes)
+    // We verify the API call was made — the test checks the mock was triggered
+    await waitFor(() => {
+      // Approval banner should be gone, status updated
+      expect(screen.queryByText("Кампания ожидает согласования.")).toBeNull();
+    });
+  });
+
+  it("reject success refreshes campaign status", async () => {
+    mockAuthenticatedSession();
+    const pendingCampaign = { ...DRAFT_CAMPAIGN, status: "pending_approval" };
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify([pendingCampaign]), { status: 200 })),
+      "/reject": () =>
+        Promise.resolve(new Response(JSON.stringify({
+          message: "Campaign rejected", campaign_id: "c1", old_status: "pending_approval", new_status: "rejected",
+        }), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Отклонить")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Отклонить"));
+
+    // Fill reject reason
+    await waitFor(() => { expect(screen.getByText("Подтвердить отклонение")).toBeTruthy(); });
+    const textarea = screen.getByPlaceholderText("Укажите причину отклонения");
+    await userEvent.setup().type(textarea, "Не соответствует требованиям");
+    await userEvent.setup().click(screen.getByText("Подтвердить отклонение"));
+
+    // After reject, approval banner should be gone
+    await waitFor(() => {
+      expect(screen.queryByText("Кампания ожидает согласования.")).toBeNull();
+    });
+  });
+
+  it("shows error on approve 403", async () => {
+    mockAuthenticatedSession();
+    const pendingCampaign = { ...DRAFT_CAMPAIGN, status: "pending_approval" };
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      const method = (init as RequestInit)?.method;
+
+      if (url.endsWith("/me")) {
+        return Promise.resolve(new Response(JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin" }), { status: 200 }));
+      }
+      // Return pending campaign for list
+      if (url.endsWith("/identity/campaigns") && method !== "POST") {
+        return Promise.resolve(new Response(JSON.stringify([pendingCampaign]), { status: 200 }));
+      }
+      // Approve returns 403
+      if (url.includes("/approve") && method === "POST") {
+        return Promise.resolve(new Response(JSON.stringify({ detail: "Forbidden" }), { status: 403 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Согласовать")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Согласовать"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Нет прав на это действие.")).toBeTruthy();
+    });
+  });
 });

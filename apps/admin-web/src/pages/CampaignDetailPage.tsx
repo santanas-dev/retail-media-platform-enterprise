@@ -15,6 +15,8 @@ import {
   createPlacement,
   createCreative,
   requestApproval,
+  approveCampaign,
+  rejectCampaign,
 } from "../api/campaigns";
 import type {
   CampaignOut,
@@ -142,6 +144,10 @@ export default function CampaignDetailPage() {
   // Approval
   const [approvalSubmitting, setApprovalSubmitting] = useState(false);
   const [approvalError, setApprovalError] = useState<string | null>(null);
+
+  // Reject dialog
+  const [showReject, setShowReject] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
 
   // ── Load all data ──
 
@@ -276,6 +282,7 @@ export default function CampaignDetailPage() {
 
   const { campaign, org, brand, contract, approvals } = data;
   const isDraft = campaign.status === "draft";
+  const isPendingApproval = campaign.status === "pending_approval";
 
   // ── Tab content ──
 
@@ -308,7 +315,7 @@ export default function CampaignDetailPage() {
 
     return (
       <div style={css.section}>
-        {/* Approval action */}
+        {/* ── Draft: submit for approval ── */}
         {isDraft && (
           <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#f0f9ff", borderRadius: 6, border: "1px solid #bae6fd" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
@@ -334,7 +341,96 @@ export default function CampaignDetailPage() {
           </div>
         )}
 
-        {!isDraft && (
+        {/* ── Pending approval: approve / reject ── */}
+        {isPendingApproval && (
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#fffbeb", borderRadius: 6, border: "1px solid #fde68a" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, fontSize: "0.825rem", color: "#92400e" }}>
+                Кампания ожидает согласования.
+              </div>
+              <button
+                type="button"
+                style={{ ...css.primaryBtn, background: "#059669" }}
+                disabled={approvalSubmitting}
+                onClick={async () => {
+                  setApprovalError(null);
+                  setApprovalSubmitting(true);
+                  try {
+                    const res = await approveCampaign(campaign.id);
+                    await refreshCampaign();
+                    if (data) setData({ ...data, campaign: { ...data.campaign, status: res.new_status } });
+                  } catch (e: unknown) {
+                    setApprovalError(formatApiError(e));
+                  } finally {
+                    setApprovalSubmitting(false);
+                  }
+                }}
+              >
+                {approvalSubmitting ? "..." : "Согласовать"}
+              </button>
+              <button
+                type="button"
+                style={{ ...css.cancelBtn, borderColor: "#dc2626", color: "#dc2626" }}
+                disabled={approvalSubmitting}
+                onClick={() => { setShowReject(true); setRejectReason(""); setApprovalError(null); }}
+              >
+                Отклонить
+              </button>
+            </div>
+            {approvalError && (
+              <div style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
+            )}
+            {/* Reject reason dialog */}
+            {showReject && (
+              <div style={{ marginTop: "0.75rem", padding: "0.75rem", background: "#fff", borderRadius: 4, border: "1px solid #fecaca" }}>
+                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 500, marginBottom: "0.25rem" }}>
+                  Причина отклонения *
+                </label>
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  style={{ width: "100%", minHeight: 60, padding: "0.4rem", border: "1px solid #d1d5db", borderRadius: 3, fontSize: "0.825rem", boxSizing: "border-box" }}
+                  placeholder="Укажите причину отклонения"
+                  maxLength={1000}
+                  rows={2}
+                />
+                <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+                  <button
+                    type="button"
+                    style={{ ...css.primaryBtn, background: "#dc2626" }}
+                    disabled={!rejectReason.trim() || approvalSubmitting}
+                    onClick={async () => {
+                      if (!rejectReason.trim()) return;
+                      setApprovalError(null);
+                      setApprovalSubmitting(true);
+                      try {
+                        const res = await rejectCampaign(campaign.id, { reason: rejectReason.trim() });
+                        await refreshCampaign();
+                        if (data) setData({ ...data, campaign: { ...data.campaign, status: res.new_status } });
+                        setShowReject(false);
+                      } catch (e: unknown) {
+                        setApprovalError(formatApiError(e));
+                      } finally {
+                        setApprovalSubmitting(false);
+                      }
+                    }}
+                  >
+                    Подтвердить отклонение
+                  </button>
+                  <button
+                    type="button"
+                    style={css.cancelBtn}
+                    onClick={() => setShowReject(false)}
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!isDraft && !isPendingApproval && (
           <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: "0.825rem", color: "#64748b" }}>
             Изменения доступны только в статусе «Черновик». Текущий статус: {statusLabel(campaign.status)}.
           </div>

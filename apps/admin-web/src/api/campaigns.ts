@@ -30,6 +30,7 @@ import type {
   CampaignPopSummaryOut,
   CampaignPopByDayOut,
   CampaignPopBySurfaceOut,
+  CampaignRejectRequest,
 } from "./types";
 
 // ── Campaigns ──
@@ -166,6 +167,24 @@ export function requestApproval(
 ): Promise<CampaignApprovalResponse> {
   return api.post<CampaignApprovalResponse>(
     `/campaigns/${campaignId}/request-approval`,
+  );
+}
+
+export function approveCampaign(
+  campaignId: string,
+): Promise<CampaignApprovalResponse> {
+  return api.post<CampaignApprovalResponse>(
+    `/campaigns/${campaignId}/approve`,
+  );
+}
+
+export function rejectCampaign(
+  campaignId: string,
+  body: CampaignRejectRequest,
+): Promise<CampaignApprovalResponse> {
+  return api.post<CampaignApprovalResponse>(
+    `/campaigns/${campaignId}/reject`,
+    body,
   );
 }
 

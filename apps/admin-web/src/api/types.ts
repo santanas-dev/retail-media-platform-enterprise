@@ -254,6 +254,10 @@ export interface CampaignApprovalResponse {
   new_status: string;
 }
 
+export interface CampaignRejectRequest {
+  reason: string;
+}
+
 // ── Helper: localized status labels ──
 
 export const STATUS_LABELS: Record<string, string> = {

@@ -25,6 +25,12 @@ export default function CampaignListPage() {
   const [brands, setBrands] = useState<Map<string, AdvertiserBrandOut>>(new Map());
   const [flights, setFlights] = useState<CampaignFlightOut[]>([]);
 
+  // Status filter
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const filteredCampaigns = statusFilter === "all"
+    ? campaigns
+    : campaigns.filter((c) => c.status === statusFilter);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -78,14 +84,19 @@ export default function CampaignListPage() {
     );
   }
 
-  if (campaigns.length === 0) {
+  if (filteredCampaigns.length === 0) {
     return (
       <div>
         <h2 style={styles.heading}>Кампании</h2>
+        <FilterChips current={statusFilter} onChange={setStatusFilter} />
         <div style={styles.emptyBox}>
-          <p style={{ margin: 0, fontWeight: 500 }}>Нет кампаний</p>
+          <p style={{ margin: 0, fontWeight: 500 }}>
+            {statusFilter === "all" ? "Нет кампаний" : "Нет кампаний с этим статусом"}
+          </p>
           <p style={{ margin: "0.25rem 0 0", fontSize: "0.875rem", color: "#94a3b8" }}>
-            Создайте первую кампанию, чтобы она появилась здесь.
+            {statusFilter === "all"
+              ? "Создайте первую кампанию, чтобы она появилась здесь."
+              : "Измените фильтр или создайте новую кампанию."}
           </p>
         </div>
       </div>
@@ -137,6 +148,7 @@ export default function CampaignListPage() {
   return (
     <div>
       <h2 style={styles.heading}>Кампании</h2>
+      <FilterChips current={statusFilter} onChange={setStatusFilter} />
       <table style={styles.table}>
         <thead>
           <tr>
@@ -148,7 +160,7 @@ export default function CampaignListPage() {
           </tr>
         </thead>
         <tbody>
-          {campaigns.map((c) => (
+          {filteredCampaigns.map((c) => (
             <tr
               key={c.id}
               style={{ ...styles.row, cursor: "pointer" }}
@@ -187,8 +199,53 @@ export default function CampaignListPage() {
         </tbody>
       </table>
       <div style={{ marginTop: "0.75rem", fontSize: "0.75rem", color: "#94a3b8" }}>
-        Всего: {campaigns.length}
+        {statusFilter === "all"
+          ? `Всего: ${campaigns.length}`
+          : `Показано: ${filteredCampaigns.length} из ${campaigns.length}`}
       </div>
+    </div>
+  );
+}
+
+// ── Filter chips ──
+
+const FILTER_OPTIONS = [
+  { value: "all", label: "Все" },
+  { value: "draft", label: "Черновики" },
+  { value: "pending_approval", label: "На согласовании" },
+  { value: "active", label: "Активные" },
+  { value: "approved", label: "Согласованные" },
+];
+
+function FilterChips({
+  current,
+  onChange,
+}: {
+  current: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div style={{ display: "flex", gap: "0.35rem", marginBottom: "0.75rem", flexWrap: "wrap" }}>
+      {FILTER_OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange(opt.value)}
+          style={{
+            padding: "0.2rem 0.6rem",
+            borderRadius: 999,
+            border: current === opt.value ? "1px solid #2563eb" : "1px solid #d1d5db",
+            background: current === opt.value ? "#eff6ff" : "#fff",
+            color: current === opt.value ? "#1d4ed8" : "#475569",
+            fontSize: "0.75rem",
+            fontWeight: current === opt.value ? 600 : 400,
+            cursor: "pointer",
+            lineHeight: "1.5",
+          }}
+        >
+          {opt.label}
+        </button>
+      ))}
     </div>
   );
 }
