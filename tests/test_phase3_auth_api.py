@@ -431,43 +431,61 @@ class TestAuthAPI(unittest.TestCase):
     # -----------------------------------------------------------------------
 
     def test_me_valid_token_returns_claims_and_permissions(self):
-        """Valid JWT: returns sub + auth_provider + permissions."""
+        """Valid JWT: DB-backed /me returns username, display_name, permissions."""
         from packages.security.jwt import create_access_token
 
         token = create_access_token("u-001", "local_advertiser")
 
         app = _get_app()
-        original_overrides = dict(app.dependency_overrides)
-
         from packages.api.dependencies import get_current_active_user, get_db
 
-        async def _mock_user():
+        async def _mock_active_user():
             return {"sub": "u-001", "auth_provider": "local_advertiser",
                     "username": "testuser", "display_name": "Test User"}
 
-        app.dependency_overrides[get_current_active_user] = _mock_user
+        app.dependency_overrides[get_current_active_user] = _mock_active_user
         app.dependency_overrides[get_db] = lambda: _async_gen(AsyncMock())
 
-        # Patch repository.get_user_permissions
-        with patch("packages.domain.repository.get_user_permissions",
-                   new_callable=AsyncMock) as mock_perms:
-            mock_perms.return_value = {"campaigns.approve", "campaigns.read"}
+        class _MockUserDB:
+            username = "testuser"
+            display_name = "Test User"
+            auth_provider = "local_advertiser"
 
-            resp = self.client.get(
-                "/api/v1/auth/me",
-                headers={"Authorization": f"Bearer {token}"},
-            )
+        class _MockCredential:
+            must_change_password = False
 
-        self.assertEqual(resp.status_code, 200, resp.text)
-        body = resp.json()
-        self.assertEqual(body["sub"], "u-001")
-        self.assertEqual(body["auth_provider"], "local_advertiser")
-        self.assertIsInstance(body["permissions"], list)
-        self.assertIn("campaigns.approve", body["permissions"])
-        self.assertIn("campaigns.read", body["permissions"])
+        try:
+            with (
+                patch("packages.auth.repository.get_local_credential",
+                      new_callable=AsyncMock) as mock_cred,
+                patch("packages.domain.repository.get_user_permissions",
+                      new_callable=AsyncMock) as mock_perms,
+                patch("packages.domain.repository.find_user_by_id",
+                      new_callable=AsyncMock) as mock_find,
+            ):
+                mock_perms.return_value = {"campaigns.approve", "campaigns.read"}
+                mock_find.return_value = _MockUserDB()
+                mock_cred.return_value = _MockCredential()
 
-        app.dependency_overrides.clear()
-        app.dependency_overrides.update(original_overrides)
+                resp = self.client.get(
+                    "/api/v1/auth/me",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+
+            self.assertEqual(resp.status_code, 200, resp.text)
+            body = resp.json()
+            self.assertEqual(body["sub"], "u-001")
+            self.assertEqual(body["auth_provider"], "local_advertiser")
+            # DB-backed: username and display_name come from the mock DB user
+            self.assertEqual(body["username"], "testuser")
+            self.assertEqual(body["display_name"], "Test User")
+            self.assertIsInstance(body["permissions"], list)
+            self.assertIn("campaigns.approve", body["permissions"])
+            self.assertIn("campaigns.read", body["permissions"])
+            # must_change_password from mock credential
+            self.assertFalse(body["must_change_password"])
+        finally:
+            app.dependency_overrides.clear()
 
     def test_me_missing_token_returns_401(self):
         """No Authorization header: 401."""

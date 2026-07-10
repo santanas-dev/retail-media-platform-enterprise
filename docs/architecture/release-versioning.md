@@ -127,7 +127,7 @@ required for internal milestones.
 
 #### Technical Capabilities
 
-- **Auth:** LDAPS bind + search, JWT access/refresh tokens, HttpOnly cookies
+- **Auth:** LDAPS bind/search interface defined (ADR-006), stub implementation (AD/production not yet wired). Local credentials (bcrypt) for advertiser/break-glass — product-ready path. JWT access/refresh tokens, HttpOnly cookies
 - **RBAC/RLS:** two-layer defence — application-level permission checks + PostgreSQL RLS (28 policies on 7 tables)
 - **Campaign domain:** ORM models (7 tables), CRUD endpoints, flight/placement/creative attachment APIs
 - **Approval workflow:** request-approval/approve/reject with audit trail

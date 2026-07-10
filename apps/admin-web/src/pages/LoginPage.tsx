@@ -2,21 +2,34 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
+type AuthProvider = "local_advertiser" | "local_break_glass" | "ad";
+
+const PROVIDER_LABELS: Record<AuthProvider, string> = {
+  local_advertiser: "Рекламодатель",
+  local_break_glass: "Break-glass Admin",
+  ad: "Сотрудник / AD",
+};
+
 export default function LoginPage() {
   const { login, loading, error } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [provider, setProvider] = useState<AuthProvider>("local_advertiser");
   const [localError, setLocalError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setLocalError(null);
     try {
-      await login(username, password);
+      await login(username, password, provider);
       navigate("/campaigns", { replace: true });
-    } catch {
-      setLocalError("Invalid username or password.");
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message.includes("503")) {
+        setLocalError("Сервис AD/LDAPS временно недоступен. Используйте вход рекламодателя или break-glass.");
+      } else {
+        setLocalError("Неверное имя пользователя или пароль.");
+      }
     }
   }
 
@@ -66,6 +79,32 @@ export default function LoginPage() {
             {displayError}
           </div>
         )}
+
+        <label
+          htmlFor="login-provider"
+          style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.875rem" }}
+        >
+          Тип учётной записи
+        </label>
+        <select
+          id="login-provider"
+          value={provider}
+          onChange={(e) => setProvider(e.target.value as AuthProvider)}
+          style={{
+            width: "100%",
+            padding: "0.5rem",
+            marginBottom: "1rem",
+            border: "1px solid #d1d5db",
+            borderRadius: 4,
+            fontSize: "0.875rem",
+            boxSizing: "border-box",
+            background: "#fff",
+          }}
+        >
+          {Object.entries(PROVIDER_LABELS).map(([key, label]) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </select>
 
         <label
           htmlFor="login-username"

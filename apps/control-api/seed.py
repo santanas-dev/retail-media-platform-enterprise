@@ -8,12 +8,15 @@ Usage:
     DATABASE_URL=postgresql+asyncpg://... python apps/control-api/seed.py
 """
 
+from __future__ import annotations
+
 import asyncio
 import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
+import bcrypt
 from sqlalchemy import text
 from packages.domain.database import create_engine
 
@@ -81,6 +84,75 @@ SEED_CAMPAIGN_STATUS_HIST_ID = "00000000-0000-0000-0000-000000000226"
 def _rp(n: int) -> str:
     """Generate deterministic role_permission UUID from numeric suffix."""
     return f"00000000-0000-0000-0000-{n:012d}"
+
+
+# ── Dev credential helpers (S-016) ──
+
+SEED_BG_CREDENTIAL_ID = "00000000-0000-0000-0000-000000000161"
+SEED_ADV_CREDENTIAL_ID = "00000000-0000-0000-0000-000000000203"
+
+_DEV_PASSWORDS = {
+    "break_glass_admin": b"break-glass-dev-only",
+    "advertiser_test": b"advertiser-dev-only",
+}
+
+
+def _hash_password(plain: bytes) -> str:
+    """Return bcrypt hash of a plaintext password (12 rounds)."""
+    return bcrypt.hashpw(plain, bcrypt.gensalt(rounds=12)).decode()
+
+
+def _should_seed_credentials() -> bool:
+    """Gate: seed dev credentials only in dev/test or with explicit opt-in.
+
+    Returns True when:
+      - ENVIRONMENT is dev/development/local
+      - SEED_DEV_CREDENTIALS is true/1/yes
+      - Running under pytest
+
+    In production without the flag, returns False — credentials are skipped
+    with a warning.
+    """
+    env = os.environ.get("ENVIRONMENT", "").lower()
+    if env in ("dev", "development", "local"):
+        return True
+    flag = os.environ.get("SEED_DEV_CREDENTIALS", "").lower()
+    if flag in ("true", "1", "yes"):
+        return True
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return True
+    return False
+
+
+def _build_credentials_sql() -> tuple[str, str, str]:
+    """Build the local_credentials INSERT statements for seeded users.
+
+    Returns (sql_fragment, bg_password_hash, adv_password_hash).
+    Caller uses the hashes to log dev passwords in dev mode.
+    """
+    bg_hash = _hash_password(_DEV_PASSWORDS["break_glass_admin"])
+    adv_hash = _hash_password(_DEV_PASSWORDS["advertiser_test"])
+    sql = f"""
+-- Pilot-local bootstrap credentials (S-016 — dual auth readiness)
+-- DEV ONLY — seeded when ENVIRONMENT=dev or SEED_DEV_CREDENTIALS=true.
+-- In production these must be overridden via env-provided password hashes
+-- or an external secrets manager.  See docs/runbook/clean-install-login.md.
+
+-- Break-glass admin credential
+INSERT INTO local_credentials (id, user_id, credential_type, password_hash,
+    password_hash_algorithm, must_change_password, status)
+VALUES ('{SEED_BG_CREDENTIAL_ID}', '{SEED_BG_USER_ID}', 'local_break_glass',
+    '{bg_hash}', 'bcrypt', true, 'active')
+ON CONFLICT (user_id) DO NOTHING;
+
+-- Test advertiser credential (product path — local_advertiser)
+INSERT INTO local_credentials (id, user_id, credential_type, password_hash,
+    password_hash_algorithm, must_change_password, status)
+VALUES ('{SEED_ADV_CREDENTIAL_ID}', '{SEED_ADV_USER_ID}', 'local_advertiser',
+    '{adv_hash}', 'bcrypt', true, 'active')
+ON CONFLICT (user_id) DO NOTHING;
+"""
+    return sql, bg_hash, adv_hash
 
 
 SEED_SQL = f"""
@@ -418,9 +490,11 @@ INSERT INTO advertiser_user_memberships (id, user_id, advertiser_organization_id
 VALUES ('{SEED_ADV_MEMBERSHIP_ID}', '{SEED_ADV_USER_ID}', '{SEED_ADV_ORG_ID}')
 ON CONFLICT (user_id, advertiser_organization_id) DO NOTHING;
 
--- NOTE: No local_credentials, refresh_sessions, login_attempts,
---       or password_reset_tokens are seeded — these contain sensitive
---       material (password hashes, tokens) and must NOT appear in dev seed.
+-- NOTE: local_credentials for break_glass_admin + advertiser_test are
+-- seeded dynamically by the seed() function below when
+-- _should_seed_credentials() returns True (ENVIRONMENT=dev or
+-- SEED_DEV_CREDENTIALS=true).  In production without the flag they
+-- are skipped — see docs/runbook/clean-install-login.md.
 
 -- Advertiser domain foundation (Phase 4.0b)
 
@@ -511,13 +585,29 @@ ON CONFLICT DO NOTHING;
 """
 
 
-async def seed():
+async def seed() -> None:
     engine = create_engine()
     async with engine.begin() as conn:
         for statement in SEED_SQL.strip().split(";\n"):
             stmt = statement.strip()
             if stmt:
                 await conn.execute(text(stmt + ";"))
+        # Conditionally seed local_credentials (S-016)
+        if _should_seed_credentials():
+            cred_sql, bg_hash, adv_hash = _build_credentials_sql()
+            for stmt in cred_sql.strip().split(";\n"):
+                s = stmt.strip()
+                if s and not s.startswith("--"):
+                    await conn.execute(text(s + ";"))
+            print(f"Seeded local_credentials: break_glass_admin + advertiser_test "
+                  f"(must_change_password=true)")
+        else:
+            print("WARNING: Skipping local_credentials seed — "
+                  "ENVIRONMENT is not dev, SEED_DEV_CREDENTIALS is not true. "
+                  "No users will be able to log in via local auth. "
+                  "Set ENVIRONMENT=dev or SEED_DEV_CREDENTIALS=true to enable "
+                  "dev credentials, or provide production password hashes via "
+                  "LOCAL_CREDENTIALS_OVERRIDE (future).")
     await engine.dispose()
     print("Seed complete: 1 branch → 1 cluster → 1 store → 1 KSO device → 1 surface "
           "+ 16 permissions, 4 roles, campaign role-permissions, 1 break-glass admin, "

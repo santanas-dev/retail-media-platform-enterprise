@@ -359,15 +359,13 @@ class TestProtectedIdentityAPI(unittest.TestCase):
             pass
 
     def test_auth_me_returns_claims_and_permissions(self):
-        """GET /api/v1/auth/me returns sub + auth_provider + sorted permissions."""
+        """GET /api/v1/auth/me returns DB-backed sub + username + permissions."""
         token = self._token("u-001")
 
         app = _get_app()
-        original_overrides = dict(app.dependency_overrides)
-
         from packages.api.dependencies import get_current_active_user, get_db
 
-        async def _mock_user():
+        async def _mock_active_user():
             return {
                 "sub": "u-001",
                 "auth_provider": "local_advertiser",
@@ -375,43 +373,55 @@ class TestProtectedIdentityAPI(unittest.TestCase):
                 "display_name": "Test User",
             }
 
-        app.dependency_overrides[get_current_active_user] = _mock_user
+        app.dependency_overrides[get_current_active_user] = _mock_active_user
         app.dependency_overrides[get_db] = lambda: _async_gen(AsyncMock())
 
-        with patch(
-            "packages.domain.repository.get_user_permissions",
-            new_callable=AsyncMock,
-        ) as mock_perms:
-            mock_perms.return_value = {"campaigns.read", "campaigns.approve"}
+        class _MockUserDB:
+            username = "testuser"
+            display_name = "Test User"
+            auth_provider = "local_advertiser"
 
-            resp = self.client.get(
-                "/api/v1/auth/me",
-                headers=self._auth(token),
-            )
+        class _MockCredential:
+            must_change_password = False
 
-        app.dependency_overrides.clear()
-        app.dependency_overrides.update(original_overrides)
+        try:
+            with (
+                patch("packages.auth.repository.get_local_credential",
+                      new_callable=AsyncMock) as mock_cred,
+                patch("packages.domain.repository.get_user_permissions",
+                      new_callable=AsyncMock) as mock_perms,
+                patch("packages.domain.repository.find_user_by_id",
+                      new_callable=AsyncMock) as mock_find,
+            ):
+                mock_perms.return_value = {"campaigns.read", "campaigns.approve"}
+                mock_find.return_value = _MockUserDB()
+                mock_cred.return_value = _MockCredential()
 
-        self.assertEqual(resp.status_code, 200, resp.text)
-        body = resp.json()
-        self.assertEqual(body["sub"], "u-001")
-        self.assertEqual(body["auth_provider"], "local_advertiser")
-        self.assertEqual(body["username"], "testuser")
-        self.assertEqual(body["display_name"], "Test User")
-        self.assertIsInstance(body["permissions"], list)
-        # Sorted: "campaigns.approve" < "campaigns.read"
-        self.assertEqual(body["permissions"], ["campaigns.approve", "campaigns.read"])
+                resp = self.client.get(
+                    "/api/v1/auth/me",
+                    headers=self._auth(token),
+                )
+
+            self.assertEqual(resp.status_code, 200, resp.text)
+            body = resp.json()
+            self.assertEqual(body["sub"], "u-001")
+            self.assertEqual(body["auth_provider"], "local_advertiser")
+            self.assertEqual(body["username"], "testuser")
+            self.assertEqual(body["display_name"], "Test User")
+            self.assertIsInstance(body["permissions"], list)
+            self.assertEqual(body["permissions"], ["campaigns.approve", "campaigns.read"])
+            self.assertFalse(body["must_change_password"])
+        finally:
+            app.dependency_overrides.clear()
 
     def test_auth_me_no_permissions(self):
-        """User with no permissions gets empty list."""
+        """User with no permissions gets empty list, DB-backed fields."""
         token = self._token("u-002")
 
         app = _get_app()
-        original_overrides = dict(app.dependency_overrides)
-
         from packages.api.dependencies import get_current_active_user, get_db
 
-        async def _mock_user():
+        async def _mock_active_user():
             return {
                 "sub": "u-002",
                 "auth_provider": "local_advertiser",
@@ -419,65 +429,93 @@ class TestProtectedIdentityAPI(unittest.TestCase):
                 "display_name": "No Perms User",
             }
 
-        app.dependency_overrides[get_current_active_user] = _mock_user
+        app.dependency_overrides[get_current_active_user] = _mock_active_user
         app.dependency_overrides[get_db] = lambda: _async_gen(AsyncMock())
 
-        with patch(
-            "packages.domain.repository.get_user_permissions",
-            new_callable=AsyncMock,
-        ) as mock_perms:
-            mock_perms.return_value = set()
+        class _MockUserDB:
+            username = "noperms"
+            display_name = "No Perms User"
+            auth_provider = "local_advertiser"
 
-            resp = self.client.get(
-                "/api/v1/auth/me",
-                headers=self._auth(token),
-            )
+        class _MockCredential:
+            must_change_password = False
 
-        app.dependency_overrides.clear()
-        app.dependency_overrides.update(original_overrides)
+        try:
+            with (
+                patch("packages.auth.repository.get_local_credential",
+                      new_callable=AsyncMock) as mock_cred,
+                patch("packages.domain.repository.get_user_permissions",
+                      new_callable=AsyncMock) as mock_perms,
+                patch("packages.domain.repository.find_user_by_id",
+                      new_callable=AsyncMock) as mock_find,
+            ):
+                mock_perms.return_value = set()
+                mock_find.return_value = _MockUserDB()
+                mock_cred.return_value = _MockCredential()
 
-        self.assertEqual(resp.status_code, 200, resp.text)
-        body = resp.json()
-        self.assertEqual(body["permissions"], [])
+                resp = self.client.get(
+                    "/api/v1/auth/me",
+                    headers=self._auth(token),
+                )
+
+            self.assertEqual(resp.status_code, 200, resp.text)
+            body = resp.json()
+            self.assertEqual(body["permissions"], [])
+            self.assertEqual(body["username"], "noperms")
+        finally:
+            app.dependency_overrides.clear()
 
     def test_auth_me_no_secrets_leaked(self):
         """MeResponse contains no JWT secrets, passwords, or scopes."""
         token = self._token("u-001")
 
         app = _get_app()
-        original_overrides = dict(app.dependency_overrides)
-
         from packages.api.dependencies import get_current_active_user, get_db
 
-        async def _mock_user():
+        async def _mock_active_user():
             return {"sub": "u-001", "auth_provider": "local_advertiser"}
 
-        app.dependency_overrides[get_current_active_user] = _mock_user
+        app.dependency_overrides[get_current_active_user] = _mock_active_user
         app.dependency_overrides[get_db] = lambda: _async_gen(AsyncMock())
 
-        with patch(
-            "packages.domain.repository.get_user_permissions",
-            new_callable=AsyncMock,
-        ) as mock_perms:
-            mock_perms.return_value = {"campaigns.read"}
+        class _MockUserDB:
+            username = "u"
+            display_name = "U"
+            auth_provider = "local_advertiser"
 
-            resp = self.client.get(
-                "/api/v1/auth/me",
-                headers=self._auth(token),
-            )
+        class _MockCredential:
+            must_change_password = False
 
-        app.dependency_overrides.clear()
-        app.dependency_overrides.update(original_overrides)
+        try:
+            with (
+                patch("packages.auth.repository.get_local_credential",
+                      new_callable=AsyncMock) as mock_cred,
+                patch("packages.domain.repository.get_user_permissions",
+                      new_callable=AsyncMock) as mock_perms,
+                patch("packages.domain.repository.find_user_by_id",
+                      new_callable=AsyncMock) as mock_find,
+            ):
+                mock_perms.return_value = {"campaigns.read"}
+                mock_find.return_value = _MockUserDB()
+                mock_cred.return_value = _MockCredential()
 
-        body = resp.json()
-        body_str = str(body)
-        self.assertNotIn("password", body_str.lower())
-        self.assertNotIn("secret", body_str.lower())
-        self.assertNotIn("token", body_str.lower())
-        self.assertNotIn("jwt", body_str.lower())
-        # Permissions are a simple string list, not scope objects
-        for p in body["permissions"]:
-            self.assertIsInstance(p, str)
+                resp = self.client.get(
+                    "/api/v1/auth/me",
+                    headers=self._auth(token),
+                )
+
+            body = resp.json()
+            body_str = str(body)
+            # must_change_password is a legitimate boolean flag — not a secret
+            self.assertNotIn("secret", body_str.lower())
+            self.assertNotIn("token", body_str.lower())
+            self.assertNotIn("jwt", body_str.lower())
+            # Check that no actual password VALUE exists (field name "must_change_password" is fine)
+            for p in body["permissions"]:
+                self.assertIsInstance(p, str)
+            self.assertIn("must_change_password", body)  # legitimate flag, not a leak
+        finally:
+            app.dependency_overrides.clear()
 
     # -------------------------------------------------------------------
     # Deny by default

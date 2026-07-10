@@ -235,19 +235,40 @@ async def me(
     claims: dict = Depends(get_current_active_user),
     db=Depends(get_db),
 ):
-    """Return current-user claims enriched with DB permissions.
+    """Return current-user profile from DB (not JWT claims).
 
     401 if token is missing or invalid.
     403 if user is deactivated.
+    Username, display_name, permissions, and must_change_password are
+    loaded from the database — the JWT stays minimal (sub + auth_provider).
     """
     user_id = claims.get("sub", "")
     perms: list[str] = []
+    username = ""
+    display_name = ""
+    auth_provider = claims.get("auth_provider", "")
+    must_change_password = False
+
     if user_id:
         perms = sorted(await repository.get_user_permissions(db, user_id))
+        # Load user profile from DB for truthful username/display_name
+        user = await repository.find_user_by_id(db, user_id)
+        if user is not None:
+            username = user.username
+            display_name = user.display_name
+            auth_provider = user.auth_provider
+        # Check local_credentials for must_change_password flag
+        from packages.auth.repository import get_local_credential
+        if auth_provider in ("local_advertiser", "local_break_glass"):
+            cred = await get_local_credential(db, user_id)
+            if cred is not None:
+                must_change_password = cred.must_change_password
+
     return MeResponse(
         sub=user_id,
-        auth_provider=claims.get("auth_provider", ""),
-        username=claims.get("username", ""),
-        display_name=claims.get("display_name", ""),
+        auth_provider=auth_provider,
+        username=username,
+        display_name=display_name,
         permissions=perms,
+        must_change_password=must_change_password,
     )

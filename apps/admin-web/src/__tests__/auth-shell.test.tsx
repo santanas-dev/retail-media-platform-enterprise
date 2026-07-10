@@ -74,7 +74,7 @@ describe("auth shell", () => {
   // ── Login failure ──
 
   it("shows error on failed login", async () => {
-    // Mock 401 response — LoginPage shows generic "Invalid username or password."
+    // Mock 401 response — LoginPage shows generic error (Russian locale)
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -95,10 +95,10 @@ describe("auth shell", () => {
     await user.type(screen.getByLabelText("Пароль"), "wrongpass");
     await user.click(screen.getByRole("button", { name: "Войти" }));
 
-    // LoginPage catches any login error and shows generic message
+    // LoginPage catches any login error and shows localized message
     await waitFor(() => {
       expect(
-        screen.getByText("Invalid username or password."),
+        screen.getByText("Неверное имя пользователя или пароль."),
       ).toBeTruthy();
     });
   });
@@ -126,6 +126,7 @@ describe("auth shell", () => {
             auth_provider: "ad",
             username: "admin",
             display_name: "Admin",
+            must_change_password: false,
           }),
           { status: 200 },
         ),
@@ -171,6 +172,8 @@ describe("auth shell", () => {
               auth_provider: "ad",
               username: "admin",
               display_name: "Admin",
+              permissions: [],
+              must_change_password: false,
             }),
             { status: 200 },
           ),

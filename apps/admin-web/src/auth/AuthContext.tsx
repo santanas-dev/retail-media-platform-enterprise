@@ -12,7 +12,7 @@ interface AuthState {
   user: MeResponse | null;
   loading: boolean;
   error: string | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, authProvider?: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -59,16 +59,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
+  const login = useCallback(async (username: string, password: string, authProvider: string = "local_advertiser") => {
     setLoading(true);
     setError(null);
     try {
       const res = await api.login({
         username_or_email: username,
         password,
-        auth_provider: "ad",
+        auth_provider: authProvider,
       });
       saveSession(res.access_token);
+      localStorage.setItem("rmp_auth_provider", authProvider);
       const me = await api.getMe();
       setUser(me);
     } catch (e) {

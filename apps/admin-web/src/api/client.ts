@@ -183,4 +183,5 @@ export interface MeResponse {
   username: string;
   display_name: string;
   permissions?: string[];
+  must_change_password?: boolean;
 }
