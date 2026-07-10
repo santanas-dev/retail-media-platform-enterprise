@@ -265,3 +265,64 @@ export function listStores(): Promise<StoreOut[]> {
 export function listDisplaySurfaces(): Promise<DisplaySurfaceRefOut[]> {
   return api.get<DisplaySurfaceRefOut[]>("/display-surfaces");
 }
+
+// ── S-017: Creative Upload (presigned URL flow) ──
+
+import type {
+  UploadIntentRequest,
+  UploadIntentResponse,
+  CompleteUploadRequest,
+  CompleteUploadResponse,
+} from "./types";
+
+export function createUploadIntent(
+  assetId: string,
+  body: UploadIntentRequest,
+): Promise<UploadIntentResponse> {
+  return api.post<UploadIntentResponse>(
+    `/creative-assets/${assetId}/upload-intent`,
+    body,
+  );
+}
+
+export function completeUpload(
+  assetId: string,
+  body: CompleteUploadRequest,
+): Promise<CompleteUploadResponse> {
+  return api.post<CompleteUploadResponse>(
+    `/creative-assets/${assetId}/complete-upload`,
+    body,
+  );
+}
+
+/**
+ * Upload a file directly to a presigned URL.
+ * Does NOT send Authorization — the presigned URL already carries credentials.
+ * Calls onProgress(bytesUploaded, totalBytes) if provided.
+ */
+export async function uploadFileToPresignedUrl(
+  uploadUrl: string,
+  file: File,
+  headers: Record<string, string>,
+  onProgress?: (uploaded: number, total: number) => void,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", uploadUrl);
+    for (const [k, v] of Object.entries(headers)) {
+      xhr.setRequestHeader(k, v);
+    }
+    // Intentionally do NOT set Authorization — presigned URL is self-authenticating
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress(e.loaded, e.total);
+      }
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`Upload failed: HTTP ${xhr.status}`));
+    };
+    xhr.onerror = () => reject(new Error("Сетевая ошибка при загрузке файла"));
+    xhr.send(file);
+  });
+}

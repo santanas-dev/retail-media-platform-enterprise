@@ -309,6 +309,34 @@ export interface CampaignRejectRequest {
   reason: string;
 }
 
+// ── S-017: Creative Upload ──
+
+export interface UploadIntentRequest {
+  filename: string;
+  content_type: string;
+  content_length: number;
+}
+
+export interface UploadIntentResponse {
+  upload_id: string;
+  upload_url: string;
+  method: string;
+  headers: Record<string, string>;
+  expires_at: string;
+}
+
+export interface CompleteUploadRequest {
+  upload_id: string;
+}
+
+export interface CompleteUploadResponse {
+  asset_id: string;
+  sha256_checksum: string;
+  file_size_bytes: number;
+  status: string;
+  moderation_status: string;
+}
+
 // ── Helper: localized status labels ──
 
 export const STATUS_LABELS: Record<string, string> = {

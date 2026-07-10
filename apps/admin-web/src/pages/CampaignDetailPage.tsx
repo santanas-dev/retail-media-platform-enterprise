@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, useRef, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   getCampaign,
@@ -26,6 +26,9 @@ import {
   listClusters,
   listStores,
   listDisplaySurfaces,
+  createUploadIntent,
+  completeUpload,
+  uploadFileToPresignedUrl,
 } from "../api/campaigns";
 import type {
   CampaignOut,
@@ -169,6 +172,16 @@ export default function CampaignDetailPage() {
   const [attachError, setAttachError] = useState<string | null>(null);
   const [showAttach, setShowAttach] = useState(false);
 
+  // S-017: Upload state
+  const [uploadAssetId, setUploadAssetId] = useState<string | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStage, setUploadStage] = useState<
+    "idle" | "requesting_url" | "uploading" | "finalizing" | "done" | "error"
+  >("idle");
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+
   // Approval
   const [approvalSubmitting, setApprovalSubmitting] = useState(false);
   const [approvalError, setApprovalError] = useState<string | null>(null);
@@ -283,6 +296,70 @@ export default function CampaignDetailPage() {
     setCreatives(c.sort((x, y) => x.sort_order - y.sort_order));
     setAllAssets(a);
   };
+
+  // ── S-017: File upload handler ──
+
+  const ALLOWED_MIME: Record<string, string> = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "video/mp4": ".mp4",
+  };
+  const ALLOWED_TYPES_STR = Object.values(ALLOWED_MIME).join(", ");
+
+  async function handleUpload(assetId: string, file: File) {
+    const mime = file.type || "application/octet-stream";
+    if (!(mime in ALLOWED_MIME)) {
+      setUploadError(`Неподдерживаемый тип файла: ${mime}. Допустимы: ${ALLOWED_TYPES_STR}`);
+      return;
+    }
+
+    setUploadAssetId(assetId);
+    setUploadFile(file);
+    setUploadProgress(0);
+    setUploadStage("requesting_url");
+    setUploadError(null);
+
+    try {
+      // 1. Create upload intent
+      const intent = await createUploadIntent(assetId, {
+        filename: file.name,
+        content_type: mime,
+        content_length: file.size,
+      });
+
+      // 2. PUT to presigned URL (no Authorization header)
+      setUploadStage("uploading");
+      await uploadFileToPresignedUrl(
+        intent.upload_url,
+        file,
+        intent.headers,
+        (loaded, total) => setUploadProgress(Math.round((loaded / total) * 100)),
+      );
+
+      // 3. Complete upload — server computes SHA-256
+      setUploadStage("finalizing");
+      await completeUpload(assetId, { upload_id: intent.upload_id });
+
+      // 4. Refresh data
+      setUploadStage("done");
+      await refreshCreatives();
+    } catch (e: unknown) {
+      setUploadStage("error");
+      if (e instanceof Error) setUploadError(e.message);
+      else setUploadError("Неизвестная ошибка загрузки");
+    }
+  }
+
+  function resetUpload() {
+    setUploadAssetId(null);
+    setUploadFile(null);
+    setUploadProgress(0);
+    setUploadStage("idle");
+    setUploadError(null);
+  }
+
 
   const refreshCampaign = async () => {
     if (!id) return;
@@ -1033,10 +1110,7 @@ export default function CampaignDetailPage() {
                   </div>
                 </details>
 
-                {/* Deferred upload note */}
-                <div style={{ padding: "0.5rem", background: "#fffbeb", borderRadius: 4, border: "1px solid #fde68a", fontSize: "0.7rem", color: "#92400e", marginBottom: "0.5rem" }}>
-                  Файл пока не загружается через интерфейс. На этом этапе создаётся карточка креатива; загрузка файла будет отдельным этапом.
-                </div>
+                {/* S-017: File upload is now active — use the "Загрузить файл" button on each asset */}
 
                 <div style={{ display: "flex", gap: "0.25rem" }}>
                   <button type="submit" style={css.primaryBtn} disabled={assetSubmitting}>
@@ -1087,6 +1161,57 @@ export default function CampaignDetailPage() {
         {creatives.length === 0 ? (
           <p style={css.muted}>У этой кампании пока нет креативов.</p>
         ) : (
+          <>
+            {/* S-017: Hidden file input + inline upload progress */}
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept=".png,.jpg,.jpeg,.webp,.gif,.mp4"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                // Find a metadata_only asset to upload to
+                // Use the first metadata_only creative asset
+                const metaCreative = creatives.find(
+                  (c) => c.asset && !isDeliverable(c.asset),
+                );
+                if (metaCreative?.asset) {
+                  handleUpload(metaCreative.asset.id, f);
+                }
+                // Reset input so same file can be re-selected
+                e.target.value = "";
+              }}
+            />
+            {uploadStage !== "idle" && uploadStage !== "done" && (
+              <div style={{ padding: "0.5rem 0.75rem", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 4, marginBottom: "0.5rem", fontSize: "0.8rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
+                  <span style={{ fontWeight: 600 }}>
+                    {uploadStage === "requesting_url" && "Запрос адреса загрузки..."}
+                    {uploadStage === "uploading" && `Загрузка ${uploadFile?.name ?? ""} — ${uploadProgress}%`}
+                    {uploadStage === "finalizing" && "Проверка контрольной суммы на сервере..."}
+                  </span>
+                </div>
+                {(uploadStage === "uploading" || uploadStage === "requesting_url") && (
+                  <div style={{ width: "100%", height: 4, background: "#e2e8f0", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ width: `${uploadStage === "requesting_url" ? 10 : uploadProgress}%`, height: "100%", background: "#2563eb", transition: "width 0.2s" }} />
+                  </div>
+                )}
+                {uploadStage === "error" && (
+                  <div style={{ color: "#dc2626", marginTop: "0.35rem" }}>
+                    Ошибка: {uploadError || "Не удалось загрузить файл"}
+                  </div>
+                )}
+              </div>
+            )}
+            {uploadStage === "idle" && uploadError && (
+              <div style={{ padding: "0.5rem 0.75rem", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 4, marginBottom: "0.5rem", fontSize: "0.8rem", color: "#991b1b" }}>
+                {uploadError}
+                <button type="button" onClick={resetUpload} style={{ marginLeft: "0.75rem", background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>
+                  Сбросить
+                </button>
+              </div>
+            )}
           <table style={css.miniTable}>
             <thead>
               <tr>
@@ -1096,6 +1221,7 @@ export default function CampaignDetailPage() {
                 <th style={css.miniTh}>Разрешение</th>
                 <th style={css.miniTh}>Длит.</th>
                 <th style={css.miniTh}>Статус</th>
+                {isDraft && <th style={css.miniTh}>Файл</th>}
               </tr>
             </thead>
             <tbody>
@@ -1119,10 +1245,25 @@ export default function CampaignDetailPage() {
                         : <span style={{ color: "#d97706", fontWeight: 500 }}>⚠ Ожидает загрузки</span>
                       : "—"}
                   </td>
+                  {isDraft && (
+                    <td style={css.miniTd}>
+                      {cc.asset && !isDeliverable(cc.asset) && (
+                        <button
+                          type="button"
+                          data-upload={cc.asset.id}
+                          style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 3, padding: "0.2rem 0.4rem", fontSize: "0.72rem", cursor: "pointer" }}
+                          onClick={() => uploadInputRef.current?.click()}
+                        >
+                          Загрузить файл
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
+          </>
         )}
       </div>
     );

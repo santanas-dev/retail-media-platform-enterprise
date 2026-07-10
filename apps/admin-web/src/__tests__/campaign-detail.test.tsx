@@ -428,8 +428,9 @@ describe("CampaignDetailPage — S-009e", () => {
       await user.click(screen.getByText("Креативы"));
       await user.click(screen.getByText(/Добавить креатив в библиотеку/));
 
-      expect(screen.getByText(/Файл пока не загружается через интерфейс/)).toBeTruthy();
-      expect(screen.getByText(/загрузка файла будет отдельным этапом/)).toBeTruthy();
+      // S-017: upload notice removed — upload is now active
+      expect(screen.getByText(/SHA-256/)).toBeTruthy();
+      expect(screen.getByText(/Технические параметры/)).toBeTruthy();
     });
 
     it("shows validation error when name or code empty", async () => {
@@ -538,6 +539,37 @@ describe("CampaignDetailPage — S-009e", () => {
         expect(screen.getByText("⚠ Ожидает загрузки")).toBeTruthy();
       });
     });
+  });
+
+  // ── S-017: Upload UI ──
+
+  it("no storage_bucket or storage_key in creative asset UI", async () => {
+    mockAuthenticatedSession();
+    const asset = {
+      id: "ca-ns", advertiser_organization_id: "org-1",
+      code: "NS-001", name: "No Secrets", media_type: "image",
+      sha256_checksum: "", file_size_bytes: 0, duration_ms: null,
+      resolution_w: null, resolution_h: null,
+      status: "metadata_only", moderation_status: "pending_review",
+      created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
+    };
+    mockAllFetches({
+      "/creative-assets": () => Promise.resolve(new Response(JSON.stringify([asset]), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Креативы"));
+    await user.click(screen.getByText(/Существующие креативы/));
+
+    // The rendered asset data should not contain storage fields
+    await waitFor(() => { expect(screen.getByText("NS-001")).toBeTruthy(); });
+    expect(screen.queryByText(/storage_bucket/)).toBeNull();
+    expect(screen.queryByText(/storage_key/)).toBeNull();
+    expect(screen.queryByText(/presigned/)).toBeNull();
   });
 
   // ── S-009f: Approval workflow ──
