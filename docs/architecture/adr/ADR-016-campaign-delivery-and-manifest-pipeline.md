@@ -119,7 +119,15 @@ Each manifest is a signed JSON document following a schema compatible
 with ADR-013's manifest apply protocol (§3: signature, monotonic version,
 device_id match, media download).
 
-**Manifest structure (conceptual):**
+> **S-018 (2026-07-10):** The pilot Manifest v1 uses a **flat `playlist[]`**
+> at the manifest level, not nested under `display_surfaces[]`.  This is
+> sufficient for single-surface KSO devices.  Per-surface `display_surfaces[].playlist[]`
+> is deferred to **Manifest v2** for multi-surface KSO (dual-screen) support.
+> The canonical schema lives at `packages/contracts/manifest_v1.schema.json`.
+> Every generated manifest is validated against this schema (see S-018
+> contract tests).
+
+**Manifest structure (pilot v1 — flat playlist):**
 
 ```json
 {

@@ -65,6 +65,13 @@ rate-limiting per ADR-005.
 
 ### 3. PoP Event Contract (Canonical)
 
+> **S-018 (2026-07-10):** `proof_event_v1.schema.json` was replaced with
+> the flat structure matching `PopEventIn`.  The previous nested
+> (`device.`, `store.`, `playback.`, `result.`) schema was a placeholder
+> that no component emitted.  The canonical schema now lives at
+> `packages/contracts/proof_event_v1.schema.json` and is enforced by
+> contract tests.
+
 Every accepted PoP event MUST contain these fields (per
 `proof-event-v1.md` plus campaign-reporting additions):
 

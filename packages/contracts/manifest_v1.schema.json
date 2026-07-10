@@ -2,41 +2,100 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://rmp.internal/contracts/manifest/v1",
   "title": "Universal Manifest v1",
-  "description": "Phase 1 placeholder. Full spec: docs/architecture/contracts/universal-manifest-v1.md",
+  "description": "Pilot manifest schema — flat playlist per manifest (v1). Nested per-surface playlist deferred to v2 / multi-surface KSO.",
   "type": "object",
-  "required": ["manifest_id", "device_id", "store_id", "channel_type"],
+  "required": [
+    "manifest_id",
+    "manifest_version",
+    "schema_version",
+    "device_id",
+    "store_id",
+    "channel_type",
+    "display_surfaces",
+    "playlist",
+    "valid_from",
+    "valid_to",
+    "offline_ttl_hours",
+    "fallback_rules",
+    "signature"
+  ],
   "properties": {
-    "manifest_id": { "type": "string", "format": "uuid" },
+    "manifest_id": { "type": "string" },
     "manifest_version": { "type": "integer", "minimum": 1 },
     "schema_version": { "type": "string" },
-    "device_id": { "type": "string", "format": "uuid" },
+    "device_id": { "type": "string" },
     "device_code": { "type": "string" },
-    "store_id": { "type": "string", "format": "uuid" },
+    "store_id": { "type": "string" },
     "store_code": { "type": "string" },
     "channel_type": { "type": "string" },
     "device_type": { "type": "string" },
+    "valid_from": { "type": ["string", "null"] },
+    "valid_to": { "type": ["string", "null"] },
+    "offline_ttl_hours": { "type": "integer", "minimum": 1 },
     "display_surfaces": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "object",
         "required": ["surface_id", "surface_code"],
         "properties": {
-          "surface_id": { "type": "string", "format": "uuid" },
+          "surface_id": { "type": "string" },
           "surface_code": { "type": "string" }
         }
       }
     },
-    "valid_from": { "type": "string", "format": "date-time" },
-    "valid_to": { "type": "string", "format": "date-time" },
+    "playlist": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "creative_asset_id",
+          "media_type",
+          "sha256_checksum",
+          "duration_ms"
+        ],
+        "properties": {
+          "order": { "type": "integer" },
+          "weight": { "type": "integer" },
+          "priority": { "type": "integer" },
+          "creative_asset_id": { "type": "string" },
+          "media_type": { "type": "string" },
+          "sha256_checksum": { "type": "string" },
+          "duration_ms": { "type": "integer", "minimum": 1 },
+          "start_time": { "type": ["string", "null"] },
+          "days_of_week": { "type": ["array", "null"] }
+        }
+      }
+    },
     "media_files": { "type": "array" },
-    "playlist": { "type": "array" },
     "adapter_payload": { "type": "object" },
+    "fallback_rules": {
+      "type": "object",
+      "required": ["on_manifest_expired", "on_network_lost"],
+      "properties": {
+        "on_manifest_expired": { "type": "string" },
+        "on_network_lost": { "type": "string" },
+        "filler_media_ids": { "type": "array" },
+        "emit_pop": { "type": "boolean" }
+      }
+    },
     "signature": {
       "type": "object",
+      "required": ["algorithm", "value"],
       "properties": {
         "algorithm": { "type": "string" },
         "value": { "type": "string" }
       }
-    }
+    },
+    "content_hash": { "type": "string" }
+  },
+  "additionalProperties": false,
+  "not": {
+    "anyOf": [
+      { "required": ["storage_bucket"] },
+      { "required": ["storage_key"] },
+      { "required": ["access_key"] },
+      { "required": ["secret_key"] }
+    ]
   }
 }

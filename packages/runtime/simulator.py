@@ -349,19 +349,23 @@ class RuntimeSimulator:
         surface_id: str,
         creative_asset_id: str,
         duration_ms: int,
+        playback_result: str = "success",
     ) -> dict:
-        """Build a PoP event with canonical fields (ADR-013 §6)."""
+        """Build a PoP event with canonical fields (S-018 aligned)."""
         event_id = str(uuid.uuid4())
         now = _utcnow_iso()
+        mid = manifest.get("manifest_id", "")
         return {
             "event_id": event_id,
             "event_type": "proof",
             "schema_version": "1.0",
-            "manifest_id": manifest.get("manifest_id", ""),
-            "surface_id": surface_id,
-            "creative_asset_id": creative_asset_id,
             "device_id": self.device_id,
+            "manifest_id": mid if mid else None,
+            "campaign_id": campaign_id if campaign_id else None,
+            "creative_asset_id": creative_asset_id,
+            "surface_id": surface_id,
             "duration_ms": duration_ms,
+            "playback_result": playback_result,
             "rendered_at": now,
             "event_recorded_at": now,
         }

@@ -2,61 +2,44 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://rmp.internal/contracts/proof-event/v1",
   "title": "Proof Event v1",
-  "description": "Phase 1 placeholder. Full spec: docs/architecture/contracts/proof-event-v1.md",
+  "description": "Pilot proof-of-play event schema — flat structure matching PopEventIn DTO. Nested structure deferred to v2 if needed.",
   "type": "object",
-  "required": ["event_id", "device_id", "store_id", "started_at", "pop_mode"],
+  "required": [
+    "event_id",
+    "event_type",
+    "schema_version",
+    "device_id",
+    "creative_asset_id",
+    "surface_id",
+    "duration_ms",
+    "playback_result",
+    "rendered_at",
+    "event_recorded_at"
+  ],
   "properties": {
-    "event_id": { "type": "string", "format": "uuid" },
+    "event_id": { "type": "string", "minLength": 1, "maxLength": 64 },
     "event_type": { "type": "string", "const": "proof" },
-    "schema_version": { "type": "string" },
-    "device": {
-      "type": "object",
-      "required": ["device_id"],
-      "properties": {
-        "device_id": { "type": "string", "format": "uuid" },
-        "device_code": { "type": "string" }
-      }
+    "schema_version": { "type": "string", "const": "1.0" },
+    "device_id": { "type": "string", "minLength": 1 },
+    "manifest_id": { "type": ["string", "null"] },
+    "campaign_id": { "type": ["string", "null"] },
+    "creative_asset_id": { "type": "string", "minLength": 1 },
+    "surface_id": { "type": "string", "minLength": 1 },
+    "duration_ms": { "type": "integer", "minimum": 1, "maximum": 86400000 },
+    "playback_result": {
+      "type": "string",
+      "enum": ["success", "fallback", "interrupted", "failed"]
     },
-    "store": {
-      "type": "object",
-      "required": ["store_id"],
-      "properties": {
-        "store_id": { "type": "string", "format": "uuid" },
-        "store_code": { "type": "string" }
-      }
-    },
-    "campaign": {
-      "type": "object",
-      "properties": {
-        "campaign_id": { "type": "string", "format": "uuid" },
-        "campaign_code": { "type": "string" }
-      }
-    },
-    "surface": {
-      "type": "object",
-      "properties": {
-        "surface_id": { "type": "string", "format": "uuid" },
-        "channel_type": { "type": "string" },
-        "device_type": { "type": "string" }
-      }
-    },
-    "playback": {
-      "type": "object",
-      "required": ["started_at", "duration_ms"],
-      "properties": {
-        "started_at": { "type": "string", "format": "date-time" },
-        "ended_at": { "type": "string", "format": "date-time" },
-        "duration_ms": { "type": "integer", "minimum": 0 },
-        "media_sha256": { "type": "string" }
-      }
-    },
-    "result": {
-      "type": "object",
-      "properties": {
-        "playback_result": { "type": "string", "enum": ["success","skipped","failed","interrupted"] },
-        "failure_reason": { "type": "string" }
-      }
-    },
-    "pop_mode": { "type": "string", "enum": ["real_playback","screen_render","idle_screen","template_applied","gateway_ack","label_ack","controller_ack"] }
+    "rendered_at": { "type": "string", "format": "date-time" },
+    "event_recorded_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false,
+  "not": {
+    "anyOf": [
+      { "required": ["storage_bucket"] },
+      { "required": ["storage_key"] },
+      { "required": ["access_key"] },
+      { "required": ["secret_key"] }
+    ]
   }
 }

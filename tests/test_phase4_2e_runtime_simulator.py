@@ -281,13 +281,16 @@ class TestPoPContainsRequiredFields(unittest.TestCase):
         )
         event = self.sim.event_queue[0]
         required = [
-            "event_id", "event_type", "manifest_id",
+            "event_id", "event_type", "schema_version",
+            "manifest_id", "campaign_id",
             "surface_id", "creative_asset_id", "device_id",
-            "duration_ms", "rendered_at", "event_recorded_at",
+            "duration_ms", "playback_result",
+            "rendered_at", "event_recorded_at",
         ]
         for field in required:
             self.assertIn(field, event, f"PoP missing: {field}")
         self.assertEqual(event["event_type"], "proof")
+        self.assertEqual(event["playback_result"], "success")
         self.assertEqual(event["duration_ms"], 15000)
 
 
