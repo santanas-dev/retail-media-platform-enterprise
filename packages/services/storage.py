@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 
 from minio import Minio
 from minio.error import S3Error
@@ -59,6 +60,38 @@ class StorageService:
     # Presigned upload URL
     # ------------------------------------------------------------------
 
+    def _rewrite_to_public(self, url: str) -> str:
+        """Replace the scheme+netloc of a presigned URL with the public endpoint.
+
+        Uses urlparse/unparse — never does blind substring replacement.
+        Preserves path, query, and signature exactly.
+        """
+        if not self._public_endpoint:
+            return url
+        cfg = get_security_config()
+        internal = cfg.minio_internal_endpoint
+        if not internal:
+            return url
+        parsed_internal = urlparse(f"http://{internal}" if "://" not in internal else internal)
+        parsed_url = urlparse(url)
+        # Only rewrite if scheme and netloc both match the internal endpoint
+        if not (
+            parsed_url.scheme == parsed_internal.scheme
+            and parsed_url.netloc == parsed_internal.netloc
+        ):
+            return url
+        # Parse public endpoint to extract scheme+netloc
+        parsed_public = urlparse(
+            self._public_endpoint
+            if "://" in self._public_endpoint
+            else f"http://{self._public_endpoint}"
+        )
+        rebuilt = parsed_url._replace(
+            scheme=parsed_public.scheme,
+            netloc=parsed_public.netloc,
+        )
+        return rebuilt.geturl()
+
     def generate_presigned_put(
         self,
         storage_key: str,
@@ -74,12 +107,7 @@ class StorageService:
             storage_key,
             expires=timedelta(seconds=self._ttl),
         )
-        # Rewrite internal endpoint → public endpoint in the URL
-        if self._public_endpoint:
-            cfg = get_security_config()
-            internal = cfg.minio_internal_endpoint
-            if internal and internal in url:
-                url = url.replace(internal, self._public_endpoint)
+        url = self._rewrite_to_public(url)
         expires_at = _now() + timedelta(seconds=self._ttl)
         return url, expires_at
 

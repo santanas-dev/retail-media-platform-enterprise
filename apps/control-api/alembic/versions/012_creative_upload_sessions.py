@@ -54,4 +54,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Downgrade is lossy: drops all creative_upload_sessions rows.
     op.drop_table("creative_upload_sessions")

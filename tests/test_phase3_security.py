@@ -113,6 +113,53 @@ class TestSecurityConfig(unittest.TestCase):
         c2 = sec_config.get_security_config()
         self.assertIs(c1, c2)
 
+    # ── S-017 P2: MinIO credential validation ──
+
+    def test_dev_allows_default_minio_credentials(self):
+        """Dev mode: minioadmin/minioadmin is accepted."""
+        os.environ["ENVIRONMENT"] = "dev"
+        os.environ["JWT_SECRET"] = "test"
+        os.environ["MINIO_ACCESS_KEY"] = "minioadmin"
+        os.environ["MINIO_SECRET_KEY"] = "minioadmin"
+        cfg = sec_config.SecurityConfig()
+        self.assertTrue(cfg.dev_mode)
+        self.assertEqual(cfg.minio_access_key, "minioadmin")
+        self.assertEqual(cfg.minio_secret_key, "minioadmin")
+
+    def test_production_rejects_default_minio_access_key(self):
+        """Production mode rejects minioadmin access key."""
+        os.environ["ENVIRONMENT"] = "production"
+        os.environ["JWT_SECRET"] = "a" * 32
+        os.environ["CORS_ALLOWED_ORIGINS"] = "https://example.com"
+        os.environ["MINIO_ACCESS_KEY"] = "minioadmin"
+        os.environ["MINIO_SECRET_KEY"] = "strong-secret-key-123"
+        with self.assertRaises(ValueError) as ctx:
+            sec_config.SecurityConfig()
+        self.assertIn("MINIO_ACCESS_KEY", str(ctx.exception))
+
+    def test_production_rejects_default_minio_secret_key(self):
+        """Production mode rejects minioadmin secret key."""
+        os.environ["ENVIRONMENT"] = "production"
+        os.environ["JWT_SECRET"] = "a" * 32
+        os.environ["CORS_ALLOWED_ORIGINS"] = "https://example.com"
+        os.environ["MINIO_ACCESS_KEY"] = "strong-access-key-123"
+        os.environ["MINIO_SECRET_KEY"] = "minioadmin"
+        with self.assertRaises(ValueError) as ctx:
+            sec_config.SecurityConfig()
+        self.assertIn("MINIO_SECRET_KEY", str(ctx.exception))
+
+    def test_production_accepts_non_default_minio_credentials(self):
+        """Production mode accepts non-default MinIO credentials."""
+        os.environ["ENVIRONMENT"] = "production"
+        os.environ["JWT_SECRET"] = "a" * 32
+        os.environ["CORS_ALLOWED_ORIGINS"] = "https://example.com"
+        os.environ["MINIO_ACCESS_KEY"] = "prod-access-key-123"
+        os.environ["MINIO_SECRET_KEY"] = "prod-secret-key-456"
+        cfg = sec_config.SecurityConfig()
+        self.assertFalse(cfg.dev_mode)
+        self.assertEqual(cfg.minio_access_key, "prod-access-key-123")
+        self.assertEqual(cfg.minio_secret_key, "prod-secret-key-456")
+
 
 # ---------------------------------------------------------------------------
 # Password Tests

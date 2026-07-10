@@ -156,7 +156,7 @@ class SecurityConfig:
         self._validate_cors()
 
     def _validate_production(self) -> None:
-        """Production mode: require strong JWT secret and explicit CORS."""
+        """Production mode: require strong JWT secret, explicit CORS, and non-default MinIO credentials."""
         if not self.jwt_secret or self.jwt_secret == "CHANGE_ME":
             raise ValueError(
                 "JWT_SECRET must be set to a strong random value in production"
@@ -172,6 +172,8 @@ class SecurityConfig:
                 "JWT_SECRET must not be a common weak value in production"
             )
         self._validate_cors()
+        # S-017 P2: reject default MinIO credentials in production
+        self._validate_minio_production()
 
     def _validate_cors(self) -> None:
         """Validate CORS configuration — safe defaults, no wildcard+credentials."""
@@ -186,6 +188,19 @@ class SecurityConfig:
         if not self.dev_mode and not self.cors_allowed_origins:
             raise ValueError(
                 "CORS_ALLOWED_ORIGINS must be set to an explicit list in production"
+            )
+
+    def _validate_minio_production(self) -> None:
+        """S-017 P2: reject default/weak MinIO credentials in production."""
+        if self.minio_access_key == "minioadmin":
+            raise ValueError(
+                "MINIO_ACCESS_KEY must not be 'minioadmin' in production. "
+                "Set a strong access key via MINIO_ACCESS_KEY env var."
+            )
+        if self.minio_secret_key == "minioadmin":
+            raise ValueError(
+                "MINIO_SECRET_KEY must not be 'minioadmin' in production. "
+                "Set a strong secret key via MINIO_SECRET_KEY env var."
             )
 
     def __repr__(self) -> str:
