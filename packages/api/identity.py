@@ -616,6 +616,7 @@ from packages.domain.schemas import (
     CampaignPlacementCreateRequest,
     CampaignPlacementUpdateRequest,
     CampaignCreativeCreateRequest,
+    CampaignCreativeAttachRequest,
 )
 from packages.domain.repository import (
     create_campaign_flight,
@@ -908,6 +909,52 @@ async def create_creative_endpoint(
         headers={"source_service": "control-api"},
     )
     asset = await repository.get_creative_asset(db, asset_id)
+    return _serialize_creative_asset(asset)
+
+
+@router.post("/campaigns/{campaign_id}/creatives/attach",
+             response_model=CreativeAssetOut, status_code=201)
+async def attach_creative_endpoint(
+    campaign_id: str,
+    body: CampaignCreativeAttachRequest,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Attach an existing creative asset to a draft campaign.
+
+    Same-org only. Cross-org → 422. Non-draft → 409.
+    Duplicate attach → 200 with existing result (idempotent).
+    """
+    campaign = await _require_draft_campaign(db, campaign_id, scope)
+
+    try:
+        link = await repository.attach_creative_to_campaign(
+            db,
+            campaign_id=campaign_id,
+            creative_asset_id=body.creative_asset_id,
+            sort_order=body.sort_order,
+            scope_advertiser_ids=_scope_ids(scope),
+        )
+    except CrossOrgReferenceError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    if link is None:
+        # Campaign check passed but asset not found
+        raise HTTPException(status_code=404, detail={"code": "ASSET_NOT_FOUND",
+                                                     "message": "Creative asset not found"})
+
+    # Outbox on new attachment only (not on duplicate)
+    asset = await repository.get_creative_asset(db, body.creative_asset_id)
+    await enqueue_outbox_event(
+        db,
+        event_type="campaign.creative.changed",
+        aggregate_type="campaign",
+        aggregate_id=campaign_id,
+        payload={"campaign_id": campaign_id, "creative_asset_id": body.creative_asset_id},
+        headers={"source_service": "control-api"},
+    )
     return _serialize_creative_asset(asset)
 
 

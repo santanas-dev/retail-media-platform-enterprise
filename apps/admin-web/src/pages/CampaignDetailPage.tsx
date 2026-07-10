@@ -17,6 +17,7 @@ import {
   requestApproval,
   approveCampaign,
   rejectCampaign,
+  attachCreative,
   getCampaignPopSummary,
   getCampaignPopByDay,
   getCampaignPopBySurface,
@@ -34,6 +35,7 @@ import type {
   CampaignPlacementCreateRequest,
   CampaignCreativeOut,
   CampaignCreativeCreateRequest,
+  CampaignCreativeAttachRequest,
   CreativeAssetOut,
   AdvertiserOrganizationOut,
   AdvertiserBrandOut,
@@ -157,6 +159,12 @@ export default function CampaignDetailPage() {
   const [creativeDur, setCreativeDur] = useState("");
   const [creativeSubmitting, setCreativeSubmitting] = useState(false);
   const [creativeError, setCreativeError] = useState<string | null>(null);
+
+  // Attach existing creative
+  const [attachAssetId, setAttachAssetId] = useState("");
+  const [attachSubmitting, setAttachSubmitting] = useState(false);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const [showAttach, setShowAttach] = useState(false);
 
   // Approval
   const [approvalSubmitting, setApprovalSubmitting] = useState(false);
@@ -887,11 +895,130 @@ export default function CampaignDetailPage() {
 
     const MEDIA_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/webm"];
 
+    // Unattached assets (not yet linked to this campaign)
+    const linkedIds = new Set(creatives.map((x) => x.creative_asset_id));
+    const unattached = allAssets.filter((a) => !linkedIds.has(a.id));
+
     return (
       <div>
-        <div style={{ marginBottom: "0.75rem", padding: "0.5rem", background: "#fffbeb", borderRadius: 4, border: "1px solid #fde68a", fontSize: "0.75rem", color: "#92400e" }}>
-          Создание нового креатива (бэкенд не поддерживает привязку существующих). Загрузка файлов — в следующем срезе.
-        </div>
+        {/* ── Attach existing creative ── */}
+        {isDraft && (
+          <div style={{ marginBottom: "0.75rem" }}>
+            {!showAttach ? (
+              <button type="button" style={css.addBtn} onClick={() => { setShowAttach(true); setAttachError(null); }}>
+                + Прикрепить существующий креатив
+              </button>
+            ) : (
+              <form onSubmit={async (e) => { e.preventDefault();
+                if (!attachAssetId) { setAttachError("Выберите креатив"); return; }
+                setAttachSubmitting(true); setAttachError(null);
+                try {
+                  await attachCreative(campaign.id, { creative_asset_id: attachAssetId, sort_order: creatives.length });
+                  await refreshCreatives();
+                  setAttachAssetId(""); setShowAttach(false);
+                } catch (err: unknown) { setAttachError(formatApiError(err)); }
+                finally { setAttachSubmitting(false); }
+              }} style={css.inlineForm}>
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "flex-end" }}>
+                  <div>
+                    <label style={css.miniLabel}>Креатив</label>
+                    {unattached.length > 0 ? (
+                      <select value={attachAssetId} onChange={(e) => setAttachAssetId(e.target.value)}
+                        style={{ ...css.miniSelect, minWidth: 260 }}>
+                        <option value="">— выберите —</option>
+                        {unattached.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name} [{a.code}] — {a.media_type}{a.resolution_w ? " " + a.resolution_w + "x" + a.resolution_h : ""}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p style={{ fontSize: "0.75rem", color: "#94a3b8", margin: 0 }}>
+                        {allAssets.length === 0 ? "Нет доступных креативов для выбора." : "Все креативы уже прикреплены."}
+                      </p>
+                    )}
+                  </div>
+                  {unattached.length > 0 && (
+                    <div style={{ display: "flex", gap: "0.25rem", alignItems: "flex-end" }}>
+                      <button type="submit" style={css.primaryBtn} disabled={attachSubmitting}>
+                        {attachSubmitting ? "..." : "Прикрепить"}
+                      </button>
+                      <button type="button" style={css.cancelBtn} onClick={() => { setShowAttach(false); setAttachError(null); setAttachAssetId(""); }}>
+                        Отмена
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {attachError && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginTop: "0.5rem" }}>{attachError}</div>}
+              </form>
+            )}
+          </div>
+        )}
+
+        {/* ── Create new creative manually (collapsed) ── */}
+        {isDraft && (
+          <details style={{ marginBottom: "0.75rem", fontSize: "0.8rem" }}>
+            <summary style={{ cursor: "pointer", color: "#475569", fontWeight: 500 }}>
+              Создать новый креатив вручную
+            </summary>
+            <div style={{ marginTop: "0.5rem", padding: "0.5rem", background: "#fffbeb", borderRadius: 4, border: "1px solid #fde68a", fontSize: "0.7rem", color: "#92400e" }}>
+              Создание нового креатива (бэкенд не поддерживает привязку существующих). Загрузка файлов — в следующем срезе.
+            </div>
+            <div style={{ marginTop: "0.5rem" }}>
+              {!showCreativeAdd ? (
+                <button type="button" style={css.addBtn} onClick={() => setShowCreativeAdd(true)}>
+                  + Создать креатив
+                </button>
+              ) : (
+                <form onSubmit={handleAddCreative} style={css.inlineForm}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                    <div>
+                      <label style={css.miniLabel}>Код *</label>
+                      <input type="text" value={creativeCode} onChange={(e) => setCreativeCode(e.target.value)} style={css.miniInput} maxLength={64} required />
+                    </div>
+                    <div>
+                      <label style={css.miniLabel}>Название *</label>
+                      <input type="text" value={creativeName} onChange={(e) => setCreativeName(e.target.value)} style={css.miniInput} maxLength={255} required />
+                    </div>
+                    <div>
+                      <label style={css.miniLabel}>Тип</label>
+                      <select value={creativeType} onChange={(e) => setCreativeType(e.target.value)} style={css.miniSelect}>
+                        {MEDIA_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={css.miniLabel}>Размер файла (байт) *</label>
+                      <input type="number" value={creativeSize} onChange={(e) => setCreativeSize(e.target.value)} style={css.miniInput} min={0} required />
+                    </div>
+                    <div>
+                      <label style={css.miniLabel}>Ширина</label>
+                      <input type="number" value={creativeW} onChange={(e) => setCreativeW(e.target.value)} style={css.miniInput} min={1} />
+                    </div>
+                    <div>
+                      <label style={css.miniLabel}>Высота</label>
+                      <input type="number" value={creativeH} onChange={(e) => setCreativeH(e.target.value)} style={css.miniInput} min={1} />
+                    </div>
+                    <div>
+                      <label style={css.miniLabel}>Длительность (мс)</label>
+                      <input type="number" value={creativeDur} onChange={(e) => setCreativeDur(e.target.value)} style={css.miniInput} min={1} />
+                    </div>
+                    <div>
+                      <label style={css.miniLabel}>SHA-256</label>
+                      <input type="text" value={creativeSha} onChange={(e) => setCreativeSha(e.target.value)} style={css.miniInput} placeholder="Авто-заглушка" maxLength={64} />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.25rem" }}>
+                    <button type="submit" style={css.primaryBtn} disabled={creativeSubmitting}>
+                      {creativeSubmitting ? "..." : "Создать"}
+                    </button>
+                    <button type="button" style={css.cancelBtn} onClick={resetCreativeForm}>Отмена</button>
+                  </div>
+                  {creativeError && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginTop: "0.5rem" }}>{creativeError}</div>}
+                </form>
+              )}
+            </div>
+          </details>
+        )}
 
         {allAssets.length > 0 && (
           <details style={{ marginBottom: "0.75rem", fontSize: "0.8rem" }}>
@@ -919,62 +1046,6 @@ export default function CampaignDetailPage() {
               </tbody>
             </table>
           </details>
-        )}
-
-        {isDraft && (
-          <div style={{ marginBottom: "0.75rem" }}>
-            {!showCreativeAdd ? (
-              <button type="button" style={css.addBtn} onClick={() => setShowCreativeAdd(true)}>
-                + Создать креатив
-              </button>
-            ) : (
-              <form onSubmit={handleAddCreative} style={css.inlineForm}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                  <div>
-                    <label style={css.miniLabel}>Код *</label>
-                    <input type="text" value={creativeCode} onChange={(e) => setCreativeCode(e.target.value)} style={css.miniInput} maxLength={64} required />
-                  </div>
-                  <div>
-                    <label style={css.miniLabel}>Название *</label>
-                    <input type="text" value={creativeName} onChange={(e) => setCreativeName(e.target.value)} style={css.miniInput} maxLength={255} required />
-                  </div>
-                  <div>
-                    <label style={css.miniLabel}>Тип</label>
-                    <select value={creativeType} onChange={(e) => setCreativeType(e.target.value)} style={css.miniSelect}>
-                      {MEDIA_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={css.miniLabel}>Размер файла (байт) *</label>
-                    <input type="number" value={creativeSize} onChange={(e) => setCreativeSize(e.target.value)} style={css.miniInput} min={0} required />
-                  </div>
-                  <div>
-                    <label style={css.miniLabel}>Ширина</label>
-                    <input type="number" value={creativeW} onChange={(e) => setCreativeW(e.target.value)} style={css.miniInput} min={1} />
-                  </div>
-                  <div>
-                    <label style={css.miniLabel}>Высота</label>
-                    <input type="number" value={creativeH} onChange={(e) => setCreativeH(e.target.value)} style={css.miniInput} min={1} />
-                  </div>
-                  <div>
-                    <label style={css.miniLabel}>Длительность (мс)</label>
-                    <input type="number" value={creativeDur} onChange={(e) => setCreativeDur(e.target.value)} style={css.miniInput} min={1} />
-                  </div>
-                  <div>
-                    <label style={css.miniLabel}>SHA-256</label>
-                    <input type="text" value={creativeSha} onChange={(e) => setCreativeSha(e.target.value)} style={css.miniInput} placeholder="Авто-заглушка" maxLength={64} />
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: "0.25rem" }}>
-                  <button type="submit" style={css.primaryBtn} disabled={creativeSubmitting}>
-                    {creativeSubmitting ? "..." : "Создать"}
-                  </button>
-                  <button type="button" style={css.cancelBtn} onClick={resetCreativeForm}>Отмена</button>
-                </div>
-                {creativeError && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginTop: "0.5rem" }}>{creativeError}</div>}
-              </form>
-            )}
-          </div>
         )}
 
         {creatives.length === 0 ? (

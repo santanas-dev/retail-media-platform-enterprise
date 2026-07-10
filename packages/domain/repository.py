@@ -18,6 +18,8 @@ from packages.domain.models import (
     AuditEventOperational,
     Branch,
     Cluster,
+    CreativeAsset,
+    CampaignCreative,
     DisplaySurface,
     Permission,
     Role,
@@ -1913,3 +1915,77 @@ async def list_campaign_pop_by_surface(
         }
         for row in result.fetchall()
     ]
+
+
+# ---------------------------------------------------------------------------
+# S-009i — Attach existing creative asset to campaign
+# ---------------------------------------------------------------------------
+
+
+async def attach_creative_to_campaign(
+    session: AsyncSession,
+    *,
+    campaign_id: str,
+    creative_asset_id: str,
+    sort_order: int = 0,
+    scope_advertiser_ids: frozenset[str] | None = None,
+) -> CampaignCreative | None:
+    """Attach an existing CreativeAsset to a draft Campaign. Returns the link or None.
+
+    Validates:
+    - Campaign exists and is in draft status.
+    - CreativeAsset exists and belongs to the same advertiser_organization_id.
+    - Duplicate attachment → returns existing link (idempotent).
+
+    Raises CrossOrgReferenceError if asset org ≠ campaign org.
+    Returns None if campaign not found or not in draft.
+    """
+    import uuid
+
+    from packages.domain.exceptions import CrossOrgReferenceError
+    from packages.domain.models import Campaign, CampaignCreative, CreativeAsset
+
+    campaign = (
+        await session.execute(
+            select(Campaign).where(Campaign.id == campaign_id)
+        )
+    ).scalar_one_or_none()
+    if campaign is None or campaign.status != "draft":
+        return None
+
+    asset = (
+        await session.execute(
+            select(CreativeAsset).where(CreativeAsset.id == creative_asset_id)
+        )
+    ).scalar_one_or_none()
+    if asset is None:
+        return None
+
+    if str(campaign.advertiser_organization_id) != str(asset.advertiser_organization_id):
+        raise CrossOrgReferenceError(
+            "Creative asset does not belong to the campaign's advertiser organization"
+        )
+
+    _assert_org_in_scope(asset.advertiser_organization_id, scope_advertiser_ids)
+
+    # Check for existing link (idempotent)
+    existing = (
+        await session.execute(
+            select(CampaignCreative).where(
+                CampaignCreative.campaign_id == campaign_id,
+                CampaignCreative.creative_asset_id == creative_asset_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return existing
+
+    link_id = str(uuid.uuid4())
+    link = CampaignCreative(
+        id=link_id,
+        campaign_id=campaign_id,
+        creative_asset_id=creative_asset_id,
+        sort_order=sort_order,
+    )
+    session.add(link)
+    return link

@@ -35,6 +35,7 @@ import type {
   StoreOut,
   DisplaySurfaceRefOut,
   CampaignRejectRequest,
+  CampaignCreativeAttachRequest,
 } from "./types";
 
 // ── Campaigns ──
@@ -162,6 +163,16 @@ export function createCreative(
 ): Promise<CreativeAssetOut> {
   return api.post<CreativeAssetOut>(
     `/campaigns/${campaignId}/creatives`,
+    body,
+  );
+}
+
+export function attachCreative(
+  campaignId: string,
+  body: CampaignCreativeAttachRequest,
+): Promise<CreativeAssetOut> {
+  return api.post<CreativeAssetOut>(
+    `/campaigns/${campaignId}/creatives/attach`,
     body,
   );
 }

@@ -277,6 +277,11 @@ export interface CampaignCreativeCreateRequest {
   duration_override_ms: number | null;
 }
 
+export interface CampaignCreativeAttachRequest {
+  creative_asset_id: string;
+  sort_order: number;
+}
+
 // ── Approval ──
 
 export interface CampaignApprovalResponse {

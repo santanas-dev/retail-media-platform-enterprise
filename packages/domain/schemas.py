@@ -427,6 +427,15 @@ class CampaignCreativeCreateRequest(BaseModel):
     duration_override_ms: int | None = Field(None, ge=1)
 
 
+class CampaignCreativeAttachRequest(BaseModel):
+    """Attach an existing creative asset to a draft campaign.
+
+    Cross-org and non-draft attachment is rejected by the handler.
+    """
+    creative_asset_id: str = Field(..., min_length=1, max_length=36)
+    sort_order: int = 0
+
+
 # ---------------------------------------------------------------------------
 # Approval Workflow Schemas (Phase 4.1d — ADR-015)
 # ---------------------------------------------------------------------------
