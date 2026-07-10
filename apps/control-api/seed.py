@@ -558,7 +558,7 @@ INSERT INTO creative_assets (id, advertiser_organization_id, code, name,
 VALUES ('{SEED_CREATIVE_ASSET_ID}', '{SEED_ADV_ORG_ID}', 'CREATIVE-001',
     'Приветственный баннер', 'image/png', 'retail-media-creatives',
     'adv-001/creatives/001/welcome.png',
-    'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    'ff61a0aee58f05289a5d6f0eba484cbbc397777ad2bb9b12ba6e9ba154f40513',
     245760, null, 1440, 1080, 'ready', '{SEED_ADV_USER_ID}')
 ON CONFLICT DO NOTHING;
 

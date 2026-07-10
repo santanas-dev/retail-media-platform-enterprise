@@ -34,7 +34,7 @@ class TestPhase2Metadata(unittest.TestCase):
         """Metadata table count — grows with each phase."""
         from packages.domain.models import Base
         count = len(Base.metadata.tables)
-        self.assertEqual(count, 44, f"Expected 44 tables, got {count}")
+        self.assertEqual(count, 45, f"Expected 45 tables, got {count}")
 
 
 class TestPhase2ModelColumns(unittest.TestCase):
@@ -420,7 +420,9 @@ class TestPhase21SeedIdentity(unittest.TestCase):
         self.assertIn("break_glass_admin", src)
         self.assertIn("is_break_glass", src)
         # Verify the INSERT sets is_break_glass to true near the break_glass_admin row
-        bg_section = src[src.index("break_glass_admin") - 200:src.index("break_glass_admin") + 200]
+        # Search from SEED_SQL onwards to avoid matching _DEV_PASSWORDS
+        sql_start = src.index("SEED_SQL")
+        bg_section = src[src.index("break_glass_admin", sql_start) - 50:src.index("break_glass_admin", sql_start) + 200]
         self.assertIn("true", bg_section)
 
     def test_seed_has_no_passwords(self):

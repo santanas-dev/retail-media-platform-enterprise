@@ -259,8 +259,17 @@ def is_deliverable_checksum(sha256: str) -> bool:
 
     Empty string means metadata-only — no file uploaded yet.
     Only a 64-char lowercase hex string qualifies as deliverable.
+    Rejects the SHA-256 of the empty string (e3b0c442...) as a
+    client-submitted placeholder.
     """
-    return len(sha256) == 64 and all(c in "0123456789abcdef" for c in sha256)
+    if len(sha256) != 64:
+        return False
+    if not all(c in "0123456789abcdef" for c in sha256):
+        return False
+    # Reject empty-object SHA-256 — a common client placeholder
+    if sha256 == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855":
+        return False
+    return True
 
 
 async def list_campaign_flights(session: AsyncSession) -> list:
@@ -607,12 +616,23 @@ async def request_campaign_approval(
     asset_ids = [row[0] for row in cc_result.fetchall()]
     if asset_ids:
         asset_rows = await session.execute(
-            select(CreativeAsset.id, CreativeAsset.sha256_checksum)
+            select(CreativeAsset.id, CreativeAsset.sha256_checksum,
+                   CreativeAsset.status, CreativeAsset.moderation_status,
+                   CreativeAsset.file_size_bytes, CreativeAsset.storage_key)
             .where(CreativeAsset.id.in_(asset_ids))
         )
-        for aid, cs in asset_rows.fetchall():
+        for aid, cs, st, mod_st, fsz, sk in asset_rows.fetchall():
+            # S-017: full deliverability check — not just checksum
             if not is_deliverable_checksum(cs):
-                return campaign.status, campaign.status  # reject — metadata only
+                return campaign.status, campaign.status  # empty/invalid checksum
+            if st != "ready":
+                return campaign.status, campaign.status  # not uploaded
+            if mod_st != "approved":
+                return campaign.status, campaign.status  # not approved
+            if fsz <= 0:
+                return campaign.status, campaign.status  # zero-size file
+            if not sk or sk == "":
+                return campaign.status, campaign.status  # no storage key
 
     # Validate flight windows against contract (ADR-015 §3.5)
     contract = await session.get(AdvertiserContract, campaign.advertiser_contract_id)
@@ -2081,3 +2101,128 @@ async def attach_creative_to_campaign(
     )
     session.add(link)
     return link
+
+
+# ---------------------------------------------------------------------------
+# Creative Upload Sessions (S-017)
+# ---------------------------------------------------------------------------
+
+
+async def create_upload_session(
+    session: AsyncSession,
+    *,
+    creative_asset_id: str,
+    advertiser_organization_id: str,
+    storage_bucket: str,
+    storage_key: str,
+    filename: str,
+    content_type: str,
+    content_length: int,
+    created_by: str | None = None,
+    ttl_seconds: int = 300,
+) -> str:
+    """Create a creative_upload_sessions row. Returns session id."""
+    import uuid as _uuid
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+    from packages.domain.models import CreativeUploadSession
+
+    now = _dt.now(_tz.utc)
+    row = CreativeUploadSession(
+        id=str(_uuid.uuid4()),
+        creative_asset_id=creative_asset_id,
+        advertiser_organization_id=advertiser_organization_id,
+        storage_bucket=storage_bucket,
+        storage_key=storage_key,
+        filename=filename,
+        content_type=content_type,
+        content_length=content_length,
+        expires_at=now + _td(seconds=ttl_seconds),
+        created_by=created_by,
+        created_at=now,
+    )
+    session.add(row)
+    await session.flush()
+    return row.id
+
+
+async def get_upload_session(
+    session: AsyncSession,
+    upload_id: str,
+):
+    """Return upload session as dict or None."""
+    from packages.domain.models import CreativeUploadSession
+    result = await session.execute(
+        select(CreativeUploadSession).where(
+            CreativeUploadSession.id == upload_id,
+        ),
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
+        return None
+    return {
+        "id": row.id,
+        "creative_asset_id": row.creative_asset_id,
+        "advertiser_organization_id": row.advertiser_organization_id,
+        "storage_bucket": row.storage_bucket,
+        "storage_key": row.storage_key,
+        "filename": row.filename,
+        "content_type": row.content_type,
+        "content_length": row.content_length,
+        "expires_at": row.expires_at,
+        "completed_at": row.completed_at,
+        "created_by": row.created_by,
+    }
+
+
+async def mark_upload_complete(
+    session: AsyncSession,
+    upload_id: str,
+) -> bool:
+    """Mark upload session completed. Returns True on success."""
+    from datetime import datetime as _dt, timezone as _tz
+    from packages.domain.models import CreativeUploadSession
+    from sqlalchemy import update as sa_update
+
+    result = await session.execute(
+        sa_update(CreativeUploadSession)
+        .where(
+            CreativeUploadSession.id == upload_id,
+            CreativeUploadSession.completed_at.is_(None),
+        )
+        .values(completed_at=_dt.now(_tz.utc))
+    )
+    return result.rowcount > 0
+
+
+async def mark_asset_uploaded(
+    session: AsyncSession,
+    *,
+    asset_id: str,
+    storage_bucket: str,
+    storage_key: str,
+    sha256_checksum: str,
+    file_size_bytes: int,
+    moderation_status: str = "approved",
+) -> bool:
+    """Update CreativeAsset after upload. Returns True on success."""
+    from datetime import datetime as _dt, timezone as _tz
+    from packages.domain.models import CreativeAsset
+    from sqlalchemy import update as sa_update
+
+    result = await session.execute(
+        sa_update(CreativeAsset)
+        .where(
+            CreativeAsset.id == asset_id,
+            CreativeAsset.status == "metadata_only",
+        )
+        .values(
+            status="ready",
+            moderation_status=moderation_status,
+            storage_bucket=storage_bucket,
+            storage_key=storage_key,
+            sha256_checksum=sha256_checksum,
+            file_size_bytes=file_size_bytes,
+            updated_at=_dt.now(_tz.utc),
+        )
+    )
+    return result.rowcount > 0

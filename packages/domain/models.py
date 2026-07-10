@@ -995,6 +995,38 @@ class PopIngestionBatch(Base):
     quarantined_count = Column(Integer, nullable=False, default=0)
 
 
+# ---------------------------------------------------------------------------
+# Creative Upload Sessions (S-017)
+# ---------------------------------------------------------------------------
+
+
+class CreativeUploadSession(Base):
+    __tablename__ = "creative_upload_sessions"
+    __table_args__ = (
+        CheckConstraint("content_length > 0",
+                        name="ck_cus_content_length_positive"),
+        CheckConstraint("content_type != ''",
+                        name="ck_cus_content_type_not_empty"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    creative_asset_id = Column(
+        String(36), ForeignKey("creative_assets.id"), nullable=False, index=True,
+    )
+    advertiser_organization_id = Column(
+        String(36), ForeignKey("advertiser_organizations.id"), nullable=False, index=True,
+    )
+    storage_bucket = Column(String(128), nullable=False)
+    storage_key = Column(String(512), nullable=False)
+    filename = Column(String(255), nullable=False)
+    content_type = Column(String(64), nullable=False)
+    content_length = Column(Integer, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
 REQUIRED_TABLES = frozenset({
     "branches", "clusters", "stores",
     "channels", "device_types", "capability_profiles",
@@ -1016,4 +1048,5 @@ REQUIRED_TABLES = frozenset({
     "pop_events_raw",
     "pop_dedup_index",
     "pop_ingestion_batches",
+    "creative_upload_sessions",
 })

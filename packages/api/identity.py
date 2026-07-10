@@ -35,6 +35,8 @@ from packages.domain.schemas import (
     CampaignPopSummaryOut,
     CampaignStatusHistoryOut,
     ClusterOut,
+    CompleteUploadRequest,
+    CompleteUploadResponse,
     CreativeAssetOut,
     DisplaySurfaceOut,
     MAX_LIMIT,
@@ -44,8 +46,11 @@ from packages.domain.schemas import (
     PermissionOut,
     RoleOut,
     StoreOut,
+    UploadIntentRequest,
+    UploadIntentResponse,
     UserOut,
 )
+from packages.security.config import get_security_config
 
 router = APIRouter(prefix="/api/v1/identity", tags=["identity"])
 
@@ -1021,6 +1026,132 @@ async def create_creative_asset_endpoint(
     )
     asset = await repository.get_creative_asset(db, asset_id)
     return _serialize_creative_asset(asset)
+
+
+# ---------------------------------------------------------------------------
+# S-017 — Creative Upload Endpoints (presigned URL flow)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/creative-assets/{asset_id}/upload-intent",
+             response_model=UploadIntentResponse)
+async def upload_intent_endpoint(
+    asset_id: str,
+    body: UploadIntentRequest,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    scope: ScopeContext = Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Generate a presigned PUT URL for browser-to-MinIO upload."""
+    cfg = get_security_config()
+    if body.content_type not in cfg.creative_allowed_mime_types:
+        raise HTTPException(status_code=422, detail=f"Unsupported media type: {body.content_type}")
+    if body.content_length > cfg.creative_max_file_size_bytes:
+        raise HTTPException(status_code=422, detail=f"File too large: {body.content_length} bytes")
+
+    asset = await repository.get_creative_asset(db, asset_id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="Creative asset not found")
+    if asset.status != "metadata_only":
+        raise HTTPException(status_code=409, detail="Asset already has a file uploaded")
+
+    org_id = str(asset.advertiser_organization_id)
+    if not scope.is_admin and scope.advertiser_scope_ids and org_id not in scope.advertiser_scope_ids:
+        raise HTTPException(status_code=403, detail="Not in your organisation scope")
+
+    storage_key = f"{org_id}/{asset_id}/{body.filename}"
+    bucket = cfg.creative_storage_bucket
+
+    from packages.services.storage import get_storage_service
+    storage = get_storage_service()
+    upload_url, expires_at = storage.generate_presigned_put(storage_key, body.content_type)
+
+    session_id = await repository.create_upload_session(
+        db,
+        creative_asset_id=asset_id,
+        advertiser_organization_id=org_id,
+        storage_bucket=bucket,
+        storage_key=storage_key,
+        filename=body.filename,
+        content_type=body.content_type,
+        content_length=body.content_length,
+        created_by=claims["sub"],
+        ttl_seconds=cfg.creative_upload_url_ttl_seconds,
+    )
+
+    return UploadIntentResponse(
+        upload_id=session_id,
+        upload_url=upload_url,
+        method="PUT",
+        headers={"Content-Type": body.content_type},
+        expires_at=expires_at.isoformat(),
+    )
+
+
+@router.post("/creative-assets/{asset_id}/complete-upload",
+             response_model=CompleteUploadResponse)
+async def complete_upload_endpoint(
+    asset_id: str,
+    body: CompleteUploadRequest,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    scope: ScopeContext = Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Verify MinIO object, compute SHA-256, finalise upload."""
+    upload = await repository.get_upload_session(db, body.upload_id)
+    if upload is None:
+        raise HTTPException(status_code=404, detail="Upload session not found")
+    if upload["creative_asset_id"] != asset_id:
+        raise HTTPException(status_code=422, detail="Upload session does not match this asset")
+    if upload["completed_at"] is not None:
+        raise HTTPException(status_code=409, detail="Upload already completed")
+
+    from datetime import datetime, timezone as _tz
+    if upload["expires_at"] < datetime.now(_tz.utc):
+        raise HTTPException(status_code=410, detail="Upload session expired")
+
+    org_id = upload["advertiser_organization_id"]
+    if not scope.is_admin and scope.advertiser_scope_ids and org_id not in scope.advertiser_scope_ids:
+        raise HTTPException(status_code=403, detail="Not in your organisation scope")
+
+    from packages.services.storage import get_storage_service
+    storage = get_storage_service()
+    if not storage.object_exists(upload["storage_key"]):
+        raise HTTPException(status_code=404, detail="File not found in storage")
+
+    actual_size = storage.get_object_size(upload["storage_key"])
+    if actual_size != upload["content_length"]:
+        raise HTTPException(status_code=422, detail=f"Size mismatch: expected {upload['content_length']}, got {actual_size}")
+
+    checksum = storage.compute_sha256(upload["storage_key"])
+    if checksum is None:
+        raise HTTPException(status_code=500, detail="Failed to compute checksum")
+
+    cfg = get_security_config()
+    moderation = "approved" if cfg.creative_auto_approve_uploads else "pending_review"
+
+    ok = await repository.mark_asset_uploaded(
+        db, asset_id=asset_id,
+        storage_bucket=upload["storage_bucket"],
+        storage_key=upload["storage_key"],
+        sha256_checksum=checksum,
+        file_size_bytes=actual_size,
+        moderation_status=moderation,
+    )
+    if not ok:
+        raise HTTPException(status_code=409, detail="Asset is not in metadata_only status")
+
+    await repository.mark_upload_complete(db, body.upload_id)
+
+    return CompleteUploadResponse(
+        asset_id=asset_id,
+        sha256_checksum=checksum,
+        file_size_bytes=actual_size,
+        status="ready",
+        moderation_status=moderation,
+    )
 
 
 # ---------------------------------------------------------------------------

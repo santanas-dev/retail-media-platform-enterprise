@@ -603,3 +603,38 @@ class DisplaySurfaceOut(BaseModel):
     resolution_w: int = 1920
     resolution_h: int = 1080
     is_active: bool = True
+
+
+# ---------------------------------------------------------------------------
+# S-017 — Creative Upload Schemas
+# ---------------------------------------------------------------------------
+
+
+class UploadIntentRequest(BaseModel):
+    """Request a presigned upload URL for a creative asset."""
+    filename: str = Field(..., min_length=1, max_length=255)
+    content_type: str = Field(..., min_length=1, max_length=64)
+    content_length: int = Field(..., gt=0)
+
+
+class UploadIntentResponse(BaseModel):
+    """Response with presigned PUT URL — browser uploads directly to MinIO."""
+    upload_id: str
+    upload_url: str
+    method: str = "PUT"
+    headers: dict[str, str] = Field(default_factory=dict)
+    expires_at: str
+
+
+class CompleteUploadRequest(BaseModel):
+    """Confirm upload completion by upload session ID."""
+    upload_id: str = Field(..., min_length=1, max_length=36)
+
+
+class CompleteUploadResponse(BaseModel):
+    """Response after server computes SHA-256 from MinIO object."""
+    asset_id: str
+    sha256_checksum: str
+    file_size_bytes: int
+    status: str
+    moderation_status: str

@@ -107,6 +107,13 @@ def _draft():
         "UPDATE campaigns SET status = 'draft' WHERE code = 'CAMP-2026-001'"
     )
     cid = _raw_sql("SELECT id FROM campaigns WHERE code = 'CAMP-2026-001'")[0][0]
+    # S-017: ensure creative asset checksum is deliverable (not empty-object)
+    _raw_exec(
+        "UPDATE creative_assets SET sha256_checksum = "
+        "'ff61a0aee58f05289a5d6f0eba484cbbc397777ad2bb9b12ba6e9ba154f40513', "
+        "file_size_bytes = 245760, storage_key = 'adv-001/creatives/001/welcome.png' "
+        "WHERE code = 'CREATIVE-001'"
+    )
     _raw_exec(
         "DELETE FROM outbox_events WHERE aggregate_id = :cid;"
         " DELETE FROM campaign_approvals WHERE campaign_id = :cid;"
@@ -680,6 +687,11 @@ class TestApprovalTenantIsolation:
 
 
 class TestFlightContractValidation:
+
+    @pytest.fixture(autouse=True)
+    def _clean_flights(self):
+        """Pre-clean test flights from prior runs."""
+        _raw_exec("DELETE FROM campaign_flights WHERE id IN ('flight-outside-01', 'flight-past-end')")
 
     def test_flight_outside_contract_blocked(self, client, user_ids):
         """Campaign with flight outside contract window → 422, no outbox."""

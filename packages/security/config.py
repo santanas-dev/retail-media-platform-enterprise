@@ -83,6 +83,19 @@ class SecurityConfig:
         "Authorization", "Content-Type",
     ])
 
+    # MinIO / Creative Storage (S-017)
+    creative_storage_bucket: str = "retail-media-creatives"
+    creative_max_file_size_bytes: int = 10_485_760  # 10 MB
+    creative_allowed_mime_types: frozenset[str] = frozenset({
+        "image/png", "image/jpeg", "image/webp", "video/mp4", "image/gif",
+    })
+    creative_upload_url_ttl_seconds: int = 300  # 5 minutes
+    creative_auto_approve_uploads: bool = True  # pilot: auto-approve on upload
+    minio_internal_endpoint: str = ""
+    minio_public_endpoint: str = ""
+    minio_access_key: str = ""
+    minio_secret_key: str = ""
+
     def __post_init__(self) -> None:
         # Load JWT_SECRET from env if not provided
         if not self.jwt_secret:
@@ -100,6 +113,21 @@ class SecurityConfig:
         if not self.cors_allow_credentials:
             cred_env = os.environ.get("CORS_ALLOW_CREDENTIALS", "").strip()
             self.cors_allow_credentials = cred_env.lower() in ("true", "1", "yes")
+        # Load MinIO/creative storage from env (S-017)
+        self.minio_internal_endpoint = os.environ.get("MINIO_INTERNAL_ENDPOINT", self.minio_internal_endpoint)
+        self.minio_public_endpoint = os.environ.get("MINIO_PUBLIC_ENDPOINT", self.minio_public_endpoint)
+        self.minio_access_key = os.environ.get("MINIO_ACCESS_KEY", self.minio_access_key)
+        self.minio_secret_key = os.environ.get("MINIO_SECRET_KEY", self.minio_secret_key)
+        self.creative_storage_bucket = os.environ.get("CREATIVE_STORAGE_BUCKET", self.creative_storage_bucket)
+        max_size_env = os.environ.get("CREATIVE_MAX_FILE_SIZE_BYTES", "")
+        if max_size_env:
+            self.creative_max_file_size_bytes = int(max_size_env)
+        auto_approve_env = os.environ.get("CREATIVE_AUTO_APPROVE_UPLOADS", "")
+        if auto_approve_env.lower() in ("false", "0", "no"):
+            self.creative_auto_approve_uploads = False
+        ttl_env = os.environ.get("CREATIVE_UPLOAD_URL_TTL_SECONDS", "")
+        if ttl_env:
+            self.creative_upload_url_ttl_seconds = int(ttl_env)
         self._validate()
 
     def _validate(self) -> None:
