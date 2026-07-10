@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
-| **Last updated:** 2026-07-09
-| **Current phase:** Backend pilot delivery chain proven (B1/B2/B3). 4.3d component-complete; 4.3e deferred.
+| **Last updated:** 2026-07-10
+| **Current phase:** Backend pilot delivery chain proven (B1/B2/B3). 4.3d component-complete; 4.3e deferred. v0.1 release prepared (S-015).
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -58,12 +58,14 @@ Separately covered:
 | S-008 | DB write RLS WITH CHECK | P0 | ✅ done | — | Migration 010: INSERT/UPDATE/DELETE RLS policies on all 7 campaign-domain tables. WITH CHECK using app.rmp_scope_advertiser_ids + admin bypass. Direct + via-campaign patterns. CI fix: behavioral tests now run with DATABASE_URL=retail_media_app (NOBYPASSRLS). S-008 gate verifies rolsuper=false, rolbypassrls=false before tests. Tests: 4 behavioral RLS write enforcement tests (TestRLSWriteEnforcement) + all existing mutation tests pass under NOBYPASSRLS. Policy matrix: 7 tables × 4 policies = 28 total. | — |
 | S-009 | Frontend campaign management UI | P3 | 🚧 S-009b done | — | S-009b: admin-web auth shell + API client (React 19, react-router-dom, vitest). Login/logout/session, protected routes, /me loading, sidebar nav, placeholder pages for campaigns/advertisers. Auth contract fix: login/refresh/logout use /api/v1/auth + credentials:include (HttpOnly cookie), no refresh_token in JSON body, LoginResponse/MeResponse match backend schemas. 17 tests (13 API contract + 4 auth-shell). Build passes (48 modules, 605ms). Next: S-009c campaign list/detail. | Wire campaign list/detail (S-009c) |
 | S-009rr | Runtime truth gate — CI green baseline | P0 | ✅ done (local) | — | **Root cause**: device-gateway used `Depends(get_session)` with no engine wiring; `get_session(engine)` needs an explicit engine arg (not a FastAPI dep). Fix: added lifespan engine creation + `get_db()` dependency (matching control-api pattern). Also: device-gateway/requirements.txt (sqlalchemy, asyncpg, PyJWT), orchestrator-worker/requirements.txt (sqlalchemy, asyncpg), pop-ingestor/requirements.txt (empty, Dockerfile expects file). Compose: added ENVIRONMENT=dev, JWT_SECRET, CORS_ALLOWED_ORIGINS, DATABASE_URL to device-gateway; added ENVIRONMENT to all services; added postgres health dependency to device-gateway. CI: added ENVIRONMENT=dev + JWT_SECRET to python-tests and import-boundaries jobs. Local baseline restored — **GitHub Actions verification pending after push**. | Push + verify GitHub Actions |
+| S-015 | GitHub Release Versioning / Product Milestones | P1 | 📋 open/prepared | P.S. (Hermes) | Policy: `docs/architecture/release-versioning.md`. Proposed v0.1-admin-campaign-mvp at d291cfed. Includes: auth shell, campaign CRUD, creative attach, approval UI, PoP reporting. Explicit exclusions: file upload, KSO player, advertiser portal, ClickHouse, production signing. Tag commands prepared but not executed. | Create tag after explicit approval |
 
 ## Status Legend
 
 - **done** — implemented, tested, committed, pushed
 - **locked** — architecture locked (ADR accepted), implementation deferred
 - **open** — not started, ready for implementation
+- **open/prepared** — definition written, tag commands prepared, awaiting approval
 - **deferred** — intentionally postponed (documented reason)
 
 ## Remaining Gaps (non-blocking for backend pilot)

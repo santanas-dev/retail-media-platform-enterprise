@@ -40,6 +40,7 @@ When decisions conflict, resolve in this order:
 | `phase-4-advertiser-domain.md` | Phase 4 (advertiser domain) close-out summary |
 | `phase-4-campaign-domain.md` | Phase 4 (campaign domain) close-out summary |
 | `phase-4-delivery-domain.md` | Phase 4.2–4.3 (delivery + PoP/reporting) status |
+| `release-versioning.md` | Release versioning policy and milestone definitions |
 | `legacy-reference.md` | Old platform reference pointer |
 
 ## Superseded Documents (Historical Only)
