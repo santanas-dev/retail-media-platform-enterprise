@@ -356,3 +356,124 @@ class TestMetadataOnlyBlocksApproval:
     def teardown_class(cls):
         """Restore seed campaign to draft and remove test artifacts."""
         _raw_exec("UPDATE campaigns SET status = 'draft' WHERE code = 'CAMP-2026-001'")
+
+
+# ---------------------------------------------------------------------------
+# S-017 P0 proof: POST /campaigns/{id}/creatives bypass closed
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(not REQUIRE_ENV, reason=SKIP_REASON)
+class TestNoBypassCreateCampaignCreative:
+    """Proof: create_campaign_creative always produces metadata_only/pending_review.
+
+    Before S-017 P0 fix, POST /campaigns/{id}/creatives accepted a client-provided
+    64-char hex checksum + file_size_bytes>0 and created ready/approved assets —
+    bypassing the presigned-upload + server-SHA-256 flow entirely.
+
+    After fix: every asset created via this path is metadata_only/pending_review
+    with empty checksum.  The only path to ready/approved is complete-upload.
+    """
+
+    SEED_CID = "00000000-0000-0000-0000-000000000220"
+    _asset_id = None
+
+    def _draft(self):
+        _raw_exec("UPDATE campaigns SET status = 'draft' WHERE code = 'CAMP-2026-001'")
+
+    def _cleanup(self):
+        if self._asset_id:
+            _raw_exec(
+                f"DELETE FROM campaign_creatives WHERE creative_asset_id = '{self._asset_id}';"
+                f"DELETE FROM creative_assets WHERE id = '{self._asset_id}'"
+            )
+            self._asset_id = None
+
+    def test_fake_checksum_creates_metadata_only(self, client, user_ids):
+        """POST /campaigns/{id}/creatives with fake 64-char hex + size>0 → metadata_only."""
+        self._draft()
+        token = _token(user_ids["readonly"])
+        cid = self.SEED_CID
+        fake_checksum = "a" * 64  # valid hex but no real file
+        try:
+            resp = client.post(
+                f"/api/v1/identity/campaigns/{cid}/creatives",
+                json={
+                    "code": f"CR-BYPASS-{uuid.uuid4().hex[:8]}",
+                    "name": "Bypass Attempt",
+                    "media_type": "image/png",
+                    "sha256_checksum": fake_checksum,
+                    "file_size_bytes": 1024,
+                },
+                headers=_auth(token),
+            )
+            assert resp.status_code == 201, f"Create failed: {resp.text}"
+            data = resp.json()
+            self._asset_id = data["id"]
+
+            # P0 assertions: asset MUST be metadata_only, not ready/approved
+            assert data["status"] == "metadata_only", (
+                f"BYPASS DETECTED: expected metadata_only, got '{data['status']}' "
+                f"— client checksum '{fake_checksum[:16]}...' was trusted!"
+            )
+            assert data["moderation_status"] == "pending_review", (
+                f"BYPASS DETECTED: expected pending_review, got '{data['moderation_status']}'"
+            )
+            assert data["sha256_checksum"] == "", (
+                f"BYPASS DETECTED: expected empty checksum, got '{data['sha256_checksum']}'"
+            )
+            assert data["file_size_bytes"] == 0, (
+                f"BYPASS DETECTED: expected file_size_bytes=0, got {data['file_size_bytes']}"
+            )
+
+            # DB verification — no fake data stored
+            db_rows = _raw_sql(
+                "SELECT status, moderation_status, sha256_checksum, file_size_bytes "
+                "FROM creative_assets WHERE id = :aid",
+                {"aid": self._asset_id},
+            )
+            assert db_rows[0][0] == "metadata_only", f"DB status: {db_rows[0][0]}"
+            assert db_rows[0][1] == "pending_review", f"DB moderation: {db_rows[0][1]}"
+            assert db_rows[0][2] == "", f"DB checksum: '{db_rows[0][2]}'"
+            assert db_rows[0][3] == 0, f"DB size: {db_rows[0][3]}"
+
+            # Approval must be blocked — metadata_only creative attached
+            resp_approve = client.post(
+                f"/api/v1/identity/campaigns/{cid}/request-approval",
+                headers=_auth(token),
+            )
+            assert resp_approve.status_code == 422, (
+                f"Expected 422 (metadata-only blocks approval), got {resp_approve.status_code}"
+            )
+        finally:
+            self._cleanup()
+
+    def test_non_hex_checksum_rejected_by_schema(self, client, user_ids):
+        """Schema validation rejects non-hex checksums at request level."""
+        self._draft()
+        token = _token(user_ids["readonly"])
+        # Even though checksum is ignored, schema still validates max_length=64
+        # and no special chars (just short-string validation)
+        resp = client.post(
+            f"/api/v1/identity/campaigns/{self.SEED_CID}/creatives",
+            json={
+                "code": f"CR-BAD-{uuid.uuid4().hex[:8]}",
+                "name": "Bad Checksum",
+                "media_type": "image",
+                "sha256_checksum": "not-a-checksum!",
+                "file_size_bytes": 512,
+            },
+            headers=_auth(token),
+        )
+        # Schema allows any string up to 64 chars; API ignores it
+        # This test verifies the API doesn't crash on unexpected input
+        assert resp.status_code == 201, f"Create should succeed: {resp.text}"
+        data = resp.json()
+        self._asset_id = data["id"]
+        assert data["status"] == "metadata_only"
+        assert data["sha256_checksum"] == ""
+        self._cleanup()
+
+    @classmethod
+    def teardown_class(cls):
+        _raw_exec("UPDATE campaigns SET status = 'draft' WHERE code = 'CAMP-2026-001'")

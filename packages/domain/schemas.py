@@ -415,12 +415,16 @@ class CampaignCreativeCreateRequest(BaseModel):
     Storage fields (storage_bucket, storage_key) are auto-filled with
     pilot-safe defaults.  The response (CreativeAssetOut) never exposes
     them.
+
+    S-017: sha256_checksum and file_size_bytes are OPTIONAL and IGNORED.
+    Assets are always created as metadata_only/pending_review.
+    The only path to ready/approved is complete-upload with server SHA-256.
     """
     code: str = Field(..., min_length=1, max_length=64)
     name: str = Field(..., min_length=1, max_length=255)
     media_type: str = Field(..., min_length=1, max_length=32)
-    sha256_checksum: str = Field(..., min_length=1, max_length=64)
-    file_size_bytes: int = Field(..., ge=0)
+    sha256_checksum: str = Field("", max_length=64)
+    file_size_bytes: int = Field(0, ge=0)
     duration_ms: int | None = Field(None, ge=1)
     resolution_w: int | None = Field(None, ge=1)
     resolution_h: int | None = Field(None, ge=1)

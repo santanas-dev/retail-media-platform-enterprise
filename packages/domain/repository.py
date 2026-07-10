@@ -1027,7 +1027,11 @@ async def create_campaign_creative(
 ) -> tuple[str, str] | None:
     """Create a CreativeAsset + CampaignCreative in one call. Returns (asset_id, link_id).
 
-    Pilot: storage_key is auto-derived; storage_bucket defaults to \"pilot\".
+    S-017: Always creates metadata_only / pending_review — no ready/approved bypass.
+    Client-provided sha256_checksum/file_size_bytes are IGNORED (never trusted).
+    The only path to ready/approved is complete-upload with server-computed SHA-256.
+
+    Pilot: storage_key is auto-derived; storage_bucket defaults to "pilot".
     The response schemas (CreativeAssetOut) never expose storage fields.
 
     Enforces: campaign in draft, advertiser_organization_id matches campaign org,
@@ -1061,6 +1065,9 @@ async def create_campaign_creative(
     storage_key = f"pilot/creatives/{asset_id}"
     now = datetime.now(tz.utc)
 
+    # S-017 P0 fix: create_campaign_creative always creates metadata_only.
+    # Client-provided sha256_checksum / file_size_bytes are ignored.
+    # The only path to ready/approved is complete-upload with server SHA-256.
     asset = CreativeAsset(
         id=asset_id,
         advertiser_organization_id=advertiser_organization_id,
@@ -1069,13 +1076,13 @@ async def create_campaign_creative(
         media_type=media_type,
         storage_bucket=storage_bucket,
         storage_key=storage_key,
-        sha256_checksum=sha256_checksum,
-        file_size_bytes=file_size_bytes,
+        sha256_checksum="",
+        file_size_bytes=0,
         duration_ms=duration_ms,
         resolution_w=resolution_w,
         resolution_h=resolution_h,
-        status="ready",
-        moderation_status="approved",
+        status="metadata_only",
+        moderation_status="pending_review",
         created_by=created_by,
         created_at=now,
         updated_at=now,

@@ -268,8 +268,8 @@ export interface CampaignCreativeCreateRequest {
   code: string;
   name: string;
   media_type: string;
-  sha256_checksum: string;
-  file_size_bytes: number;
+  sha256_checksum?: string;
+  file_size_bytes?: number | null;
   duration_ms: number | null;
   resolution_w: number | null;
   resolution_h: number | null;
