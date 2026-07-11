@@ -1,0 +1,188 @@
+/* Layout — responsive sidebar + main content */
+.shell {
+  display: flex;
+  min-height: 100vh;
+  font-family: system-ui, sans-serif;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 220px;
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 1rem 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s ease;
+  z-index: 100;
+}
+
+.logo {
+  padding: 0 1rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #fff;
+  border-bottom: 1px solid #334155;
+  margin-bottom: 0.5rem;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0; /* allow flex shrink */
+}
+
+/* ── Nav links ── */
+.navLink {
+  display: block;
+  padding: 0.5rem 1rem;
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.navLink:hover {
+  background: #1a2332;
+  color: #e2e8f0;
+}
+
+.navLinkActive {
+  color: #fff;
+  background: #334155;
+}
+
+.navLinkDisabled {
+  color: #64748b;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ── User row ── */
+.userRow {
+  margin-top: auto;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #334155;
+  font-size: 0.8rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.userName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.logoutBtn {
+  background: none;
+  border: 1px solid #475569;
+  color: #94a3b8;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.logoutBtn:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+/* ── Main content ── */
+.main {
+  flex: 1;
+  padding: 1.5rem;
+  background: #f8fafc;
+  overflow: auto;
+  min-width: 0; /* prevent flex blowout */
+}
+
+/* ── Loading ── */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: system-ui, sans-serif;
+  color: #64748b;
+}
+
+/* ── Hamburger button — hidden on desktop ── */
+.hamburger {
+  display: none;
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 200;
+  width: 36px;
+  height: 36px;
+  background: #1e293b;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+}
+
+.hamburger span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: #e2e8f0;
+  border-radius: 1px;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+/* ── Overlay (behind sidebar on narrow) ── */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 99;
+}
+
+/* ═══════════════════════════════════════════
+   Narrow viewports (< 768px)
+   ═══════════════════════════════════════════ */
+@media (max-width: 767px) {
+  .hamburger {
+    display: flex;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    transform: translateX(-100%);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .overlay.open {
+    display: block;
+  }
+
+  .main {
+    padding: 3.5rem 1rem 1rem; /* room for hamburger */
+  }
+
+  /* Tables scroll within container, not page */
+  .main table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}

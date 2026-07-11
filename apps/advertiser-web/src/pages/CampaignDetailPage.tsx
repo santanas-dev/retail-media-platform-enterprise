@@ -13,7 +13,7 @@ import type {
   CampaignPopByDayOut,
   CampaignPopBySurfaceOut,
 } from "../api/types";
-import { statusLabel, statusColor, surfaceLabel } from "../api/types";
+import { statusLabel, statusColor, surfaceLabel, mediaTypeLabel, timezoneLabel } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 
 // ── Helpers ──
@@ -324,7 +324,7 @@ export default function CampaignDetailPage() {
             ],
             ["Бюджет", budgetLabel(campaign.budget_limit_amount, campaign.budget_limit_currency)],
             ["Приоритет", String(campaign.priority)],
-            ["Часовой пояс", campaign.timezone],
+            ["Часовой пояс", timezoneLabel(campaign.timezone)],
             ...(campaign.description
               ? [["Описание", campaign.description] as [string, string]]
               : []),
@@ -412,7 +412,7 @@ export default function CampaignDetailPage() {
                     <td style={styles.td}>
                       {asset?.name ?? cc.creative_asset_id}
                     </td>
-                    <td style={styles.td}>{asset?.media_type ?? "—"}</td>
+                    <td style={styles.td}>{asset?.media_type ? mediaTypeLabel(asset.media_type) : "—"}</td>
                     <td style={styles.td}>
                       {asset
                         ? `${(asset.file_size_bytes / 1024).toFixed(0)} KB`
@@ -1262,7 +1262,7 @@ function AttachCreativeModal({
                       )}
                     </td>
                     <td style={{ padding: "0.4rem 0.5rem", color: "#64748b" }}>
-                      {asset.media_type}
+                      {mediaTypeLabel(asset.media_type)}
                     </td>
                     <td style={{ padding: "0.4rem 0.5rem" }}>
                       {isReady ? (
