@@ -173,3 +173,45 @@ describe("CampaignDetailPage", () => {
     expect(document.body.textContent).not.toMatch(/storage_bucket|storage_key|presigned_url/i);
   });
 });
+
+// ── Edit flow (draft-only) ──
+
+describe("CampaignDetailPage — edit", () => {
+  const draftCamp = { ...camp, status: "draft" };
+  const activeCamp = { ...camp, status: "active" };
+
+  it("draft campaign shows edit button", async () => {
+    mockGet.mockImplementation((path: string) => {
+      const m: Record<string, unknown> = {
+        "/campaigns": [draftCamp], "/campaign-flights": [],
+        "/campaign-placements": [], "/campaign-creatives": [],
+        "/creative-assets": [], "/campaign-approvals": [],
+        "/campaign-status-history": [],
+        [`/campaigns/${camp.id}/pop/summary`]: { campaign_id: "c1", impressions_count: 0, total_duration_ms: 0, first_rendered_at: null, last_rendered_at: null, unique_devices: 0, unique_surfaces: 0 },
+        [`/campaigns/${camp.id}/pop/by-day`]: [], [`/campaigns/${camp.id}/pop/by-surface`]: [],
+      };
+      return Promise.resolve(m[path] ?? []);
+    });
+    renderPage();
+    await waitFor(() => screen.getByText("Редактировать"));
+    expect(screen.getByText("Редактировать")).toBeInTheDocument();
+  });
+
+  it("non-draft campaign does not show edit button", async () => {
+    mockGet.mockImplementation((path: string) => {
+      const m: Record<string, unknown> = {
+        "/campaigns": [activeCamp], "/campaign-flights": [],
+        "/campaign-placements": [], "/campaign-creatives": [],
+        "/creative-assets": [], "/campaign-approvals": [],
+        "/campaign-status-history": [],
+        [`/campaigns/${camp.id}/pop/summary`]: { campaign_id: "c1", impressions_count: 0, total_duration_ms: 0, first_rendered_at: null, last_rendered_at: null, unique_devices: 0, unique_surfaces: 0 },
+        [`/campaigns/${camp.id}/pop/by-day`]: [], [`/campaigns/${camp.id}/pop/by-surface`]: [],
+      };
+      return Promise.resolve(m[path] ?? []);
+    });
+    renderPage();
+    // Wait for page to load — campaign name appears in the header
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Тестовая кампания" })).toBeInTheDocument());
+    expect(screen.queryByText("Редактировать")).toBeNull();
+  });
+});

@@ -239,6 +239,22 @@ export interface CampaignCreateRequest {
   priority: number;
 }
 
+// ── Campaign Update Request (matches backend CampaignUpdateRequest, all optional) ──
+
+export interface CampaignUpdateRequest {
+  advertiser_brand_id?: string | null;
+  advertiser_contract_id?: string;
+  code?: string;
+  name?: string;
+  description?: string | null;
+  start_at?: string | null;
+  end_at?: string | null;
+  timezone?: string;
+  budget_limit_amount?: number | null;
+  budget_limit_currency?: string;
+  priority?: number;
+}
+
 // ── Flight Mutation ──
 
 export interface CampaignFlightCreateRequest {

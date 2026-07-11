@@ -66,11 +66,27 @@ export default function CampaignListPage() {
   if (campaigns.length === 0) {
     return (
       <div>
-        <h2 style={styles.heading}>Кампании</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+          <h2 style={{ ...styles.heading, margin: 0 }}>Кампании</h2>
+          <button
+            style={{
+              padding: "0.45rem 1rem",
+              background: "#1e293b",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              cursor: "pointer",
+              fontSize: "0.875rem",
+            }}
+            onClick={() => navigate("/campaigns/new")}
+          >
+            + Создать кампанию
+          </button>
+        </div>
         <div style={styles.emptyBox}>
           <p style={{ margin: 0, fontWeight: 500 }}>Нет кампаний</p>
           <p style={{ margin: "0.25rem 0 0", fontSize: "0.875rem", color: "#94a3b8" }}>
-            Обратитесь к администратору для создания кампаний.
+            Нажмите «Создать кампанию», чтобы начать.
           </p>
         </div>
       </div>
@@ -91,7 +107,23 @@ export default function CampaignListPage() {
 
   return (
     <div>
-      <h2 style={styles.heading}>Кампании</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+        <h2 style={{ ...styles.heading, margin: 0 }}>Кампании</h2>
+        <button
+          style={{
+            padding: "0.45rem 1rem",
+            background: "#1e293b",
+            color: "#fff",
+            border: "none",
+            borderRadius: 6,
+            cursor: "pointer",
+            fontSize: "0.875rem",
+          }}
+          onClick={() => navigate("/campaigns/new")}
+        >
+          + Создать кампанию
+        </button>
+      </div>
       <table style={styles.table}>
         <thead>
           <tr>

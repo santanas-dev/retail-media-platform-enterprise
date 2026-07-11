@@ -59,6 +59,7 @@ export default function CampaignDetailPage() {
   const navigate = useNavigate();
 
   const [campaign, setCampaign] = useState<CampaignOut | null>(null);
+  const [editing, setEditing] = useState(false);
   const [flights, setFlights] = useState<CampaignFlightOut[]>([]);
   const [placements, setPlacements] = useState<CampaignPlacementOut[]>([]);
   const [ccLinks, setCcLinks] = useState<CampaignCreativeOut[]>([]);
@@ -190,7 +191,36 @@ export default function CampaignDetailPage() {
         >
           {statusLabel(campaign.status)}
         </span>
+        {campaign.status === "draft" && !editing && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            style={{
+              padding: "0.35rem 0.75rem",
+              background: "#fff",
+              color: "#1e293b",
+              border: "1px solid #cbd5e1",
+              borderRadius: 6,
+              cursor: "pointer",
+              fontSize: "0.8rem",
+            }}
+          >
+            Редактировать
+          </button>
+        )}
       </div>
+
+      {/* ── Edit form (draft only) ── */}
+      {editing && (
+        <EditCampaignForm
+          campaign={campaign}
+          onSaved={(updated) => {
+            setCampaign(updated);
+            setEditing(false);
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      )}
 
       {/* ── Sections ── */}
       <Section title="Обзор">
@@ -785,3 +815,171 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: "0.05em",
   },
 };
+
+// ═══════════════════════════════════════════════
+// Internal: EditCampaignForm (draft-only edit)
+// ═══════════════════════════════════════════════
+
+function EditCampaignForm({
+  campaign,
+  onSaved,
+  onCancel,
+}: {
+  campaign: CampaignOut;
+  onSaved: (updated: CampaignOut) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(campaign.name);
+  const [code, setCode] = useState(campaign.code);
+  const [description, setDescription] = useState(campaign.description ?? "");
+  const [startAt, setStartAt] = useState(
+    campaign.start_at ? campaign.start_at.slice(0, 16) : "",
+  );
+  const [endAt, setEndAt] = useState(
+    campaign.end_at ? campaign.end_at.slice(0, 16) : "",
+  );
+  const [timezone, setTimezone] = useState(campaign.timezone);
+  const [budgetStr, setBudgetStr] = useState(
+    campaign.budget_limit_amount != null ? String(campaign.budget_limit_amount) : "",
+  );
+  const [budgetCurrency, setBudgetCurrency] = useState(campaign.budget_limit_currency);
+  const [priority, setPriority] = useState(String(campaign.priority));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+
+    const body: Record<string, unknown> = {};
+    if (name !== campaign.name) body.name = name;
+    if (code !== campaign.code) body.code = code;
+    const desc = description || null;
+    const origDesc = campaign.description;
+    if (desc !== origDesc) body.description = desc;
+    const st = startAt ? new Date(startAt).toISOString() : null;
+    const origStart = campaign.start_at;
+    if (st !== origStart) body.start_at = st;
+    const et = endAt ? new Date(endAt).toISOString() : null;
+    const origEnd = campaign.end_at;
+    if (et !== origEnd) body.end_at = et;
+    if (timezone !== campaign.timezone) body.timezone = timezone;
+    const ba = budgetStr ? parseFloat(budgetStr) : null;
+    if (ba !== campaign.budget_limit_amount) body.budget_limit_amount = ba;
+    if (budgetCurrency !== campaign.budget_limit_currency)
+      body.budget_limit_currency = budgetCurrency;
+    const pr = parseInt(priority, 10) || 0;
+    if (pr !== campaign.priority) body.priority = pr;
+
+    if (Object.keys(body).length === 0) {
+      onCancel();
+      return;
+    }
+
+    try {
+      const updated = await api.patch<CampaignOut>(
+        `/campaigns/${campaign.id}`,
+        body,
+      );
+      onSaved(updated);
+    } catch (e: unknown) {
+      if (e instanceof ApiError) {
+        if (e.status === 409)
+          setError("Кампания не в черновике или не найдена");
+        else if (e.status === 403)
+          setError("Нет прав на редактирование");
+        else setError(e.message || "Ошибка сохранения");
+      } else {
+        setError("Неизвестная ошибка");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const ef: React.CSSProperties = {
+    width: "100%",
+    padding: "0.4rem",
+    border: "1px solid #cbd5e1",
+    borderRadius: 6,
+    fontSize: "0.85rem",
+    boxSizing: "border-box",
+  };
+
+  return (
+    <div
+      style={{
+        background: "#fefce8",
+        border: "1px solid #fde047",
+        borderRadius: 8,
+        padding: "1rem",
+        marginBottom: "1rem",
+      }}
+    >
+      <h3 style={{ fontSize: "0.95rem", fontWeight: 600, margin: "0 0 0.75rem" }}>
+        Редактирование черновика
+      </h3>
+      <form onSubmit={handleSave}>
+        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: "0.75rem", color: "#475569" }}>Название</label>
+            <input style={ef} value={name} onChange={(e) => setName(e.target.value)} maxLength={255} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: "0.75rem", color: "#475569" }}>Код</label>
+            <input style={ef} value={code} onChange={(e) => setCode(e.target.value)} maxLength={64} />
+          </div>
+        </div>
+        <div style={{ marginBottom: "0.5rem" }}>
+          <label style={{ fontSize: "0.75rem", color: "#475569" }}>Описание</label>
+          <textarea
+            style={{ ...ef, minHeight: 50, resize: "vertical" }}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={2}
+          />
+        </div>
+        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: "0.75rem", color: "#475569" }}>Начало</label>
+            <input style={ef} type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: "0.75rem", color: "#475569" }}>Окончание</label>
+            <input style={ef} type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} />
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: "0.75rem", color: "#475569" }}>Бюджет</label>
+            <input style={ef} type="number" min="0" step="0.01" value={budgetStr} onChange={(e) => setBudgetStr(e.target.value)} />
+          </div>
+          <div style={{ width: 80 }}>
+            <label style={{ fontSize: "0.75rem", color: "#475569" }}>Вал.</label>
+            <select style={ef} value={budgetCurrency} onChange={(e) => setBudgetCurrency(e.target.value)}>
+              <option value="RUB">RUB</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+            </select>
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: "0.75rem", color: "#475569" }}>Приоритет</label>
+            <input style={ef} type="number" min="0" value={priority} onChange={(e) => setPriority(e.target.value)} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: "0.75rem", color: "#475569" }}>Часовой пояс</label>
+            <input style={ef} value={timezone} onChange={(e) => setTimezone(e.target.value)} />
+          </div>
+        </div>
+        {error && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginBottom: "0.5rem" }}>{error}</div>}
+        <button type="submit" style={{ padding: "0.4rem 1rem", background: "#1e293b", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: "0.85rem" }} disabled={saving}>
+          {saving ? "Сохранение..." : "Сохранить"}
+        </button>
+        <button type="button" onClick={onCancel} style={{ padding: "0.4rem 1rem", background: "transparent", color: "#475569", border: "1px solid #cbd5e1", borderRadius: 6, cursor: "pointer", fontSize: "0.85rem", marginLeft: "0.5rem" }}>
+          Отмена
+        </button>
+      </form>
+    </div>
+  );
+}

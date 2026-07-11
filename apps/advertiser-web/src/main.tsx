@@ -9,6 +9,7 @@ import CampaignListPage from "./pages/CampaignListPage";
 import CampaignDetailPage from "./pages/CampaignDetailPage";
 import CreativeLibraryPage from "./pages/CreativeLibraryPage";
 import ProfilePage from "./pages/ProfilePage";
+import CampaignCreatePage from "./pages/CampaignCreatePage";
 
 const router = createBrowserRouter([
   {
@@ -25,6 +26,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/campaigns" replace /> },
       { path: "campaigns", element: <CampaignListPage /> },
+      { path: "campaigns/new", element: <CampaignCreatePage /> },
       { path: "campaigns/:id", element: <CampaignDetailPage /> },
       { path: "creatives", element: <CreativeLibraryPage /> },
       { path: "profile", element: <ProfilePage /> },
