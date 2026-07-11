@@ -9,6 +9,9 @@ import type {
   CreativeAssetOut,
   CampaignApprovalOut,
   CampaignStatusHistoryOut,
+  CampaignPopSummaryOut,
+  CampaignPopByDayOut,
+  CampaignPopBySurfaceOut,
 } from "../api/types";
 import { statusLabel, statusColor } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
@@ -409,6 +412,10 @@ export default function CampaignDetailPage() {
           </div>
         )}
       </Section>
+
+      {/* ── PoP Reporting ── */}
+      <PoPReportingSection campaignId={campaign.id} />
+
     </div>
   );
 }
@@ -449,6 +456,178 @@ function EmptyState({ text }: { text: string }) {
       <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.875rem" }}>
         {text}
       </p>
+    </div>
+  );
+}
+
+// ── PoP Reporting Section ──
+
+function fmtDuration(ms: number): string {
+  const sec = Math.floor(ms / 1000);
+  if (sec < 60) return `${sec} сек`;
+  const min = Math.floor(sec / 60);
+  const secRem = sec % 60;
+  if (min < 60) return `${min} мин ${secRem} сек`;
+  const hrs = Math.floor(min / 60);
+  const minRem = min % 60;
+  return `${hrs} ч ${minRem} мин`;
+}
+
+function fmtPopDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("ru-RU", {
+    day: "numeric", month: "short",
+  });
+}
+
+function PoPReportingSection({ campaignId }: { campaignId: string }) {
+  const [summary, setSummary] = useState<CampaignPopSummaryOut | null>(null);
+  const [byDay, setByDay] = useState<CampaignPopByDayOut[]>([]);
+  const [bySurface, setBySurface] = useState<CampaignPopBySurfaceOut[]>([]);
+  const [popLoading, setPopLoading] = useState(true);
+  const [popError, setPopError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const [sum, day, surf] = await Promise.all([
+          api.get<CampaignPopSummaryOut>(`/campaigns/${campaignId}/pop/summary`),
+          api.get<CampaignPopByDayOut[]>(`/campaigns/${campaignId}/pop/by-day`),
+          api.get<CampaignPopBySurfaceOut[]>(`/campaigns/${campaignId}/pop/by-surface`),
+        ]);
+        if (cancelled) return;
+        setSummary(sum);
+        setByDay(day);
+        setBySurface(surf);
+      } catch (e: unknown) {
+        if (cancelled) return;
+        if (e instanceof ApiError && (e.status === 403 || e.status === 404)) {
+          setPopError("Нет доступа к отчётности");
+          return;
+        }
+        setPopError(e instanceof Error ? e.message : "Ошибка загрузки отчётности");
+      } finally {
+        if (!cancelled) setPopLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [campaignId]);
+
+  if (popLoading) {
+    return (
+      <Section title="Отчётность">
+        <p style={{ color: "#64748b", fontSize: "0.85rem" }}>
+          Загрузка отчётности...
+        </p>
+      </Section>
+    );
+  }
+
+  if (popError) {
+    return (
+      <Section title="Отчётность">
+        <div style={styles.emptyBox}>
+          <p style={{ margin: 0, color: "#94a3b8", fontSize: "0.875rem" }}>
+            {popError}
+          </p>
+        </div>
+      </Section>
+    );
+  }
+
+  const isEmpty =
+    (!summary || summary.impressions_count === 0) &&
+    byDay.length === 0 &&
+    bySurface.length === 0;
+
+  if (isEmpty) {
+    return (
+      <Section title="Отчётность">
+        <EmptyState text="Пока нет подтверждённых показов" />
+      </Section>
+    );
+  }
+
+  return (
+    <Section title="Отчётность">
+      <p style={{
+        margin: "0 0 0.75rem", fontSize: "0.8rem", color: "#64748b",
+        lineHeight: 1.4,
+      }}>
+        Подтверждённые показы (PoP) — фактические воспроизведения,
+        зафиксированные устройствами. Не является отчётом по продажам
+        или атрибуции.
+      </p>
+
+      {/* Summary cards */}
+      {summary && (
+        <div style={styles.popCards}>
+          <PopCard label="Показов" value={summary.impressions_count.toLocaleString("ru-RU")} />
+          <PopCard label="Время" value={fmtDuration(summary.total_duration_ms)} />
+          <PopCard label="Устройств" value={String(summary.unique_devices)} />
+          <PopCard label="Поверхностей" value={String(summary.unique_surfaces)} />
+        </div>
+      )}
+
+      {/* By-day table */}
+      {byDay.length > 0 && (
+        <div style={{ marginBottom: "1rem" }}>
+          <h4 style={styles.subheading}>По дням</h4>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Дата</th>
+                <th style={styles.th}>Показов</th>
+                <th style={styles.th}>Длительность</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byDay.map((d, i) => (
+                <tr key={d.date || i} style={styles.row}>
+                  <td style={styles.td}>{fmtPopDate(d.date)}</td>
+                  <td style={styles.td}>{d.impressions_count.toLocaleString("ru-RU")}</td>
+                  <td style={styles.td}>{fmtDuration(d.total_duration_ms)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* By-surface table */}
+      {bySurface.length > 0 && (
+        <div>
+          <h4 style={styles.subheading}>По поверхностям</h4>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>Поверхность</th>
+                <th style={styles.th}>Показов</th>
+                <th style={styles.th}>Длительность</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bySurface.map((s, i) => (
+                <tr key={s.surface_id || i} style={styles.row}>
+                  <td style={styles.td}>{s.surface_id}</td>
+                  <td style={styles.td}>{s.impressions_count.toLocaleString("ru-RU")}</td>
+                  <td style={styles.td}>{fmtDuration(s.total_duration_ms)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Section>
+  );
+}
+
+function PopCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={styles.popCard}>
+      <div style={styles.popCardValue}>{value}</div>
+      <div style={styles.popCardLabel}>{label}</div>
     </div>
   );
 }
@@ -579,5 +758,30 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 6,
     padding: "1.5rem",
     textAlign: "center" as const,
+  },
+  popCards: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: "0.75rem",
+    marginBottom: "1.25rem",
+  },
+  popCard: {
+    background: "#f0f9ff",
+    border: "1px solid #bae6fd",
+    borderRadius: 6,
+    padding: "0.75rem",
+    textAlign: "center" as const,
+  },
+  popCardValue: {
+    fontSize: "1.25rem",
+    fontWeight: 700,
+    color: "#0369a1",
+  },
+  popCardLabel: {
+    fontSize: "0.7rem",
+    color: "#64748b",
+    marginTop: "0.25rem",
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.05em",
   },
 };

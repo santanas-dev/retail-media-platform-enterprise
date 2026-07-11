@@ -31,6 +31,16 @@ const ccLink = { id: "cc1", campaign_id: "c1", creative_asset_id: "ca1", sort_or
 const asset = { id: "ca1", advertiser_organization_id: "o1", code: "CR-1", name: "Баннер", media_type: "image/png", sha256_checksum: "abc", file_size_bytes: 1000, duration_ms: null, resolution_w: 100, resolution_h: 100, status: "ready", moderation_status: "approved", created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" };
 const approval = { id: "a1", campaign_id: "c1", requested_by: "u1", requested_at: "2025-01-01T00:00:00Z", reviewed_by: "u2", reviewed_at: "2025-01-02T00:00:00Z", decision: "approved", rejection_reason: null, created_at: "2025-01-01T00:00:00Z" };
 
+const popSummary = { campaign_id: "c1", impressions_count: 1500, total_duration_ms: 45000, first_rendered_at: "2025-01-01T08:00:00Z", last_rendered_at: "2025-01-05T20:00:00Z", unique_devices: 3, unique_surfaces: 2 };
+const popByDay = [
+  { date: "2025-01-01", impressions_count: 300, total_duration_ms: 9000 },
+  { date: "2025-01-02", impressions_count: 500, total_duration_ms: 15000 },
+];
+const popBySurface = [
+  { surface_id: "surface-01", impressions_count: 900, total_duration_ms: 27000 },
+  { surface_id: "surface-02", impressions_count: 600, total_duration_ms: 18000 },
+];
+
 function setupFull() {
   mockGet.mockImplementation((path: string) => {
     const m: Record<string, unknown> = {
@@ -38,6 +48,9 @@ function setupFull() {
       "/campaign-placements": [placement], "/campaign-creatives": [ccLink],
       "/creative-assets": [asset], "/campaign-approvals": [approval],
       "/campaign-status-history": [],
+      "/campaigns/c1/pop/summary": popSummary,
+      "/campaigns/c1/pop/by-day": popByDay,
+      "/campaigns/c1/pop/by-surface": popBySurface,
     };
     return m[path] ? Promise.resolve(m[path]) : Promise.resolve([]);
   });
@@ -98,6 +111,65 @@ describe("CampaignDetailPage", () => {
     mockGet.mockRejectedValue(makeApiError(403));
     renderPage();
     await screen.findByText("Кампания не найдена или недоступна", {}, { timeout: 3000 });
+    expect(document.body.textContent).not.toMatch(/storage_bucket|storage_key|presigned_url/i);
+  });
+
+  // ── PoP Reporting tests ──
+
+  it("shows PoP summary cards", async () => {
+    setupFull();
+    renderPage();
+    await screen.findByText("Отчётность", {}, { timeout: 3000 });
+    // Wait for summary data — "1 500" formatted with locale
+    await waitFor(() => {
+      expect(document.body.textContent).toMatch(/1.?500/);
+    }, { timeout: 3000 });
+  });
+
+  it("shows PoP by-day table", async () => {
+    setupFull();
+    renderPage();
+    await screen.findByText("По дням", {}, { timeout: 3000 });
+  });
+
+  it("shows PoP by-surface table", async () => {
+    setupFull();
+    renderPage();
+    await screen.findByText("По поверхностям", {}, { timeout: 3000 });
+    expect(screen.getByText("surface-01")).toBeInTheDocument();
+  });
+
+  it("shows empty state when no PoP data", async () => {
+    mockGet.mockImplementation((path: string) => {
+      const m: Record<string, unknown> = {
+        "/campaigns": [camp], "/campaign-flights": [],
+        "/campaign-placements": [], "/campaign-creatives": [],
+        "/creative-assets": [], "/campaign-approvals": [],
+        "/campaign-status-history": [],
+        "/campaigns/c1/pop/summary": { ...popSummary, impressions_count: 0 },
+        "/campaigns/c1/pop/by-day": [],
+        "/campaigns/c1/pop/by-surface": [],
+      };
+      return m[path] ? Promise.resolve(m[path]) : Promise.resolve([]);
+    });
+    renderPage();
+    await screen.findByText("Пока нет подтверждённых показов", {}, { timeout: 3000 });
+  });
+
+  it("has no sales lift/attribution wording", async () => {
+    setupFull();
+    renderPage();
+    // Wait for PoP section to load fully
+    await screen.findByText("По дням", {}, { timeout: 3000 });
+    const body = document.body.textContent ?? "";
+    expect(body).not.toMatch(/sales.lift|роста продаж|воронк/i);
+    expect(body).toMatch(/не является отчётом по продажам/i); // disclaimer IS present
+  });
+
+  it("no storage fields in PoP section", async () => {
+    setupFull();
+    renderPage();
+    await screen.findByText("По дням", {}, { timeout: 3000 });
     expect(document.body.textContent).not.toMatch(/storage_bucket|storage_key|presigned_url/i);
   });
 });
