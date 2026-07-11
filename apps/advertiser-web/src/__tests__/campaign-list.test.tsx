@@ -25,7 +25,7 @@ vi.mock("../api/client", () => ({
   },
   setToken: vi.fn(),
   onUnauthorized: vi.fn(),
-  ApiError: class MockApiError extends Error {
+  ApiError: class extends Error {
     status: number;
     constructor(status: number, body?: unknown) {
       super(
@@ -38,6 +38,17 @@ vi.mock("../api/client", () => ({
     }
   },
 }));
+
+// Dynamic import to get the mocked ApiError (vi.mock hoists, import resolves to mock)
+let _ApiError: typeof Error & { new (status: number, body?: unknown): Error & { status: number } };
+beforeAll(async () => {
+  const mod = await import("../api/client");
+  _ApiError = mod.ApiError as any;
+});
+
+function makeApiError(status: number): Error & { status: number } {
+  return new _ApiError(status) as Error & { status: number };
+}
 
 function renderCampaignList() {
   // Set up an authenticated session
@@ -133,14 +144,7 @@ describe("Campaign list — data rendering", () => {
   });
 
   it("403 shows access error", async () => {
-    const err = new (class extends Error {
-      status = 403;
-      constructor() {
-        super("HTTP 403");
-        this.name = "ApiError";
-      }
-    })();
-    mockGet.mockRejectedValue(err);
+    mockGet.mockRejectedValue(makeApiError(403));
 
     renderCampaignList();
 
@@ -152,14 +156,7 @@ describe("Campaign list — data rendering", () => {
   });
 
   it("401 clears session", async () => {
-    const err = new (class extends Error {
-      status = 401;
-      constructor() {
-        super("HTTP 401");
-        this.name = "ApiError";
-      }
-    })();
-    mockGet.mockRejectedValue(err);
+    mockGet.mockRejectedValue(makeApiError(401));
 
     renderCampaignList();
 

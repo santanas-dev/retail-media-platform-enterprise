@@ -211,3 +211,73 @@ describe("Auth — 401 handling", () => {
     expect(localStorage.getItem("rmp_access_token")).toBeNull();
   });
 });
+
+describe("ProtectedRoute — permission guard", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+  });
+
+  it("local_advertiser with campaigns.read is allowed", async () => {
+    localStorage.setItem("rmp_access_token", "valid-token");
+    localStorage.setItem("rmp_auth_provider", "local_advertiser");
+
+    mockGetMe.mockResolvedValue({
+      sub: "u1",
+      auth_provider: "local_advertiser",
+      username: "advertiser1",
+      display_name: "Рекламодатель 1",
+      permissions: ["campaigns.read", "campaigns.manage", "creatives.read"],
+    });
+
+    const { default: ProtectedRoute } = await import("../components/ProtectedRoute");
+
+    render(
+      <MemoryRouter initialEntries={["/campaigns"]}>
+        <AuthProvider>
+          <ProtectedRoute>
+            <div data-testid="child">content</div>
+          </ProtectedRoute>
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("child")).toBeInTheDocument();
+    });
+  });
+
+  it("local_advertiser without campaigns.read is blocked", async () => {
+    localStorage.setItem("rmp_access_token", "valid-token");
+    localStorage.setItem("rmp_auth_provider", "local_advertiser");
+
+    mockGetMe.mockResolvedValue({
+      sub: "u1",
+      auth_provider: "local_advertiser",
+      username: "advertiser1",
+      display_name: "Рекламодатель 1",
+      permissions: ["creatives.read"],
+    });
+
+    const { default: ProtectedRoute } = await import("../components/ProtectedRoute");
+
+    render(
+      <MemoryRouter initialEntries={["/campaigns"]}>
+        <AuthProvider>
+          <ProtectedRoute>
+            <div data-testid="child">content</div>
+          </ProtectedRoute>
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Нет прав на просмотр кампаний"),
+      ).toBeInTheDocument();
+    });
+
+    // Child should NOT render
+    expect(screen.queryByTestId("child")).toBeNull();
+  });
+});

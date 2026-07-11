@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "../api/client";
+import { api, ApiError } from "../api/client";
 import type { CampaignOut } from "../api/types";
 import { statusLabel, statusColor } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
@@ -20,11 +20,11 @@ export default function CampaignListPage() {
         setCampaigns(camps);
       } catch (e: unknown) {
         if (cancelled) return;
-        if (e instanceof Error && e.message.includes("HTTP 401")) {
+        if (e instanceof ApiError && e.status === 401) {
           logout();
           return;
         }
-        if (e instanceof Error && e.message.includes("HTTP 403")) {
+        if (e instanceof ApiError && e.status === 403) {
           setError("Нет прав на просмотр кампаний");
           return;
         }
