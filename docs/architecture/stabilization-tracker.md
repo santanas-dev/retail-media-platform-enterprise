@@ -84,11 +84,11 @@ Separately covered:
 | Gap | Status |
 |-----|--------|
 | Real KSO player/sidecar | Out of scope for v0.3, next release |
-| Advertiser campaign create/edit from portal | Not implemented — S-023e next |
-| Attach existing creative to campaign (advertiser portal) | Not implemented |
-| Submit/request approval from advertiser portal | Not implemented |
-| Advertiser organization/profile page | Not implemented |
-| Password change / must_change_password flow | Not implemented |
+| Campaign create/edit draft flow | ✅ done — S-023f |
+| Attach existing creative to campaign (advertiser portal) | Not implemented — S-023g next |
+| Submit/request approval from advertiser portal | Not implemented — S-023g next |
+| Advertiser organization/profile page | ✅ done — S-023e |
+| Password change / must_change_password flow | ✅ done — S-023e |
 | Production UX polish / accessibility review | Deferred |
 | Production manifest signing (real HMAC) | S-021 implemented (HMAC-SHA256). S-021a production-hardened. Device-gateway verification deferred. |
 | Tenant model ADR before v2.6 | 🟡 Decision needed / proposed — ADR-018 created. P0 before any v2.6 implementation. |

@@ -69,6 +69,11 @@ export default function CampaignDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [showAttachModal, setShowAttachModal] = useState(false);
+  const [attachingAssetId, setAttachingAssetId] = useState<string | null>(null);
+  const [attachError, setAttachError] = useState("");
+  const [submittingApproval, setSubmittingApproval] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -121,6 +126,58 @@ export default function CampaignDetailPage() {
       cancelled = true;
     };
   }, [campaignId, logout]);
+
+  // ── Attach creative handler ──
+  async function handleAttachCreative(assetId: string) {
+    setAttachingAssetId(assetId);
+    setAttachError("");
+    try {
+      await api.post(`/campaigns/${campaignId}/creatives/attach`, {
+        creative_asset_id: assetId,
+        sort_order: ccLinks.length,
+      });
+      // Refresh creatives list
+      const freshLinks = await api.get<CampaignCreativeOut[]>(
+        `/campaign-creatives?campaign_id=${campaignId}`,
+      );
+      setCcLinks(Array.isArray(freshLinks) ? freshLinks.filter((cc: CampaignCreativeOut) => cc.campaign_id === campaignId) : []);
+      setShowAttachModal(false);
+    } catch (e: unknown) {
+      if (e instanceof ApiError) {
+        if (e.status === 409) setAttachError("Креатив уже привязан или кампания не в черновике");
+        else if (e.status === 422) setAttachError("Некорректные данные. Проверьте статус креатива.");
+        else if (e.status === 403) setAttachError("Нет прав на привязку креатива");
+        else setAttachError(e.message);
+      } else {
+        setAttachError("Неизвестная ошибка");
+      }
+    } finally {
+      setAttachingAssetId(null);
+    }
+  }
+
+  // ── Submit approval handler ──
+  async function handleSubmitApproval() {
+    setSubmittingApproval(true);
+    setSubmitError("");
+    try {
+      const result = await api.post<{ message: string; campaign_id: string; old_status: string; new_status: string }>(
+        `/campaigns/${campaignId}/request-approval`,
+      );
+      setCampaign((prev) => prev ? { ...prev, status: result.new_status } : prev);
+    } catch (e: unknown) {
+      if (e instanceof ApiError) {
+        if (e.status === 422) setSubmitError("Кампания не готова к отправке. Проверьте флайты, размещения и креативы.");
+        else if (e.status === 403) setSubmitError("Нет прав на отправку кампании");
+        else if (e.status === 409) setSubmitError("Кампания уже не в черновике");
+        else setSubmitError(e.message);
+      } else {
+        setSubmitError("Неизвестная ошибка");
+      }
+    } finally {
+      setSubmittingApproval(false);
+    }
+  }
 
   // ── Render states ──
 
@@ -209,6 +266,36 @@ export default function CampaignDetailPage() {
           </button>
         )}
       </div>
+
+      {/* ── Readiness panel + submit (draft only) ── */}
+      {campaign.status === "draft" && !editing && (
+        <ReadinessPanel
+          flightsCount={flights.length}
+          placementsCount={placements.length}
+          attachedCreativesCount={ccLinks.length}
+          attachedReadyCount={ccLinks.filter(
+            (cc) => assetById.get(cc.creative_asset_id)?.status === "ready",
+          ).length}
+          onSubmit={handleSubmitApproval}
+          submitting={submittingApproval}
+          error={submitError}
+        />
+      )}
+
+      {/* ── Non-draft status message ── */}
+      {campaign.status !== "draft" && campaign.status !== "archived" && (
+        <div style={{
+          background: "#f0f9ff",
+          border: "1px solid #bae6fd",
+          borderRadius: 8,
+          padding: "0.75rem 1rem",
+          marginBottom: "1rem",
+          fontSize: "0.85rem",
+          color: "#0369a1",
+        }}>
+          Изменения доступны только в черновике. Кампания на рассмотрении или опубликована.
+        </div>
+      )}
 
       {/* ── Edit form (draft only) ── */}
       {editing && (
@@ -356,6 +443,25 @@ export default function CampaignDetailPage() {
             </tbody>
           </table>
         )}
+        {campaign.status === "draft" && !editing && (
+          <div style={{ marginTop: "0.75rem" }}>
+            <button
+              type="button"
+              onClick={() => { setAttachError(""); setShowAttachModal(true); }}
+              style={{
+                padding: "0.4rem 0.8rem",
+                background: "#1e293b",
+                color: "#fff",
+                border: "none",
+                borderRadius: 6,
+                cursor: "pointer",
+                fontSize: "0.8rem",
+              }}
+            >
+              + Прикрепить креатив
+            </button>
+          </div>
+        )}
       </Section>
 
       <Section title="Согласование">
@@ -445,6 +551,18 @@ export default function CampaignDetailPage() {
 
       {/* ── PoP Reporting (S-023d) ── */}
       <PoPReportingSection campaignId={campaign.id} />
+
+      {/* ── Attach Creative Modal ── */}
+      {showAttachModal && (
+        <AttachCreativeModal
+          assets={creativeAssets}
+          alreadyAttachedIds={new Set(ccLinks.map((cc) => cc.creative_asset_id))}
+          onAttach={handleAttachCreative}
+          onClose={() => setShowAttachModal(false)}
+          attachingId={attachingAssetId}
+          error={attachError}
+        />
+      )}
 
     </div>
   );
@@ -980,6 +1098,232 @@ function EditCampaignForm({
           Отмена
         </button>
       </form>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// Internal: ReadinessPanel (draft submit approval readiness)
+// ═══════════════════════════════════════════════
+
+function ReadinessPanel({
+  flightsCount,
+  placementsCount,
+  attachedCreativesCount,
+  attachedReadyCount,
+  onSubmit,
+  submitting,
+  error,
+}: {
+  flightsCount: number;
+  placementsCount: number;
+  attachedCreativesCount: number;
+  attachedReadyCount: number;
+  onSubmit: () => void;
+  submitting: boolean;
+  error: string;
+}) {
+  const readyChecks = [
+    { label: "Минимум один флайт", ok: flightsCount > 0 },
+    { label: "Минимум одно размещение", ok: placementsCount > 0 },
+    { label: "Минимум один привязанный креатив", ok: attachedCreativesCount > 0 },
+    { label: "Все креативы загружены (ready)", ok: attachedCreativesCount > 0 && attachedReadyCount === attachedCreativesCount },
+  ];
+  const allReady = readyChecks.every((r) => r.ok);
+
+  return (
+    <div
+      style={{
+        background: allReady ? "#f0fdf4" : "#fffbeb",
+        border: `1px solid ${allReady ? "#bbf7d0" : "#fde047"}`,
+        borderRadius: 8,
+        padding: "1rem",
+        marginBottom: "1rem",
+      }}
+    >
+      <h4 style={{ fontSize: "0.85rem", fontWeight: 600, margin: "0 0 0.5rem", color: "#1e293b" }}>
+        Готовность к отправке
+      </h4>
+      <ul style={{ margin: "0 0 0.75rem", paddingLeft: "1.25rem", fontSize: "0.8rem", color: "#475569", listStyle: "none" }}>
+        {readyChecks.map((r) => (
+          <li key={r.label} style={{ marginBottom: "0.2rem" }}>
+            <span style={{ marginRight: "0.4rem" }}>{r.ok ? "✅" : "❌"}</span>
+            {r.label}
+          </li>
+        ))}
+      </ul>
+      {error && (
+        <div style={{ color: "#dc2626", fontSize: "0.8rem", marginBottom: "0.5rem" }}>
+          {error}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={onSubmit}
+        disabled={!allReady || submitting}
+        style={{
+          padding: "0.45rem 1rem",
+          background: allReady ? "#059669" : "#94a3b8",
+          color: "#fff",
+          border: "none",
+          borderRadius: 6,
+          cursor: allReady ? "pointer" : "not-allowed",
+          fontSize: "0.85rem",
+          fontWeight: 500,
+        }}
+      >
+        {submitting ? "Отправка..." : allReady ? "Отправить на согласование" : "Заполните все условия"}
+      </button>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
+// Internal: AttachCreativeModal
+// ═══════════════════════════════════════════════
+
+function AttachCreativeModal({
+  assets,
+  alreadyAttachedIds,
+  onAttach,
+  onClose,
+  attachingId,
+  error,
+}: {
+  assets: CreativeAssetOut[];
+  alreadyAttachedIds: Set<string>;
+  onAttach: (assetId: string) => void;
+  onClose: () => void;
+  attachingId: string | null;
+  error: string;
+}) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.4)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        style={{
+          background: "#fff",
+          borderRadius: 8,
+          padding: "1.5rem",
+          maxWidth: 560,
+          width: "90%",
+          maxHeight: "70vh",
+          overflowY: "auto",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
+        }}
+      >
+        <h3 style={{ fontSize: "1rem", fontWeight: 600, margin: "0 0 1rem" }}>
+          Выберите креатив
+        </h3>
+
+        {error && (
+          <div style={{ color: "#dc2626", fontSize: "0.8rem", marginBottom: "0.75rem", padding: "0.5rem", background: "#fef2f2", borderRadius: 4 }}>
+            {error}
+          </div>
+        )}
+
+        {assets.length === 0 ? (
+          <p style={{ color: "#94a3b8", fontSize: "0.85rem" }}>
+            Нет доступных креативов. Загрузите креатив в библиотеке.
+          </p>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left", padding: "0.4rem 0.5rem", borderBottom: "1px solid #e2e8f0", color: "#64748b", fontWeight: 600 }}>Название</th>
+                <th style={{ textAlign: "left", padding: "0.4rem 0.5rem", borderBottom: "1px solid #e2e8f0", color: "#64748b", fontWeight: 600 }}>Тип</th>
+                <th style={{ textAlign: "left", padding: "0.4rem 0.5rem", borderBottom: "1px solid #e2e8f0", color: "#64748b", fontWeight: 600 }}>Статус</th>
+                <th style={{ textAlign: "center", padding: "0.4rem 0.5rem", borderBottom: "1px solid #e2e8f0", color: "#64748b", fontWeight: 600 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {assets.map((asset) => {
+                const isAttached = alreadyAttachedIds.has(asset.id);
+                const isReady = asset.status === "ready";
+                const isMetadata = asset.status === "metadata_only";
+                return (
+                  <tr key={asset.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <td style={{ padding: "0.4rem 0.5rem" }}>
+                      {asset.name}
+                      {isAttached && (
+                        <span style={{ fontSize: "0.7rem", color: "#64748b", marginLeft: "0.3rem" }}>
+                          (уже привязан)
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ padding: "0.4rem 0.5rem", color: "#64748b" }}>
+                      {asset.media_type}
+                    </td>
+                    <td style={{ padding: "0.4rem 0.5rem" }}>
+                      {isReady ? (
+                        <span style={{ ...styles.smallBadge, background: "#059669" }}>Готов</span>
+                      ) : isMetadata ? (
+                        <span style={{ ...styles.smallBadge, background: "#d97706" }}>Ожидает загрузки</span>
+                      ) : (
+                        <span style={{ ...styles.smallBadge, background: "#64748b" }}>{statusLabel(asset.status)}</span>
+                      )}
+                    </td>
+                    <td style={{ padding: "0.4rem 0.5rem", textAlign: "center" }}>
+                      {isAttached ? (
+                        <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>✓</span>
+                      ) : isMetadata ? (
+                        <span style={{ fontSize: "0.75rem", color: "#d97706" }}>
+                          Загрузите файл
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => onAttach(asset.id)}
+                          disabled={attachingId === asset.id}
+                          style={{
+                            padding: "0.25rem 0.6rem",
+                            background: "#1e293b",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: 4,
+                            cursor: "pointer",
+                            fontSize: "0.75rem",
+                          }}
+                        >
+                          {attachingId === asset.id ? "..." : "Прикрепить"}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+
+        <div style={{ marginTop: "1rem", textAlign: "right" }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: "0.4rem 0.8rem",
+              background: "transparent",
+              color: "#475569",
+              border: "1px solid #cbd5e1",
+              borderRadius: 6,
+              cursor: "pointer",
+              fontSize: "0.8rem",
+            }}
+          >
+            Закрыть
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

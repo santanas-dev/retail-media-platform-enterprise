@@ -1,17 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
 import CampaignDetailPage from "../pages/CampaignDetailPage";
 
 const mockGet = vi.fn();
+const mockPost = vi.fn();
 
 vi.mock("../api/client", () => ({
   api: {
     get: (...args: unknown[]) => mockGet(...args),
     login: vi.fn(), logout: vi.fn().mockResolvedValue(undefined),
     getMe: vi.fn().mockResolvedValue({ sub: "u1", auth_provider: "local_advertiser", username: "a", display_name: "A" }),
-    post: vi.fn(), patch: vi.fn(), del: vi.fn(), refresh: vi.fn(),
+    post: (...args: unknown[]) => mockPost(...args), patch: vi.fn(), del: vi.fn(), refresh: vi.fn(),
   },
   setToken: vi.fn(), onUnauthorized: vi.fn(),
   ApiError: class extends Error { status: number; constructor(s: number) { super(`HTTP ${s}`); this.status = s; } },
@@ -213,5 +215,210 @@ describe("CampaignDetailPage — edit", () => {
     // Wait for page to load — campaign name appears in the header
     await waitFor(() => expect(screen.getByRole("heading", { name: "Тестовая кампания" })).toBeInTheDocument());
     expect(screen.queryByText("Редактировать")).toBeNull();
+  });
+});
+
+// ── Attach creative + submit approval ──
+
+describe("CampaignDetailPage — attach creative", () => {
+  const draftCamp = { ...camp, status: "draft" };
+  const activeCamp = { ...camp, status: "active" };
+  const readyAsset = { ...asset, id: "ca_ready", name: "Готовый баннер", status: "ready" };
+  const metaAsset = { ...asset, id: "ca_meta", name: "Незагруженный", status: "metadata_only" };
+
+  function setupDraft(assets = [readyAsset] as Array<typeof asset>) {
+    mockGet.mockImplementation((path: string) => {
+      const m: Record<string, unknown> = {
+        "/campaigns": [draftCamp], "/campaign-flights": [flight],
+        "/campaign-placements": [placement], "/campaign-creatives": [ccLink],
+        "/creative-assets": assets, "/campaign-approvals": [],
+        "/campaign-status-history": [],
+        [`/campaigns/${camp.id}/pop/summary`]: { ...popSummary },
+        [`/campaigns/${camp.id}/pop/by-day`]: popByDay,
+        [`/campaigns/${camp.id}/pop/by-surface`]: popBySurface,
+      };
+      return Promise.resolve(m[path] ?? []);
+    });
+    mockPost.mockResolvedValue({});
+  }
+
+  it("draft campaign shows attach creative button", async () => {
+    setupDraft();
+    renderPage();
+    await waitFor(() => screen.getByText("+ Прикрепить креатив"));
+  });
+
+  it("non-draft campaign does not show attach button", async () => {
+    mockGet.mockImplementation((path: string) => {
+      const m: Record<string, unknown> = {
+        "/campaigns": [activeCamp], "/campaign-flights": [],
+        "/campaign-placements": [], "/campaign-creatives": [],
+        "/creative-assets": [], "/campaign-approvals": [],
+        "/campaign-status-history": [],
+        [`/campaigns/${camp.id}/pop/summary`]: { ...popSummary, impressions_count: 0 },
+        [`/campaigns/${camp.id}/pop/by-day`]: [], [`/campaigns/${camp.id}/pop/by-surface`]: [],
+      };
+      return Promise.resolve(m[path] ?? []);
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Тестовая кампания" })).toBeInTheDocument());
+    expect(screen.queryByText("+ Прикрепить креатив")).toBeNull();
+  });
+
+  it("clicking attach opens modal with assets", async () => {
+    setupDraft([readyAsset, metaAsset]);
+    renderPage();
+    await waitFor(() => screen.getByText("+ Прикрепить креатив"));
+    await userEvent.click(screen.getByText("+ Прикрепить креатив"));
+    await waitFor(() => {
+      expect(screen.getByText("Выберите креатив")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Готовый баннер")).toBeInTheDocument();
+    expect(screen.getByText("Незагруженный")).toBeInTheDocument();
+  });
+
+  it("ready asset shows attach button, metadata_only shows warning", async () => {
+    setupDraft([readyAsset, metaAsset]);
+    renderPage();
+    await waitFor(() => screen.getByText("+ Прикрепить креатив"));
+    await userEvent.click(screen.getByText("+ Прикрепить креатив"));
+    await waitFor(() => screen.getByText("Выберите креатив"));
+    // metadata_only asset shows "Загрузите файл" instead of "Прикрепить"
+    expect(screen.getByText("Загрузите файл")).toBeInTheDocument();
+    // ready asset shows "Прикрепить" button
+    const attachBtns = screen.getAllByText("Прикрепить");
+    expect(attachBtns.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("attaching ready creative calls POST with correct payload", async () => {
+    setupDraft([readyAsset]);
+    renderPage();
+    await waitFor(() => screen.getByText("+ Прикрепить креатив"));
+    await userEvent.click(screen.getByText("+ Прикрепить креатив"));
+    await waitFor(() => screen.getByText("Выберите креатив"));
+    await userEvent.click(screen.getByText("Прикрепить"));
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith(
+        "/campaigns/c1/creatives/attach",
+        { creative_asset_id: "ca_ready", sort_order: expect.any(Number) },
+      );
+    });
+  });
+
+  it("no approve/reject buttons rendered", async () => {
+    setupDraft();
+    renderPage();
+    await screen.findByText("Отчётность", {}, { timeout: 3000 });
+    expect(screen.queryByText(/одобрить/i)).toBeNull();
+    expect(screen.queryByText(/отклонить/i)).toBeNull();
+    expect(screen.queryByText(/approve/i)).toBeNull();
+    expect(screen.queryByText(/reject/i)).toBeNull();
+  });
+});
+
+describe("CampaignDetailPage — submit approval", () => {
+  const draftCamp = { ...camp, status: "draft" };
+  const readyAsset = { ...asset, id: "ca_ready", name: "Баннер", status: "ready", advertiser_organization_id: "o1" };
+
+  function setupReady(overrides?: Partial<typeof draftCamp>) {
+    const c = { ...draftCamp, ...overrides };
+    mockGet.mockImplementation((path: string) => {
+      const m: Record<string, unknown> = {
+        "/campaigns": [c], "/campaign-flights": [flight],
+        "/campaign-placements": [placement],
+        "/campaign-creatives": [{ ...ccLink, creative_asset_id: "ca_ready" }],
+        "/creative-assets": [readyAsset], "/campaign-approvals": [],
+        "/campaign-status-history": [],
+        [`/campaigns/${camp.id}/pop/summary`]: { ...popSummary },
+        [`/campaigns/${camp.id}/pop/by-day`]: popByDay,
+        [`/campaigns/${camp.id}/pop/by-surface`]: popBySurface,
+      };
+      return Promise.resolve(m[path] ?? []);
+    });
+  }
+
+  it("readiness panel shows missing reasons when not ready", async () => {
+    // No flights, placements, creatives
+    const c = { ...draftCamp };
+    mockGet.mockImplementation((path: string) => {
+      const m: Record<string, unknown> = {
+        "/campaigns": [c], "/campaign-flights": [],
+        "/campaign-placements": [], "/campaign-creatives": [],
+        "/creative-assets": [], "/campaign-approvals": [],
+        "/campaign-status-history": [],
+        [`/campaigns/${camp.id}/pop/summary`]: { ...popSummary, impressions_count: 0 },
+        [`/campaigns/${camp.id}/pop/by-day`]: [], [`/campaigns/${camp.id}/pop/by-surface`]: [],
+      };
+      return Promise.resolve(m[path] ?? []);
+    });
+    renderPage();
+    await screen.findByText("Готовность к отправке", {}, { timeout: 3000 });
+    const crosses = screen.getAllByText("❌");
+    expect(crosses.length).toBeGreaterThanOrEqual(1); // at least one missing
+    expect(screen.getByText(/Заполните все условия/)).toBeInTheDocument();
+  });
+
+  it("readiness panel shows all ready when conditions met", async () => {
+    setupReady();
+    renderPage();
+    await screen.findByText("Готовность к отправке", {}, { timeout: 3000 });
+    await waitFor(() => {
+      expect(screen.getByText("Отправить на согласование")).toBeInTheDocument();
+    });
+    // All checks should be ✅
+    const checkmarks = document.body.textContent?.match(/✅/g) || [];
+    expect(checkmarks.length).toBe(4);
+  });
+
+  it("submit calls request-approval endpoint", async () => {
+    setupReady();
+    mockPost.mockResolvedValue({ message: "ok", campaign_id: "c1", old_status: "draft", new_status: "pending_approval" });
+    renderPage();
+    await screen.findByText("Отправить на согласование", {}, { timeout: 3000 });
+    await userEvent.click(screen.getByText("Отправить на согласование"));
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith("/campaigns/c1/request-approval");
+    });
+  });
+
+  it("submit 422 shows friendly error", async () => {
+    setupReady();
+    mockPost.mockRejectedValue(makeApiError(422));
+    renderPage();
+    await screen.findByText("Отправить на согласование", {}, { timeout: 3000 });
+    await userEvent.click(screen.getByText("Отправить на согласование"));
+    await waitFor(() => {
+      expect(screen.getByText(/Кампания не готова к отправке/)).toBeInTheDocument();
+    });
+  });
+
+  it("submit 409 shows friendly error", async () => {
+    setupReady();
+    mockPost.mockRejectedValue(makeApiError(409));
+    renderPage();
+    await screen.findByText("Отправить на согласование", {}, { timeout: 3000 });
+    await userEvent.click(screen.getByText("Отправить на согласование"));
+    await waitFor(() => {
+      expect(screen.getByText(/Кампания уже не в черновике/)).toBeInTheDocument();
+    });
+  });
+
+  it("submit 403 shows friendly error", async () => {
+    setupReady();
+    mockPost.mockRejectedValue(makeApiError(403));
+    renderPage();
+    await screen.findByText("Отправить на согласование", {}, { timeout: 3000 });
+    await userEvent.click(screen.getByText("Отправить на согласование"));
+    await waitFor(() => {
+      expect(screen.getByText("Нет прав на отправку кампании")).toBeInTheDocument();
+    });
+  });
+
+  it("no approve/reject buttons rendered in ready state", async () => {
+    setupReady();
+    renderPage();
+    await screen.findByText("Отправить на согласование", {}, { timeout: 3000 });
+    expect(screen.queryByText(/одобрить/i)).toBeNull();
+    expect(screen.queryByText(/отклонить/i)).toBeNull();
   });
 });
