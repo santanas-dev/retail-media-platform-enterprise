@@ -69,6 +69,7 @@ Separately covered:
 | S-023b | Advertiser Portal — Read-only Campaign Detail | P0 | ✅ done | P.S. (Hermes) | CampaignDetailPage: route /campaigns/:id, clickable list rows, 5 sections (Обзор, Флайты, Размещения, Креативы, Согласование). Data from 7 identity endpoints (list + client-side filter by campaign_id). Types fixed: CampaignApprovalOut (requested_by/at, reviewed_by/at, decision), CampaignStatusHistoryOut (old_status, changed_at, reason). No admin buttons, no storage secrets. Tests: 5 vitest (render, 7 API calls, 403/401, storage safety). Build passes. Advertiser-web CI covered (S-023a.1). | S-023c: creative library/upload |
 | S-023c | Advertiser Portal — Creative Library + Upload | P0 | ✅ done | P.S. (Hermes) | CreativeLibraryPage: table (name, type, size, status, moderation), create metadata-only (POST /creative-assets), upload flow (upload-intent → XHR PUT presigned no-Auth → complete-upload → refresh), progress bar. Route /creatives. Layout: Креативы nav. Types: CreativeAssetCreateRequest, UploadIntent*, CompleteUpload*. No storage_bucket/key/presigned_url in UI. Tests: 9 vitest (list, empty, 403, 401, no storage, upload button, create POST, upload-intent call, error). 26 total advertiser-web tests. Build passes. | S-023d: PoP reporting |
 | S-023f | Advertiser Portal — Campaign Create/Edit Draft Flow | P0 | ✅ done | P.S. (Hermes) | CampaignCreatePage: /campaigns/new with org/brand/contract selects, auto-code from name, validation, POST /campaigns. CampaignDetailPage: draft edit mode (inline EditCampaignForm), PATCH /campaigns/{id}. CampaignListPage: + «Создать» button. No backend changes. Tests: 6 create + 2 edit vitest (53 total). CI #29162245072 green (all 33 jobs including behavioural). | S-023g: attach creative + submit approval |
+| S-023g | Advertiser Portal — Attach Creative + Submit Approval | P0 | ✅ done | P.S. (Hermes) | CampaignDetailPage: «+ Прикрепить креатив» button (draft only), AttachCreativeModal with ready/metadata_only filtering, POST /campaigns/{id}/creatives/attach. ReadinessPanel: flights/placements/creatives checks + «Отправить на согласование» button (disabled until ready), POST /campaigns/{id}/request-approval. Non-draft: read-only message. No approve/reject buttons. Tests: 13 new vitest (66 total). CI #29162925840 green (all 33 jobs including behavioural). | S-024: v2.6 (already done) |
 | S-024 | v2.6 Next Branch Requirements Captured | P1 | ✅ done | P.S. (Hermes) | TZ v2.6 DOCX placed in `docs/product/requirements/`. ADR-018 (tenant model) proposed — P0 decision needed before v2.6 implementation. Roadmap updated with v2.6 rows. Release-versioning has Future branch section. No code changes. | Tenant model ADR accepted → implementation |
 
 ## Status Legend
@@ -85,8 +86,8 @@ Separately covered:
 |-----|--------|
 | Real KSO player/sidecar | Out of scope for v0.3, next release |
 | Campaign create/edit draft flow | ✅ done — S-023f |
-| Attach existing creative to campaign (advertiser portal) | Not implemented — S-023g next |
-| Submit/request approval from advertiser portal | Not implemented — S-023g next |
+| Attach existing creative to campaign (advertiser portal) | ✅ done — S-023g |
+| Submit/request approval from advertiser portal | ✅ done — S-023g |
 | Advertiser organization/profile page | ✅ done — S-023e |
 | Password change / must_change_password flow | ✅ done — S-023e |
 | Production UX polish / accessibility review | Deferred |
