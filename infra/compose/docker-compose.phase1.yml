@@ -205,6 +205,7 @@ services:
       NATS_URL: "nats://nats:4222"
       CAMPAIGN_CONSUMER_ENABLED: "true"
       NATS_AUTO_PROVISION: "true"
+      MANIFEST_SIGNING_KEY: "dev-manifest-signing-key-at-least-32-chars"
     ports:
       - "8003:8003"
     depends_on:

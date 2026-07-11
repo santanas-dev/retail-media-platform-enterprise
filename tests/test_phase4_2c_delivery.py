@@ -410,6 +410,28 @@ class TestManifestSignature(unittest.TestCase):
         # Empty key produces signature over empty key (valid HMAC, just not secure)
         self.assertTrue(len(sig) == 64)
 
+    def test_configured_key_produces_nonempty_signature(self):
+        """With MANIFEST_SIGNING_KEY configured, signature.value is non-empty."""
+        from packages.domain.delivery import (
+            generate_manifest_json, sign_manifest_payload,
+        )
+        key = "production-signing-key-at-least-32-chars"
+        m = generate_manifest_json(
+            manifest_id="m-signed",
+            manifest_version=1,
+            device_id="d1",
+            surface_ids=["sf1"],
+        )
+        sig = sign_manifest_payload(m, key)
+        m["signature"]["value"] = sig
+        self.assertNotEqual(m["signature"]["value"], "")
+        self.assertEqual(len(m["signature"]["value"]), 64)
+        # Round-trip: verify against tampered payload
+        from packages.domain.delivery import verify_manifest_signature
+        self.assertTrue(verify_manifest_signature(m, sig, key))
+        m["device_id"] = "tampered"
+        self.assertFalse(verify_manifest_signature(m, sig, key))
+
 
 if __name__ == "__main__":
     unittest.main()

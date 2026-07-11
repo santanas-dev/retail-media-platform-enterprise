@@ -94,6 +94,63 @@ class TestSecurityConfig(unittest.TestCase):
         self.assertNotIn("super-secret-value", r)
         self.assertIn("***", r)
 
+    # ── S-021a: manifest signing config ──
+
+    def test_production_requires_manifest_signing_key(self):
+        """Production without MANIFEST_SIGNING_KEY raises ValueError."""
+        os.environ["ENVIRONMENT"] = "production"
+        os.environ["JWT_SECRET"] = "a" * 32
+        os.environ["CORS_ALLOWED_ORIGINS"] = "https://example.com"
+        os.environ.pop("MANIFEST_SIGNING_KEY", None)
+        with self.assertRaises(ValueError) as ctx:
+            sec_config.SecurityConfig()
+        self.assertIn("MANIFEST_SIGNING_KEY", str(ctx.exception))
+
+    def test_production_rejects_short_manifest_key(self):
+        """Production rejects MANIFEST_SIGNING_KEY < 32 chars."""
+        os.environ["ENVIRONMENT"] = "production"
+        os.environ["JWT_SECRET"] = "a" * 32
+        os.environ["CORS_ALLOWED_ORIGINS"] = "https://example.com"
+        os.environ["MANIFEST_SIGNING_KEY"] = "short-key"
+        with self.assertRaises(ValueError) as ctx:
+            sec_config.SecurityConfig()
+        self.assertIn("at least 32", str(ctx.exception))
+
+    def test_production_rejects_weak_manifest_key(self):
+        """Production rejects common weak MANIFEST_SIGNING_KEY values."""
+        os.environ["ENVIRONMENT"] = "production"
+        os.environ["JWT_SECRET"] = "a" * 32
+        os.environ["CORS_ALLOWED_ORIGINS"] = "https://example.com"
+        os.environ["MANIFEST_SIGNING_KEY"] = "test"
+        with self.assertRaises(ValueError):
+            sec_config.SecurityConfig()
+
+    def test_production_accepts_strong_manifest_key(self):
+        """Production accepts MANIFEST_SIGNING_KEY >= 32 chars."""
+        os.environ["ENVIRONMENT"] = "production"
+        os.environ["JWT_SECRET"] = "a" * 32
+        os.environ["CORS_ALLOWED_ORIGINS"] = "https://example.com"
+        os.environ["MANIFEST_SIGNING_KEY"] = "b" * 32
+        cfg = sec_config.SecurityConfig()
+        self.assertFalse(cfg.dev_mode)
+        self.assertEqual(cfg.manifest_signing_key, "b" * 32)
+
+    def test_dev_allows_empty_manifest_key(self):
+        """Dev mode with no MANIFEST_SIGNING_KEY — empty key, no error."""
+        os.environ["ENVIRONMENT"] = "dev"
+        os.environ["JWT_SECRET"] = "test"
+        os.environ.pop("MANIFEST_SIGNING_KEY", None)
+        cfg = sec_config.SecurityConfig()
+        self.assertEqual(cfg.manifest_signing_key, "")
+
+    def test_dev_accepts_strong_manifest_key(self):
+        """Dev mode with strong MANIFEST_SIGNING_KEY loads correctly."""
+        os.environ["ENVIRONMENT"] = "dev"
+        os.environ["JWT_SECRET"] = "test"
+        os.environ["MANIFEST_SIGNING_KEY"] = "c" * 32
+        cfg = sec_config.SecurityConfig()
+        self.assertEqual(cfg.manifest_signing_key, "c" * 32)
+
     def test_default_values(self):
         """Default config values match ADR-006."""
         os.environ["ENVIRONMENT"] = "dev"

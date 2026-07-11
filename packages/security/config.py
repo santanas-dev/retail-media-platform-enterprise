@@ -159,6 +159,8 @@ class SecurityConfig:
                 "http://127.0.0.1:5173",
             ]
         self._validate_cors()
+        # S-021a: dev mode — allow empty manifest key, but warn if weak
+        self._validate_manifest_signing_dev()
 
     def _validate_production(self) -> None:
         """Production mode: require strong JWT secret, explicit CORS, and non-default MinIO credentials."""
@@ -179,6 +181,8 @@ class SecurityConfig:
         self._validate_cors()
         # S-017 P2: reject default MinIO credentials in production
         self._validate_minio_production()
+        # S-021a: require strong manifest signing key in production
+        self._validate_manifest_signing_production()
 
     def _validate_cors(self) -> None:
         """Validate CORS configuration — safe defaults, no wildcard+credentials."""
@@ -206,6 +210,44 @@ class SecurityConfig:
             raise ValueError(
                 "MINIO_SECRET_KEY must not be 'minioadmin' in production. "
                 "Set a strong secret key via MINIO_SECRET_KEY env var."
+            )
+
+    def _validate_manifest_signing_production(self) -> None:
+        """S-021a: manifest signing key is mandatory in production/staging.
+
+        Manifest integrity depends on HMAC signatures.  Without a strong key,
+        every manifest is delivered with an empty signature — indistinguishable
+        from tampered content.
+        """
+        if not self.manifest_signing_key:
+            raise ValueError(
+                "MANIFEST_SIGNING_KEY must be set in production/staging. "
+                "Generate a strong random key (≥32 chars) and set it via "
+                "MANIFEST_SIGNING_KEY env var."
+            )
+        if len(self.manifest_signing_key) < 32:
+            raise ValueError(
+                f"MANIFEST_SIGNING_KEY must be at least 32 characters in production "
+                f"(got {len(self.manifest_signing_key)})."
+            )
+        weak = {"secret", "changeme", "password", "test", "signing_key",
+                "manifest_signing_key", "manifest-key"}
+        if self.manifest_signing_key.lower().strip() in weak:
+            raise ValueError(
+                "MANIFEST_SIGNING_KEY must not be a common weak value in production."
+            )
+
+    def _validate_manifest_signing_dev(self) -> None:
+        """S-021a: dev mode — warn on weak key, allow empty (no signing)."""
+        if not self.manifest_signing_key:
+            # Empty key is fine in dev — manifests will have empty signature
+            return
+        if len(self.manifest_signing_key) < 16:
+            import warnings
+            warnings.warn(
+                f"MANIFEST_SIGNING_KEY is short ({len(self.manifest_signing_key)} chars). "
+                f"Signatures will still be generated but consider ≥32 chars.",
+                stacklevel=2,
             )
 
     def __repr__(self) -> str:
