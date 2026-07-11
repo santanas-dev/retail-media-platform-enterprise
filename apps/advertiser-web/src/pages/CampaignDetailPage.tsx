@@ -413,7 +413,7 @@ export default function CampaignDetailPage() {
         )}
       </Section>
 
-      {/* ── PoP Reporting ── */}
+      {/* ── PoP Reporting (S-023d) ── */}
       <PoPReportingSection campaignId={campaign.id} />
 
     </div>
