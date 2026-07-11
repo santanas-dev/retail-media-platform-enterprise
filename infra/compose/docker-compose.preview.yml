@@ -1,0 +1,29 @@
+# Retail Media Platform — Local LAN Preview Override
+#
+# Usage:
+#   docker compose \
+#     -f infra/compose/docker-compose.phase1.yml \
+#     -f infra/compose/docker-compose.preview.yml \
+#     up -d --build
+#
+# This file adds LAN-specific overrides for local preview on 192.168.110.77.
+# Do NOT merge into docker-compose.phase1.yml — that file stays production/pilot.
+#
+# Overrides:
+#   - Redis: external port 6380 (avoid conflict with host Redis on 6379)
+#   - CORS: allow 192.168.110.77:3000 (admin-web) and :3001 (advertiser-web)
+#   - db-setup: enable ENVIRONMENT=dev + SEED_DEV_CREDENTIALS for seed
+
+services:
+  redis:
+    ports:
+      - "6380:6379"
+
+  control-api:
+    environment:
+      CORS_ALLOWED_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://192.168.110.77:3000,http://192.168.110.77:3001"
+
+  db-setup:
+    environment:
+      ENVIRONMENT: dev
+      SEED_DEV_CREDENTIALS: "true"
