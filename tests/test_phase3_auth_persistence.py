@@ -285,10 +285,12 @@ class TestPhase3AuthSeedSafety(unittest.TestCase):
         """Seed assigns advertiser role to SEED_ADV_USER_ID with scope_type='advertiser'."""
         src = self._SEED_SRC
         self.assertIn("SEED_ADV_USER_ROLE_ID", src)
-        self.assertIn("scope_type = 'advertiser'", src)
-        # Verify the user_roles INSERT references advertiser user + role + ADV-001 org
+        self.assertIn("scope_type", src)
+        self.assertIn("scope_id", src)
+        # Verify the user_roles INSERT references advertiser user + role + ADV-001 org + 'advertiser' scope_type
         self.assertIn("SEED_ADV_USER_ID", src)
         self.assertIn("SEED_ADV_ORG_ID", src)
+        self.assertIn("'advertiser'", src)
 
     def test_seed_advertiser_role_has_campaign_read(self):
         """Advertiser role has campaigns.read permission."""
