@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import type { CampaignOut } from "../api/types";
 import { statusLabel, statusColor } from "../api/types";
@@ -6,6 +7,7 @@ import { useAuth } from "../auth/AuthContext";
 
 export default function CampaignListPage() {
   const { logout } = useAuth();
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<CampaignOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,7 +104,11 @@ export default function CampaignListPage() {
         </thead>
         <tbody>
           {campaigns.map((c) => (
-            <tr key={c.id} style={styles.row}>
+            <tr
+              key={c.id}
+              style={{ ...styles.row, cursor: "pointer" }}
+              onClick={() => navigate(`/campaigns/${c.id}`)}
+            >
               <td style={styles.td}>
                 <div style={{ fontWeight: 500 }}>{c.name}</div>
                 <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>

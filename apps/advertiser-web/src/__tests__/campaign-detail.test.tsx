@@ -1,0 +1,103 @@
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { AuthProvider } from "../auth/AuthContext";
+import CampaignDetailPage from "../pages/CampaignDetailPage";
+
+const mockGet = vi.fn();
+
+vi.mock("../api/client", () => ({
+  api: {
+    get: (...args: unknown[]) => mockGet(...args),
+    login: vi.fn(), logout: vi.fn().mockResolvedValue(undefined),
+    getMe: vi.fn().mockResolvedValue({ sub: "u1", auth_provider: "local_advertiser", username: "a", display_name: "A" }),
+    post: vi.fn(), patch: vi.fn(), del: vi.fn(), refresh: vi.fn(),
+  },
+  setToken: vi.fn(), onUnauthorized: vi.fn(),
+  ApiError: class extends Error { status: number; constructor(s: number) { super(`HTTP ${s}`); this.status = s; } },
+}));
+
+let makeApiError: (s: number) => Error & { status: number };
+beforeAll(async () => {
+  const AE = (await import("../api/client")).ApiError as any;
+  makeApiError = (s) => new AE(s);
+});
+
+const camp = { id: "c1", advertiser_organization_id: "o1", advertiser_brand_id: null, advertiser_contract_id: "c1", code: "C-001", name: "Тестовая кампания", description: "Описание", status: "active", priority: 1, budget_limit_amount: 50000, budget_limit_currency: "RUB", start_at: "2025-01-01T00:00:00Z", end_at: "2025-06-01T00:00:00Z", timezone: "UTC", created_by: null, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" };
+
+const flight = { id: "f1", campaign_id: "c1", name: "Январь", start_at: "2025-01-01T00:00:00Z", end_at: "2025-01-31T23:59:59Z", dayparting_json: null, days_of_week: null, priority: 1, created_at: "2025-01-01T00:00:00Z" };
+const placement = { id: "p1", campaign_id: "c1", display_surface_id: "s-01", store_id: null, cluster_id: null, branch_id: null, share_of_voice_pct: 50, max_impressions: null, impressions_delivered: 500, status: "active", created_at: "2025-01-01T00:00:00Z" };
+const ccLink = { id: "cc1", campaign_id: "c1", creative_asset_id: "ca1", sort_order: 1, duration_override_ms: null, created_at: "2025-01-01T00:00:00Z" };
+const asset = { id: "ca1", advertiser_organization_id: "o1", code: "CR-1", name: "Баннер", media_type: "image/png", sha256_checksum: "abc", file_size_bytes: 1000, duration_ms: null, resolution_w: 100, resolution_h: 100, status: "ready", moderation_status: "approved", created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" };
+const approval = { id: "a1", campaign_id: "c1", requested_by: "u1", requested_at: "2025-01-01T00:00:00Z", reviewed_by: "u2", reviewed_at: "2025-01-02T00:00:00Z", decision: "approved", rejection_reason: null, created_at: "2025-01-01T00:00:00Z" };
+
+function setupFull() {
+  mockGet.mockImplementation((path: string) => {
+    const m: Record<string, unknown> = {
+      "/campaigns": [camp], "/campaign-flights": [flight],
+      "/campaign-placements": [placement], "/campaign-creatives": [ccLink],
+      "/creative-assets": [asset], "/campaign-approvals": [approval],
+      "/campaign-status-history": [],
+    };
+    return m[path] ? Promise.resolve(m[path]) : Promise.resolve([]);
+  });
+}
+
+function renderPage() {
+  localStorage.setItem("rmp_access_token", "t");
+  localStorage.setItem("rmp_auth_provider", "local_advertiser");
+  const router = createMemoryRouter(
+    [{ path: "/campaigns/:id", element: <AuthProvider><CampaignDetailPage /></AuthProvider> }],
+    { initialEntries: ["/campaigns/c1"] },
+  );
+  return render(<RouterProvider router={router} />);
+}
+
+describe("CampaignDetailPage", () => {
+  beforeEach(() => { localStorage.clear(); vi.clearAllMocks(); });
+  afterEach(() => localStorage.clear());
+
+  it("renders without crashing", () => {
+    setupFull();
+    const { container } = renderPage();
+    expect(container).toBeTruthy();
+  });
+
+  it("calls all required API endpoints", async () => {
+    setupFull();
+    renderPage();
+    await waitFor(() => {
+      expect(mockGet.mock.calls.length).toBeGreaterThanOrEqual(7);
+    }, { timeout: 3000 });
+    const paths = mockGet.mock.calls.map(c => c[0]);
+    expect(paths).toContain("/campaigns");
+    expect(paths).toContain("/campaign-flights");
+    expect(paths).toContain("/campaign-placements");
+    expect(paths).toContain("/campaign-creatives");
+    expect(paths).toContain("/creative-assets");
+    expect(paths).toContain("/campaign-approvals");
+    expect(paths).toContain("/campaign-status-history");
+  });
+
+  it("shows inaccessible message on 403", async () => {
+    mockGet.mockRejectedValue(makeApiError(403));
+    renderPage();
+    await screen.findByText("Кампания не найдена или недоступна", {}, { timeout: 3000 });
+    expect(screen.queryByText(/approve|reject/i)).toBeNull();
+  });
+
+  it("clears session on 401", async () => {
+    mockGet.mockRejectedValue(makeApiError(401));
+    renderPage();
+    await waitFor(() => {
+      expect(localStorage.getItem("rmp_access_token")).toBeNull();
+    }, { timeout: 3000 });
+  });
+
+  it("has no storage fields in 403 state", async () => {
+    mockGet.mockRejectedValue(makeApiError(403));
+    renderPage();
+    await screen.findByText("Кампания не найдена или недоступна", {}, { timeout: 3000 });
+    expect(document.body.textContent).not.toMatch(/storage_bucket|storage_key|presigned_url/i);
+  });
+});

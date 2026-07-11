@@ -126,9 +126,12 @@ export interface AdvertiserContractOut {
 export interface CampaignApprovalOut {
   id: string;
   campaign_id: string;
-  reviewed_by: string;
-  action: string;
-  reason: string | null;
+  requested_by: string;
+  requested_at: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  decision: string | null;
+  rejection_reason: string | null;
   created_at: string;
 }
 
@@ -137,10 +140,11 @@ export interface CampaignApprovalOut {
 export interface CampaignStatusHistoryOut {
   id: string;
   campaign_id: string;
-  changed_by: string;
-  old_status: string;
+  old_status: string | null;
   new_status: string;
-  created_at: string;
+  changed_by: string;
+  changed_at: string;
+  reason: string | null;
 }
 
 // ── PoP Reporting ──
