@@ -452,7 +452,7 @@ class TestPhase21SeedIdentity(unittest.TestCase):
                          f"INSERT count {insert_count} != ON CONFLICT count {conflict_count}")
 
     def test_seed_insert_count(self):
-        """Seed INSERT count — grows with each phase."""
+        """Seed INSERT count — grows with each phase. S-023a: +8 advertiser role INSERTs (91)."""
         src = self._SEED_SRC
         m = re.search(r'SEED_SQL = f"""(.+?)"""', src, re.DOTALL)
         self.assertIsNotNone(m, "Cannot find SEED_SQL")
