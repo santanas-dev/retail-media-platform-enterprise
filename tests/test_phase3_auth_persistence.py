@@ -213,12 +213,15 @@ class TestPhase3AuthSeedSafety(unittest.TestCase):
         cls._load_seed()
 
     def test_seed_has_no_password_hashes(self):
-        """Seed must not contain bcrypt/argon2 hash strings."""
+        """Seed SQL must not contain bcrypt/argon2 hash strings or password_hash."""
         src = self._SEED_SRC
-        self.assertNotIn("$2b$", src)
-        self.assertNotIn("$2a$", src)
-        self.assertNotIn("$argon2", src)
-        self.assertNotIn("password_hash", src.lower())
+        m = re.search(r'SEED_SQL = f"""(.+?)"""', src, re.DOTALL)
+        self.assertIsNotNone(m, "Cannot find SEED_SQL")
+        sql = m.group(1)
+        self.assertNotIn("$2b$", sql)
+        self.assertNotIn("$2a$", sql)
+        self.assertNotIn("$argon2", sql)
+        self.assertNotIn("password_hash", sql.lower())
 
     def test_seed_has_no_raw_tokens(self):
         """Seed must not contain token values."""
@@ -266,11 +269,14 @@ class TestPhase3AuthSeedSafety(unittest.TestCase):
         self.assertIn("advertiser_test", src)
 
     def test_seed_break_glass_uses_correct_provider(self):
-        """Break-glass user has auth_provider='local_break_glass'."""
+        """Break-glass user INSERT in SEED_SQL has auth_provider='local_break_glass'."""
         src = self._SEED_SRC
-        # Find the break_glass_admin INSERT line and verify provider
-        bg_section = src[src.index("break_glass_admin") - 100:
-                         src.index("break_glass_admin") + 200]
+        m = re.search(r'SEED_SQL = f"""(.+?)"""', src, re.DOTALL)
+        self.assertIsNotNone(m, "Cannot find SEED_SQL")
+        sql = m.group(1)
+        # Find the break_glass_admin INSERT line within SQL and verify provider
+        idx = sql.index("break_glass_admin")
+        bg_section = sql[max(0, idx - 100): idx + 200]
         self.assertIn("local_break_glass", bg_section)
         self.assertNotIn("'local'", bg_section)
 

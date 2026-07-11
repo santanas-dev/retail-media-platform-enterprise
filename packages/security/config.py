@@ -96,6 +96,9 @@ class SecurityConfig:
     minio_access_key: str = ""
     minio_secret_key: str = ""
 
+    # Manifest signing (S-021)
+    manifest_signing_key: str = ""
+
     def __post_init__(self) -> None:
         # Load JWT_SECRET from env if not provided
         if not self.jwt_secret:
@@ -128,6 +131,8 @@ class SecurityConfig:
         ttl_env = os.environ.get("CREATIVE_UPLOAD_URL_TTL_SECONDS", "")
         if ttl_env:
             self.creative_upload_url_ttl_seconds = int(ttl_env)
+        # Load manifest signing key from env (S-021)
+        self.manifest_signing_key = os.environ.get("MANIFEST_SIGNING_KEY", self.manifest_signing_key)
         self._validate()
 
     def _validate(self) -> None:

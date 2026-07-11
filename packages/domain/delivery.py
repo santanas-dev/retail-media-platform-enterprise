@@ -11,6 +11,7 @@ Layer: packages/domain/ — no api/auth/fastapi imports.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -439,6 +440,28 @@ def generate_manifest_json(
     return manifest
 
 
+def sign_manifest_payload(payload: dict[str, Any], key: str) -> str:
+    """HMAC-SHA256 sign a manifest payload dict.
+
+    Excludes the 'signature' key from the signed payload to avoid
+    circular dependency.  Uses canonical JSON (sorted keys, no spacing)
+    for deterministic signing.
+
+    Returns hex-encoded HMAC digest.
+    """
+    import json
+    signable = {k: v for k, v in payload.items() if k != "signature"}
+    canonical = json.dumps(signable, sort_keys=True, separators=(",", ":"))
+    mac = hmac.new(key.encode("utf-8"), canonical.encode("utf-8"), hashlib.sha256)
+    return mac.hexdigest()
+
+
+def verify_manifest_signature(payload: dict[str, Any], signature: str, key: str) -> bool:
+    """Verify HMAC-SHA256 signature of a manifest payload (constant-time)."""
+    expected = sign_manifest_payload(payload, key)
+    return hmac.compare_digest(expected, signature)
+
+
 # ---------------------------------------------------------------------------
 # Main generation entry point
 # ---------------------------------------------------------------------------
@@ -476,6 +499,7 @@ async def generate_manifests_for_campaign(
     from packages.domain.repository import (
         create_delivery_plan,
         create_delivery_manifest_record,
+        get_next_manifest_version_for_device,
         mark_manifest_generated,
         mark_manifest_failed,
         enqueue_outbox_event,
@@ -654,6 +678,11 @@ async def generate_manifests_for_campaign(
             # Already generated — skip (idempotent)
             continue
 
+        # Compute next monotonic manifest version for this device
+        manifest_version = await get_next_manifest_version_for_device(
+            session, device_id,
+        )
+
         try:
             # Build playlist items
             playlist: list[dict[str, Any]] = []
@@ -673,7 +702,7 @@ async def generate_manifests_for_campaign(
             # Generate manifest JSON
             manifest_json = generate_manifest_json(
                 manifest_id=manifest_id,
-                manifest_version=1,
+                manifest_version=manifest_version,
                 device_id=device_id,
                 device_code=device_code,
                 store_id=store_id,
@@ -684,6 +713,13 @@ async def generate_manifests_for_campaign(
                 valid_from=valid_from,
                 valid_to=valid_to,
             )
+
+            # Sign manifest payload (S-021): inject HMAC signature
+            from packages.security.config import get_security_config
+            signing_key = get_security_config().manifest_signing_key
+            if signing_key:
+                sig = sign_manifest_payload(manifest_json, signing_key)
+                manifest_json["signature"]["value"] = sig
 
             # Compute content hash for the manifest
             content_hash = "sha256:" + hashlib.sha256(
@@ -706,6 +742,7 @@ async def generate_manifests_for_campaign(
                 campaign_id=campaign_id,
                 physical_device_id=device_id,
                 content_hash=content_hash,
+                manifest_version=manifest_version,
                 surface_ids=device_surface_ids,
                 asset_records=asset_records,
             )
@@ -726,7 +763,7 @@ async def generate_manifests_for_campaign(
                 payload={
                     "manifest_id": manifest_id,
                     "device_id": device_id,
-                    "manifest_version": 1,
+                    "manifest_version": manifest_version,
                     "campaign_ids": [campaign_id],
                 },
                 partition_key=campaign_id,

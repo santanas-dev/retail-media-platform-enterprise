@@ -1409,6 +1409,24 @@ async def create_delivery_manifest_record(
     return internal_id
 
 
+async def get_next_manifest_version_for_device(
+    session: AsyncSession,
+    physical_device_id: str,
+) -> int:
+    """Return the next monotonic manifest_version for a device (max + 1).
+
+    Returns 1 if no manifests exist for this device yet.
+    """
+    from packages.domain.models import DeliveryManifest
+
+    result = await session.execute(
+        select(func.coalesce(func.max(DeliveryManifest.manifest_version), 0))
+        .where(DeliveryManifest.physical_device_id == physical_device_id)
+    )
+    current_max: int = result.scalar_one()
+    return current_max + 1
+
+
 async def list_delivery_manifests(
     session: AsyncSession,
     *,

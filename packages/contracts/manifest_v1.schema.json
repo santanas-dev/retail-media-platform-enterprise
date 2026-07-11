@@ -87,7 +87,8 @@
         "value": { "type": "string" }
       }
     },
-    "content_hash": { "type": "string" }
+    "content_hash": { "type": "string" },
+    "generated_at": { "type": ["string", "null"] }
   },
   "additionalProperties": false,
   "not": {

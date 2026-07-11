@@ -438,3 +438,76 @@ class TestDeliveryAttempt:
             " DELETE FROM delivery_manifests WHERE id = :mid",
             {"aid": aid, "mid": mid},
         )
+
+
+class TestManifestVersionMonotonic:
+    """manifest_version increments per device — behavioral proof (ADR-016 §5)."""
+
+    def test_version_increments_for_same_device(self, db_available):
+        """Second manifest for same device gets version > first."""
+        import asyncio
+        from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+        from sqlalchemy.orm import sessionmaker
+        from packages.domain.repository import (
+            create_delivery_manifest_record,
+            get_next_manifest_version_for_device,
+        )
+
+        async def _run():
+            engine = create_async_engine(DB_URL, echo=False)
+            AsyncSessionLocal = sessionmaker(
+                engine, class_=AsyncSession, expire_on_commit=False,
+            )
+            async with AsyncSessionLocal() as session:
+                device_id = "00000000-0000-0000-0000-000000000020"
+
+                # First manifest — version starts at 1
+                v1 = await get_next_manifest_version_for_device(
+                    session, device_id,
+                )
+                mid1 = await create_delivery_manifest_record(
+                    session,
+                    manifest_id_external="sha256:monotonic-1",
+                    campaign_id="00000000-0000-0000-0000-000000000220",
+                    physical_device_id=device_id,
+                    content_hash="sha256:content-1",
+                    manifest_version=v1,
+                )
+
+                # Second manifest — version must be > first
+                v2 = await get_next_manifest_version_for_device(
+                    session, device_id,
+                )
+                mid2 = await create_delivery_manifest_record(
+                    session,
+                    manifest_id_external="sha256:monotonic-2",
+                    campaign_id="00000000-0000-0000-0000-000000000220",
+                    physical_device_id=device_id,
+                    content_hash="sha256:content-2",
+                    manifest_version=v2,
+                )
+                await session.flush()
+                await session.commit()
+                return v1, v2, mid1, mid2
+            await engine.dispose()
+
+        v1, v2, mid1, mid2 = asyncio.run(_run())
+
+        assert v2 > v1, f"Expected v2 ({v2}) > v1 ({v1})"
+        assert v1 >= 1
+        assert v2 >= 2
+
+        # Verify DB values
+        rows = _raw_sql(
+            "SELECT manifest_version FROM delivery_manifests WHERE id IN (:mid1, :mid2)"
+            " ORDER BY manifest_version",
+            {"mid1": mid1, "mid2": mid2},
+        )
+        versions = [r[0] for r in rows]
+        assert versions == [v1, v2], f"DB versions: {versions}, expected: {[v1, v2]}"
+
+        # Cleanup
+        _raw_exec(
+            "DELETE FROM delivery_manifests WHERE id IN (:mid1, :mid2)",
+            {"mid1": mid1, "mid2": mid2},
+        )

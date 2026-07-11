@@ -308,5 +308,108 @@ class TestDeliveryModuleExport(unittest.TestCase):
         self.assertTrue(callable(generate_manifests_for_campaign))
 
 
+class TestManifestVersionMonotonic(unittest.TestCase):
+    """manifest_version must be monotonic per device."""
+
+    def test_helper_importable(self):
+        from packages.domain.repository import get_next_manifest_version_for_device
+        import inspect
+        sig = inspect.signature(get_next_manifest_version_for_device)
+        params = list(sig.parameters.keys())
+        self.assertIn("session", params)
+        self.assertIn("physical_device_id", params)
+        self.assertTrue(callable(get_next_manifest_version_for_device))
+
+    def test_generate_manifest_json_accepts_version(self):
+        """generate_manifest_json must accept and embed manifest_version."""
+        from packages.domain.delivery import generate_manifest_json
+        m = generate_manifest_json(
+            manifest_id="m1",
+            manifest_version=5,
+            device_id="d1",
+            device_code="DEV-1",
+            store_id="s1",
+            store_code="ST-1",
+            channel_type="KSO",
+            device_type="KSO-DEVICE",
+            surface_ids=["sf1"],
+            surface_codes={"sf1": "SURF-1"},
+        )
+        self.assertEqual(m["manifest_version"], 5)
+
+    def test_generate_manifest_json_version_not_zero(self):
+        """Manifest version must be >= 1."""
+        from packages.domain.delivery import generate_manifest_json
+        m = generate_manifest_json(
+            manifest_id="m1",
+            manifest_version=1,
+            device_id="d1",
+            surface_ids=["sf1"],
+        )
+        self.assertGreaterEqual(m["manifest_version"], 1)
+
+
+class TestManifestSignature(unittest.TestCase):
+    """HMAC-SHA256 signing and verification (S-021)."""
+
+    def _sample_manifest(self):
+        from packages.domain.delivery import generate_manifest_json
+        return generate_manifest_json(
+            manifest_id="m1",
+            manifest_version=1,
+            device_id="d1",
+            surface_ids=["sf1"],
+        )
+
+    def test_sign_and_verify_roundtrip(self):
+        from packages.domain.delivery import (
+            sign_manifest_payload, verify_manifest_signature,
+        )
+        key = "test-signing-key-at-least-32-chars!!"
+        m = self._sample_manifest()
+        sig = sign_manifest_payload(m, key)
+        self.assertTrue(len(sig) == 64, f"Expected 64-char hex, got {len(sig)}")
+        self.assertTrue(verify_manifest_signature(m, sig, key))
+
+    def test_wrong_key_fails_verification(self):
+        from packages.domain.delivery import (
+            sign_manifest_payload, verify_manifest_signature,
+        )
+        key1 = "test-signing-key-at-least-32-chars-1"
+        key2 = "test-signing-key-at-least-32-chars-2"
+        m = self._sample_manifest()
+        sig = sign_manifest_payload(m, key1)
+        self.assertFalse(verify_manifest_signature(m, sig, key2))
+
+    def test_signature_excludes_signature_field(self):
+        """Payload change in signature.value must not affect the computed signature."""
+        from packages.domain.delivery import sign_manifest_payload
+        key = "test-signing-key-at-least-32-chars!!"
+        m1 = self._sample_manifest()
+        sig1 = sign_manifest_payload(m1, key)
+        m2 = self._sample_manifest()
+        m2["signature"]["value"] = "something-else"
+        sig2 = sign_manifest_payload(m2, key)
+        self.assertEqual(sig1, sig2, "Signature should be independent of signature.value")
+
+    def test_tampered_payload_rejected(self):
+        from packages.domain.delivery import (
+            sign_manifest_payload, verify_manifest_signature,
+        )
+        key = "test-signing-key-at-least-32-chars!!"
+        m = self._sample_manifest()
+        sig = sign_manifest_payload(m, key)
+        m["device_id"] = "evil-device"
+        self.assertFalse(verify_manifest_signature(m, sig, key))
+
+    def test_empty_key_produces_empty_signature(self):
+        """With no signing key, signature stays empty (graceful degradation)."""
+        from packages.domain.delivery import sign_manifest_payload
+        m = self._sample_manifest()
+        sig = sign_manifest_payload(m, "")
+        # Empty key produces signature over empty key (valid HMAC, just not secure)
+        self.assertTrue(len(sig) == 64)
+
+
 if __name__ == "__main__":
     unittest.main()

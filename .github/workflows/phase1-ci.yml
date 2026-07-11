@@ -93,13 +93,14 @@ jobs:
     env:
       ENVIRONMENT: dev
       JWT_SECRET: ci-test-secret-at-least-32-chars-ok
+      MANIFEST_SIGNING_KEY: ci-manifest-signing-key-at-least-32-chars
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Install deps
-        run: pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT nats-py jsonschema pyyaml pytest-asyncio greenlet
+        run: pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT nats-py jsonschema pyyaml pytest-asyncio greenlet minio
       - name: Run tests
         run: python -m pytest tests/ -v
   import-boundaries:
@@ -216,6 +217,7 @@ jobs:
       RUN_BEHAVIORAL_TESTS: "1"
       ENVIRONMENT: dev
       JWT_SECRET: behavioral-test-secret-at-least-32-chars
+      MANIFEST_SIGNING_KEY: ci-manifest-signing-key-at-least-32-chars
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
