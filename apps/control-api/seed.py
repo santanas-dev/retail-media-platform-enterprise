@@ -529,7 +529,7 @@ ON CONFLICT (user_id, advertiser_organization_id) DO NOTHING;
 INSERT INTO user_roles (id, user_id, role_id, scope_type, scope_id)
 VALUES ('{SEED_ADV_USER_ROLE_ID}', '{SEED_ADV_USER_ID}',
         '{SEED_ROLE_IDS["advertiser"]}', 'advertiser', '{SEED_ADV_ORG_ID}')
-ON CONFLICT (user_id, role_id) WHERE scope_type = 'advertiser' AND scope_id IS NOT NULL DO NOTHING;
+ON CONFLICT (user_id, role_id, scope_type, scope_id) DO NOTHING;
 
 -- NOTE: local_credentials for break_glass_admin + advertiser_test are
 -- seeded dynamically by the seed() function below when
