@@ -93,7 +93,9 @@ async def get_user_permissions(
     """Return the set of permission codes granted to a user via their roles.
 
     Joins: UserRole → RolePermission → Permission.
-    Only considers unscoped (global) role assignments — tenant RLS deferred.
+    Includes permissions from ALL user role assignments — both global (unscoped)
+    and scoped.  Tenant-level access control is enforced separately by
+    resolve_scope_context / RLS (see packages.domain.scopes).
     """
     stmt = (
         select(Permission.code)
@@ -102,7 +104,6 @@ async def get_user_permissions(
         .join(Permission, Permission.id == RolePermission.permission_id)
         .where(
             UserRole.user_id == user_id,
-            UserRole.scope_type.is_(None),  # global assignments only
         )
         .distinct()
     )

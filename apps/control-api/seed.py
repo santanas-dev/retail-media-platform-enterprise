@@ -525,7 +525,9 @@ INSERT INTO advertiser_user_memberships (id, user_id, advertiser_organization_id
 VALUES ('{SEED_ADV_MEMBERSHIP_ID}', '{SEED_ADV_USER_ID}', '{SEED_ADV_ORG_ID}')
 ON CONFLICT (user_id, advertiser_organization_id) DO NOTHING;
 
--- Assign advertiser role to advertiser_test (scoped to ADV-001)
+-- Assign advertiser role to advertiser_test (scoped to ADV-001).
+-- get_user_permissions() now returns permissions from ALL roles regardless
+-- of scope_type; tenant access is enforced by resolve_scope_context/RLS.
 INSERT INTO user_roles (id, user_id, role_id, scope_type, scope_id)
 VALUES ('{SEED_ADV_USER_ROLE_ID}', '{SEED_ADV_USER_ID}',
         '{SEED_ROLE_IDS["advertiser"]}', 'advertiser', '{SEED_ADV_ORG_ID}')
