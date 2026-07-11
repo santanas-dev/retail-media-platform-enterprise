@@ -348,3 +348,59 @@ export const STATUS_COLORS: Record<string, string> = {
 export function statusColor(s: string): string {
   return STATUS_COLORS[s] ?? "#6b7280";
 }
+
+// ── Creative Asset Library / Upload (S-023c) ──
+
+export interface CreativeAssetCreateRequest {
+  code: string;
+  name: string;
+  media_type: string;
+  advertiser_organization_id?: string;
+  sha256_checksum?: string;
+  file_size_bytes?: number | null;
+  resolution_w?: number | null;
+  resolution_h?: number | null;
+  duration_ms?: number | null;
+}
+
+export interface UploadIntentRequest {
+  filename: string;
+  content_type: string;
+  content_length: number;
+}
+
+export interface UploadIntentResponse {
+  upload_id: string;
+  upload_url: string;
+  method: string;
+  headers: Record<string, string>;
+  expires_at: string;
+}
+
+export interface CompleteUploadRequest {
+  upload_id: string;
+}
+
+export interface CompleteUploadResponse {
+  asset_id: string;
+  sha256_checksum: string;
+  file_size_bytes: number;
+  status: string;
+  moderation_status: string;
+}
+
+// Human-friendly media type labels
+export const MEDIA_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: "image/png", label: "Изображение (PNG)" },
+  { value: "image/jpeg", label: "Изображение (JPEG)" },
+  { value: "image/gif", label: "Изображение (GIF)" },
+  { value: "image/webp", label: "Изображение (WebP)" },
+  { value: "video/mp4", label: "Видео (MP4)" },
+  { value: "video/webm", label: "Видео (WebM)" },
+  { value: "text/html", label: "HTML" },
+  { value: "application/octet-stream", label: "Прочее" },
+];
+
+export function mediaTypeLabel(mt: string): string {
+  return MEDIA_TYPE_OPTIONS.find((o) => o.value === mt)?.label ?? mt;
+}

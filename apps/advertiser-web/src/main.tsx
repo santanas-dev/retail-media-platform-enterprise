@@ -7,6 +7,7 @@ import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
 import CampaignListPage from "./pages/CampaignListPage";
 import CampaignDetailPage from "./pages/CampaignDetailPage";
+import CreativeLibraryPage from "./pages/CreativeLibraryPage";
 
 const router = createBrowserRouter([
   {
@@ -24,6 +25,7 @@ const router = createBrowserRouter([
       { index: true, element: <Navigate to="/campaigns" replace /> },
       { path: "campaigns", element: <CampaignListPage /> },
       { path: "campaigns/:id", element: <CampaignDetailPage /> },
+      { path: "creatives", element: <CreativeLibraryPage /> },
     ],
   },
 ]);
