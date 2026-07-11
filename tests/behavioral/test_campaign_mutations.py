@@ -853,7 +853,9 @@ class TestCampaignSetupFlights:
         assert resp.status_code == 201
         campaign_id = resp.json()["id"]
 
-        # Need flight + placement + creative to request approval
+        # Need flight + placement + creative present, then force status to non-draft.
+        # S-017: creative is metadata-only (no file), so request-approval would reject.
+        # Bypass via raw status update — the test goal is non-draft mutation guards.
         client.post(
             f"/api/v1/identity/campaigns/{campaign_id}/flights",
             json={"start_at": "2026-06-01T00:00:00Z", "end_at": "2026-07-01T00:00:00Z"},
@@ -875,10 +877,10 @@ class TestCampaignSetupFlights:
             },
             headers=_auth(token),
         )
-        # Request approval
-        client.post(
-            f"/api/v1/identity/campaigns/{campaign_id}/request-approval",
-            headers=_auth(token),
+        # Force campaign out of draft (bypasses file-upload requirement)
+        _raw_exec(
+            "UPDATE campaigns SET status = 'pending_approval' WHERE id = :cid",
+            {"cid": campaign_id},
         )
 
         # Now try to add a flight — should fail (not draft)
@@ -1291,6 +1293,14 @@ class TestCampaignFullPilotSetup:
         )
         assert resp.status_code == 201, f"Creative create: {resp.text}"
         asset_id = resp.json()["id"]
+
+        # S-017: create_campaign_creative always makes metadata-only (empty checksum).
+        # approval requires deliverable checksum — set one directly for the test.
+        _raw_exec(
+            "UPDATE creative_assets SET sha256_checksum = :cs, status = 'ready'"
+            " WHERE id = :aid",
+            {"cs": "d" * 64, "aid": asset_id},
+        )
 
         # 5. Request approval
         resp = client.post(
