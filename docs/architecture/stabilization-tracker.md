@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
-| **Last updated:** 2026-07-10
-| **Current phase:** S-019 runtime/deployment security alignment. S-018 manifest/PoP contract alignment done. Three-role DB architecture deployed. All runtime services use NOBYPASSRLS retail_media_app.
+| **Last updated:** 2026-07-11
+| **Current phase:** S-021a manifest signing config hardening done. S-021 green baseline after audit done. Three-role DB (S-019) + media upload (S-017) + contract alignment (S-018) + HMAC signing (S-021/S-021a) all shipped.
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -17,8 +17,8 @@ Separately covered:
 **Not yet proven (out of scope for backend pilot):**
 - Real KSO player/sidecar
 - Frontend (advertiser/admin portal)
-- Real creative upload/storage/presigned URLs
-- Production manifest signing (HMAC placeholder)
+- Real creative upload/storage/presigned URLs — S-017 done. Backend + admin-web upload UI shipped. Deferred: malware scan, transcoding, CDN, multipart upload
+- Production manifest signing: HMAC-SHA256 implemented (S-021), production config hardened (S-021a). Verification at device-gateway deferred.
 - ClickHouse / materialized reporting
 - Production deployment/observability hardening
 
@@ -63,6 +63,8 @@ Separately covered:
 | S-017 | Creative Media Upload (MinIO presigned URL) | P1 | ✅ done | P.S. (Hermes) | ...
 | S-018 | Manifest / PoP Contract Alignment | P1 | ✅ done | P.S. (Hermes) | Schemas: `manifest_v1.schema.json` (flat playlist per ADR-016 v1 pilot), `proof_event_v1.schema.json` (flat, matches PopEventIn). Simulator: `_build_pop_event` emits `playback_result` + `campaign_id`. Nested per-surface playlist deferred to Manifest v2. Contract tests: 15 manifest + 16 PoP (schema validation, DTO round-trip, full-chain proof). ADR-016/017 updated. | Nested playlist for multi-surface KSO → v2 |
 | S-019 | Runtime / Deployment Security Alignment | P0 | ✅ done | P.S. (Hermes) | Three-role DB architecture: `retail_media_owner` (DDL/migrations/seed), `retail_media_app` (NOBYPASSRLS runtime). `init-db.sql` + `grant-app-role.py`. Worker admin context via `set_worker_admin_context()` → `app.rmp_is_admin=true`. Compose: all runtime services use `retail_media_app`. device-gateway CORS removed. admin-web CORS +:3000. Role safety test suite (7 opt-in tests). Docs: delivery-runtime + clean-install-login updated. | Worker per-scope resolution (ADR-009 §9 Phase 3.6) |
+| S-021 | Green Baseline After Audit | P0 | ✅ done | P.S. (Hermes) | Root causes: CI missing minio dep (S-017), manifest schema missing generated_at, seed tests scanning whole file, manifest_version hardcoded to 1, empty signature placeholder. Fixes: minio in CI + MANIFEST_SIGNING_KEY, generated_at in schema, seed test scoped to SEED_SQL, monotonic get_next_manifest_version_for_device per device, HMAC-SHA256 sign_manifest_payload/verify_manifest_signature, behavioural test approval bypass for S-017 metadata-only guard. 862→869 unit, 243→245 behavioural. CI Run #84 green. | — |
+| S-021a | Manifest Signing Config Hardening | P0 | ✅ done | P.S. (Hermes) | SecurityConfig: _validate_manifest_signing_production() — fail-fast ValueError on missing/short/weak key in production. Dev: empty allowed, warn on <16. Compose: MANIFEST_SIGNING_KEY in orchestrator-worker. 7 new config+integration tests. CI Run #85 green. | — |
 
 ## Status Legend
 
@@ -79,6 +81,6 @@ Separately covered:
 | Real KSO player/sidecar | Out of scope |
 | Frontend advertiser/admin portal | Scaffolded, not wired (S-009) |
 | Real creative upload/storage/presigned URLs | S-017 done — backend + admin-web upload UI. Deferred: malware scan, transcoding, CDN, multipart upload |
-| Production manifest signing (real HMAC) | Placeholder only |
+| Production manifest signing (real HMAC) | S-021 implemented (HMAC-SHA256). S-021a production-hardened (mandatory key validation). Device-gateway verification deferred. |
 | ClickHouse / materialized reporting (4.3e) | Deferred |
 | Production deployment/observability hardening | Prometheus metrics/alerts deferred |

@@ -274,7 +274,7 @@ pipeline.
 - **Eligibility:** `approved`, `scheduled`, `active` only. `completed`/`archived`/`paused` → Manifest revoker (future), NOT generator. Creative must be `status=ready` AND `moderation=approved`.
 - **Target resolution:** branch → cluster → store → display_surface → logical_carrier → physical_device. One manifest per device; multi-surface devices get one manifest with multiple `display_surfaces[]` entries.
 - **Deterministic hashes:** `manifest_id` covers full content including resolution; `campaign_version_hash` covers campaign content only. Both SHA-256 with `‖` (U+2016) separators, sorted lists.
-- **Manifest JSON:** schema_version `1.0`, no presigned URLs (skeleton only), no `storage_bucket`/`storage_key`, no PII. Signature structure placeholder (HMAC-SHA256 with empty value).
+- **Manifest JSON:** schema_version `1.0`, no presigned URLs (skeleton only), no `storage_bucket`/`storage_key`, no PII. Signature: HMAC-SHA256 via `sign_manifest_payload()` when MANIFEST_SIGNING_KEY configured (S-021/S-021a).
 - **Idempotency:** `manifest_id` collision check before insert. Plan created only when `manifest_count > 0`. Re-run produces zero new rows and zero new outbox events.
 - **Outbox:** `delivery.manifest.generated` on success, `delivery.manifest.failed` on no-targets or per-device failure. Both in caller-owned transaction. No direct NATS publish.
 - **Caller-owned transaction:** no commit inside helpers. Rollback → no partial state.

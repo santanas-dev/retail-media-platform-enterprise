@@ -28,7 +28,7 @@ v{major}.{minor}-{description}
 | Tag | Description |
 |-----|-------------|
 | `v0.1-admin-campaign-mvp` | Admin portal + campaign CRUD, creative attach, approval, basic PoP reporting |
-| `v0.2-media-upload-mvp` | Real media upload (✅ S-017 done), storage, presigned URLs, creative asset serving |
+| `v0.2-media-upload-runtime-baseline` | Real media upload (S-017), manifest/PoP contracts (S-018), three-role DB (S-019), green CI baseline (S-021), HMAC signing configuration (S-021a) |
 | `v0.3-player-pilot-mvp` | Real KSO player/sidecar integration, device manifest delivery, PoP ingestion |
 
 Major (0.x) stays at 0 until first production deployment.  Minor
@@ -174,3 +174,70 @@ not require database downgrade for this release.
 - ADR-001 through ADR-017 (all architecture decision records)
 - `docs/architecture/stabilization-tracker.md` (S-001 through S-015)
 - Phase close-out reports: `phase-4-campaign-domain.md`, `phase-4-delivery-domain.md`
+
+---
+
+### v0.2-media-upload-runtime-baseline — Media Upload + Runtime Baseline
+
+**Proposed.**  Tag not yet created.
+
+#### Metadata
+- **Tag:** v0.2-media-upload-runtime-baseline
+- **Date:** 2026-07-11 (proposed)
+- **Commit SHA:** a0cc5a2 (pending final verification)
+- **GitHub Actions run:** #85 (conclusion: success, all jobs)
+- **Created by:** P.S. (via Hermes)
+
+#### Business Capabilities
+
+- Upload creative media files (images, video) via presigned URLs
+- Creative assets validated server-side (SHA-256, file size, mime type) — no client trust
+- View upload progress and creative readiness in admin web Creatives tab
+- Dual local auth operational: advertiser + break-glass admin credentials with bcrypt
+- `/me` endpoint returns real DB-backed user profile
+- Manifest integrity: backend HMAC-SHA256 signing (requires MANIFEST_SIGNING_KEY in production)
+
+#### Technical Capabilities
+
+- **S-016 — Dual auth:** local_credentials table + bcrypt hashing for advertiser/break-glass, AD stub (honest 503), DB-backed /me
+- **S-017 — Media upload:** MinIO presigned PUT URLs, server-side SHA-256 + size + mime validation, complete-upload flow, admin-web upload UI, upload session tenant protection
+- **S-018 — Contract alignment:** manifest_v1.schema.json + proof_event_v1.schema.json, contract validation tests, simulator PoP contract compliance
+- **S-019 — Three-role DB:** retail_media_owner (DDL/migrations), retail_media_app (NOBYPASSRLS runtime), init-db.sql + grant-app-role.py, CI behavioural gate with RLS runtime role
+- **S-021 — Green baseline:** CI dependency fix (minio), manifest schema fix (generated_at), seed test scope fixes, monotonic manifest_version per device, HMAC signing (sign_manifest_payload / verify_manifest_signature)
+- **S-021a — Signing config:** production MANIFEST_SIGNING_KEY mandatory (≥32 chars, reject weak), dev graceful degradation, compose orchestrator-worker wired
+- **Testing:** 869 unit + 245 behavioural + 2 integration (opt-in) = 1,116 total
+- **CI:** GitHub Actions — all jobs green, PostgreSQL behavioural gate with NOBYPASSRLS runtime role
+
+#### Known Limitations / Not Included
+
+- Real KSO player or sidecar — device gateway HTTP only, no hardware
+- Advertiser portal — admin web only
+- ClickHouse production reporting, materialized views, export, billing
+- Android TV, price checker, ESL, LED
+- Malware scanning, manual moderation, transcoding, CDN, orphan cleanup, multipart upload
+- Production deployment/observability beyond current health/readiness endpoints
+- Manifest signature verification at device-gateway (signing exists, verification deferred)
+- NATS stream/consumer provisioning not yet automated for production
+
+#### Rollback Note
+
+Schema additions since v0.1 are forward-compatible (local_credentials, delivery tables, creative asset storage fields). Reverting code does not require database downgrade.
+
+To revert:
+
+```bash
+git checkout v0.1-admin-campaign-mvp
+```
+
+If tag was pushed, delete:
+
+```bash
+git tag -d v0.2-media-upload-runtime-baseline
+git push origin :refs/tags/v0.2-media-upload-runtime-baseline
+```
+
+#### References
+
+- ADR-001 through ADR-017
+- S-016 through S-021a in `docs/architecture/stabilization-tracker.md`
+- `docs/runbook/media-upload.md`, `docs/runbook/delivery-runtime.md`, `docs/runbook/clean-install-login.md`
