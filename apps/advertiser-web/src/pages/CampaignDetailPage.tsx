@@ -13,7 +13,7 @@ import type {
   CampaignPopByDayOut,
   CampaignPopBySurfaceOut,
 } from "../api/types";
-import { statusLabel, statusColor } from "../api/types";
+import { statusLabel, statusColor, surfaceLabel } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 
 // ── Helpers ──
@@ -367,7 +367,7 @@ export default function CampaignDetailPage() {
             <thead>
               <tr>
                 <th style={styles.th}>Поверхность</th>
-                <th style={styles.th}>SOV %</th>
+                <th style={styles.th}>Доля показов</th>
                 <th style={styles.th}>Показов</th>
                 <th style={styles.th}>Статус</th>
               </tr>
@@ -376,14 +376,14 @@ export default function CampaignDetailPage() {
               {placements.map((p) => (
                 <tr key={p.id} style={styles.row}>
                   <td style={styles.td}>
-                    {p.display_surface_id || p.store_id || p.cluster_id || p.branch_id || "—"}
+                    {surfaceLabel(p.display_surface_id || p.store_id || p.cluster_id || p.branch_id || "") || "—"}
                   </td>
                   <td style={styles.td}>{p.share_of_voice_pct}%</td>
                   <td style={styles.td}>
                     {p.impressions_delivered}
                     {p.max_impressions ? ` / ${p.max_impressions}` : ""}
                   </td>
-                  <td style={styles.td}>{p.status}</td>
+                  <td style={styles.td}>{statusLabel(p.status)}</td>
                 </tr>
               ))}
             </tbody>

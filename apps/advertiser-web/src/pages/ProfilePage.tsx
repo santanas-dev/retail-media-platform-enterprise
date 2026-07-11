@@ -7,6 +7,7 @@ import type {
   AdvertiserContractOut,
   AdvertiserContactOut,
 } from "../api/types";
+import { authProviderLabel, contactTypeLabel, statusLabel } from "../api/types";
 
 const styles = {
   page: { maxWidth: 800 },
@@ -177,7 +178,7 @@ export default function ProfilePage() {
         </div>
         <div style={styles.kv}>
           <span style={styles.label}>Тип учётной записи: </span>
-          <span style={styles.value}>{user?.auth_provider || "—"}</span>
+          <span style={styles.value}>{authProviderLabel(user?.auth_provider || "") || "—"}</span>
         </div>
       </div>
 
@@ -201,7 +202,7 @@ export default function ProfilePage() {
           </div>
           <div style={styles.kv}>
             <span style={styles.label}>Статус: </span>
-            <span style={styles.value}>{org.status}</span>
+            <span style={styles.value}>{statusLabel(org.status)}</span>
           </div>
         </div>
       )}
@@ -227,7 +228,7 @@ export default function ProfilePage() {
                 <tr key={b.id}>
                   <td style={styles.td}>{b.code}</td>
                   <td style={styles.td}>{b.name}</td>
-                  <td style={styles.td}>{b.status}</td>
+                  <td style={styles.td}>{statusLabel(b.status)}</td>
                 </tr>
               ))}
             </tbody>
@@ -262,7 +263,7 @@ export default function ProfilePage() {
                       ? `${c.budget_limit_amount.toLocaleString()} ${c.budget_limit_currency}`
                       : "—"}
                   </td>
-                  <td style={styles.td}>{c.status}</td>
+                  <td style={styles.td}>{statusLabel(c.status)}</td>
                 </tr>
               ))}
             </tbody>
@@ -293,7 +294,7 @@ export default function ProfilePage() {
               {contacts.map((c) => (
                 <tr key={c.id}>
                   <td style={styles.td}>{c.full_name}</td>
-                  <td style={styles.td}>{c.contact_type}</td>
+                  <td style={styles.td}>{contactTypeLabel(c.contact_type)}</td>
                   <td style={styles.td}>{c.email}</td>
                   <td style={styles.td}>{c.phone || "—"}</td>
                 </tr>

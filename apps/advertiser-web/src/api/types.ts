@@ -433,3 +433,53 @@ export const MEDIA_TYPE_OPTIONS: { value: string; label: string }[] = [
 export function mediaTypeLabel(mt: string): string {
   return MEDIA_TYPE_OPTIONS.find((o) => o.value === mt)?.label ?? mt;
 }
+
+// ── Helper: contact type labels ──
+
+export const CONTACT_TYPE_LABELS: Record<string, string> = {
+  primary: "Основной",
+  billing: "Бухгалтерия",
+  technical: "Технический",
+  emergency: "Аварийный",
+};
+
+export function contactTypeLabel(ct: string): string {
+  return CONTACT_TYPE_LABELS[ct] ?? ct;
+}
+
+// ── Helper: auth provider labels ──
+
+export const AUTH_PROVIDER_LABELS: Record<string, string> = {
+  local_advertiser: "Локальная учётная запись",
+  local_break_glass: "Администратор",
+  ad: "Active Directory",
+};
+
+export function authProviderLabel(ap: string): string {
+  return AUTH_PROVIDER_LABELS[ap] ?? ap;
+}
+
+// ── Helper: timezone labels ──
+
+export const TIMEZONE_LABELS: Record<string, string> = {
+  "Europe/Moscow": "Москва (GMT+3)",
+  "Europe/Kaliningrad": "Калининград (GMT+2)",
+  "Europe/Samara": "Самара (GMT+4)",
+  "Asia/Yekaterinburg": "Екатеринбург (GMT+5)",
+  "Asia/Omsk": "Омск (GMT+6)",
+  "Asia/Krasnoyarsk": "Красноярск (GMT+7)",
+  "Asia/Irkutsk": "Иркутск (GMT+8)",
+  "Asia/Vladivostok": "Владивосток (GMT+10)",
+};
+
+export function timezoneLabel(tz: string): string {
+  return TIMEZONE_LABELS[tz] ?? tz;
+}
+
+// ── Helper: surface display ──
+
+export function surfaceLabel(id: string, code?: string): string {
+  if (code) return code;
+  // Truncate UUID — show last 8 chars as readable reference
+  return `Поверхность ${id.slice(-8)}`;
+}
