@@ -65,6 +65,7 @@ Separately covered:
 | S-019 | Runtime / Deployment Security Alignment | P0 | ✅ done | P.S. (Hermes) | Three-role DB architecture: `retail_media_owner` (DDL/migrations/seed), `retail_media_app` (NOBYPASSRLS runtime). `init-db.sql` + `grant-app-role.py`. Worker admin context via `set_worker_admin_context()` → `app.rmp_is_admin=true`. Compose: all runtime services use `retail_media_app`. device-gateway CORS removed. admin-web CORS +:3000. Role safety test suite (7 opt-in tests). Docs: delivery-runtime + clean-install-login updated. | Worker per-scope resolution (ADR-009 §9 Phase 3.6) |
 | S-021 | Green Baseline After Audit | P0 | ✅ done | P.S. (Hermes) | Root causes: CI missing minio dep (S-017), manifest schema missing generated_at, seed tests scanning whole file, manifest_version hardcoded to 1, empty signature placeholder. Fixes: minio in CI + MANIFEST_SIGNING_KEY, generated_at in schema, seed test scoped to SEED_SQL, monotonic get_next_manifest_version_for_device per device, HMAC-SHA256 sign_manifest_payload/verify_manifest_signature, behavioural test approval bypass for S-017 metadata-only guard. 862→869 unit, 243→245 behavioural. CI Run #84 green. | — |
 | S-021a | Manifest Signing Config Hardening | P0 | ✅ done | P.S. (Hermes) | SecurityConfig: _validate_manifest_signing_production() — fail-fast ValueError on missing/short/weak key in production. Dev: empty allowed, warn on <16. Compose: MANIFEST_SIGNING_KEY in orchestrator-worker. 7 new config+integration tests. CI Run #85 green. | — |
+| S-024 | v2.6 Next Branch Requirements Captured | P1 | ✅ done | P.S. (Hermes) | TZ v2.6 DOCX placed in `docs/product/requirements/`. ADR-018 (tenant model) proposed — P0 decision needed before v2.6 implementation. Roadmap updated with v2.6 rows. Release-versioning has Future branch section. No code changes. | Tenant model ADR accepted → implementation |
 
 ## Status Legend
 
@@ -81,6 +82,7 @@ Separately covered:
 | Real KSO player/sidecar | Out of scope |
 | Frontend advertiser/admin portal | Scaffolded, not wired (S-009) |
 | Real creative upload/storage/presigned URLs | S-017 done — backend + admin-web upload UI. Deferred: malware scan, transcoding, CDN, multipart upload |
-| Production manifest signing (real HMAC) | S-021 implemented (HMAC-SHA256). S-021a production-hardened (mandatory key validation). Device-gateway verification deferred. |
-| ClickHouse / materialized reporting (4.3e) | Deferred |
-| Production deployment/observability hardening | Prometheus metrics/alerts deferred |
+|| Production manifest signing (real HMAC) | S-021 implemented (HMAC-SHA256). S-021a production-hardened (mandatory key validation). Device-gateway verification deferred. |
+|| Tenant model ADR before v2.6 | 🟡 Decision needed / proposed — ADR-018 created. P0 before any v2.6 implementation. |
+|| ClickHouse / materialized reporting (4.3e) | Deferred |
+|| Production deployment/observability hardening | Prometheus metrics/alerts deferred |

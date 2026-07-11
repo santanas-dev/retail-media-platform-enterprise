@@ -241,3 +241,44 @@ git push origin :refs/tags/v0.2-media-upload-runtime-baseline
 - ADR-001 through ADR-017
 - S-016 through S-021a in `docs/architecture/stabilization-tracker.md`
 - `docs/runbook/media-upload.md`, `docs/runbook/delivery-runtime.md`, `docs/runbook/clean-install-login.md`
+
+---
+
+## Future Branch: v2.6 Next Branch
+
+v2.6 — дальнейшее развитие портала после закрытия первого ТЗ (v2.5).
+**Не входит в v0.2.** Следующий release tag НЕ создаётся сейчас.
+
+Будущие релизы после текущего первого ТЗ могут включать v2.6 milestones.
+
+### Направления v2.6
+
+- Attribution & Sales Lift
+- Self-service advertiser cabinet
+- Competitive Separation
+- Store-level audience targeting
+- Finance contract/invoicing integration
+- Programmatic extension point (deferred)
+- Dynamic creative MVP (deferred)
+- Mobile field ops MVP (deferred)
+- A/B lift metrics
+- Third-party DOOH measurement/accreditation stub (deferred)
+
+### P0 Foundation Decision
+
+Перед реализацией v2.6 обязателен explicit P0 decision по tenant model.
+ADR-018 (`docs/architecture/adr/ADR-018-tenant-model-for-next-branch.md`)
+создан со статусом Proposed.
+
+### Документация
+
+- TZ: `docs/product/requirements/TZ_Retail_Media_Platform_v2_6_Next_Branch_2026-07-11.docx`
+- README: `docs/product/requirements/README.md`
+- Roadmap: `docs/product/roadmap-s020-2026-07-10.xlsx` (строки v2.6)
+
+### Не входит в v2.6
+
+- KSO player / sidecar — v0.3 первого ТЗ
+- Android TV, LED/ESL, price checker — deferred
+- ClickHouse / materialized reporting — deferred
+- Advertiser portal — S-023 design gate, отдельная реализация
