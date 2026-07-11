@@ -1,0 +1,171 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { AuthProvider } from "../auth/AuthContext";
+import CampaignListPage from "../pages/CampaignListPage";
+
+// Mock the api client
+const mockGet = vi.fn();
+
+vi.mock("../api/client", () => ({
+  api: {
+    get: (...args: unknown[]) => mockGet(...args),
+    login: vi.fn(),
+    logout: vi.fn().mockResolvedValue(undefined),
+    getMe: vi.fn().mockResolvedValue({
+      sub: "u1",
+      auth_provider: "local_advertiser",
+      username: "advertiser1",
+      display_name: "Рекламодатель 1",
+    }),
+    post: vi.fn(),
+    patch: vi.fn(),
+    del: vi.fn(),
+    refresh: vi.fn(),
+  },
+  setToken: vi.fn(),
+  onUnauthorized: vi.fn(),
+  ApiError: class MockApiError extends Error {
+    status: number;
+    constructor(status: number, body?: unknown) {
+      super(
+        typeof body === "object" && body !== null && "detail" in body
+          ? String((body as Record<string, unknown>).detail)
+          : `HTTP ${status}`,
+      );
+      this.name = "ApiError";
+      this.status = status;
+    }
+  },
+}));
+
+function renderCampaignList() {
+  // Set up an authenticated session
+  localStorage.setItem("rmp_access_token", "valid-token");
+  localStorage.setItem("rmp_auth_provider", "local_advertiser");
+
+  return render(
+    <MemoryRouter>
+      <AuthProvider>
+        <CampaignListPage />
+      </AuthProvider>
+    </MemoryRouter>,
+  );
+}
+
+const mockCampaigns = [
+  {
+    id: "c1",
+    advertiser_organization_id: "org1",
+    advertiser_brand_id: null,
+    advertiser_contract_id: "contract1",
+    code: "CAMP-001",
+    name: "Новогодняя акция",
+    description: null,
+    status: "active",
+    priority: 1,
+    budget_limit_amount: 100000,
+    budget_limit_currency: "RUB",
+    start_at: "2025-12-01T00:00:00Z",
+    end_at: "2026-01-15T00:00:00Z",
+    timezone: "Europe/Moscow",
+    created_by: null,
+    created_at: "2025-11-01T10:00:00Z",
+    updated_at: "2025-12-10T14:30:00Z",
+  },
+  {
+    id: "c2",
+    advertiser_organization_id: "org1",
+    advertiser_brand_id: "brand1",
+    advertiser_contract_id: "contract1",
+    code: "CAMP-002",
+    name: "Летняя распродажа",
+    description: "Летняя кампания",
+    status: "draft",
+    priority: 2,
+    budget_limit_amount: null,
+    budget_limit_currency: "RUB",
+    start_at: null,
+    end_at: null,
+    timezone: "Europe/Moscow",
+    created_by: null,
+    created_at: "2025-04-01T08:00:00Z",
+    updated_at: "2025-04-10T09:00:00Z",
+  },
+];
+
+describe("Campaign list — data rendering", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it("renders campaign rows from API response", async () => {
+    mockGet.mockResolvedValue(mockCampaigns);
+
+    renderCampaignList();
+
+    await waitFor(() => {
+      expect(screen.getByText("Новогодняя акция")).toBeInTheDocument();
+      expect(screen.getByText("Летняя распродажа")).toBeInTheDocument();
+    });
+
+    // Check codes are shown
+    expect(screen.getByText("CAMP-001")).toBeInTheDocument();
+    expect(screen.getByText("CAMP-002")).toBeInTheDocument();
+
+    // Check total count
+    expect(screen.getByText("Всего: 2")).toBeInTheDocument();
+  });
+
+  it("empty state shown when no campaigns", async () => {
+    mockGet.mockResolvedValue([]);
+
+    renderCampaignList();
+
+    await waitFor(() => {
+      expect(screen.getByText("Нет кампаний")).toBeInTheDocument();
+    });
+  });
+
+  it("403 shows access error", async () => {
+    const err = new (class extends Error {
+      status = 403;
+      constructor() {
+        super("HTTP 403");
+        this.name = "ApiError";
+      }
+    })();
+    mockGet.mockRejectedValue(err);
+
+    renderCampaignList();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Нет прав на просмотр кампаний"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("401 clears session", async () => {
+    const err = new (class extends Error {
+      status = 401;
+      constructor() {
+        super("HTTP 401");
+        this.name = "ApiError";
+      }
+    })();
+    mockGet.mockRejectedValue(err);
+
+    renderCampaignList();
+
+    await waitFor(() => {
+      // Session should be cleared
+      expect(localStorage.getItem("rmp_access_token")).toBeNull();
+    });
+  });
+});

@@ -50,11 +50,15 @@ SEED_PERM_IDS = {
     "campaigns.approve":  "00000000-0000-0000-0000-00000000010e",
     "creatives.read":     "00000000-0000-0000-0000-00000000010f",
 }
+SEED_ADV_ROLE_ID = "00000000-0000-0000-0000-000000000114"
+SEED_ADV_USER_ROLE_ID = "00000000-0000-0000-0000-000000000204"
+
 SEED_ROLE_IDS = {
     "system_admin":    "00000000-0000-0000-0000-000000000110",
     "security_admin":  "00000000-0000-0000-0000-000000000111",
     "operator":         "00000000-0000-0000-0000-000000000112",
     "analyst":          "00000000-0000-0000-0000-000000000113",
+    "advertiser":       "00000000-0000-0000-0000-000000000114",
 }
 SEED_BG_USER_ID =      "00000000-0000-0000-0000-000000000150"
 SEED_BG_USER_ROLE_ID = "00000000-0000-0000-0000-000000000160"
@@ -296,6 +300,12 @@ VALUES ('{SEED_ROLE_IDS["analyst"]}', 'analyst',
         'Аналитик', 'Просмотр аудита, организации, каналов и устройств', false)
 ON CONFLICT (code) DO NOTHING;
 
+-- Advertiser role — scoped, non-system role for advertiser portal access
+INSERT INTO roles (id, code, name, description, is_system)
+VALUES ('{SEED_ROLE_IDS["advertiser"]}', 'advertiser',
+        'Рекламодатель', 'Доступ к личному кабинету рекламодателя: просмотр и управление своими кампаниями и креативами', false)
+ON CONFLICT (code) DO NOTHING;
+
 -- Role → Permission assignments
 -- system_admin: all 8 permissions
 INSERT INTO role_permissions (id, role_id, permission_id)
@@ -455,6 +465,31 @@ INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(154)}', '{SEED_ROLE_IDS["analyst"]}', '{SEED_PERM_IDS["devices.read"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
+-- advertiser: organization.read, advertisers.read, advertisers.contacts.read, campaigns.read, campaigns.manage, creatives.read
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(250)}', '{SEED_ROLE_IDS["advertiser"]}', '{SEED_PERM_IDS["organization.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(251)}', '{SEED_ROLE_IDS["advertiser"]}', '{SEED_PERM_IDS["advertisers.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(252)}', '{SEED_ROLE_IDS["advertiser"]}', '{SEED_PERM_IDS["advertisers.contacts.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(253)}', '{SEED_ROLE_IDS["advertiser"]}', '{SEED_PERM_IDS["campaigns.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(254)}', '{SEED_ROLE_IDS["advertiser"]}', '{SEED_PERM_IDS["campaigns.manage"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(255)}', '{SEED_ROLE_IDS["advertiser"]}', '{SEED_PERM_IDS["creatives.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
 -- Break-glass admin user (no auth implementation — record only)
 INSERT INTO users (id, code, username, email, display_name, auth_provider,
     status, is_break_glass)
@@ -489,6 +524,12 @@ ON CONFLICT (username) DO NOTHING;
 INSERT INTO advertiser_user_memberships (id, user_id, advertiser_organization_id)
 VALUES ('{SEED_ADV_MEMBERSHIP_ID}', '{SEED_ADV_USER_ID}', '{SEED_ADV_ORG_ID}')
 ON CONFLICT (user_id, advertiser_organization_id) DO NOTHING;
+
+-- Assign advertiser role to advertiser_test (scoped to ADV-001)
+INSERT INTO user_roles (id, user_id, role_id, scope_type, scope_id)
+VALUES ('{SEED_ADV_USER_ROLE_ID}', '{SEED_ADV_USER_ID}',
+        '{SEED_ROLE_IDS["advertiser"]}', 'advertiser', '{SEED_ADV_ORG_ID}')
+ON CONFLICT (user_id, role_id) WHERE scope_type = 'advertiser' AND scope_id IS NOT NULL DO NOTHING;
 
 -- NOTE: local_credentials for break_glass_admin + advertiser_test are
 -- seeded dynamically by the seed() function below when
@@ -610,8 +651,8 @@ async def seed() -> None:
                   "LOCAL_CREDENTIALS_OVERRIDE (future).")
     await engine.dispose()
     print("Seed complete: 1 branch → 1 cluster → 1 store → 1 KSO device → 1 surface "
-          "+ 16 permissions, 4 roles, campaign role-permissions, 1 break-glass admin, "
-          "1 advertiser org + 1 advertiser user, 2 brands, 1 contract, 2 contacts, "
+          "+ 16 permissions, 5 roles (incl advertiser), campaign role-permissions, 1 break-glass admin, "
+          "1 advertiser org + 1 advertiser user (with advertiser role + scoped assignment), 2 brands, 1 contract, 2 contacts, "
           "1 campaign + 1 flight + 1 creative + 1 placement + 1 status history")
 
 

@@ -268,6 +268,95 @@ class TestPhase3AuthSeedSafety(unittest.TestCase):
         self.assertIn("local_advertiser", src)
         self.assertIn("advertiser_test", src)
 
+    # ── S-023a: advertiser role RBAC in seed ──
+
+    def test_seed_has_advertiser_role(self):
+        """Seed INSERTs advertiser role (code='advertiser', is_system=false)."""
+        src = self._SEED_SRC
+        self.assertIn("'advertiser'", src)
+        # Find the advertiser role INSERT section
+        idx = src.find("-- Advertiser role")
+        self.assertNotEqual(idx, -1, "advertiser role section not found")
+        nearby = src[idx: idx + 600]
+        self.assertIn("false", nearby)
+        self.assertIn("is_system", nearby)
+
+    def test_seed_advertiser_user_has_role(self):
+        """Seed assigns advertiser role to SEED_ADV_USER_ID with scope_type='advertiser'."""
+        src = self._SEED_SRC
+        self.assertIn("SEED_ADV_USER_ROLE_ID", src)
+        self.assertIn("scope_type = 'advertiser'", src)
+        # Verify the user_roles INSERT references advertiser user + role + ADV-001 org
+        self.assertIn("SEED_ADV_USER_ID", src)
+        self.assertIn("SEED_ADV_ORG_ID", src)
+
+    def test_seed_advertiser_role_has_campaign_read(self):
+        """Advertiser role has campaigns.read permission."""
+        src = self._SEED_SRC
+        self._assert_role_perm(src, "advertiser", "campaigns.read")
+
+    def test_seed_advertiser_role_has_campaign_manage(self):
+        """Advertiser role has campaigns.manage permission."""
+        src = self._SEED_SRC
+        self._assert_role_perm(src, "advertiser", "campaigns.manage")
+
+    def test_seed_advertiser_role_has_creatives_read(self):
+        """Advertiser role has creatives.read permission."""
+        src = self._SEED_SRC
+        self._assert_role_perm(src, "advertiser", "creatives.read")
+
+    def test_seed_advertiser_role_has_advertisers_read(self):
+        """Advertiser role has advertisers.read permission."""
+        src = self._SEED_SRC
+        self._assert_role_perm(src, "advertiser", "advertisers.read")
+
+    def test_seed_advertiser_role_has_contacts_read(self):
+        """Advertiser role has advertisers.contacts.read permission."""
+        src = self._SEED_SRC
+        self._assert_role_perm(src, "advertiser", "advertisers.contacts.read")
+
+    def test_seed_advertiser_role_has_organization_read(self):
+        """Advertiser role has organization.read permission."""
+        src = self._SEED_SRC
+        self._assert_role_perm(src, "advertiser", "organization.read")
+
+    def test_seed_advertiser_role_lacks_campaigns_approve(self):
+        """Advertiser role does NOT have campaigns.approve."""
+        src = self._SEED_SRC
+        self._assert_role_lacks_perm(src, "advertiser", "campaigns.approve")
+
+    def test_seed_advertiser_role_lacks_admin_permissions(self):
+        """Advertiser role does NOT have users.read, users.manage, roles.read, roles.manage, audit.read."""
+        src = self._SEED_SRC
+        for perm in ("users.read", "users.manage", "roles.read", "roles.manage", "audit.read",
+                     "advertisers.manage", "advertisers.contacts.manage"):
+            self._assert_role_lacks_perm(src, "advertiser", perm)
+
+    def _assert_role_perm(self, src, role_code, perm_code):
+        """Assert that a role_permission INSERT exists for role→perm."""
+        # The permission appears in the advertiser role_permissions section
+        adv_perm_start = src.find("-- advertiser:")
+        self.assertNotEqual(adv_perm_start, -1, f"Role '{role_code}' section not found")
+        tail = src[adv_perm_start:]
+        self.assertIn(perm_code, tail[:4000],
+                      f"Permission '{perm_code}' not found near '{role_code}' role in seed SQL")
+
+    def _assert_role_lacks_perm(self, src, role_code, perm_code):
+        """Assert that no role_permission INSERT for this role contains perm_code."""
+        # Find the advertiser role_permissions section: "-- advertiser:" through next section
+        adv_perm_start = src.find("-- advertiser:")
+        if adv_perm_start == -1:
+            self.fail(f"Advertiser role_permissions section not found")
+        next_boundary = src.find("-- Break-glass admin", adv_perm_start)
+        if next_boundary == -1:
+            next_boundary = len(src)
+        section = src[adv_perm_start: next_boundary]
+        # Check no INSERT combines SEED_ROLE_IDS["advertiser"] and this perm_code
+        self.assertNotIn(
+            f"""SEED_PERM_IDS["{perm_code}"]""",
+            section,
+            f"Advertiser role should NOT have {perm_code} but it was found in section")
+
     def test_seed_break_glass_uses_correct_provider(self):
         """Break-glass user INSERT in SEED_SQL has auth_provider='local_break_glass'."""
         src = self._SEED_SRC
