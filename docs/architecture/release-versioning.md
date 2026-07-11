@@ -29,7 +29,7 @@ v{major}.{minor}-{description}
 |-----|-------------|
 | `v0.1-admin-campaign-mvp` | Admin portal + campaign CRUD, creative attach, approval, basic PoP reporting |
 | `v0.2-media-upload-runtime-baseline` | Real media upload (S-017), manifest/PoP contracts (S-018), three-role DB (S-019), green CI baseline (S-021), HMAC signing configuration (S-021a) |
-| `v0.3-player-pilot-mvp` | Real KSO player/sidecar integration, device manifest delivery, PoP ingestion |
+| `v0.3-advertiser-portal-foundation` | Advertiser portal: login, campaign list/detail, creative library + upload, PoP reporting |
 
 Major (0.x) stays at 0 until first production deployment.  Minor
 increments on each milestone release.
@@ -244,6 +244,81 @@ git push origin :refs/tags/v0.2-media-upload-runtime-baseline
 
 ---
 
+### v0.3-advertiser-portal-foundation — Advertiser Portal Foundation
+
+**Proposed.**  Tag not yet created.
+
+#### Metadata
+- **Tag:** v0.3-advertiser-portal-foundation
+- **Date:** 2026-07-11 (proposed)
+- **Commit SHA:** b2fba92e8271751408a6a878cd186b6adb6b02a5
+- **GitHub Actions run:** #29159995308 (conclusion: success, all jobs)
+- **Created by:** P.S. (via Hermes)
+
+#### Business Capabilities
+
+- Advertiser login via local credentials (email + bcrypt)
+- Separate advertiser web application (не путать с admin‑web)
+- View list of own campaigns with clickable rows
+- Read‑only campaign detail: overview, flights, placements, creatives, approval status
+- Creative library: view all uploaded creatives, create new creative metadata
+- Upload creative media files (images, video) via presigned PUT URLs with progress bar
+- PoP reporting per campaign: summary cards (impressions, duration), by‑day table, by‑surface table
+- Honest disclaimer: «Не является отчётом по продажам или атрибуции»
+
+#### Technical Capabilities
+
+- **Seed RBAC:** `advertiser` role (6 permissions: campaigns read/manage, creatives read, advertisers/contacts read, organization read) with scoped `user_roles` → `SEED_ADV_ORG_ID`
+- **Advertiser‑web:** separate Vite React TS SPA (5 test files, 32 vitest tests), port 3001
+- **Auth:** `local_advertiser` provider only, JWT access/refresh tokens via HttpOnly cookies, `ProtectedRoute` with `campaigns.read` guard
+- **API client:** typed `ApiError` with `instanceof` checks, not string‑matching
+- **Campaign list:** GET `/identity/campaigns` with table, error/empty/loading states, 401 logout, 403 friendly
+- **Campaign detail:** GET 7 identity endpoints, client‑side filter by `campaign_id`, 5 tabs
+- **Creative library:** GET `/identity/campaigns/{id}/creatives` per campaign, POST `/creative-assets`, upload‑intent → XHR PUT presigned (no Authorization header) → complete‑upload → refresh
+- **PoP reporting:** GET `/identity/campaigns/{id}/pop/{summary,by‑day,by‑surface}`, lazy‑loaded
+- **CI coverage:** advertiser‑web in frontend matrix (tsc → build → vitest), admins‑web 64 tests unchanged
+- **Backend unchanged:** no schema/RLS/endpoint changes, all identity endpoints reused as‑is
+- **Testing:** 877 backend unit + 245 behavioural + 64 admin‑web + 32 advertiser‑web = 1,218 total
+
+#### Known Limitations / Not Included
+
+- Campaign create/edit from advertiser portal — not implemented
+- Attach existing creative to campaign from advertiser portal — not implemented
+- Submit/request approval from advertiser portal — not implemented
+- Advertiser organization/profile page — not implemented
+- Password change / `must_change_password` flow — not implemented
+- Production UX polish / accessibility review — not done
+- Sales lift / attribution reporting
+- Billing, invoices, export
+- ClickHouse reporting / materialized views
+- KSO player / real device playback
+- Android TV, LED, ESL
+- v2.6 domains (self‑service cabinet, competitive separation, store‑level targeting, etc.)
+
+#### Rollback Note
+
+No schema changes, no backend changes. Rollback is pure frontend:
+
+```bash
+git checkout v0.2-media-upload-runtime-baseline
+```
+
+If tag was pushed, delete:
+
+```bash
+git tag -d v0.3-advertiser-portal-foundation
+git push origin :refs/tags/v0.3-advertiser-portal-foundation
+```
+
+#### References
+
+- ADR-001 through ADR-018
+- S-023a through S-023d in `docs/architecture/stabilization-tracker.md`
+- CI run #29159995308 (all gates green)
+- `apps/advertiser-web/src/` — 5 test files, 32 vitest tests
+
+---
+
 ## Future Branch: v2.6 Next Branch
 
 v2.6 — дальнейшее развитие портала после закрытия первого ТЗ (v2.5).
@@ -278,7 +353,7 @@ ADR-018 (`docs/architecture/adr/ADR-018-tenant-model-for-next-branch.md`)
 
 ### Не входит в v2.6
 
-- KSO player / sidecar — v0.3 первого ТЗ
+- KSO player / sidecar — следующий release
 - Android TV, LED/ESL, price checker — deferred
 - ClickHouse / materialized reporting — deferred
-- Advertiser portal — S-023 design gate, отдельная реализация
+- Advertiser portal — shipped (v0.3‑advertiser‑portal‑foundation)

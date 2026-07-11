@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
 | **Last updated:** 2026-07-11
-| **Current phase:** S-021a manifest signing config hardening done. S-021 green baseline after audit done. Three-role DB (S-019) + media upload (S-017) + contract alignment (S-018) + HMAC signing (S-021/S-021a) all shipped.
+| **Current phase:** S-023a–d advertiser portal foundation done. S-025 release prep in progress.
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -69,6 +69,7 @@ Separately covered:
 | S-023b | Advertiser Portal — Read-only Campaign Detail | P0 | ✅ done | P.S. (Hermes) | CampaignDetailPage: route /campaigns/:id, clickable list rows, 5 sections (Обзор, Флайты, Размещения, Креативы, Согласование). Data from 7 identity endpoints (list + client-side filter by campaign_id). Types fixed: CampaignApprovalOut (requested_by/at, reviewed_by/at, decision), CampaignStatusHistoryOut (old_status, changed_at, reason). No admin buttons, no storage secrets. Tests: 5 vitest (render, 7 API calls, 403/401, storage safety). Build passes. Advertiser-web CI covered (S-023a.1). | S-023c: creative library/upload |
 | S-023c | Advertiser Portal — Creative Library + Upload | P0 | ✅ done | P.S. (Hermes) | CreativeLibraryPage: table (name, type, size, status, moderation), create metadata-only (POST /creative-assets), upload flow (upload-intent → XHR PUT presigned no-Auth → complete-upload → refresh), progress bar. Route /creatives. Layout: Креативы nav. Types: CreativeAssetCreateRequest, UploadIntent*, CompleteUpload*. No storage_bucket/key/presigned_url in UI. Tests: 9 vitest (list, empty, 403, 401, no storage, upload button, create POST, upload-intent call, error). 26 total advertiser-web tests. Build passes. | S-023d: PoP reporting |
 | S-023d | Advertiser Portal — PoP Reporting | P0 | ✅ done | P.S. (Hermes) | CampaignDetailPage +PoPReportingSection: summary cards (impressions, duration, devices, surfaces), by-day table, by-surface table. Lazy-loaded via 3 endpoints (pop/summary, /by-day, /by-surface). Empty state. Honest disclaimer: «Не является отчётом по продажам». No storage secrets. Tests: +6 PoP tests, 32 total advertiser-web tests. Build passes. | S-023e: campaign create (advertiser) |
+| S-025 | Release Prep — v0.3-advertiser-portal-foundation | P1 | ✅ done | P.S. (Hermes) | Docs: release-versioning.md (full v0.3 definition), stabilization-tracker.md (S-023a–d done, remaining gaps), roadmap Excel (🟡 Pilot-ready foundation). No code changes. CI baseline #29159995308 (docs-only, expected skip). | Tag creation pending explicit approval |
 | S-024 | v2.6 Next Branch Requirements Captured | P1 | ✅ done | P.S. (Hermes) | TZ v2.6 DOCX placed in `docs/product/requirements/`. ADR-018 (tenant model) proposed — P0 decision needed before v2.6 implementation. Roadmap updated with v2.6 rows. Release-versioning has Future branch section. No code changes. | Tenant model ADR accepted → implementation |
 
 ## Status Legend
@@ -83,10 +84,14 @@ Separately covered:
 
 | Gap | Status |
 |-----|--------|
-| Real KSO player/sidecar | Out of scope |
-| Frontend advertiser/admin portal | Scaffolded, not wired (S-009) |
-| Real creative upload/storage/presigned URLs | S-017 done — backend + admin-web upload UI. Deferred: malware scan, transcoding, CDN, multipart upload |
-|| Production manifest signing (real HMAC) | S-021 implemented (HMAC-SHA256). S-021a production-hardened (mandatory key validation). Device-gateway verification deferred. |
-|| Tenant model ADR before v2.6 | 🟡 Decision needed / proposed — ADR-018 created. P0 before any v2.6 implementation. |
-|| ClickHouse / materialized reporting (4.3e) | Deferred |
-|| Production deployment/observability hardening | Prometheus metrics/alerts deferred |
+| Real KSO player/sidecar | Out of scope for v0.3, next release |
+| Advertiser campaign create/edit from portal | Not implemented — S-023e next |
+| Attach existing creative to campaign (advertiser portal) | Not implemented |
+| Submit/request approval from advertiser portal | Not implemented |
+| Advertiser organization/profile page | Not implemented |
+| Password change / must_change_password flow | Not implemented |
+| Production UX polish / accessibility review | Deferred |
+| Production manifest signing (real HMAC) | S-021 implemented (HMAC-SHA256). S-021a production-hardened. Device-gateway verification deferred. |
+| Tenant model ADR before v2.6 | 🟡 Decision needed / proposed — ADR-018 created. P0 before any v2.6 implementation. |
+| ClickHouse / materialized reporting (4.3e) | Deferred |
+| Production deployment/observability hardening | Prometheus metrics/alerts deferred |
