@@ -132,6 +132,17 @@ class LogoutResponse(BaseModel):
     message: str = "Logged out"
 
 
+class ChangePasswordRequest(BaseModel):
+    """Change own password — only for local providers."""
+    current_password: str
+    new_password: str
+
+
+class ChangePasswordResponse(BaseModel):
+    """Password change result — no secrets."""
+    message: str = "Password changed"
+
+
 class MeResponse(BaseModel):
     """Current user profile — loaded from DB, not JWT claims."""
     sub: str

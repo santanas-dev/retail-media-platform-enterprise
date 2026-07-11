@@ -23,6 +23,8 @@ from packages.domain import repository
 from packages.auth.schemas import AuthFailure, AuthSuccess
 from packages.auth.service import AuthService
 from packages.domain.schemas import (
+    ChangePasswordRequest,
+    ChangePasswordResponse,
     LoginRequest,
     LoginResponse,
     LogoutResponse,
@@ -272,3 +274,79 @@ async def me(
         permissions=perms,
         must_change_password=must_change_password,
     )
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/auth/change-password
+# ---------------------------------------------------------------------------
+
+
+@router.post("/change-password", response_model=ChangePasswordResponse)
+async def change_password(
+    body: ChangePasswordRequest,
+    claims: dict = Depends(get_current_active_user),
+    db=Depends(get_db),
+):
+    """Change own password — only for local_advertiser / local_break_glass.
+
+    401 if token missing/invalid. 403 if user deactivated.
+    400 if provider is not local or password validation fails.
+    Invalidates all refresh sessions on success.
+    """
+    user_id = claims.get("sub", "")
+    auth_provider = claims.get("auth_provider", "")
+
+    if auth_provider not in ("local_advertiser", "local_break_glass"):
+        raise HTTPException(
+            status_code=400,
+            detail="Password change not available for your account type",
+        )
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    from packages.auth.repository import get_local_credential
+
+    cred = await get_local_credential(db, user_id)
+    if cred is None:
+        raise HTTPException(
+            status_code=400,
+            detail="No local credential found",
+        )
+
+    # Verify current password
+    from packages.security.password import verify_password
+
+    if not verify_password(body.current_password, cred.password_hash):
+        raise HTTPException(
+            status_code=400,
+            detail="Current password is incorrect",
+        )
+
+    # Validate new password
+    from packages.security.password import hash_password
+
+    try:
+        new_hash = hash_password(body.new_password)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Update credential
+    cred.password_hash = new_hash
+    cred.must_change_password = False
+
+    # Invalidate all refresh sessions for this user
+    from sqlalchemy import update
+    from packages.domain.models import RefreshSession as RSModel
+
+    await db.execute(
+        update(RSModel)
+        .where(RSModel.user_id == user_id, RSModel.revoked_at.is_(None))
+        .values(revoked_at=__import__("datetime").datetime.now(
+            __import__("datetime").timezone.utc
+        ))
+    )
+
+    await db.commit()
+
+    return ChangePasswordResponse(message="Password changed")

@@ -14,6 +14,7 @@ interface AuthState {
   error: string | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshMe: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -116,8 +117,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const refreshMe = useCallback(async () => {
+    try {
+      const me = await api.getMe();
+      setUser(me);
+    } catch {
+      // Silently keep current user on failure
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, error, login, logout, refreshMe }}>
       {children}
     </AuthContext.Provider>
   );

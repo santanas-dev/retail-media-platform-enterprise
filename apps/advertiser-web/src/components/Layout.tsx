@@ -5,7 +5,7 @@ const NAV_ITEMS = [
   { to: "/campaigns", label: "Кампании" },
   { to: "/creatives", label: "Креативы" },
   { to: "/reports", label: "Отчётность", disabled: true },
-  { to: "/profile", label: "Профиль", disabled: true },
+  { to: "/profile", label: "Профиль" },
 ];
 
 const styles = {

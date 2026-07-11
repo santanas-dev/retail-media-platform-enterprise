@@ -640,3 +640,152 @@ class TestAuthAPI(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ---------------------------------------------------------------------------
+# Change-password (local_advertiser / local_break_glass)
+# ---------------------------------------------------------------------------
+
+
+class TestChangePassword(unittest.TestCase):
+    """POST /api/v1/auth/change-password — security and functional tests."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.client = TestClient(_get_app())
+
+    def setUp(self):
+        reset_security_config()
+        os.environ["ENVIRONMENT"] = "dev"
+        os.environ["JWT_SECRET"] = "test-jwt-secret-32-bytes-for-api"
+        self.client.cookies.clear()
+        from packages.api.dependencies import get_current_active_user, get_db
+        self._app = _get_app()
+        self._mock_db = AsyncMock()
+        self._app.dependency_overrides[get_current_active_user] = self._mock_active_local
+        self._app.dependency_overrides[get_db] = lambda: _async_gen(self._mock_db)
+
+    def tearDown(self):
+        self._app.dependency_overrides.clear()
+
+    async def _mock_active_local(self):
+        return {"sub": "u-local", "auth_provider": "local_advertiser", "username": "adv"}
+
+    async def _mock_active_ad(self):
+        return {"sub": "u-ad", "auth_provider": "ad", "username": "admin"}
+
+    # ── Happy path ──
+
+    @patch("packages.auth.repository.get_local_credential", new_callable=AsyncMock)
+    @patch("packages.security.password.verify_password")
+    @patch("packages.security.password.hash_password")
+    async def test_change_password_success(
+        self, mock_hash, mock_verify, mock_get_cred,
+    ):
+        """Local user can change password — must_change_password becomes False."""
+        from packages.api.dependencies import get_current_active_user
+
+        self._app.dependency_overrides[get_current_active_user] = self._mock_active_local
+
+        class _Cred:
+            password_hash = "$2b$12$oldhash..."
+            must_change_password = True
+
+        cred_instance = _Cred()
+        mock_get_cred.return_value = cred_instance
+        mock_verify.return_value = True
+        mock_hash.return_value = "$2b$12$newhash..."
+
+        resp = self.client.post(
+            "/api/v1/auth/change-password",
+            json={"current_password": "old", "new_password": "new-pass-123"},
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body["message"], "Password changed")
+        self.assertEqual(cred_instance.password_hash, "$2b$12$newhash...")
+        self.assertFalse(cred_instance.must_change_password)
+
+    # ── Wrong current password ──
+
+    @patch("packages.auth.repository.get_local_credential", new_callable=AsyncMock)
+    @patch("packages.security.password.verify_password")
+    async def test_wrong_current_password_rejected(
+        self, mock_verify, mock_get_cred,
+    ):
+        """Wrong current password → 400."""
+        class _Cred:
+            password_hash = "$2b$12$hash..."
+        mock_get_cred.return_value = _Cred()
+        mock_verify.return_value = False
+
+        resp = self.client.post(
+            "/api/v1/auth/change-password",
+            json={"current_password": "wrong", "new_password": "new-pass-123"},
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("incorrect", resp.json()["detail"].lower())
+
+    # ── Weak password ──
+
+    @patch("packages.auth.repository.get_local_credential", new_callable=AsyncMock)
+    @patch("packages.security.password.verify_password")
+    @patch("packages.security.password.hash_password")
+    async def test_weak_password_rejected(
+        self, mock_hash, mock_verify, mock_get_cred,
+    ):
+        """Password too short → 400."""
+        class _Cred:
+            password_hash = "$2b$12$hash..."
+        mock_get_cred.return_value = _Cred()
+        mock_verify.return_value = True
+        mock_hash.side_effect = ValueError("Password must be at least 8 characters")
+
+        resp = self.client.post(
+            "/api/v1/auth/change-password",
+            json={"current_password": "old", "new_password": "short"},
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    # ── AD provider rejected ──
+
+    async def test_ad_user_rejected(self):
+        """AD user cannot change password."""
+        from packages.api.dependencies import get_current_active_user
+
+        self._app.dependency_overrides[get_current_active_user] = self._mock_active_ad
+
+        resp = self.client.post(
+            "/api/v1/auth/change-password",
+            json={"current_password": "old", "new_password": "new-pass-123"},
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("not available", resp.json()["detail"].lower())
+
+    # ── Response leaks no secrets ──
+
+    @patch("packages.auth.repository.get_local_credential", new_callable=AsyncMock)
+    @patch("packages.security.password.verify_password")
+    @patch("packages.security.password.hash_password")
+    async def test_response_leaks_no_secrets(
+        self, mock_hash, mock_verify, mock_get_cred,
+    ):
+        """Response must not contain password, hash, or token."""
+        class _Cred:
+            password_hash = "$2b$12$hash..."
+            must_change_password = True
+
+        mock_get_cred.return_value = _Cred()
+        mock_verify.return_value = True
+        mock_hash.return_value = "$2b$12$newhash..."
+
+        resp = self.client.post(
+            "/api/v1/auth/change-password",
+            json={"current_password": "old", "new_password": "new-pass-123"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        body_str = str(body).lower()
+        for forbidden in ("password", "hash", "token", "secret", "old", "new-pass"):
+            self.assertNotIn(forbidden, body_str)

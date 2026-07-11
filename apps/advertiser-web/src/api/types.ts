@@ -121,6 +121,19 @@ export interface AdvertiserContractOut {
   status: string;
 }
 
+// ── Advertiser Contact ──
+
+export interface AdvertiserContactOut {
+  id: string;
+  advertiser_organization_id: string;
+  contact_type: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  is_primary: boolean;
+  status: string;
+}
+
 // ── Campaign Approval ──
 
 export interface CampaignApprovalOut {

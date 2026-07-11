@@ -153,6 +153,15 @@ export const api = {
   getMe() {
     return request<MeResponse>("GET", "/me", undefined, AUTH_BASE_URL);
   },
+
+  changePassword(currentPassword: string, newPassword: string) {
+    return request<{ message: string }>(
+      "POST",
+      "/change-password",
+      { current_password: currentPassword, new_password: newPassword },
+      AUTH_BASE_URL,
+    );
+  },
 };
 
 // ── Response types — match backend schemas exactly ──

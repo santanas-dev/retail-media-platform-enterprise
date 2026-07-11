@@ -20,6 +20,7 @@ vi.mock("../api/client", () => ({
     patch: vi.fn(),
     del: vi.fn(),
     refresh: vi.fn(),
+    changePassword: vi.fn(),
   },
   setToken: vi.fn(),
   onUnauthorized: vi.fn(),
