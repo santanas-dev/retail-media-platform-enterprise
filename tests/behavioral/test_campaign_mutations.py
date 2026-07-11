@@ -1294,10 +1294,13 @@ class TestCampaignFullPilotSetup:
         assert resp.status_code == 201, f"Creative create: {resp.text}"
         asset_id = resp.json()["id"]
 
-        # S-017: create_campaign_creative always makes metadata-only (empty checksum).
-        # approval requires deliverable checksum — set one directly for the test.
+        # S-017: create_campaign_creative always creates metadata_only with empty
+        # checksum, status=metadata_only, moderation=pending_review, size=0.
+        # approval requires all four: deliverable checksum, status=ready,
+        # moderation=approved, and size>0. Set them directly for the test.
         _raw_exec(
-            "UPDATE creative_assets SET sha256_checksum = :cs, status = 'ready'"
+            "UPDATE creative_assets SET sha256_checksum = :cs, status = 'ready',"
+            " moderation_status = 'approved', file_size_bytes = 5000000"
             " WHERE id = :aid",
             {"cs": "d" * 64, "aid": asset_id},
         )
