@@ -9,6 +9,7 @@ import CampaignListPage from "./pages/CampaignListPage";
 import CampaignCreatePage from "./pages/CampaignCreatePage";
 import CampaignDetailPage from "./pages/CampaignDetailPage";
 import AdvertisersPage from "./pages/AdvertisersPage";
+import UsersPage from "./pages/UsersPage";
 
 const router = createBrowserRouter([
   {
@@ -28,6 +29,7 @@ const router = createBrowserRouter([
       { path: "campaigns/new", element: <CampaignCreatePage /> },
       { path: "campaigns/:id", element: <CampaignDetailPage /> },
       { path: "advertisers", element: <AdvertisersPage /> },
+      { path: "users", element: <UsersPage /> },
     ],
   },
 ]);

@@ -5,8 +5,9 @@ Phase 3.0: Read-only query functions for identity/RBAC tables.
 """
 
 from datetime import datetime
+import uuid
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -15,12 +16,14 @@ from packages.domain.models import (
     AdvertiserContact,
     AdvertiserContract,
     AdvertiserOrganization,
+    AdvertiserUserMembership,
     AuditEventOperational,
     Branch,
     Cluster,
     CreativeAsset,
     CampaignCreative,
     DisplaySurface,
+    LocalCredential,
     Permission,
     Role,
     RolePermission,
@@ -118,6 +121,17 @@ async def list_advertiser_organizations(
     stmt = select(AdvertiserOrganization).order_by(AdvertiserOrganization.code)
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def get_advertiser_organization(
+    session: AsyncSession, org_id: str
+) -> AdvertiserOrganization | None:
+    """Get advertiser organization by ID."""
+    stmt = select(AdvertiserOrganization).where(
+        AdvertiserOrganization.id == org_id
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
 
 
 async def list_advertiser_brands(
@@ -1281,7 +1295,7 @@ async def mark_event_failed(
     """
     from packages.domain.models import OutboxEvent
     from sqlalchemy import update
-    from datetime import datetime, timedelta, timezone
+    from datetime import timezone, timedelta
 
     now = datetime.now(timezone.utc)
     result = await session.execute(
@@ -2249,6 +2263,182 @@ async def mark_asset_uploaded(
             sha256_checksum=sha256_checksum,
             file_size_bytes=file_size_bytes,
             updated_at=_dt.now(_tz.utc),
+        )
+    )
+    return result.rowcount > 0
+
+
+# ---------------------------------------------------------------------------
+# S-033 — Admin User Management Repository
+# ---------------------------------------------------------------------------
+
+
+async def get_user_detail(session: AsyncSession, user_id: str) -> User | None:
+    """Get user with eager-loaded roles and credentials."""
+    from sqlalchemy.orm import selectinload
+
+    stmt = (
+        select(User)
+        .options(
+            selectinload(User.roles).selectinload(UserRole.role),
+        )
+        .where(User.id == user_id)
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def get_user_local_credential(
+    session: AsyncSession, user_id: str
+) -> LocalCredential | None:
+    """Get local_credentials row for a user."""
+    stmt = select(LocalCredential).where(LocalCredential.user_id == user_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def find_user_by_username(
+    session: AsyncSession, username: str
+) -> User | None:
+    """Find user by exact username."""
+    stmt = select(User).where(User.username == username)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def create_local_advertiser_user(
+    session: AsyncSession,
+    *,
+    user_id: str,
+    code: str,
+    username: str,
+    display_name: str,
+    password_hash: str,
+    advertiser_organization_id: str,
+    role_id: str,
+    must_change_password: bool = True,
+    is_active: bool = True,
+) -> User:
+    """Create user + local_credentials + scoped role + advertiser membership."""
+    from datetime import timezone
+
+    now = datetime.now(timezone.utc)
+    status = "active" if is_active else "inactive"
+
+    # 1. Create User — flush immediately so FK references resolve
+    user = User(
+        id=user_id,
+        code=code,
+        username=username,
+        display_name=display_name,
+        auth_provider="local_advertiser",
+        status=status,
+        is_break_glass=False,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(user)
+    await session.flush()
+
+    # 2. Create LocalCredential
+    cred = LocalCredential(
+        id=str(uuid.uuid4()),
+        user_id=user_id,
+        credential_type="local_advertiser",
+        password_hash=password_hash,
+        password_hash_algorithm="bcrypt",
+        password_changed_at=now,
+        must_change_password=must_change_password,
+        status=status,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(cred)
+
+    # 3. Assign scoped advertiser role
+    user_role = UserRole(
+        id=str(uuid.uuid4()),
+        user_id=user_id,
+        role_id=role_id,
+        scope_type="advertiser",
+        scope_id=advertiser_organization_id,
+        created_at=now,
+    )
+    session.add(user_role)
+
+    # 4. Create advertiser_user_membership
+    membership = AdvertiserUserMembership(
+        id=str(uuid.uuid4()),
+        user_id=user_id,
+        advertiser_organization_id=advertiser_organization_id,
+        status="active",
+        created_at=now,
+    )
+    session.add(membership)
+
+    await session.flush()
+    return user
+
+
+async def count_active_break_glass_users(session: AsyncSession) -> int:
+    """Count users with is_break_glass=True and status='active'."""
+    stmt = (
+        select(func.count())
+        .select_from(User)
+        .where(
+            User.is_break_glass == True,
+            User.status == "active",
+        )
+    )
+    result = await session.execute(stmt)
+    return result.scalar() or 0
+
+
+async def count_active_admin_users(session: AsyncSession) -> int:
+    """Count users with system_admin role and status='active' (approximate)."""
+    stmt = (
+        select(func.count())
+        .select_from(User)
+        .join(UserRole, UserRole.user_id == User.id)
+        .join(Role, Role.id == UserRole.role_id)
+        .where(
+            User.status == "active",
+            Role.code == "system_admin",
+        )
+    )
+    result = await session.execute(stmt)
+    return result.scalar() or 0
+
+
+async def set_user_status(
+    session: AsyncSession, user_id: str, status: str
+) -> bool:
+    """Set user.status to the given value. Returns True if row was updated."""
+    from datetime import timezone
+
+    result = await session.execute(
+        update(User)
+        .where(User.id == user_id)
+        .values(status=status, updated_at=datetime.now(timezone.utc))
+    )
+    return result.rowcount > 0
+
+
+async def update_local_credential_password(
+    session: AsyncSession, user_id: str, password_hash: str
+) -> bool:
+    """Update password_hash + must_change_password + password_changed_at."""
+    from datetime import timezone
+
+    now = datetime.now(timezone.utc)
+    result = await session.execute(
+        update(LocalCredential)
+        .where(LocalCredential.user_id == user_id)
+        .values(
+            password_hash=password_hash,
+            must_change_password=True,
+            password_changed_at=now,
+            updated_at=now,
         )
     )
     return result.rowcount > 0

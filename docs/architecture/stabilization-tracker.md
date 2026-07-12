@@ -78,7 +78,8 @@ Separately covered:
 | S-030 | Production CI Gate + Secrets Validation | P0 | ✅ done | P.S. (Hermes) | `packages/security/config.py`: SEED_DEV_CREDENTIALS, CORS localhost, DATABASE_URL validation in production. `tests/test_production_config_gate.py`: 24 tests (positive + negative). CI: `production-config-gate` job in phase1-ci.yml. Branch: feature/S-030. | — |
 | S-031 | Backup / Restore / DR Runbook + Tested Restore Drill | P0 | ✅ done | P.S. (Hermes) | `scripts/backup/postgres_backup.py`, `scripts/restore/postgres_restore.py`. `tests/integration/test_backup_restore.py` (5/5). `docs/runbook/backup-restore-dr.md`. Live drill: 4.7MB, 39 таблиц. Branch: feature/S-031. | — |
 | S-031a | Stabilize flaky outbox relay behavioural test | P0 | ✅ done | P.S. (Hermes) | Root cause: due events from other suites consumed `fail_next(1)`. Fix: delete ALL due events + per-event assertions. CI #29188698606 green (33/33). Branch: fix/S-031a. | — |
-| S-032 | Roadmap Re-sequence: Business Portal before Player | P0 | ✅ docs done | P.S. (Hermes) | Roadmap resequenced per original ТЗ: v0.5 Business Portal → v0.6 Production → v0.7 Player. Player BLOCKED until business portal complete. No code changed. Branch: develop. | — |
+| S-033 | Admin User Management + Local Account Administration | P0 | ✅ done | P.S. (Hermes) | Backend: 5 новых endpoint'ов (GET /users/{id}, POST /users/local-advertiser, activate/deactivate, reset-password). Permissions: users.read/users.manage. Frontend: UsersPage с create/deactivate/reset. Build OK, 64 tests. Branch: feature/S-033. | — |
+| S-032 | Roadmap Re-sequence: Business Portal before Player | P0 | ✅ docs done | P.S. (Hermes) | Roadmap resequenced per original ТЗ. No code changed. Branch: develop. | — |
 ## Status Legend
 
 - **done** — implemented, tested, committed, pushed

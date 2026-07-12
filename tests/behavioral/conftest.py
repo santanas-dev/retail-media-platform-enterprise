@@ -359,6 +359,12 @@ _CLEANUP = """
     ; DELETE FROM local_credentials WHERE user_id LIKE 'beh-%'
     ; DELETE FROM user_roles WHERE user_id LIKE 'beh-%'
     ; DELETE FROM users WHERE id LIKE 'beh-%'
+    -- S-033: cleanup users created dynamically (UUID IDs via create endpoint)
+    ; DELETE FROM refresh_sessions WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'beh-test-%')
+    ; DELETE FROM advertiser_user_memberships WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'beh-test-%')
+    ; DELETE FROM local_credentials WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'beh-test-%')
+    ; DELETE FROM user_roles WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'beh-test-%')
+    ; DELETE FROM users WHERE username LIKE 'beh-test-%'
 """
 
 
