@@ -314,3 +314,23 @@ jobs:
             exit 1
           fi
           exit $PYTEST_EXIT
+
+  production-config-gate:
+    name: Production Config Gate — S-030
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: production
+      JWT_SECRET: a-strong-ci-jwt-secret-at-least-32-chars!!
+      MANIFEST_SIGNING_KEY: a-strong-ci-manifest-key-at-least-32c!!
+      MINIO_ACCESS_KEY: ci-prod-minio-access-key-strong
+      MINIO_SECRET_KEY: ci-prod-minio-secret-key-strong-unique
+      CORS_ALLOWED_ORIGINS: https://portal.ci.example.com,https://admin.ci.example.com
+      DATABASE_URL: postgresql+asyncpg://rmp_user:strong-ci-prod-pass@db.ci.internal:5432/rmp_prod
+      SEED_DEV_CREDENTIALS: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run production config gate tests
+        run: python -m pytest tests/test_production_config_gate.py -v --tb=short

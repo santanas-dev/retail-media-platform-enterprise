@@ -75,6 +75,7 @@ Separately covered:
 | S-023i | Advertiser Portal — Responsive Layout Polish | P1 | ✅ done | P.S. (Hermes) | Layout.module.css replaces inline styles. Hamburger + overlay sidebar for <768px. Tables: overflow-x:auto on narrow (no page-level overflow). Text fixes: timezoneLabel, mediaTypeLabel in CampaignDetailPage. Tests: 66 vitest. CI #29166816518 green (33/33). | S-026: live LAN preview |
 | S-024 | v2.6 Next Branch Requirements Captured | P1 | ✅ done | P.S. (Hermes) | TZ v2.6 DOCX placed in `docs/product/requirements/`. ADR-018 (tenant model) proposed — P0 decision needed before v2.6 implementation. Roadmap updated with v2.6 rows. Release-versioning has Future branch section. No code changes. | Tenant model ADR accepted → implementation |
 | S-029 | Production Gaps Triage | P0 | ✅ docs/triage done | P.S. (Hermes) | `docs/product/production-gaps-triage.md` — 8 categories, 35+ gaps triaged with P0/P1/P2/P3 severity. Recommended milestones v0.5–v0.9. Roadmap updated with production gap rows. No code changes. Branch: develop. | Start v0.5 P0 gates |
+| S-030 | Production CI Gate + Secrets Validation | P0 | ✅ done | P.S. (Hermes) | `packages/security/config.py`: SEED_DEV_CREDENTIALS, CORS localhost, DATABASE_URL validation in production. `tests/test_production_config_gate.py`: 24 tests (positive + negative). CI: `production-config-gate` job in phase1-ci.yml. Branch: feature/S-030. | v0.5: backup/restore (next) |
 
 ## Status Legend
 

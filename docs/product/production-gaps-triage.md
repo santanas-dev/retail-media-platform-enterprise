@@ -83,7 +83,7 @@ See gap categories below. No gap is production-ready — each requires explicit 
 | Monitoring / alerting | P0 | Incident detection | Silent failures in production | Prometheus + Grafana + AlertManager | v0.5 |
 | Backup / restore / DR | P0 | Data safety | Data loss on failure | pg_dump/pg_basebackup + MinIO mirroring | v0.5 |
 | Secrets management | P0 | Security baseline | Hardcoded secrets in config | HashiCorp Vault or env-based hardening | v0.5 |
-| Production CI gate | P0 | Quality gate | Broken code on production | Behavioural PostgreSQL gate (exists), add production config validation | v0.5 |
+| Production CI gate | P0 | Quality gate | Broken code on production | Behavioural PostgreSQL gate (exists), add production config validation | v0.5 | **S-030 done** — CI job added, 24 gate tests |
 | Load / performance tests | P1 | Scalability confidence | 40K devices target unproven | Locust/k6 + production-like env | v0.8 |
 | Audit retention / log review | P1 | Compliance, forensics | No historical audit trail | Audit table + retention policy | v0.5 |
 

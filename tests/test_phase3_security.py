@@ -65,6 +65,7 @@ class TestSecurityConfig(unittest.TestCase):
         os.environ["ENVIRONMENT"] = "production"
         os.environ["JWT_SECRET"] = "short"
         os.environ["CORS_ALLOWED_ORIGINS"] = "https://example.com"
+        os.environ["MANIFEST_SIGNING_KEY"] = "ci-manifest-key-at-least-32-chars-xx"
         with self.assertRaises(ValueError):
             sec_config.SecurityConfig()
 
@@ -73,6 +74,7 @@ class TestSecurityConfig(unittest.TestCase):
         os.environ["ENVIRONMENT"] = "production"
         os.environ["JWT_SECRET"] = "secret"
         os.environ["CORS_ALLOWED_ORIGINS"] = "https://example.com"
+        os.environ["MANIFEST_SIGNING_KEY"] = "ci-manifest-key-at-least-32-chars-xx"
         with self.assertRaises(ValueError):
             sec_config.SecurityConfig()
 
@@ -81,6 +83,7 @@ class TestSecurityConfig(unittest.TestCase):
         os.environ["ENVIRONMENT"] = "production"
         os.environ["JWT_SECRET"] = "a" * 32
         os.environ["CORS_ALLOWED_ORIGINS"] = "https://example.com"
+        os.environ["MANIFEST_SIGNING_KEY"] = "ci-manifest-key-at-least-32-chars-xx"
         cfg = sec_config.SecurityConfig()
         self.assertFalse(cfg.dev_mode)
         self.assertEqual(cfg.jwt_secret, "a" * 32)
@@ -210,6 +213,7 @@ class TestSecurityConfig(unittest.TestCase):
         os.environ["ENVIRONMENT"] = "production"
         os.environ["JWT_SECRET"] = "a" * 32
         os.environ["CORS_ALLOWED_ORIGINS"] = "https://example.com"
+        os.environ["MANIFEST_SIGNING_KEY"] = "ci-manifest-key-at-least-32-chars-xx"
         os.environ["MINIO_ACCESS_KEY"] = "prod-access-key-123"
         os.environ["MINIO_SECRET_KEY"] = "prod-secret-key-456"
         cfg = sec_config.SecurityConfig()

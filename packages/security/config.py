@@ -163,7 +163,7 @@ class SecurityConfig:
         self._validate_manifest_signing_dev()
 
     def _validate_production(self) -> None:
-        """Production mode: require strong JWT secret, explicit CORS, and non-default MinIO credentials."""
+        """Production mode: require strong secrets, explicit CORS, non-local infra."""
         if not self.jwt_secret or self.jwt_secret == "CHANGE_ME":
             raise ValueError(
                 "JWT_SECRET must be set to a strong random value in production"
@@ -179,10 +179,15 @@ class SecurityConfig:
                 "JWT_SECRET must not be a common weak value in production"
             )
         self._validate_cors()
+        self._validate_cors_production_origins()
         # S-017 P2: reject default MinIO credentials in production
         self._validate_minio_production()
         # S-021a: require strong manifest signing key in production
         self._validate_manifest_signing_production()
+        # S-030: reject dev credentials seed in production
+        self._validate_seed_dev_credentials()
+        # S-030: reject localhost database URL in production
+        self._validate_database_url_production()
 
     def _validate_cors(self) -> None:
         """Validate CORS configuration — safe defaults, no wildcard+credentials."""
@@ -248,6 +253,63 @@ class SecurityConfig:
                 f"MANIFEST_SIGNING_KEY is short ({len(self.manifest_signing_key)} chars). "
                 f"Signatures will still be generated but consider ≥32 chars.",
                 stacklevel=2,
+            )
+
+    def _validate_cors_production_origins(self) -> None:
+        """S-030: reject dev/localhost origins in production CORS."""
+        dev_patterns = (
+            "localhost", "127.0.0.1", "0.0.0.0", "[::1]",
+        )
+        for origin in self.cors_allowed_origins:
+            low = origin.lower()
+            if any(p in low for p in dev_patterns):
+                raise ValueError(
+                    f"CORS origin '{origin}' is a dev/localhost address. "
+                    f"In production, CORS_ALLOWED_ORIGINS must contain only "
+                    f"real deployment domains (e.g. https://portal.example.com)."
+                )
+            if origin == "*":
+                raise ValueError(
+                    "CORS wildcard '*' is not allowed in production. "
+                    "Use explicit origin list."
+                )
+
+    def _validate_seed_dev_credentials(self) -> None:
+        """S-030: reject SEED_DEV_CREDENTIALS in production."""
+        seed_dev = os.environ.get("SEED_DEV_CREDENTIALS", "").strip()
+        if seed_dev.lower() in ("true", "1", "yes"):
+            raise ValueError(
+                "SEED_DEV_CREDENTIALS must not be enabled in production. "
+                "Dev credentials (advertiser_test/advertiser-dev-only etc.) "
+                "are for development and pilot only."
+            )
+
+    def _validate_database_url_production(self) -> None:
+        """S-030: reject localhost/dev database URLs in production."""
+        db_url = os.environ.get("DATABASE_URL", "")
+        if not db_url:
+            return  # no DB configured — skip (may be a service without DB)
+        low = db_url.lower()
+        local_hosts = ("localhost", "127.0.0.1", "0.0.0.0", "[::1]")
+        if any(h in low for h in local_hosts):
+            raise ValueError(
+                "DATABASE_URL refers to a localhost address in production. "
+                "Production must connect to a managed database instance, "
+                "not a local PostgreSQL container."
+            )
+        # Reject default dev passwords (check only the password portion, not protocol prefix)
+        dev_passwords = ("retail_media_owner_pass", "retail_media_app", "postgres")
+        # Extract password: find the segment between second and third colon/at
+        # URL format: postgresql+asyncpg://user:password@host:port/db
+        try:
+            auth_part = db_url.split("@")[0] if "@" in db_url else ""
+            pw = auth_part.rsplit(":", 1)[-1] if ":" in auth_part else ""
+        except Exception:
+            pw = ""
+        if any(p in pw for p in dev_passwords):
+            raise ValueError(
+                "DATABASE_URL contains a known dev password in production. "
+                "Use a strong, unique production password."
             )
 
     def __repr__(self) -> str:
