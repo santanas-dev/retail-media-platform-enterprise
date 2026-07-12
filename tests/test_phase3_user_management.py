@@ -337,6 +337,18 @@ class TestUserManagementPermissionGates(unittest.TestCase):
         )
         self.assertEqual(resp.status_code, 403)
 
+    def test_advertiser_cannot_list_users(self):
+        """Advertiser without users.read -> 403 on list."""
+        self._mock_auth_repo(
+            user=_make_user("u-advertiser", auth_provider="local_advertiser"),
+            perms={"campaigns.read"},
+        )
+        resp = self.client.get(
+            "/api/v1/identity/users",
+            headers=self._auth(self._token("u-advertiser", "local_advertiser")),
+        )
+        self.assertEqual(resp.status_code, 403)
+
     def test_advertiser_cannot_create_user(self):
         """Advertiser without users.manage -> 403 on create."""
         self._mock_auth_repo(
@@ -525,6 +537,24 @@ class TestCreateLocalAdvertiser(unittest.TestCase):
         )
         self.assertEqual(resp.status_code, 409)
 
+    def test_invalid_org_returns_404(self):
+        """Non-existent advertiser organization -> 404."""
+        self._mock_auth()
+        self._mock_repo(
+            get_advertiser_organization=None,
+        )
+        resp = self.client.post(
+            "/api/v1/identity/users/local-advertiser",
+            json={
+                "username": "new_user",
+                "display_name": "Test User",
+                "advertiser_organization_id": "dead-org-id",
+                "auto_generate_password": True,
+            },
+            headers=self._auth(self._token()),
+        )
+        self.assertEqual(resp.status_code, 404, resp.text)
+
 
     def test_response_has_no_password_hash(self):
         """Create response must not leak password_hash."""
@@ -662,6 +692,19 @@ class TestDeactivateActivate(unittest.TestCase):
         )
         self.assertEqual(resp.status_code, 409)
 
+    def test_cannot_deactivate_self(self):
+        """Admin cannot deactivate their own account (self-lockout)."""
+        self._mock_auth()
+        # scope.user_id is "u-admin" from _mock_auth, so deactivating "u-admin" should fail
+        self._mock_repo(
+            get_user_detail=_make_user("u-admin", "active"),
+        )
+        resp = self.client.post(
+            "/api/v1/identity/users/u-admin/deactivate",
+            headers=self._auth(self._token()),
+        )
+        self.assertEqual(resp.status_code, 409, resp.text)
+
     def test_already_inactive_returns_409(self):
         """Deactivating an already-inactive user -> 409."""
         self._mock_auth()
@@ -770,6 +813,19 @@ class TestResetPassword(unittest.TestCase):
             headers=self._auth(self._token()),
         )
         self.assertEqual(resp.status_code, 422)
+
+    def test_cannot_reset_own_password(self):
+        """Admin cannot reset own password via admin endpoint (self-lockout)."""
+        self._mock_auth_and_repo(
+            get_user_detail=_make_user("u-admin", "active", "local_advertiser"),
+        )
+        resp = self.client.post(
+            "/api/v1/identity/users/u-admin/reset-password",
+            json={"auto_generate_password": True},
+            headers=self._auth(self._token()),
+        )
+        self.assertEqual(resp.status_code, 422, resp.text)
+        self.assertIn("change-password", resp.json()["detail"])
 
     def test_local_user_ok(self):
         """Reset password for local user -> 200."""

@@ -72,6 +72,8 @@ async def list_users(
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
     offset: int = Query(0, ge=0),
     db=Depends(get_db),
+    scope: ScopeContext = Depends(get_scope_context),
+    _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("users.read")),
 ):
     items, total = await repository.list_users(db, limit=limit, offset=offset)
@@ -153,6 +155,11 @@ async def create_local_advertiser(
     if existing:
         raise HTTPException(status_code=409, detail="Username already taken")
 
+    # Validate advertiser organization exists
+    org = await repository.get_advertiser_organization(db, body.advertiser_organization_id)
+    if org is None:
+        raise HTTPException(status_code=404, detail="Advertiser organization not found")
+
     # Resolve or generate password
     one_time_password: str | None = None
     if body.auto_generate_password:
@@ -218,6 +225,10 @@ async def deactivate_user(
 
     if user.status == "inactive":
         raise HTTPException(status_code=409, detail="User is already inactive")
+
+    # Safety: cannot deactivate yourself (self-lockout prevention)
+    if user_id == scope.user_id:
+        raise HTTPException(status_code=409, detail="Cannot deactivate your own account")
 
     # Safety: cannot deactivate last active break-glass user
     if user.is_break_glass:
@@ -294,6 +305,13 @@ async def reset_password(
     user = await repository.get_user_detail(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Safety: use /auth/change-password for your own password
+    if user_id == scope.user_id:
+        raise HTTPException(
+            status_code=422,
+            detail="Cannot reset your own password via admin endpoint. Use /auth/change-password instead.",
+        )
 
     # Only local_* providers support password reset
     if not user.auth_provider.startswith("local_"):

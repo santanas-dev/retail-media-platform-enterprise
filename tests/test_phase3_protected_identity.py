@@ -115,10 +115,31 @@ class TestProtectedIdentityAPI(unittest.TestCase):
         mock_find.return_value = user
         mock_perms.return_value = perms or set()
 
+        # Also mock get_scope_context and set_rls_context so
+        # endpoints that require them (list_users, user detail)
+        # can resolve without hitting a real DB.
+        app = _get_app()
+        from packages.api.dependencies import get_scope_context, set_rls_context
+        from packages.domain.scopes import ScopeContext
+
+        async def _fake_scope():
+            return ScopeContext(
+                user_id=(user.id if user else "u-001"),
+                is_admin=True,
+                role_codes={"system_admin"},
+                global_permissions=perms or set(),
+                all_permissions=perms or set(),
+            )
+
+        async def _fake_set_rls(db=None, scope=None):
+            return None
+
+        app.dependency_overrides[get_scope_context] = _fake_scope
+        app.dependency_overrides[set_rls_context] = _fake_set_rls
+
         self.addCleanup(patcher_find.stop)
         self.addCleanup(patcher_perms.stop)
-
-        return mock_find, mock_perms
+        self.addCleanup(lambda: app.dependency_overrides.clear())
 
     # -------------------------------------------------------------------
     # 401 - missing / invalid token
