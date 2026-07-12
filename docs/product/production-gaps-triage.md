@@ -1,9 +1,15 @@
 # Production Gaps Triage — Retail Media Platform Enterprise
 
-| **Created:** 2026-07-11
-| **Version:** 1.0
-| **Status:** active
-| **Branch:** develop
+| **Created:** 2026-07-11 |
+| **Version:** 1.1 |
+| **Status:** active |
+| **Branch:** develop |
+
+> **⚠️ Roadmap Priority Change (S-032, 2026-07-12):** Business portal completeness
+> is now a REQUIRED pre-player milestone per original ТЗ. KSO/player/hardware
+> work is BLOCKED until v0.5 Business Portal Complete. Production gaps in this
+> document remain valid but are re-sequenced: v0.5 = business portal, v0.6 =
+> production readiness, v0.7 = player. Player is NOT v0.9 anymore.
 
 ## A. Current Baseline
 
