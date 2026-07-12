@@ -456,10 +456,10 @@ def app():
                 # but set it here defensively in case the override chain reorders.
                 from sqlalchemy import text
                 await session.execute(
-                    text("SELECT set_config('app.rmp_is_admin', 'true', true)")
+                    text("SELECT set_config('app.rmp_is_admin', 'true', false)")
                 )
                 await session.execute(
-                    text("SELECT set_config('app.rmp_user_id', 'beh-admin', true)")
+                    text("SELECT set_config('app.rmp_user_id', 'beh-admin', false)")
                 )
                 yield session
 
