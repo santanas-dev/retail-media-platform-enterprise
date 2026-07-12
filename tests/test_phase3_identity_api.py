@@ -112,8 +112,30 @@ def _setup_authz_mocks(test_case, perms=None, user=_MockActiveUser("u-1")):
     mock_find.return_value = user
     mock_perms.return_value = perms or set()
 
+    # Also mock get_scope_context and set_rls_context so
+    # endpoints that require them (list_users) resolve cleanly.
+    app = _get_app()
+    from packages.api.dependencies import get_scope_context, set_rls_context
+    from packages.domain.scopes import ScopeContext
+
+    async def _fake_scope():
+        return ScopeContext(
+            user_id=user.id,
+            is_admin=True,
+            role_codes={"system_admin"},
+            global_permissions=perms or set(),
+            all_permissions=perms or set(),
+        )
+
+    async def _fake_set_rls(db=None, scope=None):
+        return None
+
+    app.dependency_overrides[get_scope_context] = _fake_scope
+    app.dependency_overrides[set_rls_context] = _fake_set_rls
+
     test_case.addCleanup(patcher_find.stop)
     test_case.addCleanup(patcher_perms.stop)
+    test_case.addCleanup(lambda: app.dependency_overrides.clear())
 
     return mock_find, mock_perms
 
