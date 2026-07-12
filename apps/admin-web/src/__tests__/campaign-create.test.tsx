@@ -39,7 +39,8 @@ function createRouter(initialRoute: string) {
 }
 
 function mockAuthenticatedSession() {
-  localStorage.setItem("rmp_access_token", "valid-token");
+  /* S-035b: access token is memory-only — no localStorage.
+     Session restore goes through /api/v1/auth/refresh. */
 }
 
 const SEED_ORGS = [
@@ -100,6 +101,12 @@ describe("CampaignCreatePage", () => {
 
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(new Response(
+          JSON.stringify({ access_token: "valid-token", token_type: "Bearer", expires_in: 1800 }),
+          { status: 200 },
+        ));
+      }
       if (url.endsWith("/me")) {
         return Promise.resolve(
           new Response(
@@ -150,6 +157,12 @@ describe("CampaignCreatePage", () => {
 
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(new Response(
+          JSON.stringify({ access_token: "valid-token", token_type: "Bearer", expires_in: 1800 }),
+          { status: 200 },
+        ));
+      }
       if (url.endsWith("/me")) {
         return Promise.resolve(
           new Response(
@@ -222,6 +235,12 @@ describe("CampaignCreatePage", () => {
       const url = String(input);
       const method = (init as RequestInit)?.method;
 
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(new Response(
+          JSON.stringify({ access_token: "valid-token", token_type: "Bearer", expires_in: 1800 }),
+          { status: 200 },
+        ));
+      }
       if (url.endsWith("/me")) {
         return Promise.resolve(
           new Response(
@@ -299,6 +318,12 @@ describe("CampaignCreatePage", () => {
       const url = String(input);
       const method = (init as RequestInit)?.method;
 
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(new Response(
+          JSON.stringify({ access_token: "valid-token", token_type: "Bearer", expires_in: 1800 }),
+          { status: 200 },
+        ));
+      }
       if (url.endsWith("/me")) {
         return Promise.resolve(
           new Response(
@@ -359,6 +384,12 @@ describe("CampaignCreatePage", () => {
       const url = String(input);
       const method = (init as RequestInit)?.method;
 
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(new Response(
+          JSON.stringify({ access_token: "valid-token", token_type: "Bearer", expires_in: 1800 }),
+          { status: 200 },
+        ));
+      }
       if (url.endsWith("/me")) {
         return Promise.resolve(
           new Response(

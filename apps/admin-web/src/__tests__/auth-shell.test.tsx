@@ -61,8 +61,8 @@ describe("auth shell", () => {
   // ── Protected route redirect ──
 
   it("redirects to /login when not authenticated", async () => {
-    // Mock /me to reject — no stored token
-    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Unauthorized"));
+    // refresh fails → unauthenticated → redirect to login
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("No cookie"));
 
     renderWithAuth("/campaigns");
 
@@ -74,16 +74,8 @@ describe("auth shell", () => {
   // ── Login failure ──
 
   it("shows error on failed login", async () => {
-    // Mock 401 response — LoginPage shows generic error (Russian locale)
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          code: "INVALID_CREDENTIALS",
-          message: "Invalid username/email or password",
-        }),
-        { status: 401 },
-      ),
-    );
+    // refresh fails → show login page. Then login attempt fails.
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("No cookie"));
 
     renderWithAuth("/login");
 
@@ -95,7 +87,6 @@ describe("auth shell", () => {
     await user.type(screen.getByLabelText("Пароль"), "wrongpass");
     await user.click(screen.getByRole("button", { name: "Войти" }));
 
-    // LoginPage catches any login error and shows localized message
     await waitFor(() => {
       expect(
         screen.getByText("Неверное имя пользователя или пароль."),
@@ -106,8 +97,12 @@ describe("auth shell", () => {
   // ── Login success ──
 
   it("navigates to /campaigns on successful login", async () => {
-    // Order: login → /me → campaign API calls (rendered by CampaignListPage)
+    // refresh fails → login page shown
+    // login succeeds → token set → redirect
     vi.spyOn(globalThis, "fetch")
+      // refresh: fail (no cookie on first mount)
+      .mockRejectedValueOnce(new Error("No cookie"))
+      // login: success
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -119,6 +114,7 @@ describe("auth shell", () => {
           { status: 200 },
         ),
       )
+      // getMe: success
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -131,8 +127,7 @@ describe("auth shell", () => {
           { status: 200 },
         ),
       );
-    // CampaignListPage fetches campaigns, flights, orgs, brands
-    // Use mockImplementation to create fresh Response objects each call
+    // CampaignListPage fetches
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
     );
@@ -147,7 +142,6 @@ describe("auth shell", () => {
     await user.type(screen.getByLabelText("Пароль"), "secret");
     await user.click(screen.getByRole("button", { name: "Войти" }));
 
-    // Both sidebar link and page title say "Кампании"
     await waitFor(() => {
       const items = screen.getAllByText("Кампании");
       expect(items.length).toBeGreaterThanOrEqual(2);
@@ -155,57 +149,59 @@ describe("auth shell", () => {
   });
 
   // ── Logout clears session ──
+  // S-035b: no localStorage token — session restore via refresh cookie
 
   it("logout clears session and redirects to login", async () => {
-    // 1. Simulate logged-in state: token in localStorage + /me succeeds
-    localStorage.setItem("rmp_access_token", "valid-token");
-
-    let callCount = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      callCount++;
       const url = String(input);
-      if (url.endsWith("/me")) {
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ access_token: "refreshed-at", token_type: "Bearer", expires_in: 1800 }),
+            { status: 200 },
+          ),
+        );
+      }
+      if (url.endsWith("/auth/me")) {
         return Promise.resolve(
           new Response(
             JSON.stringify({
-              sub: "u1",
-              auth_provider: "ad",
-              username: "admin",
-              display_name: "Admin",
-              permissions: [],
-              must_change_password: false,
+              sub: "u1", auth_provider: "ad", username: "admin",
+              display_name: "Admin", permissions: [], must_change_password: false,
             }),
             { status: 200 },
           ),
         );
       }
-      if (url.endsWith("/logout")) {
+      if (url.endsWith("/auth/logout")) {
         return Promise.resolve(
           new Response(JSON.stringify({ message: "Logged out" }), { status: 200 }),
         );
       }
-      // Campaign list data fetches (empty)
-      return Promise.resolve(
-        new Response(JSON.stringify([]), { status: 200 }),
-      );
+      // Campaign/identity data: empty array
+      return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
     });
 
     renderWithAuth("/campaigns");
 
-    // Wait for session restore (sidebar + page title both say "Кампании")
+    // Wait for session restore
     await waitFor(() => {
       const items = screen.getAllByText("Кампании");
       expect(items.length).toBeGreaterThanOrEqual(2);
     });
 
-    // Find and click logout button
+    // S-035b proof: no localStorage token after restore
+    expect(localStorage.getItem("rmp_access_token")).toBeNull();
+
+    // Click logout
     const logoutBtn = screen.getByText("Выход");
     await userEvent.setup().click(logoutBtn);
 
-    // Should redirect to login
     await waitFor(() => {
       expect(screen.getByText("Центр управления рекламой")).toBeTruthy();
-      expect(localStorage.getItem("rmp_access_token")).toBeNull();
     });
+
+    // S-035b proof: still no localStorage token after logout
+    expect(localStorage.getItem("rmp_access_token")).toBeNull();
   });
 });

@@ -13,7 +13,7 @@ vi.mock("../api/client", () => ({
     post: (...args: unknown[]) => mockPost(...args),
     login: vi.fn(), logout: vi.fn().mockResolvedValue(undefined),
     getMe: vi.fn().mockResolvedValue({ sub: "u1", auth_provider: "local_advertiser", username: "a", display_name: "A" }),
-    patch: vi.fn(), del: vi.fn(), refresh: vi.fn(),
+    patch: vi.fn(), del: vi.fn(), refresh: vi.fn().mockResolvedValue({ access_token: "t", token_type: "Bearer", expires_in: 1800 }),
   },
   setToken: vi.fn(), onUnauthorized: vi.fn(),
   ApiError: class extends Error { status: number; constructor(s: number) { super(`HTTP ${s}`); this.status = s; this.name = "ApiError"; } },
@@ -39,8 +39,7 @@ const asset2 = {
 };
 
 function renderPage() {
-  localStorage.setItem("rmp_access_token", "t");
-  localStorage.setItem("rmp_auth_provider", "local_advertiser");
+  /* S-035b: session restore via refresh — no localStorage */
   const router = createMemoryRouter(
     [{ path: "/creatives", element: <AuthProvider><CreativeLibraryPage /></AuthProvider> }],
     { initialEntries: ["/creatives"] },

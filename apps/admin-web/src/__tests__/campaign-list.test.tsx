@@ -123,18 +123,33 @@ const SEED_BRANDS = [
 ];
 
 function mockAuthenticatedSession() {
-  localStorage.setItem("rmp_access_token", "valid-token");
-  vi.spyOn(globalThis, "fetch").mockResolvedValue(
-    new Response(
-      JSON.stringify({
-        sub: "u1",
-        auth_provider: "ad",
-        username: "admin",
-        display_name: "Admin",
-      }),
-      { status: 200 },
-    ),
-  );
+  /* S-035b: access token is memory-only — no localStorage.
+     Session restore goes through /api/v1/auth/refresh. */
+  let callCount = 0;
+  vi.spyOn(globalThis, "fetch").mockImplementation(() => {
+    callCount++;
+    if (callCount === 1) {
+      // refresh: return new access token
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({ access_token: "valid-token", token_type: "Bearer", expires_in: 1800 }),
+          { status: 200 },
+        ),
+      );
+    }
+    // getMe: return user data
+    return Promise.resolve(
+      new Response(
+        JSON.stringify({
+          sub: "u1",
+          auth_provider: "ad",
+          username: "admin",
+          display_name: "Admin",
+        }),
+        { status: 200 },
+      ),
+    );
+  });
 }
 
 const CAMPAIGNS_URL = "/api/v1/identity/campaigns";
@@ -238,6 +253,12 @@ describe("CampaignListPage", () => {
 
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(
+          JSON.stringify({ access_token: "valid-token", token_type: "Bearer", expires_in: 1800 }),
+          { status: 200 },
+        );
+      }
       if (url.endsWith("/me")) {
         return new Response(
           JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin" }),
@@ -264,6 +285,12 @@ describe("CampaignListPage", () => {
 
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(
+          JSON.stringify({ access_token: "valid-token", token_type: "Bearer", expires_in: 1800 }),
+          { status: 200 },
+        );
+      }
       if (url.endsWith("/me")) {
         return new Response(
           JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin" }),
@@ -291,6 +318,12 @@ describe("CampaignListPage", () => {
     let callCount = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(
+          JSON.stringify({ access_token: "valid-token", token_type: "Bearer", expires_in: 1800 }),
+          { status: 200 },
+        );
+      }
       if (url.endsWith("/me")) {
         return new Response(
           JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin" }),

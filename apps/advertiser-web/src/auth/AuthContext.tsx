@@ -19,19 +19,21 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-const TOKEN_KEY = "rmp_access_token";
-const PROVIDER_KEY = "rmp_auth_provider";
+/**
+ * Access token lives ONLY in memory (module-level _token in client.ts).
+ * No localStorage, no sessionStorage.  Session restore after reload
+ * goes through POST /api/v1/auth/refresh (HttpOnly cookie → new access token).
+ *
+ * Provider gate: after restore, only local_advertiser users may proceed.
+ */
+
 const REQUIRED_PROVIDER = "local_advertiser";
 
-function saveSession(access: string, provider: string) {
-  localStorage.setItem(TOKEN_KEY, access);
-  localStorage.setItem(PROVIDER_KEY, provider);
+function saveSession(access: string) {
   setToken(access);
 }
 
 function clearSession() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(PROVIDER_KEY);
   setToken(null);
 }
 
@@ -40,35 +42,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // On mount: try to restore session from stored token
+  // On mount: restore session via refresh cookie (no localStorage)
   useEffect(() => {
-    const stored = localStorage.getItem(TOKEN_KEY);
-    const storedProvider = localStorage.getItem(PROVIDER_KEY);
-
-    // If wrong provider, clear session immediately
-    if (stored && storedProvider && storedProvider !== REQUIRED_PROVIDER) {
-      clearSession();
-      setLoading(false);
-      return;
-    }
-
-    if (stored) {
-      setToken(stored);
-      api
-        .getMe()
-        .then((me) => {
-          // Double-check: user must have local_advertiser provider
-          if (me.auth_provider !== REQUIRED_PROVIDER) {
-            clearSession();
-          } else {
-            setUser(me);
-          }
-        })
-        .catch(() => clearSession())
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    api
+      .refresh()
+      .then((res) => {
+        setToken(res.access_token);
+        return api.getMe();
+      })
+      .then((me) => {
+        if (me.auth_provider !== REQUIRED_PROVIDER) {
+          clearSession();
+          setError("Нет доступа к кабинету рекламодателя.");
+        } else {
+          setUser(me);
+        }
+      })
+      .catch(() => clearSession())
+      .finally(() => setLoading(false));
   }, []);
 
   // Register 401 handler
@@ -89,9 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
         auth_provider: REQUIRED_PROVIDER,
       });
-      saveSession(res.access_token, REQUIRED_PROVIDER);
+      setToken(res.access_token);
       const me = await api.getMe();
-      // Ensure the logged-in user has the correct provider
       if (me.auth_provider !== REQUIRED_PROVIDER) {
         clearSession();
         setError("Нет доступа к кабинету рекламодателя.");

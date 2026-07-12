@@ -18,7 +18,7 @@ vi.mock("../api/client", () => ({
     logout: vi.fn(),
     patch: vi.fn(),
     del: vi.fn(),
-    refresh: vi.fn(),
+    refresh: vi.fn().mockResolvedValue({ access_token: "t", token_type: "Bearer", expires_in: 1800 }),
     changePassword: vi.fn(),
   },
   setToken: vi.fn(),
@@ -53,8 +53,7 @@ vi.mock("react-router-dom", async () => {
 });
 
 function setup() {
-  localStorage.setItem("rmp_access_token", "valid-token");
-  localStorage.setItem("rmp_auth_provider", "local_advertiser");
+  /* S-035b: session restore via refresh — no localStorage */
 
   mockGetMe.mockResolvedValue({
     sub: "u1",

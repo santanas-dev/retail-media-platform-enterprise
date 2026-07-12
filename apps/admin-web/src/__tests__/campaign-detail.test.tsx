@@ -37,7 +37,8 @@ function createRouter(initialRoute: string) {
 }
 
 function mockAuthenticatedSession() {
-  localStorage.setItem("rmp_access_token", "valid-token");
+  /* S-035b: access token is memory-only — no localStorage.
+     Session restore goes through /api/v1/auth/refresh (handled in mockAllFetches). */
 }
 
 const DRAFT_CAMPAIGN = {
@@ -94,6 +95,12 @@ function mockAllFetches(
       for (const [key, fn] of Object.entries(overrides)) {
         if (url.includes(key)) return fn(url, init);
       }
+    }
+    if (url.endsWith("/auth/refresh")) {
+      return Promise.resolve(new Response(
+        JSON.stringify({ access_token: "valid-token", token_type: "Bearer", expires_in: 1800 }),
+        { status: 200 },
+      ));
     }
     if (url.endsWith("/me")) {
       const userData: Record<string, unknown> = { sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin" };

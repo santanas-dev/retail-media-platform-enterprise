@@ -10,7 +10,7 @@ vi.mock("../api/client", () => {
     ...actual,
     api: {
       login: vi.fn(),
-      refresh: vi.fn(),
+      refresh: vi.fn().mockResolvedValue({ access_token: "t", token_type: "Bearer", expires_in: 1800 }),
       logout: vi.fn(),
       getMe: vi.fn(),
       get: vi.fn(),

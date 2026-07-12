@@ -22,7 +22,7 @@ vi.mock("../api/client", () => ({
     post: vi.fn(),
     patch: vi.fn(),
     del: vi.fn(),
-    refresh: vi.fn(),
+    refresh: vi.fn().mockResolvedValue({ access_token: "t", token_type: "Bearer", expires_in: 1800 }),
   },
   setToken: vi.fn(),
   onUnauthorized: vi.fn(),
@@ -41,8 +41,7 @@ vi.mock("../api/client", () => ({
 }));
 
 function setupProfile(overrides?: { must_change_password?: boolean }) {
-  localStorage.setItem("rmp_access_token", "valid-token");
-  localStorage.setItem("rmp_auth_provider", "local_advertiser");
+  /* S-035b: session restore via refresh — no localStorage */
 
   mockGetMe.mockResolvedValue({
     sub: "u1",
@@ -102,8 +101,7 @@ function setupProfile(overrides?: { must_change_password?: boolean }) {
 }
 
 function setupProfileWithContacts() {
-  localStorage.setItem("rmp_access_token", "valid-token");
-  localStorage.setItem("rmp_auth_provider", "local_advertiser");
+  /* S-035b: session restore via refresh — no localStorage */
 
   mockGetMe.mockResolvedValue({
     sub: "u1",

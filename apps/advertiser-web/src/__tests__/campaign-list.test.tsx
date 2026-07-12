@@ -5,23 +5,22 @@ import { AuthProvider } from "../auth/AuthContext";
 import CampaignListPage from "../pages/CampaignListPage";
 
 // Mock the api client
-const mockGet = vi.fn();
+const { mockGet, mockRefresh, mockGetMe } = vi.hoisted(() => ({
+  mockGet: vi.fn(),
+  mockRefresh: vi.fn(),
+  mockGetMe: vi.fn(),
+}));
 
 vi.mock("../api/client", () => ({
   api: {
     get: (...args: unknown[]) => mockGet(...args),
     login: vi.fn(),
     logout: vi.fn().mockResolvedValue(undefined),
-    getMe: vi.fn().mockResolvedValue({
-      sub: "u1",
-      auth_provider: "local_advertiser",
-      username: "advertiser1",
-      display_name: "Рекламодатель 1",
-    }),
+    getMe: (...args: unknown[]) => mockGetMe(...args),
     post: vi.fn(),
     patch: vi.fn(),
     del: vi.fn(),
-    refresh: vi.fn(),
+    refresh: (...args: unknown[]) => mockRefresh(...args),
   },
   setToken: vi.fn(),
   onUnauthorized: vi.fn(),
@@ -51,9 +50,14 @@ function makeApiError(status: number): Error & { status: number } {
 }
 
 function renderCampaignList() {
-  // Set up an authenticated session
-  localStorage.setItem("rmp_access_token", "valid-token");
-  localStorage.setItem("rmp_auth_provider", "local_advertiser");
+  // S-035b: Session restore via api.refresh() — no localStorage
+  mockRefresh.mockResolvedValue({ access_token: "refreshed-at", token_type: "Bearer", expires_in: 1800 });
+  mockGetMe.mockResolvedValue({
+    sub: "u1",
+    auth_provider: "local_advertiser",
+    username: "advertiser1",
+    display_name: "Рекламодатель 1",
+  });
 
   return render(
     <MemoryRouter>

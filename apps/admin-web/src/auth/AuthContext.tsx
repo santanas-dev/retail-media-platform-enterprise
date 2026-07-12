@@ -18,15 +18,17 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-const TOKEN_KEY = "rmp_access_token";
+/**
+ * Access token lives ONLY in memory (module-level _token in client.ts).
+ * No localStorage, no sessionStorage.  Session restore after reload
+ * goes through POST /api/v1/auth/refresh (HttpOnly cookie → new access token).
+ */
 
 function saveSession(access: string) {
-  localStorage.setItem(TOKEN_KEY, access);
   setToken(access);
 }
 
 function clearSession() {
-  localStorage.removeItem(TOKEN_KEY);
   setToken(null);
 }
 
@@ -35,19 +37,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // On mount: try to restore session from stored token
+  // On mount: restore session via refresh cookie (no localStorage)
   useEffect(() => {
-    const stored = localStorage.getItem(TOKEN_KEY);
-    if (stored) {
-      setToken(stored);
-      api
-        .getMe()
-        .then((me) => setUser(me))
-        .catch(() => clearSession())
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    api
+      .refresh()
+      .then((res) => {
+        setToken(res.access_token);
+        return api.getMe();
+      })
+      .then((me) => setUser(me))
+      .catch(() => clearSession())
+      .finally(() => setLoading(false));
   }, []);
 
   // Register 401 handler
@@ -68,8 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
         auth_provider: authProvider,
       });
-      saveSession(res.access_token);
-      localStorage.setItem("rmp_auth_provider", authProvider);
+      setToken(res.access_token);
       const me = await api.getMe();
       setUser(me);
     } catch (e) {

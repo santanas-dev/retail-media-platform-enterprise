@@ -13,7 +13,8 @@ vi.mock("../api/client", () => ({
     get: (...args: unknown[]) => mockGet(...args),
     login: vi.fn(), logout: vi.fn().mockResolvedValue(undefined),
     getMe: vi.fn().mockResolvedValue({ sub: "u1", auth_provider: "local_advertiser", username: "a", display_name: "A" }),
-    post: (...args: unknown[]) => mockPost(...args), patch: vi.fn(), del: vi.fn(), refresh: vi.fn(),
+    post: (...args: unknown[]) => mockPost(...args), patch: vi.fn(), del: vi.fn(),
+    refresh: vi.fn().mockResolvedValue({ access_token: "t", token_type: "Bearer", expires_in: 1800 }),
   },
   setToken: vi.fn(), onUnauthorized: vi.fn(),
   ApiError: class extends Error { status: number; constructor(s: number) { super(`HTTP ${s}`); this.status = s; } },
@@ -59,8 +60,7 @@ function setupFull() {
 }
 
 function renderPage() {
-  localStorage.setItem("rmp_access_token", "t");
-  localStorage.setItem("rmp_auth_provider", "local_advertiser");
+  /* S-035b: session restore via refresh — no localStorage */
   const router = createMemoryRouter(
     [{ path: "/campaigns/:id", element: <AuthProvider><CampaignDetailPage /></AuthProvider> }],
     { initialEntries: ["/campaigns/c1"] },
