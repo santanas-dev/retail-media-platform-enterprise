@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
 | **Last updated:** 2026-07-11
-| **Current phase:** S-023a–d advertiser portal foundation done. S-025 release prep in progress.
+| **Current phase:** S-023a–i advertiser self-service pilot complete. Live LAN preview operational.
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -68,8 +68,11 @@ Separately covered:
 | S-023a | Advertiser Portal Foundation — Seed RBAC + Scaffold | P0 | ✅ done | P.S. (Hermes) | Seed: advertiser role (id=0000...0114) with 6 permissions (campaigns read/manage, creatives.read, advertisers/contacts read, organization.read), scoped user_roles for advertiser_test → ADV-001. Advertiser-web: separate Vite React TS SPA (port 3001), auth shell (local_advertiser only), ProtectedRoute with provider + campaigns.read guard, read-only campaign list with typed ApiError error handling. Tests: 40 seed source-inspection + 12 vitest frontend (auth/protectedRoute/campaignList). CI Run #87 green after seed insert count fix (83→91). | S-023b: campaign detail page |
 | S-023b | Advertiser Portal — Read-only Campaign Detail | P0 | ✅ done | P.S. (Hermes) | CampaignDetailPage: route /campaigns/:id, clickable list rows, 5 sections (Обзор, Флайты, Размещения, Креативы, Согласование). Data from 7 identity endpoints (list + client-side filter by campaign_id). Types fixed: CampaignApprovalOut (requested_by/at, reviewed_by/at, decision), CampaignStatusHistoryOut (old_status, changed_at, reason). No admin buttons, no storage secrets. Tests: 5 vitest (render, 7 API calls, 403/401, storage safety). Build passes. Advertiser-web CI covered (S-023a.1). | S-023c: creative library/upload |
 | S-023c | Advertiser Portal — Creative Library + Upload | P0 | ✅ done | P.S. (Hermes) | CreativeLibraryPage: table (name, type, size, status, moderation), create metadata-only (POST /creative-assets), upload flow (upload-intent → XHR PUT presigned no-Auth → complete-upload → refresh), progress bar. Route /creatives. Layout: Креативы nav. Types: CreativeAssetCreateRequest, UploadIntent*, CompleteUpload*. No storage_bucket/key/presigned_url in UI. Tests: 9 vitest (list, empty, 403, 401, no storage, upload button, create POST, upload-intent call, error). 26 total advertiser-web tests. Build passes. | S-023d: PoP reporting |
+| S-023e | Advertiser Portal — Profile + Password Change | P0 | ✅ done | P.S. (Hermes) | ProfilePage: organisation/brands/contracts/contacts display, password change form (current/new/confirm), must_change_password banner. Types: AdvertiserOrganizationOut/AdvertiserBrandOut/AdvertiserContractOut/AdvertiserContactOut. Auth helpers: contactTypeLabel, authProviderLabel. Tests: 13 vitest (5 profile render + 8 password change). | S-023f: campaign create/edit draft |
 | S-023f | Advertiser Portal — Campaign Create/Edit Draft Flow | P0 | ✅ done | P.S. (Hermes) | CampaignCreatePage: /campaigns/new with org/brand/contract selects, auto-code from name, validation, POST /campaigns. CampaignDetailPage: draft edit mode (inline EditCampaignForm), PATCH /campaigns/{id}. CampaignListPage: + «Создать» button. No backend changes. Tests: 6 create + 2 edit vitest (53 total). CI #29162245072 green (all 33 jobs including behavioural). | S-023g: attach creative + submit approval |
-| S-023g | Advertiser Portal — Attach Creative + Submit Approval | P0 | ✅ done | P.S. (Hermes) | CampaignDetailPage: «+ Прикрепить креатив» button (draft only), AttachCreativeModal with ready/metadata_only filtering, POST /campaigns/{id}/creatives/attach. ReadinessPanel: flights/placements/creatives checks + «Отправить на согласование» button (disabled until ready), POST /campaigns/{id}/request-approval. Non-draft: read-only message. No approve/reject buttons. Tests: 13 new vitest (66 total). CI #29162925840 green (all 33 jobs including behavioural). | S-024: v2.6 (already done) |
+| S-023g | Advertiser Portal — Attach Creative + Submit Approval | P0 | ✅ done | P.S. (Hermes) | CampaignDetailPage: «+ Прикрепить креатив» button (draft only), AttachCreativeModal with ready/metadata_only filtering, POST /campaigns/{id}/creatives/attach. ReadinessPanel: flights/placements/creatives checks + «Отправить на согласование» button (disabled until ready), POST /campaigns/{id}/request-approval. Non-draft: read-only message. No approve/reject buttons. Tests: 13 new vitest (66 total). CI #29162925840 green (all 33 jobs including behavioural). | S-023h: localization polish |
+| S-023h | Advertiser Portal — Localization Polish | P1 | ✅ done | P.S. (Hermes) | Russian labels for status (Черновик/Активна/etc), contact_type (Основной/Бухгалтерия), auth_provider (Локальная учётная запись), surface UUIDs → «Поверхность XXXXXXXX», timezoneLabel (Москва GMT+3). Helpers: statusLabel, contactTypeLabel, authProviderLabel, timezoneLabel, surfaceLabel, mediaTypeLabel. Tests: 66 vitest. CI #29166284943 green. | S-023i: responsive layout polish |
+| S-023i | Advertiser Portal — Responsive Layout Polish | P1 | ✅ done | P.S. (Hermes) | Layout.module.css replaces inline styles. Hamburger + overlay sidebar for <768px. Tables: overflow-x:auto on narrow (no page-level overflow). Text fixes: timezoneLabel, mediaTypeLabel in CampaignDetailPage. Tests: 66 vitest. CI #29166816518 green (33/33). | S-026: live LAN preview |
 | S-024 | v2.6 Next Branch Requirements Captured | P1 | ✅ done | P.S. (Hermes) | TZ v2.6 DOCX placed in `docs/product/requirements/`. ADR-018 (tenant model) proposed — P0 decision needed before v2.6 implementation. Roadmap updated with v2.6 rows. Release-versioning has Future branch section. No code changes. | Tenant model ADR accepted → implementation |
 
 ## Status Legend
@@ -80,18 +83,17 @@ Separately covered:
 - **open/prepared** — definition written, tag commands prepared, awaiting approval
 - **deferred** — intentionally postponed (documented reason)
 
-## Remaining Gaps (non-blocking for backend pilot)
+## Remaining Gaps (non-blocking for advertiser self-service pilot)
 
 | Gap | Status |
 |-----|--------|
-| Real KSO player/sidecar | Out of scope for v0.3, next release |
-| Campaign create/edit draft flow | ✅ done — S-023f |
-| Attach existing creative to campaign (advertiser portal) | ✅ done — S-023g |
-| Submit/request approval from advertiser portal | ✅ done — S-023g |
-| Advertiser organization/profile page | ✅ done — S-023e |
-| Password change / must_change_password flow | ✅ done — S-023e |
-| Production UX polish / accessibility review | Deferred |
-| Production manifest signing (real HMAC) | S-021 implemented (HMAC-SHA256). S-021a production-hardened. Device-gateway verification deferred. |
-| Tenant model ADR before v2.6 | 🟡 Decision needed / proposed — ADR-018 created. P0 before any v2.6 implementation. |
-| ClickHouse / materialized reporting (4.3e) | Deferred |
+| Real KSO player/sidecar | Out of scope for v0.4, next release |
+| Advertiser approve/reject campaigns | Deferred — admin-only |
+| Sales lift / attribution / billing | Deferred — v2.6 |
+| Production UX/accessibility audit | Deferred |
+| Real AD/LDAPS | Deferred — stub 503 |
 | Production deployment/observability hardening | Prometheus metrics/alerts deferred |
+| Production manifest signing verification at device-gateway | S-021 HMAC-SHA256 implemented. Verification deferred |
+| ClickHouse / materialized reporting (4.3e) | Deferred |
+| Mobile application | Deferred — v2.6 |
+| Tenant model ADR before v2.6 | 🟡 Decision needed / proposed — ADR-018 |

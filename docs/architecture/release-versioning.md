@@ -29,7 +29,8 @@ v{major}.{minor}-{description}
 |-----|-------------|
 | `v0.1-admin-campaign-mvp` | Admin portal + campaign CRUD, creative attach, approval, basic PoP reporting |
 | `v0.2-media-upload-runtime-baseline` | Real media upload (S-017), manifest/PoP contracts (S-018), three-role DB (S-019), green CI baseline (S-021), HMAC signing configuration (S-021a) |
-| `v0.3-advertiser-portal-foundation` | Advertiser portal: login, campaign list/detail, creative library + upload, PoP reporting |
+| `v0.3-advertiser-portal-foundation` | Advertiser portal: login, campaign list/detail, creative library+upload, PoP reporting |
+| `v0.4-advertiser-self-service-pilot` | Advertiser self-service pilot: create/edit drafts, attach creative, submit approval, profile/password, responsive layout, live LAN preview |
 
 Major (0.x) stays at 0 until first production deployment.  Minor
 increments on each milestone release.
@@ -316,6 +317,78 @@ git push origin :refs/tags/v0.3-advertiser-portal-foundation
 - S-023a through S-023d in `docs/architecture/stabilization-tracker.md`
 - CI run #29159995308 (all gates green)
 - `apps/advertiser-web/src/` — 5 test files, 32 vitest tests
+
+---
+
+### v0.4-advertiser-self-service-pilot — Advertiser Self-Service Pilot
+
+**Proposed.**  Tag not yet created.
+
+#### Metadata
+- **Tag:** v0.4-advertiser-self-service-pilot
+- **Date:** 2026-07-11 (proposed)
+- **Commit SHA:** 38b5255b1600ec3f5e960bcbadfa73f1b7922e22
+- **GitHub Actions run:** #29166816518 (conclusion: success, 33/33 jobs)
+- **Created by:** P.S. (via Hermes)
+
+#### Business Capabilities
+
+- Advertiser login via local credentials (email + bcrypt)
+- Campaign list and detail view (overview, flights, placements, creatives, approval status)
+- Create and edit campaign drafts from advertiser portal
+- Creative library — view, create metadata, upload media files via presigned URLs
+- Attach existing creative assets to draft campaigns
+- Submit campaign for approval
+- PoP reporting per campaign (summary, by-day, by-surface)
+- Profile page — organisation, brands, contracts, contacts
+- Password change / must_change_password flow
+- Responsive advertiser-web layout — hamburger sidebar on narrow screens, no page overflow
+- Live LAN preview operational (http://192.168.110.77:3001)
+
+#### Technical Capabilities
+
+- **S-023e:** ProfilePage — 5 organisation/brand/contract/contact APIs, password change via /api/v1/auth/change-password. 13 vitest tests.
+- **S-023f:** CampaignCreatePage — /campaigns/new, org/brand/contract selects, POST /campaigns. EditCampaignForm — PATCH /campaigns/{id}. 8 vitest tests.
+- **S-023g:** AttachCreativeModal — ready/metadata_only filtering, POST /campaigns/{id}/creatives/attach. ReadinessPanel — flights/placements/creatives checks, submit approval. 13 vitest tests.
+- **S-023h:** Russian localization — statusLabel, contactTypeLabel, authProviderLabel, timezoneLabel, surfaceLabel, mediaTypeLabel helpers. All UI text in Russian.
+- **S-023i:** Layout.module.css — CSS module replacing inline styles. Hamburger + overlay for <768px. Table overflow-x:auto. timezoneLabel/mediaTypeLabel in CampaignDetailPage.
+- **S-026a:** Auth fix — get_user_permissions includes scoped role permissions (commit 7ad4899).
+- **S-026b:** LAN preview — docker-compose.preview.yml override, runbook at docs/runbook/local-preview.md.
+- **Testing:** 881 Python unit + 245 behavioural + 64 admin-web + 66 advertiser-web = 1,256 total
+- **CI:** GitHub Actions — 33 jobs per run, all green on code baseline 38b5255
+
+#### Known Limitations / Not Included
+
+- No advertiser approve/reject — admin-only
+- No sales lift / attribution / billing
+- No production UX/accessibility audit
+- No real KSO player or sidecar
+- No real AD/LDAPS (stub 503)
+- No ClickHouse / materialized reporting
+- No mobile application
+- No production monitoring/alerting (Prometheus/Grafana deferred)
+
+#### Rollback Note
+
+No schema changes, no backend changes. Pure frontend:
+
+```bash
+git checkout v0.3-advertiser-portal-foundation
+```
+
+If tag was pushed, delete:
+
+```bash
+git tag -d v0.4-advertiser-self-service-pilot
+git push origin :refs/tags/v0.4-advertiser-self-service-pilot
+```
+
+#### References
+
+- ADR-001 through ADR-018
+- S-023a through S-023i in `docs/architecture/stabilization-tracker.md`
+- S-026a, S-026b in `docs/architecture/stabilization-tracker.md`
+- CI run #29166816518 (all 33 jobs green)
 
 ---
 
