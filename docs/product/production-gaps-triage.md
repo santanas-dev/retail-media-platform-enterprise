@@ -81,7 +81,7 @@ See gap categories below. No gap is production-ready — each requires explicit 
 | Gap | Severity | Value | Risk | Dependency | Milestone |
 |-----|----------|-------|------|------------|-----------|
 | Monitoring / alerting | P0 | Incident detection | Silent failures in production | Prometheus + Grafana + AlertManager | v0.5 |
-| Backup / restore / DR | P0 | Data safety | Data loss on failure | pg_dump/pg_basebackup + MinIO mirroring | v0.5 |
+| Backup / restore / DR | P0 | Data safety | Data loss on failure | pg_dump/pg_basebackup + MinIO mirroring | v0.5 | **S-031 done** — backup/restore scripts, integration test, runbook, live drill |
 | Secrets management | P0 | Security baseline | Hardcoded secrets in config | HashiCorp Vault or env-based hardening | v0.5 |
 | Production CI gate | P0 | Quality gate | Broken code on production | Behavioural PostgreSQL gate (exists), add production config validation | v0.5 | **S-030 done** — CI job added, 24 gate tests |
 | Load / performance tests | P1 | Scalability confidence | 40K devices target unproven | Locust/k6 + production-like env | v0.8 |
@@ -149,7 +149,7 @@ See gap categories below. No gap is production-ready — each requires explicit 
 |------|--------|
 | Production CI gate | Add `ENVIRONMENT=production` validation to CI. Fail on missing secrets, weak keys, non-HTTPS origins. |
 | Secrets management | Enforce `SECRET_*` env vars in production. Document rotation procedure. Add `.env.example` with production template. |
-| Backup / restore | `pg_dump` cron + MinIO mirroring. Runbook with restore test procedure. |
+| Backup / restore | `pg_dump` cron + MinIO mirroring. Runbook with restore test procedure. | **S-031 done** |
 | Monitoring baseline | Prometheus metrics on control-api + device-gateway. Grafana dashboard (4 panels: API latency, error rate, DB pool, NATS queue). |
 | Audit retention | Extend `login_attempts` to general audit table. Retention policy (90 days dev, 365 production). Log review runbook. |
 | ADR-018 decision | Stakeholder meeting. Document decision (single-retailer vs multi-retailer/syndication). Update ADR-018 status: Accepted or Rejected. |
