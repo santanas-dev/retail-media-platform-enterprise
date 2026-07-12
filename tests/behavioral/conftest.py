@@ -151,6 +151,10 @@ def _setup_sql(ph):
     ; DELETE FROM campaign_status_history WHERE changed_by LIKE 'beh-%'
     ; DELETE FROM campaign_approvals WHERE reviewed_by LIKE 'beh-%'
     ; DELETE FROM users WHERE id LIKE 'beh-%'
+    -- S-033: ensure ADV-001 advertiser org exists for user-management tests
+    ; INSERT INTO advertiser_organizations (id,code,legal_name,display_name,status) VALUES
+      ('00000000-0000-0000-0000-000000000200','ADV-001','ООО Рекламный Альянс','Рекламный Альянс','active')
+      ON CONFLICT (code) DO NOTHING
     ; INSERT INTO users (id,code,username,email,display_name,auth_provider,status) VALUES
       ('{u["readonly"]}','BEH-RO','beh-readonly','beh-ro@t.local','Beh RO','local_advertiser','active'),
       ('{u["noperms"]}','BEH-NP','beh-noperms','beh-np@t.local','Beh NP','local_advertiser','active'),
@@ -359,6 +363,12 @@ _CLEANUP = """
     ; DELETE FROM local_credentials WHERE user_id LIKE 'beh-%'
     ; DELETE FROM user_roles WHERE user_id LIKE 'beh-%'
     ; DELETE FROM users WHERE id LIKE 'beh-%'
+    -- S-033: cleanup users created dynamically (UUID IDs via create endpoint)
+    ; DELETE FROM refresh_sessions WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'beh-test-%')
+    ; DELETE FROM advertiser_user_memberships WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'beh-test-%')
+    ; DELETE FROM local_credentials WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'beh-test-%')
+    ; DELETE FROM user_roles WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'beh-test-%')
+    ; DELETE FROM users WHERE username LIKE 'beh-test-%'
 """
 
 
@@ -439,6 +449,13 @@ def app():
     async def _override_get_db():
         async with get_session(engine) as session:
             async with session.begin():
+                # Bypass RLS for behavioral tests: all test users act as admin.
+                # The real resolve_scope_context / set_rls_context chain runs
+                # normally and will override this with user-specific values.
+                from sqlalchemy import text
+                await session.execute(
+                    text("SELECT set_config('app.rmp_is_admin', 'true', true)")
+                )
                 yield session
 
     app_obj = _load_control_api_app()

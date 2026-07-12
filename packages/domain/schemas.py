@@ -93,6 +93,82 @@ class PaginatedAuditEvents(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# S-033 — Admin User Management Schemas
+# ---------------------------------------------------------------------------
+
+class UserRoleAssignmentOut(BaseModel):
+    """Role assigned to a user, with optional advertiser scope."""
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    role_id: str
+    role_code: str = ""
+    role_name: str = ""
+    scope_type: str | None = None
+    scope_id: str | None = None
+
+
+class UserDetailOut(BaseModel):
+    """Detailed user view for admin — roles, scopes, credential status."""
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    code: str
+    username: str
+    email: str | None = None
+    display_name: str
+    auth_provider: str
+    status: str
+    is_break_glass: bool = False
+    must_change_password: bool = False
+    roles: list[UserRoleAssignmentOut] = Field(default_factory=list)
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class CreateLocalAdvertiserRequest(BaseModel):
+    """Create a local advertiser user with scoped role."""
+    username: str = Field(..., min_length=3, max_length=128)
+    display_name: str = Field(..., min_length=1, max_length=255)
+    advertiser_organization_id: str = Field(..., min_length=1, max_length=36)
+    temporary_password: str | None = Field(default=None, min_length=8, max_length=128)
+    auto_generate_password: bool = False
+    must_change_password: bool = True
+    is_active: bool = True
+
+
+class CreateLocalAdvertiserResponse(BaseModel):
+    """Response after creating a local advertiser user."""
+    user_id: str
+    username: str
+    display_name: str
+    # Only returned once if auto_generate_password=True. Null otherwise.
+    one_time_password: str | None = None
+    message: str = "User created successfully."
+
+
+class ResetPasswordRequest(BaseModel):
+    """Admin-initiated password reset for a local user."""
+    new_temporary_password: str | None = Field(default=None, min_length=8, max_length=128)
+    auto_generate_password: bool = False
+    revoke_sessions: bool = True
+
+
+class ResetPasswordResponse(BaseModel):
+    """Response after password reset."""
+    user_id: str
+    must_change_password: bool = True
+    sessions_revoked: bool = True
+    one_time_password: str | None = None
+    message: str = "Password reset successfully."
+
+
+class UserStatusResponse(BaseModel):
+    """Response after activate/deactivate."""
+    user_id: str
+    status: str
+    message: str
+
+
+# ---------------------------------------------------------------------------
 # Auth API — Request / Response DTOs (Phase 3.2d)
 # ---------------------------------------------------------------------------
 

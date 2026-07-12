@@ -298,3 +298,25 @@ async def mark_reset_token_used(
     )
     result = await session.execute(stmt)
     return result.rowcount > 0
+
+
+# ---------------------------------------------------------------------------
+# S-033 — Session management for admin user operations
+# ---------------------------------------------------------------------------
+
+
+async def revoke_all_sessions_for_user(
+    session: AsyncSession, user_id: str
+) -> int:
+    """Revoke all active refresh sessions for a user. Returns count revoked."""
+    now = _now()
+    result = await session.execute(
+        update(RefreshSession)
+        .where(
+            RefreshSession.user_id == user_id,
+            RefreshSession.revoked_at.is_(None),
+            RefreshSession.expires_at > now,
+        )
+        .values(revoked_at=now)
+    )
+    return result.rowcount

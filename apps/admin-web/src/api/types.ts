@@ -372,3 +372,40 @@ export const STATUS_COLORS: Record<string, string> = {
 export function statusColor(s: string): string {
   return STATUS_COLORS[s] ?? "#6b7280";
 }
+
+
+// ── S-033: Admin User Management ──
+
+export interface UserOut {
+  id: string;
+  code: string;
+  username: string;
+  email: string | null;
+  display_name: string;
+  auth_provider: string;
+  status: string;
+  is_break_glass: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface PaginatedUsers {
+  items: UserOut[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface UserRoleAssignmentOut {
+  id: string;
+  role_id: string;
+  role_code: string;
+  role_name: string;
+  scope_type: string | null;
+  scope_id: string | null;
+}
+
+export interface UserDetailOut extends UserOut {
+  must_change_password: boolean;
+  roles: UserRoleAssignmentOut[];
+}
