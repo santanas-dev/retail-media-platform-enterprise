@@ -151,6 +151,10 @@ def _setup_sql(ph):
     ; DELETE FROM campaign_status_history WHERE changed_by LIKE 'beh-%'
     ; DELETE FROM campaign_approvals WHERE reviewed_by LIKE 'beh-%'
     ; DELETE FROM users WHERE id LIKE 'beh-%'
+    -- S-033: ensure ADV-001 advertiser org exists for user-management tests
+    ; INSERT INTO advertiser_organizations (id,code,legal_name,display_name,status) VALUES
+      ('00000000-0000-0000-0000-000000000200','ADV-001','ООО Рекламный Альянс','Рекламный Альянс','active')
+      ON CONFLICT (code) DO NOTHING
     ; INSERT INTO users (id,code,username,email,display_name,auth_provider,status) VALUES
       ('{u["readonly"]}','BEH-RO','beh-readonly','beh-ro@t.local','Beh RO','local_advertiser','active'),
       ('{u["noperms"]}','BEH-NP','beh-noperms','beh-np@t.local','Beh NP','local_advertiser','active'),
