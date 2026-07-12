@@ -456,6 +456,7 @@ class TestCorsConfig(unittest.TestCase):
         """Production with explicit origins + credentials is valid."""
         os.environ["ENVIRONMENT"] = "production"
         os.environ["JWT_SECRET"] = "prod-test-secret-at-least-32-characters!!"
+        os.environ["MANIFEST_SIGNING_KEY"] = "ci-manifest-key-at-least-32-chars-xx"
         os.environ["CORS_ALLOWED_ORIGINS"] = "https://portal.example.com"
         os.environ["CORS_ALLOW_CREDENTIALS"] = "true"
         from packages.security.config import SecurityConfig

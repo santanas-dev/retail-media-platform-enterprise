@@ -96,6 +96,7 @@ jobs:
       ENVIRONMENT: dev
       JWT_SECRET: ci-test-secret-at-least-32-chars-ok
       MANIFEST_SIGNING_KEY: ci-manifest-signing-key-at-least-32-chars
+      DATABASE_URL: postgresql+asyncpg://rmp_user:ci-test-pass@db.ci.internal:5432/rmp_ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
