@@ -10,6 +10,7 @@ import CampaignCreatePage from "./pages/CampaignCreatePage";
 import CampaignDetailPage from "./pages/CampaignDetailPage";
 import AdvertisersPage from "./pages/AdvertisersPage";
 import UsersPage from "./pages/UsersPage";
+import ADSettingsPage from "./pages/ADSettingsPage";
 
 const router = createBrowserRouter([
   {
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
       { path: "campaigns/:id", element: <CampaignDetailPage /> },
       { path: "advertisers", element: <AdvertisersPage /> },
       { path: "users", element: <UsersPage /> },
+      { path: "settings/ad", element: <ADSettingsPage /> },
     ],
   },
 ]);

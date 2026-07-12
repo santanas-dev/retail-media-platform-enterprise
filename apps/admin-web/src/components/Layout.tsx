@@ -5,6 +5,7 @@ const NAV_ITEMS = [
   { to: "/campaigns", label: "Кампании" },
   { to: "/advertisers", label: "Рекламодатели" },
   { to: "/users", label: "Пользователи" },
+  { to: "/settings/ad", label: "Настройки AD" },
 ];
 
 const styles = {

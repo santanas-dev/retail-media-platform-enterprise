@@ -99,6 +99,17 @@ class SecurityConfig:
     # Manifest signing (S-021)
     manifest_signing_key: str = ""
 
+    # AD / LDAPS (S-034)
+    ad_enabled: bool = False
+    ad_server_url: str = ""
+    ad_base_dn: str = ""
+    ad_user_search_base: str = ""
+    ad_user_search_filter: str = "(sAMAccountName={username})"
+    ad_bind_dn: str = ""
+    ad_bind_password: str = ""
+    ad_use_tls: bool = True
+    ad_certificate_validation: str = "required"  # "required" | "optional" | "none"
+
     def __post_init__(self) -> None:
         # Load JWT_SECRET from env if not provided
         if not self.jwt_secret:
@@ -133,6 +144,22 @@ class SecurityConfig:
             self.creative_upload_url_ttl_seconds = int(ttl_env)
         # Load manifest signing key from env (S-021)
         self.manifest_signing_key = os.environ.get("MANIFEST_SIGNING_KEY", self.manifest_signing_key)
+        # Load AD settings from env (S-034)
+        ad_enabled_env = os.environ.get("AD_ENABLED", "").lower()
+        if ad_enabled_env in ("true", "1", "yes"):
+            self.ad_enabled = True
+        self.ad_server_url = os.environ.get("AD_SERVER_URL", self.ad_server_url)
+        self.ad_base_dn = os.environ.get("AD_BASE_DN", self.ad_base_dn)
+        self.ad_user_search_base = os.environ.get("AD_USER_SEARCH_BASE", self.ad_user_search_base)
+        self.ad_user_search_filter = os.environ.get("AD_USER_SEARCH_FILTER", self.ad_user_search_filter)
+        self.ad_bind_dn = os.environ.get("AD_BIND_DN", self.ad_bind_dn)
+        self.ad_bind_password = os.environ.get("AD_BIND_PASSWORD", self.ad_bind_password)
+        ad_tls_env = os.environ.get("AD_USE_TLS", "")
+        if ad_tls_env.lower() in ("false", "0", "no"):
+            self.ad_use_tls = False
+        self.ad_certificate_validation = os.environ.get(
+            "AD_CERTIFICATE_VALIDATION", self.ad_certificate_validation
+        )
         self._validate()
 
     def _validate(self) -> None:

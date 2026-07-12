@@ -19,6 +19,8 @@ from packages.api.dependencies import (
 from packages.domain import repository
 from packages.domain.scopes import ScopeContext
 from packages.domain.schemas import (
+    ADSettingsOut,
+    ADTestResultOut,
     AdvertiserBrandOut,
     AdvertiserContactOut,
     AdvertiserContractOut,
@@ -362,6 +364,106 @@ async def reset_password(
         must_change_password=True,
         sessions_revoked=sessions_revoked,
         one_time_password=one_time_password,
+    )
+
+
+# ---------------------------------------------------------------------------
+# AD / LDAPS Settings (S-034)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/auth/ad-settings", response_model=ADSettingsOut)
+async def get_ad_settings(
+    db=Depends(get_db),
+    scope: ScopeContext = Depends(get_scope_context),
+    _rls=Depends(set_rls_context),
+    _claims: dict = Depends(require_permission("users.manage")),
+):
+    """Return current AD/LDAPS connection status and config.
+
+    No bind password or secrets are exposed. Only readable settings
+    and the operational mode (stub/disabled/configured) are returned.
+    """
+    from packages.security.config import get_security_config
+    from packages.auth.ad_provider import StubADAuthProvider
+
+    cfg = get_security_config()
+    ad = StubADAuthProvider()
+    available = await ad.is_available()
+
+    if not cfg.ad_enabled:
+        mode = "disabled"
+        message = "AD integration is disabled. Employee AD login is not available."
+    elif available:
+        mode = "configured"
+        message = "AD integration is configured and reachable."
+    else:
+        mode = "stub"
+        message = (
+            "AD integration is currently in stub mode. "
+            "Employee AD login returns 503. "
+            "Configure AD_ENABLED=true and AD_SERVER_URL to enable real AD auth."
+        )
+
+    return ADSettingsOut(
+        enabled=cfg.ad_enabled,
+        mode=mode,
+        server_url=cfg.ad_server_url if mode != "stub" else "",
+        base_dn=cfg.ad_base_dn,
+        user_search_base=cfg.ad_user_search_base,
+        user_search_filter=cfg.ad_user_search_filter,
+        bind_dn=cfg.ad_bind_dn,
+        use_tls=cfg.ad_use_tls,
+        certificate_validation=cfg.ad_certificate_validation,
+        message=message,
+    )
+
+
+@router.post("/auth/ad-settings/test", response_model=ADTestResultOut)
+async def test_ad_connection(
+    db=Depends(get_db),
+    scope: ScopeContext = Depends(get_scope_context),
+    _rls=Depends(set_rls_context),
+    _claims: dict = Depends(require_permission("users.manage")),
+):
+    """Test AD connection — honest stub until real LDAPS client exists.
+
+    Does NOT connect to external AD. Returns stub status when AD is
+    not configured or the real client is not implemented.
+    """
+    from datetime import datetime, timezone
+    from packages.security.config import get_security_config
+    from packages.auth.ad_provider import StubADAuthProvider
+
+    cfg = get_security_config()
+    ad = StubADAuthProvider()
+    now = datetime.now(timezone.utc)
+
+    if not cfg.ad_enabled:
+        return ADTestResultOut(
+            status="not_configured",
+            message="AD integration is not configured. Employee AD login returns 503.",
+            tested_at=now,
+            error_code="ad_disabled",
+        )
+
+    available = await ad.is_available()
+    if not available:
+        return ADTestResultOut(
+            status="stub",
+            message=(
+                "AD integration is in stub mode. "
+                "Real LDAPS client is not yet implemented. "
+                "Employee AD login returns 503."
+            ),
+            tested_at=now,
+            error_code="ldap_unavailable",
+        )
+
+    return ADTestResultOut(
+        status="ok",
+        message="AD connection test passed.",
+        tested_at=now,
     )
 
 

@@ -729,3 +729,32 @@ class CompleteUploadResponse(BaseModel):
     file_size_bytes: int
     status: str
     moderation_status: str
+
+
+# ---------------------------------------------------------------------------
+# S-034 — AD / LDAPS Settings
+# ---------------------------------------------------------------------------
+
+
+class ADSettingsOut(BaseModel):
+    """Safe AD connection settings — never exposes bind password or secrets."""
+
+    enabled: bool
+    mode: str  # "stub" | "disabled" | "configured"
+    server_url: str = ""  # masked for security — only shown in dev/stub
+    base_dn: str = ""
+    user_search_base: str = ""
+    user_search_filter: str = "(sAMAccountName={username})"
+    bind_dn: str = ""  # shown, but password is never included
+    use_tls: bool = True
+    certificate_validation: str = "required"
+    message: str = ""
+
+
+class ADTestResultOut(BaseModel):
+    """Result of a test AD connection."""
+
+    status: str  # "ok" | "stub" | "not_configured" | "error"
+    message: str
+    tested_at: datetime | None = None
+    error_code: str | None = None
