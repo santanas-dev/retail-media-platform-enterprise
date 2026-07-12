@@ -277,7 +277,7 @@ class TestOutboxRelayBehavioral:
         asyncio.run(_test())
 
     def test_backoff_respected_on_second_run(self, db_available):
-        """Transient failure → backoff set → second run_once skips the event."""
+        """Transient failure -> backoff set -> second run_once skips the event."""
         pub = StubNatsPublisher()
         pub.fail_next(1)
         event_id = str(uuid.uuid4())
@@ -285,12 +285,30 @@ class TestOutboxRelayBehavioral:
         async def _test():
             engine = await _make_engine_and_clean()
             try:
+                # ── Isolation: delete ALL due events from other test suites ──
+                # The relay processes every pending/failed event whose
+                # next_attempt_at <= NOW.  A foreign due event can consume the
+                # shared fail_next(1) token, making the test non-deterministic.
+                # We zap every due row so our event is the ONLY candidate.
+                async with engine.begin() as conn:
+                    from datetime import datetime, timezone
+                    now = datetime.now(timezone.utc)
+                    await conn.execute(
+                        text(
+                            "DELETE FROM outbox_events "
+                            "WHERE status IN ('pending','failed') "
+                            "  AND next_attempt_at <= :now"
+                        ),
+                        {"now": now},
+                    )
+
                 relay = OutboxRelay(pub, engine)
                 await _insert(engine, event_type="test.relay.backoff",
                               event_id=event_id)
 
                 count1 = await relay.run_once()
-                # Other test suites may have due outbox events
+                # With isolation above, count1 == 1.  We keep >=1 for
+                # resilience, but the critical assertion is about OUR event.
                 assert count1 >= 1, f"Expected >=1, got {count1}"
                 # Our event must NOT have been published (simulated transient failure)
                 our_published = any(
@@ -310,11 +328,10 @@ class TestOutboxRelayBehavioral:
                     assert row[1] == 1, f"Expected attempts=1, got {row[1]}"
 
                 count2 = await relay.run_once()
-                assert count2 == 0, (
-                    f"Expected 0 (event skipped due to future next_attempt_at), "
-                    f"got {count2}"
-                )
-                # Our event must NOT be in the published list after second run
+                # After isolation, count2 == 0 (our event has future
+                # next_attempt_at).  Assertion is on OUR event specifically.
+                # We avoid count2 == 0 because a foreign event could become
+                # due between the two run_once() calls.
                 our_published2 = any(
                     m["msg_id"] == event_id for m in pub.published
                 )
@@ -322,6 +339,20 @@ class TestOutboxRelayBehavioral:
                     f"Event {event_id} was published on second run "
                     f"(backoff not respected)"
                 )
+                # Verify our event was NOT touched by the second run
+                async with engine.connect() as conn:
+                    result = await conn.execute(
+                        text("SELECT status, attempts FROM outbox_events WHERE id = :id"),
+                        {"id": event_id},
+                    )
+                    row = result.fetchone()
+                    assert row is not None, f"Event {event_id} gone after second run"
+                    assert row[0] == "failed", (
+                        f"Expected still failed, got {row[0]}"
+                    )
+                    assert row[1] == 1, (
+                        f"Expected attempts still 1, got {row[1]}"
+                    )
             finally:
                 await engine.dispose()
 
