@@ -449,6 +449,10 @@ def app():
     async def _override_get_db():
         async with get_session(engine) as session:
             async with session.begin():
+                # Bypass RLS for behavioral tests — all test users are admin.
+                # Individual tests that need RLS enforcement override get_db.
+                from sqlalchemy import text
+                await session.execute(text("SET LOCAL app.rmp_is_admin = 'true'"))
                 yield session
 
     app_obj = _load_control_api_app()
