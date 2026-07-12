@@ -431,9 +431,11 @@ def app():
     from packages.domain.database import (
         create_engine, set_global_engine, get_session,
     )
-    from packages.api.dependencies import get_db
-    from sqlalchemy.ext.asyncio import create_async_engine as _cae
+    from packages.api.dependencies import get_db, get_scope_context, set_rls_context
+    from packages.domain.scopes import ScopeContext
+    from sqlalchemy.ext.asyncio import create_async_engine as _cae, AsyncSession
     from sqlalchemy.pool import NullPool
+    from fastapi import Depends
 
     reset_security_config()
 
@@ -449,16 +451,25 @@ def app():
     async def _override_get_db():
         async with get_session(engine) as session:
             async with session.begin():
-                # Bypass RLS for behavioral tests — all test users are admin.
-                # Individual tests that need RLS enforcement override get_db.
-                from sqlalchemy import text
-                await session.execute(
-                    text("SELECT set_config('app.rmp_is_admin', 'true', true)")
-                )
                 yield session
+
+    async def _override_get_scope_context(
+        session: AsyncSession = Depends(get_db),
+    ):
+        scope = ScopeContext(
+            user_id="beh-admin",
+            is_admin=True,
+            role_codes={"system_admin"},
+            global_permissions={"users.read", "users.manage", "campaigns.read"},
+            all_permissions={"users.read", "users.manage", "campaigns.read"},
+            advertiser_scope_ids={"00000000-0000-0000-0000-000000000200"},
+        )
+        await set_rls_context(session, scope)
+        return scope
 
     app_obj = _load_control_api_app()
     app_obj.dependency_overrides[get_db] = _override_get_db
+    app_obj.dependency_overrides[get_scope_context] = _override_get_scope_context
     return app_obj
 
 
