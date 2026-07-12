@@ -131,7 +131,7 @@ class TestUserManagementPermissionGates(unittest.TestCase):
         return {"Authorization": f"Bearer {token}"}
 
     def _mock_auth_repo(self, user=None, perms=None):
-        """Patch find_user_by_id + get_user_permissions (dependencies)."""
+        """Patch find_user_by_id + get_user_permissions + get_scope_context (dependencies)."""
         patcher_find = patch(
             "packages.api.dependencies.repository.find_user_by_id",
             new_callable=AsyncMock,
@@ -146,8 +146,25 @@ class TestUserManagementPermissionGates(unittest.TestCase):
         mock_find.return_value = user
         mock_perms.return_value = perms or set()
 
+        # Override get_scope_context to avoid real scope resolution
+        app = _get_app()
+        from packages.api.dependencies import get_scope_context
+        from packages.domain.scopes import ScopeContext
+
+        async def _fake_scope():
+            return ScopeContext(
+                user_id=(user.id if user else "u-001"),
+                is_admin=True,
+                role_codes={"system_admin"},
+                global_permissions=perms or set(),
+                all_permissions=perms or set(),
+            )
+
+        app.dependency_overrides[get_scope_context] = _fake_scope
+
         self.addCleanup(patcher_find.stop)
         self.addCleanup(patcher_perms.stop)
+        self.addCleanup(lambda: app.dependency_overrides.clear())
 
         return mock_find, mock_perms
 
@@ -437,7 +454,7 @@ class TestCreateLocalAdvertiser(unittest.TestCase):
     def _mock_auth(self):
         """Override get_current_active_user + get_db + get_user_permissions."""
         app = _get_app()
-        from packages.api.dependencies import get_current_active_user, get_db
+        from packages.api.dependencies import get_current_active_user, get_db, get_scope_context
 
         async def _admin_user():
             return {
@@ -450,8 +467,20 @@ class TestCreateLocalAdvertiser(unittest.TestCase):
         async def _fake_db():
             yield AsyncMock()
 
+        from packages.domain.scopes import ScopeContext
+
+        async def _fake_scope():
+            return ScopeContext(
+                user_id="u-admin",
+                is_admin=True,
+                role_codes={"system_admin"},
+                global_permissions={"users.read", "users.manage"},
+                all_permissions={"users.read", "users.manage"},
+            )
+
         app.dependency_overrides[get_current_active_user] = _admin_user
         app.dependency_overrides[get_db] = _fake_db
+        app.dependency_overrides[get_scope_context] = _fake_scope
         self.addCleanup(lambda: app.dependency_overrides.clear())
 
     def _mock_repo(self, **overrides):
@@ -551,7 +580,7 @@ class TestDeactivateActivate(unittest.TestCase):
     def _mock_auth(self):
         """Override get_current_active_user + get_db + get_user_permissions."""
         app = _get_app()
-        from packages.api.dependencies import get_current_active_user, get_db
+        from packages.api.dependencies import get_current_active_user, get_db, get_scope_context
 
         async def _admin_user():
             return {
@@ -564,8 +593,20 @@ class TestDeactivateActivate(unittest.TestCase):
         async def _fake_db():
             yield AsyncMock()
 
+        from packages.domain.scopes import ScopeContext
+
+        async def _fake_scope():
+            return ScopeContext(
+                user_id="u-admin",
+                is_admin=True,
+                role_codes={"system_admin"},
+                global_permissions={"users.read", "users.manage"},
+                all_permissions={"users.read", "users.manage"},
+            )
+
         app.dependency_overrides[get_current_active_user] = _admin_user
         app.dependency_overrides[get_db] = _fake_db
+        app.dependency_overrides[get_scope_context] = _fake_scope
         self.addCleanup(lambda: app.dependency_overrides.clear())
 
     def _mock_repo(self, **overrides):
@@ -669,23 +710,38 @@ class TestResetPassword(unittest.TestCase):
         return {"Authorization": f"Bearer {token}"}
 
     def _mock_auth_and_repo(self, **overrides):
-        p_auth_find = patch(
-            "packages.api.dependencies.repository.find_user_by_id",
-            new_callable=AsyncMock,
-        )
-        p_auth_perms = patch(
-            "packages.api.dependencies.repository.get_user_permissions",
-            new_callable=AsyncMock,
-        )
-        m1 = p_auth_find.start()
-        m2 = p_auth_perms.start()
-        m1.return_value = _make_user("u-admin", "active", "local_break_glass")
-        m2.return_value = {"users.read", "users.manage"}
-        self.addCleanup(p_auth_find.stop)
-        self.addCleanup(p_auth_perms.stop)
+        app = _get_app()
+        from packages.api.dependencies import get_current_active_user, get_db, get_scope_context
+        from packages.domain.scopes import ScopeContext
+
+        async def _admin_user():
+            return {
+                "sub": "u-admin",
+                "auth_provider": "local_break_glass",
+                "username": "admin",
+                "display_name": "Admin",
+            }
+
+        async def _fake_db():
+            yield AsyncMock()
+
+        async def _fake_scope():
+            return ScopeContext(
+                user_id="u-admin",
+                is_admin=True,
+                role_codes={"system_admin"},
+                global_permissions={"users.read", "users.manage"},
+                all_permissions={"users.read", "users.manage"},
+            )
+
+        app.dependency_overrides[get_current_active_user] = _admin_user
+        app.dependency_overrides[get_db] = _fake_db
+        app.dependency_overrides[get_scope_context] = _fake_scope
+        self.addCleanup(lambda: app.dependency_overrides.clear())
 
         defaults = {
             "get_user_detail": _make_user("target", "active", "local_advertiser"),
+            "get_user_permissions": {"users.read", "users.manage"},
             "get_user_local_credential": _MockCredential(),
             "update_local_credential_password": True,
         }

@@ -87,6 +87,7 @@ async def list_users(
 async def get_user(
     user_id: str,
     db=Depends(get_db),
+    scope: ScopeContext = Depends(get_scope_context),
     _claims: dict = Depends(require_permission("users.read")),
 ):
     """Get user detail with roles and scopes."""
@@ -140,6 +141,7 @@ async def get_user(
 async def create_local_advertiser(
     body: CreateLocalAdvertiserRequest,
     db=Depends(get_db),
+    scope: ScopeContext = Depends(get_scope_context),
     _claims: dict = Depends(require_permission("users.manage")),
 ):
     """Create a local advertiser user with scoped role."""
@@ -211,6 +213,7 @@ async def create_local_advertiser(
 async def deactivate_user(
     user_id: str,
     db=Depends(get_db),
+    scope: ScopeContext = Depends(get_scope_context),
     _claims: dict = Depends(require_permission("users.manage")),
 ):
     """Deactivate a user — blocks login, revokes sessions."""
@@ -260,6 +263,7 @@ async def deactivate_user(
 async def activate_user(
     user_id: str,
     db=Depends(get_db),
+    scope: ScopeContext = Depends(get_scope_context),
     _claims: dict = Depends(require_permission("users.manage")),
 ):
     """Activate a previously deactivated user."""
@@ -288,6 +292,7 @@ async def reset_password(
     user_id: str,
     body: ResetPasswordRequest,
     db=Depends(get_db),
+    scope: ScopeContext = Depends(get_scope_context),
     _claims: dict = Depends(require_permission("users.manage")),
 ):
     """Admin-initiated password reset for a local user. Rejects AD users."""
