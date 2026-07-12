@@ -74,6 +74,7 @@ Separately covered:
 | S-023h | Advertiser Portal — Localization Polish | P1 | ✅ done | P.S. (Hermes) | Russian labels for status (Черновик/Активна/etc), contact_type (Основной/Бухгалтерия), auth_provider (Локальная учётная запись), surface UUIDs → «Поверхность XXXXXXXX», timezoneLabel (Москва GMT+3). Helpers: statusLabel, contactTypeLabel, authProviderLabel, timezoneLabel, surfaceLabel, mediaTypeLabel. Tests: 66 vitest. CI #29166284943 green. | S-023i: responsive layout polish |
 | S-023i | Advertiser Portal — Responsive Layout Polish | P1 | ✅ done | P.S. (Hermes) | Layout.module.css replaces inline styles. Hamburger + overlay sidebar for <768px. Tables: overflow-x:auto on narrow (no page-level overflow). Text fixes: timezoneLabel, mediaTypeLabel in CampaignDetailPage. Tests: 66 vitest. CI #29166816518 green (33/33). | S-026: live LAN preview |
 | S-024 | v2.6 Next Branch Requirements Captured | P1 | ✅ done | P.S. (Hermes) | TZ v2.6 DOCX placed in `docs/product/requirements/`. ADR-018 (tenant model) proposed — P0 decision needed before v2.6 implementation. Roadmap updated with v2.6 rows. Release-versioning has Future branch section. No code changes. | Tenant model ADR accepted → implementation |
+| S-029 | Production Gaps Triage | P0 | ✅ docs/triage done | P.S. (Hermes) | `docs/product/production-gaps-triage.md` — 8 categories, 35+ gaps triaged with P0/P1/P2/P3 severity. Recommended milestones v0.5–v0.9. Roadmap updated with production gap rows. No code changes. Branch: develop. | Start v0.5 P0 gates |
 
 ## Status Legend
 
