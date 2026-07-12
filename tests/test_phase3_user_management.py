@@ -131,7 +131,7 @@ class TestUserManagementPermissionGates(unittest.TestCase):
         return {"Authorization": f"Bearer {token}"}
 
     def _mock_auth_repo(self, user=None, perms=None):
-        """Patch find_user_by_id + get_user_permissions + get_scope_context (dependencies)."""
+        """Patch find_user_by_id + get_user_permissions + get_scope_context + set_rls_context."""
         patcher_find = patch(
             "packages.api.dependencies.repository.find_user_by_id",
             new_callable=AsyncMock,
@@ -146,9 +146,9 @@ class TestUserManagementPermissionGates(unittest.TestCase):
         mock_find.return_value = user
         mock_perms.return_value = perms or set()
 
-        # Override get_scope_context to avoid real scope resolution
+        # Override get_scope_context and set_rls_context
         app = _get_app()
-        from packages.api.dependencies import get_scope_context
+        from packages.api.dependencies import get_scope_context, set_rls_context
         from packages.domain.scopes import ScopeContext
 
         async def _fake_scope():
@@ -160,7 +160,11 @@ class TestUserManagementPermissionGates(unittest.TestCase):
                 all_permissions=perms or set(),
             )
 
+        async def _fake_set_rls(db=None, scope=None):
+            return None
+
         app.dependency_overrides[get_scope_context] = _fake_scope
+        app.dependency_overrides[set_rls_context] = _fake_set_rls
 
         self.addCleanup(patcher_find.stop)
         self.addCleanup(patcher_perms.stop)
@@ -454,7 +458,7 @@ class TestCreateLocalAdvertiser(unittest.TestCase):
     def _mock_auth(self):
         """Override get_current_active_user + get_db + get_user_permissions."""
         app = _get_app()
-        from packages.api.dependencies import get_current_active_user, get_db, get_scope_context
+        from packages.api.dependencies import get_current_active_user, get_db, get_scope_context, set_rls_context
 
         async def _admin_user():
             return {
@@ -478,9 +482,13 @@ class TestCreateLocalAdvertiser(unittest.TestCase):
                 all_permissions={"users.read", "users.manage"},
             )
 
+        async def _fake_set_rls(db=None, scope=None):
+            return None
+
         app.dependency_overrides[get_current_active_user] = _admin_user
         app.dependency_overrides[get_db] = _fake_db
         app.dependency_overrides[get_scope_context] = _fake_scope
+        app.dependency_overrides[set_rls_context] = _fake_set_rls
         self.addCleanup(lambda: app.dependency_overrides.clear())
 
     def _mock_repo(self, **overrides):
@@ -564,7 +572,7 @@ class TestDeactivateActivate(unittest.TestCase):
     def _mock_auth(self):
         """Override get_current_active_user + get_db + get_user_permissions."""
         app = _get_app()
-        from packages.api.dependencies import get_current_active_user, get_db, get_scope_context
+        from packages.api.dependencies import get_current_active_user, get_db, get_scope_context, set_rls_context
 
         async def _admin_user():
             return {
@@ -588,9 +596,13 @@ class TestDeactivateActivate(unittest.TestCase):
                 all_permissions={"users.read", "users.manage"},
             )
 
+        async def _fake_set_rls(db=None, scope=None):
+            return None
+
         app.dependency_overrides[get_current_active_user] = _admin_user
         app.dependency_overrides[get_db] = _fake_db
         app.dependency_overrides[get_scope_context] = _fake_scope
+        app.dependency_overrides[set_rls_context] = _fake_set_rls
         self.addCleanup(lambda: app.dependency_overrides.clear())
 
     def _mock_repo(self, **overrides):
@@ -695,7 +707,7 @@ class TestResetPassword(unittest.TestCase):
 
     def _mock_auth_and_repo(self, **overrides):
         app = _get_app()
-        from packages.api.dependencies import get_current_active_user, get_db, get_scope_context
+        from packages.api.dependencies import get_current_active_user, get_db, get_scope_context, set_rls_context
         from packages.domain.scopes import ScopeContext
 
         async def _admin_user():

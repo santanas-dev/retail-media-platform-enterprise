@@ -88,9 +88,9 @@ async def get_user(
     user_id: str,
     db=Depends(get_db),
     scope: ScopeContext = Depends(get_scope_context),
+    _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("users.read")),
 ):
-    """Get user detail with roles and scopes."""
     user = await repository.get_user_detail(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -142,9 +142,9 @@ async def create_local_advertiser(
     body: CreateLocalAdvertiserRequest,
     db=Depends(get_db),
     scope: ScopeContext = Depends(get_scope_context),
+    _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("users.manage")),
 ):
-    """Create a local advertiser user with scoped role."""
     import uuid as _uuid
     from packages.security.password import hash_password
 
@@ -209,9 +209,9 @@ async def deactivate_user(
     user_id: str,
     db=Depends(get_db),
     scope: ScopeContext = Depends(get_scope_context),
+    _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("users.manage")),
 ):
-    """Deactivate a user — blocks login, revokes sessions."""
     user = await repository.get_user_detail(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -259,9 +259,9 @@ async def activate_user(
     user_id: str,
     db=Depends(get_db),
     scope: ScopeContext = Depends(get_scope_context),
+    _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("users.manage")),
 ):
-    """Activate a previously deactivated user."""
     user = await repository.get_user_detail(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -288,9 +288,9 @@ async def reset_password(
     body: ResetPasswordRequest,
     db=Depends(get_db),
     scope: ScopeContext = Depends(get_scope_context),
+    _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("users.manage")),
 ):
-    """Admin-initiated password reset for a local user. Rejects AD users."""
     user = await repository.get_user_detail(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
