@@ -451,6 +451,16 @@ def app():
     async def _override_get_db():
         async with get_session(engine) as session:
             async with session.begin():
+                # Ensure RLS bypass is set at transaction start.
+                # set_rls_context in get_scope_context override does the same,
+                # but set it here defensively in case the override chain reorders.
+                from sqlalchemy import text
+                await session.execute(
+                    text("SELECT set_config('app.rmp_is_admin', 'true', true)")
+                )
+                await session.execute(
+                    text("SELECT set_config('app.rmp_user_id', 'beh-admin', true)")
+                )
                 yield session
 
     async def _override_get_scope_context(
