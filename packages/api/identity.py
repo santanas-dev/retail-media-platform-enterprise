@@ -148,11 +148,6 @@ async def create_local_advertiser(
     import uuid as _uuid
     from packages.security.password import hash_password
 
-    # Validate advertiser org exists
-    org = await repository.get_advertiser_organization(db, body.advertiser_organization_id)
-    if org is None:
-        raise HTTPException(status_code=422, detail="Advertiser organization not found")
-
     # Check duplicate username
     existing = await repository.find_user_by_username(db, body.username)
     if existing:

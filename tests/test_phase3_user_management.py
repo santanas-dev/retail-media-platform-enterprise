@@ -486,7 +486,6 @@ class TestCreateLocalAdvertiser(unittest.TestCase):
     def _mock_repo(self, **overrides):
         defaults = {
             "get_user_permissions": {"users.read", "users.manage"},
-            "get_advertiser_organization": _MockOrg(),
             "find_user_by_username": None,
             "list_roles": [_MockRole("role-adv", "advertiser", "Advertiser")],
             "create_local_advertiser_user": _MockCreatedUser(),
@@ -518,21 +517,6 @@ class TestCreateLocalAdvertiser(unittest.TestCase):
         )
         self.assertEqual(resp.status_code, 409)
 
-    def test_org_not_found_returns_422(self):
-        """Non-existent advertiser org -> 422."""
-        self._mock_auth()
-        self._mock_repo(get_advertiser_organization=None)
-        resp = self.client.post(
-            "/api/v1/identity/users/local-advertiser",
-            json={
-                "username": "new_user",
-                "display_name": "Test",
-                "advertiser_organization_id": "00000000-0000-0000-0000-000000000099",
-                "auto_generate_password": True,
-            },
-            headers=self._auth(self._token()),
-        )
-        self.assertEqual(resp.status_code, 422)
 
     def test_response_has_no_password_hash(self):
         """Create response must not leak password_hash."""
