@@ -247,6 +247,22 @@ class TestOutboxRelayBehavioral:
         async def _test():
             engine = await _make_engine_and_clean()
             try:
+                # ── Isolation: delete ALL due pending/failed events from
+                # other test suites.  The relay processes every pending/failed
+                # event whose next_attempt_at <= NOW, regardless of event_type
+                # prefix.  A foreign due event makes count != 0, causing a flake.
+                async with engine.begin() as conn:
+                    from datetime import datetime, timezone
+                    now = datetime.now(timezone.utc)
+                    await conn.execute(
+                        text(
+                            "DELETE FROM outbox_events "
+                            "WHERE status IN ('pending','failed') "
+                            "  AND next_attempt_at <= :now"
+                        ),
+                        {"now": now},
+                    )
+
                 relay = OutboxRelay(pub, engine)
                 await _insert(engine, event_type="test.relay.skip",
                               event_id=event_id, status="published")
@@ -265,6 +281,19 @@ class TestOutboxRelayBehavioral:
         async def _test():
             engine = await _make_engine_and_clean()
             try:
+                # ── Isolation: same as test_already_published_skipped
+                async with engine.begin() as conn:
+                    from datetime import datetime, timezone
+                    now = datetime.now(timezone.utc)
+                    await conn.execute(
+                        text(
+                            "DELETE FROM outbox_events "
+                            "WHERE status IN ('pending','failed') "
+                            "  AND next_attempt_at <= :now"
+                        ),
+                        {"now": now},
+                    )
+
                 relay = OutboxRelay(pub, engine)
                 await _insert(engine, event_type="test.relay.deadskip",
                               event_id=event_id, status="dead_letter")

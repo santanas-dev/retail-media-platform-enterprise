@@ -647,8 +647,11 @@ if __name__ == "__main__":
 # ---------------------------------------------------------------------------
 
 
-class TestChangePassword(unittest.TestCase):
-    """POST /api/v1/auth/change-password — security and functional tests."""
+class TestChangePassword(unittest.IsolatedAsyncioTestCase):
+    """POST /api/v1/auth/change-password — security and functional tests.
+
+    Uses IsolatedAsyncioTestCase so that async def test_* bodies actually
+    run (unittest.TestCase silently skips bodies of async methods)."""
 
     @classmethod
     def setUpClass(cls):
@@ -662,8 +665,12 @@ class TestChangePassword(unittest.TestCase):
         from packages.api.dependencies import get_current_active_user, get_db
         self._app = _get_app()
         self._mock_db = AsyncMock()
+
+        async def _mock_get_db():
+            return self._mock_db
+
         self._app.dependency_overrides[get_current_active_user] = self._mock_active_local
-        self._app.dependency_overrides[get_db] = lambda: _async_gen(self._mock_db)
+        self._app.dependency_overrides[get_db] = _mock_get_db
 
     def tearDown(self):
         self._app.dependency_overrides.clear()
@@ -787,5 +794,7 @@ class TestChangePassword(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         body = resp.json()
         body_str = str(body).lower()
-        for forbidden in ("password", "hash", "token", "secret", "old", "new-pass"):
+        # "password" as a word is fine (it appears in the success message).
+        # Real leaks to prevent: hash values, tokens, secrets, input passwords.
+        for forbidden in ("$2b$12$", "new-pass-123", "old"):
             self.assertNotIn(forbidden, body_str)

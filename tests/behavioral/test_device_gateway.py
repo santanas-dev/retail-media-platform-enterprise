@@ -20,6 +20,9 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 os.environ["ENVIRONMENT"] = "dev"
+os.environ["MANIFEST_SIGNING_KEY"] = (
+    "behavioral-test-signing-key-at-least-32-chars"
+)
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -253,6 +256,15 @@ class TestDeviceManifestEndpoint:
         assert response.headers["etag"] == data.get("content_hash", "")
         assert "channel_type" in data, "Missing channel_type"
         assert "offline_ttl_hours" in data, "Missing offline_ttl_hours"
+        # ── S-035c: signature must be non-empty when signing key is configured ──
+        sig = data.get("signature", {})
+        assert sig.get("algorithm") == "HMAC-SHA256", (
+            "Missing or wrong signature algorithm"
+        )
+        sig_value = sig.get("value", "")
+        assert len(sig_value) == 64, (
+            f"Expected 64-char hex HMAC-SHA256 signature, got {len(sig_value)}"
+        )
         unsafe = (
             "storage_bucket", "storage_key", "presigned_url",
             "access_key", "secret_key", "token", "password",

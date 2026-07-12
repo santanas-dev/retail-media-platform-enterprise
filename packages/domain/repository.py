@@ -1704,7 +1704,7 @@ async def get_latest_manifest_for_device(
             if ch:
                 channel_type = ch.code or ""
 
-    return {
+    result = {
         "manifest_id": manifest.manifest_id,
         "manifest_version": manifest.manifest_version,
         "schema_version": "1.0",
@@ -1734,6 +1734,20 @@ async def get_latest_manifest_for_device(
         "generated_at": manifest.generated_at.isoformat() if manifest.generated_at else None,
         "content_hash": manifest.content_hash,
     }
+
+    # ── Sign manifest payload for device delivery (S-021 / S-035c) ──
+    # sign_manifest_payload already runs during generation (delivery.py:717),
+    # but the signature is lost because create_delivery_manifest_record only
+    # stores metadata.  Re-sign here so that device-gateway serves a signed
+    # manifest when MANIFEST_SIGNING_KEY is configured.
+    from packages.domain.delivery import sign_manifest_payload
+    from packages.security.config import get_security_config
+    signing_key = get_security_config().manifest_signing_key
+    if signing_key:
+        sig = sign_manifest_payload(result, signing_key)
+        result["signature"]["value"] = sig
+
+    return result
 
 
 # ---------------------------------------------------------------------------
