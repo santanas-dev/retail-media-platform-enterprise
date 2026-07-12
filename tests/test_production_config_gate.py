@@ -43,10 +43,8 @@ def _prod_config(**overrides) -> SecurityConfig:
         "SEED_DEV_CREDENTIALS": "",
     }
     env.update(overrides)
-    # Remove keys set to None (to test absence)
-    for k, v in list(env.items()):
-        if v is None:
-            del env[k]
+    # Sentinel: empty string means "delete this key from environment"
+    # (used for testing missing/absent env vars in production)
     with _set_env(env):
         return SecurityConfig()
 
@@ -61,7 +59,11 @@ class _set_env:
     def __enter__(self):
         for k, v in self.overrides.items():
             self.saved[k] = os.environ.get(k, "__NOT_SET__")
-            os.environ[k] = v
+            if v == "":
+                # Delete key — simulate absent env var
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
 
     def __exit__(self, *args):
         for k, saved in self.saved.items():
@@ -95,7 +97,7 @@ def test_production_accepts_strong_config():
 
 def test_production_rejects_missing_jwt_secret():
     with pytest.raises(ValueError, match="JWT_SECRET must be set"):
-        _prod_config(JWT_SECRET=None)
+        _prod_config(JWT_SECRET="")
 
 
 def test_production_rejects_short_jwt_secret():
@@ -110,7 +112,7 @@ def test_production_rejects_short_jwt_secret():
 
 def test_production_rejects_missing_manifest_key():
     with pytest.raises(ValueError, match="MANIFEST_SIGNING_KEY must be set"):
-        _prod_config(MANIFEST_SIGNING_KEY=None)
+        _prod_config(MANIFEST_SIGNING_KEY="")
 
 
 def test_production_rejects_short_manifest_key():
@@ -231,7 +233,7 @@ def test_production_accepts_remote_db_url():
 
 def test_production_skips_db_validation_when_empty():
     """If DATABASE_URL is not set, skip validation (service without DB)."""
-    cfg = _prod_config(DATABASE_URL=None)
+    cfg = _prod_config(DATABASE_URL="")
     assert not cfg.dev_mode
 
 
