@@ -72,7 +72,7 @@ async def _setup_fixtures():
                      'image','test-bucket','test/key.jpg',
                      'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',0,
                      'pending_review','metadata_only',
-                     '00000000-0000-0000-0000-000000000001',NOW(),NOW())
+                     NULL,NOW(),NOW())
                 ON CONFLICT (id) DO NOTHING
             """))
 
@@ -86,7 +86,7 @@ async def _setup_fixtures():
                      'test-bucket','{ORG_A_ID}/test/file.jpg','file.jpg',
                      'image/jpeg',1024,
                      NOW() + INTERVAL '1 hour',
-                     '00000000-0000-0000-0000-000000000001',NOW())
+                     NULL,NOW())
             """))
     finally:
         await engine.dispose()
