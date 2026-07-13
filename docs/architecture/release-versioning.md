@@ -394,7 +394,7 @@ git push origin :refs/tags/v0.4-advertiser-self-service-pilot
 
 ### v0.5-business-portal-complete — Business Portal Complete
 
-**Proposed.**  Tag not yet created.
+**Published.**  Tag created 2026-07-13.
 
 #### Metadata
 - **Tag:** v0.5-business-portal-complete
@@ -502,6 +502,49 @@ git push origin :refs/tags/v0.5-business-portal-complete
 - S-029 through S-042a in `docs/architecture/stabilization-tracker.md`
 - CI run #29244491388 (all 34 jobs green)
 - S-042 readiness review report
+
+---
+
+### v0.6-production-readiness-foundation — Production Readiness Foundation
+
+**Planned.**  Follows v0.5 Business Portal Complete.
+
+#### Metadata
+- **Tag:** v0.6-production-readiness-foundation (proposed)
+- **Date:** TBD
+- **Predecessor:** v0.5-business-portal-complete (`5c41a6a`)
+- **Plan:** `docs/product/v06-production-readiness-plan.md`
+
+#### Planned Capabilities
+
+- **Monitoring/observability (S-047):** Prometheus metrics on control-api + device-gateway, Grafana dashboard (API latency, error rate, DB pool, NATS queue), AlertManager rules
+- **Real LDAPS wiring (S-048):** Replace AD stub with real LDAPS bind/search, fail-safe to `local_break_glass`, no plaintext secrets
+- **MinIO backup (S-049):** `mc mirror` cron for creative assets bucket, restore drill, runbook update
+- **NATS backup policy (S-050):** Document recovery from outbox, manual `nats stream backup` procedure
+- **Portal error boundaries (S-051):** React ErrorBoundary in admin-web + advertiser-web, graceful fallback UI
+- **Audit events for approval/moderation (S-052):** `create_audit_event` on campaign approve/reject + creative approve/reject
+- **identity.py decomposition plan (S-053):** ADR for splitting 2036-line router into domain routers
+- **creative_upload_sessions behavioural RLS (S-054):** Full NOBYPASSRLS proof for upload session isolation
+- **XLSX export decision (S-054a):** Evaluate openpyxl dependency, implement or defer with rationale
+
+#### Explicitly NOT Included
+
+- KSO player / sidecar / hardware → v0.9
+- Emergency Management backend → v0.7
+- Feature flags / staged rollout → v0.7
+- Inventory Planning / Forecasting → v0.8
+- ClickHouse / reporting warehouse → v0.8
+- Billing / acts / ERP → v2.6
+- Tenant model ADR-018 → v2.6
+- Device signature verification → v2.6
+
+#### S-Ticket Sequence
+S-047 → S-048 → S-049 → S-050 → S-051 → S-052 → S-053 → S-054 → S-055 (readiness review)
+
+#### References
+- `docs/product/v06-production-readiness-plan.md`
+- `docs/product/production-gaps-triage.md`
+- S-045 audit reconciliation report
 
 ---
 

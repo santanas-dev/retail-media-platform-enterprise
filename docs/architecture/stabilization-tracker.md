@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
 | **Last updated:** 2026-07-13
-| **Current phase:** v0.5 Business Portal Complete — S-042 readiness review passed (CONDITIONAL GO). S-036…S-040 done. KSO/player remains deferred/out of scope.|
+| **Current phase:** v0.5 Business Portal Complete — PUBLISHED (tag v0.5-business-portal-complete, main/develop at 5114f83). v0.6 Production Readiness planned (S-046). KSO/player remains deferred/out of scope.|
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -88,6 +88,11 @@ Separately covered:
 | S-039 | Admin Advertisers Management Page | P0 | ✅ done | P.S. (Hermes) | Backend: 6 endpoints (org detail, filtered brands/contracts/contacts by org, user memberships) with advertisers.read/contacts.read + RLS. Frontend: AdvertisersPage replaces stub — org list with search + detail panel with 5 tabs (overview, brands, contracts, contacts, users). No secrets/PII exposed. Read-only. Tests: 17 backend + 7 admin-web vitest. Branch: feature/S-039-admin-advertisers-page. | — |
 | S-040 | PoP Reporting Export CSV | P0 | ✅ done | P.S. (Hermes) | Backend: GET /campaigns/{id}/pop/export — CSV with BOM, same auth/RBAC/RLS as JSON endpoints. Russian headers. Frontend: admin-web + advertiser-web «Скачать CSV» buttons. XLSX deferred (no openpyxl in project requirements). Tests: 11 backend + existing vitest regression green. Branch: feature/S-040-pop-report-export. | — |
 | S-032 | Roadmap Re-sequence: Business Portal before Player | P0 | ✅ docs done | P.S. (Hermes) | Roadmap resequenced per original ТЗ. No code changed. Branch: develop. | — |
+| S-042a | Stabilization tracker refresh for v0.5 RC | P0 | ✅ done | P.S. (Hermes) | `docs/architecture/stabilization-tracker.md` updated: header, remaining gaps. Branch: docs/S-042a. | — |
+| S-043 | v0.5 Release Prep | P0 | ✅ done | P.S. (Hermes) | `release-versioning.md`: v0.5 section. `production-gaps-triage.md`: baseline→v0.5. `roadmap-s020.xlsx`: v0.5 rows→✅. Branch: docs/S-043. | — |
+| S-044 | Publish v0.5 | P0 | ✅ done | P.S. (Hermes) | main ff→5114f83. Tag v0.5-business-portal-complete→5c41a6a. CI #29248156271 green (34/34). | — |
+| S-045 | Audit Reconciliation | P0 | ✅ done | P.S. (Hermes) | 9/9 S-035 findings CLOSED. Architecture gaps deferred honestly. GO verdict. | — |
+| S-046 | v0.6 Production Readiness Plan | P0 | 🚧 planned | P.S. (Hermes) | `docs/product/v06-production-readiness-plan.md`: S-047…S-055 sequence. Scope: monitoring, LDAPS, backups, error boundaries, audit events, router split, RLS test, XLSX decision. Out of scope: KSO, Emergency, Flags, Inventory, ClickHouse, v2.6. | Start S-047 |
 ## Status Legend
 
 - **done** — implemented, tested, committed, pushed
@@ -96,22 +101,31 @@ Separately covered:
 - **open/prepared** — definition written, tag commands prepared, awaiting approval
 - **deferred** — intentionally postponed (documented reason)
 
-## Remaining Gaps (non-blocking for v0.5 Business Portal)
+## Remaining Gaps (v0.6 Production Readiness — planned)
 
 | Gap | Status |
 |-----|--------|
-| Real KSO player/sidecar | Deferred — v2.6, out of scope |
-| Advertiser approve/reject campaigns | Deferred — admin-only |
-| Sales lift / attribution / billing | Deferred — v2.6 |
-| Production UX/accessibility audit | Deferred |
-| Real AD/LDAPS | Deferred — stub 503 |
-| Production deployment/observability hardening | Prometheus metrics/alerts deferred |
-| Production manifest signing verification at device-gateway | S-021 HMAC-SHA256 implemented. Verification deferred |
-| ClickHouse / materialized reporting (4.3e) | Deferred |
+| Monitoring/observability (Prometheus/Grafana) | 🚧 v0.6 planned (S-047) |
+| Real AD/LDAPS | 🚧 v0.6 planned (S-048) |
+| MinIO backup (S3 mirror) | 🚧 v0.6 planned (S-049) |
+| NATS backup policy | 🚧 v0.6 planned (S-050) |
+| Portal error boundaries | 🚧 v0.6 planned (S-051) |
+| Audit events for approval/moderation | 🚧 v0.6 planned (S-052) |
+| identity.py router decomposition | 🚧 v0.6 planned (S-053) |
+| XLSX export | 🚧 v0.6 decision (S-054a) |
+| Full behavioural RLS test for creative_upload_sessions | 🚧 v0.6 planned (S-054) |
+| Production UX/accessibility audit | Deferred — v0.7 |
+| Emergency Management backend | Deferred — v0.7 |
+| Feature flags / staged rollout | Deferred — v0.7 |
+| Inventory Planning / Forecasting | Deferred — v0.8 |
+| Report snapshots | Deferred — v0.8 |
+| ClickHouse / materialized reporting | Deferred — v0.8 |
+| Real KSO player/sidecar | Deferred — v0.9 |
+| Malware scan / transcoding / renditions | Deferred — v0.9 |
+| Production manifest signing verification at device-gateway | Deferred — v2.6 |
+| Billing / acts / ERP | Deferred — v2.6 |
+| Sales lift / attribution | Deferred — v2.6 |
 | Mobile application | Deferred — v2.6 |
-| Tenant model ADR before v2.6 | 🟡 Decision needed / proposed — ADR-018 |
-| XLSX export | Deferred — CSV done (S-040), XLSX requires openpyxl |
+| Tenant model ADR before v2.6 | 🟡 Decision needed — ADR-018 |
 | Password reset invite/email flow | Deferred |
-| Malware scan / transcoding / renditions | Deferred |
-| Full behavioural RLS test for creative_upload_sessions | Deferred — migration structure test exists |
-| Audit events for campaign approval / creative moderation | P2 follow-up — outbox events exist, operational audit not yet written |
+| Advertiser approve/reject campaigns | Deferred — admin-only |
