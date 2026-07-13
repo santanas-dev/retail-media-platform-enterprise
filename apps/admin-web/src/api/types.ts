@@ -83,6 +83,7 @@ export interface CreativeAssetOut {
   resolution_h: number | null;
   status: string;
   moderation_status: string;
+  moderation_notes: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -408,4 +409,45 @@ export interface UserRoleAssignmentOut {
 export interface UserDetailOut extends UserOut {
   must_change_password: boolean;
   roles: UserRoleAssignmentOut[];
+}
+
+// ── S-036: Creative Moderation ──
+
+export interface CreativeModerationQueueItem {
+  id: string;
+  advertiser_organization_id: string;
+  code: string;
+  name: string;
+  media_type: string;
+  file_size_bytes: number;
+  duration_ms: number | null;
+  resolution_w: number | null;
+  resolution_h: number | null;
+  status: string;
+  moderation_status: string;
+  moderation_notes: string | null;
+  created_at: string;
+  updated_at: string;
+  advertiser_name: string | null;
+  advertiser_code: string | null;
+}
+
+export interface CreativeRejectRequest {
+  reason: string;
+}
+
+export interface CreativeModerationResponse {
+  asset_id: string;
+  moderation_status: string;
+  message: string;
+}
+
+export const MODERATION_STATUS_LABELS: Record<string, string> = {
+  pending_review: "На проверке",
+  approved: "Одобрен",
+  rejected: "Отклонён",
+};
+
+export function moderationStatusLabel(s: string): string {
+  return MODERATION_STATUS_LABELS[s] ?? s;
 }

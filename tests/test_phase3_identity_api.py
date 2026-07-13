@@ -345,5 +345,187 @@ class TestNoOldBackendDependency(unittest.TestCase):
             self.assertNotIn("from backend", f.read())
 
 
+# ---------------------------------------------------------------------------
+# S-036 — Creative Moderation Queue Tests
+# ---------------------------------------------------------------------------
+
+
+class TestModerationQueue(AuthzMixin, unittest.TestCase):
+    """GET /api/v1/identity/creative-assets/moderation-queue"""
+
+    def _setup_moderator(self):
+        return self._setup_authz(perms={"creatives.moderate"})
+
+    @patch("packages.api.identity.repository.list_moderation_queue", new_callable=AsyncMock)
+    def test_default_filter_returns_pending_review(self, mock_repo):
+        self._setup_moderator()
+        mock_repo.return_value = []
+        resp = self._get("/api/v1/identity/creative-assets/moderation-queue")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), [])
+        mock_repo.assert_called_once()
+        self.assertEqual(mock_repo.call_args.kwargs["status_filter"], "pending_review")
+
+    @patch("packages.api.identity.repository.list_moderation_queue", new_callable=AsyncMock)
+    def test_advertiser_gets_403(self, mock_repo):
+        self._setup_authz(perms={"creatives.read"})
+        resp = self._get("/api/v1/identity/creative-assets/moderation-queue")
+        self.assertEqual(resp.status_code, 403)
+        mock_repo.assert_not_called()
+
+    @patch("packages.api.identity.repository.list_moderation_queue", new_callable=AsyncMock)
+    def test_no_storage_fields_in_response(self, mock_repo):
+        self._setup_moderator()
+        mock_repo.return_value = [{
+            "id": "ca-001", "advertiser_organization_id": "org-1",
+            "code": "C-001", "name": "Test Creative", "media_type": "image/png",
+            "file_size_bytes": 1024, "duration_ms": None,
+            "resolution_w": 1920, "resolution_h": 1080,
+            "status": "ready", "moderation_status": "pending_review",
+            "moderation_notes": None,
+            "created_at": "2026-01-01T00:00:00", "updated_at": "2026-01-01T00:00:00",
+            "advertiser_name": "Test Org", "advertiser_code": "TO",
+        }]
+        resp = self._get("/api/v1/identity/creative-assets/moderation-queue")
+        self.assertEqual(resp.status_code, 200)
+        item = resp.json()[0]
+        self.assertNotIn("storage_bucket", item)
+        self.assertNotIn("storage_key", item)
+        self.assertNotIn("presigned_url", item)
+        self.assertIn("advertiser_name", item)
+        self.assertEqual(item["advertiser_name"], "Test Org")
+
+    @patch("packages.api.identity.repository.list_moderation_queue", new_callable=AsyncMock)
+    def test_invalid_filter_rejected(self, mock_repo):
+        self._setup_moderator()
+        resp = self._get("/api/v1/identity/creative-assets/moderation-queue?moderation_status=invalid")
+        self.assertEqual(resp.status_code, 422)
+        mock_repo.assert_not_called()
+
+
+class TestModerationApprove(AuthzMixin, unittest.TestCase):
+    """POST /api/v1/identity/creative-assets/{asset_id}/approve"""
+
+    def _setup_moderator(self):
+        return self._setup_authz(perms={"creatives.moderate"})
+
+    @patch("packages.api.identity.repository.get_creative_asset", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.approve_creative_asset", new_callable=AsyncMock)
+    def test_approve_sets_status_to_approved(self, mock_approve, mock_get):
+        self._setup_moderator()
+        mock_get.return_value = _make_user()  # any non-None
+        mock_approve.return_value = True
+        resp = TestClient(_get_app()).post(
+            "/api/v1/identity/creative-assets/ca-001/approve",
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["moderation_status"], "approved")
+        self.assertEqual(data["asset_id"], "ca-001")
+        mock_approve.assert_called_once()
+
+    @patch("packages.api.identity.repository.get_creative_asset", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.approve_creative_asset", new_callable=AsyncMock)
+    def test_approve_asset_not_found_returns_404(self, mock_approve, mock_get):
+        self._setup_moderator()
+        mock_get.return_value = None
+        resp = TestClient(_get_app()).post(
+            "/api/v1/identity/creative-assets/ca-999/approve",
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 404)
+        mock_approve.assert_not_called()
+
+    @patch("packages.api.identity.repository.get_creative_asset", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.approve_creative_asset", new_callable=AsyncMock)
+    def test_approve_advertiser_gets_403(self, mock_approve, mock_get):
+        self._setup_authz(perms={"creatives.read"})
+        resp = TestClient(_get_app()).post(
+            "/api/v1/identity/creative-assets/ca-001/approve",
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 403)
+        mock_get.assert_not_called()
+        mock_approve.assert_not_called()
+
+
+class TestModerationReject(AuthzMixin, unittest.TestCase):
+    """POST /api/v1/identity/creative-assets/{asset_id}/reject"""
+
+    def _setup_moderator(self):
+        return self._setup_authz(perms={"creatives.moderate"})
+
+    @patch("packages.api.identity.repository.get_creative_asset", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.reject_creative_asset", new_callable=AsyncMock)
+    def test_reject_requires_reason(self, mock_reject, mock_get):
+        self._setup_moderator()
+        mock_get.return_value = _make_user()
+        mock_reject.return_value = True
+        resp = TestClient(_get_app()).post(
+            "/api/v1/identity/creative-assets/ca-001/reject",
+            json={"reason": "Низкое качество изображения"},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["moderation_status"], "rejected")
+        self.assertEqual(data["asset_id"], "ca-001")
+        mock_reject.assert_called_once()
+        self.assertEqual(mock_reject.call_args.kwargs["reason"], "Низкое качество изображения")
+
+    @patch("packages.api.identity.repository.get_creative_asset", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.reject_creative_asset", new_callable=AsyncMock)
+    def test_reject_empty_reason_rejected(self, mock_reject, mock_get):
+        self._setup_moderator()
+        resp = TestClient(_get_app()).post(
+            "/api/v1/identity/creative-assets/ca-001/reject",
+            json={"reason": ""},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 422)
+        mock_get.assert_not_called()
+        mock_reject.assert_not_called()
+
+    @patch("packages.api.identity.repository.get_creative_asset", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.reject_creative_asset", new_callable=AsyncMock)
+    def test_reject_missing_reason_field_rejected(self, mock_reject, mock_get):
+        self._setup_moderator()
+        resp = TestClient(_get_app()).post(
+            "/api/v1/identity/creative-assets/ca-001/reject",
+            json={},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 422)
+        mock_get.assert_not_called()
+        mock_reject.assert_not_called()
+
+    @patch("packages.api.identity.repository.get_creative_asset", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.reject_creative_asset", new_callable=AsyncMock)
+    def test_reject_advertiser_gets_403(self, mock_reject, mock_get):
+        self._setup_authz(perms={"creatives.read"})
+        resp = TestClient(_get_app()).post(
+            "/api/v1/identity/creative-assets/ca-001/reject",
+            json={"reason": "test"},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 403)
+        mock_get.assert_not_called()
+        mock_reject.assert_not_called()
+
+    @patch("packages.api.identity.repository.get_creative_asset", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.reject_creative_asset", new_callable=AsyncMock)
+    def test_reject_asset_not_found_returns_404(self, mock_reject, mock_get):
+        self._setup_moderator()
+        mock_get.return_value = None
+        resp = TestClient(_get_app()).post(
+            "/api/v1/identity/creative-assets/ca-999/reject",
+            json={"reason": "test"},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 404)
+        mock_reject.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

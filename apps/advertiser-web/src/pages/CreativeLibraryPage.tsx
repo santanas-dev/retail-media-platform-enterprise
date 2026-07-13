@@ -6,7 +6,7 @@ import type {
   UploadIntentResponse,
   CompleteUploadResponse,
 } from "../api/types";
-import { statusLabel, MEDIA_TYPE_OPTIONS, mediaTypeLabel } from "../api/types";
+import { statusLabel, MEDIA_TYPE_OPTIONS, mediaTypeLabel, moderationStatusLabel } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 
 // ── Helpers ──
@@ -341,13 +341,19 @@ export default function CreativeLibraryPage() {
                   </span>
                 </td>
                 <td style={styles.td}>
-                  <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                    {a.moderation_status === "approved"
-                      ? "Одобрен"
-                      : a.moderation_status === "pending_review"
-                        ? "На проверке"
-                        : a.moderation_status}
+                  <span style={{
+                    fontSize: "0.8rem",
+                    color: a.moderation_status === "approved" ? "#059669"
+                      : a.moderation_status === "rejected" ? "#dc2626"
+                      : "#d97706",
+                  }}>
+                    {moderationStatusLabel(a.moderation_status)}
                   </span>
+                  {a.moderation_status === "rejected" && a.moderation_notes && (
+                    <div style={{ fontSize: "0.75rem", color: "#dc2626", marginTop: 2 }}>
+                      {a.moderation_notes}
+                    </div>
+                  )}
                 </td>
                 <td style={{ ...styles.td, fontSize: "0.8rem", color: "#64748b" }}>
                   {fmtDate(a.created_at)}

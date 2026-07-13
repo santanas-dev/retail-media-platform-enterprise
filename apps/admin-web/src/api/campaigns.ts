@@ -295,6 +295,45 @@ export function completeUpload(
   );
 }
 
+// ── S-036: Creative Moderation ──
+
+import type {
+  CreativeModerationQueueItem,
+  CreativeRejectRequest,
+  CreativeModerationResponse,
+} from "./types";
+
+export function listModerationQueue(
+  moderationStatus = "pending_review",
+): Promise<CreativeModerationQueueItem[]> {
+  const params = new URLSearchParams();
+  if (moderationStatus !== "pending_review") {
+    params.set("moderation_status", moderationStatus);
+  }
+  const qs = params.toString();
+  return api.get<CreativeModerationQueueItem[]>(
+    `/creative-assets/moderation-queue${qs ? `?${qs}` : ""}`,
+  );
+}
+
+export function approveCreative(
+  assetId: string,
+): Promise<CreativeModerationResponse> {
+  return api.post<CreativeModerationResponse>(
+    `/creative-assets/${assetId}/approve`,
+  );
+}
+
+export function rejectCreative(
+  assetId: string,
+  body: CreativeRejectRequest,
+): Promise<CreativeModerationResponse> {
+  return api.post<CreativeModerationResponse>(
+    `/creative-assets/${assetId}/reject`,
+    body,
+  );
+}
+
 /**
  * Upload a file directly to a presigned URL.
  * Does NOT send Authorization — the presigned URL already carries credentials.

@@ -11,6 +11,7 @@ import CampaignDetailPage from "./pages/CampaignDetailPage";
 import AdvertisersPage from "./pages/AdvertisersPage";
 import UsersPage from "./pages/UsersPage";
 import ADSettingsPage from "./pages/ADSettingsPage";
+import CreativeModerationPage from "./pages/CreativeModerationPage";
 
 const router = createBrowserRouter([
   {
@@ -32,6 +33,7 @@ const router = createBrowserRouter([
       { path: "advertisers", element: <AdvertisersPage /> },
       { path: "users", element: <UsersPage /> },
       { path: "settings/ad", element: <ADSettingsPage /> },
+      { path: "creatives/moderation", element: <CreativeModerationPage /> },
     ],
   },
 ]);

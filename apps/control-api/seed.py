@@ -49,6 +49,7 @@ SEED_PERM_IDS = {
     "campaigns.manage":   "00000000-0000-0000-0000-00000000010d",
     "campaigns.approve":  "00000000-0000-0000-0000-00000000010e",
     "creatives.read":     "00000000-0000-0000-0000-00000000010f",
+    "creatives.moderate": "00000000-0000-0000-0000-000000000117",
 }
 SEED_ADV_ROLE_ID = "00000000-0000-0000-0000-000000000114"
 SEED_ADV_USER_ROLE_ID = "00000000-0000-0000-0000-000000000204"
@@ -278,6 +279,10 @@ INSERT INTO permissions (id, code, name)
 VALUES ('{SEED_PERM_IDS["creatives.read"]}', 'creatives.read', 'Просмотр креативов')
 ON CONFLICT (code) DO NOTHING;
 
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["creatives.moderate"]}', 'creatives.moderate', 'Модерация креативов')
+ON CONFLICT (code) DO NOTHING;
+
 -- Roles
 INSERT INTO roles (id, code, name, description, is_system)
 VALUES ('{SEED_ROLE_IDS["system_admin"]}', 'system_admin',
@@ -372,6 +377,10 @@ INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(208)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["creatives.read"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(217)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["creatives.moderate"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
 -- security_admin: users.read, users.manage, roles.read, roles.manage, audit.read
 INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(131)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["users.read"]}')
@@ -415,6 +424,10 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(212)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["creatives.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(218)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["creatives.moderate"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 

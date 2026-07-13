@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
 | **Last updated:** 2026-07-11
-| **Current phase:** S-023a–i advertiser self-service pilot complete. Live LAN preview operational.
+| **Current phase:** S-036 creative moderation queue complete. S-035 audit hardening closed.
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -81,6 +81,8 @@ Separately covered:
 | S-033 | Admin User Management + Local Account Administration | P0 | ✅ done | P.S. (Hermes) | Backend: 5 новых endpoint'ов (GET /users/{id}, POST /users/local-advertiser, activate/deactivate, reset-password). Permissions: users.read/users.manage. Frontend: UsersPage с create/deactivate/reset. Build OK, 64 tests. Branch: feature/S-033. | — |
 | S-033s | Security hardening (RLS, org validation, self-lockout) | P0 | ✅ done | P.S. (Hermes) | P1/P2 fixes from S-033r. Branch: fix/S-033s. | — |
 | S-034 | AD/LDAPS Settings UI + Honest Connection Status | P0 | ✅ done | P.S. (Hermes) | GET/POST /auth/ad-settings endpoints with users.manage. ADSettingsPage in admin-web. Honest stub/disabled/configured status. No secrets exposed. 9 backend tests + 64 frontend. Branch: feature/S-034. | — |
+| S-035 | External audit hardening (S-035a–i + S-035R re-review + S-035T test gaps) | P0 | ✅ done | P.S. (Hermes) | 9 audit findings closed, 5 test gaps filled, CI green. Branches: fix/S-035-*. | — |
+| S-036 | Creative Moderation Queue | P0 | ✅ done | P.S. (Hermes) | Backend: 3 endpoints (GET moderation-queue, POST approve/reject) with `creatives.moderate` permission, creative_auto_approve_uploads now False. Frontend: CreativeModerationPage in admin-web (/creatives/moderation), advertiser-web moderation status + rejection reason. Tests: 12 backend + 0 frontend regression. Branch: feature/S-036-creative-moderation-queue. | S-037: Inventory UI |
 | S-032 | Roadmap Re-sequence: Business Portal before Player | P0 | ✅ docs done | P.S. (Hermes) | Roadmap resequenced per original ТЗ. No code changed. Branch: develop. | — |
 ## Status Legend
 

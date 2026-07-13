@@ -352,6 +352,7 @@ class CreativeAssetOut(BaseModel):
     resolution_h: int | None = None
     status: str
     moderation_status: str
+    moderation_notes: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -694,6 +695,46 @@ class DisplaySurfaceOut(BaseModel):
     resolution_w: int = 1920
     resolution_h: int = 1080
     is_active: bool = True
+
+
+# ---------------------------------------------------------------------------
+# S-036 — Creative Moderation Queue Schemas
+# ---------------------------------------------------------------------------
+
+
+class CreativeModerationQueueItem(BaseModel):
+    """Item in the moderation queue — includes advertiser context, no storage secrets."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    advertiser_organization_id: str
+    code: str
+    name: str
+    media_type: str
+    file_size_bytes: int
+    duration_ms: int | None = None
+    resolution_w: int | None = None
+    resolution_h: int | None = None
+    status: str
+    moderation_status: str
+    moderation_notes: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    # Joined advertiser context
+    advertiser_name: str | None = None
+    advertiser_code: str | None = None
+
+
+class CreativeRejectRequest(BaseModel):
+    """Reject a creative asset — reason is required."""
+    reason: str = Field(..., min_length=1, max_length=1000)
+
+
+class CreativeModerationResponse(BaseModel):
+    """Response after approve/reject action."""
+    asset_id: str
+    moderation_status: str
+    message: str
 
 
 # ---------------------------------------------------------------------------

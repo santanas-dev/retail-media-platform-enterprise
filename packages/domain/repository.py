@@ -346,6 +346,93 @@ async def list_creative_assets(session: AsyncSession) -> list:
     return list(result.scalars().all())
 
 
+async def list_moderation_queue(
+    session: AsyncSession,
+    *,
+    status_filter: str = "pending_review",
+) -> list:
+    """List creative assets filtered by moderation_status, with advertiser context."""
+    from packages.domain.models import CreativeAsset, AdvertiserOrganization
+    from sqlalchemy import select as sa_select
+
+    stmt = (
+        sa_select(
+            CreativeAsset.id,
+            CreativeAsset.advertiser_organization_id,
+            CreativeAsset.code,
+            CreativeAsset.name,
+            CreativeAsset.media_type,
+            CreativeAsset.file_size_bytes,
+            CreativeAsset.duration_ms,
+            CreativeAsset.resolution_w,
+            CreativeAsset.resolution_h,
+            CreativeAsset.status,
+            CreativeAsset.moderation_status,
+            CreativeAsset.moderation_notes,
+            CreativeAsset.created_at,
+            CreativeAsset.updated_at,
+            AdvertiserOrganization.name.label("advertiser_name"),
+            AdvertiserOrganization.code.label("advertiser_code"),
+        )
+        .outerjoin(
+            AdvertiserOrganization,
+            CreativeAsset.advertiser_organization_id == AdvertiserOrganization.id,
+        )
+        .order_by(CreativeAsset.created_at.desc())
+    )
+
+    if status_filter != "all":
+        stmt = stmt.where(CreativeAsset.moderation_status == status_filter)
+
+    result = await session.execute(stmt)
+    return [dict(row._mapping) for row in result.fetchall()]
+
+
+async def approve_creative_asset(
+    session: AsyncSession,
+    *,
+    asset_id: str,
+) -> bool:
+    """Approve a creative asset — set moderation_status to approved, clear notes."""
+    from datetime import datetime as _dt, timezone as _tz
+    from packages.domain.models import CreativeAsset
+    from sqlalchemy import update as sa_update
+
+    result = await session.execute(
+        sa_update(CreativeAsset)
+        .where(CreativeAsset.id == asset_id)
+        .values(
+            moderation_status="approved",
+            moderation_notes=None,
+            updated_at=_dt.now(_tz.utc),
+        )
+    )
+    return result.rowcount > 0
+
+
+async def reject_creative_asset(
+    session: AsyncSession,
+    *,
+    asset_id: str,
+    reason: str,
+) -> bool:
+    """Reject a creative asset — set moderation_status to rejected, store reason."""
+    from datetime import datetime as _dt, timezone as _tz
+    from packages.domain.models import CreativeAsset
+    from sqlalchemy import update as sa_update
+
+    result = await session.execute(
+        sa_update(CreativeAsset)
+        .where(CreativeAsset.id == asset_id)
+        .values(
+            moderation_status="rejected",
+            moderation_notes=reason,
+            updated_at=_dt.now(_tz.utc),
+        )
+    )
+    return result.rowcount > 0
+
+
 async def list_campaign_placements(session: AsyncSession) -> list:
     """Return all campaign placements, ordered by campaign_id."""
     from packages.domain.models import CampaignPlacement

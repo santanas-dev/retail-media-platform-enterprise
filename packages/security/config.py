@@ -90,7 +90,7 @@ class SecurityConfig:
         "image/png", "image/jpeg", "image/webp", "video/mp4", "image/gif",
     })
     creative_upload_url_ttl_seconds: int = 300  # 5 minutes
-    creative_auto_approve_uploads: bool = True  # pilot: auto-approve on upload
+    creative_auto_approve_uploads: bool = False  # manual moderation by default
     minio_internal_endpoint: str = ""
     minio_public_endpoint: str = ""
     minio_access_key: str = ""

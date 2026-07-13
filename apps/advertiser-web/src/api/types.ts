@@ -83,6 +83,7 @@ export interface CreativeAssetOut {
   resolution_h: number | null;
   status: string;
   moderation_status: string;
+  moderation_notes: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -482,4 +483,16 @@ export function surfaceLabel(id: string, code?: string): string {
   if (code) return code;
   // Truncate UUID — show last 8 chars as readable reference
   return `Поверхность ${id.slice(-8)}`;
+}
+
+// ── S-036: Helper: moderation status ──
+
+export const MODERATION_STATUS_LABELS: Record<string, string> = {
+  pending_review: "На проверке",
+  approved: "Одобрен",
+  rejected: "Отклонён",
+};
+
+export function moderationStatusLabel(s: string): string {
+  return MODERATION_STATUS_LABELS[s] ?? s;
 }

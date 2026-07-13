@@ -42,6 +42,9 @@ from packages.domain.schemas import (
     CreateLocalAdvertiserRequest,
     CreateLocalAdvertiserResponse,
     CreativeAssetOut,
+    CreativeModerationQueueItem,
+    CreativeModerationResponse,
+    CreativeRejectRequest,
     DisplaySurfaceOut,
     MAX_LIMIT,
     DEFAULT_LIMIT,
@@ -1585,6 +1588,81 @@ async def complete_upload_endpoint(
         file_size_bytes=actual_size,
         status="ready",
         moderation_status=moderation,
+    )
+
+
+# ---------------------------------------------------------------------------
+# S-036 — Creative Moderation Queue
+# ---------------------------------------------------------------------------
+
+
+@router.get("/creative-assets/moderation-queue",
+            response_model=list[CreativeModerationQueueItem])
+async def moderation_queue_endpoint(
+    status_filter: str = Query("pending_review", alias="moderation_status"),
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("creatives.moderate")),
+):
+    """List creative assets in the moderation queue — requires creatives.moderate.
+
+    Filter by moderation_status: pending_review (default), approved, rejected, or all.
+    No advertiser scope — admin sees all orgs.
+    No storage_bucket/storage_key/presigned_url exposed.
+    """
+    valid = {"pending_review", "approved", "rejected", "all"}
+    if status_filter not in valid:
+        raise HTTPException(status_code=422, detail=f"Invalid status_filter: {status_filter}")
+
+    items = await repository.list_moderation_queue(db, status_filter=status_filter)
+    return [CreativeModerationQueueItem(**item) for item in items]
+
+
+@router.post("/creative-assets/{asset_id}/approve",
+             response_model=CreativeModerationResponse)
+async def approve_creative_endpoint(
+    asset_id: str,
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("creatives.moderate")),
+):
+    """Approve a creative asset — requires creatives.moderate. Sets moderation_status=approved."""
+    asset = await repository.get_creative_asset(db, asset_id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="Creative asset not found")
+
+    ok = await repository.approve_creative_asset(db, asset_id=asset_id)
+    if not ok:
+        raise HTTPException(status_code=409, detail="Failed to approve creative asset")
+
+    return CreativeModerationResponse(
+        asset_id=asset_id,
+        moderation_status="approved",
+        message="Креатив одобрен",
+    )
+
+
+@router.post("/creative-assets/{asset_id}/reject",
+             response_model=CreativeModerationResponse)
+async def reject_creative_endpoint(
+    asset_id: str,
+    body: CreativeRejectRequest,
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("creatives.moderate")),
+):
+    """Reject a creative asset — requires creatives.moderate. Reason is required."""
+    asset = await repository.get_creative_asset(db, asset_id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="Creative asset not found")
+
+    ok = await repository.reject_creative_asset(
+        db, asset_id=asset_id, reason=body.reason,
+    )
+    if not ok:
+        raise HTTPException(status_code=409, detail="Failed to reject creative asset")
+
+    return CreativeModerationResponse(
+        asset_id=asset_id,
+        moderation_status="rejected",
+        message="Креатив отклонён",
     )
 
 
