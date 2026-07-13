@@ -61,12 +61,12 @@ model work.
 - Tests: 7 new — audit writes, no secrets, 403 skips audit
 - Behavioural: audit event exists after approval/moderation action
 
-### 7. identity.py Router Decomposition (S-053)
-- Plan: split `packages/api/identity.py` (2036 lines) into domain routers
-- Categories: users, campaigns, creatives, inventory, advertisers, PoP
-- Each router self-contained with own RBAC/RLS dependencies
-- Backward-compatible URL paths preserved
-- Implementation decision: do we split in v0.6 or plan for v0.7?
+### 7. identity.py Router Decomposition (S-053) ✅ DONE
+- Split `packages/api/identity.py` (2097 lines) into 8 domain routers under `packages/api/identity_routes/`
+- Categories: common (99), users (408), ad_settings (106), advertisers (147), campaigns (725), creatives (314), reporting (155), inventory (122)
+- Identity.py now 40-line thin aggregator with backward-compatible `router` export
+- All 66 identity API tests pass, import boundaries clean
+- Preserved: API paths, auth/RBAC/RLS dependencies, schemas, business logic
 
 ### 8. XLSX Export Decision (S-054a)
 - Evaluate openpyxl dependency vs Python built-in XML approach
@@ -104,7 +104,7 @@ model work.
 | S-050 | NATS Backup Policy | P1 | Low | ✅ done |
 | S-051 | Portal Error Boundaries | P2 | Low | ✅ done |
 | S-052 | Audit Events (Approval/Moderation) | P2 | Low | ✅ done |
-| S-053 | identity Router Decomposition Plan | P2 | Low | — |
+|| S-053 | identity Router Decomposition | P2 | Low | ✅ done |
 | S-054a | XLSX Export Decision | P2 | Low | — |
 | S-054 | creative_upload_sessions Behavioural RLS | P1 | Medium | — |
 | S-055 | v0.6 Readiness Review | P0 | — | S-047…S-054 |
@@ -152,12 +152,12 @@ model work.
 - **Tests:** 7 new unit tests + all existing 59 pass (66 total)
 - **Risk:** Low — existing create_audit_event infrastructure
 
-### S-053 — identity Router Decomposition Plan
-- **Goal:** Produce decomposition plan (ADR or design doc), decision on v0.6 vs v0.7
-- **Files:** `docs/architecture/adr/` (new ADR), `packages/api/identity.py` (read-only)
-- **Acceptance:** ADR created, module boundary map, decision documented
-- **Tests:** Not applicable — planning only
-- **Risk:** Low — read-only analysis
+### S-053 — identity Router Decomposition ✅ DONE
+- **Goal:** Split 2097-line identity.py into bounded-context routers
+- **Result:** 8 modules under `packages/api/identity_routes/`: common (99 ⤳), users (408 ⤳), ad_settings (106 ⤳), advertisers (147 ⤳), campaigns (725 ⤳), creatives (314 ⤳), reporting (155 ⤳), inventory (122 ⤳)
+- **Identity.py:** 40-line aggregator with backward-compatible `router` export + `repository` re-export for test patches
+- **Tests:** 66/66 identity API, 184/184 full backend regression, import boundaries clean. 3 test patches updated (`repository.XXX` target)
+- **Risk:** Low — pure refactor, no API/business-logic change
 
 ### S-054 — creative_upload_sessions Behavioural RLS
 - **Goal:** Behavioural proof that RLS policies on `creative_upload_sessions` work under NOBYPASSRLS

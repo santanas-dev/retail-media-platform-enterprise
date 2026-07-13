@@ -990,9 +990,9 @@ class TestCampaignApprovalAudit(AuthzMixin, unittest.TestCase):
     def _setup_approval(self):
         return self._setup_authz(perms={"campaigns.approve"})
 
-    @patch("packages.api.identity.approve_campaign", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.approve_campaign", new_callable=AsyncMock)
     @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
-    @patch("packages.api.identity.enqueue_outbox_event", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.enqueue_outbox_event", new_callable=AsyncMock)
     def test_approve_writes_audit_event(self, mock_outbox, mock_audit, mock_approve):
         """Approve writes campaign.approved audit event with status details."""
         self._setup_approval()
@@ -1012,9 +1012,9 @@ class TestCampaignApprovalAudit(AuthzMixin, unittest.TestCase):
         self.assertEqual(call_kwargs["details"]["old_status"], "pending_approval")
         self.assertEqual(call_kwargs["details"]["new_status"], "approved")
 
-    @patch("packages.api.identity.reject_campaign", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.reject_campaign", new_callable=AsyncMock)
     @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
-    @patch("packages.api.identity.enqueue_outbox_event", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.enqueue_outbox_event", new_callable=AsyncMock)
     def test_reject_writes_audit_event(self, mock_outbox, mock_audit, mock_reject):
         """Reject writes campaign.rejected audit event with reason."""
         self._setup_approval()
@@ -1033,9 +1033,9 @@ class TestCampaignApprovalAudit(AuthzMixin, unittest.TestCase):
         self.assertEqual(call_kwargs["details"]["old_status"], "pending_approval")
         self.assertEqual(call_kwargs["details"]["new_status"], "rejected")
 
-    @patch("packages.api.identity.approve_campaign", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.approve_campaign", new_callable=AsyncMock)
     @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
-    @patch("packages.api.identity.enqueue_outbox_event", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.enqueue_outbox_event", new_callable=AsyncMock)
     def test_approve_no_secrets_in_audit_details(self, mock_outbox, mock_audit, mock_approve):
         """Audit details must not contain password, token, secret fields."""
         self._setup_approval()
