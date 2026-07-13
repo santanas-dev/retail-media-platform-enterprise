@@ -54,12 +54,12 @@ async def _setup_fixtures():
             await conn.execute(text(f"""
                 INSERT INTO advertiser_organizations (id,code,legal_name,display_name,status)
                 VALUES ('{ORG_A_ID}','{ORG_A_CODE}','Test Org A','Org A','active')
-                ON CONFLICT (code) DO NOTHING
+                ON CONFLICT (id) DO NOTHING
             """))
             await conn.execute(text(f"""
                 INSERT INTO advertiser_organizations (id,code,legal_name,display_name,status)
                 VALUES ('{ORG_B_ID}','{ORG_B_CODE}','Test Org B','Org B','active')
-                ON CONFLICT (code) DO NOTHING
+                ON CONFLICT (id) DO NOTHING
             """))
 
             await conn.execute(text(f"""
@@ -70,7 +70,7 @@ async def _setup_fixtures():
                     ('{ASSET_ID}','{ASSET_CODE}','S-054 Test Asset','{ORG_A_ID}',
                      'image','pending_review','metadata_only',
                      '00000000-0000-0000-0000-000000000001',NOW(),NOW())
-                ON CONFLICT (code) DO NOTHING
+                ON CONFLICT (id) DO NOTHING
             """))
 
             await conn.execute(text(f"""
