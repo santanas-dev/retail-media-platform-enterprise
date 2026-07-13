@@ -53,10 +53,12 @@ model work.
 - Dev mode: safe error message (JWT/credential patterns redacted)
 - Tests: 7 per portal — fallback renders, no secrets, resetKey, custom fallback
 
-### 6. Audit Events for Approval / Moderation (S-052)
-- `create_audit_event` in campaign approve/reject endpoints
-- `create_audit_event` in creative approve/reject endpoints
-- Operational audit table (`audit_events_operational`) writers
+### 6. Audit Events for Approval / Moderation (S-052) — ✅ DONE
+- Campaign approve/reject: audit events `campaign.approved`, `campaign.rejected`
+- Creative moderation approve/reject: audit events `creative.approved`, `creative.rejected`
+- Same DB transaction as state change (before outbox enqueue)
+- Details: old/new status, rejection_reason (truncated 200 chars), no secrets/storage fields
+- Tests: 7 new — audit writes, no secrets, 403 skips audit
 - Behavioural: audit event exists after approval/moderation action
 
 ### 7. identity.py Router Decomposition (S-053)
@@ -101,7 +103,7 @@ model work.
 | S-049 | MinIO Backup | P0 | Low | ✅ done |
 | S-050 | NATS Backup Policy | P1 | Low | ✅ done |
 | S-051 | Portal Error Boundaries | P2 | Low | ✅ done |
-| S-052 | Audit Events (Approval/Moderation) | P2 | Low | — |
+| S-052 | Audit Events (Approval/Moderation) | P2 | Low | ✅ done |
 | S-053 | identity Router Decomposition Plan | P2 | Low | — |
 | S-054a | XLSX Export Decision | P2 | Low | — |
 | S-054 | creative_upload_sessions Behavioural RLS | P1 | Medium | — |
@@ -143,12 +145,12 @@ model work.
 - **Tests:** 7 vitest per portal — fallback renders, refresh button, resetKey, no secrets, custom fallback
 - **Risk:** Low — standard React pattern, class component avoids hook issues
 
-### S-052 — Audit Events for Approval/Moderation
-- **Goal:** Write audit events on campaign approve/reject + creative approve/reject
-- **Files:** `packages/api/identity.py`, `packages/domain/repository.py`, `tests/behavioral/`
-- **Acceptance:** Audit event exists after each action, actor + target IDs correct, no secrets
-- **Tests:** Behavioural: event row in `audit_events_operational` after action
-- **Risk:** Low — existing `create_audit_event` infrastructure
+### S-052 — Audit Events for Approval/Moderation — ✅ DONE
+- **Goal:** Write audit_events_operational rows on campaign approve/reject + creative approve/reject
+- **Files:** `packages/api/identity.py`, `tests/test_phase3_identity_api.py`
+- **Acceptance:** 4 audit actions (campaign.approved/rejected, creative.approved/rejected) in same tx
+- **Tests:** 7 new unit tests + all existing 59 pass (66 total)
+- **Risk:** Low — existing create_audit_event infrastructure
 
 ### S-053 — identity Router Decomposition Plan
 - **Goal:** Produce decomposition plan (ADR or design doc), decision on v0.6 vs v0.7

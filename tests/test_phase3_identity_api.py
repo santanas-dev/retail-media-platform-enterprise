@@ -411,9 +411,10 @@ class TestModerationApprove(AuthzMixin, unittest.TestCase):
 
     @patch("packages.api.identity.repository.get_creative_asset", new_callable=AsyncMock)
     @patch("packages.api.identity.repository.approve_creative_asset", new_callable=AsyncMock)
-    def test_approve_sets_status_to_approved(self, mock_approve, mock_get):
+    @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
+    def test_approve_sets_status_to_approved(self, mock_audit, mock_approve, mock_get):
         self._setup_moderator()
-        mock_get.return_value = _make_user()  # any non-None
+        mock_get.return_value = _make_user(moderation_status="pending_review")  # any non-None
         mock_approve.return_value = True
         resp = TestClient(_get_app()).post(
             "/api/v1/identity/creative-assets/ca-001/approve",
@@ -458,9 +459,10 @@ class TestModerationReject(AuthzMixin, unittest.TestCase):
 
     @patch("packages.api.identity.repository.get_creative_asset", new_callable=AsyncMock)
     @patch("packages.api.identity.repository.reject_creative_asset", new_callable=AsyncMock)
-    def test_reject_requires_reason(self, mock_reject, mock_get):
+    @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
+    def test_reject_requires_reason(self, mock_audit, mock_reject, mock_get):
         self._setup_moderator()
-        mock_get.return_value = _make_user()
+        mock_get.return_value = _make_user(moderation_status="pending_review")
         mock_reject.return_value = True
         resp = TestClient(_get_app()).post(
             "/api/v1/identity/creative-assets/ca-001/reject",
@@ -975,6 +977,167 @@ class TestPopExportCsv(AuthzMixin, unittest.TestCase):
         text = resp.text
         self.assertIn("Сводка", text)
         self.assertIn("0", text)  # impressions_count
+
+
+# ---------------------------------------------------------------------------
+# S-052 — Approval & Moderation Audit Events
+# ---------------------------------------------------------------------------
+
+
+class TestCampaignApprovalAudit(AuthzMixin, unittest.TestCase):
+    """Proof: campaign approve/reject write audit_events_operational rows."""
+
+    def _setup_approval(self):
+        return self._setup_authz(perms={"campaigns.approve"})
+
+    @patch("packages.api.identity.approve_campaign", new_callable=AsyncMock)
+    @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
+    @patch("packages.api.identity.enqueue_outbox_event", new_callable=AsyncMock)
+    def test_approve_writes_audit_event(self, mock_outbox, mock_audit, mock_approve):
+        """Approve writes campaign.approved audit event with status details."""
+        self._setup_approval()
+        mock_approve.return_value = ("pending_approval", "approved")
+
+        resp = TestClient(_get_app()).post(
+            "/api/v1/identity/campaigns/c-001/approve",
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 200)
+        mock_audit.assert_called_once()
+        call_kwargs = mock_audit.call_args.kwargs
+        self.assertEqual(call_kwargs["action"], "campaign.approved")
+        self.assertEqual(call_kwargs["target_type"], "campaign")
+        self.assertEqual(call_kwargs["target_id"], "c-001")
+        self.assertEqual(call_kwargs["actor_user_id"], "u-1")
+        self.assertEqual(call_kwargs["details"]["old_status"], "pending_approval")
+        self.assertEqual(call_kwargs["details"]["new_status"], "approved")
+
+    @patch("packages.api.identity.reject_campaign", new_callable=AsyncMock)
+    @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
+    @patch("packages.api.identity.enqueue_outbox_event", new_callable=AsyncMock)
+    def test_reject_writes_audit_event(self, mock_outbox, mock_audit, mock_reject):
+        """Reject writes campaign.rejected audit event with reason."""
+        self._setup_approval()
+        mock_reject.return_value = ("pending_approval", "rejected")
+
+        resp = TestClient(_get_app()).post(
+            "/api/v1/identity/campaigns/c-001/reject",
+            json={"reason": "Budget too high"},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 200)
+        mock_audit.assert_called_once()
+        call_kwargs = mock_audit.call_args.kwargs
+        self.assertEqual(call_kwargs["action"], "campaign.rejected")
+        self.assertEqual(call_kwargs["details"]["rejection_reason"], "Budget too high")
+        self.assertEqual(call_kwargs["details"]["old_status"], "pending_approval")
+        self.assertEqual(call_kwargs["details"]["new_status"], "rejected")
+
+    @patch("packages.api.identity.approve_campaign", new_callable=AsyncMock)
+    @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
+    @patch("packages.api.identity.enqueue_outbox_event", new_callable=AsyncMock)
+    def test_approve_no_secrets_in_audit_details(self, mock_outbox, mock_audit, mock_approve):
+        """Audit details must not contain password, token, secret fields."""
+        self._setup_approval()
+        mock_approve.return_value = ("pending_approval", "approved")
+
+        resp = TestClient(_get_app()).post(
+            "/api/v1/identity/campaigns/c-001/approve",
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 200)
+        call_kwargs = mock_audit.call_args.kwargs
+        details_str = str(call_kwargs["details"]).lower()
+        for forbidden in ("password", "token", "secret", "key", "access_token",
+                          "refresh_token", "storage_bucket", "storage_key"):
+            self.assertNotIn(forbidden, details_str,
+                             f"Audit details must not contain '{forbidden}'")
+
+
+class TestCreativeModerationAudit(AuthzMixin, unittest.TestCase):
+    """Proof: creative approve/reject write audit_events_operational rows."""
+
+    def _setup_moderator(self):
+        return self._setup_authz(perms={"creatives.moderate"})
+
+    @patch("packages.api.identity.repository.get_creative_asset", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.approve_creative_asset", new_callable=AsyncMock)
+    @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
+    def test_approve_writes_audit_event(self, mock_audit, mock_approve, mock_get):
+        """Approve writes creative.approved audit event."""
+        self._setup_moderator()
+        mock_get.return_value = _make_user(moderation_status="pending_review")
+        mock_approve.return_value = True
+
+        resp = TestClient(_get_app()).post(
+            "/api/v1/identity/creative-assets/ca-001/approve",
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 200)
+        mock_audit.assert_called_once()
+        call_kwargs = mock_audit.call_args.kwargs
+        self.assertEqual(call_kwargs["action"], "creative.approved")
+        self.assertEqual(call_kwargs["target_type"], "creative_asset")
+        self.assertEqual(call_kwargs["target_id"], "ca-001")
+        self.assertEqual(call_kwargs["details"]["previous_moderation_status"], "pending_review")
+        self.assertEqual(call_kwargs["details"]["new_moderation_status"], "approved")
+
+    @patch("packages.api.identity.repository.get_creative_asset", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.reject_creative_asset", new_callable=AsyncMock)
+    @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
+    def test_reject_writes_audit_event(self, mock_audit, mock_reject, mock_get):
+        """Reject writes creative.rejected audit event with reason."""
+        self._setup_moderator()
+        mock_get.return_value = _make_user(moderation_status="pending_review")
+        mock_reject.return_value = True
+
+        resp = TestClient(_get_app()).post(
+            "/api/v1/identity/creative-assets/ca-001/reject",
+            json={"reason": "Low quality"},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 200)
+        mock_audit.assert_called_once()
+        call_kwargs = mock_audit.call_args.kwargs
+        self.assertEqual(call_kwargs["action"], "creative.rejected")
+        self.assertEqual(call_kwargs["details"]["rejection_reason"], "Low quality")
+        self.assertEqual(call_kwargs["details"]["previous_moderation_status"], "pending_review")
+        self.assertEqual(call_kwargs["details"]["new_moderation_status"], "rejected")
+
+    @patch("packages.api.identity.repository.get_creative_asset", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.reject_creative_asset", new_callable=AsyncMock)
+    @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
+    def test_reject_no_secrets_in_audit(self, mock_audit, mock_reject, mock_get):
+        """Audit details must not contain password, token, or storage fields."""
+        self._setup_moderator()
+        mock_get.return_value = _make_user(moderation_status="pending_review")
+        mock_reject.return_value = True
+
+        resp = TestClient(_get_app()).post(
+            "/api/v1/identity/creative-assets/ca-001/reject",
+            json={"reason": "test"},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 200)
+        call_kwargs = mock_audit.call_args.kwargs
+        details_str = str(call_kwargs["details"]).lower()
+        for forbidden in ("password", "token", "secret", "storage_bucket", "storage_key"):
+            self.assertNotIn(forbidden, details_str,
+                             f"Audit details must not contain '{forbidden}'")
+
+    @patch("packages.api.identity.repository.get_creative_asset", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.approve_creative_asset", new_callable=AsyncMock)
+    @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
+    def test_403_does_not_write_audit(self, mock_audit, mock_approve, mock_get):
+        """Unauthorized user must not create an audit event."""
+        self._setup_authz(perms={"creatives.read"})
+        resp = TestClient(_get_app()).post(
+            "/api/v1/identity/creative-assets/ca-001/approve",
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 403)
+        mock_audit.assert_not_called()
+        mock_approve.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -1057,6 +1057,19 @@ async def approve_endpoint(
             status_code=409,
             detail="Campaign not found or not in pending_approval status",
         )
+    # Audit (S-052)
+    from packages.domain.repository import create_audit_event
+    await create_audit_event(
+        db,
+        actor_user_id=user_id,
+        action="campaign.approved",
+        target_type="campaign",
+        target_id=campaign_id,
+        details={
+            "old_status": old_status,
+            "new_status": new_status,
+        },
+    )
     await enqueue_outbox_event(
         db,
         event_type="campaign.approved",
@@ -1104,6 +1117,20 @@ async def reject_endpoint(
             status_code=409,
             detail="Campaign not found or not in pending_approval status",
         )
+    # Audit (S-052)
+    from packages.domain.repository import create_audit_event
+    await create_audit_event(
+        db,
+        actor_user_id=user_id,
+        action="campaign.rejected",
+        target_type="campaign",
+        target_id=campaign_id,
+        details={
+            "old_status": old_status,
+            "new_status": new_status,
+            "rejection_reason": body.reason[:200],
+        },
+    )
     await enqueue_outbox_event(
         db,
         event_type="campaign.rejected",
@@ -1724,7 +1751,8 @@ async def moderation_queue_endpoint(
 async def approve_creative_endpoint(
     asset_id: str,
     db=Depends(get_db),
-    _claims: dict = Depends(require_permission("creatives.moderate")),
+    claims: dict = Depends(get_current_active_user),
+    _perm: dict = Depends(require_permission("creatives.moderate")),
 ):
     """Approve a creative asset — requires creatives.moderate. Sets moderation_status=approved."""
     asset = await repository.get_creative_asset(db, asset_id)
@@ -1734,6 +1762,20 @@ async def approve_creative_endpoint(
     ok = await repository.approve_creative_asset(db, asset_id=asset_id)
     if not ok:
         raise HTTPException(status_code=409, detail="Failed to approve creative asset")
+
+    # Audit (S-052)
+    from packages.domain.repository import create_audit_event
+    await create_audit_event(
+        db,
+        actor_user_id=claims["sub"],
+        action="creative.approved",
+        target_type="creative_asset",
+        target_id=asset_id,
+        details={
+            "previous_moderation_status": asset.moderation_status,
+            "new_moderation_status": "approved",
+        },
+    )
 
     return CreativeModerationResponse(
         asset_id=asset_id,
@@ -1748,7 +1790,8 @@ async def reject_creative_endpoint(
     asset_id: str,
     body: CreativeRejectRequest,
     db=Depends(get_db),
-    _claims: dict = Depends(require_permission("creatives.moderate")),
+    claims: dict = Depends(get_current_active_user),
+    _perm: dict = Depends(require_permission("creatives.moderate")),
 ):
     """Reject a creative asset — requires creatives.moderate. Reason is required."""
     asset = await repository.get_creative_asset(db, asset_id)
@@ -1760,6 +1803,21 @@ async def reject_creative_endpoint(
     )
     if not ok:
         raise HTTPException(status_code=409, detail="Failed to reject creative asset")
+
+    # Audit (S-052)
+    from packages.domain.repository import create_audit_event
+    await create_audit_event(
+        db,
+        actor_user_id=claims["sub"],
+        action="creative.rejected",
+        target_type="creative_asset",
+        target_id=asset_id,
+        details={
+            "previous_moderation_status": asset.moderation_status,
+            "new_moderation_status": "rejected",
+            "rejection_reason": body.reason[:200],
+        },
+    )
 
     return CreativeModerationResponse(
         asset_id=asset_id,
