@@ -60,7 +60,7 @@ class TestCampaignMutationRouterCompliance(unittest.TestCase):
     def _router_content(self):
         router_path = os.path.join(
             os.path.dirname(__file__), "..",
-            "packages", "api", "identity.py",
+            "packages", "api", "identity_routes", "campaigns.py",
         )
         return open(router_path).read()
 
@@ -227,7 +227,7 @@ class TestRouterScopeWiring(unittest.TestCase):
     def _router_content(self):
         router_path = os.path.join(
             os.path.dirname(__file__), "..",
-            "packages", "api", "identity.py",
+            "packages", "api", "identity_routes", "campaigns.py",
         )
         return open(router_path).read()
 
@@ -239,7 +239,11 @@ class TestRouterScopeWiring(unittest.TestCase):
 
     def test_router_has_scope_ids_helper(self):
         content = self._router_content()
-        self.assertIn("def _scope_ids(scope)", content)
+        # _scope_ids moved to identity_routes/common.py, imported by campaigns.py
+        self.assertTrue(
+            "def _scope_ids(scope)" in content or "from .common import" in content,
+            "Campaigns router must have scope_ids helper (defined or imported)",
+        )
 
     def test_router_catches_scope_error_as_403(self):
         content = self._router_content()

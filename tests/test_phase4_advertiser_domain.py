@@ -229,7 +229,7 @@ class TestAdvertiserRouterCompliance(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         path = os.path.join(os.path.dirname(__file__), "..",
-                            "packages/api/identity.py")
+                            "packages/api/identity_routes/advertisers.py")
         with open(path) as f:
             cls.router_text = f.read()
 

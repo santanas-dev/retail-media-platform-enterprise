@@ -53,7 +53,7 @@ class TestApprovalRouterCompliance(unittest.TestCase):
     def _router_content(self):
         router_path = os.path.join(
             os.path.dirname(__file__), "..",
-            "packages", "api", "identity.py",
+            "packages", "api", "identity_routes", "campaigns.py",
         )
         return open(router_path).read()
 
