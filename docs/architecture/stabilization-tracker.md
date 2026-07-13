@@ -95,7 +95,7 @@ Separately covered:
 | S-046 | v0.6 Production Readiness Plan | P0 | 🚧 planned | P.S. (Hermes) | `docs/product/v06-production-readiness-plan.md`: S-047…S-055 sequence. Scope: monitoring, LDAPS, backups, error boundaries, audit events, router split, RLS test, XLSX decision. Out of scope: KSO, Emergency, Flags, Inventory, ClickHouse, v2.6. | Start S-047 |
 | S-047 | Observability baseline (Prometheus/Grafana) | P0 | ✅ done | P.S. (Hermes) | `packages/observability/metrics.py`: 18 metrics (common + domain), /metrics endpoint on control-api + device-gateway. `infra/compose/docker-compose.observability.yml`: Prometheus + Grafana. `infra/observability/`: prometheus.yml, alerts.yml, grafana dashboard rmp-overview.json. `docs/runbook/observability.md`. Tests: 9/9. Branch: feature/S-047. | Start S-048 |
 | S-048 | Real LDAPS authentication | P0 | ✅ done | P.S. (Hermes) | `packages/auth/ad_provider.py`: RealLDAPAuthProvider with ldap3 bind+search, safe filter escaping, timeouts, no password logs. AD settings/test endpoints updated with real provider. `docs/runbook/ldaps-auth.md`. Stub preserved when AD_ENABLED=false. Branch: feature/S-048. | Start S-049 |
-| S-049 | MinIO backup/restore drill | P0 | ✅ done | P.S. (Hermes) | `scripts/backup/minio_backup.py`: full-bucket backup with manifest + SHA-256. `scripts/restore/minio_restore.py`: restore with check/dry-run/confirm modes, post-restore verification. `tests/integration/test_minio_backup_restore.py`: 4 test cases (full cycle, empty bucket, confirmation gate, dry-run). `docs/runbook/minio-backup-restore.md`. `backup-restore-dr.md` updated with MinIO section. Branch: feature/S-049. | Start S-050 |
+| S-050 | NATS backup/restore policy | P1 | ✅ done | P.S. (Hermes) | Policy: outbox source of truth. Recovery via provisioning + relay replay (dedup-safe: Nats-Msg-Id = event_id). `scripts/check/nats_recovery_check.py`: diagnostics. `tests/integration/test_nats_recovery.py`: 4 test scenarios. `docs/runbook/nats-backup-restore.md`. Compose: named nats_jetstream volume. `backup-restore-dr.md` updated with full 4-step recovery order. Branch: feature/S-050. | Start S-051 |
 ## Status Legend
 
 - **done** — implemented, tested, committed, pushed
@@ -111,7 +111,7 @@ Separately covered:
 | Monitoring/observability (Prometheus/Grafana) | ✅ S-047 done |
 | Real AD/LDAPS | ✅ S-048 done |
 | MinIO backup (S3 mirror) | ✅ S-049 done |
-| NATS backup policy | 🚧 v0.6 planned (S-050) |
+| NATS backup policy | ✅ S-050 done |
 | Portal error boundaries | 🚧 v0.6 planned (S-051) |
 | Audit events for approval/moderation | 🚧 v0.6 planned (S-052) |
 | identity.py router decomposition | 🚧 v0.6 planned (S-053) |

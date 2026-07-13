@@ -35,10 +35,14 @@ model work.
 - Runbook: `docs/runbook/minio-backup-restore.md`
 - `docs/runbook/backup-restore-dr.md` updated with MinIO section and full recovery order
 
-### 4. NATS Backup / Restore Policy (S-050)
-- Document: NATS JetStream state is recoverable from PostgreSQL outbox
-- `nats stream backup` for disaster recovery (manual procedure)
-- Runbook section in `docs/runbook/backup-restore-dr.md`
+### 4. NATS Backup / Restore Policy (S-050) — ✅ DONE
+- Policy decision: PostgreSQL outbox is source of truth
+- Recovery: provisioning + relay replay (dedup-safe via Nats-Msg-Id = event_id)
+- Recovery diagnostics: `scripts/check/nats_recovery_check.py`
+- Integration test: `tests/integration/test_nats_recovery.py` (4 scenarios)
+- Runbook: `docs/runbook/nats-backup-restore.md`
+- Compose: named `nats_jetstream` volume for faster recovery
+- `docs/runbook/backup-restore-dr.md` updated with 4-step recovery order
 - Decision: whether to automate NATS backup or rely on outbox replay
 
 ### 5. Portal Error Boundaries (S-051)
@@ -92,7 +96,7 @@ model work.
 | S-047 | Monitoring / Observability | P0 | Medium | — |
 | S-048 | Real LDAPS | P0 | High | — |
 | S-049 | MinIO Backup | P0 | Low | ✅ done |
-| S-050 | NATS Backup Policy | P1 | Low | — |
+| S-050 | NATS Backup Policy | P1 | Low | ✅ done |
 | S-051 | Portal Error Boundaries | P2 | Low | — |
 | S-052 | Audit Events (Approval/Moderation) | P2 | Low | — |
 | S-053 | identity Router Decomposition Plan | P2 | Low | — |
@@ -121,12 +125,13 @@ model work.
 - **Tests:** 4 integration tests (full cycle, empty bucket, confirmation gate, dry-run) — gated by `RUN_MINIO_INTEGRATION_TESTS=1`
 - **Risk:** Low — MinIO SDK stable, no external CLI dependencies
 
-### S-050 — NATS Backup Policy
-- **Goal:** Document NATS backup strategy, implement if needed
-- **Files:** `docs/runbook/backup-restore-dr.md`
-- **Acceptance:** Runbook section complete, decision documented
-- **Tests:** Manual: `nats stream backup` → verify restore
-- **Risk:** Low — NATS state is recoverable from outbox
+### S-050 — NATS Backup Policy — ✅ DONE
+- **Goal:** Document recovery strategy: outbox source of truth, provisioning replay
+- **Policy:** NATS JetStream volume optional; PostgreSQL outbox mandatory
+- **Files:** `docs/runbook/nats-backup-restore.md`, `scripts/check/nats_recovery_check.py`, `tests/integration/test_nats_recovery.py`, `infra/compose/docker-compose.phase1.yml`
+- **Acceptance:** Policy documented, recovery proofed via integration test, diagnostics script works
+- **Tests:** 4 integration tests (provisioning, replay after reset, dedup safety, check script) — gated by `RUN_NATS_INTEGRATION_TESTS=1`
+- **Risk:** Low — outbox relay already publishes with Nats-Msg-Id dedup
 
 ### S-051 — Portal Error Boundaries
 - **Goal:** React ErrorBoundary in both portals

@@ -68,6 +68,8 @@ services:
     ports:
       - "4222:4222"
       - "8222:8222"
+    volumes:
+      - nats_jetstream:/data
     healthcheck:
       test: ["CMD-SHELL", "nats server check connection --server nats://localhost:4222"]
       interval: 5s
@@ -288,3 +290,4 @@ volumes:
   pg_data:
   ch_data:
   minio_data:
+  nats_jetstream:

@@ -17,7 +17,7 @@
 |-----------|--------|--------|---------|
 | **PostgreSQL DB** | ✅ Реализовано | `pg_dump` custom format (.dump) | Ежедневно (ручной запуск / cron) |
 | **MinIO objects** | ✅ Реализовано (S-049) | Python SDK full-bucket backup + manifest | Ежедневно (ручной запуск / cron) |
-| **NATS JetStream state** | ⏳ Deferred | `nats stream backup` | Не критично для pilot — состояние восстанавливается из PostgreSQL через outbox relay |
+| **NATS JetStream state** | ✅ Задокументировано (S-050) | Outbox source of truth — восстановление через provisioning + replay | Не критично для pilot — состояние восстанавливается из PostgreSQL через outbox relay |
 
 ## 3. RPO / RTO (pilot targets)
 
@@ -152,7 +152,8 @@ dry-run и drill для creative media объектов.
 **Порядок полного восстановления:**
 1. Restore PostgreSQL (этот runbook, §5)
 2. Restore MinIO objects (`minio-backup-restore.md` §4)
-3. Run consistency checks (`minio-backup-restore.md` §6)
+3. Start NATS + run provisioning (`nats-backup-restore.md` §5)
+4. Run consistency checks (`nats-backup-restore.md` §6, `minio-backup-restore.md` §6)
 
 ## 6. Restore Drill — процедура
 
@@ -201,7 +202,7 @@ python -m pytest tests/integration/test_backup_restore.py -v
 | Элемент | Статус | Комментарий |
 |---------|--------|-------------|
 | MinIO backup (S3 mirror) | ✅ S-049 done | Python SDK full-bucket backup with manifest + SHA-256. См. `docs/runbook/minio-backup-restore.md`. |
-| NATS JetStream backup | ⏳ Deferred | Состояние восстанавливается из outbox. Ручной `nats stream backup` для аварийного восстановления. |
+| NATS JetStream backup | ✅ S-050 documented | Outbox source of truth. Recovery via provisioning + relay replay. См. `docs/runbook/nats-backup-restore.md`. |
 | Offsite encrypted backup | ⏳ Deferred | Локальные бэкапы не защищают от физического сбоя сервера. Требуется rsync/rclone в S3/GCS с шифрованием. |
 | Автоматическое расписание (cron) | ⏳ Deferred | Скрипт готов, cron-запись в §4.2 — требуется развернуть на production-сервере. |
 | Мониторинг бэкапов | ⏳ Deferred | Алерт если backup не создан > 25 часов. Prometheus + AlertManager. |
@@ -213,6 +214,7 @@ python -m pytest tests/integration/test_backup_restore.py -v
 
 - Скрипты: `scripts/backup/postgres_backup.py`, `scripts/restore/postgres_restore.py`
 - MinIO backup: `docs/runbook/minio-backup-restore.md`
+- NATS recovery: `docs/runbook/nats-backup-restore.md`
 - Интеграционный тест: `tests/integration/test_backup_restore.py`
 - Production gaps: `docs/product/production-gaps-triage.md`
 - Стабилизационный трекер: `docs/architecture/stabilization-tracker.md`
