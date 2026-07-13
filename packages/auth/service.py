@@ -55,7 +55,9 @@ class AuthService:
     """Authentication service — stateless, receives session from caller."""
 
     def __init__(self, ad_provider: ADAuthProvider | None = None):
-        self._ad = ad_provider or StubADAuthProvider()
+        from packages.auth.ad_provider import get_ad_provider
+
+        self._ad = ad_provider if ad_provider is not None else get_ad_provider()
 
     # -----------------------------------------------------------------------
     # Login

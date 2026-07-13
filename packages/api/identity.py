@@ -438,30 +438,29 @@ async def get_ad_settings(
     and the operational mode (stub/disabled/configured) are returned.
     """
     from packages.security.config import get_security_config
-    from packages.auth.ad_provider import StubADAuthProvider
+    from packages.auth.ad_provider import get_ad_provider
 
     cfg = get_security_config()
-    ad = StubADAuthProvider()
+    ad = get_ad_provider()
     available = await ad.is_available()
 
     if not cfg.ad_enabled:
         mode = "disabled"
         message = "AD integration is disabled. Employee AD login is not available."
+    elif not cfg.ad_server_url:
+        mode = "misconfigured"
+        message = "AD integration is enabled but AD_SERVER_URL is not set."
     elif available:
         mode = "configured"
         message = "AD integration is configured and reachable."
     else:
-        mode = "stub"
-        message = (
-            "AD integration is currently in stub mode. "
-            "Employee AD login returns 503. "
-            "Configure AD_ENABLED=true and AD_SERVER_URL to enable real AD auth."
-        )
+        mode = "unavailable"
+        message = "AD integration is configured but the server is not reachable."
 
     return ADSettingsOut(
         enabled=cfg.ad_enabled,
         mode=mode,
-        server_url=cfg.ad_server_url if mode != "stub" else "",
+        server_url=cfg.ad_server_url if cfg.ad_enabled else "",
         base_dn=cfg.ad_base_dn,
         user_search_base=cfg.ad_user_search_base,
         user_search_filter=cfg.ad_user_search_filter,
@@ -486,10 +485,9 @@ async def test_ad_connection(
     """
     from datetime import datetime, timezone
     from packages.security.config import get_security_config
-    from packages.auth.ad_provider import StubADAuthProvider
+    from packages.auth.ad_provider import get_ad_provider
 
     cfg = get_security_config()
-    ad = StubADAuthProvider()
     now = datetime.now(timezone.utc)
 
     if not cfg.ad_enabled:
@@ -500,22 +498,27 @@ async def test_ad_connection(
             error_code="ad_disabled",
         )
 
+    if not cfg.ad_server_url:
+        return ADTestResultOut(
+            status="misconfigured",
+            message="AD integration is enabled but AD_SERVER_URL is not set.",
+            tested_at=now,
+            error_code="ad_misconfigured",
+        )
+
+    ad = get_ad_provider()
     available = await ad.is_available()
     if not available:
         return ADTestResultOut(
-            status="stub",
-            message=(
-                "AD integration is in stub mode. "
-                "Real LDAPS client is not yet implemented. "
-                "Employee AD login returns 503."
-            ),
+            status="unavailable",
+            message="AD server is not reachable. Check AD_SERVER_URL, network, and TLS configuration.",
             tested_at=now,
-            error_code="ldap_unavailable",
+            error_code="ad_unavailable",
         )
 
     return ADTestResultOut(
         status="ok",
-        message="AD connection test passed.",
+        message="AD connection test passed — server reachable.",
         tested_at=now,
     )
 

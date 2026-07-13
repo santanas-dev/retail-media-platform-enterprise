@@ -94,6 +94,7 @@ Separately covered:
 | S-045 | Audit Reconciliation | P0 | ✅ done | P.S. (Hermes) | 9/9 S-035 findings CLOSED. Architecture gaps deferred honestly. GO verdict. | — |
 | S-046 | v0.6 Production Readiness Plan | P0 | 🚧 planned | P.S. (Hermes) | `docs/product/v06-production-readiness-plan.md`: S-047…S-055 sequence. Scope: monitoring, LDAPS, backups, error boundaries, audit events, router split, RLS test, XLSX decision. Out of scope: KSO, Emergency, Flags, Inventory, ClickHouse, v2.6. | Start S-047 |
 | S-047 | Observability baseline (Prometheus/Grafana) | P0 | ✅ done | P.S. (Hermes) | `packages/observability/metrics.py`: 18 metrics (common + domain), /metrics endpoint on control-api + device-gateway. `infra/compose/docker-compose.observability.yml`: Prometheus + Grafana. `infra/observability/`: prometheus.yml, alerts.yml, grafana dashboard rmp-overview.json. `docs/runbook/observability.md`. Tests: 9/9. Branch: feature/S-047. | Start S-048 |
+| S-048 | Real LDAPS authentication | P0 | ✅ done | P.S. (Hermes) | `packages/auth/ad_provider.py`: RealLDAPAuthProvider with ldap3 bind+search, safe filter escaping, timeouts, no password logs. AD settings/test endpoints updated with real provider. `docs/runbook/ldaps-auth.md`. Stub preserved when AD_ENABLED=false. Branch: feature/S-048. | Start S-049 |
 ## Status Legend
 
 - **done** — implemented, tested, committed, pushed
@@ -107,7 +108,7 @@ Separately covered:
 | Gap | Status |
 |-----|--------|
 | Monitoring/observability (Prometheus/Grafana) | ✅ S-047 done |
-| Real AD/LDAPS | 🚧 v0.6 planned (S-048) |
+| Real AD/LDAPS | ✅ S-048 done |
 | MinIO backup (S3 mirror) | 🚧 v0.6 planned (S-049) |
 | NATS backup policy | 🚧 v0.6 planned (S-050) |
 | Portal error boundaries | 🚧 v0.6 planned (S-051) |
