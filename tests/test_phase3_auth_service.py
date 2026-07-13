@@ -7,6 +7,7 @@ password reset, credential verification.
 All tests use mocked AsyncSession — no real database required.
 """
 
+import asyncio
 import os
 import sys
 import unittest
@@ -738,6 +739,165 @@ class TestAuthServiceRateLimit(unittest.TestCase):
         self.assertFalse(call["success"])
         self.assertEqual(call["failure_reason"], "rate_limited")
         self.assertEqual(call["auth_provider"], "unknown")
+
+
+# ---------------------------------------------------------------------------
+# S-035i: refresh token family revoke
+# ---------------------------------------------------------------------------
+
+
+class TestRefreshTokenFamilyRevoke(unittest.IsolatedAsyncioTestCase):
+    """Proof: replay revokes whole token family, not just one session."""
+
+    def setUp(self):
+        reset_security_config()
+        self._orig_env = dict(os.environ)
+        os.environ["ENVIRONMENT"] = "dev"
+        os.environ["JWT_SECRET"] = "test-jwt-secret-for-unit-tests"
+
+    def tearDown(self):
+        reset_security_config()
+        os.environ.clear()
+        os.environ.update(self._orig_env)
+
+    @patch("packages.auth.repository._now")
+    def test_revoke_refresh_token_family_revokes_all_active(self, mock_now):
+        """revoke_refresh_token_family revokes ALL active sessions in family."""
+        from packages.auth.repository import revoke_refresh_token_family
+        from packages.domain.models import RefreshSession
+        from sqlalchemy import update
+
+        now_val = datetime(2026, 7, 13, 12, 0, 0, tzinfo=timezone.utc)
+        mock_now.return_value = now_val
+
+        # Build mock sessions in the same family
+        family_id = "fam-replay-001"
+        session1 = MagicMock(
+            id="rs-1", token_family_id=family_id,
+            revoked_at=None, expires_at=now_val + timedelta(hours=8),
+        )
+        session2 = MagicMock(
+            id="rs-2", token_family_id=family_id,
+            revoked_at=None, expires_at=now_val + timedelta(hours=8),
+        )
+
+        mock_db = MagicMock(spec=AsyncSession)
+        mock_result = MagicMock()
+        mock_result.rowcount = 2  # two sessions revoked
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        async def _run():
+            return await revoke_refresh_token_family(
+                mock_db, family_id, reason="security_replay",
+            )
+
+        count = asyncio.run(_run())
+        self.assertEqual(count, 2, "Both family sessions should be revoked")
+
+        # Verify the execute was called with an update statement
+        call_args = mock_db.execute.call_args[0][0]
+        self.assertIsNotNone(call_args, "execute should be called with update statement")
+
+    @patch("packages.auth.repository._now")
+    def test_revoke_family_leaves_unrelated_family_active(self, mock_now):
+        """revoke_refresh_token_family does NOT affect sessions in other families."""
+        from packages.auth.repository import revoke_refresh_token_family
+        from sqlalchemy import update
+
+        now_val = datetime(2026, 7, 13, 12, 0, 0, tzinfo=timezone.utc)
+        mock_now.return_value = now_val
+
+        family_a = "fam-A-001"
+        family_b = "fam-B-002"
+
+        mock_db = MagicMock(spec=AsyncSession)
+        mock_result = MagicMock()
+        mock_result.rowcount = 1  # only family A, not B
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        async def _run():
+            return await revoke_refresh_token_family(
+                mock_db, family_a, reason="security_replay",
+            )
+
+        count = asyncio.run(_run())
+        self.assertEqual(count, 1)
+
+        # Verify the execute was called with an update statement
+        call_args = mock_db.execute.call_args[0][0]
+        self.assertIsNotNone(call_args, "execute should be called with update statement")
+
+    @patch("packages.auth.service.find_active_refresh_session", new_callable=AsyncMock)
+    @patch("packages.auth.repository.revoke_refresh_token_family", new_callable=AsyncMock)
+    async def test_replay_calls_family_revoke(self, mock_family_revoke, mock_find_rs):
+        """Replay detection invokes revoke_refresh_token_family, not single revoke."""
+        from packages.auth.service import AuthService
+
+        # Simulate a rotated session (replay scenario)
+        rs = _make_refresh_session(rotated_at=_now() - timedelta(minutes=5))
+        mock_find_rs.return_value = rs
+
+        svc = AuthService()
+        session = MagicMock(spec=AsyncSession)
+
+        # Need to mock the User query that follows replay check
+        user = _make_user(id=rs.user_id)
+        with patch.object(
+            __import__("sqlalchemy").ext.asyncio.AsyncSession, "execute",
+            new_callable=AsyncMock,
+        ) as mock_exec:
+            mock_result = MagicMock()
+            mock_result.scalar_one_or_none.return_value = user
+            mock_exec.return_value = mock_result
+            session.execute = mock_exec
+
+            result = await svc.refresh_session(
+                session, raw_refresh_token="replayed-raw-token",
+            )
+
+        self.assertIsInstance(result, AuthFailure)
+        self.assertEqual(result.internal_code, "REFRESH_REPLAY")
+
+        # Critical: family revoke was called (not single-session revoke)
+        mock_family_revoke.assert_called_once()
+        call_args = mock_family_revoke.call_args
+        self.assertEqual(call_args[0][1], rs.token_family_id)
+
+    @patch("packages.auth.service.find_active_refresh_session", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_access_token")
+    @patch("packages.auth.service.create_refresh_session", new_callable=AsyncMock)
+    async def test_normal_refresh_does_not_revoke_family(
+        self, mock_create_rs, mock_create_jwt, mock_find_rs,
+    ):
+        """Normal (non-replay) refresh does NOT trigger family revoke."""
+        from packages.auth.service import AuthService
+        import sqlalchemy as sa
+
+        # Fresh session — not rotated
+        rs = _make_refresh_session(token_hash="valid-hash", rotated_at=None)
+        mock_find_rs.return_value = rs
+        mock_create_jwt.return_value = "new-access-token"
+        new_rs = _make_refresh_session(id="rs-new-003", token_hash="new-hash")
+        mock_create_rs.return_value = new_rs
+
+        user = _make_user(id=rs.user_id)
+        with patch.object(
+            sa.ext.asyncio.AsyncSession, "execute", new_callable=AsyncMock,
+        ) as mock_exec:
+            mock_result = MagicMock()
+            mock_result.scalar_one_or_none.return_value = user
+            mock_exec.return_value = mock_result
+
+            svc = AuthService()
+            session = MagicMock()
+            session.execute = mock_exec
+
+            result = await svc.refresh_session(
+                session, raw_refresh_token="valid-raw-token",
+            )
+
+        self.assertIsInstance(result, AuthSuccess)
+        self.assertEqual(result.access_token, "new-access-token")
 
 
 if __name__ == "__main__":

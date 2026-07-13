@@ -473,7 +473,6 @@ class TestNoBypassCreateCampaignCreative:
         assert data["status"] == "metadata_only"
         assert data["sha256_checksum"] == ""
         self._cleanup()
-
     @classmethod
     def teardown_class(cls):
         _raw_exec("UPDATE campaigns SET status = 'draft' WHERE code = 'CAMP-2026-001'")

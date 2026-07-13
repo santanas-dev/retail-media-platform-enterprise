@@ -165,6 +165,21 @@ class TestSecurityConfig(unittest.TestCase):
         self.assertEqual(cfg.password_bcrypt_rounds, 12)
         self.assertEqual(cfg.password_min_length, 8)
 
+    # ── S-035g: CORS PATCH in default methods ──
+
+    def test_default_cors_methods_includes_patch(self):
+        """Default cors_allowed_methods includes PATCH (S-035g)."""
+        os.environ["ENVIRONMENT"] = "dev"
+        os.environ["JWT_SECRET"] = "test"
+        cfg = sec_config.SecurityConfig()
+        methods = cfg.cors_allowed_methods
+        expected = {"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
+        self.assertTrue(
+            expected.issubset(set(methods)),
+            f"Expected {expected} ⊆ {set(methods)}",
+        )
+        self.assertIn("PATCH", methods, "PATCH must be in default CORS methods")
+
     def test_singleton_returns_same_instance(self):
         """get_security_config returns the same instance."""
         os.environ["ENVIRONMENT"] = "dev"

@@ -498,5 +498,63 @@ class TestPhase21NoOldBackendDependency(unittest.TestCase):
         self.assertNotIn("prod", src.lower().split("database_url")[-1][:100])
 
 
+# ---------------------------------------------------------------------------
+# S-035h: migration 013 structure proof
+# ---------------------------------------------------------------------------
+
+
+class TestMigration013UploadSessionsRLS(unittest.TestCase):
+    """Proof: migration 013 adds RLS policies to creative_upload_sessions."""
+
+    _MIGRATION = None
+
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+        path = "apps/control-api/alembic/versions/013_upload_sessions_rls.py"
+        spec = importlib.util.spec_from_file_location("m013", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        cls._MIGRATION = mod
+
+    def test_migration_revision(self):
+        """Migration 013 revises 012."""
+        self.assertEqual(self._MIGRATION.revision, "013")
+        self.assertEqual(self._MIGRATION.down_revision, "012")
+
+    def test_upgrade_enables_rls(self):
+        """upgrade() enables RLS and creates SELECT/INSERT/UPDATE policies."""
+        # Inspect the upgrade function's source code for key operations
+        import inspect
+        src = inspect.getsource(self._MIGRATION.upgrade)
+        self.assertIn("ENABLE ROW LEVEL SECURITY", src)
+        self.assertIn("creative_upload_sessions", src)
+        self.assertIn("RLS_DIRECT", src)
+        self.assertIn("RLS_INSERT", src)
+        self.assertIn("RLS_UPDATE", src)
+
+    def test_rls_policies_use_org_scope(self):
+        """SELECT policy uses advertiser_organization_id scope + admin bypass."""
+        self.assertIn("advertiser_organization_id", self._MIGRATION.RLS_DIRECT)
+        self.assertIn("app.rmp_is_admin", self._MIGRATION.RLS_DIRECT)
+        self.assertIn("app.rmp_scope_advertiser_ids", self._MIGRATION.RLS_DIRECT)
+
+    def test_rls_insert_uses_with_check(self):
+        """INSERT policy uses WITH CHECK clause."""
+        self.assertIn("WITH CHECK", self._MIGRATION.RLS_INSERT)
+
+    def test_rls_update_uses_using_and_with_check(self):
+        """UPDATE policy uses USING for read-path check."""
+        self.assertIn("FOR UPDATE", self._MIGRATION.RLS_UPDATE)
+        self.assertIn("advertiser_organization_id", self._MIGRATION.RLS_UPDATE)
+
+    def test_downgrade_drops_policies(self):
+        """downgrade() drops the policies cleanly."""
+        import inspect
+        src = inspect.getsource(self._MIGRATION.downgrade)
+        self.assertIn("DROP POLICY", src)
+        self.assertIn("creative_upload_sessions", src)
+
+
 if __name__ == "__main__":
     unittest.main()

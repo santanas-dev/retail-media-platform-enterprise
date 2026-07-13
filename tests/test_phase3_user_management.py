@@ -843,6 +843,216 @@ class TestResetPassword(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# S-035e: audit event write tests
+# ---------------------------------------------------------------------------
+
+
+class TestAuditEventsWritten(unittest.TestCase):
+    """Proof: user-management actions write audit_events_operational rows."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.client = TestClient(_get_app())
+
+    def setUp(self):
+        reset_security_config()
+        os.environ["ENVIRONMENT"] = "dev"
+        os.environ["JWT_SECRET"] = "test-jwt-secret-for-user-mgmt-tests-32chars"
+        self.client.cookies.clear()
+        self._patchers = []
+
+    def tearDown(self):
+        for p in self._patchers:
+            p.stop()
+        reset_security_config()
+
+    def _token(self):
+        return create_access_token("u-admin", "local_break_glass")
+
+    def _auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def _setup_auth(self):
+        """Patch auth dependencies + scope context (matching existing pattern)."""
+        app = _get_app()
+        from packages.api.dependencies import (
+            get_current_active_user, get_db, get_scope_context, set_rls_context,
+        )
+        from packages.domain.scopes import ScopeContext
+
+        async def _admin_user():
+            return {
+                "sub": "u-admin",
+                "auth_provider": "local_break_glass",
+                "username": "admin",
+                "display_name": "Admin",
+            }
+
+        async def _fake_db():
+            yield AsyncMock()
+
+        async def _fake_scope():
+            return ScopeContext(
+                user_id="u-admin", is_admin=True,
+                role_codes={"system_admin"},
+                global_permissions={"users.read", "users.manage"},
+                all_permissions={"users.read", "users.manage"},
+            )
+
+        async def _fake_set_rls(db=None, scope=None):
+            return None
+
+        app.dependency_overrides[get_current_active_user] = _admin_user
+        app.dependency_overrides[get_db] = _fake_db
+        app.dependency_overrides[get_scope_context] = _fake_scope
+        app.dependency_overrides[set_rls_context] = _fake_set_rls
+        self.addCleanup(lambda: app.dependency_overrides.clear())
+
+    def _mock_repo(self, **overrides):
+        """Patch identity.repository functions (matching existing pattern)."""
+        defaults = {
+            "get_user_permissions": {"users.read", "users.manage"},
+            "find_user_by_username": None,
+            "list_roles": [_MockRole("role-adv", "advertiser", "Advertiser")],
+            "create_local_advertiser_user": _MockCreatedUser(),
+            "get_user_detail": None,
+            "get_user_local_credential": _MockCredential(),
+            "get_advertiser_organization": _MockOrg(),
+            "count_active_break_glass_users": 2,
+            "count_active_admin_users": 2,
+            "set_user_status": True,
+            "find_user_by_id": _make_user("target", "active", "local_advertiser"),
+            "update_local_credential_password": True,
+        }
+        for name, default in {**defaults, **overrides}.items():
+            patcher = patch(
+                f"packages.api.identity.repository.{name}",
+                new_callable=AsyncMock,
+            )
+            mock = patcher.start()
+            mock.return_value = default
+            self._patchers.append(patcher)
+            self.addCleanup(patcher.stop)
+
+    def _mock_audit(self):
+        """Patch create_audit_event + revoke_all_sessions_for_user."""
+        p1 = patch(
+            "packages.domain.repository.create_audit_event",
+            new_callable=AsyncMock,
+        )
+        p2 = patch(
+            "packages.auth.repository.revoke_all_sessions_for_user",
+            new_callable=AsyncMock,
+        )
+        mock_audit = p1.start()
+        mock_revoke = p2.start()
+        mock_revoke.return_value = 0  # no sessions revoked
+        self._patchers.extend([p1, p2])
+        self.addCleanup(p1.stop)
+        self.addCleanup(p2.stop)
+        return mock_audit, mock_revoke
+
+    def test_create_writes_user_created_audit(self):
+        """create_local_advertiser writes audit event with no secrets."""
+        self._setup_auth()
+        self._mock_repo()
+        mock_audit, _ = self._mock_audit()
+
+        resp = self.client.post(
+            "/api/v1/identity/users/local-advertiser",
+            json={
+                "username": "new_user",
+                "display_name": "New User",
+                "advertiser_organization_id": "00000000-0000-0000-0000-000000000001",
+                "must_change_password": True,
+                "is_active": True,
+                "auto_generate_password": True,
+            },
+            headers=self._auth(self._token()),
+        )
+        self.assertEqual(resp.status_code, 201, resp.text)
+
+        # Audit event was called
+        mock_audit.assert_called_once()
+        call_kwargs = mock_audit.call_args[1]
+        self.assertEqual(call_kwargs["action"], "user.created")
+        self.assertEqual(call_kwargs["target_type"], "user")
+        self.assertEqual(call_kwargs["actor_user_id"], "u-admin")
+
+        # No secrets in details
+        details = call_kwargs["details"]
+        self.assertIn("username", details)
+        self.assertNotIn("password", details)
+        self.assertNotIn("password_hash", details)
+        self.assertNotIn("token", details)
+        self.assertNotIn("secret", details)
+
+    def test_deactivate_writes_audit(self):
+        """deactivate_user writes user.deactivated audit event."""
+        self._setup_auth()
+        self._mock_repo(
+            get_user_detail=_make_user("target", "active", "local_advertiser"),
+            find_user_by_id=_make_user("target", "active", "local_advertiser"),
+            count_active_admin_users=2,
+            count_active_break_glass_users=2,
+        )
+        mock_audit, _ = self._mock_audit()
+
+        resp = self.client.post(
+            "/api/v1/identity/users/target/deactivate",
+            headers=self._auth(self._token()),
+        )
+        self.assertEqual(resp.status_code, 200, resp.text)
+
+        # Find the audit call for deactivation
+        audit_calls = [
+            c for c in mock_audit.call_args_list
+            if c[1].get("action") == "user.deactivated"
+        ]
+        self.assertEqual(len(audit_calls), 1, "Expected user.deactivated audit event")
+        self.assertEqual(audit_calls[0][1]["target_id"], "target")
+        self.assertEqual(audit_calls[0][1]["actor_user_id"], "u-admin")
+
+    def test_reset_password_writes_audit_no_secrets(self):
+        """reset_password writes audit event with NO password/hash/token."""
+        self._setup_auth()
+        self._mock_repo(
+            get_user_detail=_make_user("target", "active", "local_advertiser"),
+            find_user_by_id=_make_user("target", "active", "local_advertiser"),
+            get_user_local_credential=_MockCredential(),
+        )
+        mock_audit, _ = self._mock_audit()
+
+        resp = self.client.post(
+            "/api/v1/identity/users/target/reset-password",
+            json={"auto_generate_password": True},
+            headers=self._auth(self._token()),
+        )
+        self.assertEqual(resp.status_code, 200, resp.text)
+
+        # Find the audit call for password reset
+        audit_calls = [
+            c for c in mock_audit.call_args_list
+            if c[1].get("action") == "user.password_reset"
+        ]
+        self.assertEqual(
+            len(audit_calls), 1,
+            f"Expected 1 user.password_reset audit, got {len(audit_calls)}",
+        )
+        call_kwargs = audit_calls[0][1]
+        self.assertEqual(call_kwargs["target_id"], "target")
+
+        # No secrets in details
+        details = call_kwargs.get("details") or {}
+        self.assertNotIn("password", details)
+        self.assertNotIn("password_hash", details)
+        self.assertNotIn("token", details)
+        self.assertNotIn("secret", details)
+        self.assertNotIn("refresh_token", details)
+        self.assertNotIn("access_token", details)
+
+
+# ---------------------------------------------------------------------------
 # Mock value classes
 # ---------------------------------------------------------------------------
 
