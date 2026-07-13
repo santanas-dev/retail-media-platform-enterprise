@@ -354,9 +354,10 @@ class AuthService:
                 debug_context={"reason": "token_not_found_or_revoked"},
             )
 
-        # Check rotation replay: if already rotated, revoke family
+        # Check rotation replay: if already rotated, revoke ENTIRE family (S-035i)
         if rs.rotated_at is not None:
-            await revoke_refresh_session(session, rs.id)
+            from packages.auth.repository import revoke_refresh_token_family
+            await revoke_refresh_token_family(session, rs.token_family_id)
             return auth_failure(
                 internal_code="REFRESH_REPLAY",
                 debug_context={"reason": "token_already_rotated"},

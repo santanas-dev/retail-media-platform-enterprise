@@ -78,6 +78,37 @@ async def list_audit_events(
     return list(result.scalars().all()), total or 0
 
 
+async def create_audit_event(
+    session: AsyncSession,
+    *,
+    actor_user_id: str,
+    action: str,
+    target_type: str,
+    target_id: str | None = None,
+    correlation_id: str | None = None,
+    ip_address: str = "",
+    details: dict | None = None,
+) -> AuditEventOperational:
+    """Write an operational audit event (S-035e).
+
+    No secrets, passwords, tokens, or hashes in details.
+    """
+    import uuid as _uuid
+    event = AuditEventOperational(
+        id=str(_uuid.uuid4()),
+        actor_user_id=actor_user_id or None,
+        action=action,
+        target_type=target_type,
+        target_id=target_id,
+        correlation_id=correlation_id,
+        ip_address=ip_address,
+        details_json=details,
+    )
+    session.add(event)
+    await session.flush()
+    return event
+
+
 # ---------------------------------------------------------------------------
 # Authz (Phase 3.3) — permission lookups for RBAC enforcement
 # ---------------------------------------------------------------------------

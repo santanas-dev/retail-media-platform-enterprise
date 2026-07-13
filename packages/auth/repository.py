@@ -232,7 +232,6 @@ async def revoke_oldest_sessions(
     Returns number of sessions revoked.
     """
     now = _now()
-    # Find active sessions, ordered oldest first
     stmt = (
         select(RefreshSession)
         .where(
@@ -318,5 +317,32 @@ async def revoke_all_sessions_for_user(
             RefreshSession.expires_at > now,
         )
         .values(revoked_at=now)
+    )
+    return result.rowcount
+
+
+# ---------------------------------------------------------------------------
+# S-035i — Token family revoke on replay detection
+# ---------------------------------------------------------------------------
+
+
+async def revoke_refresh_token_family(
+    session: AsyncSession, token_family_id: str, *, reason: str = "security_replay",
+) -> int:
+    """Revoke ALL active refresh sessions in a token family.
+
+    Used when a rotated token is replayed — the entire family is burned
+    because an attacker or client bug may have captured a prior token.
+    Returns count of sessions revoked.
+    """
+    now = _now()
+    result = await session.execute(
+        update(RefreshSession)
+        .where(
+            RefreshSession.token_family_id == token_family_id,
+            RefreshSession.revoked_at.is_(None),
+            RefreshSession.expires_at > now,
+        )
+        .values(revoked_at=now, last_error=reason)
     )
     return result.rowcount

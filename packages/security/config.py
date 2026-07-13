@@ -77,7 +77,7 @@ class SecurityConfig:
     cors_allowed_origins: list[str] = field(default_factory=list)
     cors_allow_credentials: bool = False
     cors_allowed_methods: list[str] = field(default_factory=lambda: [
-        "GET", "POST", "PUT", "DELETE", "OPTIONS",
+        "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS",
     ])
     cors_allowed_headers: list[str] = field(default_factory=lambda: [
         "Authorization", "Content-Type",

@@ -8,6 +8,7 @@ No presigned URLs or storage keys exposed outside upload-intent response.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
@@ -159,6 +160,34 @@ class StorageService:
         finally:
             response.close()
             response.release_conn()
+
+    # ------------------------------------------------------------------
+    # Async wrappers (S-035f) — threadpool all sync MinIO SDK calls
+    # ------------------------------------------------------------------
+
+    async def async_ensure_bucket(self) -> None:
+        """Threadpool wrapper for ensure_bucket."""
+        return await asyncio.to_thread(self.ensure_bucket)
+
+    async def async_generate_presigned_put(
+        self, storage_key: str, content_type: str,
+    ) -> tuple[str, datetime]:
+        """Threadpool wrapper for generate_presigned_put."""
+        return await asyncio.to_thread(
+            self.generate_presigned_put, storage_key, content_type,
+        )
+
+    async def async_object_exists(self, storage_key: str) -> bool:
+        """Threadpool wrapper for object_exists."""
+        return await asyncio.to_thread(self.object_exists, storage_key)
+
+    async def async_get_object_size(self, storage_key: str) -> int | None:
+        """Threadpool wrapper for get_object_size."""
+        return await asyncio.to_thread(self.get_object_size, storage_key)
+
+    async def async_compute_sha256(self, storage_key: str) -> str | None:
+        """Threadpool wrapper for compute_sha256."""
+        return await asyncio.to_thread(self.compute_sha256, storage_key)
 
 
 # Singleton — created at app startup

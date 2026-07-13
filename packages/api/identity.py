@@ -203,6 +203,17 @@ async def create_local_advertiser(
         is_active=body.is_active,
     )
 
+    # Audit (S-035e)
+    from packages.domain.repository import create_audit_event
+    await create_audit_event(
+        db,
+        actor_user_id=scope.user_id,
+        action="user.created",
+        target_type="user",
+        target_id=user.id,
+        details={"username": body.username, "org_id": body.advertiser_organization_id},
+    )
+
     await db.commit()
 
     return CreateLocalAdvertiserResponse(
@@ -258,6 +269,16 @@ async def deactivate_user(
     from packages.auth.repository import revoke_all_sessions_for_user
     await revoke_all_sessions_for_user(db, user_id)
 
+    # Audit (S-035e)
+    from packages.domain.repository import create_audit_event
+    await create_audit_event(
+        db,
+        actor_user_id=scope.user_id,
+        action="user.deactivated",
+        target_type="user",
+        target_id=user_id,
+    )
+
     await db.commit()
 
     return UserStatusResponse(
@@ -283,6 +304,17 @@ async def activate_user(
         raise HTTPException(status_code=409, detail="User is already active")
 
     await repository.set_user_status(db, user_id, "active")
+
+    # Audit (S-035e)
+    from packages.domain.repository import create_audit_event
+    await create_audit_event(
+        db,
+        actor_user_id=scope.user_id,
+        action="user.activated",
+        target_type="user",
+        target_id=user_id,
+    )
+
     await db.commit()
 
     return UserStatusResponse(
@@ -356,6 +388,17 @@ async def reset_password(
         from packages.auth.repository import revoke_all_sessions_for_user
         count = await revoke_all_sessions_for_user(db, user_id)
         sessions_revoked = count > 0
+
+    # Audit (S-035e) — no password/hash in details
+    from packages.domain.repository import create_audit_event
+    await create_audit_event(
+        db,
+        actor_user_id=scope.user_id,
+        action="user.password_reset",
+        target_type="user",
+        target_id=user_id,
+        details={"sessions_revoked": sessions_revoked},
+    )
 
     await db.commit()
 
@@ -1456,7 +1499,7 @@ async def upload_intent_endpoint(
 
     from packages.services.storage import get_storage_service
     storage = get_storage_service()
-    upload_url, expires_at = storage.generate_presigned_put(storage_key, body.content_type)
+    upload_url, expires_at = await storage.async_generate_presigned_put(storage_key, body.content_type)
 
     session_id = await repository.create_upload_session(
         db,
@@ -1509,14 +1552,14 @@ async def complete_upload_endpoint(
 
     from packages.services.storage import get_storage_service
     storage = get_storage_service()
-    if not storage.object_exists(upload["storage_key"]):
+    if not await storage.async_object_exists(upload["storage_key"]):
         raise HTTPException(status_code=404, detail="File not found in storage")
 
-    actual_size = storage.get_object_size(upload["storage_key"])
+    actual_size = await storage.async_get_object_size(upload["storage_key"])
     if actual_size != upload["content_length"]:
         raise HTTPException(status_code=422, detail=f"Size mismatch: expected {upload['content_length']}, got {actual_size}")
 
-    checksum = storage.compute_sha256(upload["storage_key"])
+    checksum = await storage.async_compute_sha256(upload["storage_key"])
     if checksum is None:
         raise HTTPException(status_code=500, detail="Failed to compute checksum")
 
