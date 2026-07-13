@@ -527,5 +527,91 @@ class TestModerationReject(AuthzMixin, unittest.TestCase):
         mock_reject.assert_not_called()
 
 
+# ---------------------------------------------------------------------------
+# S-037 — Inventory Management Tests
+# ---------------------------------------------------------------------------
+
+
+class TestInventoryStores(AuthzMixin, unittest.TestCase):
+    """GET /api/v1/identity/inventory/stores"""
+
+    @patch("packages.api.identity.repository.get_inventory_stores", new_callable=AsyncMock)
+    def test_returns_enriched_stores(self, mock_repo):
+        self._setup_authz(perms={"inventory.read"})
+        mock_repo.return_value = [{
+            "id": "s-1", "code": "ST-001", "name": "Магазин №42",
+            "address": "ул. Тестовая, 1", "is_active": True,
+            "cluster_name": "Кластер Москва", "branch_name": "Центральный филиал",
+            "surface_count": 3,
+        }]
+        resp = self._get("/api/v1/identity/inventory/stores")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()[0]
+        self.assertEqual(data["code"], "ST-001")
+        self.assertEqual(data["cluster_name"], "Кластер Москва")
+        self.assertEqual(data["surface_count"], 3)
+
+    @patch("packages.api.identity.repository.get_inventory_stores", new_callable=AsyncMock)
+    def test_advertiser_gets_403(self, mock_repo):
+        self._setup_authz(perms={"campaigns.read"})
+        resp = self._get("/api/v1/identity/inventory/stores")
+        self.assertEqual(resp.status_code, 403)
+        mock_repo.assert_not_called()
+
+
+class TestInventorySurfaces(AuthzMixin, unittest.TestCase):
+    """GET /api/v1/identity/inventory/surfaces"""
+
+    @patch("packages.api.identity.repository.get_inventory_surfaces", new_callable=AsyncMock)
+    def test_returns_enriched_surfaces(self, mock_repo):
+        self._setup_authz(perms={"inventory.read"})
+        mock_repo.return_value = [{
+            "id": "ds-1", "code": "SURF-001", "store_id": "s-1",
+            "resolution_w": 1440, "resolution_h": 1080, "is_active": True,
+            "store_code": "ST-001", "store_name": "Магазин №42",
+        }]
+        resp = self._get("/api/v1/identity/inventory/surfaces")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()[0]
+        self.assertEqual(data["store_code"], "ST-001")
+        self.assertNotIn("storage_bucket", data)
+        self.assertNotIn("storage_key", data)
+
+    @patch("packages.api.identity.repository.get_inventory_surfaces", new_callable=AsyncMock)
+    def test_advertiser_gets_403(self, mock_repo):
+        self._setup_authz(perms={"campaigns.read"})
+        resp = self._get("/api/v1/identity/inventory/surfaces")
+        self.assertEqual(resp.status_code, 403)
+        mock_repo.assert_not_called()
+
+
+class TestInventorySurfacePatch(AuthzMixin, unittest.TestCase):
+    """PATCH /api/v1/identity/inventory/surfaces/{id}"""
+
+    @patch("packages.api.identity.repository.toggle_surface_active", new_callable=AsyncMock)
+    def test_patch_requires_inventory_manage(self, mock_toggle):
+        self._setup_authz(perms={"inventory.read"})
+        resp = TestClient(_get_app()).patch(
+            "/api/v1/identity/inventory/surfaces/ds-1",
+            json={"is_active": False},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 403)
+        mock_toggle.assert_not_called()
+
+    @patch("packages.api.identity.repository.get_display_surface", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.toggle_surface_active", new_callable=AsyncMock)
+    def test_patch_surface_not_found(self, mock_toggle, mock_get):
+        self._setup_authz(perms={"inventory.manage"})
+        mock_get.return_value = None
+        resp = TestClient(_get_app()).patch(
+            "/api/v1/identity/inventory/surfaces/does-not-exist",
+            json={"is_active": False},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 404)
+        mock_toggle.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

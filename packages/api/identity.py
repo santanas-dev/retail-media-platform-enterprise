@@ -46,6 +46,9 @@ from packages.domain.schemas import (
     CreativeModerationResponse,
     CreativeRejectRequest,
     DisplaySurfaceOut,
+    InventoryStoreOut,
+    InventorySurfaceOut,
+    InventorySurfacePatchRequest,
     MAX_LIMIT,
     DEFAULT_LIMIT,
     PaginatedAuditEvents,
@@ -1803,3 +1806,60 @@ async def list_display_surfaces(
     """List display surfaces — read-only, JWT + perm + RLS."""
     items = await repository.list_display_surfaces(db)
     return [DisplaySurfaceOut.model_validate(ds) for ds in items]
+
+
+# ---------------------------------------------------------------------------
+# S-037 — Inventory Management
+# ---------------------------------------------------------------------------
+
+
+@router.get("/inventory/stores", response_model=list[InventoryStoreOut])
+async def list_inventory_stores(
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("inventory.read")),
+):
+    """Enriched store list with cluster/branch names + surface count."""
+    items = await repository.get_inventory_stores(db)
+    return [InventoryStoreOut(**item) for item in items]
+
+
+@router.get("/inventory/surfaces", response_model=list[InventorySurfaceOut])
+async def list_inventory_surfaces(
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("inventory.read")),
+):
+    """Enriched surface list with store context — no device secrets."""
+    items = await repository.get_inventory_surfaces(db)
+    return [InventorySurfaceOut(**item) for item in items]
+
+
+@router.patch("/inventory/surfaces/{surface_id}",
+              response_model=InventorySurfaceOut)
+async def patch_inventory_surface(
+    surface_id: str,
+    body: InventorySurfacePatchRequest,
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("inventory.manage")),
+):
+    """Toggle is_active on a display surface — requires inventory.manage."""
+    surface = await repository.get_display_surface(db, surface_id)
+    if surface is None:
+        raise HTTPException(status_code=404, detail="Surface not found")
+
+    if body.is_active is not None:
+        ok = await repository.toggle_surface_active(
+            db, surface_id=surface_id, is_active=body.is_active,
+        )
+        if ok:
+            surface.is_active = body.is_active
+
+    return InventorySurfaceOut(
+        id=surface.id,
+        code=surface.code,
+        store_id=surface.store_id,
+        store_code=surface.store_code if hasattr(surface, "store_code") else None,
+        store_name=surface.store_name if hasattr(surface, "store_name") else None,
+        resolution_w=surface.resolution_w,
+        resolution_h=surface.resolution_h,
+        is_active=surface.is_active,
+    )

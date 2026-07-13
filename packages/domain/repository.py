@@ -239,6 +239,108 @@ async def list_display_surfaces(session: AsyncSession) -> list[DisplaySurface]:
     return list(result.scalars().all())
 
 
+async def get_inventory_stores(session: AsyncSession) -> list[dict]:
+    """Enriched store list with cluster/branch names + surface count."""
+    from packages.domain.models import Store, Cluster, Branch, DisplaySurface
+    from sqlalchemy import select as sa_select, func
+
+    surface_count_subq = (
+        sa_select(DisplaySurface.store_id, func.count(DisplaySurface.id).label("cnt"))
+        .group_by(DisplaySurface.store_id)
+        .subquery()
+    )
+
+    stmt = (
+        sa_select(
+            Store.id,
+            Store.code,
+            Store.name,
+            Store.address,
+            Store.is_active,
+            Cluster.name.label("cluster_name"),
+            Branch.name.label("branch_name"),
+            func.coalesce(surface_count_subq.c.cnt, 0).label("surface_count"),
+        )
+        .outerjoin(Cluster, Store.cluster_id == Cluster.id)
+        .outerjoin(Branch, Cluster.branch_id == Branch.id)
+        .outerjoin(surface_count_subq, Store.id == surface_count_subq.c.store_id)
+        .order_by(Store.code)
+    )
+
+    result = await session.execute(stmt)
+    return [dict(row._mapping) for row in result.fetchall()]
+
+
+async def get_inventory_surfaces(session: AsyncSession) -> list[dict]:
+    """Enriched surface list with store context, no device secrets."""
+    from packages.domain.models import DisplaySurface, Store
+    from sqlalchemy import select as sa_select
+
+    stmt = (
+        sa_select(
+            DisplaySurface.id,
+            DisplaySurface.code,
+            DisplaySurface.store_id,
+            DisplaySurface.resolution_w,
+            DisplaySurface.resolution_h,
+            DisplaySurface.is_active,
+            Store.code.label("store_code"),
+            Store.name.label("store_name"),
+        )
+        .outerjoin(Store, DisplaySurface.store_id == Store.id)
+        .order_by(DisplaySurface.code)
+    )
+
+    result = await session.execute(stmt)
+    return [dict(row._mapping) for row in result.fetchall()]
+
+
+async def toggle_surface_active(
+    session: AsyncSession,
+    *,
+    surface_id: str,
+    is_active: bool,
+) -> bool:
+    """Toggle is_active on a display surface. Returns True if updated."""
+    from datetime import datetime as _dt, timezone as _tz
+    from packages.domain.models import DisplaySurface
+    from sqlalchemy import update as sa_update
+
+    result = await session.execute(
+        sa_update(DisplaySurface)
+        .where(DisplaySurface.id == surface_id)
+        .values(is_active=is_active)
+    )
+    return result.rowcount > 0
+
+
+async def get_display_surface(
+    session: AsyncSession,
+    surface_id: str,
+):
+    """Get a display surface with joined store context. Returns DisplaySurface or None."""
+    from packages.domain.models import DisplaySurface, Store
+    from sqlalchemy import select as sa_select, text
+
+    stmt = (
+        sa_select(
+            DisplaySurface,
+            Store.code.label("store_code"),
+            Store.name.label("store_name"),
+        )
+        .outerjoin(Store, DisplaySurface.store_id == Store.id)
+        .where(DisplaySurface.id == surface_id)
+    )
+    result = await session.execute(stmt)
+    row = result.one_or_none()
+    if row is None:
+        return None
+    surface = row.DisplaySurface
+    surface.store_code = row.store_code
+    surface.store_name = row.store_name
+    return surface
+
+
 # ---------------------------------------------------------------------------
 # Campaign Domain (Phase 4.1b — ADR-015)
 # ---------------------------------------------------------------------------

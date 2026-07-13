@@ -204,6 +204,34 @@ export interface DisplaySurfaceRefOut {
   is_active: boolean;
 }
 
+// ── S-037: Inventory Management ──
+
+export interface InventoryStoreOut {
+  id: string;
+  code: string;
+  name: string;
+  address: string;
+  is_active: boolean;
+  cluster_name: string | null;
+  branch_name: string | null;
+  surface_count: number;
+}
+
+export interface InventorySurfaceOut {
+  id: string;
+  code: string;
+  store_id: string;
+  store_code: string | null;
+  store_name: string | null;
+  resolution_w: number;
+  resolution_h: number;
+  is_active: boolean;
+}
+
+export interface InventorySurfacePatchRequest {
+  is_active?: boolean;
+}
+
 // ── Helper: localized status labels ──
 
 // ── Campaign Create Request (matches backend CampaignCreateRequest) ──

@@ -698,6 +698,40 @@ class DisplaySurfaceOut(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# S-037 — Inventory Management Schemas
+# ---------------------------------------------------------------------------
+
+
+class InventoryStoreOut(BaseModel):
+    """Enriched store view — includes cluster/branch names + surface count."""
+    id: str
+    code: str
+    name: str
+    address: str
+    is_active: bool
+    cluster_name: str | None = None
+    branch_name: str | None = None
+    surface_count: int = 0
+
+
+class InventorySurfaceOut(BaseModel):
+    """Enriched display surface view — includes store context, no device secrets."""
+    id: str
+    code: str
+    store_id: str
+    store_code: str | None = None
+    store_name: str | None = None
+    resolution_w: int = 1920
+    resolution_h: int = 1080
+    is_active: bool = True
+
+
+class InventorySurfacePatchRequest(BaseModel):
+    """Partial update for a display surface — only safe fields for pilot."""
+    is_active: bool | None = None
+
+
+# ---------------------------------------------------------------------------
 # S-036 — Creative Moderation Queue Schemas
 # ---------------------------------------------------------------------------
 

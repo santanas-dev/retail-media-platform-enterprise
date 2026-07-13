@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthContext";
 const NAV_ITEMS = [
   { to: "/campaigns", label: "Кампании" },
   { to: "/creatives/moderation", label: "Модерация креативов" },
+  { to: "/inventory", label: "Инвентарь" },
   { to: "/advertisers", label: "Рекламодатели" },
   { to: "/users", label: "Пользователи" },
   { to: "/settings/ad", label: "Настройки AD" },
