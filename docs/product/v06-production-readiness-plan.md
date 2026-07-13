@@ -45,10 +45,13 @@ model work.
 - `docs/runbook/backup-restore-dr.md` updated with 4-step recovery order
 - Decision: whether to automate NATS backup or rely on outbox replay
 
-### 5. Portal Error Boundaries (S-051)
-- React `<ErrorBoundary>` in admin-web + advertiser-web `main.tsx`
-- Graceful fallback UI (not blank screen) on unhandled React errors
-- Vitest tests: error boundary renders fallback on child crash
+### 5. Portal Error Boundaries (S-051) — ✅ DONE
+- `ErrorBoundary` class component in both admin-web and advertiser-web
+- Top-level wrap around AuthProvider + RouterProvider
+- Route `errorElement` for per-route isolation + auto-reset on navigation
+- Russian fallback: "Что-то пошло не так" + "Обновить страницу"
+- Dev mode: safe error message (JWT/credential patterns redacted)
+- Tests: 7 per portal — fallback renders, no secrets, resetKey, custom fallback
 
 ### 6. Audit Events for Approval / Moderation (S-052)
 - `create_audit_event` in campaign approve/reject endpoints
@@ -97,7 +100,7 @@ model work.
 | S-048 | Real LDAPS | P0 | High | — |
 | S-049 | MinIO Backup | P0 | Low | ✅ done |
 | S-050 | NATS Backup Policy | P1 | Low | ✅ done |
-| S-051 | Portal Error Boundaries | P2 | Low | — |
+| S-051 | Portal Error Boundaries | P2 | Low | ✅ done |
 | S-052 | Audit Events (Approval/Moderation) | P2 | Low | — |
 | S-053 | identity Router Decomposition Plan | P2 | Low | — |
 | S-054a | XLSX Export Decision | P2 | Low | — |
@@ -133,12 +136,12 @@ model work.
 - **Tests:** 4 integration tests (provisioning, replay after reset, dedup safety, check script) — gated by `RUN_NATS_INTEGRATION_TESTS=1`
 - **Risk:** Low — outbox relay already publishes with Nats-Msg-Id dedup
 
-### S-051 — Portal Error Boundaries
-- **Goal:** React ErrorBoundary in both portals
-- **Files:** `apps/admin-web/src/main.tsx`, `apps/advertiser-web/src/main.tsx`, new `components/ErrorBoundary.tsx`
-- **Acceptance:** Unhandled error shows fallback UI, vitest proves fallback renders
-- **Tests:** 2 vitest per portal: crash renders fallback, normal render unaffected
-- **Risk:** Low — standard React pattern
+### S-051 — Portal Error Boundaries — ✅ DONE
+- **Goal:** React ErrorBoundary in both portals with Russian fallback
+- **Files:** `apps/admin-web/src/components/ErrorBoundary.tsx`, `apps/advertiser-web/src/components/ErrorBoundary.tsx`, updated `main.tsx` in both
+- **Acceptance:** Error fallback shows instead of white screen; secrets redacted in dev
+- **Tests:** 7 vitest per portal — fallback renders, refresh button, resetKey, no secrets, custom fallback
+- **Risk:** Low — standard React pattern, class component avoids hook issues
 
 ### S-052 — Audit Events for Approval/Moderation
 - **Goal:** Write audit events on campaign approve/reject + creative approve/reject

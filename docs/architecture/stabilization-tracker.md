@@ -95,7 +95,7 @@ Separately covered:
 | S-046 | v0.6 Production Readiness Plan | P0 | 🚧 planned | P.S. (Hermes) | `docs/product/v06-production-readiness-plan.md`: S-047…S-055 sequence. Scope: monitoring, LDAPS, backups, error boundaries, audit events, router split, RLS test, XLSX decision. Out of scope: KSO, Emergency, Flags, Inventory, ClickHouse, v2.6. | Start S-047 |
 | S-047 | Observability baseline (Prometheus/Grafana) | P0 | ✅ done | P.S. (Hermes) | `packages/observability/metrics.py`: 18 metrics (common + domain), /metrics endpoint on control-api + device-gateway. `infra/compose/docker-compose.observability.yml`: Prometheus + Grafana. `infra/observability/`: prometheus.yml, alerts.yml, grafana dashboard rmp-overview.json. `docs/runbook/observability.md`. Tests: 9/9. Branch: feature/S-047. | Start S-048 |
 | S-048 | Real LDAPS authentication | P0 | ✅ done | P.S. (Hermes) | `packages/auth/ad_provider.py`: RealLDAPAuthProvider with ldap3 bind+search, safe filter escaping, timeouts, no password logs. AD settings/test endpoints updated with real provider. `docs/runbook/ldaps-auth.md`. Stub preserved when AD_ENABLED=false. Branch: feature/S-048. | Start S-049 |
-| S-050 | NATS backup/restore policy | P1 | ✅ done | P.S. (Hermes) | Policy: outbox source of truth. Recovery via provisioning + relay replay (dedup-safe: Nats-Msg-Id = event_id). `scripts/check/nats_recovery_check.py`: diagnostics. `tests/integration/test_nats_recovery.py`: 4 test scenarios. `docs/runbook/nats-backup-restore.md`. Compose: named nats_jetstream volume. `backup-restore-dr.md` updated with full 4-step recovery order. Branch: feature/S-050. | Start S-051 |
+| S-051 | Portal Error Boundaries | P0 | ✅ done | P.S. (Hermes) | `apps/admin-web/src/components/ErrorBoundary.tsx`: class ErrorBoundary with resetKey, Russian fallback, secret redaction in dev. Top-level wrap + route errorElement. `apps/advertiser-web/src/components/ErrorBoundary.tsx`: identical. Tests: admin-web 7 new, advertiser-web 7 new — fallback renders, no stack trace, no secrets, resetKey works. Branch: feature/S-051.| Start S-052 |
 ## Status Legend
 
 - **done** — implemented, tested, committed, pushed
@@ -112,7 +112,7 @@ Separately covered:
 | Real AD/LDAPS | ✅ S-048 done |
 | MinIO backup (S3 mirror) | ✅ S-049 done |
 | NATS backup policy | ✅ S-050 done |
-| Portal error boundaries | 🚧 v0.6 planned (S-051) |
+| Portal error boundaries | ✅ S-051 done |
 | Audit events for approval/moderation | 🚧 v0.6 planned (S-052) |
 | identity.py router decomposition | 🚧 v0.6 planned (S-053) |
 | XLSX export | 🚧 v0.6 decision (S-054a) |
