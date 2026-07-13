@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from packages.observability.metrics import record_http_request, render_metrics
 from packages.domain.database import (
     create_engine,
     get_global_engine,
@@ -130,6 +131,17 @@ app = FastAPI(
 )
 app.middleware("http")(log_request_middleware)
 
+
+# ---------------------------------------------------------------------------
+# HTTP metrics middleware — record every request
+# ---------------------------------------------------------------------------
+@app.middleware("http")
+async def _metrics_middleware(request, call_next):
+    response = await call_next(request)
+    record_http_request(response.status_code)
+    return response
+
+
 # ---------------------------------------------------------------------------
 # CORS — must be configured before routers
 # ---------------------------------------------------------------------------
@@ -212,6 +224,19 @@ async def get_latest_manifest(
     if manifest.get("content_hash"):
         response_obj.headers["ETag"] = manifest["content_hash"]
     return response_obj
+
+
+# ---------------------------------------------------------------------------
+# Metrics Endpoint (Prometheus)
+# ---------------------------------------------------------------------------
+
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus-compatible metrics endpoint.  No auth required."""
+    from fastapi.responses import PlainTextResponse
+
+    return PlainTextResponse(content=render_metrics(), media_type="text/plain; version=0.0.4")
 
 
 # ---------------------------------------------------------------------------

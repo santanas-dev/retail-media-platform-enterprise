@@ -1,0 +1,60 @@
+# Observability profile for Retail Media Platform.
+#
+# Usage:
+#   docker compose -f infra/compose/docker-compose.phase1.yml \
+#                  -f infra/compose/docker-compose.observability.yml \
+#                  up -d
+#
+# Adds:
+#   - Prometheus (metrics scraper)
+#   - Grafana (dashboards + alerting UI)
+#
+# Access:
+#   Prometheus: http://localhost:9090
+#   Grafana:     http://localhost:3002  (admin / admin — dev only)
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.6.0
+    container_name: rmp-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../observability/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+    networks:
+      - rmp-net
+
+  grafana:
+    image: grafana/grafana:11.8.1
+    container_name: rmp-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin  # dev only — change for production
+      - GF_INSTALL_PLUGINS=
+    ports:
+      - "3002:3000"
+    volumes:
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    restart: unless-stopped
+    networks:
+      - rmp-net
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  rmp-net:
+    external: true
+    name: rmp-net

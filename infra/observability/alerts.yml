@@ -1,0 +1,86 @@
+# Prometheus alerting rules — Retail Media Platform
+
+groups:
+  - name: rmp_alerts
+    rules:
+      # --- Service health ---
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.service }} is down"
+          description: "{{ $labels.service }} has been down for more than 1 minute."
+
+      - alert: High5xxRate
+        expr: rate(rmp_http_5xx_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High 5xx rate on {{ $labels.service }}"
+          description: "5xx rate is {{ $value }} per second over 5 minutes."
+
+      - alert: DBUnhealthy
+        expr: rmp_db_ready == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database is unhealthy"
+          description: "control-api reports database check failed."
+
+      - alert: NATSUnhealthy
+        expr: rmp_nats_ready == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "NATS is disconnected"
+          description: "orchestrator-worker reports NATS connection failed."
+
+      # --- Outbox ---
+
+      - alert: OutboxDeadLettersDetected
+        expr: increase(rmp_outbox_dead_letter_total[15m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox dead-letter events detected"
+          description: "{{ $value }} dead-letter events in the last 15 minutes."
+
+      # --- Manifest generation ---
+
+      - alert: ManifestGenerationFailures
+        expr: increase(rmp_manifest_generation_failed_total[15m]) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Manifest generation failures detected"
+          description: "{{ $value }} manifest generation failures in the last 15 minutes."
+
+      # --- PoP ---
+
+      - alert: PopQuarantineSpike
+        expr: increase(rmp_pop_events_quarantined_total[15m]) > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PoP quarantine spike"
+          description: "{{ $value }} PoP events quarantined in the last 15 minutes."
+
+      # --- NATS consumer ---
+
+      - alert: NATSConsumerFailures
+        expr: increase(rmp_nats_consumer_failed_total[15m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "NATS consumer failures detected"
+          description: "{{ $value }} consumer failures in the last 15 minutes."
