@@ -116,7 +116,7 @@ Separately covered:
 | Audit events for approval/moderation | ✅ S-052 done |
 || identity.py router decomposition | ✅ S-053 done |
 | XLSX export | 🚧 v0.6 decision (S-054a) |
-| Full behavioural RLS test for creative_upload_sessions | 🚧 v0.6 planned (S-054) |
+|| Full behavioural RLS test for creative_upload_sessions | ✅ S-054 done |
 | Production UX/accessibility audit | Deferred — v0.7 |
 | Emergency Management backend | Deferred — v0.7 |
 | Feature flags / staged rollout | Deferred — v0.7 |

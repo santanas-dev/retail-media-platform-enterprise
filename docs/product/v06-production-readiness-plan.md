@@ -106,7 +106,7 @@ model work.
 | S-052 | Audit Events (Approval/Moderation) | P2 | Low | ✅ done |
 || S-053 | identity Router Decomposition | P2 | Low | ✅ done |
 | S-054a | XLSX Export Decision | P2 | Low | — |
-| S-054 | creative_upload_sessions Behavioural RLS | P1 | Medium | — |
+|| S-054 | creative_upload_sessions Behavioural RLS | P1 | Medium | ✅ done |
 | S-055 | v0.6 Readiness Review | P0 | — | S-047…S-054 |
 
 ### S-047 — Prometheus/Grafana Baseline
