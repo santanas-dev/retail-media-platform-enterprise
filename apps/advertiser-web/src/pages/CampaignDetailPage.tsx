@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { api, ApiError } from "../api/client";
+import { api, ApiError, getToken, IDENTITY_BASE_URL } from "../api/client";
 import type {
   CampaignOut,
   CampaignFlightOut,
@@ -550,7 +550,7 @@ export default function CampaignDetailPage() {
       </Section>
 
       {/* ── PoP Reporting (S-023d) ── */}
-      <PoPReportingSection campaignId={campaign.id} />
+      <PoPReportingSection campaignId={campaign.id} campaignCode={campaign.code} />
 
       {/* ── Attach Creative Modal ── */}
       {showAttachModal && (
@@ -627,12 +627,14 @@ function fmtPopDate(iso: string): string {
   });
 }
 
-function PoPReportingSection({ campaignId }: { campaignId: string }) {
+function PoPReportingSection({ campaignId, campaignCode }: { campaignId: string; campaignCode: string }) {
   const [summary, setSummary] = useState<CampaignPopSummaryOut | null>(null);
   const [byDay, setByDay] = useState<CampaignPopByDayOut[]>([]);
   const [bySurface, setBySurface] = useState<CampaignPopBySurfaceOut[]>([]);
   const [popLoading, setPopLoading] = useState(true);
   const [popError, setPopError] = useState<string | null>(null);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -661,6 +663,38 @@ function PoPReportingSection({ campaignId }: { campaignId: string }) {
     load();
     return () => { cancelled = true; };
   }, [campaignId]);
+
+  const handleExportCsv = async () => {
+    setExportLoading(true);
+    setExportError(null);
+    try {
+      const token = getToken();
+      const resp = await fetch(
+        `${IDENTITY_BASE_URL}/campaigns/${campaignId}/pop/export`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+      );
+      if (!resp.ok) {
+        if (resp.status === 403) throw new ApiError(403, { detail: "Нет прав на экспорт отчёта" });
+        if (resp.status === 404) throw new ApiError(404, { detail: "Кампания не найдена" });
+        throw new ApiError(resp.status, { detail: `Ошибка экспорта (${resp.status})` });
+      }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${campaignCode}_pop_report.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e: unknown) {
+      if (e instanceof ApiError && e.status === 403) setExportError("Нет прав на экспорт отчёта");
+      else if (e instanceof ApiError && e.status === 404) setExportError("Кампания не найдена");
+      else setExportError(e instanceof Error ? e.message : "Ошибка экспорта");
+    } finally {
+      setExportLoading(false);
+    }
+  };
 
   if (popLoading) {
     return (
@@ -767,6 +801,31 @@ function PoPReportingSection({ campaignId }: { campaignId: string }) {
           </table>
         </div>
       )}
+
+      {/* Export button */}
+      <div style={{ marginTop: "1rem", borderTop: "1px solid #f1f5f9", paddingTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+        <button
+          type="button"
+          onClick={handleExportCsv}
+          disabled={exportLoading}
+          style={{
+            padding: "0.3rem 0.7rem",
+            fontSize: "0.8rem",
+            border: "1px solid #2563eb",
+            borderRadius: 4,
+            background: "#2563eb",
+            color: "#fff",
+            cursor: exportLoading ? "not-allowed" : "pointer",
+            opacity: exportLoading ? 0.6 : 1,
+          }}
+        >
+          {exportLoading ? "Экспорт..." : "Скачать CSV"}
+        </button>
+        <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>XLSX — в разработке</span>
+        {exportError && (
+          <span style={{ fontSize: "0.75rem", color: "#dc2626" }}>{exportError}</span>
+        )}
+      </div>
     </Section>
   );
 }

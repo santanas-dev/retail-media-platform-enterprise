@@ -54,7 +54,7 @@ import type {
   DisplaySurfaceRefOut,
 } from "../api/types";
 import { statusLabel, statusColor } from "../api/types";
-import { ApiError } from "../api/client";
+import { ApiError, getToken, IDENTITY_BASE_URL } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 // ── Delivered types for use in the component ──
@@ -197,6 +197,8 @@ export default function CampaignDetailPage() {
   const [popLoading, setPopLoading] = useState(false);
   const [popLoaded, setPopLoaded] = useState(false);
   const [popError, setPopError] = useState<string | null>(null);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   // Reference data for placement pickers
   const [refSurfaces, setRefSurfaces] = useState<DisplaySurfaceRefOut[]>([]);
@@ -394,6 +396,38 @@ export default function CampaignDetailPage() {
       setPopLoading(false);
     }
   }, []);
+
+  // S-040: CSV export handler
+  const handleExportCsv = useCallback(async () => {
+    if (!data) return;
+    setExportLoading(true);
+    setExportError(null);
+    try {
+      const token = getToken();
+      const resp = await fetch(
+        `${IDENTITY_BASE_URL}/campaigns/${data.campaign.id}/pop/export`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+      );
+      if (!resp.ok) {
+        if (resp.status === 403) throw new ApiError(403, { detail: "Нет прав на экспорт отчёта" });
+        if (resp.status === 404) throw new ApiError(404, { detail: "Кампания не найдена" });
+        throw new ApiError(resp.status, { detail: `Ошибка экспорта (${resp.status})` });
+      }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${data.campaign.code}_pop_report.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e: unknown) {
+      setExportError(e instanceof Error ? e.message : "Ошибка экспорта");
+    } finally {
+      setExportLoading(false);
+    }
+  }, [data]);
 
   // Lazy-load PoP data when reporting tab is activated
   useEffect(() => {
@@ -1367,10 +1401,32 @@ export default function CampaignDetailPage() {
               </>
             )}
 
-            {/* Limitation note */}
-            <p style={{ marginTop: "1.5rem", marginBottom: 0, fontSize: "0.7rem", color: "#94a3b8", borderTop: "1px solid #f1f5f9", paddingTop: "0.75rem" }}>
-              Отчётность построена по подтверждённым PoP-событиям; ClickHouse и экспорт — отдельным этапом.
-            </p>
+            {/* Limitation note + Export button */}
+            <div style={{ marginTop: "1.5rem", borderTop: "1px solid #f1f5f9", paddingTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                disabled={exportLoading}
+                style={{
+                  padding: "0.35rem 0.75rem",
+                  fontSize: "0.8rem",
+                  border: "1px solid #2563eb",
+                  borderRadius: 4,
+                  background: "#2563eb",
+                  color: "#fff",
+                  cursor: exportLoading ? "not-allowed" : "pointer",
+                  opacity: exportLoading ? 0.6 : 1,
+                }}
+              >
+                {exportLoading ? "Экспорт..." : "Скачать CSV"}
+              </button>
+              <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
+                XLSX — в разработке
+              </span>
+              {exportError && (
+                <span style={{ fontSize: "0.75rem", color: "#dc2626" }}>{exportError}</span>
+              )}
+            </div>
           </>
         )}
       </div>

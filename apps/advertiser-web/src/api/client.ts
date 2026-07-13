@@ -19,7 +19,7 @@
  */
 
 const AUTH_BASE_URL = "/api/v1/auth";
-const IDENTITY_BASE_URL = "/api/v1/identity";
+export const IDENTITY_BASE_URL = "/api/v1/identity";
 
 export class ApiError extends Error {
   status: number;

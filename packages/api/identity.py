@@ -7,6 +7,7 @@ Phase 3.5b: Advertiser organizations endpoint with RLS.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from starlette.responses import Response
 
 from packages.api.dependencies import (
     get_current_active_user,
@@ -1852,6 +1853,81 @@ async def get_campaign_pop_by_surface(
         )
         for row in rows
     ]
+
+
+# ---------------------------------------------------------------------------
+# S-040 — PoP Report CSV Export
+# ---------------------------------------------------------------------------
+
+
+@router.get("/campaigns/{campaign_id}/pop/export")
+async def export_campaign_pop_csv(
+    campaign_id: str,
+    db=Depends(get_db),
+    scope: ScopeContext = Depends(get_scope_context),
+    _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Export PoP report as CSV (UTF-8 with BOM for Excel).
+
+    Same auth/scope as the JSON endpoints.
+    XLSX deferred — no openpyxl in project requirements.
+    """
+    campaign = await _require_campaign_visible(db, campaign_id, scope)
+
+    import csv
+    import io
+    from datetime import datetime, timezone
+
+    summary = await repository.get_campaign_pop_summary(db, campaign_id)
+    by_day = await repository.list_campaign_pop_by_day(db, campaign_id)
+    by_surface = await repository.list_campaign_pop_by_surface(db, campaign_id)
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    safe_code = campaign.code.replace('"', "").replace("'", "").replace("/", "_")[:64]
+
+    buf = io.StringIO()
+    buf.write("\ufeff")  # UTF-8 BOM for Excel
+    w = csv.writer(buf)
+
+    # Header
+    w.writerow(["Отчёт по показам"])
+    w.writerow([f"Кампания: {campaign.name} ({campaign.code})"])
+    w.writerow([f"Сформирован: {now}"])
+    w.writerow([])
+
+    # Summary
+    w.writerow(["Сводка"])
+    w.writerow(["Показы", summary["impressions_count"]])
+    w.writerow(["Общая длительность (мс)", summary["total_duration_ms"]])
+    w.writerow(["Устройств", summary["unique_devices"]])
+    w.writerow(["Поверхностей", summary["unique_surfaces"]])
+    if summary["first_rendered_at"]:
+        w.writerow(["Первый показ", str(summary["first_rendered_at"])])
+    if summary["last_rendered_at"]:
+        w.writerow(["Последний показ", str(summary["last_rendered_at"])])
+    w.writerow([])
+
+    # By Day
+    w.writerow(["По дням"])
+    w.writerow(["Дата", "Показы", "Длительность (мс)"])
+    for row in by_day:
+        w.writerow([str(row["date"]), row["impressions_count"], row["total_duration_ms"]])
+    w.writerow([])
+
+    # By Surface
+    w.writerow(["По поверхностям"])
+    w.writerow(["Поверхность", "Показы", "Длительность (мс)"])
+    for row in by_surface:
+        w.writerow([row["surface_id"], row["impressions_count"], row["total_duration_ms"]])
+
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_code}_pop_report.csv"',
+        },
+    )
 
 
 # ---------------------------------------------------------------------------

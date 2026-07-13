@@ -822,5 +822,160 @@ class TestAdvertiserUserMemberships(AuthzMixin, unittest.TestCase):
         mock_repo.assert_not_called()
 
 
+# ---------------------------------------------------------------------------
+# S-040 — PoP Report CSV Export
+# ---------------------------------------------------------------------------
+
+
+class TestPopExportCsv(AuthzMixin, unittest.TestCase):
+    """GET /api/v1/identity/campaigns/{id}/pop/export"""
+
+    _POP_SUMMARY = {
+        "impressions_count": 150,
+        "total_duration_ms": 450000,
+        "first_rendered_at": "2026-06-01T08:00:00",
+        "last_rendered_at": "2026-06-15T20:00:00",
+        "unique_devices": 12,
+        "unique_surfaces": 3,
+    }
+    _POP_BY_DAY = [
+        {"date": "2026-06-01", "impressions_count": 50, "total_duration_ms": 150000},
+        {"date": "2026-06-02", "impressions_count": 100, "total_duration_ms": 300000},
+    ]
+    _POP_BY_SURFACE = [
+        {"surface_id": "sf-1", "impressions_count": 80, "total_duration_ms": 240000},
+        {"surface_id": "sf-2", "impressions_count": 70, "total_duration_ms": 210000},
+    ]
+
+    def _mock_campaign(self):
+        """Mock get_campaign (called by _require_campaign_visible)."""
+        from packages.domain.models import Campaign
+        return Campaign(
+            id="c-export", code="C-EXP", name="Export Campaign",
+            advertiser_organization_id="org-1", advertiser_contract_id="con-1",
+            status="published", priority=0, timezone="Europe/Moscow",
+        )
+
+    def _setup_pop_mocks(self):
+        """Mock repository functions for PoP data + campaign lookup."""
+        self._setup_authz(perms={"campaigns.read"})
+        self._patch_get_campaign = patch(
+            "packages.api.identity.repository.get_campaign", new_callable=AsyncMock,
+        )
+        self._patch_summary = patch(
+            "packages.api.identity.repository.get_campaign_pop_summary", new_callable=AsyncMock,
+        )
+        self._patch_by_day = patch(
+            "packages.api.identity.repository.list_campaign_pop_by_day", new_callable=AsyncMock,
+        )
+        self._patch_by_surface = patch(
+            "packages.api.identity.repository.list_campaign_pop_by_surface", new_callable=AsyncMock,
+        )
+        self.mock_get_campaign = self._patch_get_campaign.start()
+        self.mock_summary = self._patch_summary.start()
+        self.mock_by_day = self._patch_by_day.start()
+        self.mock_by_surface = self._patch_by_surface.start()
+
+        self.mock_get_campaign.return_value = self._mock_campaign()
+        self.mock_summary.return_value = self._POP_SUMMARY
+        self.mock_by_day.return_value = self._POP_BY_DAY
+        self.mock_by_surface.return_value = self._POP_BY_SURFACE
+
+        self.addCleanup(self._patch_get_campaign.stop)
+        self.addCleanup(self._patch_summary.stop)
+        self.addCleanup(self._patch_by_day.stop)
+        self.addCleanup(self._patch_by_surface.stop)
+
+    def test_returns_csv_with_correct_content_type(self):
+        self._setup_pop_mocks()
+        resp = self._get("/api/v1/identity/campaigns/c-export/pop/export")
+        self.assertEqual(resp.status_code, 200)
+        ct = resp.headers.get("content-type", "")
+        self.assertIn("text/csv", ct)
+        self.assertIn("charset=utf-8", ct)
+
+    def test_content_disposition_is_attachment(self):
+        self._setup_pop_mocks()
+        resp = self._get("/api/v1/identity/campaigns/c-export/pop/export")
+        cd = resp.headers.get("content-disposition", "")
+        self.assertIn("attachment", cd)
+        self.assertIn("C-EXP_pop_report.csv", cd)
+
+    def test_csv_includes_summary(self):
+        self._setup_pop_mocks()
+        resp = self._get("/api/v1/identity/campaigns/c-export/pop/export")
+        text = resp.text
+        self.assertIn("Сводка", text)
+        self.assertIn("150", text)  # impressions_count
+        self.assertIn("12", text)  # unique_devices
+
+    def test_csv_includes_by_day(self):
+        self._setup_pop_mocks()
+        resp = self._get("/api/v1/identity/campaigns/c-export/pop/export")
+        text = resp.text
+        self.assertIn("По дням", text)
+        self.assertIn("2026-06-01", text)
+        self.assertIn("50", text)
+
+    def test_csv_includes_by_surface(self):
+        self._setup_pop_mocks()
+        resp = self._get("/api/v1/identity/campaigns/c-export/pop/export")
+        text = resp.text
+        self.assertIn("По поверхностям", text)
+        self.assertIn("sf-1", text)
+        self.assertIn("80", text)
+
+    def test_csv_includes_campaign_name(self):
+        self._setup_pop_mocks()
+        resp = self._get("/api/v1/identity/campaigns/c-export/pop/export")
+        self.assertIn("Export Campaign", resp.text)
+        self.assertIn("C-EXP", resp.text)
+
+    def test_requires_auth(self):
+        resp = TestClient(_get_app()).get("/api/v1/identity/campaigns/c-export/pop/export")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_advertiser_gets_403_without_campaigns_read(self):
+        self._setup_authz(perms={"users.read"})
+        resp = self._get("/api/v1/identity/campaigns/c-export/pop/export")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_campaign_not_found_returns_404(self):
+        self._setup_authz(perms={"campaigns.read"})
+        self._patch_get_campaign = patch(
+            "packages.api.identity.repository.get_campaign", new_callable=AsyncMock,
+        )
+        mock = self._patch_get_campaign.start()
+        mock.return_value = None
+        self.addCleanup(self._patch_get_campaign.stop)
+
+        resp = self._get("/api/v1/identity/campaigns/c-nonexistent/pop/export")
+        self.assertEqual(resp.status_code, 404)
+
+    def test_no_storage_fields_in_export(self):
+        self._setup_pop_mocks()
+        resp = self._get("/api/v1/identity/campaigns/c-export/pop/export")
+        text = resp.text
+        self.assertNotIn("storage_bucket", text)
+        self.assertNotIn("storage_key", text)
+        self.assertNotIn("presigned_url", text)
+        self.assertNotIn("password_hash", text)
+
+    def test_empty_pop_data_exports_valid_report(self):
+        self._setup_pop_mocks()
+        self.mock_summary.return_value = {
+            "impressions_count": 0, "total_duration_ms": 0,
+            "first_rendered_at": None, "last_rendered_at": None,
+            "unique_devices": 0, "unique_surfaces": 0,
+        }
+        self.mock_by_day.return_value = []
+        self.mock_by_surface.return_value = []
+        resp = self._get("/api/v1/identity/campaigns/c-export/pop/export")
+        self.assertEqual(resp.status_code, 200)
+        text = resp.text
+        self.assertIn("Сводка", text)
+        self.assertIn("0", text)  # impressions_count
+
+
 if __name__ == "__main__":
     unittest.main()
