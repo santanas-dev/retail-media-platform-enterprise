@@ -17,6 +17,7 @@ from packages.domain.schemas import (
     CampaignApprovalQueueItem,
     CampaignApprovalResponse,
     CampaignArchiveResponse,
+    CampaignCreateRequest,
     CampaignCreativeCreateRequest,
     CampaignCreativeAttachRequest,
     CampaignCreativeOut,
@@ -29,6 +30,8 @@ from packages.domain.schemas import (
     CampaignPlacementUpdateRequest,
     CampaignRejectRequest,
     CampaignStatusHistoryOut,
+    CampaignUpdateRequest,
+    CreativeAssetOut,
 )
 # Use repository.XXX() style so @patch("packages.api.identity.repository.XXX")
 # targets work — see creatives.py for the established pattern.
@@ -84,7 +87,7 @@ async def list_campaign_creatives(
     return [CampaignCreativeOut.model_validate(item) for item in items]
 
 
-@router.get("/creative-assets", response_model=list[CampaignCreativeOut])
+@router.get("/creative-assets", response_model=list[CreativeAssetOut])
 async def list_creative_assets(
     db=Depends(get_db),
     _perm=Depends(require_scoped_permission("creatives.read", "advertiser")),
@@ -132,13 +135,12 @@ async def list_campaign_status_history(
 
 @router.post("/campaigns", response_model=CampaignOut, status_code=201)
 async def create_campaign_endpoint(
-    body,
+    body: CampaignCreateRequest,
     db=Depends(get_db),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
-    from packages.domain.schemas import CampaignCreateRequest
     user_id = claims["sub"]
     try:
         campaign_id = await repository.create_campaign(
@@ -183,13 +185,12 @@ async def create_campaign_endpoint(
 @router.patch("/campaigns/{campaign_id}", response_model=CampaignOut)
 async def update_campaign_endpoint(
     campaign_id: str,
-    body,
+    body: CampaignUpdateRequest,
     db=Depends(get_db),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
-    from packages.domain.schemas import CampaignUpdateRequest
     user_id = claims["sub"]
     try:
         status = await repository.update_campaign(
@@ -635,7 +636,7 @@ async def update_placement_endpoint(
 
 
 @router.post("/campaigns/{campaign_id}/creatives",
-             response_model=CampaignCreativeOut, status_code=201)  # FIXME: response_model should be CreativeAssetOut
+             response_model=CreativeAssetOut, status_code=201)
 async def create_creative_endpoint(
     campaign_id: str,
     body: CampaignCreativeCreateRequest,
@@ -687,7 +688,7 @@ async def create_creative_endpoint(
 
 
 @router.post("/campaigns/{campaign_id}/creatives/attach",
-             response_model=CampaignCreativeOut, status_code=201)  # FIXME: should be CreativeAssetOut
+             response_model=CreativeAssetOut, status_code=201)
 async def attach_creative_endpoint(
     campaign_id: str,
     body: CampaignCreativeAttachRequest,
