@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
-| **Last updated:** 2026-07-11
-| **Current phase:** S-036 creative moderation queue complete. S-035 audit hardening closed.
+| **Last updated:** 2026-07-13
+| **Current phase:** v0.5 Business Portal Complete — S-042 readiness review passed (CONDITIONAL GO). S-036…S-040 done. KSO/player remains deferred/out of scope.|
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -96,11 +96,11 @@ Separately covered:
 - **open/prepared** — definition written, tag commands prepared, awaiting approval
 - **deferred** — intentionally postponed (documented reason)
 
-## Remaining Gaps (non-blocking for advertiser self-service pilot)
+## Remaining Gaps (non-blocking for v0.5 Business Portal)
 
 | Gap | Status |
 |-----|--------|
-| Real KSO player/sidecar | Out of scope for v0.4, next release |
+| Real KSO player/sidecar | Deferred — v2.6, out of scope |
 | Advertiser approve/reject campaigns | Deferred — admin-only |
 | Sales lift / attribution / billing | Deferred — v2.6 |
 | Production UX/accessibility audit | Deferred |
@@ -110,3 +110,8 @@ Separately covered:
 | ClickHouse / materialized reporting (4.3e) | Deferred |
 | Mobile application | Deferred — v2.6 |
 | Tenant model ADR before v2.6 | 🟡 Decision needed / proposed — ADR-018 |
+| XLSX export | Deferred — CSV done (S-040), XLSX requires openpyxl |
+| Password reset invite/email flow | Deferred |
+| Malware scan / transcoding / renditions | Deferred |
+| Full behavioural RLS test for creative_upload_sessions | Deferred — migration structure test exists |
+| Audit events for campaign approval / creative moderation | P2 follow-up — outbox events exist, operational audit not yet written |
