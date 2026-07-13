@@ -553,6 +553,90 @@ async def list_campaign_approvals(session: AsyncSession) -> list:
     return list(result.scalars().all())
 
 
+async def list_approval_queue(
+    session: AsyncSession,
+    *,
+    status_filter: str = "pending_approval",
+) -> list[dict]:
+    """Enriched approval queue with advertiser context + readiness summary."""
+    from packages.domain.models import (
+        Campaign, AdvertiserOrganization, AdvertiserBrand,
+        CampaignFlight, CampaignPlacement, CampaignCreative, CreativeAsset,
+        CampaignApproval, CampaignStatusHistory,
+    )
+    from sqlalchemy import select as sa_select, func
+
+    stmt = (
+        sa_select(
+            Campaign.id.label("campaign_id"),
+            Campaign.code.label("campaign_code"),
+            Campaign.name.label("campaign_name"),
+            Campaign.status.label("campaign_status"),
+            Campaign.advertiser_organization_id.label("advertiser_org_id"),
+            AdvertiserOrganization.name.label("advertiser_org_name"),
+            AdvertiserBrand.name.label("advertiser_brand_name"),
+            CampaignStatusHistory.changed_at.label("requested_at"),
+            CampaignStatusHistory.changed_by.label("requested_by"),
+            CampaignApproval.rejection_reason.label("rejection_reason"),
+        )
+        .outerjoin(AdvertiserOrganization, Campaign.advertiser_organization_id == AdvertiserOrganization.id)
+        .outerjoin(AdvertiserBrand, Campaign.advertiser_brand_id == AdvertiserBrand.id)
+        .outerjoin(
+            CampaignApproval,
+            Campaign.id == CampaignApproval.campaign_id,
+        )
+        .outerjoin(
+            CampaignStatusHistory,
+            Campaign.id == CampaignStatusHistory.campaign_id,
+        )
+        .where(CampaignStatusHistory.new_status == "pending_approval")
+    )
+
+    if status_filter != "all":
+        stmt = stmt.where(Campaign.status == status_filter)
+
+    stmt = stmt.order_by(CampaignStatusHistory.changed_at.desc())
+
+    result = await session.execute(stmt)
+    rows = [dict(row._mapping) for row in result.fetchall()]
+
+    # Enrich with readiness summary per campaign
+    for row in rows:
+        cid = row["campaign_id"]
+        flight_count = await session.scalar(
+            sa_select(func.count()).select_from(CampaignFlight)
+            .where(CampaignFlight.campaign_id == cid)
+        )
+        placement_count = await session.scalar(
+            sa_select(func.count()).select_from(CampaignPlacement)
+            .where(CampaignPlacement.campaign_id == cid)
+        )
+        cc_result = await session.execute(
+            sa_select(CampaignCreative.creative_asset_id)
+            .where(CampaignCreative.campaign_id == cid)
+        )
+        asset_ids = [r[0] for r in cc_result.fetchall()]
+        creative_count = len(asset_ids)
+        all_ready = False
+        all_approved = False
+        if asset_ids:
+            ca_result = await session.execute(
+                sa_select(CreativeAsset.status, CreativeAsset.moderation_status)
+                .where(CreativeAsset.id.in_(asset_ids))
+            )
+            ca_rows = ca_result.fetchall()
+            all_ready = all(r[0] == "ready" for r in ca_rows)
+            all_approved = all(r[1] == "approved" for r in ca_rows)
+
+        row["has_flight"] = bool(flight_count)
+        row["has_placement"] = bool(placement_count)
+        row["has_creative"] = bool(creative_count)
+        row["all_creatives_ready"] = all_ready
+        row["all_creatives_approved"] = all_approved
+
+    return rows
+
+
 async def list_campaign_status_history(session: AsyncSession) -> list:
     """Return all campaign status history, ordered by campaign_id + changed_at."""
     from packages.domain.models import CampaignStatusHistory
@@ -915,6 +999,9 @@ async def approve_campaign(
     Creates campaign_approvals row + status history.
     ``requested_at`` is taken from the draft→pending_approval status history
     transition, not from decision time.
+
+    S-038: re-verifies readiness at approve time — creative moderation may
+    have changed since the original request_approval call.
     """
     import uuid
     from datetime import datetime, timezone as tz
@@ -932,6 +1019,37 @@ async def approve_campaign(
         return None, None
 
     _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    # S-038: re-verify readiness at approve time — creative moderation may have
+    # changed since the original request_approval call.
+    from packages.domain.models import (
+        CampaignFlight, CampaignPlacement, CampaignCreative, CreativeAsset,
+    )
+    flight_count = await session.scalar(
+        select(func.count()).select_from(CampaignFlight)
+        .where(CampaignFlight.campaign_id == campaign_id)
+    )
+    placement_count = await session.scalar(
+        select(func.count()).select_from(CampaignPlacement)
+        .where(CampaignPlacement.campaign_id == campaign_id)
+    )
+    cc_result = await session.execute(
+        select(CampaignCreative.creative_asset_id)
+        .where(CampaignCreative.campaign_id == campaign_id)
+    )
+    asset_ids = [row[0] for row in cc_result.fetchall()]
+    if not flight_count or not placement_count or not asset_ids:
+        return None, None  # no flights/placements/creatives — cannot approve
+    if asset_ids:
+        ca_result = await session.execute(
+            select(CreativeAsset.status, CreativeAsset.moderation_status)
+            .where(CreativeAsset.id.in_(asset_ids))
+        )
+        for st, mod_st in ca_result.fetchall():
+            if st != "ready":
+                return None, None  # creative not uploaded
+            if mod_st != "approved":
+                return None, None  # creative not approved by moderation
 
     # Look up the request timestamp from the draft→pending_approval transition.
     # Fail if no such transition exists (never requested approval legitimately).

@@ -613,5 +613,65 @@ class TestInventorySurfacePatch(AuthzMixin, unittest.TestCase):
         mock_toggle.assert_not_called()
 
 
+# ---------------------------------------------------------------------------
+# S-038 — Campaign Approval Queue Tests
+# ---------------------------------------------------------------------------
+
+
+class TestApprovalQueue(AuthzMixin, unittest.TestCase):
+    """GET /api/v1/identity/campaigns/approval-queue"""
+
+    @patch("packages.api.identity.repository.list_approval_queue", new_callable=AsyncMock)
+    def test_returns_pending_campaigns(self, mock_repo):
+        self._setup_authz(perms={"campaigns.approve"})
+        mock_repo.return_value = [{
+            "campaign_id": "c-1", "campaign_code": "C-001", "campaign_name": "Test",
+            "campaign_status": "pending_approval",
+            "advertiser_org_id": "org-1", "advertiser_org_name": "Org", "advertiser_brand_name": "Brand",
+            "requested_at": "2026-01-01T00:00:00", "requested_by": "u-1",
+            "has_flight": True, "has_placement": True, "has_creative": True,
+            "all_creatives_ready": True, "all_creatives_approved": True,
+            "rejection_reason": None,
+        }]
+        resp = self._get("/api/v1/identity/campaigns/approval-queue")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()[0]
+        self.assertEqual(data["campaign_code"], "C-001")
+        self.assertTrue(data["has_flight"])
+        self.assertNotIn("storage_bucket", data)
+
+    @patch("packages.api.identity.repository.list_approval_queue", new_callable=AsyncMock)
+    def test_advertiser_gets_403(self, mock_repo):
+        self._setup_authz(perms={"campaigns.read"})
+        resp = self._get("/api/v1/identity/campaigns/approval-queue")
+        self.assertEqual(resp.status_code, 403)
+        mock_repo.assert_not_called()
+
+    @patch("packages.api.identity.repository.list_approval_queue", new_callable=AsyncMock)
+    def test_invalid_filter_rejected(self, mock_repo):
+        self._setup_authz(perms={"campaigns.approve"})
+        resp = self._get("/api/v1/identity/campaigns/approval-queue?status=invalid")
+        self.assertEqual(resp.status_code, 422)
+        mock_repo.assert_not_called()
+
+    @patch("packages.api.identity.repository.list_approval_queue", new_callable=AsyncMock)
+    def test_readiness_not_ready_shows(self, mock_repo):
+        self._setup_authz(perms={"campaigns.approve"})
+        mock_repo.return_value = [{
+            "campaign_id": "c-2", "campaign_code": "C-002", "campaign_name": "Not Ready",
+            "campaign_status": "pending_approval",
+            "advertiser_org_id": "org-1", "advertiser_org_name": "Org", "advertiser_brand_name": "Brand",
+            "requested_at": "2026-01-01T00:00:00", "requested_by": "u-1",
+            "has_flight": True, "has_placement": False, "has_creative": True,
+            "all_creatives_ready": False, "all_creatives_approved": False,
+            "rejection_reason": None,
+        }]
+        resp = self._get("/api/v1/identity/campaigns/approval-queue")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()[0]
+        self.assertFalse(data["has_placement"])
+        self.assertFalse(data["all_creatives_approved"])
+
+
 if __name__ == "__main__":
     unittest.main()

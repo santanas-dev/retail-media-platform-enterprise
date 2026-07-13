@@ -28,6 +28,7 @@ from packages.domain.schemas import (
     AuditEventOut,
     BranchOut,
     CampaignApprovalOut,
+    CampaignApprovalQueueItem,
     CampaignCreativeOut,
     CampaignFlightOut,
     CampaignOut,
@@ -1049,6 +1050,31 @@ async def reject_endpoint(
         old_status=old_status,
         new_status=new_status,
     )
+
+
+# ---------------------------------------------------------------------------
+# S-038 — Campaign Approval Queue
+# ---------------------------------------------------------------------------
+
+
+@router.get("/campaigns/approval-queue",
+            response_model=list[CampaignApprovalQueueItem])
+async def approval_queue_endpoint(
+    status_filter: str = Query("pending_approval", alias="status"),
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("campaigns.approve")),
+):
+    """List campaigns in the approval inbox — requires campaigns.approve.
+
+    Filter by campaign status: pending_approval (default), approved, rejected, or all.
+    Includes advertiser context + readiness summary. No storage fields.
+    """
+    valid = {"pending_approval", "approved", "rejected", "all"}
+    if status_filter not in valid:
+        raise HTTPException(status_code=422, detail=f"Invalid status filter: {status_filter}")
+
+    items = await repository.list_approval_queue(db, status_filter=status_filter)
+    return [CampaignApprovalQueueItem(**item) for item in items]
 
 
 # ---------------------------------------------------------------------------

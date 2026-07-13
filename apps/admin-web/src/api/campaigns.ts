@@ -218,6 +218,23 @@ export function listApprovals(): Promise<CampaignApprovalOut[]> {
   return api.get<CampaignApprovalOut[]>("/campaign-approvals");
 }
 
+// ── S-038: Campaign Approval Queue ──
+
+import type { CampaignApprovalQueueItem } from "./types";
+
+export function listApprovalQueue(
+  status = "pending_approval",
+): Promise<CampaignApprovalQueueItem[]> {
+  const params = new URLSearchParams();
+  if (status !== "pending_approval") {
+    params.set("status", status);
+  }
+  const qs = params.toString();
+  return api.get<CampaignApprovalQueueItem[]>(
+    `/campaigns/approval-queue${qs ? `?${qs}` : ""}`,
+  );
+}
+
 export function listStatusHistory(): Promise<CampaignStatusHistoryOut[]> {
   return api.get<CampaignStatusHistoryOut[]>("/campaign-status-history");
 }

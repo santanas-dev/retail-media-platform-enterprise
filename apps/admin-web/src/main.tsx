@@ -13,6 +13,7 @@ import UsersPage from "./pages/UsersPage";
 import ADSettingsPage from "./pages/ADSettingsPage";
 import CreativeModerationPage from "./pages/CreativeModerationPage";
 import InventoryPage from "./pages/InventoryPage";
+import ApprovalInboxPage from "./pages/ApprovalInboxPage";
 
 const router = createBrowserRouter([
   {
@@ -36,6 +37,7 @@ const router = createBrowserRouter([
       { path: "settings/ad", element: <ADSettingsPage /> },
       { path: "creatives/moderation", element: <CreativeModerationPage /> },
       { path: "inventory", element: <InventoryPage /> },
+      { path: "campaigns/approvals", element: <ApprovalInboxPage /> },
     ],
   },
 ]);

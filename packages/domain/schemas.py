@@ -578,6 +578,31 @@ class CampaignApprovalResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# S-038 — Campaign Approval Queue Schemas
+# ---------------------------------------------------------------------------
+
+
+class CampaignApprovalQueueItem(BaseModel):
+    """Campaign in the approval inbox — includes advertiser context + readiness summary."""
+    campaign_id: str
+    campaign_code: str
+    campaign_name: str
+    campaign_status: str
+    advertiser_org_id: str | None = None
+    advertiser_org_name: str | None = None
+    advertiser_brand_name: str | None = None
+    requested_at: datetime | None = None
+    requested_by: str | None = None
+    # Readiness summary
+    has_flight: bool = False
+    has_placement: bool = False
+    has_creative: bool = False
+    all_creatives_ready: bool = False
+    all_creatives_approved: bool = False
+    rejection_reason: str | None = None
+
+
+# ---------------------------------------------------------------------------
 # PoP Ingestion Schemas (Phase 4.3c — ADR-017)
 # ---------------------------------------------------------------------------
 

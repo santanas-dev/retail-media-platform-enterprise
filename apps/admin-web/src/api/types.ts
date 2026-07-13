@@ -232,6 +232,26 @@ export interface InventorySurfacePatchRequest {
   is_active?: boolean;
 }
 
+// ── S-038: Campaign Approval Queue ──
+
+export interface CampaignApprovalQueueItem {
+  campaign_id: string;
+  campaign_code: string;
+  campaign_name: string;
+  campaign_status: string;
+  advertiser_org_id: string | null;
+  advertiser_org_name: string | null;
+  advertiser_brand_name: string | null;
+  requested_at: string | null;
+  requested_by: string | null;
+  has_flight: boolean;
+  has_placement: boolean;
+  has_creative: boolean;
+  all_creatives_ready: boolean;
+  all_creatives_approved: boolean;
+  rejection_reason: string | null;
+}
+
 // ── Helper: localized status labels ──
 
 // ── Campaign Create Request (matches backend CampaignCreateRequest) ──
