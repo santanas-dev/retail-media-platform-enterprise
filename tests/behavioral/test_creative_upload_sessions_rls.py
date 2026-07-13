@@ -65,11 +65,12 @@ async def _setup_fixtures():
             await conn.execute(text(f"""
                 INSERT INTO creative_assets
                     (id,code,name,advertiser_organization_id,media_type,
-                     storage_bucket,storage_key,
+                     storage_bucket,storage_key,sha256_checksum,file_size_bytes,
                      moderation_status,status,created_by,created_at,updated_at)
                 VALUES
                     ('{ASSET_ID}','{ASSET_CODE}','S-054 Test Asset','{ORG_A_ID}',
                      'image','test-bucket','test/key.jpg',
+                     'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',0,
                      'pending_review','metadata_only',
                      '00000000-0000-0000-0000-000000000001',NOW(),NOW())
                 ON CONFLICT (id) DO NOTHING
