@@ -392,6 +392,119 @@ git push origin :refs/tags/v0.4-advertiser-self-service-pilot
 
 ---
 
+### v0.5-business-portal-complete — Business Portal Complete
+
+**Proposed.**  Tag not yet created.
+
+#### Metadata
+- **Tag:** v0.5-business-portal-complete
+- **Date:** 2026-07-13 (proposed)
+- **Commit SHA:** `5c41a6aca7de7af9f3f806469c6ab436403c537a` (last code baseline before docs-only S-042a/S-043)
+- **GitHub Actions run:** #29244491388 (conclusion: success, 34/34 jobs)
+- **Created by:** P.S. (via Hermes)
+
+#### Business Capabilities
+
+**Admin portal:**
+- Memory-only token auth — session restore via refresh cookie, no localStorage
+- User management — create local advertiser accounts, activate/deactivate, reset password
+- AD settings page — honest stub (503), disabled/configured status reporting
+- Advertiser organizations page — org list with search, detail panel (5 tabs: overview, brands, contracts, contacts, users)
+- Campaign CRUD — list, detail, create, edit, archive
+- Campaign approval inbox — readiness checklist, approve/reject with reason, creative moderation gate
+- Creative upload/library — presigned MinIO URLs, SHA-256/server-side validation
+- Creative moderation queue — pending_review/approved/rejected filter, approve/reject with reason
+- Inventory management UI — stores/surfaces tabs with search, active/inactive toggle
+- PoP reporting — summary, by-day, by-surface tables + CSV export
+
+**Advertiser portal:**
+- Memory-only token auth — session restore via refresh cookie, no localStorage
+- Profile page — organisation, brands, contracts, contacts display
+- Password change / must_change_password flow
+- Campaign list/detail — overview, flights, placements, creatives, approval status
+- Campaign create/edit drafts — org/brand/contract selects, inline editing
+- Creative library/upload — metadata create, presigned upload with progress bar
+- Attach existing creatives to draft campaigns
+- Submit campaign for approval — readiness panel with flights/placements/creatives checks
+- Approval/rejection visibility — Russian status labels, rejection reason display
+- PoP reporting — summary cards, by-day table, by-surface table + CSV export
+
+**Backend:**
+- Dual auth — local_advertiser (bcrypt) + local_break_glass, AD stub (honest 503)
+- RBAC/RLS — 23 permission gates, 28 PostgreSQL RLS policies, NOBYPASSRLS runtime role
+- Campaign approval workflow — request-approval/approve/reject, status transitions, outbox events
+- Creative upload + manual moderation — presigned URLs, server-side validation, moderation queue
+- Inventory endpoints — stores/surfaces read/manage
+- Advertiser org/brand/contract/contact — 6 endpoints with RBAC/RLS
+- PoP reporting/export — JSON endpoints + CSV UTF-8 BOM export
+- Audit hardening (S-035a–i) — CORS PATCH, refresh family revoke on replay, async MinIO wrapper, RLS + behavioural proof
+- Production config gate (S-030) — CI job, 24 tests, fail on missing/weak secrets in production
+- Backup/restore (S-031) — PostgreSQL backup/restore scripts, integration test (5/5), runbook, live drill (4.7MB)
+
+#### Technical Capabilities
+
+- **S-029:** Production gaps triage — 8 categories, 35+ gaps classified P0–P3
+- **S-030:** Production CI gate + secrets validation — 24 config tests, CI job
+- **S-031:** Backup/restore/DR — PostgreSQL backup/restore scripts + live drill
+- **S-031a:** Flaky outbox test stabilization — due-event isolation pattern
+- **S-032:** Roadmap resequence — Business Portal before Player per original ТЗ
+- **S-033/S-033s:** Admin user management — create/deactivate/reset, RLS/org validation
+- **S-034:** AD settings UI — honest connection status, no secrets
+- **S-035a–i:** External audit hardening — 9 findings closed (CORS, refresh family, async MinIO, RLS, audit events)
+- **S-036:** Creative moderation queue — approve/reject, `creatives.moderate` permission
+- **S-037:** Advertising inventory UI — stores/surfaces endpoints + admin-web page
+- **S-038:** Campaign approval inbox — readiness gate at approve-time, creative moderation block
+- **S-039:** Admin advertisers page — org list + 5-tab detail panel, `advertisers.read`/`contacts.read`
+- **S-040:** PoP CSV export — UTF-8 BOM, Russian headers, admin + advertiser download buttons
+- **S-041:** Branch/release truth check — main stable at `f4ca15e`, develop clean
+- **S-042:** v0.5 readiness review — CONDITIONAL GO with updated tracker
+- **S-042a:** Stabilization tracker refresh for v0.5 RC
+- **Testing:** 1006 Python unit + 255 behavioural + 71 admin-web + 68 advertiser-web = 1,400+ total
+- **CI:** GitHub Actions — 34 jobs per run, all green on code baseline `5c41a6a`
+
+#### Known Limitations / Not Included
+
+- Real LDAPS/AD integration — stub 503, deferred to v0.6
+- Password reset invite/email flow — deferred to v0.6
+- XLSX export — deferred (CSV done in S-040)
+- Malware scan — deferred to v0.7
+- Transcoding/renditions — deferred to v0.9
+- ClickHouse/reporting warehouse — deferred to v0.8
+- Billing/acts/ERP — deferred to v2.6
+- Production observability (Prometheus/Grafana) — deferred to v0.5 production milestone
+- MinIO/NATS backup — deferred
+- KSO player/sidecar — deferred to v0.9, out of scope for v0.5
+- Real hardware provisioning — out of scope
+- Device signature verification — HMAC-SHA256 implemented, device-gateway verification deferred
+- Tenant model ADR-018 — proposed, decision pending
+- Audit events for campaign approval/creative moderation — P2 follow-up (outbox events exist)
+- Full behavioural RLS test for creative_upload_sessions — deferred
+
+#### Rollback Note
+
+Schema additions since v0.4 are forward-compatible. No destructive migrations.
+To revert:
+
+```bash
+git checkout v0.4-advertiser-self-service-pilot
+```
+
+If tag was pushed, delete:
+
+```bash
+git tag -d v0.5-business-portal-complete
+git push origin :refs/tags/v0.5-business-portal-complete
+```
+
+#### References
+
+- ADR-001 through ADR-018
+- S-029 through S-042a in `docs/architecture/stabilization-tracker.md`
+- CI run #29244491388 (all 34 jobs green)
+- S-042 readiness review report
+
+---
+
 ## Future Branch: v2.6 Next Branch
 
 v2.6 — дальнейшее развитие портала после закрытия первого ТЗ (v2.5).

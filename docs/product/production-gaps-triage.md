@@ -1,26 +1,27 @@
 # Production Gaps Triage — Retail Media Platform Enterprise
 
 | **Created:** 2026-07-11 |
-| **Version:** 1.1 |
-| **Status:** active |
+| **Version:** 1.2 |
+| **Status:** active — v0.5 Business Portal Complete |
 | **Branch:** develop |
 
-> **⚠️ Roadmap Priority Change (S-032, 2026-07-12):** Business portal completeness
-> is now a REQUIRED pre-player milestone per original ТЗ. KSO/player/hardware
-> work is BLOCKED until v0.5 Business Portal Complete. Production gaps in this
-> document remain valid but are re-sequenced: v0.5 = business portal, v0.6 =
-> production readiness, v0.7 = player. Player is NOT v0.9 anymore.
+> **⚠️ v0.5 Business Portal Complete (2026-07-13):** S-042 readiness review
+> passed CONDITIONAL GO. All v0.5 Business Portal tasks (S-029…S-042a)
+> closed. KSO/player/hardware work is BLOCKED until v0.5 production
+> milestones (observability, LDAPS, email) are addressed in v0.6.
+> Production gaps remain valid but are re-sequenced: v0.5 = business portal,
+> v0.6 = production readiness, v0.7 = player.
 
 ## A. Current Baseline
 
 | Parameter | Value |
 |-----------|-------|
-| **Latest release** | v0.4-advertiser-self-service-pilot |
-| **Code baseline** | 38b5255b1600ec3f5e960bcbadfa73f1b7922e22 |
-| **Branch model** | main (stable) / develop (active integration) |
+| **Latest release** | v0.5-business-portal-complete (proposed RC) |
+| **Code baseline** | 5c41a6aca7de7af9f3f806469c6ab436403c537a |
+| **Branch model** | main (stable, f4ca15e) / develop (active integration, 3677476) |
 | **Live preview** | http://192.168.110.77:3001 (advertiser-web), :3000 (admin-web) |
-| **Tests** | 881 Python unit + 245 behavioural + 64 admin-web + 66 advertiser-web = 1,256 total |
-| **CI** | GitHub Actions — 33 jobs, all green on code baseline |
+| **Tests** | 1006 Python unit + 255 behavioural + 71 admin-web + 68 advertiser-web = 1,400+ total |
+| **CI** | GitHub Actions — 34 jobs, all green on develop |
 
 ### What is pilot-ready (v0.4)
 
@@ -147,20 +148,21 @@ See gap categories below. No gap is production-ready — each requires explicit 
 
 ## D. Recommended Next Milestones
 
-### v0.5 — Production Readiness Foundation (P0 gates)
+### v0.5 — Business Portal Complete ✅ (done 2026-07-13)
 
-**Rationale:** Close the P0 gaps that block all further work. No features — pure operations.
+**Rationale:** Close the P0 gates that block all further work. No features — pure operations.
 
-| Item | Action |
-|------|--------|
-| Production CI gate | Add `ENVIRONMENT=production` validation to CI. Fail on missing secrets, weak keys, non-HTTPS origins. |
-| Secrets management | Enforce `SECRET_*` env vars in production. Document rotation procedure. Add `.env.example` with production template. |
-| Backup / restore | `pg_dump` cron + MinIO mirroring. Runbook with restore test procedure. | **S-031 done** |
-| Monitoring baseline | Prometheus metrics on control-api + device-gateway. Grafana dashboard (4 panels: API latency, error rate, DB pool, NATS queue). |
-| Audit retention | Extend `login_attempts` to general audit table. Retention policy (90 days dev, 365 production). Log review runbook. |
-| ADR-018 decision | Stakeholder meeting. Document decision (single-retailer vs multi-retailer/syndication). Update ADR-018 status: Accepted or Rejected. |
+| Item | Action | Status |
+|------|--------|--------|
+| Production CI gate | Add `ENVIRONMENT=production` validation to CI. Fail on missing secrets, weak keys, non-HTTPS origins. | **S-030 done** — CI job added, 24 gate tests |
+| Secrets management | Enforce `SECRET_*` env vars in production. Document rotation procedure. Add `.env.example` with production template. | **S-030 done** — SecurityConfig production validation |
+| Backup / restore | `pg_dump` cron + MinIO mirroring. Runbook with restore test procedure. | **S-031 done** — backup/restore scripts, integration test (5/5), runbook, live drill (4.7MB) |
+| Monitoring baseline | Prometheus metrics on control-api + device-gateway. Grafana dashboard (4 panels: API latency, error rate, DB pool, NATS queue). | **Deferred to v0.6** — business portal tasks consumed v0.5 cycle |
+| Audit retention | Extend `login_attempts` to general audit table. Retention policy (90 days dev, 365 production). Log review runbook. | **Partially done** — audit events for user management (S-035e). Approval/moderation audit P2 follow-up. Retention policy deferred to v0.6 |
+| ADR-018 decision | Stakeholder meeting. Document decision (single-retailer vs multi-retailer/syndication). Update ADR-018 status: Accepted or Rejected. | **Deferred** — proposed, no decision yet |
+| Business portal completeness | Admin + advertiser portals fully operational (S-033…S-040). Campaign CRUD, creative moderation, approval inbox, inventory UI, advertiser page, PoP export. | **✅ Done** — S-042 readiness review CONDITIONAL GO, CI green 34/34 |
 
-**Deliverable:** Production CI green on develop. Runbook tested with restore drill.
+**Deliverable:** v0.5 Business Portal Complete RC ready. Production CI + backup/restore done. Monitoring + LDAPS deferred to v0.6.
 
 ### v0.6 — Identity Hardening
 
@@ -212,13 +214,15 @@ See gap categories below. No gap is production-ready — each requires explicit 
 
 ## E. Recommendation
 
-### Close first (v0.5, now)
-1. **P0 operations gates** — CI, secrets, backups, monitoring, audit. These block everything.
-2. **ADR-018 tenant decision** — P0 architecture fork. Must decide before v2.6.
+### Closed (v0.5, 2026-07-13)
+1. **P0 operations gates** — CI, secrets, backups ✅ (S-030, S-031 done)
+2. **Business portal completeness** — admin + advertiser portals ✅ (S-033…S-040 done)
+3. **External audit hardening** — 9 findings closed ✅ (S-035a–i)
 
-### Close next (v0.6–v0.7, after v0.5)
-3. **Identity hardening** — real LDAPS, password reset, advertiser invite.
-4. **Creative moderation** — manual review, malware scan, media policy.
+### Close next (v0.6, after publish)
+4. **Identity hardening** — real LDAPS, password reset, advertiser invite.
+5. **Monitoring baseline** — Prometheus + Grafana (was planned for v0.5, deferred).
+6. **Creative moderation** — manual review, malware scan, media policy (moved v0.7→v0.6 parity).
 
 ### Defer to v0.8–v0.9
 5. **Reporting export + ClickHouse** — needed for scale but not for first live channel.
