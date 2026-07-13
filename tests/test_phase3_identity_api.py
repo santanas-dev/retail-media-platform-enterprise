@@ -673,5 +673,154 @@ class TestApprovalQueue(AuthzMixin, unittest.TestCase):
         self.assertFalse(data["all_creatives_approved"])
 
 
+# ---------------------------------------------------------------------------
+# S-039 — Advertiser Organization Detail & Memberships
+# ---------------------------------------------------------------------------
+
+
+class TestAdvertiserOrganizationDetail(AuthzMixin, unittest.TestCase):
+    """GET /api/v1/identity/advertiser-organizations/{org_id}"""
+
+    @patch("packages.api.identity.repository.get_advertiser_organization", new_callable=AsyncMock)
+    def test_returns_org_detail(self, mock_repo):
+        self._setup_authz(perms={"advertisers.read"})
+        from packages.domain.models import AdvertiserOrganization
+        org = AdvertiserOrganization(
+            id="org-1", code="ORG01", legal_name="ООО Тест",
+            display_name="Тест", status="active",
+        )
+        mock_repo.return_value = org
+        resp = self._get("/api/v1/identity/advertiser-organizations/org-1")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["code"], "ORG01")
+        self.assertEqual(data["display_name"], "Тест")
+
+    @patch("packages.api.identity.repository.get_advertiser_organization", new_callable=AsyncMock)
+    def test_requires_auth(self, mock_repo):
+        resp = TestClient(_get_app()).get("/api/v1/identity/advertiser-organizations/org-1")
+        self.assertEqual(resp.status_code, 403)
+        mock_repo.assert_not_called()
+
+    @patch("packages.api.identity.repository.get_advertiser_organization", new_callable=AsyncMock)
+    def test_advertiser_gets_403_without_perm(self, mock_repo):
+        self._setup_authz(perms={"campaigns.read"})
+        resp = self._get("/api/v1/identity/advertiser-organizations/org-1")
+        self.assertEqual(resp.status_code, 403)
+        mock_repo.assert_not_called()
+
+    @patch("packages.api.identity.repository.get_advertiser_organization", new_callable=AsyncMock)
+    def test_returns_404_for_unknown(self, mock_repo):
+        self._setup_authz(perms={"advertisers.read"})
+        mock_repo.return_value = None
+        resp = self._get("/api/v1/identity/advertiser-organizations/nonexistent")
+        self.assertEqual(resp.status_code, 404)
+
+
+class TestAdvertiserBrandsByOrg(AuthzMixin, unittest.TestCase):
+    """GET /api/v1/identity/advertiser-brands-by-org?advertiser_organization_id=..."""
+
+    @patch("packages.api.identity.repository.list_advertiser_brands_by_org", new_callable=AsyncMock)
+    def test_returns_brands_filtered(self, mock_repo):
+        self._setup_authz(perms={"advertisers.read"})
+        from packages.domain.models import AdvertiserBrand
+        mock_repo.return_value = [
+            AdvertiserBrand(id="b-1", advertiser_organization_id="org-1",
+                           code="B01", name="Brand 1", status="active"),
+        ]
+        resp = self._get("/api/v1/identity/advertiser-brands-by-org?advertiser_organization_id=org-1")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["code"], "B01")
+
+    @patch("packages.api.identity.repository.list_advertiser_brands_by_org", new_callable=AsyncMock)
+    def test_advertiser_gets_403_without_perm(self, mock_repo):
+        self._setup_authz(perms={"campaigns.read"})
+        resp = self._get("/api/v1/identity/advertiser-brands-by-org?advertiser_organization_id=org-1")
+        self.assertEqual(resp.status_code, 403)
+        mock_repo.assert_not_called()
+
+
+class TestAdvertiserContractsByOrg(AuthzMixin, unittest.TestCase):
+    """GET /api/v1/identity/advertiser-contracts-by-org?advertiser_organization_id=..."""
+
+    @patch("packages.api.identity.repository.list_advertiser_contracts_by_org", new_callable=AsyncMock)
+    def test_returns_contracts_filtered(self, mock_repo):
+        self._setup_authz(perms={"advertisers.read"})
+        from packages.domain.models import AdvertiserContract
+        mock_repo.return_value = [
+            AdvertiserContract(id="c-1", advertiser_organization_id="org-1",
+                              code="CON01", name="Contract", status="active",
+                              budget_limit_currency="RUB",
+                              valid_from=datetime(2026, 1, 1)),
+        ]
+        resp = self._get("/api/v1/identity/advertiser-contracts-by-org?advertiser_organization_id=org-1")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["code"], "CON01")
+
+
+class TestAdvertiserContactsByOrg(AuthzMixin, unittest.TestCase):
+    """GET /api/v1/identity/advertiser-contacts-by-org?advertiser_organization_id=..."""
+
+    @patch("packages.api.identity.repository.list_advertiser_contacts_by_org", new_callable=AsyncMock)
+    def test_returns_contacts_filtered(self, mock_repo):
+        self._setup_authz(perms={"advertisers.contacts.read"})
+        from packages.domain.models import AdvertiserContact
+        mock_repo.return_value = [
+            AdvertiserContact(id="ct-1", advertiser_organization_id="org-1",
+                             contact_type="primary", full_name="Ivan Test",
+                             email="ivan@test.ru", phone=None,
+                             is_primary=True, status="active"),
+        ]
+        resp = self._get("/api/v1/identity/advertiser-contacts-by-org?advertiser_organization_id=org-1")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["full_name"], "Ivan Test")
+        self.assertNotIn("password_hash", data[0])
+        self.assertNotIn("hash", data[0])
+
+
+class TestAdvertiserUserMemberships(AuthzMixin, unittest.TestCase):
+    """GET /api/v1/identity/advertiser-user-memberships?advertiser_organization_id=..."""
+
+    @patch("packages.api.identity.repository.list_advertiser_user_memberships", new_callable=AsyncMock)
+    def test_returns_memberships(self, mock_repo):
+        self._setup_authz(perms={"advertisers.read"})
+        mock_repo.return_value = [{
+            "id": "m-1", "user_id": "u-1", "username": "adv1",
+            "display_name": "Advertiser One", "email": "a1@test.ru",
+            "auth_provider": "local_advertiser", "user_status": "active",
+            "must_change_password": False,
+            "membership_status": "active",
+            "membership_created_at": "2026-01-01T00:00:00",
+        }]
+        resp = self._get("/api/v1/identity/advertiser-user-memberships?advertiser_organization_id=org-1")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["username"], "adv1")
+        self.assertNotIn("password_hash", data[0])
+        self.assertNotIn("hash", data[0])
+        self.assertNotIn("token", data[0])
+
+    @patch("packages.api.identity.repository.list_advertiser_user_memberships", new_callable=AsyncMock)
+    def test_requires_auth(self, mock_repo):
+        resp = TestClient(_get_app()).get(
+            "/api/v1/identity/advertiser-user-memberships?advertiser_organization_id=org-1")
+        self.assertEqual(resp.status_code, 403)
+        mock_repo.assert_not_called()
+
+    @patch("packages.api.identity.repository.list_advertiser_user_memberships", new_callable=AsyncMock)
+    def test_advertiser_gets_403_without_perm(self, mock_repo):
+        self._setup_authz(perms={"campaigns.read"})
+        resp = self._get("/api/v1/identity/advertiser-user-memberships?advertiser_organization_id=org-1")
+        self.assertEqual(resp.status_code, 403)
+        mock_repo.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -105,6 +105,7 @@ export interface AdvertiserBrandOut {
   advertiser_organization_id: string;
   code: string;
   name: string;
+  description: string | null;
   status: string;
 }
 
@@ -114,12 +115,54 @@ export interface AdvertiserContractOut {
   id: string;
   advertiser_organization_id: string;
   code: string;
-  name: string | null;
+  name: string;
+  contract_number: string | null;
   budget_limit_amount: number | null;
   budget_limit_currency: string;
-  valid_from: string;
+  valid_from: string | null;
   valid_until: string | null;
   status: string;
+  terms_url: string | null;
+}
+
+// ── Advertiser Contact ──
+
+export interface AdvertiserContactOut {
+  id: string;
+  advertiser_organization_id: string;
+  contact_type: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  is_primary: boolean;
+  status: string;
+}
+
+// ── Advertiser User Membership ──
+
+export interface AdvertiserUserMembershipOut {
+  id: string;
+  user_id: string;
+  username: string;
+  display_name: string;
+  email: string | null;
+  auth_provider: string;
+  user_status: string;
+  must_change_password: boolean;
+  membership_status: string;
+  membership_created_at: string | null;
+}
+
+// ── Advertiser Organization Detail ──
+
+export interface AdvertiserOrganizationDetailOut {
+  id: string;
+  code: string;
+  legal_name: string;
+  display_name: string;
+  status: string;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 // ── Campaign Approval ──
@@ -498,4 +541,29 @@ export const MODERATION_STATUS_LABELS: Record<string, string> = {
 
 export function moderationStatusLabel(s: string): string {
   return MODERATION_STATUS_LABELS[s] ?? s;
+}
+
+// ── S-039: Advertiser contact / auth / membership labels ──
+
+export const CONTACT_TYPE_LABELS: Record<string, string> = {
+  primary: "Основной",
+  finance: "Финансовый",
+  technical: "Технический",
+  legal: "Юридический",
+  marketing: "Маркетинговый",
+};
+
+export function contactTypeLabel(t: string): string {
+  return CONTACT_TYPE_LABELS[t] ?? t;
+}
+
+export const AUTH_PROVIDER_LABELS: Record<string, string> = {
+  local: "Локальная",
+  local_advertiser: "Локальная (рекламодатель)",
+  ad: "Active Directory",
+  break_glass: "Аварийный доступ",
+};
+
+export function authProviderLabel(p: string): string {
+  return AUTH_PROVIDER_LABELS[p] ?? p;
 }

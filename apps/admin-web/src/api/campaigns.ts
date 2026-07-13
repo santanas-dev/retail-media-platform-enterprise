@@ -23,8 +23,11 @@ import type {
   CreativeAssetOut,
   CreativeAssetCreateRequest,
   AdvertiserOrganizationOut,
+  AdvertiserOrganizationDetailOut,
   AdvertiserBrandOut,
   AdvertiserContractOut,
+  AdvertiserContactOut,
+  AdvertiserUserMembershipOut,
   CampaignApprovalOut,
   CampaignApprovalResponse,
   CampaignStatusHistoryOut,
@@ -115,6 +118,28 @@ export function listBrands(): Promise<AdvertiserBrandOut[]> {
 
 export function listContracts(): Promise<AdvertiserContractOut[]> {
   return api.get<AdvertiserContractOut[]>("/advertiser-contracts");
+}
+
+// ── S-039: Advertiser detail + memberships ──
+
+export function getAdvertiserDetail(orgId: string): Promise<AdvertiserOrganizationDetailOut> {
+  return api.get<AdvertiserOrganizationDetailOut>(`/advertiser-organizations/${orgId}`);
+}
+
+export function listBrandsByOrg(orgId: string): Promise<AdvertiserBrandOut[]> {
+  return api.get<AdvertiserBrandOut[]>(`/advertiser-brands-by-org?advertiser_organization_id=${orgId}`);
+}
+
+export function listContractsByOrg(orgId: string): Promise<AdvertiserContractOut[]> {
+  return api.get<AdvertiserContractOut[]>(`/advertiser-contracts-by-org?advertiser_organization_id=${orgId}`);
+}
+
+export function listContactsByOrg(orgId: string): Promise<AdvertiserContactOut[]> {
+  return api.get<AdvertiserContactOut[]>(`/advertiser-contacts-by-org?advertiser_organization_id=${orgId}`);
+}
+
+export function listMemberships(orgId: string): Promise<AdvertiserUserMembershipOut[]> {
+  return api.get<AdvertiserUserMembershipOut[]>(`/advertiser-user-memberships?advertiser_organization_id=${orgId}`);
 }
 
 // ── Campaign Mutations ──

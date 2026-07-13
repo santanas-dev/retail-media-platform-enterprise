@@ -206,6 +206,67 @@ async def list_advertiser_contacts(
     return list(result.scalars().all())
 
 
+async def list_advertiser_brands_by_org(
+    session: AsyncSession, org_id: str,
+) -> list[AdvertiserBrand]:
+    """Return brands for a specific advertiser org, ordered by code."""
+    stmt = select(AdvertiserBrand).where(
+        AdvertiserBrand.advertiser_organization_id == org_id,
+    ).order_by(AdvertiserBrand.code)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def list_advertiser_contracts_by_org(
+    session: AsyncSession, org_id: str,
+) -> list[AdvertiserContract]:
+    """Return contracts for a specific advertiser org, ordered by code."""
+    stmt = select(AdvertiserContract).where(
+        AdvertiserContract.advertiser_organization_id == org_id,
+    ).order_by(AdvertiserContract.code)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def list_advertiser_contacts_by_org(
+    session: AsyncSession, org_id: str,
+) -> list[AdvertiserContact]:
+    """Return contacts for a specific advertiser org, ordered by contact_type + full_name."""
+    stmt = select(AdvertiserContact).where(
+        AdvertiserContact.advertiser_organization_id == org_id,
+    ).order_by(AdvertiserContact.contact_type, AdvertiserContact.full_name)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def list_advertiser_user_memberships(
+    session: AsyncSession, org_id: str,
+) -> list[dict]:
+    """Return user memberships for an advertiser org — safe fields only."""
+    from sqlalchemy import select as sa_select
+    from packages.domain.models import LocalCredential
+    stmt = sa_select(
+        AdvertiserUserMembership.id,
+        AdvertiserUserMembership.user_id,
+        AdvertiserUserMembership.status.label("membership_status"),
+        AdvertiserUserMembership.created_at.label("membership_created_at"),
+        User.username,
+        User.display_name,
+        User.email,
+        User.auth_provider,
+        User.status.label("user_status"),
+        LocalCredential.must_change_password,
+    ).join(
+        User, AdvertiserUserMembership.user_id == User.id,
+    ).join(
+        LocalCredential, User.id == LocalCredential.user_id, isouter=True,
+    ).where(
+        AdvertiserUserMembership.advertiser_organization_id == org_id,
+    ).order_by(User.username)
+    result = await session.execute(stmt)
+    return [dict(row._mapping) for row in result]
+
+
 # ---------------------------------------------------------------------------
 # S-009h — Reference data (branches, clusters, stores, surfaces)
 # ---------------------------------------------------------------------------

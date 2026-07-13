@@ -294,6 +294,35 @@ class AdvertiserContactOut(BaseModel):
     status: str
 
 
+class AdvertiserUserMembershipOut(BaseModel):
+    """Safe membership view — no password/hash/token/secret."""
+    model_config = ConfigDict(from_attributes=False)
+
+    id: str
+    user_id: str
+    username: str
+    display_name: str
+    email: str | None = None
+    auth_provider: str
+    user_status: str
+    must_change_password: bool
+    membership_status: str
+    membership_created_at: datetime | None = None
+
+
+class AdvertiserOrganizationDetailOut(BaseModel):
+    """Organization detail — enriched with timestamps + counts."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    code: str
+    legal_name: str
+    display_name: str
+    status: str
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
 # ---------------------------------------------------------------------------
 # Campaign Domain (Phase 4.1b — ADR-015)
 # ---------------------------------------------------------------------------
