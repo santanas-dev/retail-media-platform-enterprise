@@ -16,7 +16,7 @@
 | Компонент | Статус | Формат | Частота |
 |-----------|--------|--------|---------|
 | **PostgreSQL DB** | ✅ Реализовано | `pg_dump` custom format (.dump) | Ежедневно (ручной запуск / cron) |
-| **MinIO objects** | ⏳ Deferred | S3 mirror (`mc mirror`) | Будет добавлено в v0.5 |
+| **MinIO objects** | ✅ Реализовано (S-049) | Python SDK full-bucket backup + manifest | Ежедневно (ручной запуск / cron) |
 | **NATS JetStream state** | ⏳ Deferred | `nats stream backup` | Не критично для pilot — состояние восстанавливается из PostgreSQL через outbox relay |
 
 ## 3. RPO / RTO (pilot targets)
@@ -140,6 +140,20 @@ docker compose -f docker-compose.phase1.yml up -d control-api device-gateway orc
 curl http://localhost:8000/health/ready
 ```
 
+## 5.1 MinIO Restore
+
+**Важно:** одного восстановления PostgreSQL недостаточно. Загруженные креативы
+(изображения, видео) хранятся в MinIO и не восстанавливаются из дампа БД.
+После PostgreSQL restore необходимо восстановить объекты MinIO.
+
+См. `docs/runbook/minio-backup-restore.md` — процедура backup, restore, check,
+dry-run и drill для creative media объектов.
+
+**Порядок полного восстановления:**
+1. Restore PostgreSQL (этот runbook, §5)
+2. Restore MinIO objects (`minio-backup-restore.md` §4)
+3. Run consistency checks (`minio-backup-restore.md` §6)
+
 ## 6. Restore Drill — процедура
 
 Выполняется ежемесячно или после значительных изменений схемы.
@@ -186,7 +200,7 @@ python -m pytest tests/integration/test_backup_restore.py -v
 
 | Элемент | Статус | Комментарий |
 |---------|--------|-------------|
-| MinIO backup (S3 mirror) | ⏳ Deferred | Требуется `mc mirror` или rclone. Креативы — критические данные. |
+| MinIO backup (S3 mirror) | ✅ S-049 done | Python SDK full-bucket backup with manifest + SHA-256. См. `docs/runbook/minio-backup-restore.md`. |
 | NATS JetStream backup | ⏳ Deferred | Состояние восстанавливается из outbox. Ручной `nats stream backup` для аварийного восстановления. |
 | Offsite encrypted backup | ⏳ Deferred | Локальные бэкапы не защищают от физического сбоя сервера. Требуется rsync/rclone в S3/GCS с шифрованием. |
 | Автоматическое расписание (cron) | ⏳ Deferred | Скрипт готов, cron-запись в §4.2 — требуется развернуть на production-сервере. |
@@ -198,6 +212,7 @@ python -m pytest tests/integration/test_backup_restore.py -v
 ## 10. Ссылки
 
 - Скрипты: `scripts/backup/postgres_backup.py`, `scripts/restore/postgres_restore.py`
+- MinIO backup: `docs/runbook/minio-backup-restore.md`
 - Интеграционный тест: `tests/integration/test_backup_restore.py`
 - Production gaps: `docs/product/production-gaps-triage.md`
 - Стабилизационный трекер: `docs/architecture/stabilization-tracker.md`

@@ -28,11 +28,12 @@ model work.
 - Connection test endpoint existing (S-034) — wire to real LDAPS
 - No plaintext credentials in logs/config responses
 
-### 3. MinIO Backup / Mirror (S-049)
-- `mc mirror` cron job for creative assets bucket
-- Restore drill: verify mirrored objects are usable after restore
-- Runbook update in `docs/runbook/backup-restore-dr.md`
-- Integration test for mirror + restore cycle
+### 3. MinIO Backup / Mirror (S-049) — ✅ DONE
+- Python SDK full-bucket backup with manifest + SHA-256 (`scripts/backup/minio_backup.py`)
+- Restore script with check/dry-run/confirm modes + post-restore verification (`scripts/restore/minio_restore.py`)
+- Integration test: backup → restore → verify (4 test cases)
+- Runbook: `docs/runbook/minio-backup-restore.md`
+- `docs/runbook/backup-restore-dr.md` updated with MinIO section and full recovery order
 
 ### 4. NATS Backup / Restore Policy (S-050)
 - Document: NATS JetStream state is recoverable from PostgreSQL outbox
@@ -90,7 +91,7 @@ model work.
 |--------|------|----------|------|------------|
 | S-047 | Monitoring / Observability | P0 | Medium | — |
 | S-048 | Real LDAPS | P0 | High | — |
-| S-049 | MinIO Backup | P0 | Low | — |
+| S-049 | MinIO Backup | P0 | Low | ✅ done |
 | S-050 | NATS Backup Policy | P1 | Low | — |
 | S-051 | Portal Error Boundaries | P2 | Low | — |
 | S-052 | Audit Events (Approval/Moderation) | P2 | Low | — |
@@ -113,12 +114,12 @@ model work.
 - **Tests:** Integration test with test LDAP server, negative: wrong password, unreachable server
 - **Risk:** High — requires AD controller or test LDAP; configuration surface is complex
 
-### S-049 — MinIO Backup/Mirror
-- **Goal:** `mc mirror` cron for creative assets, restore drill
-- **Files:** `scripts/backup/`, `docs/runbook/backup-restore-dr.md`, `tests/integration/`
-- **Acceptance:** Mirror runs successfully, restore drill passes, runbook updated
-- **Tests:** Integration: mirror → delete → restore → object accessible
-- **Risk:** Low — mc CLI is stable, compose wiring straightforward
+### S-049 — MinIO Backup/Mirror — ✅ DONE
+- **Goal:** Python SDK full-bucket backup, restore drill with verification
+- **Files:** `scripts/backup/minio_backup.py`, `scripts/restore/minio_restore.py`, `docs/runbook/minio-backup-restore.md`, `tests/integration/test_minio_backup_restore.py`
+- **Acceptance:** Backup creates manifest with SHA-256, restore verifies post-upload, drill passes
+- **Tests:** 4 integration tests (full cycle, empty bucket, confirmation gate, dry-run) — gated by `RUN_MINIO_INTEGRATION_TESTS=1`
+- **Risk:** Low — MinIO SDK stable, no external CLI dependencies
 
 ### S-050 — NATS Backup Policy
 - **Goal:** Document NATS backup strategy, implement if needed
