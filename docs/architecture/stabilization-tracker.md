@@ -115,7 +115,7 @@ Separately covered:
 | Portal error boundaries | ✅ S-051 done |
 | Audit events for approval/moderation | ✅ S-052 done |
 || identity.py router decomposition | ✅ S-053 done |
-| XLSX export | 🚧 v0.6 decision (S-054a) |
+|| XLSX export | ✅ S-054a done — CSV-only for v0.6, XLSX deferred |
 || Full behavioural RLS test for creative_upload_sessions | ✅ S-054 done |
 | Production UX/accessibility audit | Deferred — v0.7 |
 | Emergency Management backend | Deferred — v0.7 |

@@ -68,11 +68,10 @@ model work.
 - All 66 identity API tests pass, import boundaries clean
 - Preserved: API paths, auth/RBAC/RLS dependencies, schemas, business logic
 
-### 8. XLSX Export Decision (S-054a)
-- Evaluate openpyxl dependency vs Python built-in XML approach
-- If openpyxl: add to requirements, update CI, implement XLSX endpoint
-- If deferred again: update roadmap + tracker with explicit rationale
-- Decision document in `docs/architecture/adr/` or plan section
+### 8. XLSX Export Decision (S-054a) ✅ DONE
+- **Decision:** v0.6 supports CSV export only (S-040, UTF-8 BOM for Excel). XLSX deferred to v0.7/v0.8.
+- **Rationale:** CSV already works with Excel. XLSX adds runtime dependency (openpyxl/xlsxwriter) and attack surface. v0.6 scope = production readiness, not reporting feature expansion.
+- **Revisit when:** Reporting warehouse / report snapshots are planned (v0.8).
 
 ### 9. creative_upload_sessions Behavioural RLS Test (S-054)
 - Full behavioural test under `retail_media_app` (NOBYPASSRLS) role
@@ -105,7 +104,7 @@ model work.
 | S-051 | Portal Error Boundaries | P2 | Low | ✅ done |
 | S-052 | Audit Events (Approval/Moderation) | P2 | Low | ✅ done |
 || S-053 | identity Router Decomposition | P2 | Low | ✅ done |
-| S-054a | XLSX Export Decision | P2 | Low | — |
+|| S-054a | XLSX Export Decision | P2 | Low | ✅ done |
 || S-054 | creative_upload_sessions Behavioural RLS | P1 | Medium | ✅ done |
 | S-055 | v0.6 Readiness Review | P0 | — | S-047…S-054 |
 
