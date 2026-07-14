@@ -507,18 +507,20 @@ git push origin :refs/tags/v0.5-business-portal-complete
 
 ### v0.6-production-readiness-foundation — Production Readiness Foundation
 
-**Implemented on develop.**  Follows v0.5 Business Portal Complete.
+**Ready for publish.**  Release prep complete (S-056).  Tag targets code baseline `fd43791`.
 
 #### Metadata
-- **Tag:** v0.6-production-readiness-foundation (proposed)
+- **Tag:** v0.6-production-readiness-foundation (ready)
 - **Date:** 2026-07-14
+- **Code baseline:** `fd43791` (S-054 creative_upload_sessions RLS proof, CI #29282222261 green 34/34)
 - **Predecessor:** v0.5-business-portal-complete (`5c41a6a`)
 - **Plan:** `docs/product/v06-production-readiness-plan.md`
-- **Status:** code/CI/security ready on develop (`3f459e5`); release prep pending (S-056)
+- **Release prep:** S-055 (readiness review) + S-055a (docs honesty fix) + S-056 (release prep)
+- **Status:** ready for publish — docs finalised, tag SHA identified
 
 #### Completed Capabilities (S-047…S-054a)
 
-- **Monitoring/observability (S-047):** ✅ Prometheus metrics on control-api + device-gateway (18 metrics), Grafana dashboard (12 panels), 8 alert rules in alarms.yml. AlertManager not provisioned (known limitation, deferred to future ops hardening).
+- **Monitoring/observability (S-047):** ✅ Prometheus metrics on control-api + device-gateway (18 metrics), Grafana dashboard (12 panels), 8 alert rules in alerts.yml. AlertManager not provisioned (known limitation, deferred to future ops hardening).
 - **Real LDAPS wiring (S-048):** ✅ RealLDAPAuthProvider with ldap3 bind+search, disabled/misconfigured/configured/unavailable modes, safe filter escaping, timeouts, no password logs. `local_advertiser` and `local_break_glass` preserved. Stub returns honest 503 when AD_ENABLED=false.
 - **MinIO backup (S-049):** ✅ Python SDK full-bucket backup with SHA-256 manifest, restore with check/dry-run/confirm modes, destructive confirmation gate (REQUIRE_RESTORE_CONFIRMATION=yes), 4 integration tests. Runbook: `docs/runbook/minio-backup-restore.md`.
 - **NATS backup policy (S-050):** ✅ Outbox-first recovery policy documented. Recovery diagnostics script. 4 integration tests. Runbook: `docs/runbook/nats-backup-restore.md`.
@@ -528,8 +530,15 @@ git push origin :refs/tags/v0.5-business-portal-complete
 - **creative_upload_sessions behavioural RLS (S-054):** ✅ Full NOBYPASSRLS proof — 5 scenarios (org A sees session, org B cannot, admin bypass, empty scope fail-closed, cross-org count consistency). No policy changes needed.
 - **XLSX export decision (S-054a):** ✅ CSV-only for v0.6 (done in S-040, UTF-8 BOM for Excel). XLSX deferred to v0.7/v0.8.
 
-#### Explicitly NOT Included
+#### Known Limitations
 
+- AlertManager routing not provisioned — rules exist, routing deferred to ops hardening
+- AD group→role mapping deferred
+- AD auto-provisioning deferred
+- Customer AD infrastructure validation required (depends on customer environment)
+- Offsite encrypted backup / backup lifecycle monitoring deferred
+- Password reset invite/email flow deferred
+- Audit retention / log review deferred
 - KSO player / sidecar / hardware → v0.9
 - Emergency Management backend → v0.7
 - Feature flags / staged rollout → v0.7
@@ -538,14 +547,6 @@ git push origin :refs/tags/v0.5-business-portal-complete
 - Billing / acts / ERP → v2.6
 - Tenant model ADR-018 → v2.6
 - Device signature verification → v2.6
-
-#### S-Ticket Sequence
-S-047 → S-048 → S-049 → S-050 → S-051 → S-052 → S-053 → S-054 → S-055 (readiness review)
-
-#### References
-- `docs/product/v06-production-readiness-plan.md`
-- `docs/product/production-gaps-triage.md`
-- S-045 audit reconciliation report
 
 ---
 

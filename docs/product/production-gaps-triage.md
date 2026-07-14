@@ -1,24 +1,27 @@
 # Production Gaps Triage — Retail Media Platform Enterprise
 
 | **Created:** 2026-07-11 |
-| **Version:** 1.2 |
-| **Status:** active — v0.5 Business Portal Complete |
+| **Version:** 1.3 |
+| **Status:** active — v0.6 Production Readiness Foundation (ready for publish) |
 | **Branch:** develop |
 
-> **⚠️ v0.5 Business Portal Complete (2026-07-13):** S-042 readiness review
-> passed CONDITIONAL GO. All v0.5 Business Portal tasks (S-029…S-042a)
-> closed. KSO/player/hardware work is BLOCKED until v0.5 production
-> milestones (observability, LDAPS, email) are addressed in v0.6.
-> Production gaps remain valid but are re-sequenced: v0.5 = business portal,
-> v0.6 = production readiness, v0.7 = player.
+> **⚠️ v0.6 Production Readiness Foundation (2026-07-14):** S-055 readiness
+> review passed CONDITIONAL GO. S-055a docs honesty fix applied. S-056
+> release prep complete. All S-047…S-054a v0.6 capabilities done:
+> observability, real LDAPS, MinIO/NATS backup, error boundaries, audit
+> events, router decomposition, RLS proof, XLSX decision.
+> KSO/player/hardware work remains deferred to v0.9.
+> Remaining production gaps reclassified: AlertManager, AD group mapping,
+> offsite backups, malware/transcoding/CDN, ClickHouse → v0.7+.
 
 ## A. Current Baseline
 
 | Parameter | Value |
 |-----------|-------|
-| **Latest release** | v0.5-business-portal-complete (proposed RC) |
-| **Code baseline** | 5c41a6aca7de7af9f3f806469c6ab436403c537a |
-| **Branch model** | main (stable, f4ca15e) / develop (active integration, 3677476) |
+| **Latest release** | v0.5-business-portal-complete (published) |
+| **Pending release** | v0.6-production-readiness-foundation (ready for publish, tag targets `fd43791`) |
+| **Code baseline** | `fd43791` (S-054 RLS proof, CI #29282222261 green 34/34) |
+| **Branch model** | main (stable, `5114f83`) / develop (active, `a7c0af3` after S-056) |
 | **Live preview** | http://192.168.110.77:3001 (advertiser-web), :3000 (admin-web) |
 | **Tests** | 1006 Python unit + 255 behavioural + 71 admin-web + 68 advertiser-web = 1,400+ total |
 | **CI** | GitHub Actions — 34 jobs, all green on develop |
@@ -46,9 +49,10 @@ See gap categories below. No gap is production-ready — each requires explicit 
 
 | Gap | Severity | Value | Risk | Dependency | Milestone |
 |-----|----------|-------|------|------------|-----------|
-| Real LDAPS/AD integration | P1 | Staff login without test credentials | Auth unavailable without LDAPS — blocks real admin | AD controller provisioning | v0.6 |
-| Password reset / invite flow | P1 | Advertiser self-onboarding | Manual user creation blocks scale | Email/SMS integration | v0.6 |
-| Account lockout / expiry | P2 | Security baseline | Brute-force on local accounts | Login rate limiting (S-010, done) | v0.6 |
+| Real LDAPS/AD integration | P1 | Staff login without test credentials | ✅ done in v0.6 (S-048) | AD controller provisioning | v0.6 — ✅ done |
+| Password reset / invite flow | P1 | Advertiser self-onboarding | Manual user creation blocks scale | Email/SMS integration | v0.7 |
+| Account lockout / expiry | P2 | Security baseline | Brute-force on local accounts | Login rate limiting (S-010, done) | v0.7 |
+| AD group→role mapping / auto-provision | P2 | Operational efficiency | Manual user setup | Real LDAPS (S-048 done) | v0.7 |
 | MFA (TOTP/WebAuthn) | P3 | Security hardening | Not required for pilot | Identity provider capability | v1.0+ |
 | Session/device management | P2 | User control over active sessions | Session hijack without detection | Token blacklist/revocation | v0.8 |
 
@@ -87,12 +91,13 @@ See gap categories below. No gap is production-ready — each requires explicit 
 
 | Gap | Severity | Value | Risk | Dependency | Milestone |
 |-----|----------|-------|------|------------|-----------|
-| Monitoring / alerting | P0 | Incident detection | Silent failures in production | Prometheus + Grafana + AlertManager | v0.5 |
-| Backup / restore / DR | P0 | Data safety | Data loss on failure | pg_dump/pg_basebackup + MinIO mirroring | v0.5 | **S-031 done** — backup/restore scripts, integration test, runbook, live drill |
-| Secrets management | P0 | Security baseline | Hardcoded secrets in config | HashiCorp Vault or env-based hardening | v0.5 |
-| Production CI gate | P0 | Quality gate | Broken code on production | Behavioural PostgreSQL gate (exists), add production config validation | v0.5 | **S-030 done** — CI job added, 24 gate tests |
+| Monitoring / alerting | P0 | Incident detection | AlertManager not provisioned (rules exist) | Prometheus + Grafana ✅ done (S-047), AlertManager deferred | v0.7 |
+| Backup / restore / DR | P0 | Data safety | ✅ done in v0.5–v0.6 (S-031 PostgreSQL + S-049 MinIO + S-050 NATS) | Offsite backup + lifecycle monitoring deferred | v0.7 |
+| Production CI gate | P0 | Quality gate | ✅ S-030 done — CI job, 24 gate tests | — | v0.5 — ✅ done |
+| Offsite encrypted backup | P1 | Disaster recovery | No offsite copy | MinIO backup scripts (S-049 done) | v0.7 |
+| Backup lifecycle monitoring | P1 | Operational confidence | No alert on backup failure | Monitoring (S-047 done) | v0.7 |
 | Load / performance tests | P1 | Scalability confidence | 40K devices target unproven | Locust/k6 + production-like env | v0.8 |
-| Audit retention / log review | P1 | Compliance, forensics | No historical audit trail | Audit table + retention policy | v0.5 |
+| Audit retention / log review | P1 | Compliance, forensics | No historical audit trail | Audit table + retention policy | v0.7 |
 
 ### 6. Device / Manifest / Player
 
@@ -214,19 +219,26 @@ See gap categories below. No gap is production-ready — each requires explicit 
 
 ## E. Recommendation
 
-### Closed (v0.5, 2026-07-13)
-1. **P0 operations gates** — CI, secrets, backups ✅ (S-030, S-031 done)
-2. **Business portal completeness** — admin + advertiser portals ✅ (S-033…S-040 done)
-3. **External audit hardening** — 9 findings closed ✅ (S-035a–i)
+### Closed (v0.5–v0.6, 2026-07-14)
+1. **P0 operations gates** — CI, backups ✅ (S-030, S-031 done in v0.5)
+2. **Business portal completeness** — admin + advertiser portals ✅ (S-033…S-040 done in v0.5)
+3. **External audit hardening** — 9 findings closed ✅ (S-035a–i, v0.5)
+4. **Production readiness foundation** — observability, real LDAPS, MinIO/NATS backup, error boundaries, audit events, router decomposition, RLS proof, XLSX decision ✅ (S-047…S-054a, v0.6)
+5. **Readiness review + release prep** — CONDITIONAL GO, docs honesty fix ✅ (S-055…S-056, v0.6)
 
-### Close next (v0.6, after publish)
-4. **Identity hardening** — real LDAPS, password reset, advertiser invite.
-5. **Monitoring baseline** — Prometheus + Grafana (was planned for v0.5, deferred).
-6. **Creative moderation** — manual review, malware scan, media policy (moved v0.7→v0.6 parity).
+### Close next (v0.7)
+6. **AlertManager provisioning** — rules exist (alerts.yml), routing not wired
+7. **AD group→role mapping / auto-provision** — real LDAPS done (S-048), group mapping deferred
+8. **Offsite encrypted backup / lifecycle monitoring** — scripts exist (S-049), offsite target + monitoring deferred
+9. **Emergency Management backend** — kill-switch architecture proven (simulator), API not implemented
+10. **Feature flags / staged rollout** — not started
+11. **Password reset / invite flow** — email integration needed
+12. **Malware scan / orphan cleanup / media policy**
 
 ### Defer to v0.8–v0.9
-5. **Reporting export + ClickHouse** — needed for scale but not for first live channel.
-6. **Device/player readiness** — requires KSO hardware access.
+13. **Reporting export + ClickHouse** — CSV done (S-040), XLSX deferred
+14. **Inventory Planning / Forecasting** — not started
+15. **Device/player readiness** — requires KSO hardware access
 
 ### v2.6+ (after ADR-018 decided)
 - Billing / acts / ERP

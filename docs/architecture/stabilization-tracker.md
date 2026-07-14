@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
 | **Last updated:** 2026-07-14
-| **Current phase:** v0.6 Production Readiness Foundation — ready for release prep on develop (`3f459e5`). v0.5 Business Portal Complete published (tag v0.5-business-portal-complete, main at 5114f83). S-047…S-055 done. KSO/player remains deferred/out of scope.|
+| **Current phase:** v0.6 Production Readiness Foundation — release prep complete on develop (`a7c0af3`). v0.5 Business Portal Complete published (tag v0.5-business-portal-complete, main at 5114f83). S-047…S-056 done. KSO/player remains deferred/out of scope.|
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -95,7 +95,16 @@ Separately covered:
 | S-046 | v0.6 Production Readiness Plan | P0 | ✅ done | P.S. (Hermes) | `docs/product/v06-production-readiness-plan.md`: S-047…S-055 sequence complete. Monitoring, LDAPS, backups, error boundaries, audit events, router split, RLS test, XLSX decision — all done. Out of scope: KSO, Emergency, Flags, Inventory, ClickHouse, v2.6. | S-055 done, ready for S-056 release prep |
 | S-047 | Observability baseline (Prometheus/Grafana) | P0 | ✅ done | P.S. (Hermes) | `packages/observability/metrics.py`: 18 metrics (common + domain), /metrics endpoint on control-api + device-gateway. `infra/compose/docker-compose.observability.yml`: Prometheus + Grafana. `infra/observability/`: prometheus.yml, alerts.yml, grafana dashboard rmp-overview.json. `docs/runbook/observability.md`. Tests: 9/9. AlertManager not provisioned (known limitation). | — |
 | S-048 | Real LDAPS authentication | P0 | ✅ done | P.S. (Hermes) | `packages/auth/ad_provider.py`: RealLDAPAuthProvider with ldap3 bind+search, safe filter escaping, timeouts, no password logs. AD settings/test endpoints updated with real provider. `docs/runbook/ldaps-auth.md`. Stub preserved when AD_ENABLED=false. | — |
-| S-052 | Audit events for approval/moderation | P2 | ✅ done | P.S. (Hermes) | `packages/api/identity.py`: campaign approve/reject + creative approve/reject now write `create_audit_event()` in same tx. Actions: campaign.approved, campaign.rejected, creative.approved, creative.rejected. Details: old/new status, rejection_reason (truncated 200). No secrets/storage fields. Tests: 10 audit tests (7 new) — audit writes, no secrets, 403 skips audit. Branch: feature/S-052. | Start S-053 |
+| S-049 | MinIO backup/restore drill | P0 | ✅ done | P.S. (Hermes) | `scripts/backup/minio_backup.py`: full-bucket backup with SHA-256 manifest. `scripts/restore/minio_restore.py`: check/dry-run/confirm. 4 integration tests. Runbook: `docs/runbook/minio-backup-restore.md`. | — |
+| S-050 | NATS backup policy | P1 | ✅ done | P.S. (Hermes) | Outbox-first recovery policy. `scripts/check/nats_recovery_check.py`. 4 integration tests. Runbook: `docs/runbook/nats-backup-restore.md`. | — |
+| S-051 | Portal error boundaries | P2 | ✅ done | P.S. (Hermes) | ErrorBoundary in admin-web + advertiser-web. Russian fallback, JWT sanitisation. 19 vitest tests. | — |
+| S-052 | Audit events for approval/moderation | P2 | ✅ done | P.S. (Hermes) | campaign.approved/rejected + creative.approved/rejected in same tx. No secrets/storage fields. 10 audit tests. | — |
+| S-053 | identity router decomposition | P2 | ✅ done | P.S. (Hermes) | identity.py split into 8 domain routers (users, ad_settings, advertisers, campaigns, creatives, reporting, inventory + common). 40-line aggregator. API paths, permissions, schemas unchanged. CI green. | — |
+| S-054 | creative_upload_sessions behavioural RLS | P1 | ✅ done | P.S. (Hermes) | 5 NOBYPASSRLS scenarios. Policy unchanged, proven fail-closed. CI behavioural gate green. | — |
+| S-054a | XLSX export decision | P2 | ✅ done | P.S. (Hermes) | CSV-only for v0.6 (S-040). XLSX deferred to v0.7/v0.8. | — |
+| S-055 | v0.6 readiness review | P0 | ✅ done | P.S. (Hermes) | CONDITIONAL GO: code/CI/security ready. 5 docs honesty P0 findings. | S-055a fix docs |
+| S-055a | v0.6 docs honesty fix | P0 | ✅ done | P.S. (Hermes) | 5 P0 + 1 P2 docs fixed. v06 plan, release-versioning, tracker, roadmap updated. Branch: docs/S-055a. | S-056 release prep |
+| S-056 | v0.6 release prep | P0 | ✅ done | P.S. (Hermes) | `release-versioning.md`: v0.6 finalised. `stabilization-tracker.md`: S-056 row. `production-gaps-triage.md`: baseline→v0.6. `roadmap-s020.xlsx`: v0.6→ready for publish. Tag target: `fd43791`. Branch: docs/S-056. | Publish (S-057) |
 ## Status Legend
 
 - **done** — implemented, tested, committed, pushed
