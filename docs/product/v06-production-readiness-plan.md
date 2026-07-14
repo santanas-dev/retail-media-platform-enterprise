@@ -1,7 +1,7 @@
 # v0.6 Production Readiness Plan — Retail Media Platform Enterprise
 
 | **Created:** 2026-07-13 |
-| **Status:** planned |
+| **Status:** ready for release prep (implemented on develop) |
 | **Predecessor:** v0.5 Business Portal Complete (published) |
 | **Successor:** v0.7 Emergency + Feature Flags |
 
@@ -97,8 +97,8 @@ model work.
 
 | Ticket | Area | Priority | Risk | Depends On |
 |--------|------|----------|------|------------|
-| S-047 | Monitoring / Observability | P0 | Medium | — |
-| S-048 | Real LDAPS | P0 | High | — |
+| S-047 | Monitoring / Observability | P0 | Medium | ✅ done |
+| S-048 | Real LDAPS | P0 | High | ✅ done |
 | S-049 | MinIO Backup | P0 | Low | ✅ done |
 | S-050 | NATS Backup Policy | P1 | Low | ✅ done |
 | S-051 | Portal Error Boundaries | P2 | Low | ✅ done |
@@ -108,14 +108,14 @@ model work.
 || S-054 | creative_upload_sessions Behavioural RLS | P1 | Medium | ✅ done |
 | S-055 | v0.6 Readiness Review | P0 | — | S-047…S-054 |
 
-### S-047 — Prometheus/Grafana Baseline
+### S-047 — Prometheus/Grafana Baseline — ✅ DONE
 - **Goal:** Metrics endpoint on control-api + device-gateway, Grafana dashboard
 - **Files:** `packages/observability/`, `apps/control-api/main.py`, `apps/device-gateway/main.py`, `infra/compose/`
 - **Acceptance:** `/metrics` returns Prometheus format; Grafana dashboard shows 4 panels
 - **Tests:** Metric emission unit tests, endpoint smoke test, dashboard JSON validated
 - **Risk:** Medium — requires prometheus-client dependency, compose wiring
 
-### S-048 — Real LDAPS Client
+### S-048 — Real LDAPS Client — ✅ DONE
 - **Goal:** Replace AD stub with real LDAPS bind/search
 - **Files:** `packages/auth/ad_provider.py`, `packages/security/config.py`, `.env.example`
 - **Acceptance:** Login via real AD credentials, honest error on connection failure, no secrets in logs
@@ -158,24 +158,22 @@ model work.
 - **Tests:** 66/66 identity API, 184/184 full backend regression, import boundaries clean. 3 test patches updated (`repository.XXX` target)
 - **Risk:** Low — pure refactor, no API/business-logic change
 
-### S-054 — creative_upload_sessions Behavioural RLS
+### S-054 — creative_upload_sessions Behavioural RLS — ✅ DONE
 - **Goal:** Behavioural proof that RLS policies on `creative_upload_sessions` work under NOBYPASSRLS
-- **Files:** `tests/behavioral/test_creative_upload.py`, migration 013
+- **Result:** 5 behavioural RLS scenarios (own org visible, foreign org hidden, admin bypass, empty scope fail-closed, cross-org count consistency) — all pass in CI
+- **Files:** `tests/behavioral/test_creative_upload_sessions_rls.py`, migration 013
 - **Acceptance:** Advertiser A cannot see B's sessions; admin can see all
-- **Tests:** 2 behavioural tests minimum
-- **Risk:** Medium — CI runs behavioural as superuser by default; needs NOBYPASSRLS role
+- **Tests:** 5 behavioural tests (NOBYPASSRLS role)
 
-### S-055 — v0.6 Readiness Review
+### S-055 — v0.6 Readiness Review — ✅ DONE
 - **Goal:** Full regression guard review before v0.6 publish
-- **Files:** `docs/architecture/stabilization-tracker.md`
+- **Result:** CONDITIONAL GO — code/CI/security ready. 5 docs honesty issues found (fixed in S-055a)
 - **Acceptance:** All S-047…S-054 gates green, CI green, audit reconciliation
-- **Tests:** Full CI suite
-- **Risk:** Low — review only
 
 ## Milestone Map
 
 ```
-v0.5 (PUBLISHED)          v0.6 (PLANNED)         v0.7              v0.8              v0.9
+v0.5 (PUBLISHED)     v0.6 (READY FOR RELEASE PREP)   v0.7              v0.8              v0.9
 Business Portal ──────► Production Readiness ──► Emergency/Flags ─► Inventory/Report ─► KSO/Player
                                                        │
                                                    v2.6 (separate, after ADR-018)

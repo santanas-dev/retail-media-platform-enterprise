@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
-| **Last updated:** 2026-07-13
-| **Current phase:** v0.5 Business Portal Complete — PUBLISHED (tag v0.5-business-portal-complete, main/develop at 5114f83). v0.6 Production Readiness planned (S-046). KSO/player remains deferred/out of scope.|
+| **Last updated:** 2026-07-14
+| **Current phase:** v0.6 Production Readiness Foundation — ready for release prep on develop (`3f459e5`). v0.5 Business Portal Complete published (tag v0.5-business-portal-complete, main at 5114f83). S-047…S-055 done. KSO/player remains deferred/out of scope.|
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -92,9 +92,9 @@ Separately covered:
 | S-043 | v0.5 Release Prep | P0 | ✅ done | P.S. (Hermes) | `release-versioning.md`: v0.5 section. `production-gaps-triage.md`: baseline→v0.5. `roadmap-s020.xlsx`: v0.5 rows→✅. Branch: docs/S-043. | — |
 | S-044 | Publish v0.5 | P0 | ✅ done | P.S. (Hermes) | main ff→5114f83. Tag v0.5-business-portal-complete→5c41a6a. CI #29248156271 green (34/34). | — |
 | S-045 | Audit Reconciliation | P0 | ✅ done | P.S. (Hermes) | 9/9 S-035 findings CLOSED. Architecture gaps deferred honestly. GO verdict. | — |
-| S-046 | v0.6 Production Readiness Plan | P0 | 🚧 planned | P.S. (Hermes) | `docs/product/v06-production-readiness-plan.md`: S-047…S-055 sequence. Scope: monitoring, LDAPS, backups, error boundaries, audit events, router split, RLS test, XLSX decision. Out of scope: KSO, Emergency, Flags, Inventory, ClickHouse, v2.6. | Start S-047 |
-| S-047 | Observability baseline (Prometheus/Grafana) | P0 | ✅ done | P.S. (Hermes) | `packages/observability/metrics.py`: 18 metrics (common + domain), /metrics endpoint on control-api + device-gateway. `infra/compose/docker-compose.observability.yml`: Prometheus + Grafana. `infra/observability/`: prometheus.yml, alerts.yml, grafana dashboard rmp-overview.json. `docs/runbook/observability.md`. Tests: 9/9. Branch: feature/S-047. | Start S-048 |
-| S-048 | Real LDAPS authentication | P0 | ✅ done | P.S. (Hermes) | `packages/auth/ad_provider.py`: RealLDAPAuthProvider with ldap3 bind+search, safe filter escaping, timeouts, no password logs. AD settings/test endpoints updated with real provider. `docs/runbook/ldaps-auth.md`. Stub preserved when AD_ENABLED=false. Branch: feature/S-048. | Start S-049 |
+| S-046 | v0.6 Production Readiness Plan | P0 | ✅ done | P.S. (Hermes) | `docs/product/v06-production-readiness-plan.md`: S-047…S-055 sequence complete. Monitoring, LDAPS, backups, error boundaries, audit events, router split, RLS test, XLSX decision — all done. Out of scope: KSO, Emergency, Flags, Inventory, ClickHouse, v2.6. | S-055 done, ready for S-056 release prep |
+| S-047 | Observability baseline (Prometheus/Grafana) | P0 | ✅ done | P.S. (Hermes) | `packages/observability/metrics.py`: 18 metrics (common + domain), /metrics endpoint on control-api + device-gateway. `infra/compose/docker-compose.observability.yml`: Prometheus + Grafana. `infra/observability/`: prometheus.yml, alerts.yml, grafana dashboard rmp-overview.json. `docs/runbook/observability.md`. Tests: 9/9. AlertManager not provisioned (known limitation). | — |
+| S-048 | Real LDAPS authentication | P0 | ✅ done | P.S. (Hermes) | `packages/auth/ad_provider.py`: RealLDAPAuthProvider with ldap3 bind+search, safe filter escaping, timeouts, no password logs. AD settings/test endpoints updated with real provider. `docs/runbook/ldaps-auth.md`. Stub preserved when AD_ENABLED=false. | — |
 | S-052 | Audit events for approval/moderation | P2 | ✅ done | P.S. (Hermes) | `packages/api/identity.py`: campaign approve/reject + creative approve/reject now write `create_audit_event()` in same tx. Actions: campaign.approved, campaign.rejected, creative.approved, creative.rejected. Details: old/new status, rejection_reason (truncated 200). No secrets/storage fields. Tests: 10 audit tests (7 new) — audit writes, no secrets, 403 skips audit. Branch: feature/S-052. | Start S-053 |
 ## Status Legend
 
@@ -104,7 +104,7 @@ Separately covered:
 - **open/prepared** — definition written, tag commands prepared, awaiting approval
 - **deferred** — intentionally postponed (documented reason)
 
-## Remaining Gaps (v0.6 Production Readiness — planned)
+## Remaining Gaps (v0.6 Production Readiness — ready for release prep)
 
 | Gap | Status |
 |-----|--------|

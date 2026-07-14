@@ -464,15 +464,15 @@ git push origin :refs/tags/v0.4-advertiser-self-service-pilot
 
 #### Known Limitations / Not Included
 
-- Real LDAPS/AD integration — stub 503, deferred to v0.6
-- Password reset invite/email flow — deferred to v0.6
+- Password reset invite/email flow — deferred
 - XLSX export — deferred (CSV done in S-040)
 - Malware scan — deferred to v0.7
 - Transcoding/renditions — deferred to v0.9
 - ClickHouse/reporting warehouse — deferred to v0.8
 - Billing/acts/ERP — deferred to v2.6
-- Production observability (Prometheus/Grafana) — deferred to v0.5 production milestone
-- MinIO/NATS backup — deferred
+- Production observability (Prometheus/Grafana) — ✅ done in v0.6
+- Real LDAPS/AD integration — ✅ done in v0.6
+- MinIO/NATS backup — ✅ done in v0.6
 - KSO player/sidecar — deferred to v0.9, out of scope for v0.5
 - Real hardware provisioning — out of scope
 - Device signature verification — HMAC-SHA256 implemented, device-gateway verification deferred
@@ -507,25 +507,26 @@ git push origin :refs/tags/v0.5-business-portal-complete
 
 ### v0.6-production-readiness-foundation — Production Readiness Foundation
 
-**Planned.**  Follows v0.5 Business Portal Complete.
+**Implemented on develop.**  Follows v0.5 Business Portal Complete.
 
 #### Metadata
 - **Tag:** v0.6-production-readiness-foundation (proposed)
-- **Date:** TBD
+- **Date:** 2026-07-14
 - **Predecessor:** v0.5-business-portal-complete (`5c41a6a`)
 - **Plan:** `docs/product/v06-production-readiness-plan.md`
+- **Status:** code/CI/security ready on develop (`3f459e5`); release prep pending (S-056)
 
-#### Planned Capabilities
+#### Completed Capabilities (S-047…S-054a)
 
-- **Monitoring/observability (S-047):** Prometheus metrics on control-api + device-gateway, Grafana dashboard (API latency, error rate, DB pool, NATS queue), AlertManager rules
-- **Real LDAPS wiring (S-048):** Replace AD stub with real LDAPS bind/search, fail-safe to `local_break_glass`, no plaintext secrets
-- **MinIO backup (S-049):** `mc mirror` cron for creative assets bucket, restore drill, runbook update
-- **NATS backup policy (S-050):** Document recovery from outbox, manual `nats stream backup` procedure
-- **Portal error boundaries (S-051):** React ErrorBoundary in admin-web + advertiser-web, graceful fallback UI
-- **Audit events for approval/moderation (S-052):** `create_audit_event` on campaign approve/reject + creative approve/reject
-- **identity.py decomposition plan (S-053):** ADR for splitting 2036-line router into domain routers
-- **creative_upload_sessions behavioural RLS (S-054):** Full NOBYPASSRLS proof for upload session isolation
-- **XLSX export decision (S-054a):** Evaluate openpyxl dependency, implement or defer with rationale
+- **Monitoring/observability (S-047):** ✅ Prometheus metrics on control-api + device-gateway (18 metrics), Grafana dashboard (12 panels), 8 alert rules in alarms.yml. AlertManager not provisioned (known limitation, deferred to future ops hardening).
+- **Real LDAPS wiring (S-048):** ✅ RealLDAPAuthProvider with ldap3 bind+search, disabled/misconfigured/configured/unavailable modes, safe filter escaping, timeouts, no password logs. `local_advertiser` and `local_break_glass` preserved. Stub returns honest 503 when AD_ENABLED=false.
+- **MinIO backup (S-049):** ✅ Python SDK full-bucket backup with SHA-256 manifest, restore with check/dry-run/confirm modes, destructive confirmation gate (REQUIRE_RESTORE_CONFIRMATION=yes), 4 integration tests. Runbook: `docs/runbook/minio-backup-restore.md`.
+- **NATS backup policy (S-050):** ✅ Outbox-first recovery policy documented. Recovery diagnostics script. 4 integration tests. Runbook: `docs/runbook/nats-backup-restore.md`.
+- **Portal error boundaries (S-051):** ✅ React ErrorBoundary in admin-web + advertiser-web, Russian fallback, JWT sanitisation in dev, 19 vitest tests.
+- **Audit events for approval/moderation (S-052):** ✅ campaign.approved/rejected + creative.approved/rejected in same DB transaction, no secrets/storage fields, 10 audit tests.
+- **identity.py router decomposition (S-053):** ✅ 2097-line identity.py split into 8 domain routers (users, ad_settings, advertisers, campaigns, creatives, reporting, inventory + common). Identity.py = 40-line aggregator. API paths, permissions, schemas, and business logic unchanged. CI green.
+- **creative_upload_sessions behavioural RLS (S-054):** ✅ Full NOBYPASSRLS proof — 5 scenarios (org A sees session, org B cannot, admin bypass, empty scope fail-closed, cross-org count consistency). No policy changes needed.
+- **XLSX export decision (S-054a):** ✅ CSV-only for v0.6 (done in S-040, UTF-8 BOM for Excel). XLSX deferred to v0.7/v0.8.
 
 #### Explicitly NOT Included
 
