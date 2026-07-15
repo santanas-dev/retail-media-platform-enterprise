@@ -39,39 +39,36 @@ def _adv_token() -> str:
     return create_access_token(ADV_USER_ID, "local_advertiser")
 
 
-def _raw_sql(sql_str, params=None):
-    """Execute SQL via sync engine (for setup/teardown)."""
-    import asyncio as _a
-    async def _r():
-        e = create_async_engine(DB_URL, echo=False)
-        async with e.begin() as c:
-            await c.execute(text("SELECT set_config('app.rmp_is_admin', 'true', true)"))
-            r = await c.execute(text(sql_str), params or {})
-            rows = r.fetchall()
-        await e.dispose()
-        return rows
-    return _a.run(_r())
+async def _raw_sql(sql_str, params=None):
+    """Execute SQL via async engine (for setup/teardown within async test)."""
+    e = create_async_engine(DB_URL, echo=False)
+    async with e.begin() as c:
+        await c.execute(text("SELECT set_config('app.rmp_is_admin', 'true', true)"))
+        r = await c.execute(text(sql_str), params or {})
+        rows = r.fetchall()
+    await e.dispose()
+    return rows
 
 
-def _reset_campaign():
+async def _reset_campaign():
     """Reset campaign to draft + clean up flights/placements/approvals."""
-    _raw_sql(f"""
+    await _raw_sql(f"""
     DELETE FROM campaign_approvals WHERE campaign_id = '{CAMP_ID}'
     """)
-    _raw_sql(f"""
+    await _raw_sql(f"""
     DELETE FROM campaign_status_history WHERE campaign_id = '{CAMP_ID}'
       AND new_status IN ('pending_approval', 'approved', 'rejected')
     """)
-    _raw_sql(f"""
+    await _raw_sql(f"""
     DELETE FROM campaign_creatives WHERE campaign_id = '{CAMP_ID}'
     """)
-    _raw_sql(f"""
+    await _raw_sql(f"""
     DELETE FROM campaign_placements WHERE campaign_id = '{CAMP_ID}'
     """)
-    _raw_sql(f"""
+    await _raw_sql(f"""
     DELETE FROM campaign_flights WHERE campaign_id = '{CAMP_ID}'
     """)
-    _raw_sql(f"""
+    await _raw_sql(f"""
     UPDATE campaigns SET status = 'draft' WHERE id = '{CAMP_ID}'
     """)
 
@@ -98,7 +95,7 @@ def db_available():
 @pytest.mark.asyncio
 async def test_concurrent_approve_exactly_one_wins(db_available, app):
     """S-064: two concurrent approve_campaign calls → exactly one succeeds."""
-    _reset_campaign()
+    await _reset_campaign()
     client = TestClient(app)
     token = _adv_token()
 
