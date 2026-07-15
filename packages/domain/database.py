@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import QueuePool
 
 # Read from environment; no default production credentials
 DATABASE_URL = os.environ.get(
@@ -42,6 +43,7 @@ def _validate_pool_config(env: str) -> None:
 def _pool_kwargs() -> dict:
     """Return the keyword arguments for create_async_engine pool config."""
     return {
+        "poolclass": QueuePool,
         "pool_size": DB_POOL_SIZE,
         "max_overflow": DB_MAX_OVERFLOW,
         "pool_timeout": DB_POOL_TIMEOUT,

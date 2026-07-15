@@ -386,6 +386,7 @@ def test_pool_kwargs_returns_expected_keys():
     except ImportError:
         pytest.skip("sqlalchemy not installed")
     kw = _pool_kwargs()
+    assert "poolclass" in kw
     assert "pool_size" in kw
     assert "max_overflow" in kw
     assert "pool_timeout" in kw
