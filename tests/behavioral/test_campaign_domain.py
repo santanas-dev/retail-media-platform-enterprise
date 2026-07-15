@@ -68,8 +68,8 @@ class TestCampaigns:
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
-        assert isinstance(data, list)
-        codes = {c["code"] for c in data}
+        assert "items" in data
+        codes = {c["code"] for c in data["items"]}
         assert "CAMP-2026-001" in codes, f"Expected CAMP-2026-001 in {codes}"
 
     def test_advertiser_sees_only_own_campaigns(self):
@@ -81,9 +81,9 @@ class TestCampaigns:
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
-        codes = {c["code"] for c in data}
+        codes = {c["code"] for c in data["items"]}
         assert "CAMP-2026-001" in codes
-        for c in data:
+        for c in data["items"]:
             assert c["advertiser_organization_id"] == "00000000-0000-0000-0000-000000000200"
 
     def test_global_read_sees_all(self):
@@ -95,7 +95,7 @@ class TestCampaigns:
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
-        assert len(data) >= 1
+        assert data["total"] >= 1
 
     def test_no_permission_returns_403(self):
         """User without campaigns.read gets 403.
