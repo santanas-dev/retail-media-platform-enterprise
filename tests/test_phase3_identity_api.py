@@ -356,27 +356,29 @@ class TestModerationQueue(AuthzMixin, unittest.TestCase):
     def _setup_moderator(self):
         return self._setup_authz(perms={"creatives.moderate"})
 
-    @patch("packages.api.identity.repository.list_moderation_queue", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.list_moderation_queue_paginated", new_callable=AsyncMock)
     def test_default_filter_returns_pending_review(self, mock_repo):
         self._setup_moderator()
-        mock_repo.return_value = []
+        mock_repo.return_value = ([], 0)
         resp = self._get("/api/v1/identity/creative-assets/moderation-queue")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json(), [])
+        data = resp.json()
+        self.assertEqual(data["items"], [])
+        self.assertEqual(data["total"], 0)
         mock_repo.assert_called_once()
         self.assertEqual(mock_repo.call_args.kwargs["status_filter"], "pending_review")
 
-    @patch("packages.api.identity.repository.list_moderation_queue", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.list_moderation_queue_paginated", new_callable=AsyncMock)
     def test_advertiser_gets_403(self, mock_repo):
         self._setup_authz(perms={"creatives.read"})
         resp = self._get("/api/v1/identity/creative-assets/moderation-queue")
         self.assertEqual(resp.status_code, 403)
         mock_repo.assert_not_called()
 
-    @patch("packages.api.identity.repository.list_moderation_queue", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.list_moderation_queue_paginated", new_callable=AsyncMock)
     def test_no_storage_fields_in_response(self, mock_repo):
         self._setup_moderator()
-        mock_repo.return_value = [{
+        mock_repo.return_value = ([{
             "id": "ca-001", "advertiser_organization_id": "org-1",
             "code": "C-001", "name": "Test Creative", "media_type": "image/png",
             "file_size_bytes": 1024, "duration_ms": None,
@@ -385,17 +387,17 @@ class TestModerationQueue(AuthzMixin, unittest.TestCase):
             "moderation_notes": None,
             "created_at": "2026-01-01T00:00:00", "updated_at": "2026-01-01T00:00:00",
             "advertiser_name": "Test Org", "advertiser_code": "TO",
-        }]
+        }], 1)
         resp = self._get("/api/v1/identity/creative-assets/moderation-queue")
         self.assertEqual(resp.status_code, 200)
-        item = resp.json()[0]
+        item = resp.json()["items"][0]
         self.assertNotIn("storage_bucket", item)
         self.assertNotIn("storage_key", item)
         self.assertNotIn("presigned_url", item)
         self.assertIn("advertiser_name", item)
         self.assertEqual(item["advertiser_name"], "Test Org")
 
-    @patch("packages.api.identity.repository.list_moderation_queue", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.list_moderation_queue_paginated", new_callable=AsyncMock)
     def test_invalid_filter_rejected(self, mock_repo):
         self._setup_moderator()
         resp = self._get("/api/v1/identity/creative-assets/moderation-queue?moderation_status=invalid")
@@ -537,23 +539,23 @@ class TestModerationReject(AuthzMixin, unittest.TestCase):
 class TestInventoryStores(AuthzMixin, unittest.TestCase):
     """GET /api/v1/identity/inventory/stores"""
 
-    @patch("packages.api.identity.repository.get_inventory_stores", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.get_inventory_stores_paginated", new_callable=AsyncMock)
     def test_returns_enriched_stores(self, mock_repo):
         self._setup_authz(perms={"inventory.read"})
-        mock_repo.return_value = [{
+        mock_repo.return_value = ([{
             "id": "s-1", "code": "ST-001", "name": "Магазин №42",
             "address": "ул. Тестовая, 1", "is_active": True,
             "cluster_name": "Кластер Москва", "branch_name": "Центральный филиал",
             "surface_count": 3,
-        }]
+        }], 1)
         resp = self._get("/api/v1/identity/inventory/stores")
         self.assertEqual(resp.status_code, 200)
-        data = resp.json()[0]
+        data = resp.json()["items"][0]
         self.assertEqual(data["code"], "ST-001")
         self.assertEqual(data["cluster_name"], "Кластер Москва")
         self.assertEqual(data["surface_count"], 3)
 
-    @patch("packages.api.identity.repository.get_inventory_stores", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.get_inventory_stores_paginated", new_callable=AsyncMock)
     def test_advertiser_gets_403(self, mock_repo):
         self._setup_authz(perms={"campaigns.read"})
         resp = self._get("/api/v1/identity/inventory/stores")
@@ -564,22 +566,22 @@ class TestInventoryStores(AuthzMixin, unittest.TestCase):
 class TestInventorySurfaces(AuthzMixin, unittest.TestCase):
     """GET /api/v1/identity/inventory/surfaces"""
 
-    @patch("packages.api.identity.repository.get_inventory_surfaces", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.get_inventory_surfaces_paginated", new_callable=AsyncMock)
     def test_returns_enriched_surfaces(self, mock_repo):
         self._setup_authz(perms={"inventory.read"})
-        mock_repo.return_value = [{
+        mock_repo.return_value = ([{
             "id": "ds-1", "code": "SURF-001", "store_id": "s-1",
             "resolution_w": 1440, "resolution_h": 1080, "is_active": True,
             "store_code": "ST-001", "store_name": "Магазин №42",
-        }]
+        }], 1)
         resp = self._get("/api/v1/identity/inventory/surfaces")
         self.assertEqual(resp.status_code, 200)
-        data = resp.json()[0]
+        data = resp.json()["items"][0]
         self.assertEqual(data["store_code"], "ST-001")
         self.assertNotIn("storage_bucket", data)
         self.assertNotIn("storage_key", data)
 
-    @patch("packages.api.identity.repository.get_inventory_surfaces", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.get_inventory_surfaces_paginated", new_callable=AsyncMock)
     def test_advertiser_gets_403(self, mock_repo):
         self._setup_authz(perms={"campaigns.read"})
         resp = self._get("/api/v1/identity/inventory/surfaces")
@@ -623,10 +625,10 @@ class TestInventorySurfacePatch(AuthzMixin, unittest.TestCase):
 class TestApprovalQueue(AuthzMixin, unittest.TestCase):
     """GET /api/v1/identity/campaigns/approval-queue"""
 
-    @patch("packages.api.identity.repository.list_approval_queue", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.list_approval_queue_paginated", new_callable=AsyncMock)
     def test_returns_pending_campaigns(self, mock_repo):
         self._setup_authz(perms={"campaigns.approve"})
-        mock_repo.return_value = [{
+        mock_repo.return_value = ([{
             "campaign_id": "c-1", "campaign_code": "C-001", "campaign_name": "Test",
             "campaign_status": "pending_approval",
             "advertiser_org_id": "org-1", "advertiser_org_name": "Org", "advertiser_brand_name": "Brand",
@@ -634,32 +636,32 @@ class TestApprovalQueue(AuthzMixin, unittest.TestCase):
             "has_flight": True, "has_placement": True, "has_creative": True,
             "all_creatives_ready": True, "all_creatives_approved": True,
             "rejection_reason": None,
-        }]
+        }], 1)
         resp = self._get("/api/v1/identity/campaigns/approval-queue")
         self.assertEqual(resp.status_code, 200)
-        data = resp.json()[0]
+        data = resp.json()["items"][0]
         self.assertEqual(data["campaign_code"], "C-001")
         self.assertTrue(data["has_flight"])
         self.assertNotIn("storage_bucket", data)
 
-    @patch("packages.api.identity.repository.list_approval_queue", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.list_approval_queue_paginated", new_callable=AsyncMock)
     def test_advertiser_gets_403(self, mock_repo):
         self._setup_authz(perms={"campaigns.read"})
         resp = self._get("/api/v1/identity/campaigns/approval-queue")
         self.assertEqual(resp.status_code, 403)
         mock_repo.assert_not_called()
 
-    @patch("packages.api.identity.repository.list_approval_queue", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.list_approval_queue_paginated", new_callable=AsyncMock)
     def test_invalid_filter_rejected(self, mock_repo):
         self._setup_authz(perms={"campaigns.approve"})
         resp = self._get("/api/v1/identity/campaigns/approval-queue?status=invalid")
         self.assertEqual(resp.status_code, 422)
         mock_repo.assert_not_called()
 
-    @patch("packages.api.identity.repository.list_approval_queue", new_callable=AsyncMock)
+    @patch("packages.api.identity.repository.list_approval_queue_paginated", new_callable=AsyncMock)
     def test_readiness_not_ready_shows(self, mock_repo):
         self._setup_authz(perms={"campaigns.approve"})
-        mock_repo.return_value = [{
+        mock_repo.return_value = ([{
             "campaign_id": "c-2", "campaign_code": "C-002", "campaign_name": "Not Ready",
             "campaign_status": "pending_approval",
             "advertiser_org_id": "org-1", "advertiser_org_name": "Org", "advertiser_brand_name": "Brand",
@@ -667,10 +669,10 @@ class TestApprovalQueue(AuthzMixin, unittest.TestCase):
             "has_flight": True, "has_placement": False, "has_creative": True,
             "all_creatives_ready": False, "all_creatives_approved": False,
             "rejection_reason": None,
-        }]
+        }], 1)
         resp = self._get("/api/v1/identity/campaigns/approval-queue")
         self.assertEqual(resp.status_code, 200)
-        data = resp.json()[0]
+        data = resp.json()["items"][0]
         self.assertFalse(data["has_placement"])
         self.assertFalse(data["all_creatives_approved"])
 
