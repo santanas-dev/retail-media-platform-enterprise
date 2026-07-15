@@ -46,8 +46,10 @@ const popBySurface = [
 
 function setupFull() {
   mockGet.mockImplementation((path: string) => {
+    const cleanPath = path.split("?")[0];
     const m: Record<string, unknown> = {
-      "/campaigns": [camp], "/campaign-flights": [flight],
+      "/campaigns": {items: [camp], total: 1, limit: 200, offset: 0},
+      "/campaign-flights": [flight],
       "/campaign-placements": [placement], "/campaign-creatives": [ccLink],
       "/creative-assets": [asset], "/campaign-approvals": [approval],
       "/campaign-status-history": [],
@@ -55,7 +57,7 @@ function setupFull() {
       "/campaigns/c1/pop/by-day": popByDay,
       "/campaigns/c1/pop/by-surface": popBySurface,
     };
-    return m[path] ? Promise.resolve(m[path]) : Promise.resolve([]);
+    return m[cleanPath] ? Promise.resolve(m[cleanPath]) : Promise.resolve([]);
   });
 }
 
@@ -144,7 +146,7 @@ describe("CampaignDetailPage", () => {
   it("shows empty state when no PoP data", async () => {
     mockGet.mockImplementation((path: string) => {
       const m: Record<string, unknown> = {
-        "/campaigns": [camp], "/campaign-flights": [],
+        "/campaigns": {items: [camp], total: 1, limit: 200, offset: 0}, "/campaign-flights": [],
         "/campaign-placements": [], "/campaign-creatives": [],
         "/creative-assets": [], "/campaign-approvals": [],
         "/campaign-status-history": [],
@@ -152,7 +154,7 @@ describe("CampaignDetailPage", () => {
         "/campaigns/c1/pop/by-day": [],
         "/campaigns/c1/pop/by-surface": [],
       };
-      return m[path] ? Promise.resolve(m[path]) : Promise.resolve([]);
+      const cp = path.split("?")[0]; return m[cp] ? Promise.resolve(m[cp]) : Promise.resolve([]);
     });
     renderPage();
     await screen.findByText("Пока нет подтверждённых показов", {}, { timeout: 3000 });
@@ -185,7 +187,7 @@ describe("CampaignDetailPage — edit", () => {
   it("draft campaign shows edit button", async () => {
     mockGet.mockImplementation((path: string) => {
       const m: Record<string, unknown> = {
-        "/campaigns": [draftCamp], "/campaign-flights": [],
+        "/campaigns": {items: [draftCamp], total: 1, limit: 200, offset: 0}, "/campaign-flights": [],
         "/campaign-placements": [], "/campaign-creatives": [],
         "/creative-assets": [], "/campaign-approvals": [],
         "/campaign-status-history": [],
@@ -202,7 +204,7 @@ describe("CampaignDetailPage — edit", () => {
   it("non-draft campaign does not show edit button", async () => {
     mockGet.mockImplementation((path: string) => {
       const m: Record<string, unknown> = {
-        "/campaigns": [activeCamp], "/campaign-flights": [],
+        "/campaigns": {items: [activeCamp], total: 1, limit: 200, offset: 0}, "/campaign-flights": [],
         "/campaign-placements": [], "/campaign-creatives": [],
         "/creative-assets": [], "/campaign-approvals": [],
         "/campaign-status-history": [],
@@ -229,7 +231,7 @@ describe("CampaignDetailPage — attach creative", () => {
   function setupDraft(assets = [readyAsset] as Array<typeof asset>) {
     mockGet.mockImplementation((path: string) => {
       const m: Record<string, unknown> = {
-        "/campaigns": [draftCamp], "/campaign-flights": [flight],
+        "/campaigns": {items: [draftCamp], total: 1, limit: 200, offset: 0}, "/campaign-flights": [flight],
         "/campaign-placements": [placement], "/campaign-creatives": [ccLink],
         "/creative-assets": assets, "/campaign-approvals": [],
         "/campaign-status-history": [],
@@ -251,7 +253,7 @@ describe("CampaignDetailPage — attach creative", () => {
   it("non-draft campaign does not show attach button", async () => {
     mockGet.mockImplementation((path: string) => {
       const m: Record<string, unknown> = {
-        "/campaigns": [activeCamp], "/campaign-flights": [],
+        "/campaigns": {items: [activeCamp], total: 1, limit: 200, offset: 0}, "/campaign-flights": [],
         "/campaign-placements": [], "/campaign-creatives": [],
         "/creative-assets": [], "/campaign-approvals": [],
         "/campaign-status-history": [],
@@ -324,7 +326,7 @@ describe("CampaignDetailPage — submit approval", () => {
     const c = { ...draftCamp, ...overrides };
     mockGet.mockImplementation((path: string) => {
       const m: Record<string, unknown> = {
-        "/campaigns": [c], "/campaign-flights": [flight],
+        "/campaigns": {items: [c], total: 1, limit: 200, offset: 0}, "/campaign-flights": [flight],
         "/campaign-placements": [placement],
         "/campaign-creatives": [{ ...ccLink, creative_asset_id: "ca_ready" }],
         "/creative-assets": [readyAsset], "/campaign-approvals": [],
@@ -342,7 +344,7 @@ describe("CampaignDetailPage — submit approval", () => {
     const c = { ...draftCamp };
     mockGet.mockImplementation((path: string) => {
       const m: Record<string, unknown> = {
-        "/campaigns": [c], "/campaign-flights": [],
+        "/campaigns": {items: [c], total: 1, limit: 200, offset: 0}, "/campaign-flights": [],
         "/campaign-placements": [], "/campaign-creatives": [],
         "/creative-assets": [], "/campaign-approvals": [],
         "/campaign-status-history": [],
