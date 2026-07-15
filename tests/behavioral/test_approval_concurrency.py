@@ -79,7 +79,7 @@ ON CONFLICT DO NOTHING
 ;
 INSERT INTO campaign_placements (id, campaign_id, store_id)
 VALUES ('beh-concur-pl-000000000000001', '{_CAMPAIGN_ID}',
-        '00000000-0000-0000-0000-000000000001')
+        '00000000-0000-0000-0000-000000000003')
 ON CONFLICT DO NOTHING
 ;
 INSERT INTO campaign_creatives (id, campaign_id, creative_asset_id)
