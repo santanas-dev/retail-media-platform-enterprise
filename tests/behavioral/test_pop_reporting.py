@@ -231,3 +231,111 @@ class TestPopReportingBySurface:
         # Most impressions first (descending order)
         assert rows[0]["impressions_count"] == 2
         assert rows[1]["impressions_count"] == 1
+
+
+class TestPopTimezoneCorrectness:
+    """S-063: by-day groups by local store day, not UTC day."""
+
+    _STORE_VLAD = "beh-pop-st-vladivostok-0000001"
+    _SURFACE_VLAD = "beh-pop-ds-vladivostok-0000001"
+    _LOGICAL_CARRIER_VLAD = "beh-pop-lc-vlad-00000000001"
+
+    @staticmethod
+    def _seed_vladivostok_store(pop_fixtures: dict) -> None:
+        """Create a Vladivostok-tz store + surface linked to the PoP campaign."""
+        return _raw_sql(f"""
+        -- Second logical carrier (required FK for display_surfaces)
+        INSERT INTO logical_carriers (id, physical_device_id, code, carrier_type)
+        VALUES ('{TestPopTimezoneCorrectness._LOGICAL_CARRIER_VLAD}',
+                '{pop_fixtures["device"]}', 'BEH-POP-LC-VLAD', 'direct')
+        ON CONFLICT (code) DO NOTHING
+        ;
+        -- Vladivostok store (UTC+10)
+        INSERT INTO stores (id, cluster_id, code, name, address, timezone, is_active)
+        VALUES ('{TestPopTimezoneCorrectness._STORE_VLAD}',
+                '{pop_fixtures["cluster"]}', 'BEH-POP-ST-VLAD', 'PoP Vladivostok Store',
+                'Vladivostok, Russkaya 1', 'Asia/Vladivostok', true)
+        ON CONFLICT (code) DO NOTHING
+        ;
+        -- Surface for Vladivostok store
+        INSERT INTO display_surfaces
+            (id, logical_carrier_id, store_id, code, resolution_w, resolution_h, is_active)
+        SELECT '{TestPopTimezoneCorrectness._SURFACE_VLAD}',
+               id,
+               '{TestPopTimezoneCorrectness._STORE_VLAD}',
+               'BEH-POP-DS-VLAD', 1920, 1080, true
+        FROM logical_carriers WHERE code = 'BEH-POP-LC-VLAD'
+        ON CONFLICT (code) DO NOTHING
+        """)
+
+    @staticmethod
+    def _cleanup_vladivostok() -> None:
+        return _raw_sql(f"""
+        DELETE FROM pop_events_raw WHERE surface_id = '{TestPopTimezoneCorrectness._SURFACE_VLAD}'
+        ;
+        DELETE FROM pop_dedup_index WHERE event_id = 'beh-pop-tz-vlad-001'
+        ;
+        DELETE FROM display_surfaces WHERE id = '{TestPopTimezoneCorrectness._SURFACE_VLAD}'
+        ;
+        DELETE FROM stores WHERE id = '{TestPopTimezoneCorrectness._STORE_VLAD}'
+        ;
+        DELETE FROM logical_carriers WHERE id = '{TestPopTimezoneCorrectness._LOGICAL_CARRIER_VLAD}'
+        """)
+
+    def test_vladivostok_0800_groups_as_local_day(self, db_available, pop_fixtures):
+        """Vladivostok 2026-05-15 08:00 local (= May 14 22:00 UTC)
+        groups as 2026-05-15, not UTC's 2026-05-14."""
+        # Seed Vladivostok store + surface
+        self._seed_vladivostok_store(pop_fixtures)
+
+        try:
+            async def _seed_event(session):
+                from datetime import datetime, timezone
+                from packages.domain.repository import (
+                    record_pop_raw_event, insert_pop_dedup_key,
+                )
+
+                # 2026-05-15 08:00 Vladivostok = 2026-05-14 22:00 UTC
+                rendered_utc = datetime(2026, 5, 14, 22, 0, 0, tzinfo=timezone.utc)
+                await record_pop_raw_event(
+                    session,
+                    event_id="beh-pop-tz-vlad-001",
+                    schema_version="1.0",
+                    device_id=pop_fixtures["device"],
+                    manifest_id=pop_fixtures["manifest"],
+                    campaign_id=pop_fixtures["campaign"],
+                    creative_asset_id=pop_fixtures["creative"],
+                    surface_id=self._SURFACE_VLAD,
+                    rendered_at=rendered_utc,
+                    event_recorded_at=rendered_utc,
+                    duration_ms=5000,
+                    playback_result="success",
+                    campaign_verified=True,
+                    status="accepted",
+                )
+                await insert_pop_dedup_key(session, "beh-pop-tz-vlad-001")
+
+            asyncio.run(_run_in_session(_seed_event))
+
+            # Query by-day
+            rows = asyncio.run(_run_in_session(
+                lambda s: list_campaign_pop_by_day(s, pop_fixtures["campaign"]),
+            ))
+
+            # Must have at least one row for 2026-05-15
+            dates = {str(r["date"]) for r in rows}
+            assert "2026-05-15" in dates, (
+                f"S-063: Vladivostok event should group as local day 2026-05-15, "
+                f"got dates: {sorted(dates)}"
+            )
+            # Proof that UTC grouping would be 2026-05-14
+            assert "2026-05-14" not in dates or any(
+                r["date"] != "2026-05-14" for r in rows
+            ), "S-063: UTC-day grouping is the bug — local day must be 2026-05-15"
+
+            # The row for 2026-05-15 must have at least 1 impression
+            row_15 = [r for r in rows if str(r["date"]) == "2026-05-15"]
+            assert len(row_15) == 1
+            assert row_15[0]["impressions_count"] >= 1
+        finally:
+            self._cleanup_vladivostok()

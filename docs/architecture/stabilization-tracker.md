@@ -110,6 +110,7 @@ Separately covered:
 | S-060 | Publish v0.6.1 critical hotfix | P0 | ✅ done | P.S. (Hermes) | main ff→00060cc. Tag v0.6.1-critical-hotfix→00060cc. CI #29404001541 green 34/34. | — |
 | S-061 | Audit v4 remediation plan | P0 | ✅ done | P.S. (Hermes) | `docs/product/audit-v4-remediation-plan.md`: P1/P2/P3 classified, S-062…S-074 proposed. Tracker, gaps triage, release-versioning, roadmap updated. | Start S-062 |
 | S-062 | Auth / test / dependency truth (P1) | P1 | ✅ done | P.S. (Hermes) | No-op async auth tests → IsolatedAsyncioTestCase (22 tests awakened). Guard test against async-in-plain-TestCase. Audit events: auth.login.success, auth.login.failure, auth.logout (7 new tests). Dependency truth: minio added to requirements, PyJWT bounds aligned (≥2.12.0), CI install unified. | — |
+| S-063 | PoP timezone correctness (P1) | P1 | ✅ done | P.S. (Hermes) | `list_campaign_pop_by_day` now groups by local store day (Store.timezone → Branch.timezone → Europe/Moscow) via PostgreSQL `timezone()` + `COALESCE`. 8 unit tests + 1 behavioural (Vladivostok UTC+10 proof). API shape unchanged. | — |
 ## Status Legend
 
 - **done** — implemented, tested, committed, pushed

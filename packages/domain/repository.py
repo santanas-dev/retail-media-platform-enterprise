@@ -2410,28 +2410,50 @@ async def list_campaign_pop_by_day(
     session: AsyncSession,
     campaign_id: str,
 ) -> list[dict]:
-    """Return daily PoP breakdown for a campaign.
+    """Return daily PoP breakdown for a campaign, grouped by local store day.
+
+    Timezone resolution (S-063):
+      1. Store.timezone (via surface → store)
+      2. Branch.timezone (via surface → store → cluster → branch)
+      3. 'Europe/Moscow' hardcoded default
+
+    All joins are LEFT OUTER — orphaned surface_ids silently fall back
+    to the default timezone rather than being dropped from the report.
 
     Returns list of dicts with: date, impressions_count, total_duration_ms.
     Ordered by date ascending.
     """
     from sqlalchemy import func, cast, Date
-    from packages.domain.models import PopEventRaw
+    from packages.domain.models import (
+        PopEventRaw, DisplaySurface, Store, Cluster, Branch,
+    )
+
+    # Coalesce store.tz → branch.tz → Moscow default (trusted DB column, not
+    # user input — safe to pass directly to PostgreSQL timezone() function).
+    local_tz = func.coalesce(Store.timezone, Branch.timezone, "Europe/Moscow")
+    local_date = cast(
+        func.timezone(local_tz, PopEventRaw.rendered_at), Date,
+    ).label("date")
 
     stmt = (
         select(
-            cast(PopEventRaw.rendered_at, Date).label("date"),
+            local_date,
             func.count().label("impressions_count"),
             func.coalesce(func.sum(PopEventRaw.duration_ms), 0).label("total_duration_ms"),
         )
+        .select_from(PopEventRaw)
+        .outerjoin(DisplaySurface, PopEventRaw.surface_id == DisplaySurface.id)
+        .outerjoin(Store, DisplaySurface.store_id == Store.id)
+        .outerjoin(Cluster, Store.cluster_id == Cluster.id)
+        .outerjoin(Branch, Cluster.branch_id == Branch.id)
         .where(
             PopEventRaw.campaign_id == campaign_id,
             PopEventRaw.status == "accepted",
             PopEventRaw.campaign_verified == True,
             PopEventRaw.playback_result == "success",
         )
-        .group_by(cast(PopEventRaw.rendered_at, Date))
-        .order_by(cast(PopEventRaw.rendered_at, Date).asc())
+        .group_by(local_date)
+        .order_by(local_date.asc())
     )
     result = await session.execute(stmt)
     return [

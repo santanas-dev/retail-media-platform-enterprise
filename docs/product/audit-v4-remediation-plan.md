@@ -32,7 +32,7 @@ remediation sequence.
 | P1-1 | ✅ No-op async auth tests — fixed: 22 tests awakened with IsolatedAsyncioTestCase + guard | False confidence in auth stack | S-062 |
 | P1-2 | ✅ Audit events for login/logout/break-glass — 7 new tests, no secrets in details | Compliance gap, no incident response data | S-062 |
 | P1-3 | ✅ ldap3/minio in requirements; CI aligned; PyJWT bounds unified ≥2.12.0 | Dependency drift, unreliable CI | S-062 |
-| P1-4 | PoP by-day timezone correctness — reports may show wrong day boundary | Billing/reporting accuracy | S-063 |
+| P1-4 | ✅ PoP by-day timezone correctness — groups by local store day (Store.tz → Branch.tz → Moscow) | Billing/reporting accuracy | S-063 |
 | P1-5 | approve_campaign race condition — two admins can approve concurrently | Data integrity, double-approval | S-064 |
 | P1-6 | /metrics exposure hardening — metrics endpoint lacks auth/rate-limit | Information disclosure | S-065 |
 | P1-7 | No rate limiting on /device/manifest/latest and /pop/batch | DoS surface on device-facing endpoints | S-065 |
@@ -87,8 +87,8 @@ S-062 ─► ✅ Auth/test/dependency truth (DONE)
           ├─ ✅ Requirements/CI dependency truth — minio added, PyJWT aligned, CI unified
           └─ → _scope_ids latent issue deferred to S-074 readiness review
 
-S-063 ─► PoP timezone correctness
-          └─ By-day boundary using campaign timezone, not UTC
+S-063 ─► ✅ PoP timezone correctness (DONE)
+          └─ ✅ By-day grouping uses store local day: Store.tz → Branch.tz → Moscow
 
 S-064 ─► Approval concurrency + audit consistency
           ├─ approve_campaign race condition
