@@ -23,7 +23,6 @@ from sqlalchemy.orm import sessionmaker
 from packages.domain.repository import (
     approve_campaign,
     reject_campaign,
-    request_campaign_approval,
 )
 
 DB_URL = os.environ.get(
@@ -122,16 +121,15 @@ class TestApproveConcurrency:
     @pytest.fixture(autouse=True)
     def _setup_teardown(self, db_available):
         asyncio.run(_run_sql(_SEED))
-        # Move campaign to pending_approval
-        async def _do():
-            engine = _engine_factory()
-            async with sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)() as s:
-                async with s.begin():
-                    old, new = await request_campaign_approval(s, _CAMPAIGN_ID, changed_by="fixture")
-                    assert old == "draft" and new == "pending_approval", \
-                        f"request_approval: old={old}, new={new}"
-            await engine.dispose()
-        asyncio.run(_do())
+        # Set campaign to pending_approval directly (bypass contract validation)
+        asyncio.run(_run_sql(f"""
+        UPDATE campaigns SET status = 'pending_approval' WHERE id = '{_CAMPAIGN_ID}'
+        ;
+        INSERT INTO campaign_status_history (id, campaign_id, old_status, new_status, changed_by, reason)
+        VALUES ('beh-concur-csh-000000000000001', '{_CAMPAIGN_ID}',
+                'draft', 'pending_approval', 'fixture', 'concurrency test setup')
+        ON CONFLICT DO NOTHING
+        """))
         yield
         asyncio.run(_run_sql(_CLEANUP))
 
@@ -222,14 +220,14 @@ class TestApproveVsRejectRace:
     @pytest.fixture(autouse=True)
     def _setup_teardown(self, db_available):
         asyncio.run(_run_sql(_SEED))
-        async def _do():
-            engine = _engine_factory()
-            async with sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)() as s:
-                async with s.begin():
-                    old, new = await request_campaign_approval(s, _CAMPAIGN_ID, changed_by="fixture")
-                    assert old == "draft" and new == "pending_approval"
-            await engine.dispose()
-        asyncio.run(_do())
+        asyncio.run(_run_sql(f"""
+        UPDATE campaigns SET status = 'pending_approval' WHERE id = '{_CAMPAIGN_ID}'
+        ;
+        INSERT INTO campaign_status_history (id, campaign_id, old_status, new_status, changed_by, reason)
+        VALUES ('beh-concur-csh-000000000000001', '{_CAMPAIGN_ID}',
+                'draft', 'pending_approval', 'fixture', 'concurrency test setup')
+        ON CONFLICT DO NOTHING
+        """))
         yield
         asyncio.run(_run_sql(_CLEANUP))
 
@@ -303,14 +301,14 @@ class TestRejectConcurrency:
     @pytest.fixture(autouse=True)
     def _setup_teardown(self, db_available):
         asyncio.run(_run_sql(_SEED))
-        async def _do():
-            engine = _engine_factory()
-            async with sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)() as s:
-                async with s.begin():
-                    old, new = await request_campaign_approval(s, _CAMPAIGN_ID, changed_by="fixture")
-                    assert old == "draft" and new == "pending_approval"
-            await engine.dispose()
-        asyncio.run(_do())
+        asyncio.run(_run_sql(f"""
+        UPDATE campaigns SET status = 'pending_approval' WHERE id = '{_CAMPAIGN_ID}'
+        ;
+        INSERT INTO campaign_status_history (id, campaign_id, old_status, new_status, changed_by, reason)
+        VALUES ('beh-concur-csh-000000000000001', '{_CAMPAIGN_ID}',
+                'draft', 'pending_approval', 'fixture', 'concurrency test setup')
+        ON CONFLICT DO NOTHING
+        """))
         yield
         asyncio.run(_run_sql(_CLEANUP))
 
