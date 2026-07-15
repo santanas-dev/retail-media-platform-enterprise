@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
 | **Last updated:** 2026-07-14
-| **Current phase:** v0.6.1 Critical Hotfix published (tag v0.6.1-critical-hotfix, main at 00060cc). Audit v4 remediation plan active (S-061). KSO/player remains deferred/out of scope.|
+| **Current phase:** v0.6.1 Critical Hotfix published (tag v0.6.1-critical-hotfix, main at 00060cc). Audit v4 remediation in progress (S-062 auth/test/dependency truth). KSO/player remains deferred/out of scope.|
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -109,6 +109,7 @@ Separately covered:
 | S-059 | v0.6 critical hotfix (external audit v4) | P0 | ✅ done | P.S. (Hermes) | CRITICAL-1: LDAPS cert validation — ssl.CERT_REQUIRED, AD_CA_CERT_FILE, ldap3 in requirements+CI. CRITICAL-2: RLS context on moderation/approval queues — set_rls_context on 4 endpoints. Tests: 7 AD cert + 9 hotfix-verification. CI #29403409655 green 34/34. | — |
 | S-060 | Publish v0.6.1 critical hotfix | P0 | ✅ done | P.S. (Hermes) | main ff→00060cc. Tag v0.6.1-critical-hotfix→00060cc. CI #29404001541 green 34/34. | — |
 | S-061 | Audit v4 remediation plan | P0 | ✅ done | P.S. (Hermes) | `docs/product/audit-v4-remediation-plan.md`: P1/P2/P3 classified, S-062…S-074 proposed. Tracker, gaps triage, release-versioning, roadmap updated. | Start S-062 |
+| S-062 | Auth / test / dependency truth (P1) | P1 | ✅ done | P.S. (Hermes) | No-op async auth tests → IsolatedAsyncioTestCase (22 tests awakened). Guard test against async-in-plain-TestCase. Audit events: auth.login.success, auth.login.failure, auth.logout (7 new tests). Dependency truth: minio added to requirements, PyJWT bounds aligned (≥2.12.0), CI install unified. | — |
 ## Status Legend
 
 - **done** — implemented, tested, committed, pushed

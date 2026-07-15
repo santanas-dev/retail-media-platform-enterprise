@@ -84,7 +84,7 @@ def _make_refresh_session(**overrides) -> MagicMock:
     return MagicMock(**defaults)
 
 
-class TestAuthServiceLogin(unittest.TestCase):
+class TestAuthServiceLogin(unittest.IsolatedAsyncioTestCase):
     """Login scenarios for all auth providers."""
 
     def setUp(self):
@@ -100,6 +100,7 @@ class TestAuthServiceLogin(unittest.TestCase):
 
     # -- Local advertiser success --
 
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
     @patch("packages.auth.service.find_user_by_username", new_callable=AsyncMock)
     @patch("packages.auth.service.get_local_credential", new_callable=AsyncMock)
     @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
@@ -107,7 +108,7 @@ class TestAuthServiceLogin(unittest.TestCase):
     @patch("packages.auth.service.create_refresh_session", new_callable=AsyncMock)
     async def test_local_advertiser_success(
         self, mock_create_rs, mock_revoke, mock_login_attempt,
-        mock_get_cred, mock_find_user,
+        mock_get_cred, mock_find_user, mock_count,
     ):
         """Local advertiser with correct password returns AuthSuccess."""
         user = _make_user()
@@ -115,6 +116,7 @@ class TestAuthServiceLogin(unittest.TestCase):
         mock_find_user.return_value = user
         mock_get_cred.return_value = cred
         mock_revoke.return_value = 0
+        mock_count.return_value = 0
 
         rs = _make_refresh_session(id="rs-new")
         mock_create_rs.return_value = rs
@@ -140,6 +142,7 @@ class TestAuthServiceLogin(unittest.TestCase):
 
     # -- Break-glass success --
 
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
     @patch("packages.auth.service.find_user_by_username", new_callable=AsyncMock)
     @patch("packages.auth.service.get_local_credential", new_callable=AsyncMock)
     @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
@@ -147,7 +150,7 @@ class TestAuthServiceLogin(unittest.TestCase):
     @patch("packages.auth.service.create_refresh_session", new_callable=AsyncMock)
     async def test_break_glass_success(
         self, mock_create_rs, mock_revoke, mock_login_attempt,
-        mock_get_cred, mock_find_user,
+        mock_get_cred, mock_find_user, mock_count,
     ):
         """Break-glass user with correct password returns AuthSuccess."""
         user = _make_user(auth_provider="local_break_glass", is_break_glass=True)
@@ -155,6 +158,7 @@ class TestAuthServiceLogin(unittest.TestCase):
         mock_find_user.return_value = user
         mock_get_cred.return_value = cred
         mock_revoke.return_value = 0
+        mock_count.return_value = 0
         mock_create_rs.return_value = _make_refresh_session(id="rs-bg")
 
         svc = AuthService()
@@ -170,17 +174,19 @@ class TestAuthServiceLogin(unittest.TestCase):
 
     # -- Wrong password --
 
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
     @patch("packages.auth.service.find_user_by_username", new_callable=AsyncMock)
     @patch("packages.auth.service.get_local_credential", new_callable=AsyncMock)
     @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
     async def test_wrong_password_failure(
-        self, mock_login_attempt, mock_get_cred, mock_find_user,
+        self, mock_login_attempt, mock_get_cred, mock_find_user, mock_count,
     ):
         """Wrong password returns AuthFailure and records login_attempt."""
         user = _make_user()
         cred = _make_credential()
         mock_find_user.return_value = user
         mock_get_cred.return_value = cred
+        mock_count.return_value = 0
 
         svc = AuthService()
         session = MagicMock(spec=AsyncSession)
@@ -201,15 +207,17 @@ class TestAuthServiceLogin(unittest.TestCase):
 
     # -- Unknown user --
 
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
     @patch("packages.auth.service.find_user_by_username", new_callable=AsyncMock)
     @patch("packages.auth.service.find_user_by_email", new_callable=AsyncMock)
     @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
     async def test_unknown_user_generic_failure(
-        self, mock_login_attempt, mock_find_email, mock_find_username,
+        self, mock_login_attempt, mock_find_email, mock_find_username, mock_count,
     ):
         """Unknown user returns generic AuthFailure — no enumeration."""
         mock_find_username.return_value = None
         mock_find_email.return_value = None
+        mock_count.return_value = 0
 
         svc = AuthService()
         session = MagicMock(spec=AsyncSession)
@@ -233,14 +241,16 @@ class TestAuthServiceLogin(unittest.TestCase):
 
     # -- Inactive user --
 
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
     @patch("packages.auth.service.find_user_by_username", new_callable=AsyncMock)
     @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
     async def test_inactive_user_fails(
-        self, mock_login_attempt, mock_find_user,
+        self, mock_login_attempt, mock_find_user, mock_count,
     ):
         """User with status != 'active' returns AuthFailure."""
         user = _make_user(status="blocked")
         mock_find_user.return_value = user
+        mock_count.return_value = 0
 
         svc = AuthService()
         session = MagicMock(spec=AsyncSession)
@@ -255,14 +265,16 @@ class TestAuthServiceLogin(unittest.TestCase):
 
     # -- AD stub --
 
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
     @patch("packages.auth.service.find_user_by_username", new_callable=AsyncMock)
     @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
     async def test_ad_stub_returns_unavailable(
-        self, mock_login_attempt, mock_find_user,
+        self, mock_login_attempt, mock_find_user, mock_count,
     ):
         """AD auth with stub provider returns failure (LDAP unavailable)."""
         user = _make_user(auth_provider="ad")
         mock_find_user.return_value = user
+        mock_count.return_value = 0
 
         svc = AuthService()  # Uses StubADAuthProvider by default
         session = MagicMock(spec=AsyncSession)
@@ -280,17 +292,19 @@ class TestAuthServiceLogin(unittest.TestCase):
 
     # -- Credential type mismatch --
 
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
     @patch("packages.auth.service.find_user_by_username", new_callable=AsyncMock)
     @patch("packages.auth.service.get_local_credential", new_callable=AsyncMock)
     @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
     async def test_advertiser_with_break_glass_credential_fails(
-        self, mock_login_attempt, mock_get_cred, mock_find_user,
+        self, mock_login_attempt, mock_get_cred, mock_find_user, mock_count,
     ):
         """local_advertiser user with local_break_glass credential fails."""
         user = _make_user(auth_provider="local_advertiser")
         cred = _make_credential(credential_type="local_break_glass")
         mock_find_user.return_value = user
         mock_get_cred.return_value = cred
+        mock_count.return_value = 0
 
         svc = AuthService()
         session = MagicMock(spec=AsyncSession)
@@ -303,17 +317,19 @@ class TestAuthServiceLogin(unittest.TestCase):
         call_kwargs = mock_login_attempt.call_args.kwargs
         self.assertEqual(call_kwargs["failure_reason"], "credential_type_mismatch")
 
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
     @patch("packages.auth.service.find_user_by_username", new_callable=AsyncMock)
     @patch("packages.auth.service.get_local_credential", new_callable=AsyncMock)
     @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
     async def test_break_glass_with_advertiser_credential_fails(
-        self, mock_login_attempt, mock_get_cred, mock_find_user,
+        self, mock_login_attempt, mock_get_cred, mock_find_user, mock_count,
     ):
         """local_break_glass user with local_advertiser credential fails."""
         user = _make_user(auth_provider="local_break_glass", is_break_glass=True)
         cred = _make_credential(credential_type="local_advertiser")
         mock_find_user.return_value = user
         mock_get_cred.return_value = cred
+        mock_count.return_value = 0
 
         svc = AuthService()
         session = MagicMock(spec=AsyncSession)
@@ -328,16 +344,18 @@ class TestAuthServiceLogin(unittest.TestCase):
 
     # -- No credential --
 
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
     @patch("packages.auth.service.find_user_by_username", new_callable=AsyncMock)
     @patch("packages.auth.service.get_local_credential", new_callable=AsyncMock)
     @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
     async def test_no_credential_fails(
-        self, mock_login_attempt, mock_get_cred, mock_find_user,
+        self, mock_login_attempt, mock_get_cred, mock_find_user, mock_count,
     ):
         """Local user without local_credentials record fails."""
         user = _make_user()
         mock_find_user.return_value = user
         mock_get_cred.return_value = None
+        mock_count.return_value = 0
 
         svc = AuthService()
         session = MagicMock(spec=AsyncSession)
@@ -352,7 +370,7 @@ class TestAuthServiceLogin(unittest.TestCase):
         self.assertEqual(call_kwargs["failure_reason"], "no_credential")
 
 
-class TestAuthServiceSessionManagement(unittest.TestCase):
+class TestAuthServiceSessionManagement(unittest.IsolatedAsyncioTestCase):
     """Refresh token rotation, logout, max sessions."""
 
     def setUp(self):
@@ -469,7 +487,7 @@ class TestAuthServiceSessionManagement(unittest.TestCase):
         self.assertEqual(result.internal_code, "REFRESH_FAILED")
 
 
-class TestAuthServicePasswordReset(unittest.TestCase):
+class TestAuthServicePasswordReset(unittest.IsolatedAsyncioTestCase):
     """Password reset token issuance."""
 
     def setUp(self):
@@ -796,7 +814,7 @@ class TestNoSecretsInRepr(unittest.TestCase):
         self.assertNotIn("debug_context", r)
 
 
-class TestAuthServiceRateLimit(unittest.TestCase):
+class TestAuthServiceRateLimit(unittest.IsolatedAsyncioTestCase):
     """Login rate limiting — ADR-006 §8."""
 
     def setUp(self):
@@ -1068,3 +1086,321 @@ class TestRefreshTokenFamilyRevoke(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ---------------------------------------------------------------------------
+# S-062: Audit events for login/logout/break-glass (Part B)
+# ---------------------------------------------------------------------------
+
+
+class TestAuditEvents(unittest.IsolatedAsyncioTestCase):
+    """Proof: audit events are fired for login/logout/break-glass (ADR-006 §6)."""
+
+    def setUp(self):
+        reset_security_config()
+        self._orig_env = dict(os.environ)
+        os.environ["ENVIRONMENT"] = "dev"
+        os.environ["JWT_SECRET"] = "test-jwt-secret-for-unit-tests"
+
+    def tearDown(self):
+        reset_security_config()
+        os.environ.clear()
+        os.environ.update(self._orig_env)
+
+    # -- Success audit events --
+
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
+    @patch("packages.auth.service.find_user_by_username", new_callable=AsyncMock)
+    @patch("packages.auth.service.get_local_credential", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
+    @patch("packages.auth.service.revoke_oldest_sessions", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_refresh_session", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_audit_event", new_callable=AsyncMock)
+    async def test_login_success_creates_audit_event(
+        self,
+        mock_audit, mock_create_rs, mock_revoke, mock_login_attempt,
+        mock_get_cred, mock_find_user, mock_count,
+    ):
+        """Successful local_advertiser login fires auth.login.success audit."""
+        user = _make_user()
+        cred = _make_credential()
+        mock_find_user.return_value = user
+        mock_get_cred.return_value = cred
+        mock_revoke.return_value = 0
+        mock_count.return_value = 0
+        rs = _make_refresh_session(id="rs-audit-1")
+        mock_create_rs.return_value = rs
+
+        svc = AuthService()
+        session = MagicMock(spec=AsyncSession)
+        result = await svc.login(session, username_or_email="testuser", password="correct-password-here")
+
+        self.assertIsInstance(result, AuthSuccess)
+        mock_audit.assert_called_once()
+        call_kwargs = mock_audit.call_args.kwargs
+        self.assertEqual(call_kwargs["action"], "auth.login.success")
+        self.assertEqual(call_kwargs["actor_user_id"], "u-001")
+        self.assertEqual(call_kwargs["target_type"], "auth_session")
+        self.assertEqual(call_kwargs["details"]["auth_provider"], "local_advertiser")
+        self.assertFalse(call_kwargs["details"]["break_glass"])
+        # No secrets in audit details
+        details = call_kwargs["details"]
+        self.assertNotIn("password", details)
+        self.assertNotIn("token", str(details).lower())
+
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
+    @patch("packages.auth.service.find_user_by_username", new_callable=AsyncMock)
+    @patch("packages.auth.service.get_local_credential", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
+    @patch("packages.auth.service.revoke_oldest_sessions", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_refresh_session", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_audit_event", new_callable=AsyncMock)
+    async def test_break_glass_login_marks_audit(
+        self,
+        mock_audit, mock_create_rs, mock_revoke, mock_login_attempt,
+        mock_get_cred, mock_find_user, mock_count,
+    ):
+        """Break-glass login audit event has break_glass=True."""
+        user = _make_user(auth_provider="local_break_glass", is_break_glass=True)
+        cred = _make_credential(credential_type="local_break_glass")
+        mock_find_user.return_value = user
+        mock_get_cred.return_value = cred
+        mock_revoke.return_value = 0
+        mock_count.return_value = 0
+        mock_create_rs.return_value = _make_refresh_session(id="rs-bg-audit")
+
+        svc = AuthService()
+        session = MagicMock(spec=AsyncSession)
+        await svc.login(session, username_or_email="break_glass_admin", password="correct-password-here")
+
+        mock_audit.assert_called_once()
+        details = mock_audit.call_args.kwargs["details"]
+        self.assertTrue(details["break_glass"])
+        self.assertEqual(details["auth_provider"], "local_break_glass")
+
+    # -- Failure audit events --
+
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
+    @patch("packages.auth.service.find_user_by_username", new_callable=AsyncMock)
+    @patch("packages.auth.service.get_local_credential", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_audit_event", new_callable=AsyncMock)
+    async def test_wrong_password_audit_no_secrets(
+        self,
+        mock_audit, mock_login_attempt, mock_get_cred, mock_find_user, mock_count,
+    ):
+        """Wrong password audit event contains failure_reason, no password/hash/token."""
+        user = _make_user()
+        cred = _make_credential()
+        mock_find_user.return_value = user
+        mock_get_cred.return_value = cred
+        mock_count.return_value = 0
+
+        svc = AuthService()
+        session = MagicMock(spec=AsyncSession)
+        result = await svc.login(session, username_or_email="testuser", password="wrong-password!!")
+
+        self.assertIsInstance(result, AuthFailure)
+        mock_audit.assert_called_once()
+        call_kwargs = mock_audit.call_args.kwargs
+        self.assertEqual(call_kwargs["action"], "auth.login.failure")
+        details = call_kwargs["details"]
+        self.assertEqual(details["failure_reason"], "wrong_password")
+        # No secrets anywhere in details
+        details_str = str(details)
+        for forbidden in ("correct-password-here", "wrong-password!!",
+                          "hash", "token", "secret"):
+            self.assertNotIn(forbidden, details_str, f"details leak: {forbidden}")
+        # failure_reason="wrong_password" is an operational code, NOT a real password
+
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
+    @patch("packages.auth.service.find_user_by_username", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_audit_event", new_callable=AsyncMock)
+    async def test_ad_unavailable_audit(
+        self,
+        mock_audit, mock_login_attempt, mock_find_user, mock_count,
+    ):
+        """AD stub → LDAP unavailable triggers auth.login.failure audit."""
+        user = _make_user(auth_provider="ad")
+        mock_find_user.return_value = user
+        mock_count.return_value = 0
+
+        svc = AuthService()  # StubADAuthProvider
+        session = MagicMock(spec=AsyncSession)
+        result = await svc.login(session, username_or_email="ad_user", password="domain-password")
+
+        self.assertIsInstance(result, AuthFailure)
+        mock_audit.assert_called_once()
+        call_kwargs = mock_audit.call_args.kwargs
+        self.assertEqual(call_kwargs["action"], "auth.login.failure")
+        self.assertIn(
+            call_kwargs["details"]["failure_reason"],
+            ["ldap_unavailable", "ad_auth_failed"],
+        )
+
+    @patch("packages.auth.service.count_recent_failed_attempts", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_login_attempt", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_audit_event", new_callable=AsyncMock)
+    async def test_rate_limited_audit(
+        self,
+        mock_audit, mock_login_attempt, mock_count,
+    ):
+        """Rate-limited attempt fires auth.login.failure with rate_limited reason."""
+        mock_count.return_value = 5
+        svc = AuthService()
+        session = MagicMock(spec=AsyncSession)
+        result = await svc.login(session, username_or_email="spammy", password="x")
+
+        self.assertIsInstance(result, AuthFailure)
+        self.assertEqual(result.internal_code, "RATE_LIMITED")
+        mock_audit.assert_called_once()
+        call_kwargs = mock_audit.call_args.kwargs
+        self.assertEqual(call_kwargs["action"], "auth.login.failure")
+        self.assertEqual(call_kwargs["details"]["failure_reason"], "rate_limited")
+        self.assertEqual(call_kwargs["actor_user_id"], "")
+
+    # -- Logout audit --
+
+    @patch("packages.auth.service.find_active_refresh_session", new_callable=AsyncMock)
+    @patch("packages.auth.service.revoke_refresh_session", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_audit_event", new_callable=AsyncMock)
+    async def test_logout_audit(
+        self, mock_audit, mock_revoke, mock_find_rs,
+    ):
+        """Successful logout fires auth.logout audit."""
+        rs = _make_refresh_session()
+        mock_find_rs.return_value = rs
+
+        svc = AuthService()
+        session = MagicMock(spec=AsyncSession)
+        result = await svc.logout(session, raw_refresh_token="valid-token")
+
+        self.assertTrue(result)
+        mock_audit.assert_called_once()
+        call_kwargs = mock_audit.call_args.kwargs
+        self.assertEqual(call_kwargs["action"], "auth.logout")
+        self.assertEqual(call_kwargs["target_id"], "rs-001")
+        self.assertTrue(call_kwargs["details"]["revoked"])
+
+    @patch("packages.auth.service.find_active_refresh_session", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_audit_event", new_callable=AsyncMock)
+    async def test_logout_unknown_token_no_audit(
+        self, mock_audit, mock_find_rs,
+    ):
+        """Unknown token logout does NOT fire audit (no session to revoke)."""
+        mock_find_rs.return_value = None
+
+        svc = AuthService()
+        session = MagicMock(spec=AsyncSession)
+        result = await svc.logout(session, raw_refresh_token="unknown")
+
+        self.assertFalse(result)
+        mock_audit.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# S-062: Dependency truth — requirements/CI alignment (Part C)
+# ---------------------------------------------------------------------------
+
+
+class TestDependencyTruth(unittest.TestCase):
+    """Proof: critical imports have corresponding requirements entries (Part C)."""
+
+    def test_ldap3_in_control_api_requirements(self):
+        """ldap3>=2.9.1 is declared in control-api/requirements.txt."""
+        from pathlib import Path
+        req_path = Path(__file__).resolve().parent.parent / "apps" / "control-api" / "requirements.txt"
+        content = req_path.read_text()
+        self.assertIn("ldap3", content, "ldap3 must be in control-api/requirements.txt")
+
+    def test_minio_in_control_api_requirements(self):
+        """minio is declared in control-api/requirements.txt."""
+        from pathlib import Path
+        req_path = Path(__file__).resolve().parent.parent / "apps" / "control-api" / "requirements.txt"
+        content = req_path.read_text()
+        self.assertIn("minio", content, "minio must be in control-api/requirements.txt")
+
+    def test_pyjwt_bounds_aligned(self):
+        """PyJWT lower bound is >=2.12.0 in both control-api and device-gateway."""
+        import re
+        from pathlib import Path
+        for svc in ("control-api", "device-gateway"):
+            req_path = (
+                Path(__file__).resolve().parent.parent / "apps" / svc / "requirements.txt"
+            )
+            content = req_path.read_text()
+            m = re.search(r"PyJWT>=([0-9.]+)", content)
+            self.assertIsNotNone(m, f"{svc}: PyJWT not found in requirements.txt")
+            version = tuple(int(x) for x in m.group(1).split("."))
+            self.assertGreaterEqual(
+                version, (2, 12),
+                f"{svc}: PyJWT>=2.12.0 required, found PyJWT>={m.group(1)}",
+            )
+
+    def test_ci_install_includes_minio(self):
+        """CI install step in both python-tests and behavioral jobs includes minio."""
+        from pathlib import Path
+        ci_path = (
+            Path(__file__).resolve().parent.parent
+            / ".github" / "workflows" / "phase1-ci.yml"
+        )
+        content = ci_path.read_text()
+        # Count lines with pip install that include minio
+        lines = [l.strip() for l in content.split("\n") if "pip install" in l]
+        minio_lines = [l for l in lines if "minio" in l]
+        self.assertGreaterEqual(
+            len(minio_lines), 2,
+            f"Expected at least 2 'pip install' lines with minio, got {len(minio_lines)}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# S-062: Guard — no async def inside plain unittest.TestCase
+# ---------------------------------------------------------------------------
+
+
+class TestNoOrphanedAsyncTests(unittest.TestCase):
+    """Proof: no async def test_ method lives inside a plain unittest.TestCase
+    (non-IsolatedAsyncioTestCase), which silently skips the test body."""
+
+    def test_no_async_defs_in_plain_testcase(self):
+        import ast
+        from pathlib import Path
+
+        tests_dir = Path(__file__).resolve().parent
+        violations: list[tuple[str, int, str]] = []
+
+        for py_file in sorted(tests_dir.glob("test_*.py")):
+            tree = ast.parse(py_file.read_text(), filename=str(py_file))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.ClassDef):
+                    continue
+                # Determine base classes
+                base_names: set[str] = set()
+                for base in node.bases:
+                    if isinstance(base, ast.Name):
+                        base_names.add(base.id)
+                    elif isinstance(base, ast.Attribute):
+                        base_names.add(base.attr)
+                # Skip if it IS already IsolatedAsyncioTestCase
+                if "IsolatedAsyncioTestCase" in base_names:
+                    continue
+                # Must be a TestCase subclass
+                if "TestCase" not in base_names:
+                    continue
+                # Now scan for async def test_ inside this class
+                for item in node.body:
+                    if isinstance(item, ast.AsyncFunctionDef) and item.name.startswith("test_"):
+                        violations.append((
+                            str(py_file.relative_to(tests_dir.parent)),
+                            item.lineno,
+                            f"{node.name}.{item.name}",
+                        ))
+
+        self.assertEqual(
+            [], violations,
+            f"Found async test methods inside plain unittest.TestCase "
+            f"(not IsolatedAsyncioTestCase) — these silently skip:\n"
+            + "\n".join(f"  {f}:{ln} {name}" for f, ln, name in violations),
+        )

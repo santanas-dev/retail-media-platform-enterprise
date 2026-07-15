@@ -35,6 +35,7 @@ from packages.auth.schemas import (
     auth_failure,
     auth_success,
 )
+from packages.domain.repository import create_audit_event
 from packages.security.config import get_security_config
 from packages.security.jwt import create_access_token
 from packages.security.password import verify_password
@@ -96,6 +97,17 @@ class AuthService:
                 ip_address=ip_address,
                 correlation_id=correlation_id,
             )
+            await create_audit_event(
+                session,
+                actor_user_id="",
+                action="auth.login.failure",
+                target_type="auth_attempt",
+                ip_address=ip_address or "",
+                details={
+                    "failure_reason": "rate_limited",
+                    "auth_provider": "unknown",
+                },
+            )
             return auth_failure(
                 internal_code="RATE_LIMITED",
                 debug_context={"window_minutes": cfg.login_rate_limit_window_minutes},
@@ -116,6 +128,17 @@ class AuthService:
                 failure_reason="user_not_found",
                 ip_address=ip_address,
                 correlation_id=correlation_id,
+            )
+            await create_audit_event(
+                session,
+                actor_user_id="",
+                action="auth.login.failure",
+                target_type="auth_attempt",
+                ip_address=ip_address or "",
+                details={
+                    "failure_reason": "user_not_found",
+                    "auth_provider": "unknown",
+                },
             )
             return auth_failure(
                 internal_code="AUTH_FAILED",
@@ -171,6 +194,17 @@ class AuthService:
                 ip_address=ip_address,
                 correlation_id=correlation_id,
             )
+            await create_audit_event(
+                session,
+                actor_user_id=user.id,
+                action="auth.login.failure",
+                target_type="auth_attempt",
+                ip_address=ip_address or "",
+                details={
+                    "failure_reason": "user_inactive",
+                    "auth_provider": "ad",
+                },
+            )
             return auth_failure(internal_code="USER_INACTIVE")
 
         # Verify against AD
@@ -185,6 +219,17 @@ class AuthService:
                 failure_reason=result.error_code or "ad_auth_failed",
                 ip_address=ip_address,
                 correlation_id=correlation_id,
+            )
+            await create_audit_event(
+                session,
+                actor_user_id=user.id,
+                action="auth.login.failure",
+                target_type="auth_attempt",
+                ip_address=ip_address or "",
+                details={
+                    "failure_reason": result.error_code or "ad_auth_failed",
+                    "auth_provider": "ad",
+                },
             )
             return auth_failure(
                 internal_code="AUTH_FAILED",
@@ -226,6 +271,17 @@ class AuthService:
                 ip_address=ip_address,
                 correlation_id=correlation_id,
             )
+            await create_audit_event(
+                session,
+                actor_user_id=user.id,
+                action="auth.login.failure",
+                target_type="auth_attempt",
+                ip_address=ip_address or "",
+                details={
+                    "failure_reason": "user_inactive",
+                    "auth_provider": provider,
+                },
+            )
             return auth_failure(internal_code="USER_INACTIVE")
 
         # Get local credentials and validate type matches provider
@@ -240,6 +296,17 @@ class AuthService:
                 ip_address=ip_address,
                 correlation_id=correlation_id,
             )
+            await create_audit_event(
+                session,
+                actor_user_id=user.id,
+                action="auth.login.failure",
+                target_type="auth_attempt",
+                ip_address=ip_address or "",
+                details={
+                    "failure_reason": "no_credential",
+                    "auth_provider": provider,
+                },
+            )
             return auth_failure(internal_code="AUTH_FAILED")
 
         if cred.credential_type != provider:
@@ -251,6 +318,17 @@ class AuthService:
                 failure_reason="credential_type_mismatch",
                 ip_address=ip_address,
                 correlation_id=correlation_id,
+            )
+            await create_audit_event(
+                session,
+                actor_user_id=user.id,
+                action="auth.login.failure",
+                target_type="auth_attempt",
+                ip_address=ip_address or "",
+                details={
+                    "failure_reason": "credential_type_mismatch",
+                    "auth_provider": provider,
+                },
             )
             return auth_failure(internal_code="AUTH_FAILED")
 
@@ -264,6 +342,17 @@ class AuthService:
                 ip_address=ip_address,
                 correlation_id=correlation_id,
             )
+            await create_audit_event(
+                session,
+                actor_user_id=user.id,
+                action="auth.login.failure",
+                target_type="auth_attempt",
+                ip_address=ip_address or "",
+                details={
+                    "failure_reason": "credential_inactive",
+                    "auth_provider": provider,
+                },
+            )
             return auth_failure(internal_code="AUTH_FAILED")
 
         # Verify password
@@ -276,6 +365,17 @@ class AuthService:
                 failure_reason="wrong_password",
                 ip_address=ip_address,
                 correlation_id=correlation_id,
+            )
+            await create_audit_event(
+                session,
+                actor_user_id=user.id,
+                action="auth.login.failure",
+                target_type="auth_attempt",
+                ip_address=ip_address or "",
+                details={
+                    "failure_reason": "wrong_password",
+                    "auth_provider": provider,
+                },
             )
             return auth_failure(internal_code="AUTH_FAILED")
 
@@ -326,6 +426,21 @@ class AuthService:
             token_family_id=token_family_id,
             expires_at=expires_at,
             ip_address=ip_address,
+        )
+
+        # Audit: successful login (ADR-006 §6)
+        await create_audit_event(
+            session,
+            actor_user_id=user_id,
+            action="auth.login.success",
+            target_type="auth_session",
+            target_id=rs.id,
+            ip_address=ip_address or "",
+            correlation_id=None,
+            details={
+                "auth_provider": auth_provider,
+                "break_glass": auth_provider == "local_break_glass",
+            },
         )
 
         return auth_success(
@@ -420,6 +535,21 @@ class AuthService:
         if rs is None:
             return False
         await revoke_refresh_session(session, rs.id)
+
+        # Audit: logout (ADR-006 §6)
+        # We only have user_id via the refresh session lookup;
+        # auth_provider requires a separate User query, which is an extra DB call.
+        # Accept "unknown" here to avoid adding complexity to a hot path.
+        await create_audit_event(
+            session,
+            actor_user_id=rs.user_id or "",
+            action="auth.logout",
+            target_type="auth_session",
+            target_id=rs.id,
+            ip_address="",
+            details={"revoked": True},
+        )
+
         return True
 
     # -----------------------------------------------------------------------

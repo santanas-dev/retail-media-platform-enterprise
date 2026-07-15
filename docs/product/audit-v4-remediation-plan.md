@@ -29,9 +29,9 @@ remediation sequence.
 
 | # | Finding | Impact | Proposed Ticket |
 |---|---------|--------|-----------------|
-| P1-1 | No-op async auth tests — async wrappers around sync stubs don't exercise real I/O paths | False confidence in auth stack | S-062 |
-| P1-2 | No audit events for login/logout/break-glass — no forensic trail for auth operations | Compliance gap, no incident response data | S-062 |
-| P1-3 | ldap3/minio not in canonical requirements; CI installs from ad-hoc pip commands | Dependency drift, unreliable CI | S-062 |
+| P1-1 | ✅ No-op async auth tests — fixed: 22 tests awakened with IsolatedAsyncioTestCase + guard | False confidence in auth stack | S-062 |
+| P1-2 | ✅ Audit events for login/logout/break-glass — 7 new tests, no secrets in details | Compliance gap, no incident response data | S-062 |
+| P1-3 | ✅ ldap3/minio in requirements; CI aligned; PyJWT bounds unified ≥2.12.0 | Dependency drift, unreliable CI | S-062 |
 | P1-4 | PoP by-day timezone correctness — reports may show wrong day boundary | Billing/reporting accuracy | S-063 |
 | P1-5 | approve_campaign race condition — two admins can approve concurrently | Data integrity, double-approval | S-064 |
 | P1-6 | /metrics exposure hardening — metrics endpoint lacks auth/rate-limit | Information disclosure | S-065 |
@@ -81,11 +81,11 @@ remediation sequence.
 ## 4. Proposed S-Ticket Sequence
 
 ```
-S-062 ─► Auth/test/dependency truth
-          ├─ No-op async test fix
-          ├─ Login/logout/break-glass audit events
-          ├─ Requirements/CI dependency truth (ldap3/minio/version pins)
-          └─ _scope_ids latent issue
+S-062 ─► ✅ Auth/test/dependency truth (DONE)
+          ├─ ✅ No-op async test fix — 4 classes → IsolatedAsyncioTestCase, 1 AST guard
+          ├─ ✅ Login/logout/break-glass audit events — 7 new tests
+          ├─ ✅ Requirements/CI dependency truth — minio added, PyJWT aligned, CI unified
+          └─ → _scope_ids latent issue deferred to S-074 readiness review
 
 S-063 ─► PoP timezone correctness
           └─ By-day boundary using campaign timezone, not UTC

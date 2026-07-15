@@ -233,7 +233,7 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: |
-          pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT psycopg2-binary greenlet ldap3
+          pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT psycopg2-binary greenlet ldap3 minio nats-py jsonschema pyyaml pytest-asyncio
       - name: Wait for PostgreSQL
         run: |
           ready=false

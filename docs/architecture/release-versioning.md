@@ -571,7 +571,8 @@ git push origin :refs/tags/v0.5-business-portal-complete
 #### Remediation Plan
 
 - `docs/product/audit-v4-remediation-plan.md` — remaining P1/P2/P3 findings, proposed S-062…S-074 sequence
-- Next milestone: v0.6.2 or v0.7 audit remediation
+- **S-062 ✅ done (2026-07-15):** no-op async tests fixed (22 awakened), audit events (7 new tests), dependency truth (minio, PyJWT, CI)
+- Next milestone: v0.6.2 or v0.7 audit remediation (S-063+ pending)
 
 ---
 
