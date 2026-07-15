@@ -17,6 +17,38 @@ DATABASE_URL = os.environ.get(
 )
 
 # ---------------------------------------------------------------------------
+# Connection pool configuration (S-068)
+# ---------------------------------------------------------------------------
+DB_POOL_SIZE = int(os.environ.get("DB_POOL_SIZE", "5"))
+DB_MAX_OVERFLOW = int(os.environ.get("DB_MAX_OVERFLOW", "10"))
+DB_POOL_TIMEOUT = int(os.environ.get("DB_POOL_TIMEOUT", "30"))
+DB_POOL_RECYCLE_SECONDS = int(os.environ.get("DB_POOL_RECYCLE_SECONDS", "1800"))
+
+
+def _validate_pool_config(env: str) -> None:
+    """Raise ValueError if pool config is unsafe for the given environment."""
+    if DB_POOL_SIZE < 1:
+        raise ValueError(f"DB_POOL_SIZE must be >= 1, got {DB_POOL_SIZE}")
+    if DB_MAX_OVERFLOW < 0:
+        raise ValueError(f"DB_MAX_OVERFLOW must be >= 0, got {DB_MAX_OVERFLOW}")
+    if DB_POOL_TIMEOUT < 1:
+        raise ValueError(f"DB_POOL_TIMEOUT must be >= 1, got {DB_POOL_TIMEOUT}")
+    if DB_POOL_RECYCLE_SECONDS < 60:
+        raise ValueError(
+            f"DB_POOL_RECYCLE_SECONDS must be >= 60, got {DB_POOL_RECYCLE_SECONDS}"
+        )
+
+
+def _pool_kwargs() -> dict:
+    """Return the keyword arguments for create_async_engine pool config."""
+    return {
+        "pool_size": DB_POOL_SIZE,
+        "max_overflow": DB_MAX_OVERFLOW,
+        "pool_timeout": DB_POOL_TIMEOUT,
+        "pool_recycle": DB_POOL_RECYCLE_SECONDS,
+    }
+
+# ---------------------------------------------------------------------------
 # Engine registry — modules import engine from here, not from control-api main
 # ---------------------------------------------------------------------------
 _global_engine = None
@@ -32,9 +64,9 @@ def get_global_engine():
 
 
 def create_engine(url: str | None = None):
-    """Create async SQLAlchemy engine."""
+    """Create async SQLAlchemy engine with configurable pool (S-068)."""
     target = url or DATABASE_URL
-    return create_async_engine(target, echo=False)
+    return create_async_engine(target, echo=False, **_pool_kwargs())
 
 
 def create_session_factory(engine=None):

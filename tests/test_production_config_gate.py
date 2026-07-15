@@ -302,3 +302,77 @@ def test_dev_mode_accepts_empty_metrics_token():
         cfg = SecurityConfig()
         assert cfg.dev_mode
         assert cfg.metrics_auth_token == ""
+
+
+# ---------------------------------------------------------------------------
+# S-068 — DB pool configuration validation
+# ---------------------------------------------------------------------------
+
+
+def test_db_pool_defaults_are_sane():
+    """Default pool values match expected dev-safe settings."""
+    import packages.domain.database as db_mod
+    assert db_mod.DB_POOL_SIZE == 5
+    assert db_mod.DB_MAX_OVERFLOW == 10
+    assert db_mod.DB_POOL_TIMEOUT == 30
+    assert db_mod.DB_POOL_RECYCLE_SECONDS == 1800
+
+
+def test_db_pool_env_values_parsed():
+    """Pool settings are read from environment."""
+    import packages.domain.database as db_mod
+
+    saved = {
+        "DB_POOL_SIZE": db_mod.DB_POOL_SIZE,
+        "DB_MAX_OVERFLOW": db_mod.DB_MAX_OVERFLOW,
+        "DB_POOL_TIMEOUT": db_mod.DB_POOL_TIMEOUT,
+        "DB_POOL_RECYCLE_SECONDS": db_mod.DB_POOL_RECYCLE_SECONDS,
+    }
+    try:
+        db_mod.DB_POOL_SIZE = 20
+        db_mod.DB_MAX_OVERFLOW = 30
+        db_mod.DB_POOL_TIMEOUT = 60
+        db_mod.DB_POOL_RECYCLE_SECONDS = 3600
+        assert db_mod.DB_POOL_SIZE == 20
+        assert db_mod.DB_MAX_OVERFLOW == 30
+        assert db_mod.DB_POOL_TIMEOUT == 60
+        assert db_mod.DB_POOL_RECYCLE_SECONDS == 3600
+    finally:
+        db_mod.DB_POOL_SIZE = saved["DB_POOL_SIZE"]
+        db_mod.DB_MAX_OVERFLOW = saved["DB_MAX_OVERFLOW"]
+        db_mod.DB_POOL_TIMEOUT = saved["DB_POOL_TIMEOUT"]
+        db_mod.DB_POOL_RECYCLE_SECONDS = saved["DB_POOL_RECYCLE_SECONDS"]
+
+
+def test_pool_validation_rejects_non_positive_pool_size():
+    """_validate_pool_config rejects pool_size < 1."""
+    import packages.domain.database as db_mod
+    orig = db_mod.DB_POOL_SIZE
+    try:
+        db_mod.DB_POOL_SIZE = 0
+        with pytest.raises(ValueError, match="DB_POOL_SIZE must be >= 1"):
+            db_mod._validate_pool_config("production")
+    finally:
+        db_mod.DB_POOL_SIZE = orig
+
+
+def test_pool_validation_rejects_negative_overflow():
+    """_validate_pool_config rejects negative max_overflow."""
+    import packages.domain.database as db_mod
+    orig = db_mod.DB_MAX_OVERFLOW
+    try:
+        db_mod.DB_MAX_OVERFLOW = -1
+        with pytest.raises(ValueError, match="DB_MAX_OVERFLOW must be >= 0"):
+            db_mod._validate_pool_config("production")
+    finally:
+        db_mod.DB_MAX_OVERFLOW = orig
+
+
+def test_pool_kwargs_returns_expected_keys():
+    """_pool_kwargs returns all pool configuration keys."""
+    from packages.domain.database import _pool_kwargs
+    kw = _pool_kwargs()
+    assert "pool_size" in kw
+    assert "max_overflow" in kw
+    assert "pool_timeout" in kw
+    assert "pool_recycle" in kw
