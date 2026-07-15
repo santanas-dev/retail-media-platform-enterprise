@@ -33,7 +33,7 @@ remediation sequence.
 | P1-2 | ✅ Audit events for login/logout/break-glass — 7 new tests, no secrets in details | Compliance gap, no incident response data | S-062 |
 | P1-3 | ✅ ldap3/minio in requirements; CI aligned; PyJWT bounds unified ≥2.12.0 | Dependency drift, unreliable CI | S-062 |
 | P1-4 | ✅ PoP by-day timezone correctness — groups by local store day (Store.tz → Branch.tz → Moscow) | Billing/reporting accuracy | S-063 |
-| P1-5 | ✅ approve_campaign race condition — SELECT FOR UPDATE makes concurrent approve/reject atomic; 7 behavioural concurrency tests | Data integrity, double-approval | S-064 |
+| P1-5 | ✅ approve_campaign race condition — SELECT FOR UPDATE makes concurrent approve/reject atomic; behavioural concurrency proof added (S-064a) | Data integrity, double-approval | S-064, S-064a |
 | P1-6 | /metrics exposure hardening — metrics endpoint lacks auth/rate-limit | Information disclosure | S-065 |
 | P1-7 | No rate limiting on /device/manifest/latest and /pop/batch | DoS surface on device-facing endpoints | S-065 |
 | P1-8 | No pagination on large lists: stores, surfaces, campaigns, moderation queue, approval queue | UI degradation at scale, N+1 risk | S-066 |
@@ -90,9 +90,9 @@ S-062 ─► ✅ Auth/test/dependency truth (DONE)
 S-063 ─► ✅ PoP timezone correctness (DONE)
           └─ ✅ By-day grouping uses store local day: Store.tz → Branch.tz → Moscow
 
-S-064 ─► Approval concurrency + audit consistency
-          ├─ approve_campaign race condition
-          └─ Audit event idempotency
+S-064 ─► ✅ Approval concurrency (DONE)
+          ├─ ✅ SELECT FOR UPDATE in approve_campaign + reject_campaign
+          └─ ✅ Behavioural concurrency proof (S-064a) — 3 PostgreSQL tests
 
 S-065 ─► Metrics/rate-limit/device-gateway hardening
           ├─ /metrics auth/rate-limit

@@ -1,6 +1,6 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
-| **Last updated:** 2026-07-14
+| **Last updated:** 2026-07-15
 | **Current phase:** v0.6.1 Critical Hotfix published (tag v0.6.1-critical-hotfix, main at 00060cc). Audit v4 remediation in progress (S-062 auth/test/dependency truth). KSO/player remains deferred/out of scope.|
 
 ## Pilot Backend Readiness (2026-07-09)
@@ -111,7 +111,8 @@ Separately covered:
 | S-061 | Audit v4 remediation plan | P0 | ✅ done | P.S. (Hermes) | `docs/product/audit-v4-remediation-plan.md`: P1/P2/P3 classified, S-062…S-074 proposed. Tracker, gaps triage, release-versioning, roadmap updated. | Start S-062 |
 | S-062 | Auth / test / dependency truth (P1) | P1 | ✅ done | P.S. (Hermes) | No-op async auth tests → IsolatedAsyncioTestCase (22 tests awakened). Guard test against async-in-plain-TestCase. Audit events: auth.login.success, auth.login.failure, auth.logout (7 new tests). Dependency truth: minio added to requirements, PyJWT bounds aligned (≥2.12.0), CI install unified. | — |
 | S-063 | PoP timezone correctness (P1) | P1 | ✅ done | P.S. (Hermes) | `list_campaign_pop_by_day` now groups by local store day (Store.timezone → Branch.timezone → Europe/Moscow) via PostgreSQL `timezone()` + `COALESCE`. 8 unit tests + 1 behavioural (Vladivostok UTC+10 proof). API shape unchanged. | — |
-| S-064 | Approval concurrency + audit consistency (P1) | P1 | ✅ done | P.S. (Hermes) | `approve_campaign` + `reject_campaign` now use `SELECT ... FOR UPDATE` — row-level lock serializes concurrent transitions. 7 behavioural concurrency tests: approve-vs-approve, approve-vs-reject, reject-vs-reject. No duplicate approvals/outbox/history. | — |
+| S-064 | Approval concurrency + audit consistency (P1) | P1 | ✅ done | P.S. (Hermes) | `approve_campaign` + `reject_campaign` now use `SELECT ... FOR UPDATE` — row-level lock serializes concurrent transitions. Production fix only. | — |
+| S-064a | Approval concurrency behavioural proof | P1 | ✅ done | P.S. (Hermes) | 3 behavioural tests (approve/approve, approve/reject, reject/reject) with real PostgreSQL — two AsyncConnections, `asyncio.gather`, manual BEGIN/COMMIT. Proves FOR UPDATE prevents duplicate approvals/history. | — |
 ## Status Legend
 
 - **done** — implemented, tested, committed, pushed
@@ -155,7 +156,8 @@ Separately covered:
 |--------|------|----------|--------|
 | S-062 | Auth/test/dependency truth (no-op async, audit login/logout, requirements) | P1 | 🚧 planned |
 | S-063 | PoP by-day timezone correctness | P1 | 🚧 planned |
-| S-064 | Approval concurrency + audit consistency | P1 | 🚧 planned |
+| S-064 | Approval concurrency + audit consistency | P1 | ✅ done |
+| S-064a | Approval concurrency behavioural proof | P1 | ✅ done |
 | S-065 | Metrics/rate-limit/device-gateway hardening | P1 | 🚧 planned |
 | S-066 | Pagination foundations (stores, surfaces, campaigns, queues) | P1 | 🚧 planned |
 | S-067 | Manifest performance + Redis cache | P2 | 🚧 planned |
