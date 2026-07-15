@@ -81,7 +81,7 @@ function mockFetchFor(path: string): unknown[] {
   if (path.includes("campaign-approvals")) return [];
   if (path.includes("/display-surfaces")) return [];
   if (path.includes("/stores")) return [];
-  if (path.includes("/campaigns") && !path.includes("flights") && !path.includes("placements") && !path.includes("creatives") && !path.includes("/pop/")) return SEED_CAMPAIGNS;
+  if (path.includes("/campaigns") && !path.includes("flights") && !path.includes("placements") && !path.includes("creatives") && !path.includes("/pop/")) return {items: SEED_CAMPAIGNS, total: SEED_CAMPAIGNS.length, limit: 50, offset: 0};
   return [];
 }
 
@@ -354,7 +354,7 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAuthenticatedSession();
     const publishedCampaign = { ...DRAFT_CAMPAIGN, status: "active" };
     mockAllFetches({
-      "/campaigns": () => Promise.resolve(new Response(JSON.stringify([publishedCampaign]), { status: 200 })),
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [publishedCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
     });
 
     const router = createRouter("/campaigns/c1");
@@ -585,7 +585,7 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAuthenticatedSession();
     const pendingCampaign = { ...DRAFT_CAMPAIGN, status: "pending_approval" };
     mockAllFetches({
-      "/campaigns": () => Promise.resolve(new Response(JSON.stringify([pendingCampaign]), { status: 200 })),
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [pendingCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
     }, ["campaigns.approve"]);
 
     const router = createRouter("/campaigns/c1");
@@ -602,7 +602,7 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAuthenticatedSession();
     const pendingCampaign = { ...DRAFT_CAMPAIGN, status: "pending_approval" };
     mockAllFetches({
-      "/campaigns": () => Promise.resolve(new Response(JSON.stringify([pendingCampaign]), { status: 200 })),
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [pendingCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
     }, ["campaigns.approve"]);
 
     const router = createRouter("/campaigns/c1");
@@ -624,7 +624,7 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAuthenticatedSession();
     const pendingCampaign = { ...DRAFT_CAMPAIGN, status: "pending_approval" };
     mockAllFetches({
-      "/campaigns": () => Promise.resolve(new Response(JSON.stringify([pendingCampaign]), { status: 200 })),
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [pendingCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
       "/approve": () =>
         Promise.resolve(new Response(JSON.stringify({
           message: "Campaign approved", campaign_id: "c1", old_status: "pending_approval", new_status: "approved",
@@ -649,7 +649,7 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAuthenticatedSession();
     const pendingCampaign = { ...DRAFT_CAMPAIGN, status: "pending_approval" };
     mockAllFetches({
-      "/campaigns": () => Promise.resolve(new Response(JSON.stringify([pendingCampaign]), { status: 200 })),
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [pendingCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
       "/reject": () =>
         Promise.resolve(new Response(JSON.stringify({
           message: "Campaign rejected", campaign_id: "c1", old_status: "pending_approval", new_status: "rejected",
@@ -686,8 +686,8 @@ describe("CampaignDetailPage — S-009e", () => {
         return Promise.resolve(new Response(JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin", permissions: ["campaigns.approve"] }), { status: 200 }));
       }
       // Return pending campaign for list
-      if (url.endsWith("/identity/campaigns") && method !== "POST") {
-        return Promise.resolve(new Response(JSON.stringify([pendingCampaign]), { status: 200 }));
+      if (url.includes("/identity/campaigns?") && method !== "POST") {
+        return Promise.resolve(new Response(JSON.stringify({items: [pendingCampaign], total: 1, limit: 50, offset: 0}), { status: 200 }));
       }
       // Approve returns 403
       if (url.includes("/approve") && method === "POST") {
@@ -712,7 +712,7 @@ describe("CampaignDetailPage — S-009e", () => {
     const pendingCampaign = { ...DRAFT_CAMPAIGN, status: "pending_approval" };
     // No campaigns.approve permission — default /me has no permissions
     mockAllFetches({
-      "/campaigns": () => Promise.resolve(new Response(JSON.stringify([pendingCampaign]), { status: 200 })),
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [pendingCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
     });
 
     const router = createRouter("/campaigns/c1");

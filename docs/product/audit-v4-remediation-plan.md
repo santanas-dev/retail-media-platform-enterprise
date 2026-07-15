@@ -36,7 +36,7 @@ remediation sequence.
 | P1-5 | ✅ approve_campaign race condition — SELECT FOR UPDATE makes concurrent approve/reject atomic; behavioural concurrency proof added (S-064a) | Data integrity, double-approval | S-064, S-064a |
 | P1-6 | /metrics exposure hardening — metrics endpoint lacks auth/rate-limit | Information disclosure | S-065 |
 | P1-7 | No rate limiting on /device/manifest/latest and /pop/batch | DoS surface on device-facing endpoints | S-065 |
-| P1-8 | No pagination on large lists: stores, surfaces, campaigns, moderation queue, approval queue | UI degradation at scale, N+1 risk | S-066 |
+| P1-8 | No pagination on large lists: stores, surfaces, campaigns, moderation queue, approval queue | UI degradation at scale, N+1 risk | S-066 ✅ |
 
 ### P2 — Production Hardening
 

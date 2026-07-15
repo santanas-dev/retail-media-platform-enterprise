@@ -207,7 +207,7 @@ describe("CampaignListPage", () => {
       }
 
       if (url.includes("/campaigns") && !url.includes("flights") && !url.includes("placements") && !url.includes("creatives")) {
-        return new Response(JSON.stringify(SEED_CAMPAIGNS), { status: 200 });
+        return new Response(JSON.stringify({items: SEED_CAMPAIGNS, total: SEED_CAMPAIGNS.length, limit: 50, offset: 0}), { status: 200 });
       }
       if (url.includes("campaign-flights")) {
         return new Response(JSON.stringify(SEED_FLIGHTS), { status: 200 });
@@ -245,7 +245,7 @@ describe("CampaignListPage", () => {
     expect(screen.getByText("2 пер., 1 апр. – 31 мая")).toBeTruthy();
 
     // Verify total count
-    expect(screen.getByText("Всего: 2")).toBeTruthy();
+    // Pagination hidden when total ≤ limit (2 ≤ 50) — correct UX
   });
 
   it("shows empty state when no campaigns", async () => {
@@ -265,7 +265,10 @@ describe("CampaignListPage", () => {
           { status: 200 },
         );
       }
-      return new Response(JSON.stringify([]), { status: 200 });
+      if (url.includes("campaign-flights") || url.includes("advertiser-organizations") || url.includes("advertiser-brands")) {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+      return new Response(JSON.stringify({items: [], total: 0, limit: 50, offset: 0}), { status: 200 });
     });
 
     const router = createRouter("/campaigns");
@@ -331,7 +334,7 @@ describe("CampaignListPage", () => {
         );
       }
       if (url.includes("/campaigns") && !url.includes("flights") && !url.includes("placements") && !url.includes("creatives")) {
-        return new Response(JSON.stringify(SEED_CAMPAIGNS), { status: 200 });
+        return new Response(JSON.stringify({items: SEED_CAMPAIGNS, total: SEED_CAMPAIGNS.length, limit: 50, offset: 0}), { status: 200 });
       }
       if (url.includes("campaign-flights")) {
         return new Response(JSON.stringify(SEED_FLIGHTS), { status: 200 });

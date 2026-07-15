@@ -81,7 +81,7 @@ export default function CampaignDetailPage() {
     async function load() {
       try {
         const [camps, flts, plcs, ccs, assets, apprs, hist] = await Promise.all([
-          api.get<CampaignOut[]>("/campaigns"),
+          api.get<{items: CampaignOut[], total: number, limit: number, offset: number}>("/campaigns"),
           api.get<CampaignFlightOut[]>("/campaign-flights"),
           api.get<CampaignPlacementOut[]>("/campaign-placements"),
           api.get<CampaignCreativeOut[]>("/campaign-creatives"),
@@ -91,7 +91,7 @@ export default function CampaignDetailPage() {
         ]);
         if (cancelled) return;
 
-        const found = camps.find((c) => c.id === campaignId);
+        const found = camps.items.find((c) => c.id === campaignId);
         if (!found) {
           setNotFound(true);
           setLoading(false);

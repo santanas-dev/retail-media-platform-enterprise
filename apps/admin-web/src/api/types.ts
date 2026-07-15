@@ -5,6 +5,15 @@
  * with backend DTOs using from_attributes=True.
  */
 
+// ── Pagination ──
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 // ── Campaign ──
 
 export interface CampaignOut {

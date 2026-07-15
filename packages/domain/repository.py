@@ -356,6 +356,90 @@ async def get_inventory_surfaces(session: AsyncSession) -> list[dict]:
     return [dict(row._mapping) for row in result.fetchall()]
 
 
+async def get_inventory_stores_paginated(
+    session: AsyncSession,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+) -> tuple[list[dict], int]:
+    """Paginated enriched store list — returns (items, total_count)."""
+    from packages.domain.models import Store, Cluster, Branch, DisplaySurface
+    from sqlalchemy import select as sa_select, func
+
+    surface_count_subq = (
+        sa_select(DisplaySurface.store_id, func.count(DisplaySurface.id).label("cnt"))
+        .group_by(DisplaySurface.store_id)
+        .subquery()
+    )
+
+    base_stmt = (
+        sa_select(func.count())
+        .select_from(Store)
+    )
+    total_result = await session.execute(base_stmt)
+    total = total_result.scalar_one()
+
+    stmt = (
+        sa_select(
+            Store.id,
+            Store.code,
+            Store.name,
+            Store.address,
+            Store.is_active,
+            Cluster.name.label("cluster_name"),
+            Branch.name.label("branch_name"),
+            func.coalesce(surface_count_subq.c.cnt, 0).label("surface_count"),
+        )
+        .outerjoin(Cluster, Store.cluster_id == Cluster.id)
+        .outerjoin(Branch, Cluster.branch_id == Branch.id)
+        .outerjoin(surface_count_subq, Store.id == surface_count_subq.c.store_id)
+        .order_by(Store.code)
+        .offset(offset)
+        .limit(limit)
+    )
+
+    result = await session.execute(stmt)
+    items = [dict(row._mapping) for row in result.fetchall()]
+    return items, total
+
+
+async def get_inventory_surfaces_paginated(
+    session: AsyncSession,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+) -> tuple[list[dict], int]:
+    """Paginated enriched surface list — returns (items, total_count)."""
+    from packages.domain.models import DisplaySurface, Store
+    from sqlalchemy import select as sa_select, func
+
+    total_result = await session.execute(
+        sa_select(func.count()).select_from(DisplaySurface),
+    )
+    total = total_result.scalar_one()
+
+    stmt = (
+        sa_select(
+            DisplaySurface.id,
+            DisplaySurface.code,
+            DisplaySurface.store_id,
+            DisplaySurface.resolution_w,
+            DisplaySurface.resolution_h,
+            DisplaySurface.is_active,
+            Store.code.label("store_code"),
+            Store.name.label("store_name"),
+        )
+        .outerjoin(Store, DisplaySurface.store_id == Store.id)
+        .order_by(DisplaySurface.code)
+        .offset(offset)
+        .limit(limit)
+    )
+
+    result = await session.execute(stmt)
+    items = [dict(row._mapping) for row in result.fetchall()]
+    return items, total
+
+
 async def toggle_surface_active(
     session: AsyncSession,
     *,
@@ -413,6 +497,32 @@ async def list_campaigns(session: AsyncSession) -> list:
     stmt = select(Campaign).order_by(Campaign.code)
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def list_campaigns_paginated(
+    session: AsyncSession,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+) -> tuple[list, int]:
+    """Paginated campaign list — returns (items, total_count)."""
+    from packages.domain.models import Campaign
+    from sqlalchemy import func
+
+    total_result = await session.execute(
+        select(func.count()).select_from(Campaign),
+    )
+    total = total_result.scalar_one()
+
+    stmt = (
+        select(Campaign)
+        .order_by(Campaign.code)
+        .offset(offset)
+        .limit(limit)
+    )
+    result = await session.execute(stmt)
+    items = list(result.scalars().all())
+    return items, total
 
 
 async def get_campaign(
@@ -551,6 +661,63 @@ async def list_moderation_queue(
     return [dict(row._mapping) for row in result.fetchall()]
 
 
+async def list_moderation_queue_paginated(
+    session: AsyncSession,
+    *,
+    status_filter: str = "pending_review",
+    limit: int = 50,
+    offset: int = 0,
+) -> tuple[list, int]:
+    """Paginated creative moderation queue — returns (items, total_count)."""
+    from packages.domain.models import CreativeAsset, AdvertiserOrganization
+    from sqlalchemy import select as sa_select, func
+
+    count_stmt = (
+        sa_select(func.count())
+        .select_from(CreativeAsset)
+    )
+    if status_filter != "all":
+        count_stmt = count_stmt.where(CreativeAsset.moderation_status == status_filter)
+
+    total_result = await session.execute(count_stmt)
+    total = total_result.scalar_one()
+
+    stmt = (
+        sa_select(
+            CreativeAsset.id,
+            CreativeAsset.advertiser_organization_id,
+            CreativeAsset.code,
+            CreativeAsset.name,
+            CreativeAsset.media_type,
+            CreativeAsset.file_size_bytes,
+            CreativeAsset.duration_ms,
+            CreativeAsset.resolution_w,
+            CreativeAsset.resolution_h,
+            CreativeAsset.status,
+            CreativeAsset.moderation_status,
+            CreativeAsset.moderation_notes,
+            CreativeAsset.created_at,
+            CreativeAsset.updated_at,
+            AdvertiserOrganization.name.label("advertiser_name"),
+            AdvertiserOrganization.code.label("advertiser_code"),
+        )
+        .outerjoin(
+            AdvertiserOrganization,
+            CreativeAsset.advertiser_organization_id == AdvertiserOrganization.id,
+        )
+        .order_by(CreativeAsset.created_at.desc())
+    )
+
+    if status_filter != "all":
+        stmt = stmt.where(CreativeAsset.moderation_status == status_filter)
+
+    stmt = stmt.offset(offset).limit(limit)
+
+    result = await session.execute(stmt)
+    items = [dict(row._mapping) for row in result.fetchall()]
+    return items, total
+
+
 async def approve_creative_asset(
     session: AsyncSession,
     *,
@@ -661,7 +828,20 @@ async def list_approval_queue(
     result = await session.execute(stmt)
     rows = [dict(row._mapping) for row in result.fetchall()]
 
-    # Enrich with readiness summary per campaign
+    await _enrich_approval_queue_rows(session, rows)
+    return rows
+
+
+async def _enrich_approval_queue_rows(
+    session: AsyncSession,
+    rows: list[dict],
+) -> None:
+    """Mutate rows in-place with readiness summary per campaign."""
+    from packages.domain.models import (
+        CampaignFlight, CampaignPlacement, CampaignCreative, CreativeAsset,
+    )
+    from sqlalchemy import select as sa_select, func
+
     for row in rows:
         cid = row["campaign_id"]
         flight_count = await session.scalar(
@@ -695,7 +875,95 @@ async def list_approval_queue(
         row["all_creatives_ready"] = all_ready
         row["all_creatives_approved"] = all_approved
 
-    return rows
+
+async def list_approval_queue_paginated(
+    session: AsyncSession,
+    *,
+    status_filter: str = "pending_approval",
+    limit: int = 50,
+    offset: int = 0,
+) -> tuple[list[dict], int]:
+    """Paginated approval queue with readiness enrichment — returns (items, total_count)."""
+    from packages.domain.models import (
+        Campaign,
+        CampaignStatusHistory,
+    )
+    from sqlalchemy import select as sa_select, func
+
+    # Count matching campaigns
+    count_stmt = (
+        sa_select(func.count())
+        .select_from(Campaign)
+        .join(CampaignStatusHistory,
+              Campaign.id == CampaignStatusHistory.campaign_id)
+        .where(CampaignStatusHistory.new_status == "pending_approval")
+    )
+    if status_filter != "all":
+        count_stmt = count_stmt.where(Campaign.status == status_filter)
+
+    total_result = await session.execute(count_stmt)
+    total = total_result.scalar_one()
+
+    # Get paginated IDs (no enrichment yet)
+    id_stmt = (
+        sa_select(Campaign.id)
+        .join(CampaignStatusHistory,
+              Campaign.id == CampaignStatusHistory.campaign_id)
+        .where(CampaignStatusHistory.new_status == "pending_approval")
+        .order_by(CampaignStatusHistory.changed_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    if status_filter != "all":
+        id_stmt = id_stmt.where(Campaign.status == status_filter)
+
+    id_result = await session.execute(id_stmt)
+    paginated_ids = [row[0] for row in id_result.fetchall()]
+
+    if not paginated_ids:
+        return [], total
+
+    # Get full rows for paginated campaigns only
+    rows = await _approval_queue_rows_by_ids(session, paginated_ids)
+    await _enrich_approval_queue_rows(session, rows)
+    return rows, total
+
+
+async def _approval_queue_rows_by_ids(
+    session: AsyncSession,
+    campaign_ids: list[str],
+) -> list[dict]:
+    """Fetch approval queue rows for specific campaign IDs."""
+    from packages.domain.models import (
+        Campaign, AdvertiserOrganization, AdvertiserBrand,
+        CampaignApproval, CampaignStatusHistory,
+    )
+    from sqlalchemy import select as sa_select
+
+    stmt = (
+        sa_select(
+            Campaign.id.label("campaign_id"),
+            Campaign.code.label("campaign_code"),
+            Campaign.name.label("campaign_name"),
+            Campaign.status.label("campaign_status"),
+            Campaign.advertiser_organization_id.label("advertiser_org_id"),
+            AdvertiserOrganization.name.label("advertiser_org_name"),
+            AdvertiserBrand.name.label("advertiser_brand_name"),
+            CampaignStatusHistory.changed_at.label("requested_at"),
+            CampaignStatusHistory.changed_by.label("requested_by"),
+            CampaignApproval.rejection_reason.label("rejection_reason"),
+        )
+        .outerjoin(AdvertiserOrganization, Campaign.advertiser_organization_id == AdvertiserOrganization.id)
+        .outerjoin(AdvertiserBrand, Campaign.advertiser_brand_id == AdvertiserBrand.id)
+        .outerjoin(CampaignApproval, Campaign.id == CampaignApproval.campaign_id)
+        .outerjoin(CampaignStatusHistory, Campaign.id == CampaignStatusHistory.campaign_id)
+        .where(Campaign.id.in_(campaign_ids))
+        .where(CampaignStatusHistory.new_status == "pending_approval")
+        .order_by(CampaignStatusHistory.changed_at.desc())
+    )
+
+    result = await session.execute(stmt)
+    return [dict(row._mapping) for row in result.fetchall()]
 
 
 async def list_campaign_status_history(session: AsyncSession) -> list:

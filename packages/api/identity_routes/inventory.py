@@ -8,6 +8,8 @@ from packages.api.dependencies import (
     get_db,
     require_permission,
     set_rls_context,
+    get_pagination_params,
+    PaginationParams,
 )
 from packages.domain import repository
 from packages.domain.schemas import (
@@ -17,6 +19,7 @@ from packages.domain.schemas import (
     InventoryStoreOut,
     InventorySurfaceOut,
     InventorySurfacePatchRequest,
+    PaginatedResponse,
     StoreOut,
 )
 
@@ -73,22 +76,38 @@ async def list_display_surfaces(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/inventory/stores", response_model=list[InventoryStoreOut])
+@router.get("/inventory/stores", response_model=PaginatedResponse[InventoryStoreOut])
 async def list_inventory_stores(
     db=Depends(get_db),
+    pagination: PaginationParams = Depends(get_pagination_params),
     _claims: dict = Depends(require_permission("inventory.read")),
 ):
-    items = await repository.get_inventory_stores(db)
-    return [InventoryStoreOut(**item) for item in items]
+    items, total = await repository.get_inventory_stores_paginated(
+        db, limit=pagination.limit, offset=pagination.offset,
+    )
+    return PaginatedResponse(
+        items=[InventoryStoreOut(**item) for item in items],
+        total=total,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    )
 
 
-@router.get("/inventory/surfaces", response_model=list[InventorySurfaceOut])
+@router.get("/inventory/surfaces", response_model=PaginatedResponse[InventorySurfaceOut])
 async def list_inventory_surfaces(
     db=Depends(get_db),
+    pagination: PaginationParams = Depends(get_pagination_params),
     _claims: dict = Depends(require_permission("inventory.read")),
 ):
-    items = await repository.get_inventory_surfaces(db)
-    return [InventorySurfaceOut(**item) for item in items]
+    items, total = await repository.get_inventory_surfaces_paginated(
+        db, limit=pagination.limit, offset=pagination.offset,
+    )
+    return PaginatedResponse(
+        items=[InventorySurfaceOut(**item) for item in items],
+        total=total,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    )
 
 
 @router.patch("/inventory/surfaces/{surface_id}",

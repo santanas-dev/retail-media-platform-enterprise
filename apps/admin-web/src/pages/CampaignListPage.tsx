@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   listCampaigns,
@@ -14,13 +14,17 @@ import type {
 } from "../api/types";
 import { statusLabel, statusColor } from "../api/types";
 
+const PAGE_SIZE = 50;
+
 export default function CampaignListPage() {
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<CampaignOut[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Lookup maps for advertiser names
+  // Lookup maps
   const [orgs, setOrgs] = useState<Map<string, AdvertiserOrganizationOut>>(new Map());
   const [brands, setBrands] = useState<Map<string, AdvertiserBrandOut>>(new Map());
   const [flights, setFlights] = useState<CampaignFlightOut[]>([]);
@@ -31,37 +35,38 @@ export default function CampaignListPage() {
     ? campaigns
     : campaigns.filter((c) => c.status === statusFilter);
 
-  useEffect(() => {
-    let cancelled = false;
+  const load = useCallback(async (pageOffset: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [campsPage, flts, orgList, brandList] = await Promise.all([
+        listCampaigns(PAGE_SIZE, pageOffset),
+        listFlights(),
+        listAdvertisers(),
+        listBrands(),
+      ]);
 
-    async function load() {
-      try {
-        const [camps, flts, orgList, brandList] = await Promise.all([
-          listCampaigns(),
-          listFlights(),
-          listAdvertisers(),
-          listBrands(),
-        ]);
-
-        if (cancelled) return;
-
-        setCampaigns(camps);
-        setFlights(flts);
-        setOrgs(new Map(orgList.map((o) => [o.id, o])));
-        setBrands(new Map(brandList.map((b) => [b.id, b])));
-      } catch (e: unknown) {
-        if (cancelled) return;
-        setError(e instanceof Error ? e.message : "Ошибка загрузки");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      setCampaigns(campsPage.items);
+      setTotal(campsPage.total);
+      setOffset(pageOffset);
+      setFlights(flts);
+      setOrgs(new Map(orgList.map((o) => [o.id, o])));
+      setBrands(new Map(brandList.map((b) => [b.id, b])));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Ошибка загрузки");
+    } finally {
+      setLoading(false);
     }
-
-    load();
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  useEffect(() => {
+    load(0);
+  }, [load]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
+  const hasPrev = offset > 0;
+  const hasNext = offset + PAGE_SIZE < total;
 
   // ── Render states ──
 
@@ -198,14 +203,89 @@ export default function CampaignListPage() {
           ))}
         </tbody>
       </table>
-      <div style={{ marginTop: "0.75rem", fontSize: "0.75rem", color: "#94a3b8" }}>
-        {statusFilter === "all"
-          ? `Всего: ${campaigns.length}`
-          : `Показано: ${filteredCampaigns.length} из ${campaigns.length}`}
+      <Pagination
+        total={total}
+        offset={offset}
+        limit={PAGE_SIZE}
+        hasPrev={hasPrev}
+        hasNext={hasNext}
+        onPrev={() => load(offset - PAGE_SIZE)}
+        onNext={() => load(offset + PAGE_SIZE)}
+      />
+    </div>
+  );
+}
+
+// ── Pagination component ──
+
+function Pagination({
+  total,
+  offset,
+  limit,
+  hasPrev,
+  hasNext,
+  onPrev,
+  onNext,
+}: {
+  total: number;
+  offset: number;
+  limit: number;
+  hasPrev: boolean;
+  hasNext: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  if (total <= limit) return null;
+
+  const from = offset + 1;
+  const to = Math.min(offset + limit, total);
+
+  return (
+    <div style={pgnStyles.row}>
+      <span style={pgnStyles.info}>
+        {from}–{to} из {total}
+      </span>
+      <div style={{ display: "flex", gap: "0.25rem" }}>
+        <button
+          onClick={onPrev}
+          disabled={!hasPrev}
+          style={pgnStyles.btn(hasPrev)}
+        >
+          ← Назад
+        </button>
+        <button
+          onClick={onNext}
+          disabled={!hasNext}
+          style={pgnStyles.btn(hasNext)}
+        >
+          Вперёд →
+        </button>
       </div>
     </div>
   );
 }
+
+const pgnStyles = {
+  row: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: "0.75rem",
+    fontSize: "0.8125rem",
+  } as React.CSSProperties,
+  info: {
+    color: "#64748b",
+  } as React.CSSProperties,
+  btn: (enabled: boolean): React.CSSProperties => ({
+    padding: "0.2rem 0.6rem",
+    fontSize: "0.75rem",
+    border: "1px solid #cbd5e1",
+    borderRadius: 4,
+    background: enabled ? "#fff" : "#f1f5f9",
+    color: enabled ? "#334155" : "#94a3b8",
+    cursor: enabled ? "pointer" : "default",
+  }),
+};
 
 // ── Filter chips ──
 
