@@ -507,16 +507,15 @@ git push origin :refs/tags/v0.5-business-portal-complete
 
 ### v0.6-production-readiness-foundation — Production Readiness Foundation
 
-**Ready for publish.**  Release prep complete (S-056).  Tag targets code baseline `fd43791`.
+**Published.**  Tag created 2026-07-14.
 
 #### Metadata
-- **Tag:** v0.6-production-readiness-foundation (ready)
+- **Tag:** v0.6-production-readiness-foundation
 - **Date:** 2026-07-14
 - **Code baseline:** `fd43791` (S-054 creative_upload_sessions RLS proof, CI #29282222261 green 34/34)
+- **Release commit:** `b00772d` (main after S-056 release prep)
 - **Predecessor:** v0.5-business-portal-complete (`5c41a6a`)
-- **Plan:** `docs/product/v06-production-readiness-plan.md`
-- **Release prep:** S-055 (readiness review) + S-055a (docs honesty fix) + S-056 (release prep)
-- **Status:** ready for publish — docs finalised, tag SHA identified
+- **CI:** #29360043628 — 34/34 green
 
 #### Completed Capabilities (S-047…S-054a)
 
@@ -547,6 +546,32 @@ git push origin :refs/tags/v0.5-business-portal-complete
 - Billing / acts / ERP → v2.6
 - Tenant model ADR-018 → v2.6
 - Device signature verification → v2.6
+
+---
+
+### v0.6.1-critical-hotfix — Critical Hotfix (Audit v4)
+
+**Published.**  Tag created 2026-07-14.
+
+#### Metadata
+- **Tag:** v0.6.1-critical-hotfix
+- **Date:** 2026-07-14
+- **Code baseline:** `00060cc` (S-059 critical hotfix, CI #29404001541 green 34/34)
+- **Predecessor:** v0.6-production-readiness-foundation (`fd43791`)
+
+#### Closed Findings
+
+- **CRITICAL-1:** LDAPS certificate validation — explicit `ssl.CERT_REQUIRED`, `AD_CA_CERT_FILE` config, `ca_certs_file` passed to `ldap3.Tls`, `ldap3>=2.9.1` in `requirements.txt` + CI
+- **CRITICAL-2:** Moderation/approval queue RLS context — `set_rls_context` added to 4 admin endpoints (moderation queue, approve/reject creative, approval queue)
+
+#### Known Limitations (same as v0.6)
+
+- All v0.6 Known Limitations still apply
+
+#### Remediation Plan
+
+- `docs/product/audit-v4-remediation-plan.md` — remaining P1/P2/P3 findings, proposed S-062…S-074 sequence
+- Next milestone: v0.6.2 or v0.7 audit remediation
 
 ---
 

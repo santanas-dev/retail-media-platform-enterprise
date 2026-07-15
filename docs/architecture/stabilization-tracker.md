@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
 | **Last updated:** 2026-07-14
-| **Current phase:** v0.6 Production Readiness Foundation — published (tag v0.6-production-readiness-foundation, main at b00772d). S-059 critical hotfix in progress. KSO/player remains deferred/out of scope.|
+| **Current phase:** v0.6.1 Critical Hotfix published (tag v0.6.1-critical-hotfix, main at 00060cc). Audit v4 remediation plan active (S-061). KSO/player remains deferred/out of scope.|
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -106,7 +106,9 @@ Separately covered:
 | S-055a | v0.6 docs honesty fix | P0 | ✅ done | P.S. (Hermes) | 5 P0 + 1 P2 docs fixed. v06 plan, release-versioning, tracker, roadmap updated. Branch: docs/S-055a. | S-056 release prep |
 | S-056 | v0.6 release prep | P0 | ✅ done | P.S. (Hermes) | `release-versioning.md`: v0.6 finalised. `stabilization-tracker.md`: S-056 row. `production-gaps-triage.md`: baseline→v0.6. `roadmap-s020.xlsx`: v0.6→ready for publish. Tag target: `fd43791`. Branch: docs/S-056. | Publish (S-057) |
 | S-057 | Publish v0.6 | P0 | ✅ done | P.S. (Hermes) | main ff→b00772d. Tag v0.6-production-readiness-foundation→fd43791. CI #29360043628 green 34/34. | — |
-| S-059 | v0.6 critical hotfix (external audit v4) | P0 | 🚧 in progress | P.S. (Hermes) | CRITICAL-1: LDAPS cert validation fix — explicit ssl.CERT_REQUIRED, AD_CA_CERT_FILE, ldap3 in requirements+CI. CRITICAL-2: RLS context on moderation/approval queues — added set_rls_context to 4 endpoints. Tests: 7 AD cert + 9 hotfix-verification. | Push + CI |
+| S-059 | v0.6 critical hotfix (external audit v4) | P0 | ✅ done | P.S. (Hermes) | CRITICAL-1: LDAPS cert validation — ssl.CERT_REQUIRED, AD_CA_CERT_FILE, ldap3 in requirements+CI. CRITICAL-2: RLS context on moderation/approval queues — set_rls_context on 4 endpoints. Tests: 7 AD cert + 9 hotfix-verification. CI #29403409655 green 34/34. | — |
+| S-060 | Publish v0.6.1 critical hotfix | P0 | ✅ done | P.S. (Hermes) | main ff→00060cc. Tag v0.6.1-critical-hotfix→00060cc. CI #29404001541 green 34/34. | — |
+| S-061 | Audit v4 remediation plan | P0 | ✅ done | P.S. (Hermes) | `docs/product/audit-v4-remediation-plan.md`: P1/P2/P3 classified, S-062…S-074 proposed. Tracker, gaps triage, release-versioning, roadmap updated. | Start S-062 |
 ## Status Legend
 
 - **done** — implemented, tested, committed, pushed
@@ -140,6 +142,27 @@ Separately covered:
 | Billing / acts / ERP | Deferred — v2.6 |
 | Sales lift / attribution | Deferred — v2.6 |
 | Mobile application | Deferred — v2.6 |
+| Tenant model ADR before v2.6 | 🟡 Decision needed — ADR-018 |
+| Password reset invite/email flow | Deferred |
+| Advertiser approve/reject campaigns | Deferred — admin-only |
+
+## Audit v4 Remediation Backlog (S-061 plan)
+
+| Ticket | Area | Priority | Status |
+|--------|------|----------|--------|
+| S-062 | Auth/test/dependency truth (no-op async, audit login/logout, requirements) | P1 | 🚧 planned |
+| S-063 | PoP by-day timezone correctness | P1 | 🚧 planned |
+| S-064 | Approval concurrency + audit consistency | P1 | 🚧 planned |
+| S-065 | Metrics/rate-limit/device-gateway hardening | P1 | 🚧 planned |
+| S-066 | Pagination foundations (stores, surfaces, campaigns, queues) | P1 | 🚧 planned |
+| S-067 | Manifest performance + Redis cache | P2 | 🚧 planned |
+| S-068 | DB pool + retention strategy (delivery_manifests, pop_events_raw) | P2 | 🚧 planned |
+| S-069 | Admin UI: audit log + permission-filtered menu | P2 | 🚧 planned |
+| S-070 | Fleet/device health workspace | P2 | 🚧 planned |
+| S-071 | Emergency workspace / kill-switch UI | P2 | 🚧 planned |
+| S-072 | Inventory domain gap analysis (ТЗ §6.3) | P2 | 🚧 planned |
+| S-073 | UI design-system / a11y foundation / i18n strategy | P3 | 🚧 planned |
+| S-074 | v0.6.2/v0.7 readiness review | — | 🚧 planned |
 | Tenant model ADR before v2.6 | 🟡 Decision needed — ADR-018 |
 | Password reset invite/email flow | Deferred |
 | Advertiser approve/reject campaigns | Deferred — admin-only |

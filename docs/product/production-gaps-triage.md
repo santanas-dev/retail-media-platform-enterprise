@@ -2,24 +2,20 @@
 
 | **Created:** 2026-07-11 |
 | **Version:** 1.3 |
-| **Status:** active — v0.6 Production Readiness Foundation (ready for publish) |
+| **Status:** active — v0.6.1 Critical Hotfix published; audit v4 remediation planned |
 | **Branch:** develop |
 
-> **⚠️ v0.6.1 hotfix in progress (S-059):** External audit v4 found 2 Critical
-> findings. CRITICAL-1: LDAPS certificate validation — fixed with explicit
-> ssl.CERT_REQUIRED, AD_CA_CERT_FILE config, ldap3 in requirements+CI.
-> CRITICAL-2: moderation/approval queue RLS context — added set_rls_context
-> to 4 admin endpoints + source-inspection tests.
-> v0.6.1 hotfix candidate after CI verification.
+> **⚠️ Audit v4 remediation in progress (S-061):** Critical findings closed in
+> v0.6.1 (S-059/S-060). P1/P2/P3 remediation plan: `docs/product/audit-v4-remediation-plan.md`.
+> Next block: S-062 (auth/test/dependency truth) through S-074 (readiness review).
 
 ## A. Current Baseline
 
 | Parameter | Value |
 |-----------|-------|
-| **Latest release** | v0.5-business-portal-complete (published) |
-| **Pending release** | v0.6-production-readiness-foundation (ready for publish, tag targets `fd43791`) |
-| **Code baseline** | `fd43791` (S-054 RLS proof, CI #29282222261 green 34/34) |
-| **Branch model** | main (stable, `5114f83`) / develop (active, `a7c0af3` after S-056) |
+| **Latest release** | v0.6.1-critical-hotfix (published) |
+| **Code baseline** | `00060cc` (S-059 critical hotfix, CI #29404001541 green 34/34) |
+| **Branch model** | main (stable, `00060cc`) / develop (active, `00060cc`) |
 | **Live preview** | http://192.168.110.77:3001 (advertiser-web), :3000 (admin-web) |
 | **Tests** | 1006 Python unit + 255 behavioural + 71 admin-web + 68 advertiser-web = 1,400+ total |
 | **CI** | GitHub Actions — 34 jobs, all green on develop |
