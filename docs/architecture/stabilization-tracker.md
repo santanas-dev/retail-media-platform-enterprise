@@ -114,6 +114,7 @@ Separately covered:
 | S-064 | Approval concurrency + audit consistency (P1) | P1 | ✅ done | P.S. (Hermes) | `approve_campaign` + `reject_campaign` now use `SELECT ... FOR UPDATE` — row-level lock serializes concurrent transitions. Production fix only. | — |
 | S-064a | Approval concurrency behavioural proof | P1 | ✅ done | P.S. (Hermes) | 3 behavioural tests (approve/approve, approve/reject, reject/reject) with real PostgreSQL — two AsyncConnections, `asyncio.gather`, manual BEGIN/COMMIT. Proves FOR UPDATE prevents duplicate approvals/history. | — |
 | S-065 | Metrics/rate-limit/device-gateway hardening | P1 | ✅ done | P.S. (Hermes) | METRICS_AUTH_TOKEN protects both /metrics endpoints (fail-fast in production). In-memory token bucket rate limit on device manifest + PoP batch. Device-gateway 403 errors no longer leak internal status. | — |
+| S-066 | Pagination foundations | P1 | ✅ done | P.S. (Hermes) | Generic PaginatedResponse[T] schema + 5 paginated repo methods. 6 endpoints: /inventory/stores, /inventory/surfaces, /campaigns, /campaigns/approval-queue, /creative-assets/moderation-queue. MAX_LIMIT=200, DEFAULT_LIMIT=50. Admin-web: 4 pages with pagination controls + total/range display. | — |
 ## Status Legend
 
 - **done** — implemented, tested, committed, pushed

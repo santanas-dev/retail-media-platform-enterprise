@@ -17,9 +17,9 @@ export default function CampaignListPage() {
 
     async function load() {
       try {
-        const camps = await api.get<CampaignOut[]>("/campaigns");
+        const page = await api.get<{items: CampaignOut[], total: number, limit: number, offset: number}>("/campaigns");
         if (cancelled) return;
-        setCampaigns(camps);
+        setCampaigns(page.items);
       } catch (e: unknown) {
         if (cancelled) return;
         if (e instanceof ApiError && e.status === 401) {

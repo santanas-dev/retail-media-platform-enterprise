@@ -128,9 +128,13 @@ describe("auth shell", () => {
         ),
       );
     // CampaignListPage fetches
-    vi.spyOn(globalThis, "fetch").mockImplementation(() =>
-      Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
-    );
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : String(input);
+      if (url.includes("/campaigns") && !url.includes("flights") && !url.includes("placements") && !url.includes("creatives")) {
+        return Promise.resolve(new Response(JSON.stringify({items: [], total: 0, limit: 50, offset: 0}), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+    });
 
     renderWithAuth("/login");
 
@@ -178,8 +182,12 @@ describe("auth shell", () => {
           new Response(JSON.stringify({ message: "Logged out" }), { status: 200 }),
         );
       }
-      // Campaign/identity data: empty array
-      return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+      // Non-campaign endpoints return bare arrays
+      if (url.includes("campaign-flights") || url.includes("advertiser-organizations") || url.includes("advertiser-brands")) {
+        return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+      }
+      // Campaign data: paginated empty
+      return Promise.resolve(new Response(JSON.stringify({items: [], total: 0, limit: 50, offset: 0}), { status: 200 }));
     });
 
     renderWithAuth("/campaigns");

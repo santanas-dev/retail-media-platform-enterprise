@@ -201,13 +201,13 @@ class TestListUsers(AuthzMixin, unittest.TestCase):
     @patch("packages.api.identity.repository.list_users", new_callable=AsyncMock)
     def test_limit_enforced(self, mock_repo):
         mock_repo.return_value = ([], 0)
-        resp = self._get("/api/v1/identity/users?limit=200")
+        resp = self._get("/api/v1/identity/users?limit=999")
         self.assertEqual(resp.status_code, 422)  # exceeds max
 
     @patch("packages.api.identity.repository.list_users", new_callable=AsyncMock)
     def test_limit_max_accepted(self, mock_repo):
         mock_repo.return_value = ([], 0)
-        resp = self._get("/api/v1/identity/users?limit=100")
+        resp = self._get("/api/v1/identity/users?limit=200")
         self.assertEqual(resp.status_code, 200)
 
     @patch("packages.api.identity.repository.list_users", new_callable=AsyncMock)

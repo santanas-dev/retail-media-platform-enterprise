@@ -282,3 +282,36 @@ async def get_device_id_from_token(request: Request) -> str:
             detail={"code": "INVALID_TOKEN", "message": "Token missing sub claim"},
         )
     return device_id
+
+
+# ---------------------------------------------------------------------------
+# Pagination
+# ---------------------------------------------------------------------------
+
+from dataclasses import dataclass
+from packages.domain.schemas import DEFAULT_LIMIT, MAX_LIMIT
+
+
+@dataclass
+class PaginationParams:
+    """Validated pagination parameters extracted from query string."""
+    limit: int
+    offset: int
+
+
+async def get_pagination_params(
+    limit: int = DEFAULT_LIMIT,
+    offset: int = 0,
+) -> PaginationParams:
+    """FastAPI dependency — extract and validate limit/offset from query params.
+
+    Enforces: limit between 1 and MAX_LIMIT, offset >= 0.
+    Returns PaginationParams dataclass.
+    """
+    if limit < 1:
+        limit = 1
+    if limit > MAX_LIMIT:
+        limit = MAX_LIMIT
+    if offset < 0:
+        offset = 0
+    return PaginationParams(limit=limit, offset=offset)

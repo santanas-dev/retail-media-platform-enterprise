@@ -10,6 +10,8 @@ from packages.api.dependencies import (
     require_permission,
     require_scoped_permission,
     set_rls_context,
+    get_pagination_params,
+    PaginationParams,
 )
 from packages.domain import repository
 from packages.domain.schemas import (
@@ -32,6 +34,7 @@ from packages.domain.schemas import (
     CampaignStatusHistoryOut,
     CampaignUpdateRequest,
     CreativeAssetOut,
+    PaginatedResponse,
 )
 # Use repository.XXX() style so @patch("packages.api.identity.repository.XXX")
 # targets work — see creatives.py for the established pattern.
@@ -57,14 +60,22 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 
 
-@router.get("/campaigns", response_model=list[CampaignOut])
+@router.get("/campaigns", response_model=PaginatedResponse[CampaignOut])
 async def list_campaigns(
     db=Depends(get_db),
+    pagination: PaginationParams = Depends(get_pagination_params),
     _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
-    items = await repository.list_campaigns(db)
-    return [_serialize_campaign(item) for item in items]
+    items, total = await repository.list_campaigns_paginated(
+        db, limit=pagination.limit, offset=pagination.offset,
+    )
+    return PaginatedResponse(
+        items=[_serialize_campaign(item) for item in items],
+        total=total,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    )
 
 
 @router.get("/campaign-flights", response_model=list[CampaignFlightOut])
@@ -438,10 +449,11 @@ async def reject_endpoint(
 
 
 @router.get("/campaigns/approval-queue",
-            response_model=list[CampaignApprovalQueueItem])
+            response_model=PaginatedResponse[CampaignApprovalQueueItem])
 async def approval_queue_endpoint(
     status_filter: str = Query("pending_approval", alias="status"),
     db=Depends(get_db),
+    pagination: PaginationParams = Depends(get_pagination_params),
     _claims: dict = Depends(require_permission("campaigns.approve")),
     _rls=Depends(set_rls_context),
 ):
@@ -449,8 +461,18 @@ async def approval_queue_endpoint(
     if status_filter not in valid:
         raise HTTPException(status_code=422, detail=f"Invalid status filter: {status_filter}")
 
-    items = await repository.list_approval_queue(db, status_filter=status_filter)
-    return [CampaignApprovalQueueItem(**item) for item in items]
+    items, total = await repository.list_approval_queue_paginated(
+        db,
+        status_filter=status_filter,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    )
+    return PaginatedResponse(
+        items=[CampaignApprovalQueueItem(**item) for item in items],
+        total=total,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    )
 
 
 # ---------------------------------------------------------------------------

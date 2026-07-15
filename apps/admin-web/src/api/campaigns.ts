@@ -40,20 +40,27 @@ import type {
   DisplaySurfaceRefOut,
   CampaignRejectRequest,
   CampaignCreativeAttachRequest,
+  PaginatedResponse,
 } from "./types";
 
 // ── Campaigns ──
 
-/** Fetch all campaigns visible to the current user (RLS-scoped). */
-export function listCampaigns(): Promise<CampaignOut[]> {
-  return api.get<CampaignOut[]>("/campaigns");
+/** Fetch campaigns with pagination. */
+export function listCampaigns(
+  limit = 50,
+  offset = 0,
+): Promise<PaginatedResponse<CampaignOut>> {
+  const params = new URLSearchParams();
+  params.set("limit", String(limit));
+  params.set("offset", String(offset));
+  return api.get<PaginatedResponse<CampaignOut>>(`/campaigns?${params}`);
 }
 
-/** Get a single campaign by ID from the list.
- *  Backend has no dedicated detail endpoint — we filter client-side. */
+/** Get a single campaign by ID — fetches from first page and filters client-side.
+ *  Temporary: will be replaced by dedicated detail endpoint (S-XXX). */
 export async function getCampaign(id: string): Promise<CampaignOut | null> {
-  const all = await listCampaigns();
-  return all.find((c) => c.id === id) ?? null;
+  const page = await listCampaigns(200, 0);
+  return page.items.find((c) => c.id === id) ?? null;
 }
 
 /** Create a draft campaign. Returns the created campaign with its ID. */
@@ -249,14 +256,17 @@ import type { CampaignApprovalQueueItem } from "./types";
 
 export function listApprovalQueue(
   status = "pending_approval",
-): Promise<CampaignApprovalQueueItem[]> {
+  limit = 50,
+  offset = 0,
+): Promise<PaginatedResponse<CampaignApprovalQueueItem>> {
   const params = new URLSearchParams();
   if (status !== "pending_approval") {
     params.set("status", status);
   }
-  const qs = params.toString();
-  return api.get<CampaignApprovalQueueItem[]>(
-    `/campaigns/approval-queue${qs ? `?${qs}` : ""}`,
+  params.set("limit", String(limit));
+  params.set("offset", String(offset));
+  return api.get<PaginatedResponse<CampaignApprovalQueueItem>>(
+    `/campaigns/approval-queue?${params}`,
   );
 }
 
@@ -347,14 +357,17 @@ import type {
 
 export function listModerationQueue(
   moderationStatus = "pending_review",
-): Promise<CreativeModerationQueueItem[]> {
+  limit = 50,
+  offset = 0,
+): Promise<PaginatedResponse<CreativeModerationQueueItem>> {
   const params = new URLSearchParams();
   if (moderationStatus !== "pending_review") {
     params.set("moderation_status", moderationStatus);
   }
-  const qs = params.toString();
-  return api.get<CreativeModerationQueueItem[]>(
-    `/creative-assets/moderation-queue${qs ? `?${qs}` : ""}`,
+  params.set("limit", String(limit));
+  params.set("offset", String(offset));
+  return api.get<PaginatedResponse<CreativeModerationQueueItem>>(
+    `/creative-assets/moderation-queue?${params}`,
   );
 }
 

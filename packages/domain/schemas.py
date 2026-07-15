@@ -7,7 +7,7 @@ No secret/password fields exposed.
 """
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -74,8 +74,18 @@ class AuditEventOut(BaseModel):
 # Pagination
 # ---------------------------------------------------------------------------
 
-MAX_LIMIT = 100
-DEFAULT_LIMIT = 20
+MAX_LIMIT = 200
+DEFAULT_LIMIT = 50
+
+T = TypeVar("T")
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    """Generic paginated response — items + metadata."""
+    items: list[T]
+    total: int
+    limit: int
+    offset: int
 
 
 class PaginatedUsers(BaseModel):

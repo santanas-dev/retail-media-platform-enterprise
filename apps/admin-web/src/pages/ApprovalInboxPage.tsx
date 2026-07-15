@@ -14,10 +14,42 @@ function fmtDate(iso: string | null): string {
 
 const READY = "✅";
 const NOT_READY = "❌";
+const PAGE_SIZE = 50;
+
+function Pagination({
+  total, offset, limit, hasPrev, hasNext, onPrev, onNext,
+}: {
+  total: number; offset: number; limit: number;
+  hasPrev: boolean; hasNext: boolean;
+  onPrev: () => void; onNext: () => void;
+}) {
+  if (total <= limit) return null;
+  const from = offset + 1;
+  const to = Math.min(offset + limit, total);
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.75rem", fontSize: "0.8125rem" }}>
+      <span style={{ color: "#64748b" }}>{from}–{to} из {total}</span>
+      <div style={{ display: "flex", gap: "0.25rem" }}>
+        <button onClick={onPrev} disabled={!hasPrev} style={pgnBtn(hasPrev)}>← Назад</button>
+        <button onClick={onNext} disabled={!hasNext} style={pgnBtn(hasNext)}>Вперёд →</button>
+      </div>
+    </div>
+  );
+}
+
+function pgnBtn(enabled: boolean): React.CSSProperties {
+  return {
+    padding: "0.2rem 0.6rem", fontSize: "0.75rem", border: "1px solid #cbd5e1",
+    borderRadius: 4, background: enabled ? "#fff" : "#f1f5f9",
+    color: enabled ? "#334155" : "#94a3b8", cursor: enabled ? "pointer" : "default",
+  };
+}
 
 export default function ApprovalInboxPage() {
   const navigate = useNavigate();
   const [items, setItems] = useState<CampaignApprovalQueueItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("pending_approval");
@@ -25,12 +57,14 @@ export default function ApprovalInboxPage() {
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
-  const load = useCallback(async (statusFilter: string) => {
+  const load = useCallback(async (statusFilter: string, pageOffset: number) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await listApprovalQueue(statusFilter);
-      setItems(data);
+      const data = await listApprovalQueue(statusFilter, PAGE_SIZE, pageOffset);
+      setItems(data.items);
+      setTotal(data.total);
+      setOffset(pageOffset);
     } catch (e) {
       if (e instanceof ApiError && e.status === 403) {
         setError("Нет доступа к согласованию кампаний");
@@ -42,13 +76,16 @@ export default function ApprovalInboxPage() {
     }
   }, []);
 
-  useEffect(() => { load(filter); }, [filter, load]);
+  useEffect(() => { load(filter, 0); }, [filter, load]);
+
+  const hasPrev = offset > 0;
+  const hasNext = offset + PAGE_SIZE < total;
 
   const handleApprove = async (campaignId: string) => {
     setActionError(null);
     try {
       await approveCampaign(campaignId);
-      await load(filter);
+      await load(filter, offset);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Ошибка при согласовании");
     }
@@ -61,7 +98,7 @@ export default function ApprovalInboxPage() {
       await rejectCampaign(campaignId, { reason: rejectReason.trim() });
       setRejectingId(null);
       setRejectReason("");
-      await load(filter);
+      await load(filter, offset);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Ошибка при отклонении");
     }
@@ -194,6 +231,14 @@ export default function ApprovalInboxPage() {
             })}
           </tbody>
         </table>
+      )}
+      {!loading && items.length > 0 && (
+        <Pagination
+          total={total} offset={offset} limit={PAGE_SIZE}
+          hasPrev={hasPrev} hasNext={hasNext}
+          onPrev={() => load(filter, offset - PAGE_SIZE)}
+          onNext={() => load(filter, offset + PAGE_SIZE)}
+        />
       )}
     </div>
   );

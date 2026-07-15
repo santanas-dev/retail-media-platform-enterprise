@@ -12,6 +12,8 @@ from packages.api.dependencies import (
     require_permission,
     require_scoped_permission,
     set_rls_context,
+    get_pagination_params,
+    PaginationParams,
 )
 from packages.domain import repository
 from packages.domain.scopes import ScopeContext
@@ -23,6 +25,7 @@ from packages.domain.schemas import (
     CreativeModerationQueueItem,
     CreativeModerationResponse,
     CreativeRejectRequest,
+    PaginatedResponse,
     UploadIntentRequest,
     UploadIntentResponse,
 )
@@ -222,10 +225,11 @@ async def complete_upload_endpoint(
 
 
 @router.get("/creative-assets/moderation-queue",
-            response_model=list[CreativeModerationQueueItem])
+            response_model=PaginatedResponse[CreativeModerationQueueItem])
 async def moderation_queue_endpoint(
     status_filter: str = Query("pending_review", alias="moderation_status"),
     db=Depends(get_db),
+    pagination: PaginationParams = Depends(get_pagination_params),
     _claims: dict = Depends(require_permission("creatives.moderate")),
     _rls=Depends(set_rls_context),
 ):
@@ -233,8 +237,18 @@ async def moderation_queue_endpoint(
     if status_filter not in valid:
         raise HTTPException(status_code=422, detail=f"Invalid status_filter: {status_filter}")
 
-    items = await repository.list_moderation_queue(db, status_filter=status_filter)
-    return [CreativeModerationQueueItem(**item) for item in items]
+    items, total = await repository.list_moderation_queue_paginated(
+        db,
+        status_filter=status_filter,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    )
+    return PaginatedResponse(
+        items=[CreativeModerationQueueItem(**item) for item in items],
+        total=total,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    )
 
 
 @router.post("/creative-assets/{asset_id}/approve",
