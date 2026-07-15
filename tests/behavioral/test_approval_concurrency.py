@@ -127,7 +127,8 @@ class TestApproveConcurrency:
         ;
         INSERT INTO campaign_status_history (id, campaign_id, old_status, new_status, changed_by, reason)
         VALUES ('beh-concur-csh-000000000000001', '{_CAMPAIGN_ID}',
-                'draft', 'pending_approval', 'fixture', 'concurrency test setup')
+                'draft', 'pending_approval',
+                '00000000-0000-0000-0000-000000000150', 'concurrency test setup')
         ON CONFLICT DO NOTHING
         """))
         yield
@@ -225,7 +226,8 @@ class TestApproveVsRejectRace:
         ;
         INSERT INTO campaign_status_history (id, campaign_id, old_status, new_status, changed_by, reason)
         VALUES ('beh-concur-csh-000000000000001', '{_CAMPAIGN_ID}',
-                'draft', 'pending_approval', 'fixture', 'concurrency test setup')
+                'draft', 'pending_approval',
+                '00000000-0000-0000-0000-000000000150', 'concurrency test setup')
         ON CONFLICT DO NOTHING
         """))
         yield
@@ -306,7 +308,8 @@ class TestRejectConcurrency:
         ;
         INSERT INTO campaign_status_history (id, campaign_id, old_status, new_status, changed_by, reason)
         VALUES ('beh-concur-csh-000000000000001', '{_CAMPAIGN_ID}',
-                'draft', 'pending_approval', 'fixture', 'concurrency test setup')
+                'draft', 'pending_approval',
+                '00000000-0000-0000-0000-000000000150', 'concurrency test setup')
         ON CONFLICT DO NOTHING
         """))
         yield
