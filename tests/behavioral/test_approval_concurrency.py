@@ -138,18 +138,20 @@ class TestApproveConcurrency:
     """S-064: concurrent approve atomicity — SELECT FOR UPDATE proof."""
 
     @pytest.fixture(autouse=True)
-    async def _setup_teardown(self, db_available):
-        await _run_sql(_SEED)
-        # Move campaign to pending_approval via request_campaign_approval
-        engine = _engine_factory()
-        async with sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)() as s:
-            async with s.begin():
-                old, new = await request_campaign_approval(s, _CAMPAIGN_ID, changed_by="fixture")
-                assert old == "draft" and new == "pending_approval", \
-                    f"request_approval: old={old}, new={new}"
-        await engine.dispose()
+    def _setup_teardown(self, db_available):
+        asyncio.run(_run_sql(_SEED))
+        # Move campaign to pending_approval
+        async def _do():
+            engine = _engine_factory()
+            async with sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)() as s:
+                async with s.begin():
+                    old, new = await request_campaign_approval(s, _CAMPAIGN_ID, changed_by="fixture")
+                    assert old == "draft" and new == "pending_approval", \
+                        f"request_approval: old={old}, new={new}"
+            await engine.dispose()
+        asyncio.run(_do())
         yield
-        await _run_sql(_CLEANUP)
+        asyncio.run(_run_sql(_CLEANUP))
 
     async def _run_approve(self, reviewer: str) -> tuple[str | None, str | None]:
         engine = _engine_factory()
@@ -236,16 +238,18 @@ class TestApproveVsRejectRace:
     """S-064: approve vs reject race — only one terminal transition."""
 
     @pytest.fixture(autouse=True)
-    async def _setup_teardown(self, db_available):
-        await _run_sql(_SEED)
-        engine = _engine_factory()
-        async with sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)() as s:
-            async with s.begin():
-                old, new = await request_campaign_approval(s, _CAMPAIGN_ID, changed_by="fixture")
-                assert old == "draft" and new == "pending_approval"
-        await engine.dispose()
+    def _setup_teardown(self, db_available):
+        asyncio.run(_run_sql(_SEED))
+        async def _do():
+            engine = _engine_factory()
+            async with sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)() as s:
+                async with s.begin():
+                    old, new = await request_campaign_approval(s, _CAMPAIGN_ID, changed_by="fixture")
+                    assert old == "draft" and new == "pending_approval"
+            await engine.dispose()
+        asyncio.run(_do())
         yield
-        await _run_sql(_CLEANUP)
+        asyncio.run(_run_sql(_CLEANUP))
 
     async def _run_approve(self) -> tuple[str | None, str | None]:
         engine = _engine_factory()
@@ -315,16 +319,18 @@ class TestRejectConcurrency:
     """S-064: concurrent reject atomicity."""
 
     @pytest.fixture(autouse=True)
-    async def _setup_teardown(self, db_available):
-        await _run_sql(_SEED)
-        engine = _engine_factory()
-        async with sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)() as s:
-            async with s.begin():
-                old, new = await request_campaign_approval(s, _CAMPAIGN_ID, changed_by="fixture")
-                assert old == "draft" and new == "pending_approval"
-        await engine.dispose()
+    def _setup_teardown(self, db_available):
+        asyncio.run(_run_sql(_SEED))
+        async def _do():
+            engine = _engine_factory()
+            async with sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)() as s:
+                async with s.begin():
+                    old, new = await request_campaign_approval(s, _CAMPAIGN_ID, changed_by="fixture")
+                    assert old == "draft" and new == "pending_approval"
+            await engine.dispose()
+        asyncio.run(_do())
         yield
-        await _run_sql(_CLEANUP)
+        asyncio.run(_run_sql(_CLEANUP))
 
     async def _run_reject(self, reviewer: str) -> tuple[str | None, str | None]:
         engine = _engine_factory()
