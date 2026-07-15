@@ -77,8 +77,9 @@ VALUES ('beh-concur-fl-000000000000001', '{_CAMPAIGN_ID}', 'BEH-CONCUR-FL',
         '2026-01-01', '2027-01-01')
 ON CONFLICT DO NOTHING
 ;
-INSERT INTO campaign_placements (id, campaign_id)
-VALUES ('beh-concur-pl-000000000000001', '{_CAMPAIGN_ID}')
+INSERT INTO campaign_placements (id, campaign_id, store_id)
+VALUES ('beh-concur-pl-000000000000001', '{_CAMPAIGN_ID}',
+        '00000000-0000-0000-0000-000000000001')
 ON CONFLICT DO NOTHING
 ;
 INSERT INTO campaign_creatives (id, campaign_id, creative_asset_id)
