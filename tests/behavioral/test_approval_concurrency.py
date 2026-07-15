@@ -79,18 +79,18 @@ VALUES ('{_CREATIVE_ID}', '{ADV1_ORG_ID}', 'BEH-CONCUR-CR', 'Concurrency Creativ
    'test-bucket', 'test-key.mp4', 'sha256:deadbeef', 1024, 5000, 'ready', 'approved')
 ON CONFLICT (advertiser_organization_id, code) DO NOTHING
 ;
-INSERT INTO campaign_flights (id, campaign_id, code, flight_type, start_at, end_at)
+INSERT INTO campaign_flights (id, campaign_id, name, flight_type, start_at, end_at)
 VALUES ('beh-concur-fl-000000000000001', '{_CAMPAIGN_ID}', 'BEH-CONCUR-FL', 'guaranteed',
         '{_utc_str(-30)}', '{_utc_str(365)}')
 ON CONFLICT DO NOTHING
 ;
-INSERT INTO campaign_placements (id, campaign_id, code)
-VALUES ('beh-concur-pl-000000000000001', '{_CAMPAIGN_ID}', 'BEH-CONCUR-PL')
+INSERT INTO campaign_placements (id, campaign_id)
+VALUES ('beh-concur-pl-000000000000001', '{_CAMPAIGN_ID}')
 ON CONFLICT DO NOTHING
 ;
 INSERT INTO campaign_creatives (id, campaign_id, creative_asset_id)
 VALUES ('beh-concur-cc-000000000000001', '{_CAMPAIGN_ID}', '{_CREATIVE_ID}')
-ON CONFLICT DO NOTHING
+ON CONFLICT (campaign_id, creative_asset_id) DO NOTHING
 """
 
 _CLEANUP = f"""
