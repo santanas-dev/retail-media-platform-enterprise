@@ -69,14 +69,6 @@ def _utc_str(offset_days: int) -> str:
 
 
 _SEED = f"""
-INSERT INTO advertiser_organizations (id, code, legal_name, display_name, status)
-VALUES ('{ADV1_ORG_ID}', 'BEH-CONCUR-ADV', 'Concurrency Advertiser', 'Concurrency Test', 'active')
-ON CONFLICT (code) DO NOTHING
-;
-INSERT INTO advertiser_contracts (id, advertiser_organization_id, code, name, valid_from, status)
-VALUES ('{ADV1_CONTRACT_ID}', '{ADV1_ORG_ID}', 'BEH-CONCUR-CTR', 'Concurrency Contract', NOW(), 'active')
-ON CONFLICT (advertiser_organization_id, code) DO NOTHING
-;
 INSERT INTO campaigns (id, advertiser_organization_id, advertiser_contract_id, code, name, status, created_by)
 VALUES ('{_CAMPAIGN_ID}', '{ADV1_ORG_ID}', '{ADV1_CONTRACT_ID}', 'BEH-CONCUR-CAMP', 'Concurrency Campaign', 'draft', NULL)
 ON CONFLICT (advertiser_organization_id, code) DO NOTHING
@@ -119,10 +111,6 @@ DELETE FROM campaign_flights WHERE campaign_id = '{_CAMPAIGN_ID}'
 DELETE FROM campaigns WHERE id = '{_CAMPAIGN_ID}'
 ;
 DELETE FROM creative_assets WHERE id = '{_CREATIVE_ID}'
-;
-DELETE FROM advertiser_contracts WHERE id = '{ADV1_CONTRACT_ID}'
-;
-DELETE FROM advertiser_organizations WHERE code = 'BEH-CONCUR-ADV'
 """
 
 
