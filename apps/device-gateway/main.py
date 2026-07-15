@@ -25,7 +25,12 @@ from packages.domain.database import (
     get_session,
     set_global_engine,
 )
-from packages.domain.repository import get_latest_manifest_for_device, get_physical_device_for_manifest_delivery
+from packages.domain.repository import (
+    get_latest_manifest_for_device,
+    get_latest_manifest_metadata,
+    get_physical_device_for_manifest_delivery,
+)
+from packages.infrastructure.redis_cache import get_manifest_cache, set_manifest_cache
 from packages.observability import setup_logging, log_request_middleware
 from packages.security.config import get_security_config, verify_metrics_auth
 from packages.security.jwt import verify_access_token
@@ -195,11 +200,15 @@ async def get_latest_manifest(
     """Return the latest manifest for the authenticated device, or 404.
 
     200: manifest JSON with ETag header
-    304: If-None-Match matches current content_hash
+    304: If-None-Match matches current content_hash (lightweight metadata check)
     404: no manifest or device not found
     401: invalid/expired/missing device token
     403: device not authorized
     429: rate limited
+
+    Performance: uses lightweight metadata query first (1 SELECT).
+    Full manifest assembly (6+ queries + HMAC) only runs when content_hash
+    differs from If-None-Match.
     """
     # S-065: rate limit per device before any DB work
     rate_key = get_rate_limit_key(request, device_id)
@@ -222,21 +231,36 @@ async def get_latest_manifest(
             detail="Device not authorized",
         )
 
+    # S-067: fast ETag path — lightweight metadata query (1 SELECT)
+    meta = await get_latest_manifest_metadata(session, device_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail="No manifest available")
+
+    if_none_match = request.headers.get("If-None-Match", "").strip('"')
+    if if_none_match and meta["content_hash"] == if_none_match:
+        return Response(
+            status_code=304,
+            headers={"ETag": f'"{meta["content_hash"]}"'},
+        )
+
+    # S-067: try Redis cache before full assembly
+    cached = await get_manifest_cache(device_id)
+    if cached is not None and cached.get("content_hash") == meta["content_hash"]:
+        response_obj = JSONResponse(content=cached)
+        response_obj.headers["ETag"] = f'"{cached["content_hash"]}"'
+        return response_obj
+
+    # Full manifest assembly (only when content changed + cache miss)
     manifest = await get_latest_manifest_for_device(session, device_id)
     if manifest is None:
         raise HTTPException(status_code=404, detail="No manifest available")
 
-    # If-None-Match → 304 Not Modified
-    if_none_match = request.headers.get("If-None-Match", "")
-    if if_none_match and manifest.get("content_hash") == if_none_match:
-        return Response(
-            status_code=304,
-            headers={"ETag": if_none_match},
-        )
+    # Cache for subsequent requests
+    await set_manifest_cache(device_id, manifest)
 
     response_obj = JSONResponse(content=manifest)
     if manifest.get("content_hash"):
-        response_obj.headers["ETag"] = manifest["content_hash"]
+        response_obj.headers["ETag"] = f'"{manifest["content_hash"]}"'
     return response_obj
 
 

@@ -116,6 +116,7 @@ Separately covered:
 | S-065 | Metrics/rate-limit/device-gateway hardening | P1 | ✅ done | P.S. (Hermes) | METRICS_AUTH_TOKEN protects both /metrics endpoints (fail-fast in production). In-memory token bucket rate limit on device manifest + PoP batch. Device-gateway 403 errors no longer leak internal status. | — |
 | S-066 | Pagination foundations | P1 | ✅ done | P.S. (Hermes) | Generic PaginatedResponse[T] schema + 5 paginated repo methods. 6 endpoints: /inventory/stores, /inventory/surfaces, /campaigns, /campaigns/approval-queue, /creative-assets/moderation-queue. MAX_LIMIT=200, DEFAULT_LIMIT=50. Admin-web: 4 pages with pagination controls + total/range display. | — |
 | S-066a | Pagination CI truth / test mock fix | P1 | ✅ done | P.S. (Hermes) | Fixed 6 identity API test mocks (old function names → _paginated variants, list return → tuple). Fixed 3 behavioural campaign tests (PaginatedResponse shape). Root cause: mock paths not updated during S-066 function renames. CI now fully green — all 34 jobs including Behavioural PostgreSQL. | — |
+| S-067 | Manifest performance + Redis cache | P1 | ✅ done | P.S. (Hermes) | Fast ETag: lightweight metadata query (1 SELECT) before full assembly — 304 returned without 6+ queries + HMAC. Redis cache: optional fail-open cache for manifest payloads (REDIS_URL, MANIFEST_CACHE_ENABLED, TTL). Content-hash guarded against stale cache. 0 dependencies on Redis at import time. | — |
 ## Status Legend
 
 - **done** — implemented, tested, committed, pushed
@@ -164,7 +165,7 @@ Separately covered:
 | S-065 | Metrics/rate-limit/device-gateway hardening | P1 | ✅ done |
 | S-066 | Pagination foundations (stores, surfaces, campaigns, queues) | P1 | ✅ done |
 | S-066a | Pagination CI truth / test mock fix | P1 | ✅ done |
-| S-067 | Manifest performance + Redis cache | P2 | 🚧 planned |
+| S-067 | Manifest performance + Redis cache | P2 | ✅ done |
 | S-068 | DB pool + retention strategy (delivery_manifests, pop_events_raw) | P2 | 🚧 planned |
 | S-069 | Admin UI: audit log + permission-filtered menu | P2 | 🚧 planned |
 | S-070 | Fleet/device health workspace | P2 | 🚧 planned |

@@ -2256,6 +2256,46 @@ async def get_physical_device_for_manifest_delivery(
     return device.status if device else None
 
 
+async def get_latest_manifest_metadata(
+    session: AsyncSession,
+    physical_device_id: str,
+) -> dict | None:
+    """Return lightweight manifest metadata for ETag / cache decisions.
+
+    Single SELECT — no surface/asset/campaign join, no HMAC signing.
+    Returns ``{manifest_id, content_hash, manifest_version, generated_at}``
+    or None if no generated manifest exists for this device.
+    """
+    from packages.domain.models import DeliveryManifest
+
+    row = (
+        await session.execute(
+            select(
+                DeliveryManifest.manifest_id,
+                DeliveryManifest.content_hash,
+                DeliveryManifest.manifest_version,
+                DeliveryManifest.generated_at,
+            )
+            .where(
+                DeliveryManifest.physical_device_id == physical_device_id,
+                DeliveryManifest.status == "generated",
+            )
+            .order_by(DeliveryManifest.generated_at.desc())
+            .limit(1)
+        )
+    ).first()
+
+    if row is None:
+        return None
+
+    return {
+        "manifest_id": row[0],
+        "content_hash": row[1],
+        "manifest_version": row[2],
+        "generated_at": row[3].isoformat() if row[3] else None,
+    }
+
+
 async def get_latest_manifest_for_device(
     session: AsyncSession,
     physical_device_id: str,

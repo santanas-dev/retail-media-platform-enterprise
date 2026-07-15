@@ -246,3 +246,57 @@ NATS_URL=nats://localhost:4222 \
 BEHAVIORAL_DB_URL=postgresql+asyncpg://retail_media_app:retail_media_app_pass@localhost:5432/retail_media_platform \
 python -m pytest tests/integration/test_nats_consumer.py -v
 ```
+
+## Manifest ETag Fast Path (S-067)
+
+The `/api/v1/device/manifest/latest` endpoint uses a two-tier strategy:
+
+1. **Lightweight metadata query** (1 SELECT): checks `content_hash` from
+   `delivery_manifests` without joining surfaces, assets, campaigns, or
+   computing HMAC.
+2. **If-None-Match → 304**: if the client's `If-None-Match` header matches
+   the current `content_hash`, the endpoint returns `304 Not Modified`
+   without full manifest assembly.
+3. **Full assembly**: only runs when content has changed (6+ queries + HMAC).
+
+This reduces DB load by ~85% for a fleet of 40 000 devices polling every
+30 seconds (assuming content changes infrequently).
+
+## Redis Manifest Cache (S-067)
+
+Optional Redis-backed cache for manifest payloads.
+
+**Configuration** (environment variables):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `REDIS_URL` | (empty) | Redis connection URL (e.g. `redis://localhost:6379/0`) |
+| `MANIFEST_CACHE_ENABLED` | `0` | Set to `1` to enable |
+| `MANIFEST_CACHE_TTL_SECONDS` | `300` | Cache TTL in seconds |
+
+**Design**:
+- **Fail-open**: if Redis is unavailable or not configured, the endpoint
+  falls back to the DB path with no user impact.
+- **Cache key**: `manifest:latest:{device_id}`
+- **Content hash guard**: cached payloads are validated against the current
+  `content_hash` from DB metadata before serving — stale cache is
+  transparently refreshed.
+- **No secrets cached**: only the public manifest payload (no credentials,
+  storage keys, or internal IDs beyond what the device already sees).
+
+**Docker Compose**:
+Redis is included in `infra/compose/docker-compose.phase1.yml`:
+```yaml
+redis:
+  image: redis:7-alpine
+  ports:
+    - "6379:6379"
+```
+
+**Monitoring**:
+Cache behavior is observable through application logs:
+- `Redis manifest cache connected to ...` — successful connection
+- `Redis manifest cache unavailable: ...` — connection failure (endpoint
+  continues serving via DB)
+- `Redis get/set error for device ...` — transient Redis errors on
+  individual operations

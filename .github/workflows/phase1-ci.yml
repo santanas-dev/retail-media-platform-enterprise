@@ -103,7 +103,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install deps
-        run: pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT nats-py jsonschema pyyaml pytest-asyncio greenlet minio ldap3
+        run: pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT nats-py jsonschema pyyaml pytest-asyncio greenlet minio ldap3 redis
       - name: Run tests
         run: python -m pytest tests/ -v
   import-boundaries:
@@ -233,7 +233,7 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: |
-          pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT psycopg2-binary greenlet ldap3 minio nats-py jsonschema pyyaml pytest-asyncio
+          pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT psycopg2-binary greenlet ldap3 minio nats-py jsonschema pyyaml pytest-asyncio redis
       - name: Wait for PostgreSQL
         run: |
           ready=false

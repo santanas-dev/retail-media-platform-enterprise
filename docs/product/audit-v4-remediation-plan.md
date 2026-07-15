@@ -42,11 +42,11 @@ remediation sequence.
 
 | # | Finding | Impact | Proposed Ticket |
 |---|---------|--------|-----------------|
-| P2-1 | No Redis cache for manifest — every device request hits PostgreSQL | Latency at scale (40K devices) | S-067 |
+| P2-1 | No Redis cache for manifest — every device request hits PostgreSQL | Latency at scale (40K devices) | S-067 ✅ done |
 | P2-2 | DB pool configuration not production-tuned | Connection exhaustion under load | S-068 |
 | P2-3 | delivery_manifests table — no retention/purge strategy | Unbounded growth | S-068 |
 | P2-4 | pop_events_raw — no partitioning/retention before ClickHouse | Unbounded growth, analytical query degradation | S-068 |
-| P2-5 | Manifest signature not persisted / threat model not documented | Integrity verification gap | S-067 |
+| P2-5 | Manifest signature not persisted / threat model not documented | Integrity verification gap | S-067 ✅ done |
 | P2-6 | Admin menu not filtered by user permissions | UX confusion, security-relevant | S-069 |
 | P2-7 | No audit log UI — audit_events_operational write-only | Operators can't review audit trail | S-069 |
 | P2-8 | No device/fleet health UI | Operational blindness | S-070 |

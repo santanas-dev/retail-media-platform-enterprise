@@ -235,5 +235,230 @@ class TestNoGenerationInEndpoint(unittest.TestCase):
             self.assertNotIn(banned, stripped.lower())
 
 
+# ---------------------------------------------------------------------------
+# S-067 — Manifest ETag fast path + Redis cache tests
+# ---------------------------------------------------------------------------
+
+
+class TestManifestETagFastPath(unittest.TestCase):
+    """S-067: 304 fast path avoids full manifest assembly."""
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, os.path.join(
+            os.path.dirname(__file__), "..", "apps", "device-gateway",
+        ))
+        cls.app_mod = __import__("main")
+
+    def setUp(self):
+        self.app = self.app_mod.app
+        # Override get_db to provide a mock AsyncSession
+        self.mock_session = AsyncMock()
+        async def _fake_get_db():
+            yield self.mock_session
+        self.app.dependency_overrides[self.app_mod.get_db] = _fake_get_db
+        self.client = TestClient(self.app)
+
+    def tearDown(self):
+        self.app.dependency_overrides.clear()
+
+    @patch("main.get_manifest_cache", new_callable=AsyncMock)
+    @patch("main.set_manifest_cache", new_callable=AsyncMock)
+    @patch("main.get_latest_manifest_for_device", new_callable=AsyncMock)
+    @patch("main.get_latest_manifest_metadata", new_callable=AsyncMock)
+    @patch("main.get_physical_device_for_manifest_delivery", new_callable=AsyncMock)
+    @patch("main.verify_access_token")
+    @patch("main.check_rate_limit")
+    def test_304_avoids_full_assembly(
+        self,
+        mock_rate, mock_verify, mock_phys, mock_meta,
+        mock_full, mock_cache_get, mock_cache_set,
+    ):
+        mock_rate.return_value = True
+        mock_verify.return_value = {
+            "sub": "d1", "auth_provider": "device",
+        }
+        mock_phys.return_value = "active"
+        mock_meta.return_value = {
+            "manifest_id": "m1", "content_hash": "abc123",
+            "manifest_version": 1, "generated_at": "2026-01-01T00:00:00",
+        }
+        mock_cache_get.return_value = None
+
+        resp = self.client.get(
+            "/api/v1/device/manifest/latest",
+            headers={
+                "Authorization": "Bearer token",
+                "If-None-Match": '"abc123"',
+            },
+        )
+        self.assertEqual(resp.status_code, 304)
+        self.assertEqual(resp.headers["ETag"], '"abc123"')
+        mock_full.assert_not_called()
+
+    @patch("main.get_manifest_cache", new_callable=AsyncMock)
+    @patch("main.set_manifest_cache", new_callable=AsyncMock)
+    @patch("main.get_latest_manifest_for_device", new_callable=AsyncMock)
+    @patch("main.get_latest_manifest_metadata", new_callable=AsyncMock)
+    @patch("main.get_physical_device_for_manifest_delivery", new_callable=AsyncMock)
+    @patch("main.verify_access_token")
+    @patch("main.check_rate_limit")
+    def test_hash_mismatch_does_full_assembly(
+        self,
+        mock_rate, mock_verify, mock_phys, mock_meta,
+        mock_full, mock_cache_get, mock_cache_set,
+    ):
+        mock_rate.return_value = True
+        mock_verify.return_value = {"sub": "d1", "auth_provider": "device"}
+        mock_phys.return_value = "active"
+        mock_meta.return_value = {
+            "manifest_id": "m1", "content_hash": "abc123",
+            "manifest_version": 1, "generated_at": "2026-01-01T00:00:00",
+        }
+        mock_cache_get.return_value = None
+        mock_full.return_value = {
+            "manifest_id": "m1", "manifest_version": 1,
+            "content_hash": "abc123", "device_id": "d1",
+        }
+
+        resp = self.client.get(
+            "/api/v1/device/manifest/latest",
+            headers={
+                "Authorization": "Bearer token",
+                "If-None-Match": '"oldhash"',
+            },
+        )
+        self.assertEqual(resp.status_code, 200)
+        mock_full.assert_called_once()
+
+
+class TestManifestRedisCache(unittest.TestCase):
+    """S-067: Redis cache integration tests."""
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, os.path.join(
+            os.path.dirname(__file__), "..", "apps", "device-gateway",
+        ))
+        cls.app_mod = __import__("main")
+
+    def setUp(self):
+        self.app = self.app_mod.app
+        self.mock_session = AsyncMock()
+        async def _fake_get_db():
+            yield self.mock_session
+        self.app.dependency_overrides[self.app_mod.get_db] = _fake_get_db
+        self.client = TestClient(self.app)
+
+    def tearDown(self):
+        self.app.dependency_overrides.clear()
+
+    @patch("main.set_manifest_cache", new_callable=AsyncMock)
+    @patch("main.get_manifest_cache", new_callable=AsyncMock)
+    @patch("main.get_latest_manifest_for_device", new_callable=AsyncMock)
+    @patch("main.get_latest_manifest_metadata", new_callable=AsyncMock)
+    @patch("main.get_physical_device_for_manifest_delivery", new_callable=AsyncMock)
+    @patch("main.verify_access_token")
+    @patch("main.check_rate_limit")
+    def test_cache_hit_avoids_db_assembly(
+        self,
+        mock_rate, mock_verify, mock_phys, mock_meta,
+        mock_full, mock_cache_get, mock_cache_set,
+    ):
+        mock_rate.return_value = True
+        mock_verify.return_value = {"sub": "d1", "auth_provider": "device"}
+        mock_phys.return_value = "active"
+        mock_meta.return_value = {
+            "manifest_id": "m1", "content_hash": "abc123",
+            "manifest_version": 1,
+        }
+        mock_cache_get.return_value = {
+            "manifest_id": "m1", "manifest_version": 1,
+            "content_hash": "abc123", "device_id": "d1",
+            "display_surfaces": [], "playlist": [],
+            "media_files": [], "adapter_payload": {},
+            "valid_from": None, "valid_to": None,
+            "offline_ttl_hours": 168,
+            "fallback_rules": {},
+            "signature": {"algorithm": "HMAC-SHA256", "value": ""},
+        }
+
+        resp = self.client.get(
+            "/api/v1/device/manifest/latest",
+            headers={"Authorization": "Bearer token"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        mock_full.assert_not_called()
+
+    @patch("main.set_manifest_cache", new_callable=AsyncMock)
+    @patch("main.get_manifest_cache", new_callable=AsyncMock)
+    @patch("main.get_latest_manifest_for_device", new_callable=AsyncMock)
+    @patch("main.get_latest_manifest_metadata", new_callable=AsyncMock)
+    @patch("main.get_physical_device_for_manifest_delivery", new_callable=AsyncMock)
+    @patch("main.verify_access_token")
+    @patch("main.check_rate_limit")
+    def test_cache_miss_builds_and_caches(
+        self,
+        mock_rate, mock_verify, mock_phys, mock_meta,
+        mock_full, mock_cache_get, mock_cache_set,
+    ):
+        mock_rate.return_value = True
+        mock_verify.return_value = {"sub": "d1", "auth_provider": "device"}
+        mock_phys.return_value = "active"
+        mock_meta.return_value = {
+            "manifest_id": "m1", "content_hash": "abc123",
+            "manifest_version": 1,
+        }
+        mock_cache_get.return_value = None
+        mock_full.return_value = {
+            "manifest_id": "m1", "manifest_version": 1,
+            "content_hash": "abc123", "device_id": "d1",
+        }
+
+        resp = self.client.get(
+            "/api/v1/device/manifest/latest",
+            headers={"Authorization": "Bearer token"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        mock_full.assert_called_once()
+        mock_cache_set.assert_called_once_with("d1", mock_full.return_value)
+
+    @patch("main.set_manifest_cache", new_callable=AsyncMock)
+    @patch("main.get_manifest_cache", new_callable=AsyncMock)
+    @patch("main.get_latest_manifest_for_device", new_callable=AsyncMock)
+    @patch("main.get_latest_manifest_metadata", new_callable=AsyncMock)
+    @patch("main.get_physical_device_for_manifest_delivery", new_callable=AsyncMock)
+    @patch("main.verify_access_token")
+    @patch("main.check_rate_limit")
+    def test_cache_stale_content_hash_ignored(
+        self,
+        mock_rate, mock_verify, mock_phys, mock_meta,
+        mock_full, mock_cache_get, mock_cache_set,
+    ):
+        mock_rate.return_value = True
+        mock_verify.return_value = {"sub": "d1", "auth_provider": "device"}
+        mock_phys.return_value = "active"
+        mock_meta.return_value = {
+            "manifest_id": "m2", "content_hash": "newhash",
+            "manifest_version": 2,
+        }
+        mock_cache_get.return_value = {
+            "manifest_id": "m1", "manifest_version": 1,
+            "content_hash": "oldhash", "device_id": "d1",
+        }
+        mock_full.return_value = {
+            "manifest_id": "m2", "manifest_version": 2,
+            "content_hash": "newhash", "device_id": "d1",
+        }
+
+        resp = self.client.get(
+            "/api/v1/device/manifest/latest",
+            headers={"Authorization": "Bearer token"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        mock_full.assert_called_once()
+        mock_cache_set.assert_called_once_with("d1", mock_full.return_value)
+
+
 if __name__ == "__main__":
     unittest.main()
