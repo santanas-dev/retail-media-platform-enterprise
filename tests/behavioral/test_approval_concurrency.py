@@ -79,8 +79,8 @@ VALUES ('{_CREATIVE_ID}', '{ADV1_ORG_ID}', 'BEH-CONCUR-CR', 'Concurrency Creativ
    'test-bucket', 'test-key.mp4', 'sha256:deadbeef', 1024, 5000, 'ready', 'approved')
 ON CONFLICT (advertiser_organization_id, code) DO NOTHING
 ;
-INSERT INTO campaign_flights (id, campaign_id, name, flight_type, start_at, end_at)
-VALUES ('beh-concur-fl-000000000000001', '{_CAMPAIGN_ID}', 'BEH-CONCUR-FL', 'guaranteed',
+INSERT INTO campaign_flights (id, campaign_id, name, start_at, end_at)
+VALUES ('beh-concur-fl-000000000000001', '{_CAMPAIGN_ID}', 'BEH-CONCUR-FL',
         '{_utc_str(-30)}', '{_utc_str(365)}')
 ON CONFLICT DO NOTHING
 ;
