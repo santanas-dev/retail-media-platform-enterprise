@@ -9,7 +9,6 @@ Requires: RUN_BEHAVIORAL_TESTS=1, migrations applied, seed run.
 import asyncio
 import os
 import sys
-from datetime import datetime, timezone
 
 import pytest
 
@@ -62,12 +61,6 @@ def _engine_factory():
     return create_async_engine(DB_URL, echo=False)
 
 
-def _utc_str(offset_days: int) -> str:
-    return (datetime.now(timezone.utc).replace(
-        day=1, hour=0, minute=0, second=0, microsecond=0,
-    )).strftime("%Y-%m-%d")
-
-
 _SEED = f"""
 INSERT INTO campaigns (id, advertiser_organization_id, advertiser_contract_id, code, name, status, created_by)
 VALUES ('{_CAMPAIGN_ID}', '{ADV1_ORG_ID}', '{ADV1_CONTRACT_ID}', 'BEH-CONCUR-CAMP', 'Concurrency Campaign', 'draft', NULL)
@@ -81,7 +74,7 @@ ON CONFLICT (advertiser_organization_id, code) DO NOTHING
 ;
 INSERT INTO campaign_flights (id, campaign_id, name, start_at, end_at)
 VALUES ('beh-concur-fl-000000000000001', '{_CAMPAIGN_ID}', 'BEH-CONCUR-FL',
-        '{_utc_str(-30)}', '{_utc_str(365)}')
+        '2026-01-01', '2027-01-01')
 ON CONFLICT DO NOTHING
 ;
 INSERT INTO campaign_placements (id, campaign_id)
