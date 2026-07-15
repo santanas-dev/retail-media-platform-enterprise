@@ -41,6 +41,7 @@ def _prod_config(**overrides) -> SecurityConfig:
         "CORS_ALLOWED_ORIGINS": "https://portal.example.com,https://admin.example.com",
         "DATABASE_URL": "postgresql+asyncpg://rmp_user:strong-prod-pass@db.internal:5432/rmp_prod",
         "SEED_DEV_CREDENTIALS": "",
+        "METRICS_AUTH_TOKEN": "a-strong-metrics-token-32-chars-min!!",
     }
     env.update(overrides)
     # Sentinel: empty string means "delete this key from environment"
@@ -269,3 +270,35 @@ def test_dev_mode_accepts_dev_database_url():
     }):
         cfg = SecurityConfig()
         assert cfg.dev_mode
+
+
+# ---------------------------------------------------------------------------
+# S-065 — Metrics auth token validation
+# ---------------------------------------------------------------------------
+
+
+def test_production_rejects_missing_metrics_token():
+    """Production must reject absent METRICS_AUTH_TOKEN."""
+    with pytest.raises(ValueError, match="METRICS_AUTH_TOKEN must be set"):
+        _prod_config(METRICS_AUTH_TOKEN="")
+
+def test_production_rejects_short_metrics_token():
+    """Production must reject short (<16 chars) METRICS_AUTH_TOKEN."""
+    with pytest.raises(ValueError, match="METRICS_AUTH_TOKEN must be at least 16"):
+        _prod_config(METRICS_AUTH_TOKEN="short")
+
+def test_production_accepts_valid_metrics_token():
+    """Production must accept strong METRICS_AUTH_TOKEN."""
+    cfg = _prod_config()
+    assert cfg.metrics_auth_token == "a-strong-metrics-token-32-chars-min!!"
+
+def test_dev_mode_accepts_empty_metrics_token():
+    """Dev mode must accept empty METRICS_AUTH_TOKEN."""
+    with _set_env({
+        "ENVIRONMENT": "dev",
+        "JWT_SECRET": "at-least-32-chars-for-ci-testing-ok!!",
+        "METRICS_AUTH_TOKEN": "",
+    }):
+        cfg = SecurityConfig()
+        assert cfg.dev_mode
+        assert cfg.metrics_auth_token == ""

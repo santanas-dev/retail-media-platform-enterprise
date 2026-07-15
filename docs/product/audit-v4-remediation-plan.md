@@ -94,11 +94,10 @@ S-064 ─► ✅ Approval concurrency (DONE)
           ├─ ✅ SELECT FOR UPDATE in approve_campaign + reject_campaign
           └─ ✅ Behavioural concurrency proof (S-064a) — 3 PostgreSQL tests
 
-S-065 ─► Metrics/rate-limit/device-gateway hardening
-          ├─ /metrics auth/rate-limit
-          ├─ Rate limiting for /device/manifest/latest + /pop/batch
-          ├─ device-gateway 403 leakage fix
-          └─ JsonFormatter.SANITIZED_FIELDS cleanup
+S-065 ─► ✅ Metrics/rate-limit/device-gateway hardening (DONE)
+          ├─ ✅ METRICS_AUTH_TOKEN on /metrics (both services)
+          ├─ ✅ Token bucket rate limit on manifest + PoP
+          └─ ✅ Device-gateway 403: generic "Device not authorized"
 
 S-066 ─► Pagination foundations
           └─ Paginated stores, surfaces, campaigns, moderation queue, approval queue

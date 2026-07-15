@@ -12,14 +12,14 @@ from contextlib import asynccontextmanager
 # Ensure shared packages are importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from packages.observability import log_request_middleware, setup_logging
 from packages.observability.metrics import record_http_request, render_metrics
+from packages.security.config import get_security_config, verify_metrics_auth
 from packages.domain.database import check_db_health, check_db_role_safety, create_engine, set_global_engine
-from packages.security.config import get_security_config
 
 SERVICE_NAME = "control-api"
 logger = setup_logging(SERVICE_NAME)
@@ -166,8 +166,9 @@ async def health_ready():
 
 
 @app.get("/metrics")
-async def metrics():
-    """Prometheus-compatible metrics endpoint.  No auth required."""
+async def metrics(request: Request, _auth=Depends(verify_metrics_auth)):
+    """Prometheus-compatible metrics endpoint.  Requires metrics auth token
+    in production; open in dev mode (dev_mode=True)."""
     from fastapi.responses import PlainTextResponse
 
     return PlainTextResponse(content=render_metrics(), media_type="text/plain; version=0.0.4")

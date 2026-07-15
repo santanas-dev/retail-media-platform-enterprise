@@ -99,6 +99,9 @@ class SecurityConfig:
     # Manifest signing (S-021)
     manifest_signing_key: str = ""
 
+    # Metrics protection (S-065) — shared token for Prometheus scrape
+    metrics_auth_token: str = ""
+
     # AD / LDAPS (S-034)
     ad_enabled: bool = False
     ad_server_url: str = ""
@@ -164,6 +167,10 @@ class SecurityConfig:
         self.ad_ca_cert_file = os.environ.get(
             "AD_CA_CERT_FILE", self.ad_ca_cert_file
         )
+        # Load metrics auth token (S-065)
+        self.metrics_auth_token = os.environ.get(
+            "METRICS_AUTH_TOKEN", self.metrics_auth_token
+        )
         self._validate()
 
     def _validate(self) -> None:
@@ -219,6 +226,8 @@ class SecurityConfig:
         self._validate_seed_dev_credentials()
         # S-030: reject localhost database URL in production
         self._validate_database_url_production()
+        # S-065: require metrics auth token in production
+        self._validate_metrics_auth_production()
 
     def _validate_cors(self) -> None:
         """Validate CORS configuration — safe defaults, no wildcard+credentials."""
@@ -343,6 +352,20 @@ class SecurityConfig:
                 "Use a strong, unique production password."
             )
 
+    def _validate_metrics_auth_production(self) -> None:
+        """S-065: /metrics must be protected by a shared token in production."""
+        if not self.metrics_auth_token:
+            raise ValueError(
+                "METRICS_AUTH_TOKEN must be set in production. "
+                "Generate a strong random token (≥32 chars) and configure "
+                "Prometheus to send it as Authorization: Bearer <token>."
+            )
+        if len(self.metrics_auth_token) < 16:
+            raise ValueError(
+                f"METRICS_AUTH_TOKEN must be at least 16 characters "
+                f"in production (got {len(self.metrics_auth_token)})."
+            )
+
     def __repr__(self) -> str:
         """Safe repr — never expose secret values."""
         return (
@@ -364,6 +387,35 @@ def get_security_config() -> SecurityConfig:
     if _config is None:
         _config = SecurityConfig()
     return _config
+
+
+def verify_metrics_auth(request) -> None:
+    """FastAPI dependency: require METRICS_AUTH_TOKEN on /metrics.
+
+    In dev mode (dev_mode=True), allows unauthenticated access.
+    In production, requires Authorization: Bearer <METRICS_AUTH_TOKEN>.
+
+    Raises HTTPException(401) if token missing or wrong.
+    Never logs the token.
+    """
+    from fastapi import HTTPException
+
+    cfg = get_security_config()
+    if cfg.dev_mode:
+        return  # dev — no auth required
+
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Metrics authentication required",
+        )
+    token = auth_header[7:]
+    if token != cfg.metrics_auth_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid metrics authentication token",
+        )
 
 
 def reset_security_config() -> None:

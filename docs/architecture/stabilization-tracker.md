@@ -113,6 +113,7 @@ Separately covered:
 | S-063 | PoP timezone correctness (P1) | P1 | ✅ done | P.S. (Hermes) | `list_campaign_pop_by_day` now groups by local store day (Store.timezone → Branch.timezone → Europe/Moscow) via PostgreSQL `timezone()` + `COALESCE`. 8 unit tests + 1 behavioural (Vladivostok UTC+10 proof). API shape unchanged. | — |
 | S-064 | Approval concurrency + audit consistency (P1) | P1 | ✅ done | P.S. (Hermes) | `approve_campaign` + `reject_campaign` now use `SELECT ... FOR UPDATE` — row-level lock serializes concurrent transitions. Production fix only. | — |
 | S-064a | Approval concurrency behavioural proof | P1 | ✅ done | P.S. (Hermes) | 3 behavioural tests (approve/approve, approve/reject, reject/reject) with real PostgreSQL — two AsyncConnections, `asyncio.gather`, manual BEGIN/COMMIT. Proves FOR UPDATE prevents duplicate approvals/history. | — |
+| S-065 | Metrics/rate-limit/device-gateway hardening | P1 | ✅ done | P.S. (Hermes) | METRICS_AUTH_TOKEN protects both /metrics endpoints (fail-fast in production). In-memory token bucket rate limit on device manifest + PoP batch. Device-gateway 403 errors no longer leak internal status. | — |
 ## Status Legend
 
 - **done** — implemented, tested, committed, pushed
@@ -158,7 +159,7 @@ Separately covered:
 | S-063 | PoP by-day timezone correctness | P1 | 🚧 planned |
 | S-064 | Approval concurrency + audit consistency | P1 | ✅ done |
 | S-064a | Approval concurrency behavioural proof | P1 | ✅ done |
-| S-065 | Metrics/rate-limit/device-gateway hardening | P1 | 🚧 planned |
+| S-065 | Metrics/rate-limit/device-gateway hardening | P1 | ✅ done |
 | S-066 | Pagination foundations (stores, surfaces, campaigns, queues) | P1 | 🚧 planned |
 | S-067 | Manifest performance + Redis cache | P2 | 🚧 planned |
 | S-068 | DB pool + retention strategy (delivery_manifests, pop_events_raw) | P2 | 🚧 planned |

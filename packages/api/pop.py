@@ -7,7 +7,7 @@ Thin router — all business logic in packages/domain/pop_ingestion.py.
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request, HTTPException
 
 from packages.api.dependencies import get_db, get_device_id_from_token
 from packages.domain import pop_ingestion
@@ -17,13 +17,15 @@ from packages.domain.schemas import (
     PopBatchResponse,
     PopEventResult,
 )
+from packages.observability.rate_limit import check_rate_limit, get_rate_limit_key, DEVICE_POP_RATE_LIMIT
 
 router = APIRouter(prefix="/api/v1/pop", tags=["pop"])
 
 
 @router.post("/batch", response_model=PopBatchResponse)
 async def ingest_batch(
-    request: PopBatchRequest,
+    request: Request,
+    body: PopBatchRequest,
     device_id: str = Depends(get_device_id_from_token),
     db = Depends(get_db),
 ) -> PopBatchResponse:
@@ -42,10 +44,18 @@ async def ingest_batch(
     """
     batch_id = str(uuid.uuid4())
 
+    # S-065: rate limit PoP ingestion per device
+    rate_key = get_rate_limit_key(request, device_id)
+    if not check_rate_limit(rate_key, DEVICE_POP_RATE_LIMIT):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests",
+        )
+
     # db is an active session+transaction from get_db dependency
     result = await pop_ingestion.ingest_pop_batch(
         db,
-        request.events,
+        body.events,
         jwt_device_id=device_id,
         batch_id=batch_id,
     )

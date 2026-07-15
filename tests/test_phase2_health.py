@@ -414,6 +414,8 @@ class TestCorsConfig(unittest.TestCase):
     def setUp(self):
         from packages.security.config import reset_security_config
         reset_security_config()
+        # S-065: pre-populate for production CORS tests
+        os.environ["METRICS_AUTH_TOKEN"] = "ci-metrics-token-at-least-32-characters"
 
     def tearDown(self):
         from packages.security.config import reset_security_config

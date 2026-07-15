@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.observability.metrics import record_http_request, render_metrics
+from packages.observability.rate_limit import check_rate_limit, get_rate_limit_key, DEVICE_MANIFEST_RATE_LIMIT
 from packages.domain.database import (
     create_engine,
     get_global_engine,
@@ -26,7 +27,7 @@ from packages.domain.database import (
 )
 from packages.domain.repository import get_latest_manifest_for_device, get_physical_device_for_manifest_delivery
 from packages.observability import setup_logging, log_request_middleware
-from packages.security.config import get_security_config
+from packages.security.config import get_security_config, verify_metrics_auth
 from packages.security.jwt import verify_access_token
 
 SERVICE_NAME = "device-gateway"
@@ -197,15 +198,28 @@ async def get_latest_manifest(
     304: If-None-Match matches current content_hash
     404: no manifest or device not found
     401: invalid/expired/missing device token
-    403: device not active
+    403: device not authorized
+    429: rate limited
     """
+    # S-065: rate limit per device before any DB work
+    rate_key = get_rate_limit_key(request, device_id)
+    if not check_rate_limit(rate_key, DEVICE_MANIFEST_RATE_LIMIT):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests",
+        )
+
     device_status = await get_physical_device_for_manifest_delivery(session, device_id)
     if device_status is None:
         raise HTTPException(status_code=404, detail="Device not found")
     if device_status not in ("active", "online"):
+        # S-065: generic error — never leak internal device status
+        logger.warning(
+            "Manifest denied for device %s (status=%s)", device_id[:8], device_status,
+        )
         raise HTTPException(
             status_code=403,
-            detail=f"Device is {device_status}",
+            detail="Device not authorized",
         )
 
     manifest = await get_latest_manifest_for_device(session, device_id)
@@ -232,8 +246,9 @@ async def get_latest_manifest(
 
 
 @app.get("/metrics")
-async def metrics():
-    """Prometheus-compatible metrics endpoint.  No auth required."""
+async def metrics(request: Request, _auth=Depends(verify_metrics_auth)):
+    """Prometheus-compatible metrics endpoint.  Requires metrics auth token
+    in production; open in dev mode (dev_mode=True)."""
     from fastapi.responses import PlainTextResponse
 
     return PlainTextResponse(content=render_metrics(), media_type="text/plain; version=0.0.4")
