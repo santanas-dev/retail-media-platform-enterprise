@@ -115,6 +115,7 @@ Separately covered:
 | S-064a | Approval concurrency behavioural proof | P1 | ✅ done | P.S. (Hermes) | 3 behavioural tests (approve/approve, approve/reject, reject/reject) with real PostgreSQL — two AsyncConnections, `asyncio.gather`, manual BEGIN/COMMIT. Proves FOR UPDATE prevents duplicate approvals/history. | — |
 | S-065 | Metrics/rate-limit/device-gateway hardening | P1 | ✅ done | P.S. (Hermes) | METRICS_AUTH_TOKEN protects both /metrics endpoints (fail-fast in production). In-memory token bucket rate limit on device manifest + PoP batch. Device-gateway 403 errors no longer leak internal status. | — |
 | S-066 | Pagination foundations | P1 | ✅ done | P.S. (Hermes) | Generic PaginatedResponse[T] schema + 5 paginated repo methods. 6 endpoints: /inventory/stores, /inventory/surfaces, /campaigns, /campaigns/approval-queue, /creative-assets/moderation-queue. MAX_LIMIT=200, DEFAULT_LIMIT=50. Admin-web: 4 pages with pagination controls + total/range display. | — |
+| S-066a | Pagination CI truth / test mock fix | P1 | ✅ done | P.S. (Hermes) | Fixed 6 identity API test mocks (old function names → _paginated variants, list return → tuple). Fixed 3 behavioural campaign tests (PaginatedResponse shape). Root cause: mock paths not updated during S-066 function renames. CI now fully green — all 34 jobs including Behavioural PostgreSQL. | — |
 ## Status Legend
 
 - **done** — implemented, tested, committed, pushed
@@ -161,7 +162,8 @@ Separately covered:
 | S-064 | Approval concurrency + audit consistency | P1 | ✅ done |
 | S-064a | Approval concurrency behavioural proof | P1 | ✅ done |
 | S-065 | Metrics/rate-limit/device-gateway hardening | P1 | ✅ done |
-| S-066 | Pagination foundations (stores, surfaces, campaigns, queues) | P1 | 🚧 planned |
+| S-066 | Pagination foundations (stores, surfaces, campaigns, queues) | P1 | ✅ done |
+| S-066a | Pagination CI truth / test mock fix | P1 | ✅ done |
 | S-067 | Manifest performance + Redis cache | P2 | 🚧 planned |
 | S-068 | DB pool + retention strategy (delivery_manifests, pop_events_raw) | P2 | 🚧 planned |
 | S-069 | Admin UI: audit log + permission-filtered menu | P2 | 🚧 planned |
