@@ -311,7 +311,10 @@ def test_dev_mode_accepts_empty_metrics_token():
 
 def test_db_pool_defaults_are_sane():
     """Default pool values match expected dev-safe settings."""
-    import packages.domain.database as db_mod
+    try:
+        import packages.domain.database as db_mod
+    except ImportError:
+        pytest.skip("sqlalchemy not installed")
     assert db_mod.DB_POOL_SIZE == 5
     assert db_mod.DB_MAX_OVERFLOW == 10
     assert db_mod.DB_POOL_TIMEOUT == 30
@@ -320,8 +323,10 @@ def test_db_pool_defaults_are_sane():
 
 def test_db_pool_env_values_parsed():
     """Pool settings are read from environment."""
-    import packages.domain.database as db_mod
-
+    try:
+        import packages.domain.database as db_mod
+    except ImportError:
+        pytest.skip("sqlalchemy not installed")
     saved = {
         "DB_POOL_SIZE": db_mod.DB_POOL_SIZE,
         "DB_MAX_OVERFLOW": db_mod.DB_MAX_OVERFLOW,
@@ -346,7 +351,10 @@ def test_db_pool_env_values_parsed():
 
 def test_pool_validation_rejects_non_positive_pool_size():
     """_validate_pool_config rejects pool_size < 1."""
-    import packages.domain.database as db_mod
+    try:
+        import packages.domain.database as db_mod
+    except ImportError:
+        pytest.skip("sqlalchemy not installed")
     orig = db_mod.DB_POOL_SIZE
     try:
         db_mod.DB_POOL_SIZE = 0
@@ -358,7 +366,10 @@ def test_pool_validation_rejects_non_positive_pool_size():
 
 def test_pool_validation_rejects_negative_overflow():
     """_validate_pool_config rejects negative max_overflow."""
-    import packages.domain.database as db_mod
+    try:
+        import packages.domain.database as db_mod
+    except ImportError:
+        pytest.skip("sqlalchemy not installed")
     orig = db_mod.DB_MAX_OVERFLOW
     try:
         db_mod.DB_MAX_OVERFLOW = -1
@@ -370,7 +381,10 @@ def test_pool_validation_rejects_negative_overflow():
 
 def test_pool_kwargs_returns_expected_keys():
     """_pool_kwargs returns all pool configuration keys."""
-    from packages.domain.database import _pool_kwargs
+    try:
+        from packages.domain.database import _pool_kwargs
+    except ImportError:
+        pytest.skip("sqlalchemy not installed")
     kw = _pool_kwargs()
     assert "pool_size" in kw
     assert "max_overflow" in kw

@@ -66,7 +66,13 @@ def get_global_engine():
 def create_engine(url: str | None = None):
     """Create async SQLAlchemy engine with configurable pool (S-068)."""
     target = url or DATABASE_URL
-    return create_async_engine(target, echo=False, **_pool_kwargs())
+    kwargs = _pool_kwargs() if _uses_queue_pool(target) else {}
+    return create_async_engine(target, echo=False, **kwargs)
+
+
+def _uses_queue_pool(url: str) -> bool:
+    """Return True if the URL dialect supports QueuePool (PostgreSQL)."""
+    return "postgresql" in url or "asyncpg" in url
 
 
 def create_session_factory(engine=None):
