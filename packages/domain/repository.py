@@ -1071,7 +1071,9 @@ async def approve_campaign(
     )
 
     result = await session.execute(
-        select(Campaign).where(Campaign.id == campaign_id)
+        select(Campaign)
+        .where(Campaign.id == campaign_id)
+        .with_for_update()
     )
     campaign = result.scalar_one_or_none()
     if campaign is None:
@@ -1182,7 +1184,9 @@ async def reject_campaign(
     )
 
     result = await session.execute(
-        select(Campaign).where(Campaign.id == campaign_id)
+        select(Campaign)
+        .where(Campaign.id == campaign_id)
+        .with_for_update()
     )
     campaign = result.scalar_one_or_none()
     if campaign is None:
