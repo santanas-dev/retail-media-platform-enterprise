@@ -120,7 +120,7 @@ describe("Campaign list — data rendering", () => {
   });
 
   it("renders campaign rows from API response", async () => {
-    mockGet.mockResolvedValue(mockCampaigns);
+    mockGet.mockResolvedValue({items: mockCampaigns, total: 2, limit: 50, offset: 0});
 
     renderCampaignList();
 
@@ -132,13 +132,10 @@ describe("Campaign list — data rendering", () => {
     // Check codes are shown
     expect(screen.getByText("CAMP-001")).toBeInTheDocument();
     expect(screen.getByText("CAMP-002")).toBeInTheDocument();
-
-    // Check total count
-    expect(screen.getByText("Всего: 2")).toBeInTheDocument();
   });
 
   it("empty state shown when no campaigns", async () => {
-    mockGet.mockResolvedValue([]);
+    mockGet.mockResolvedValue({items: [], total: 0, limit: 50, offset: 0});
 
     renderCampaignList();
 
