@@ -194,7 +194,7 @@ class TestListUsers(AuthzMixin, unittest.TestCase):
         data = resp.json()
         self.assertIn("items", data)
         self.assertEqual(data["total"], 1)
-        self.assertEqual(data["limit"], 20)
+        self.assertEqual(data["limit"], 50)
         self.assertEqual(data["offset"], 0)
         self.assertEqual(len(data["items"]), 1)
 
@@ -305,7 +305,7 @@ class TestListAuditEvents(AuthzMixin, unittest.TestCase):
     @patch("packages.api.identity.repository.list_audit_events", new_callable=AsyncMock)
     def test_limit_enforced(self, mock_repo):
         mock_repo.return_value = ([], 0)
-        resp = self._get("/api/v1/identity/audit-events?limit=200")
+        resp = self._get("/api/v1/identity/audit-events?limit=999")
         self.assertEqual(resp.status_code, 422)
 
 

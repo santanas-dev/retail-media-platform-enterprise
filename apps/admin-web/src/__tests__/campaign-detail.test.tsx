@@ -70,7 +70,7 @@ const SEED_ORGS = [{ id: "org-1", code: "ADV-001", legal_name: "ООО Рома�
 const SEED_BRANDS = [{ id: "brand-1", advertiser_organization_id: "org-1", code: "BR-001", name: "Чистая линия", status: "active" }];
 const SEED_CONTRACTS = [{ id: "con-1", advertiser_organization_id: "org-1", code: "CON-001", name: "Договор", budget_limit_amount: 1000000, budget_limit_currency: "RUB", valid_from: "2026-01-01T00:00:00Z", valid_until: null, status: "active" }];
 
-function mockFetchFor(path: string): unknown[] {
+function mockFetchFor(path: string): unknown {
   if (path.includes("campaign-flights")) return SEED_FLIGHTS;
   if (path.includes("campaign-placements")) return SEED_PLACEMENTS;
   if (path.includes("campaign-creatives")) return SEED_CREATIVES;
