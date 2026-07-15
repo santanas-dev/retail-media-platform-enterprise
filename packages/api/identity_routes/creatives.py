@@ -227,6 +227,7 @@ async def moderation_queue_endpoint(
     status_filter: str = Query("pending_review", alias="moderation_status"),
     db=Depends(get_db),
     _claims: dict = Depends(require_permission("creatives.moderate")),
+    _rls=Depends(set_rls_context),
 ):
     valid = {"pending_review", "approved", "rejected", "all"}
     if status_filter not in valid:
@@ -243,6 +244,7 @@ async def approve_creative_endpoint(
     db=Depends(get_db),
     claims: dict = Depends(get_current_active_user),
     _perm: dict = Depends(require_permission("creatives.moderate")),
+    _rls=Depends(set_rls_context),
 ):
     asset = await repository.get_creative_asset(db, asset_id)
     if asset is None:
@@ -281,6 +283,7 @@ async def reject_creative_endpoint(
     db=Depends(get_db),
     claims: dict = Depends(get_current_active_user),
     _perm: dict = Depends(require_permission("creatives.moderate")),
+    _rls=Depends(set_rls_context),
 ):
     asset = await repository.get_creative_asset(db, asset_id)
     if asset is None:

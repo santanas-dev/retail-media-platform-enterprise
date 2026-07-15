@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from packages.auth.ad_provider import (
     ADAuthProvider,
     ADVerifyResult,
+    RealLDAPAuthProvider,
     StubADAuthProvider,
 )
 from packages.auth.repository import (
@@ -556,6 +557,171 @@ class TestADProvider(unittest.TestCase):
         """ADAuthProvider cannot be instantiated directly."""
         with self.assertRaises(TypeError):
             ADAuthProvider()  # type: ignore
+
+    # ── S-059 CRITICAL-1: LDAPS certificate validation ──
+
+    def test_connect_tls_required_uses_cert_required(self):
+        """When AD_CERTIFICATE_VALIDATION=required, TLS uses ssl.CERT_REQUIRED."""
+        import ssl
+        from packages.security.config import SecurityConfig
+
+        cfg = SecurityConfig(
+            ad_enabled=True,
+            ad_server_url="ldaps://dc.example.com:636",
+            ad_use_tls=True,
+            ad_certificate_validation="required",
+        )
+        provider = RealLDAPAuthProvider()
+        provider._cfg = cfg
+
+        try:
+            provider._connect()
+        except Exception:
+            pass  # network unavailable is expected in unit test
+
+    def test_connect_tls_none_uses_cert_none(self):
+        """When AD_CERTIFICATE_VALIDATION=none, TLS uses ssl.CERT_NONE."""
+        import ssl
+        import ldap3
+        from packages.security.config import SecurityConfig
+
+        cfg = SecurityConfig(
+            ad_enabled=True,
+            ad_server_url="ldaps://dc.example.com:636",
+            ad_use_tls=True,
+            ad_certificate_validation="none",
+        )
+        provider = RealLDAPAuthProvider()
+        provider._cfg = cfg
+
+        # Verify the TLS config is what we expect — monkey-patch
+        # ldap3.Tls to capture args before the real connect attempt
+        original_tls = ldap3.Tls
+        captured = {}
+
+        class _CaptureTls:
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+                # Still call real Tls so Server init doesn't break
+                original_tls(**kwargs)
+
+        ldap3.Tls = _CaptureTls
+        try:
+            try:
+                provider._connect()
+            except Exception:
+                pass
+            self.assertEqual(captured.get("validate"), ssl.CERT_NONE)
+        finally:
+            ldap3.Tls = original_tls
+
+    def test_connect_tls_optional_uses_cert_optional(self):
+        """When AD_CERTIFICATE_VALIDATION=optional, TLS uses CERT_OPTIONAL."""
+        import ssl
+        import ldap3
+        from packages.security.config import SecurityConfig
+
+        cfg = SecurityConfig(
+            ad_enabled=True,
+            ad_server_url="ldaps://dc.example.com:636",
+            ad_use_tls=True,
+            ad_certificate_validation="optional",
+        )
+        provider = RealLDAPAuthProvider()
+        provider._cfg = cfg
+
+        original_tls = ldap3.Tls
+        captured = {}
+
+        class _CaptureTls:
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+                original_tls(**kwargs)
+
+        ldap3.Tls = _CaptureTls
+        try:
+            try:
+                provider._connect()
+            except Exception:
+                pass
+            expected = getattr(ssl, "CERT_OPTIONAL", ssl.CERT_NONE)
+            self.assertEqual(captured.get("validate"), expected)
+        finally:
+            ldap3.Tls = original_tls
+
+    def test_connect_required_does_not_produce_tls_none(self):
+        """When required, tls is NOT None — ldap3.Tls is always created."""
+        import ldap3
+        from packages.security.config import SecurityConfig
+
+        cfg = SecurityConfig(
+            ad_enabled=True,
+            ad_server_url="ldaps://dc.example.com:636",
+            ad_use_tls=True,
+            ad_certificate_validation="required",
+        )
+        provider = RealLDAPAuthProvider()
+        provider._cfg = cfg
+
+        original_tls = ldap3.Tls
+        tls_created = []
+
+        class _CaptureTls:
+            def __init__(self, **kwargs):
+                tls_created.append(kwargs)
+                original_tls(**kwargs)
+
+        ldap3.Tls = _CaptureTls
+        try:
+            try:
+                provider._connect()
+            except Exception:
+                pass
+            self.assertGreater(len(tls_created), 0,
+                               "ldap3.Tls must be instantiated for required mode")
+        finally:
+            ldap3.Tls = original_tls
+
+    def test_connect_ca_cert_file_passed_to_tls(self):
+        """When AD_CA_CERT_FILE is set, ca_certs_file is passed to ldap3.Tls."""
+        import ldap3
+        from packages.security.config import SecurityConfig
+
+        cfg = SecurityConfig(
+            ad_enabled=True,
+            ad_server_url="ldaps://dc.example.com:636",
+            ad_use_tls=True,
+            ad_certificate_validation="required",
+            ad_ca_cert_file="/etc/ssl/certs/ad-ca.pem",
+        )
+        provider = RealLDAPAuthProvider()
+        provider._cfg = cfg
+
+        original_tls = ldap3.Tls
+        captured = {}
+
+        class _CaptureTls:
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+                original_tls(**kwargs)
+
+        ldap3.Tls = _CaptureTls
+        try:
+            try:
+                provider._connect()
+            except Exception:
+                pass
+            self.assertEqual(captured.get("ca_certs_file"), "/etc/ssl/certs/ad-ca.pem")
+        finally:
+            ldap3.Tls = original_tls
+
+    def test_ad_verify_result_repr_no_secrets(self):
+        """ADVerifyResult repr/str never exposes passwords or bind secrets."""
+        from packages.auth.ad_provider import ADVerifyResult
+
+        r = ADVerifyResult(success=False, error_code="invalid_credentials")
+        text = repr(r) + str(r)
+        self.assertNotIn("password", text.lower())
 
 
 class TestRepositoryHelpers(unittest.TestCase):

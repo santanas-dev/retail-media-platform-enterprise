@@ -5,14 +5,12 @@
 | **Status:** active — v0.6 Production Readiness Foundation (ready for publish) |
 | **Branch:** develop |
 
-> **⚠️ v0.6 Production Readiness Foundation (2026-07-14):** S-055 readiness
-> review passed CONDITIONAL GO. S-055a docs honesty fix applied. S-056
-> release prep complete. All S-047…S-054a v0.6 capabilities done:
-> observability, real LDAPS, MinIO/NATS backup, error boundaries, audit
-> events, router decomposition, RLS proof, XLSX decision.
-> KSO/player/hardware work remains deferred to v0.9.
-> Remaining production gaps reclassified: AlertManager, AD group mapping,
-> offsite backups, malware/transcoding/CDN, ClickHouse → v0.7+.
+> **⚠️ v0.6.1 hotfix in progress (S-059):** External audit v4 found 2 Critical
+> findings. CRITICAL-1: LDAPS certificate validation — fixed with explicit
+> ssl.CERT_REQUIRED, AD_CA_CERT_FILE config, ldap3 in requirements+CI.
+> CRITICAL-2: moderation/approval queue RLS context — added set_rls_context
+> to 4 admin endpoints + source-inspection tests.
+> v0.6.1 hotfix candidate after CI verification.
 
 ## A. Current Baseline
 

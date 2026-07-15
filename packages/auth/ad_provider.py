@@ -185,10 +185,16 @@ class RealLDAPAuthProvider(ADAuthProvider):
         if self._cfg.ad_use_tls:
             tls_kwargs = {}
             cert_val = self._cfg.ad_certificate_validation
-            if cert_val == "none":
-                tls_kwargs["validate"] = ssl.CERT_NONE
+            if cert_val == "required":
+                tls_kwargs["validate"] = ssl.CERT_REQUIRED
             elif cert_val == "optional":
                 tls_kwargs["validate"] = getattr(ssl, "CERT_OPTIONAL", ssl.CERT_NONE)
+            elif cert_val == "none":
+                tls_kwargs["validate"] = ssl.CERT_NONE
+            # Agnostically pass CA cert file if configured (applies to
+            # required/optional — ignored by ldap3 for CERT_NONE).
+            if self._cfg.ad_ca_cert_file:
+                tls_kwargs["ca_certs_file"] = self._cfg.ad_ca_cert_file
             tls = ldap3.Tls(**tls_kwargs) if tls_kwargs else None
 
         host = url

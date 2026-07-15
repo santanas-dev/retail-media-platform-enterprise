@@ -109,6 +109,7 @@ class SecurityConfig:
     ad_bind_password: str = ""
     ad_use_tls: bool = True
     ad_certificate_validation: str = "required"  # "required" | "optional" | "none"
+    ad_ca_cert_file: str = ""  # path to CA cert bundle for LDAPS verification
 
     def __post_init__(self) -> None:
         # Load JWT_SECRET from env if not provided
@@ -159,6 +160,9 @@ class SecurityConfig:
             self.ad_use_tls = False
         self.ad_certificate_validation = os.environ.get(
             "AD_CERTIFICATE_VALIDATION", self.ad_certificate_validation
+        )
+        self.ad_ca_cert_file = os.environ.get(
+            "AD_CA_CERT_FILE", self.ad_ca_cert_file
         )
         self._validate()
 

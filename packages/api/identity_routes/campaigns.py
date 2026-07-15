@@ -443,6 +443,7 @@ async def approval_queue_endpoint(
     status_filter: str = Query("pending_approval", alias="status"),
     db=Depends(get_db),
     _claims: dict = Depends(require_permission("campaigns.approve")),
+    _rls=Depends(set_rls_context),
 ):
     valid = {"pending_approval", "approved", "rejected", "all"}
     if status_filter not in valid:

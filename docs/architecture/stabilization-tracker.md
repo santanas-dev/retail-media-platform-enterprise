@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
 | **Last updated:** 2026-07-14
-| **Current phase:** v0.6 Production Readiness Foundation — release prep complete on develop (`a7c0af3`). v0.5 Business Portal Complete published (tag v0.5-business-portal-complete, main at 5114f83). S-047…S-056 done. KSO/player remains deferred/out of scope.|
+| **Current phase:** v0.6 Production Readiness Foundation — published (tag v0.6-production-readiness-foundation, main at b00772d). S-059 critical hotfix in progress. KSO/player remains deferred/out of scope.|
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -105,6 +105,8 @@ Separately covered:
 | S-055 | v0.6 readiness review | P0 | ✅ done | P.S. (Hermes) | CONDITIONAL GO: code/CI/security ready. 5 docs honesty P0 findings. | S-055a fix docs |
 | S-055a | v0.6 docs honesty fix | P0 | ✅ done | P.S. (Hermes) | 5 P0 + 1 P2 docs fixed. v06 plan, release-versioning, tracker, roadmap updated. Branch: docs/S-055a. | S-056 release prep |
 | S-056 | v0.6 release prep | P0 | ✅ done | P.S. (Hermes) | `release-versioning.md`: v0.6 finalised. `stabilization-tracker.md`: S-056 row. `production-gaps-triage.md`: baseline→v0.6. `roadmap-s020.xlsx`: v0.6→ready for publish. Tag target: `fd43791`. Branch: docs/S-056. | Publish (S-057) |
+| S-057 | Publish v0.6 | P0 | ✅ done | P.S. (Hermes) | main ff→b00772d. Tag v0.6-production-readiness-foundation→fd43791. CI #29360043628 green 34/34. | — |
+| S-059 | v0.6 critical hotfix (external audit v4) | P0 | 🚧 in progress | P.S. (Hermes) | CRITICAL-1: LDAPS cert validation fix — explicit ssl.CERT_REQUIRED, AD_CA_CERT_FILE, ldap3 in requirements+CI. CRITICAL-2: RLS context on moderation/approval queues — added set_rls_context to 4 endpoints. Tests: 7 AD cert + 9 hotfix-verification. | Push + CI |
 ## Status Legend
 
 - **done** — implemented, tested, committed, pushed
