@@ -253,7 +253,7 @@ class TestDeviceManifestEndpoint:
         assert data["device_id"] == SEED_DEVICE_ID
         assert len(data.get("display_surfaces", [])) >= 1
         assert "etag" in response.headers
-        assert response.headers["etag"] == data.get("content_hash", "")
+        assert response.headers["etag"].strip('"') == data.get("content_hash", "")
         assert "channel_type" in data, "Missing channel_type"
         assert "offline_ttl_hours" in data, "Missing offline_ttl_hours"
         # ── S-035c: signature must be non-empty when signing key is configured ──
