@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 0b82fab     | 5330441         | BP-001 follow-up — CI #29535773165 ✅ (34/34) |
+| develop | 0b82fab     | 2b3eeda         | BP-001 follow-up — CI #29535773165 ✅ (34/34) |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
