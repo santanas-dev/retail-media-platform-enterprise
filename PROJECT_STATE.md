@@ -9,7 +9,7 @@
 
 | Branch  | SHA      | Note |
 |---------|----------|------|
-| develop | e37e4b6  | S-089 fix: slot_fill_percent >100% + CI green |
+| develop | 76b3fdf  | D3 roadmap coverage audit |
 | main    | cab9014  | C1 merged (v0.8) |
 
 ## Active Workstreams
@@ -43,7 +43,11 @@
 - Fix (SHA 9216a54): content-based semantic mapping of 36 tables to 25 sections. Section 14 now correctly shows security requirements (auth/RBAC/devices/API/personal data), not device statuses.
 - 0 orphan `## TABLE` headers remain. Original `.docx` untouched.
 
-### D2 — Roadmap sync with PROJECT_STATE ✅ RESOLVED
+### D3 — Roadmap coverage audit vs TZ ✅ RESOLVED
+- **Verdict: 15 TZ gaps found, 28 rows added to roadmap.**
+- Sheet 1 (Технический): 91→107 строк. Sheet 2 (Бизнес-функции): 38→50 строк.
+- SHA: 76b3fdf.
+- No code/CI changes — docs-only.
 
 ### A4 / S-089 — Inventory simulation ✅ RESOLVED
 - POST /inventory/simulate — aggregates availability + conflicts + applied rules
@@ -73,9 +77,8 @@
 
 ## Next Active Workstream
 
-**D3 — Roadmap coverage audit.**
-Verify all roadmap items have corresponding S-tickets and that no completed work is missing from the roadmap.
-Deferred: A5/S-090 Campaign dashboard, A6/S-091 Emergency controls.
+**A5 / S-090 — Campaign dashboard.**
+Post-campaign analytics dashboard with plan/fact, geography, device health.
 
 ## Completed (Player Blockers A1–A4)
 
@@ -90,7 +93,6 @@ Deferred: A5/S-090 Campaign dashboard, A6/S-091 Emergency controls.
 
 | ID | Task | Status |
 |----|------|--------|
-| D3 | Roadmap coverage audit | ⏳ |
 | A5 S-090 | Campaign dashboard | ⏳ |
 | A6 S-091 | Emergency controls | ⏳ |
 
