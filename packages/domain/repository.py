@@ -3522,3 +3522,120 @@ async def set_inventory_rule_active(
         return None
     rule.is_active = is_active
     return rule
+
+
+# ---------------------------------------------------------------------------
+# Inventory Availability Calculator (S-078)
+# ---------------------------------------------------------------------------
+
+
+async def compute_inventory_availability(
+    session: AsyncSession,
+    *,
+    display_surface_id: str,
+    starts_at: datetime,
+    ends_at: datetime,
+    requested_capacity_units: int | None = None,
+    requested_sov_percent: int | None = None,
+    default_total_capacity: int = 100,
+) -> dict:
+    """Compute availability for a surface over a time range.
+
+    Expands the range into hourly slots, creates unconfigured slots with
+    *default_total_capacity*, and checks each slot against booked + reserved
+    capacity.
+
+    Returns a dict with:
+      all_available: bool
+      total_requested: int
+      total_available: int
+      slots: list[dict] — per-slot detail
+      conflicts: list[dict] — unavailable slots (empty if all available)
+    """
+    from datetime import timedelta
+
+    if ends_at <= starts_at:
+        raise ValueError("ends_at must be after starts_at")
+
+    if requested_capacity_units is not None and requested_sov_percent is not None:
+        raise ValueError(
+            "Provide either requested_capacity_units or requested_sov_percent, not both"
+        )
+
+    if requested_sov_percent is not None:
+        if not (0 < requested_sov_percent <= 100):
+            raise ValueError("requested_sov_percent must be in (0, 100]")
+
+    # Expand the requested period into hourly slot (date, hour) pairs
+    current = starts_at.replace(minute=0, second=0, microsecond=0)
+    end_hour = ends_at.replace(minute=0, second=0, microsecond=0)
+    slot_pairs: list[tuple] = []
+    while current < end_hour:
+        slot_pairs.append((current.date(), current.hour))
+        current += timedelta(hours=1)
+
+    if not slot_pairs:
+        raise ValueError("time range must cover at least one full hour")
+
+    # Fetch or create slots
+    slots_data: list[dict] = []
+    total_requested = 0
+    total_available = 0
+    all_available = True
+    conflicts: list[dict] = []
+
+    for slot_date, slot_hour in slot_pairs:
+        slot = await get_or_create_inventory_slot(
+            session,
+            display_surface_id=display_surface_id,
+            slot_date=slot_date,
+            slot_hour=slot_hour,
+            total_capacity=default_total_capacity,
+        )
+
+        # Determine requested units for this slot
+        if requested_capacity_units is not None:
+            requested = requested_capacity_units
+        elif requested_sov_percent is not None:
+            total_cap = slot.total_capacity or default_total_capacity
+            import math
+            requested = math.ceil(total_cap * requested_sov_percent / 100)
+        else:
+            requested = 0
+
+        available = slot.available_capacity
+        slot_ok = available >= requested
+        if not slot_ok:
+            all_available = False
+
+        total_requested += requested
+        total_available += available
+
+        slot_entry = {
+            "slot_id": slot.id,
+            "slot_date": str(slot_date),
+            "slot_hour": slot_hour,
+            "total_capacity": slot.total_capacity or default_total_capacity,
+            "booked_capacity": slot.booked_capacity or 0,
+            "reserved_capacity": slot.reserved_capacity or 0,
+            "available_capacity": available,
+            "requested_capacity": requested,
+            "available": slot_ok,
+            "sold_out": slot.is_sold_out,
+            "blocked": (slot.emergency_blocked_capacity or 0) > 0,
+        }
+        slots_data.append(slot_entry)
+
+        if not slot_ok:
+            conflicts.append(slot_entry)
+
+    return {
+        "display_surface_id": display_surface_id,
+        "starts_at": starts_at.isoformat(),
+        "ends_at": ends_at.isoformat(),
+        "all_available": all_available,
+        "total_requested": total_requested,
+        "total_available": total_available,
+        "slots": slots_data,
+        "conflicts": conflicts,
+    }

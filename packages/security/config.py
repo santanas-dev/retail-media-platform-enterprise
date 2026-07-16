@@ -114,6 +114,9 @@ class SecurityConfig:
     ad_certificate_validation: str = "required"  # "required" | "optional" | "none"
     ad_ca_cert_file: str = ""  # path to CA cert bundle for LDAPS verification
 
+    # Inventory (S-078) — default slot capacity for unconfigured slots
+    inventory_default_slot_capacity: int = 100
+
     def __post_init__(self) -> None:
         # Load JWT_SECRET from env if not provided
         if not self.jwt_secret:
@@ -167,6 +170,10 @@ class SecurityConfig:
         self.ad_ca_cert_file = os.environ.get(
             "AD_CA_CERT_FILE", self.ad_ca_cert_file
         )
+        # Load inventory default slot capacity (S-078)
+        inv_cap = os.environ.get("INVENTORY_DEFAULT_SLOT_CAPACITY", "")
+        if inv_cap:
+            self.inventory_default_slot_capacity = int(inv_cap)
         # Load metrics auth token (S-065)
         self.metrics_auth_token = os.environ.get(
             "METRICS_AUTH_TOKEN", self.metrics_auth_token

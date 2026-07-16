@@ -16,6 +16,9 @@ from packages.domain.schemas import (
     BranchOut,
     ClusterOut,
     DisplaySurfaceOut,
+    InventoryAvailabilityRequest,
+    InventoryAvailabilityResponse,
+    InventorySlotAvailability,
     InventoryStoreOut,
     InventorySurfaceOut,
     InventorySurfacePatchRequest,
@@ -138,4 +141,48 @@ async def patch_inventory_surface(
         resolution_w=surface.resolution_w,
         resolution_h=surface.resolution_h,
         is_active=surface.is_active,
+    )
+
+
+# ---------------------------------------------------------------------------
+# S-078 — Inventory Availability
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/inventory/availability",
+    response_model=InventoryAvailabilityResponse,
+)
+async def check_availability(
+    body: InventoryAvailabilityRequest,
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("inventory.read")),
+):
+    """Check if a surface has enough inventory capacity over a time range.
+
+    Expands the requested period into hourly slots, creates unconfigured
+    slots with *INVENTORY_DEFAULT_SLOT_CAPACITY* (env, default 100), and
+    checks each slot against booked + reserved capacity.
+    """
+    from packages.security.config import SecurityConfig
+
+    config = SecurityConfig()
+    result = await repository.compute_inventory_availability(
+        db,
+        display_surface_id=body.surface_id,
+        starts_at=body.starts_at,
+        ends_at=body.ends_at,
+        requested_capacity_units=body.requested_capacity_units,
+        requested_sov_percent=body.requested_sov_percent,
+        default_total_capacity=config.inventory_default_slot_capacity,
+    )
+    return InventoryAvailabilityResponse(
+        surface_id=result["display_surface_id"],
+        starts_at=body.starts_at,
+        ends_at=body.ends_at,
+        all_available=result["all_available"],
+        total_requested=result["total_requested"],
+        total_available=result["total_available"],
+        slots=[InventorySlotAvailability(**s) for s in result["slots"]],
+        conflicts=[InventorySlotAvailability(**c) for c in result["conflicts"]],
     )

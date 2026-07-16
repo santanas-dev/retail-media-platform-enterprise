@@ -1059,3 +1059,44 @@ class InventoryRuleUpdate(BaseModel):
     is_active: bool | None = None
     starts_at: datetime | None = None
     ends_at: datetime | None = None
+
+
+# ---------------------------------------------------------------------------
+# Inventory Availability (S-078)
+# ---------------------------------------------------------------------------
+
+
+class InventoryAvailabilityRequest(BaseModel):
+    """Request availability check for a surface over a time range."""
+    surface_id: str
+    starts_at: datetime
+    ends_at: datetime
+    requested_capacity_units: int | None = Field(None, ge=1)
+    requested_sov_percent: int | None = Field(None, ge=1, le=100)
+
+
+class InventorySlotAvailability(BaseModel):
+    """Per-slot availability info."""
+    slot_id: str
+    slot_date: date_type
+    slot_hour: int
+    total_capacity: int
+    booked_capacity: int
+    reserved_capacity: int
+    available_capacity: int
+    requested_capacity: int
+    available: bool
+    sold_out: bool
+    blocked: bool
+
+
+class InventoryAvailabilityResponse(BaseModel):
+    """Aggregate availability result for a time range."""
+    surface_id: str
+    starts_at: datetime
+    ends_at: datetime
+    all_available: bool
+    total_requested: int
+    total_available: int
+    slots: list[InventorySlotAvailability]
+    conflicts: list[InventorySlotAvailability]
