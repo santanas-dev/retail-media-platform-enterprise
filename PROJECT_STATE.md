@@ -9,7 +9,7 @@
 
 | Branch  | SHA      | Note |
 |---------|----------|------|
-| develop | cab9014  | synced with main (post-C1 merge) |
+| develop | d24a687  | AUD-001 / post-C1 audit checkpoint |
 | main    | cab9014  | C1 merged (v0.8) |
 
 ## Active Workstreams
