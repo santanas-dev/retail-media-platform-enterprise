@@ -9,8 +9,8 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 0b82fab     | a4569fc         | BP-001 follow-up RESOLVED |
-| main    | cab9014     | —              | C1 merged (v0.8) |
+| develop | 0b82fab     | 5330441         | BP-001 follow-up — CI #29535773165 ✅ (34/34) |
+| main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
@@ -96,7 +96,7 @@
 - **Public form:** `/become-advertiser` page in advertiser-web (outside auth), 4 tests.
 - **No-access proof:** structural test — approve creates `AdvertiserOrganization` only.
 - **Backend:** 13→18 tests. **Admin-web:** 6→8 tests, 150/150 total. **Advertiser-web:** +5 tests, 79/79 total.
-- Payload SHA: 0b82fab. CI: pending.
+- Payload SHA: 0b82fab. CI: #29535773165 ✅ (34/34 green).
 
 ## Completed (Player Blockers A1–A6)
 
