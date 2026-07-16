@@ -182,6 +182,7 @@ Separately covered:
 | S-078 | Inventory availability calculator MVP | P0 | ✅ done |
 | S-078b | Roadmap format + Russian business narrative repair | — | ✅ done |
 | S-079 | Inventory reservation lifecycle + campaign integration | P0 | ✅ done |
+| S-079b | Roadmap business columns expansion + fill | — | ✅ done |
 | Tenant model ADR before v2.6 | 🟡 Decision needed — ADR-018 |
 | Password reset invite/email flow | Deferred |
 | Advertiser approve/reject campaigns | Deferred — admin-only |
