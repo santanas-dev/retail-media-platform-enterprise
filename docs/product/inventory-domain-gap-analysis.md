@@ -246,14 +246,14 @@ class InventoryRule(Base):
 
 ### Phase 1 — Foundation (MVP inventory domain)
 
-| Ticket | Description | Dependencies | Estimate |
-|--------|-------------|-------------|----------|
-| **S-075** | Inventory domain model — InventorySlot, InventoryRule tables, migrations, schemas, seed | models.py | 1 task |
-| **S-076** | Time-slot availability calculator — разбивка дня на слоты, подсчёт ёмкости (total_slots) по surface/date/hour | S-075 | 1 task |
-| **S-077** | Booking/reservation lifecycle — reserve/commit/release API + repository | S-076 | 1 task |
-| **S-078** | Conflict detection engine — SOV enforcement, schedule overlap, priority/limit violation | S-077 | 1 task |
-| **S-079** | Campaign integration — placement creation проверяет доступность, approval commits reservation | S-078 | 1 task |
-| **S-080** | Inventory rules admin API + UI — CRUD правил инвентаря | S-075 | 1 task |
+| Ticket | Description | Dependencies | Status |
+|--------|-------------|-------------|--------|
+| S-076 | Inventory domain model — architecture design (5 entities, 8 conflict types, lifecycle) | — | ✅ done |
+| S-077 | Inventory schema + repository skeleton — 3 таблицы, migration 015, Pydantic схемы, CRUD | S-076 | ✅ done |
+| S-078 | Availability calculator — POST /inventory/availability, почасовые слоты, SOV→units, get-or-create | S-077 | ✅ done |
+| S-079 | Booking/reservation lifecycle — reserve/commit/release API + campaign integration | S-078 | ⏳ запланирован |
+| S-080 | Conflict detection engine — SOV enforcement, schedule overlap, priority/limit violation | S-079 | ⏳ запланирован |
+| S-081 | Inventory rules admin API + UI — CRUD правил инвентаря + календарь доступности | S-079 | ⏳ запланирован |
 
 ### Phase 2 — Visibility & Reporting
 

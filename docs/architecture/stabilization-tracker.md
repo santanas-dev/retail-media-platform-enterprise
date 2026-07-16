@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
-| **Last updated:** 2026-07-15
-| **Current phase:** v0.6.2 audit remediation complete through S-073. S-074 readiness review in progress. KSO/player remains deferred/out of scope.|
+| **Last updated:** 2026-07-16
+| **Current phase:** v0.6.2 published (tag 90e91cb). v0.7 inventory foundation: S-076 design ✅, S-077 schema ✅, S-078 availability ✅. S-079 booking запланирован. Roadmap format normalized (S-078b).|
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -179,7 +179,8 @@ Separately covered:
 | S-075 | Publish v0.6.2-audit-remediation | — | ✅ done (tag at 90e91cb, CI #29484402650 green) |
 | S-076 | Inventory domain foundation — architecture model design | P0 | ✅ done |
 | S-077 | Inventory schema + repository skeleton | P0 | ✅ done |
-| S-078 | Inventory availability calculator MVP | P0 | 🟡 in progress |
+| S-078 | Inventory availability calculator MVP | P0 | ✅ done |
+| S-078b | Roadmap format + Russian business narrative repair | — | ✅ done |
 | Tenant model ADR before v2.6 | 🟡 Decision needed — ADR-018 |
 | Password reset invite/email flow | Deferred |
 | Advertiser approve/reject campaigns | Deferred — admin-only |
