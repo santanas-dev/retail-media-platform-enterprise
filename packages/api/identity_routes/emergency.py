@@ -66,7 +66,7 @@ async def emergency_activate(
         target_id=override.id,
         details={"reason": body.reason},
     )
-    # Outbox event — propagate to runtime/player via NATS relay
+    # Outbox event — relay worker will deliver to runtime/player
     await repository.enqueue_outbox_event(
         db,
         event_type="emergency.changed",
@@ -112,7 +112,7 @@ async def emergency_deactivate(
         target_id=override.id,
         details={"reason": body.reason},
     )
-    # Outbox event — propagate to runtime/player via NATS relay
+    # Outbox event — relay worker will deliver to runtime/player
     await repository.enqueue_outbox_event(
         db,
         event_type="emergency.changed",
