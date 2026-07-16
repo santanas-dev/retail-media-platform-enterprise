@@ -9,7 +9,7 @@
 
 | Branch  | SHA      | Note |
 |---------|----------|------|
-| develop | d24a687  | AUD-001 / post-C1 audit checkpoint |
+| develop | 7256460  | S-089 simulation |
 | main    | cab9014  | C1 merged (v0.8) |
 
 ## Active Workstreams
@@ -44,6 +44,14 @@
 - 0 orphan `## TABLE` headers remain. Original `.docx` untouched.
 
 ### D2 — Roadmap sync with PROJECT_STATE ✅ RESOLVED
+
+### A4 / S-089 — Inventory simulation ✅ RESOLVED
+- POST /inventory/simulate — aggregates availability + conflicts + applied rules
+- 🧪 Симуляция button in campaign overview (draft, canApprove)
+- Results panel: overall_fit, per-surface fill%, conflicts
+- 8 backend tests + 3 frontend tests
+- CI: #29525532107 — 34/34 green, ADR-008 behavioural success
+- SHA: 7256460
 - Roadmap `roadmap-s020-2026-07-10.xlsx` aligned with PROJECT_STATE truth.
 - C1 status: 🟡 Готово для пилота (not closed on main). S-048: ✅ Готово with C2 proof.
 - H0/C2/D1 visible in Коммиты/Заметки columns with SHA and CI run references.
@@ -65,17 +73,17 @@
 
 ## Next Active Workstream
 
-**A4 / S-089 — Inventory simulation.**
-Pre-publication inventory simulation: predict slot fill, detect conflicts,
-validate campaign fit before approval. Depends on A1–A3 (✅ done).
+**A5 / S-090 — Campaign dashboard.**
+Post-campaign analytics dashboard with plan/fact, geography, device health.
 
-## Completed (Player Blockers A1–A3)
+## Completed (Player Blockers A1–A4)
 
 | ID | Task | Status |
 |----|------|--------|
 | A1 S-086 | Inventory availability forecast | ✅ |
 | A2 S-087 | Sold-out alternatives | ✅ |
 | A3 S-088 | Rules management UI | ✅ |
+| A4 S-089 | Inventory simulation | ✅ |
 
 ## Pending
 
