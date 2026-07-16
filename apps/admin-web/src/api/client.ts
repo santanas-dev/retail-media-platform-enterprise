@@ -185,3 +185,24 @@ export interface MeResponse {
   permissions?: string[];
   must_change_password?: boolean;
 }
+
+// ── Audit ──
+
+export interface AuditEventOut {
+  id: string;
+  actor_user_id: string | null;
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  correlation_id: string | null;
+  ip_address: string;
+  details_json: unknown;
+  created_at: string | null;
+}
+
+export interface PaginatedAuditEvents {
+  items: AuditEventOut[];
+  total: number;
+  limit: number;
+  offset: number;
+}

@@ -118,6 +118,7 @@ Separately covered:
 | S-066a | Pagination CI truth / test mock fix | P1 | ✅ done | P.S. (Hermes) | Fixed 6 identity API test mocks (old function names → _paginated variants, list return → tuple). Fixed 3 behavioural campaign tests (PaginatedResponse shape). Root cause: mock paths not updated during S-066 function renames. CI now fully green — all 34 jobs including Behavioural PostgreSQL. | — |
 | S-067 | Manifest performance + Redis cache | P1 | ✅ done | P.S. (Hermes) | Fast ETag: lightweight metadata query (1 SELECT) before full assembly — 304 returned without 6+ queries + HMAC. Redis cache: optional fail-open cache for manifest payloads (REDIS_URL, MANIFEST_CACHE_ENABLED, TTL). Content-hash guarded against stale cache. 0 dependencies on Redis at import time. | — |
 | S-068 | DB pool + retention + lookup index | P2 | ✅ done | P.S. (Hermes) | Configurable DB pool (DB_POOL_SIZE/MAX_OVERFLOW/TIMEOUT/RECYCLE). Delivery manifests retention script (dry-run safe, never deletes latest). PoP events retention strategy documented. Composite index ix_delivery_manifests_device_status_generated for manifest lookup. | — |
+| S-069 | Admin: audit log UI + permission-filtered menu | P2 | ✅ done | P.S. (Hermes) | Layout.tsx filters nav items by user permissions from /me. Audit log page at /audit — paginated table, Russian labels, secret redaction. Backend audit-events endpoint was already ready — no backend changes needed. | — |
 ## Status Legend
 
 - **done** — implemented, tested, committed, pushed

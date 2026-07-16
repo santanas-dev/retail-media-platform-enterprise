@@ -122,6 +122,7 @@ describe("auth shell", () => {
             auth_provider: "ad",
             username: "admin",
             display_name: "Admin",
+            permissions: ["campaigns.read"],
             must_change_password: false,
           }),
           { status: 200 },
@@ -171,7 +172,7 @@ describe("auth shell", () => {
           new Response(
             JSON.stringify({
               sub: "u1", auth_provider: "ad", username: "admin",
-              display_name: "Admin", permissions: [], must_change_password: false,
+              display_name: "Admin", permissions: ["campaigns.read"], must_change_password: false,
             }),
             { status: 200 },
           ),

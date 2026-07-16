@@ -47,8 +47,8 @@ remediation sequence.
 | P2-3 | delivery_manifests table — no retention/purge strategy | Unbounded growth | S-068 ✅ done |
 | P2-4 | pop_events_raw — no partitioning/retention before ClickHouse | Unbounded growth, analytical query degradation | S-068 ✅ done |
 | P2-5 | Manifest signature not persisted / threat model not documented | Integrity verification gap | S-067 ✅ done |
-| P2-6 | Admin menu not filtered by user permissions | UX confusion, security-relevant | S-069 |
-| P2-7 | No audit log UI — audit_events_operational write-only | Operators can't review audit trail | S-069 |
+| P2-6 | Admin menu not filtered by user permissions | UX confusion, security-relevant | S-069 ✅ |
+| P2-7 | No audit log UI — audit_events_operational write-only | Operators can't review audit trail | S-069 ✅ |
 | P2-8 | No device/fleet health UI | Operational blindness | S-070 |
 | P2-9 | No emergency workspace / kill-switch UI | ADR-013 architecture proven but no operator UI | S-071 |
 | P2-10 | Inventory domain not implemented per ТЗ §6.3 (airtime, forecasting, conflicts, sold-out) | Core domain gap | S-072 |
@@ -112,9 +112,10 @@ S-068 ─► DB pool + retention strategy
           ├─ pop_events_raw partitioning/retention
           └─ MinIO service account provisioning
 
-S-069 ─► Admin UI: audit log + permission-filtered menu
-          ├─ Audit log read-only UI
-          └─ Menu filtering by user permissions
+S-069 ✅ ─► Admin UI: audit log + permission-filtered menu  (done 2026-07-16)
+          ├─ Audit log read-only UI — paginated table, Russian labels, secret redaction
+          ├─ Menu filtering by user permissions — 8 nav items with requiredPermissions
+          └─ No backend changes needed (audit-events endpoint was already paginated)
 
 S-070 ─► Fleet/device health workspace (plan or MVP)
           └─ Device status dashboard, last-seen, health indicators

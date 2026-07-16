@@ -1,15 +1,29 @@
+import { useMemo } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
-const NAV_ITEMS = [
-  { to: "/campaigns", label: "Кампании" },
-  { to: "/campaigns/approvals", label: "Согласование кампаний" },
-  { to: "/creatives/moderation", label: "Модерация креативов" },
-  { to: "/inventory", label: "Инвентарь" },
-  { to: "/advertisers", label: "Рекламодатели" },
-  { to: "/users", label: "Пользователи" },
-  { to: "/settings/ad", label: "Настройки AD" },
+interface NavItem {
+  to: string;
+  label: string;
+  requiredPermissions: string[];
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { to: "/campaigns", label: "Кампании", requiredPermissions: ["campaigns.read"] },
+  { to: "/campaigns/approvals", label: "Согласование кампаний", requiredPermissions: ["campaigns.approve"] },
+  { to: "/creatives/moderation", label: "Модерация креативов", requiredPermissions: ["creatives.moderate"] },
+  { to: "/inventory", label: "Инвентарь", requiredPermissions: ["inventory.read"] },
+  { to: "/advertisers", label: "Рекламодатели", requiredPermissions: ["advertisers.read"] },
+  { to: "/users", label: "Пользователи", requiredPermissions: ["users.read"] },
+  { to: "/settings/ad", label: "Настройки AD", requiredPermissions: ["users.manage"] },
+  { to: "/audit", label: "Журнал аудита", requiredPermissions: ["audit.read"] },
 ];
+
+function hasAnyPermission(userPermissions: string[] | undefined, required: string[]): boolean {
+  if (!userPermissions || userPermissions.length === 0) return false;
+  // system_admin typically has all permissions — check one of them
+  return required.some((p) => userPermissions.includes(p));
+}
 
 const styles = {
   shell: {
@@ -78,6 +92,13 @@ export default function Layout() {
   const { user, loading, logout } = useAuth();
   const navigate = useNavigate();
 
+  const visibleItems = useMemo(() => {
+    if (!user) return [];
+    return NAV_ITEMS.filter((item) =>
+      hasAnyPermission(user.permissions, item.requiredPermissions),
+    );
+  }, [user]);
+
   if (loading) {
     return <div style={styles.loading}>Загрузка...</div>;
   }
@@ -92,7 +113,7 @@ export default function Layout() {
       <aside style={styles.sidebar}>
         <div style={styles.logo}>ЦУР</div>
         <nav style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-          {NAV_ITEMS.map((item) => (
+          {visibleItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
