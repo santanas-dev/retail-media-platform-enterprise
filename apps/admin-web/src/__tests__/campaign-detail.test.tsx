@@ -1050,7 +1050,7 @@ describe("CampaignDetailPage — S-090 Dashboard", () => {
       start_at: null, end_at: null, created_at: "2026-06-01T00:00:00Z", updated_at: "2026-06-01T00:00:00Z" },
   ];
 
-  it("shows plan/fact with underdelivery status", async () => {
+  it("shows plan/fact heading and delivery status", async () => {
     mockAuthenticatedSession();
     mockAllFetches({
       "/pop/summary": () => Promise.resolve(new Response(JSON.stringify(POP_SUMMARY), { status: 200 })),
@@ -1067,6 +1067,7 @@ describe("CampaignDetailPage — S-090 Dashboard", () => {
 
     await waitFor(() => {
       expect(screen.getByText("План / Факт")).toBeTruthy();
+      expect(screen.getByText("Недопоказ")).toBeTruthy();
     });
   });
 
@@ -1132,6 +1133,71 @@ describe("CampaignDetailPage — S-090 Dashboard", () => {
     });
   });
 
+  it("shows loading state on dashboard tab", async () => {
+    mockAuthenticatedSession();
+    // Never-resolving promise keeps loading state visible
+    let resolvePopup: (value: Response) => void;
+    const popPromise = new Promise<Response>((res) => { resolvePopup = res; });
+    mockAllFetches({
+      "/pop/summary": () => popPromise,
+      "/pop/by-day": () => popPromise,
+      "/pop/by-surface": () => popPromise,
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Дашборд"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Загрузка дашборда...")).toBeTruthy();
+    });
+
+    // Resolve so test doesn't hang
+    resolvePopup!(new Response(JSON.stringify([]), { status: 200 }));
+  });
+
+  it("shows error state on dashboard tab when PoP API fails", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches({
+      "/pop/summary": () => Promise.resolve(new Response(JSON.stringify({ detail: "Server error" }), { status: 500 })),
+      "/pop/by-day": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+      "/pop/by-surface": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Дашборд"));
+
+    await waitFor(() => {
+      // Error message from popError — matches the error pattern from loadPopData
+      expect(screen.getByText(/Ошибка/)).toBeTruthy();
+    });
+  });
+
+  it("shows by-surface / geography table in dashboard", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches({
+      "/pop/summary": () => Promise.resolve(new Response(JSON.stringify(POP_SUMMARY), { status: 200 })),
+      "/pop/by-day": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+      "/pop/by-surface": () => Promise.resolve(new Response(JSON.stringify(POP_BY_SURFACE), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Дашборд"));
+
+    await waitFor(() => {
+      expect(screen.getByText("По поверхностям / географии")).toBeTruthy();
+      expect(screen.getByText("surf-1")).toBeTruthy();
+      expect(screen.getByText("surf-2")).toBeTruthy();
+    });
+  });
   it("shows by-day table in dashboard", async () => {
     mockAuthenticatedSession();
     mockAllFetches({
