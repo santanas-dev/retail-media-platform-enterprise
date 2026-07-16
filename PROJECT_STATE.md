@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-16
+**Last updated:** 2026-07-17
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | edfead4     | TBD            | BP-001 Public advertiser application |
+| develop | 0b82fab     | bd79373         | BP-001 follow-up RESOLVED |
 | main    | cab9014     | —              | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -86,7 +86,17 @@
 
 ## Next Active Workstream
 
-**BP-001 — Public Advertiser Application.** ✅ RESOLVED
+**None** — BP-001 completed; awaiting next prioritisation.
+
+## BP-001 Follow-up — Anti-spam + Reviewing + Public form ✅ RESOLVED
+
+- **Verdict: BP-001 gaps closed.**
+- **Anti-spam:** IP-based rate limit on public endpoint (`PUBLIC_APPLICATION_RATE_LIMIT`=3/min, 429).
+- **Reviewing:** new → reviewing → approve/reject transitions, backend validation, UI buttons.
+- **Public form:** `/become-advertiser` page in advertiser-web (outside auth), 4 tests.
+- **No-access proof:** structural test — approve creates `AdvertiserOrganization` only.
+- **Backend:** 13→18 tests. **Admin-web:** 6→8 tests, 150/150 total. **Advertiser-web:** +5 tests, 79/79 total.
+- Payload SHA: 0b82fab. CI: pending.
 
 ## Completed (Player Blockers A1–A6)
 
