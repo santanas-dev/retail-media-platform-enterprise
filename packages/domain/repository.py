@@ -3747,25 +3747,49 @@ async def reserve_inventory_for_placement(
     existing_result = await session.execute(
         sa_select(InventoryBooking).where(
             InventoryBooking.campaign_placement_id == placement_id,
-            InventoryBooking.status.in_(["reserved", "committed"]),
+            InventoryBooking.status.in_(
+                ["reserved", "committed", "released", "expired"]
+            ),
         )
     )
     existing = existing_result.scalars().all()
     if existing:
+        # Reuse existing booking(s) — update if released/expired, skip if active
         slots_info = []
+        reused = 0
+        updated = 0
+        now = datetime.now(tz.utc)
+        reserved_until = now + timedelta(hours=reservation_ttl_hours)
         for b in existing:
             slot = await session.get(InventorySlot, b.inventory_slot_id)
-            if slot:
-                slots_info.append({
-                    "slot_id": slot.id,
-                    "slot_date": str(slot.slot_date) if slot.slot_date else "",
-                    "slot_hour": slot.slot_hour,
-                    "capacity_units": b.capacity_units,
-                })
+            if slot is None:
+                continue
+            if b.status in ("reserved", "committed"):
+                # Already active — just report
+                reused += 1
+            else:
+                # Reactivate released/expired booking
+                cap = b.capacity_units
+                slot.reserved_capacity = (slot.reserved_capacity or 0) + cap
+                slot.status = slot.recompute_status()
+                slot.updated_at = now
+                b.status = "reserved"
+                b.reserved_until = reserved_until
+                b.committed_at = None
+                b.released_at = None
+                b.release_reason = ""
+                b.updated_at = now
+                updated += 1
+            slots_info.append({
+                "slot_id": slot.id,
+                "slot_date": str(slot.slot_date) if slot.slot_date else "",
+                "slot_hour": slot.slot_hour,
+                "capacity_units": b.capacity_units,
+            })
         return {
             "reserved": True,
             "bookings_created": 0,
-            "bookings_reused": len(existing),
+            "bookings_reused": reused + updated,
             "slots": slots_info,
         }
 
