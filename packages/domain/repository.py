@@ -3381,6 +3381,129 @@ async def deactivate_emergency_override(
 
 
 # ---------------------------------------------------------------------------
+# BP-001 — Advertiser Applications
+# ---------------------------------------------------------------------------
+
+
+async def create_advertiser_application(
+    session: AsyncSession,
+    *,
+    company_name: str,
+    contact_name: str,
+    email: str,
+    phone: str = "",
+    website: str = "",
+    comment: str = "",
+    consent: bool = False,
+) -> "AdvertiserApplication":
+    from packages.domain.models import AdvertiserApplication
+
+    app = AdvertiserApplication(
+        company_name=company_name,
+        contact_name=contact_name,
+        email=email,
+        phone=phone,
+        website=website,
+        comment=comment,
+        consent=consent,
+        status="new",
+    )
+    session.add(app)
+    return app
+
+
+async def list_advertiser_applications(
+    session: AsyncSession,
+    *,
+    status_filter: str | None = None,
+    offset: int = 0,
+    limit: int = 50,
+) -> tuple[list["AdvertiserApplication"], int]:
+    from packages.domain.models import AdvertiserApplication
+    from sqlalchemy import func
+
+    stmt = select(AdvertiserApplication)
+    if status_filter:
+        stmt = stmt.where(AdvertiserApplication.status == status_filter)
+    stmt = stmt.order_by(AdvertiserApplication.created_at.desc())
+
+    count_stmt = select(func.count()).select_from(stmt.alias())
+    total = (await session.execute(count_stmt)).scalar_one()
+
+    rows = (await session.execute(stmt.offset(offset).limit(limit))).scalars().all()
+    return list(rows), total
+
+
+async def get_advertiser_application(
+    session: AsyncSession,
+    application_id: str,
+) -> "AdvertiserApplication | None":
+    from packages.domain.models import AdvertiserApplication
+
+    return await session.get(AdvertiserApplication, application_id)
+
+
+async def review_advertiser_application(
+    session: AsyncSession,
+    *,
+    application_id: str,
+    action: str,
+    reviewer_id: str,
+    reason: str = "",
+) -> "AdvertiserApplication":
+    from datetime import timezone
+    from packages.domain.models import AdvertiserApplication
+
+    app = await session.get(AdvertiserApplication, application_id)
+    if app is None:
+        raise ValueError("Application not found")
+    if app.status != "new":
+        raise ValueError(f"Application cannot be reviewed — current status: {app.status}")
+
+    if action == "approve":
+        app.status = "approved"
+    elif action == "reject":
+        app.status = "rejected"
+    else:
+        raise ValueError(f"Invalid action: {action}")
+
+    app.reviewer_id = reviewer_id
+    app.review_reason = reason
+    app.reviewed_at = datetime.now(timezone.utc)
+    return app
+
+
+async def create_advertiser_from_application(
+    session: AsyncSession,
+    *,
+    application: "AdvertiserApplication",
+) -> str:
+    """Create AdvertiserOrganization from approved application. Returns org id."""
+    from packages.domain.models import AdvertiserOrganization
+
+    code = application.company_name.strip().lower().replace(" ", "-")[:64]
+    # Ensure unique code
+    base_code = code
+    suffix = 0
+    while True:
+        stmt = select(AdvertiserOrganization).where(AdvertiserOrganization.code == code)
+        exists = (await session.execute(stmt)).scalar_one_or_none()
+        if exists is None:
+            break
+        suffix += 1
+        code = f"{base_code[:60]}-{suffix}" if len(base_code) > 60 else f"{base_code}-{suffix}"
+
+    org = AdvertiserOrganization(
+        code=code,
+        legal_name=application.company_name,
+        display_name=application.company_name,
+        status="active",
+    )
+    session.add(org)
+    return org.id
+
+
+# ---------------------------------------------------------------------------
 # Inventory Domain (v0.7 Foundation — S-077)
 # ---------------------------------------------------------------------------
 

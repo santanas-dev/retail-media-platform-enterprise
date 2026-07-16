@@ -466,6 +466,32 @@ class EmergencyOverride(Base):
 
 
 # ---------------------------------------------------------------------------
+# Advertiser Applications (BP-001)
+# ---------------------------------------------------------------------------
+
+
+class AdvertiserApplication(Base):
+    """Public advertiser lead/application — reviewed by admin before onboarding."""
+
+    __tablename__ = "advertiser_applications"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    company_name = Column(String(255), nullable=False)
+    contact_name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=False)
+    phone = Column(String(64), nullable=True, default="")
+    website = Column(String(512), nullable=True, default="")
+    comment = Column(Text, nullable=True, default="")
+    consent = Column(Boolean, nullable=False, default=False)
+    status = Column(String(32), nullable=False, default="new", index=True)
+    reviewer_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    review_reason = Column(Text, nullable=True, default="")
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
+# ---------------------------------------------------------------------------
 # Auth Persistence (Phase 3.2a)
 # ---------------------------------------------------------------------------
 
@@ -1209,4 +1235,5 @@ REQUIRED_TABLES = frozenset({
     "inventory_slots",
     "inventory_bookings",
     "inventory_rules",
+    "advertiser_applications",
 })

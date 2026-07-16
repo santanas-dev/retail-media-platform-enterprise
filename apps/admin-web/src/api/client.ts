@@ -246,3 +246,29 @@ export interface PaginatedDevices {
   limit: number;
   offset: number;
 }
+
+// ── BP-001 — Advertiser Applications ──
+
+export interface AdvertiserApplicationOut {
+  id: string;
+  company_name: string;
+  contact_name: string;
+  email: string;
+  phone: string;
+  website: string;
+  comment: string;
+  consent: boolean;
+  status: string;
+  reviewer_id: string | null;
+  review_reason: string | null;
+  reviewed_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface PaginatedApplications {
+  items: AdvertiserApplicationOut[];
+  total: number;
+  limit: number;
+  offset: number;
+}

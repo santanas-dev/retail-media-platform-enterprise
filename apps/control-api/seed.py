@@ -43,6 +43,8 @@ SEED_PERM_IDS = {
     "devices.read":    "00000000-0000-0000-0000-000000000107",
     "emergency.read":  "00000000-0000-0000-0000-000000000115",
     "emergency.manage":"00000000-0000-0000-0000-000000000116",
+    "advertiser_applications.read":  "00000000-0000-0000-0000-000000000117",
+    "advertiser_applications.review": "00000000-0000-0000-0000-000000000118",
     "advertisers.read":       "00000000-0000-0000-0000-000000000108",
     "advertisers.manage":     "00000000-0000-0000-0000-000000000109",
     "advertisers.contacts.read":  "00000000-0000-0000-0000-00000000010a",
@@ -260,6 +262,14 @@ VALUES ('{SEED_PERM_IDS["emergency.manage"]}', 'emergency.manage', 'Управл
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["advertiser_applications.read"]}', 'advertiser_applications.read', 'Просмотр заявок рекламодателей')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["advertiser_applications.review"]}', 'advertiser_applications.review', 'Рассмотрение заявок рекламодателей')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
 VALUES ('{SEED_PERM_IDS["advertisers.read"]}', 'advertisers.read', 'Просмотр рекламодателей')
 ON CONFLICT (code) DO NOTHING;
 
@@ -371,6 +381,14 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(163)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["emergency.manage"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(164)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["advertiser_applications.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(165)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["advertiser_applications.review"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)

@@ -964,6 +964,60 @@ class EmergencyDeactivateRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# BP-001 — Advertiser Applications
+# ---------------------------------------------------------------------------
+
+
+class AdvertiserApplicationCreate(BaseModel):
+    """Public application — no auth required."""
+
+    company_name: str = Field(..., min_length=1, max_length=255)
+    contact_name: str = Field(..., min_length=1, max_length=255)
+    email: str = Field(..., min_length=1, max_length=255)
+    phone: str = Field(default="", max_length=64)
+    website: str = Field(default="", max_length=512)
+    comment: str = Field(default="", max_length=2000)
+    consent: bool = Field(...)
+
+
+class AdvertiserApplicationOut(BaseModel):
+    """Application visible to admin."""
+
+    id: str
+    company_name: str
+    contact_name: str
+    email: str
+    phone: str
+    website: str
+    comment: str
+    consent: bool
+    status: str
+    reviewer_id: str | None = None
+    review_reason: str | None = None
+    reviewed_at: datetime | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AdvertiserApplicationReview(BaseModel):
+    """Admin review decision."""
+
+    action: str = Field(...)  # "approve" | "reject"
+    reason: str = Field(default="", max_length=1000)
+
+
+class AdvertiserApplicationListOut(BaseModel):
+    """Paginated list of applications."""
+
+    items: list[AdvertiserApplicationOut]
+    total: int
+    limit: int
+    offset: int
+
+
+# ---------------------------------------------------------------------------
 # Inventory Domain (v0.7 Foundation — S-077)
 # ---------------------------------------------------------------------------
 
