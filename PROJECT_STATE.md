@@ -9,7 +9,7 @@
 
 | Branch  | SHA      | Note |
 |---------|----------|------|
-| develop | 9216a54  | D1 fix |
+| develop | df3b946  | D2 fix |
 | main    | 4db6dc0  | v0.7 published |
 
 ## Active Workstreams
@@ -24,7 +24,7 @@
 ### C1 — Creative Moderation + Campaign Approval RLS 🟡
 - Fix applied on develop (SHA 4adde45 → 39dc8bc)
 - 4 endpoints under NOBYPASSRLS, 8 behavioural tests (all pass)
-- **NOT CLOSED — merge to main after D2 completes**
+- **NOT CLOSED — merge to main after D2 resolved**
 - No remaining blockers: ADR-008 gate GREEN ✅ (H0 resolved)
 - Bug fixed: `AdvertiserOrganization.name` → `legal_name` (4 places)
 - Seed gap closed: `creatives.moderate` in role_permissions for system_admin/security_admin
@@ -45,9 +45,12 @@
 - Fix (SHA 9216a54): content-based semantic mapping of 36 tables to 25 sections. Section 14 now correctly shows security requirements (auth/RBAC/devices/API/personal data), not device statuses.
 - 0 orphan `## TABLE` headers remain. Original `.docx` untouched.
 
-### D2 — Roadmap sync with PROJECT_STATE 🔄 IN PROGRESS
-- Roadmap `roadmap-s020-2026-07-10.xlsx` has stale statuses: S-036 marked done but C1 not closed; S-048 marked done but C2 was Critical.
-- Fix: align roadmap statuses with PROJECT_STATE truth, add behavioral-proof alignment rule to `roadmap-maintenance-rules.md`.
+### D2 — Roadmap sync with PROJECT_STATE ✅ RESOLVED
+- Roadmap `roadmap-s020-2026-07-10.xlsx` aligned with PROJECT_STATE truth.
+- C1 status: 🟡 Готово для пилота (not closed on main). S-048: ✅ Готово with C2 proof.
+- H0/C2/D1 visible in Коммиты/Заметки columns with SHA and CI run references.
+- New rule added to `roadmap-maintenance-rules.md`: статус «✅ Готово» в карте требует behavioral proof из PROJECT_STATE.
+- Workbook structure: 2 sheets, 91×5 + 38×8 — unchanged.
 
 ## Completed (Player Blockers A1–A3)
 
