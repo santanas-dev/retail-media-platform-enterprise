@@ -241,7 +241,7 @@ async def test_reserve_insufficient_capacity_rejected():
         await _create_surface(session)
         await _create_slot(session, total_capacity=5)
         await session.flush()
-        with pytest.raises(ValueError, match="Insufficient capacity"):
+        with pytest.raises(ValueError, match="CAPACITY_OVERBOOKED"):
             await reserve_inventory_for_placement(
                 session, campaign_id="c-001", placement_id="p-001",
                 display_surface_id="surf-001",
