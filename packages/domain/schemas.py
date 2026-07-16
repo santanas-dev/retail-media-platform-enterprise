@@ -6,7 +6,7 @@ Phase 3.2d: Auth API request/response DTOs.
 No secret/password fields exposed.
 """
 
-from datetime import datetime
+from datetime import date as date_type, datetime
 from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -961,3 +961,101 @@ class EmergencyActivateRequest(BaseModel):
 
 class EmergencyDeactivateRequest(BaseModel):
     reason: str = Field(..., min_length=1, max_length=500)
+
+
+# ---------------------------------------------------------------------------
+# Inventory Domain (v0.7 Foundation — S-077)
+# ---------------------------------------------------------------------------
+
+
+class InventorySlotOut(BaseModel):
+    """Single inventory slot — one hour of one display surface."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    display_surface_id: str
+    slot_date: date_type
+    slot_hour: int
+    total_capacity: int = 0
+    booked_capacity: int = 0
+    reserved_capacity: int = 0
+    internal_blocked_capacity: int = 0
+    emergency_blocked_capacity: int = 0
+    status: str = "available"
+    created_at: datetime
+    updated_at: datetime
+
+
+class InventorySlotCreate(BaseModel):
+    """Create or get-or-create a slot for a surface/date/hour."""
+    display_surface_id: str
+    slot_date: date_type
+    slot_hour: int = Field(ge=0, le=23)
+    total_capacity: int = Field(default=0, ge=0)
+
+
+class InventoryBookingOut(BaseModel):
+    """Booking linking a campaign placement to an inventory slot."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    campaign_id: str | None = None
+    campaign_placement_id: str | None = None
+    inventory_slot_id: str
+    capacity_units: int
+    status: str = "reserved"
+    reserved_until: datetime | None = None
+    committed_at: datetime | None = None
+    released_at: datetime | None = None
+    release_reason: str = ""
+    created_at: datetime
+    updated_at: datetime
+
+
+class InventoryBookingCreate(BaseModel):
+    """Reserve capacity on a slot."""
+    campaign_id: str | None = None
+    campaign_placement_id: str | None = None
+    inventory_slot_id: str
+    capacity_units: int = Field(gt=0)
+
+
+class InventoryRuleOut(BaseModel):
+    """Business rule for inventory."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    scope_type: str = "global"
+    scope_id: str | None = None
+    rule_type: str
+    priority: int = 100
+    value_json: dict[str, Any] = Field(default_factory=dict)
+    is_active: bool = True
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class InventoryRuleCreate(BaseModel):
+    """Create an inventory rule."""
+    scope_type: str = "global"
+    scope_id: str | None = None
+    rule_type: str
+    priority: int = Field(default=100, ge=0)
+    value_json: dict[str, Any] = Field(default_factory=dict)
+    is_active: bool = True
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+
+
+class InventoryRuleUpdate(BaseModel):
+    """Partial update — only provided fields are changed."""
+    scope_type: str | None = None
+    scope_id: str | None = None
+    rule_type: str | None = None
+    priority: int | None = Field(default=None, ge=0)
+    value_json: dict[str, Any] | None = None
+    is_active: bool | None = None
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None

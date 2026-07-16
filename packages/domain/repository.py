@@ -23,6 +23,9 @@ from packages.domain.models import (
     CreativeAsset,
     CampaignCreative,
     DisplaySurface,
+    InventoryBooking,
+    InventoryRule,
+    InventorySlot,
     LocalCredential,
     Permission,
     Role,
@@ -3320,4 +3323,202 @@ async def deactivate_emergency_override(
     existing.deactivated_by = deactivated_by
     existing.deactivated_at = datetime.now(timezone.utc)
     existing.deactivated_reason = reason
-    return existing
+
+
+# ---------------------------------------------------------------------------
+# Inventory Domain (v0.7 Foundation — S-077)
+# ---------------------------------------------------------------------------
+
+
+# --- InventorySlot ---
+
+async def get_or_create_inventory_slot(
+    session: AsyncSession,
+    *,
+    display_surface_id: str,
+    slot_date,
+    slot_hour: int,
+    total_capacity: int = 0,
+) -> InventorySlot:
+    """Return existing slot or create a new one (idempotent)."""
+    from sqlalchemy import select as sa_select
+
+    stmt = sa_select(InventorySlot).where(
+        InventorySlot.display_surface_id == display_surface_id,
+        InventorySlot.slot_date == slot_date,
+        InventorySlot.slot_hour == slot_hour,
+    )
+    result = await session.execute(stmt)
+    row = result.scalar_one_or_none()
+    if row is not None:
+        return row
+    slot = InventorySlot(
+        display_surface_id=display_surface_id,
+        slot_date=slot_date,
+        slot_hour=slot_hour,
+        total_capacity=total_capacity,
+    )
+    session.add(slot)
+    return slot
+
+
+async def list_inventory_slots(
+    session: AsyncSession,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+    surface_id: str | None = None,
+    slot_date=None,
+) -> tuple[list[InventorySlot], int]:
+    """Paginated list of inventory slots, optionally filtered."""
+    from sqlalchemy import select as sa_select
+
+    base = sa_select(InventorySlot)
+    count_base = sa_select(func.count()).select_from(InventorySlot)
+
+    if surface_id is not None:
+        base = base.where(InventorySlot.display_surface_id == surface_id)
+        count_base = count_base.where(InventorySlot.display_surface_id == surface_id)
+    if slot_date is not None:
+        base = base.where(InventorySlot.slot_date == slot_date)
+        count_base = count_base.where(InventorySlot.slot_date == slot_date)
+
+    base = base.order_by(InventorySlot.slot_date, InventorySlot.slot_hour).limit(limit).offset(offset)
+    total = await session.scalar(count_base)
+    result = await session.execute(base)
+    return list(result.scalars().all()), total or 0
+
+
+async def get_inventory_slot(
+    session: AsyncSession, slot_id: str,
+) -> InventorySlot | None:
+    """Get a single slot by ID."""
+    return await session.get(InventorySlot, slot_id)
+
+
+# --- InventoryBooking ---
+
+async def create_inventory_booking(
+    session: AsyncSession,
+    *,
+    campaign_id: str | None = None,
+    campaign_placement_id: str | None = None,
+    inventory_slot_id: str,
+    capacity_units: int,
+    reserved_until=None,
+) -> InventoryBooking:
+    """Create a new booking (reserve). Caller must handle idempotency."""
+    if capacity_units <= 0:
+        raise ValueError("capacity_units must be > 0")
+    booking = InventoryBooking(
+        campaign_id=campaign_id,
+        campaign_placement_id=campaign_placement_id,
+        inventory_slot_id=inventory_slot_id,
+        capacity_units=capacity_units,
+        status="reserved",
+        reserved_until=reserved_until,
+    )
+    session.add(booking)
+    return booking
+
+
+async def list_inventory_bookings(
+    session: AsyncSession,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+    slot_id: str | None = None,
+    status: str | None = None,
+) -> tuple[list[InventoryBooking], int]:
+    """Paginated list of bookings, optionally filtered."""
+    from sqlalchemy import select as sa_select
+
+    base = sa_select(InventoryBooking)
+    count_base = sa_select(func.count()).select_from(InventoryBooking)
+
+    if slot_id is not None:
+        base = base.where(InventoryBooking.inventory_slot_id == slot_id)
+        count_base = count_base.where(InventoryBooking.inventory_slot_id == slot_id)
+    if status is not None:
+        base = base.where(InventoryBooking.status == status)
+        count_base = count_base.where(InventoryBooking.status == status)
+
+    base = base.order_by(InventoryBooking.created_at.desc()).limit(limit).offset(offset)
+    total = await session.scalar(count_base)
+    result = await session.execute(base)
+    return list(result.scalars().all()), total or 0
+
+
+async def get_inventory_booking(
+    session: AsyncSession, booking_id: str,
+) -> InventoryBooking | None:
+    """Get a single booking by ID."""
+    return await session.get(InventoryBooking, booking_id)
+
+
+# --- InventoryRule ---
+
+async def create_inventory_rule(
+    session: AsyncSession,
+    *,
+    scope_type: str = "global",
+    scope_id: str | None = None,
+    rule_type: str,
+    priority: int = 100,
+    value_json: dict | None = None,
+    is_active: bool = True,
+    starts_at=None,
+    ends_at=None,
+) -> InventoryRule:
+    """Create a new inventory rule."""
+    rule = InventoryRule(
+        scope_type=scope_type,
+        scope_id=scope_id,
+        rule_type=rule_type,
+        priority=priority,
+        value_json=value_json or {},
+        is_active=is_active,
+        starts_at=starts_at,
+        ends_at=ends_at,
+    )
+    session.add(rule)
+    return rule
+
+
+async def list_inventory_rules(
+    session: AsyncSession,
+    *,
+    is_active: bool | None = None,
+    rule_type: str | None = None,
+) -> list[InventoryRule]:
+    """List inventory rules, optionally filtered."""
+    from sqlalchemy import select as sa_select
+
+    stmt = sa_select(InventoryRule).order_by(InventoryRule.priority.desc())
+    if is_active is not None:
+        stmt = stmt.where(InventoryRule.is_active == is_active)
+    if rule_type is not None:
+        stmt = stmt.where(InventoryRule.rule_type == rule_type)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def get_inventory_rule(
+    session: AsyncSession, rule_id: str,
+) -> InventoryRule | None:
+    """Get a single rule by ID."""
+    return await session.get(InventoryRule, rule_id)
+
+
+async def set_inventory_rule_active(
+    session: AsyncSession,
+    *,
+    rule_id: str,
+    is_active: bool,
+) -> InventoryRule | None:
+    """Toggle is_active on an inventory rule."""
+    rule = await session.get(InventoryRule, rule_id)
+    if rule is None:
+        return None
+    rule.is_active = is_active
+    return rule

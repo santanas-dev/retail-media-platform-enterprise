@@ -3,7 +3,7 @@
 **Document:** docs/architecture/inventory-domain-model.md
 **Created:** 2026-07-16
 **Branch:** docs/S-076-inventory-domain-model-design
-**Status:** architecture design — pre-implementation
+**Status:** architecture design — pre-implementation. S-077 schema/repository implementation in progress.
 **Predecessor:** `docs/product/inventory-domain-gap-analysis.md` (S-072)
 **Audit:** Closes gap G-INV-01…G-INV-10 per ТЗ §6.3
 

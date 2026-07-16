@@ -13,10 +13,12 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Column,
+    Date,
     DateTime,
     ForeignKey,
     Index,
     Integer,
+    JSON,
     Numeric,
     String,
     Text,
@@ -1054,6 +1056,134 @@ class CreativeUploadSession(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
 
 
+# ---------------------------------------------------------------------------
+# Inventory Domain (v0.7 Foundation — S-077)
+# ---------------------------------------------------------------------------
+
+
+class InventorySlot(Base):
+    """Single hour of a single display surface — the atomic inventory unit.
+
+    total_capacity is computed from the surface's device count and slot duration.
+    booked_capacity grows on commit, shrinks on release.
+    reserved_capacity tracks pending-approval bookings (TTL 24h).
+    status is a derived property, not a stored column.
+    Admin-only access — no tenant scope in MVP (S-076 §2.1, §11 D5).
+    """
+
+    __tablename__ = "inventory_slots"
+    __table_args__ = (
+        UniqueConstraint("display_surface_id", "slot_date", "slot_hour",
+                         name="uq_inventory_slot_surface_date_hour"),
+        Index("ix_inventory_slots_surface_date", "display_surface_id", "slot_date"),
+        Index("ix_inventory_slots_status_date", "status", "slot_date"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    display_surface_id = Column(
+        String(36), ForeignKey("display_surfaces.id"), nullable=False, index=True,
+    )
+    slot_date = Column(Date, nullable=False)
+    slot_hour = Column(Integer, nullable=False)
+    total_capacity = Column(Integer, nullable=False, default=0)
+    booked_capacity = Column(Integer, nullable=False, default=0)
+    reserved_capacity = Column(Integer, nullable=False, default=0)
+    internal_blocked_capacity = Column(Integer, nullable=False, default=0)
+    emergency_blocked_capacity = Column(Integer, nullable=False, default=0)
+    status = Column(String(32), nullable=False, default="available")
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+    @property
+    def available_capacity(self) -> int:
+        if (self.emergency_blocked_capacity or 0) > 0:
+            return 0
+        return max(0, (self.total_capacity or 0)
+                   - (self.booked_capacity or 0)
+                   - (self.reserved_capacity or 0)
+                   - (self.internal_blocked_capacity or 0))
+
+    @property
+    def is_sold_out(self) -> bool:
+        return self.available_capacity <= 0
+
+    def recompute_status(self) -> str:
+        """Recompute status from capacity counters. Call before flush."""
+        if (self.emergency_blocked_capacity or 0) > 0:
+            return "blocked"
+        taken = (self.booked_capacity or 0) + (self.reserved_capacity or 0) + (self.internal_blocked_capacity or 0)
+        if taken >= (self.total_capacity or 0):
+            return "sold_out"
+        if taken > 0:
+            return "limited"
+        return "available"
+
+
+class InventoryBooking(Base):
+    """Links a campaign placement to one or more inventory slots.
+
+    Lifecycle: reserved → committed → released → expired.
+    One placement can book multiple slots (multiple hours × surfaces).
+    Unique constraint ensures one booking per placement-slot pair (idempotent reserve).
+    """
+
+    __tablename__ = "inventory_bookings"
+    __table_args__ = (
+        UniqueConstraint("campaign_placement_id", "inventory_slot_id",
+                         name="uq_inventory_booking_placement_slot"),
+        Index("ix_inventory_bookings_slot_status", "inventory_slot_id", "status"),
+        Index("ix_inventory_bookings_status_until", "status", "reserved_until"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    campaign_id = Column(String(36), ForeignKey("campaigns.id"), nullable=True, index=True)
+    campaign_placement_id = Column(
+        String(36), ForeignKey("campaign_placements.id"), nullable=True, index=True,
+    )
+    inventory_slot_id = Column(
+        String(36), ForeignKey("inventory_slots.id"), nullable=False, index=True,
+    )
+    capacity_units = Column(Integer, nullable=False)
+    status = Column(String(32), nullable=False, default="reserved")
+    reserved_until = Column(DateTime(timezone=True), nullable=True)
+    committed_at = Column(DateTime(timezone=True), nullable=True)
+    released_at = Column(DateTime(timezone=True), nullable=True)
+    release_reason = Column(String(512), nullable=False, default="")
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
+class InventoryRule(Base):
+    """Business rules that constrain inventory usage.
+
+    Scoped from specific (surface) to general (global).  value_json stores
+    rule-type-specific parameters.  Rules are additive — more specific scope
+    wins on conflict, same scope uses priority DESC.
+
+    Admin-only access — no tenant scope in MVP (S-076 §2.3).
+    """
+
+    __tablename__ = "inventory_rules"
+    __table_args__ = (
+        Index("ix_inventory_rules_scope", "scope_type", "scope_id"),
+        Index("ix_inventory_rules_type_active", "rule_type", "is_active"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    scope_type = Column(
+        String(32), nullable=False, default="global",
+    )
+    scope_id = Column(String(36), nullable=True)
+    rule_type = Column(String(64), nullable=False)
+    priority = Column(Integer, nullable=False, default=100)
+    value_json = Column(JSONB, nullable=False, default=dict)
+    is_active = Column(Boolean, nullable=False, default=True)
+    starts_at = Column(DateTime(timezone=True), nullable=True)
+    ends_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
 REQUIRED_TABLES = frozenset({
     "branches", "clusters", "stores",
     "channels", "device_types", "capability_profiles",
@@ -1076,4 +1206,7 @@ REQUIRED_TABLES = frozenset({
     "pop_dedup_index",
     "pop_ingestion_batches",
     "creative_upload_sessions",
+    "inventory_slots",
+    "inventory_bookings",
+    "inventory_rules",
 })
