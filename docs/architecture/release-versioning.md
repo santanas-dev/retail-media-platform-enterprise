@@ -614,29 +614,33 @@ git push origin :refs/tags/v0.5-business-portal-complete
 
 ### v0.7-inventory-foundation — Inventory Domain MVP
 
-**Planned.**  Architecture design in progress (S-076).  Tag not yet proposed.
+**✅ Ready for release.** All 5 S-tickets complete (S-077–S-081). Release candidate on develop at `f993541`.
 
-#### Planned Capabilities
+**Proposed tag:** `v0.7-inventory-foundation` on `f993541` (code baseline after S-081 merge).
 
-- **Inventory domain:** InventorySlot, InventoryBooking, InventoryRule models (S-077)
-- **Availability calculator:** Time-slot capacity per surface/date/hour (S-078)
-- **Booking lifecycle:** reserve → commit → release → expire with TTL + campaign integration (S-079)
-- **Conflict detection:** 8 conflict types — schedule overlap, SOV overbooking, inactive surface, emergency, etc. (S-080)
-- **Inventory calendar UI:** Visual calendar with color-coded availability (S-081)
-- **Sold-out detection + alternatives:** What's full and what to suggest instead (S-082)
-- **Inventory reports:** Free/booked/reserved reports + SLA metrics (S-083)
-- **Emergency integration:** Emergency mode blocks inventory slots (S-084)
-- **Device health integration:** Offline devices reduce effective capacity (S-085)
+#### Delivered Capabilities
 
-#### Not Blocking
+| Capability | S-ticket | Tests | Status |
+|-----------|---------|-------|--------|
+| Inventory schema + repository | S-077 | migration 015, Pydantic schemas | ✅ |
+| Availability calculator | S-078 | POST /inventory/availability, 23 unit tests | ✅ |
+| Booking/reservation lifecycle | S-079 | reserve/commit/release/expire, campaign integration, 24 unit tests | ✅ |
+| Conflict detection + rules | S-080 | 6 conflict types, rule engine, 18 unit tests | ✅ |
+| Inventory calendar UI | S-081 | admin-web 4 tabs, 19 vitest tests | ✅ |
 
-- Player/KSO can start in parallel; minimum contract: S-079 (availability check + booking + campaign integration)
+#### Known Limitations
 
-#### Deferred
+- No rule CRUD UI (backend engine exists, management UI deferred)
+- No sold-out alternatives (S-083)
+- No inventory reports (S-084)
+- No real forecast from PoP history
+- No emergency/device-health impact on availability
+- No advertiser-facing availability hints
 
-- Forecast engine (ML/statistical) — separate spike
-- Pricing / rate cards / billing / programmatic — v2.6+
-- ClickHouse for inventory analytics — v0.8+
+#### KSO/Player Impact
+
+Minimum inventory contract complete. KSO/player preparation can begin after v0.7 release.
+See `docs/product/v07-inventory-readiness-review.md` §5 for full decision.
 
 ---
 

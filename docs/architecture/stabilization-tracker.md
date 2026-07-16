@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
 | **Last updated:** 2026-07-17
-| **Current phase:** v0.7 inventory: S-076–S-081 done. S-082 (sold-out) next.|
+| **Current phase:** v0.7 inventory foundation — S-076–S-081 done. S-082 readiness review in progress.|
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -185,6 +185,7 @@ Separately covered:
 | S-079b | Roadmap business columns expansion + fill | — | ✅ done |
 | S-080 | Inventory conflict detection + rules MVP | P0 | ✅ done |
 | S-081 | Inventory calendar UI — admin-web tabs (catalog/availability/conflicts/rules) | P0 | ✅ done |
+| S-082 | v0.7 Inventory Foundation readiness review | P0 | ✅ done |
 | Tenant model ADR before v2.6 | 🟡 Decision needed — ADR-018 |
 | Password reset invite/email flow | Deferred |
 | Advertiser approve/reject campaigns | Deferred — admin-only |
