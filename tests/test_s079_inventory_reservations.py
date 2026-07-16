@@ -100,6 +100,19 @@ def _create_inventory_tables(conn):
     """Create inventory tables manually to avoid pulling in JSONB tables."""
     from sqlalchemy import text
     conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS display_surfaces (
+            id VARCHAR(36) PRIMARY KEY, code VARCHAR(128) NOT NULL,
+            store_id VARCHAR(36) NOT NULL, logical_carrier_id VARCHAR(36) NOT NULL,
+            zone_id VARCHAR(36), shelf_id VARCHAR(36),
+            category_id VARCHAR(36), sku_group_id VARCHAR(36),
+            is_active BOOLEAN NOT NULL DEFAULT 1,
+            resolution_w INTEGER NOT NULL DEFAULT 1920,
+            resolution_h INTEGER NOT NULL DEFAULT 1080,
+            current_manifest_id VARCHAR(36),
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """))
+    conn.execute(text("""
         CREATE TABLE IF NOT EXISTS inventory_slots (
             id VARCHAR(36) PRIMARY KEY,
             display_surface_id VARCHAR(36) NOT NULL,
@@ -143,7 +156,8 @@ def _create_inventory_tables(conn):
             is_active BOOLEAN NOT NULL DEFAULT 1,
             starts_at TIMESTAMP,
             ends_at TIMESTAMP,
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     """))
 
@@ -171,6 +185,20 @@ async def _count_bookings(session, placement_id):
     return result.scalars().all()
 
 
+async def _create_surface(session, surface_id="surf-001", is_active=True):
+    """Create a display_surface row (needed for S-080 conflict checks)."""
+    from packages.domain.models import DisplaySurface
+    import uuid
+    s = DisplaySurface(
+        id=surface_id, code=f"SURF-{uuid.uuid4().hex[:6]}",
+        store_id="store-001", logical_carrier_id="lc-001",
+        is_active=is_active,
+    )
+    session.add(s)
+    await session.flush()
+    return s
+
+
 # ============================================================================
 # Reserve tests
 # ============================================================================
@@ -181,6 +209,7 @@ async def test_reserve_creates_bookings():
     from packages.domain.repository import reserve_inventory_for_placement
     session, engine = await _make_session()
     try:
+        await _create_surface(session)
         await _create_slot(session)
         await session.flush()
         result = await reserve_inventory_for_placement(
@@ -209,6 +238,7 @@ async def test_reserve_insufficient_capacity_rejected():
     from packages.domain.repository import reserve_inventory_for_placement
     session, engine = await _make_session()
     try:
+        await _create_surface(session)
         await _create_slot(session, total_capacity=5)
         await session.flush()
         with pytest.raises(ValueError, match="Insufficient capacity"):
@@ -229,6 +259,7 @@ async def test_reserve_idempotent():
     from packages.domain.repository import reserve_inventory_for_placement
     session, engine = await _make_session()
     try:
+        await _create_surface(session)
         await _create_slot(session)
         await session.flush()
         args = dict(
@@ -253,6 +284,7 @@ async def test_reserve_consumes_capacity():
     from packages.domain.repository import reserve_inventory_for_placement
     session, engine = await _make_session()
     try:
+        await _create_surface(session)
         slot = await _create_slot(session, total_capacity=100)
         await session.flush()
         assert slot.available_capacity == 100
@@ -278,6 +310,7 @@ async def test_reserve_sov_percent():
     from packages.domain.repository import reserve_inventory_for_placement
     session, engine = await _make_session()
     try:
+        await _create_surface(session)
         await _create_slot(session, total_capacity=200)
         await session.flush()
         result = await reserve_inventory_for_placement(
@@ -307,6 +340,7 @@ async def test_commit_moves_capacity():
     )
     session, engine = await _make_session()
     try:
+        await _create_surface(session)
         slot = await _create_slot(session, total_capacity=100)
         await session.flush()
         await reserve_inventory_for_placement(
@@ -350,6 +384,7 @@ async def test_commit_updates_booking_status():
     )
     session, engine = await _make_session()
     try:
+        await _create_surface(session)
         await _create_slot(session)
         await session.flush()
         await reserve_inventory_for_placement(
@@ -382,6 +417,7 @@ async def test_release_reserved():
     )
     session, engine = await _make_session()
     try:
+        await _create_surface(session)
         slot = await _create_slot(session, total_capacity=100)
         await session.flush()
         await reserve_inventory_for_placement(
@@ -414,6 +450,7 @@ async def test_release_committed():
     )
     session, engine = await _make_session()
     try:
+        await _create_surface(session)
         slot = await _create_slot(session)
         await session.flush()
         await reserve_inventory_for_placement(
@@ -446,6 +483,7 @@ async def test_release_sets_status():
     )
     session, engine = await _make_session()
     try:
+        await _create_surface(session)
         await _create_slot(session)
         await session.flush()
         await reserve_inventory_for_placement(
@@ -477,6 +515,7 @@ async def test_expire_past_ttl():
     from packages.domain.models import InventoryBooking
     session, engine = await _make_session()
     try:
+        await _create_surface(session)
         slot = await _create_slot(session, total_capacity=100)
         await session.flush()
         past = datetime.now(timezone.utc) - timedelta(hours=25)
@@ -507,6 +546,7 @@ async def test_no_expire_future_ttl():
     from packages.domain.models import InventoryBooking
     session, engine = await _make_session()
     try:
+        await _create_surface(session)
         slot = await _create_slot(session)
         await session.flush()
         future = datetime.now(timezone.utc) + timedelta(hours=10)
@@ -549,6 +589,7 @@ async def test_get_reservations_returns_bookings():
     )
     session, engine = await _make_session()
     try:
+        await _create_surface(session)
         await _create_slot(session)
         await session.flush()
         await reserve_inventory_for_placement(
