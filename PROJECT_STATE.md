@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 56f8037     | 56f8037        | S-090 campaign dashboard (single commit — code+CI green) |
+| develop | 38aa844     | —              | S-090 follow-up tests (loading, error, by-surface, plan/fact) |
 | main    | cab9014     | —              | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -69,6 +69,7 @@
 - No backend changes — reuses existing PoP reporting endpoints.
 - 5 vitest tests: plan/fact, empty, critical underdelivery, device health, by-day.
 - CI: #29529434884 — 34/34 green. Admin-web: 132/132 (127 + 5).
+- **Follow-up (SHA 38aa844):** added loading state, error state, by-surface table tests. Now 8 S-090 tests, 135/135 admin-web green.
 
 ## Open Issues
 
