@@ -181,21 +181,21 @@ class RealLDAPAuthProvider(ADAuthProvider):
         url = self._cfg.ad_server_url
         use_ssl = url.startswith("ldaps://")
 
-        tls = None
-        if self._cfg.ad_use_tls:
-            tls_kwargs = {}
-            cert_val = self._cfg.ad_certificate_validation
-            if cert_val == "required":
-                tls_kwargs["validate"] = ssl.CERT_REQUIRED
-            elif cert_val == "optional":
-                tls_kwargs["validate"] = getattr(ssl, "CERT_OPTIONAL", ssl.CERT_NONE)
-            elif cert_val == "none":
-                tls_kwargs["validate"] = ssl.CERT_NONE
-            # Agnostically pass CA cert file if configured (applies to
-            # required/optional — ignored by ldap3 for CERT_NONE).
-            if self._cfg.ad_ca_cert_file:
-                tls_kwargs["ca_certs_file"] = self._cfg.ad_ca_cert_file
-            tls = ldap3.Tls(**tls_kwargs) if tls_kwargs else None
+        cert_val = self._cfg.ad_certificate_validation
+        if cert_val == "required":
+            tls_validate = ssl.CERT_REQUIRED
+        elif cert_val == "optional":
+            tls_validate = getattr(ssl, "CERT_OPTIONAL", ssl.CERT_NONE)
+        elif cert_val == "none":
+            tls_validate = ssl.CERT_NONE
+        else:
+            # Unrecognised value — fail-secure: default to CERT_REQUIRED
+            tls_validate = ssl.CERT_REQUIRED
+
+        tls_kwargs: dict[str, object] = {"validate": tls_validate}
+        if self._cfg.ad_ca_cert_file:
+            tls_kwargs["ca_certs_file"] = self._cfg.ad_ca_cert_file
+        tls = ldap3.Tls(**tls_kwargs)
 
         host = url
         for prefix in ("ldaps://", "ldap://"):

@@ -81,6 +81,27 @@ class TestCriticalHotfixLDAPS(unittest.TestCase):
         self.assertIn("ssl.CERT_NONE", src,
                       "_connect() missing CERT_NONE branch")
 
+    def test_fail_secure_else_branch_exists(self):
+        """_connect() must have an else/fallback defaulting to CERT_REQUIRED."""
+        from packages.auth.ad_provider import RealLDAPAuthProvider
+        src = inspect.getsource(RealLDAPAuthProvider._connect)
+        # The fail-secure default is in the else: block with
+        # "Unrecognised value" comment.
+        has_else_default = (
+            "else:" in src
+            and "Unrecognised" in src
+            and "fail-secure" in src
+        )
+        self.assertTrue(has_else_default,
+                        "_connect() missing fail-secure else for unknown cert_val")
+
+    def test_no_ad_use_tls_gate_in_connect(self):
+        """_connect() must NOT gate TLS creation on ad_use_tls."""
+        from packages.auth.ad_provider import RealLDAPAuthProvider
+        src = inspect.getsource(RealLDAPAuthProvider._connect)
+        self.assertNotIn("ad_use_tls", src,
+                         "_connect() must not gate TLS on ad_use_tls")
+
     def test_ca_cert_file_config_field_exists(self):
         """SecurityConfig must have ad_ca_cert_file field."""
         from packages.security.config import SecurityConfig

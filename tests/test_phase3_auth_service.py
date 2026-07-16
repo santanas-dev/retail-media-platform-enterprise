@@ -581,6 +581,7 @@ class TestADProvider(unittest.TestCase):
     def test_connect_tls_required_uses_cert_required(self):
         """When AD_CERTIFICATE_VALIDATION=required, TLS uses ssl.CERT_REQUIRED."""
         import ssl
+        import ldap3
         from packages.security.config import SecurityConfig
 
         cfg = SecurityConfig(
@@ -592,10 +593,24 @@ class TestADProvider(unittest.TestCase):
         provider = RealLDAPAuthProvider()
         provider._cfg = cfg
 
+        original_tls = ldap3.Tls
+        captured = {}
+
+        class _CaptureTls:
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+                original_tls(**kwargs)
+
+        ldap3.Tls = _CaptureTls
         try:
-            provider._connect()
-        except Exception:
-            pass  # network unavailable is expected in unit test
+            try:
+                provider._connect()
+            except Exception:
+                pass
+            self.assertEqual(captured.get("validate"), ssl.CERT_REQUIRED,
+                             "required mode must produce CERT_REQUIRED")
+        finally:
+            ldap3.Tls = original_tls
 
     def test_connect_tls_none_uses_cert_none(self):
         """When AD_CERTIFICATE_VALIDATION=none, TLS uses ssl.CERT_NONE."""
@@ -730,6 +745,76 @@ class TestADProvider(unittest.TestCase):
             except Exception:
                 pass
             self.assertEqual(captured.get("ca_certs_file"), "/etc/ssl/certs/ad-ca.pem")
+        finally:
+            ldap3.Tls = original_tls
+
+    def test_connect_unknown_cert_val_defaults_to_cert_required(self):
+        """Unrecognised AD_CERTIFICATE_VALIDATION → fail-secure CERT_REQUIRED."""
+        import ssl
+        import ldap3
+        from packages.security.config import SecurityConfig
+
+        cfg = SecurityConfig(
+            ad_enabled=True,
+            ad_server_url="ldaps://dc.example.com:636",
+            ad_use_tls=True,
+            ad_certificate_validation="typo-require",  # unrecognized
+        )
+        provider = RealLDAPAuthProvider()
+        provider._cfg = cfg
+
+        original_tls = ldap3.Tls
+        captured = {}
+
+        class _CaptureTls:
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+                original_tls(**kwargs)
+
+        ldap3.Tls = _CaptureTls
+        try:
+            try:
+                provider._connect()
+            except Exception:
+                pass
+            self.assertEqual(captured.get("validate"), ssl.CERT_REQUIRED,
+                             "unknown cert_val must default to CERT_REQUIRED")
+        finally:
+            ldap3.Tls = original_tls
+
+    def test_connect_cert_required_survives_ad_use_tls_false(self):
+        """ad_use_tls=False does NOT bypass CERT_REQUIRED — policy wins."""
+        import ssl
+        import ldap3
+        from packages.security.config import SecurityConfig
+
+        cfg = SecurityConfig(
+            ad_enabled=True,
+            ad_server_url="ldaps://dc.example.com:636",
+            ad_use_tls=False,  # flag off, but cert policy is required
+            ad_certificate_validation="required",
+        )
+        provider = RealLDAPAuthProvider()
+        provider._cfg = cfg
+
+        original_tls = ldap3.Tls
+        captured = {}
+
+        class _CaptureTls:
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+                original_tls(**kwargs)
+
+        ldap3.Tls = _CaptureTls
+        try:
+            try:
+                provider._connect()
+            except Exception:
+                pass
+            self.assertEqual(
+                captured.get("validate"), ssl.CERT_REQUIRED,
+                "CERT_REQUIRED must survive ad_use_tls=False",
+            )
         finally:
             ldap3.Tls = original_tls
 
