@@ -458,4 +458,54 @@ describe("CampaignCreatePage", () => {
       expect(screen.getByText("Login")).toBeTruthy();
     });
   });
+
+  // ── S-086: Availability forecast on create page ──
+
+  it("shows availability forecast section", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) return Promise.resolve(new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 }));
+      if (url.endsWith("/me")) return Promise.resolve(new Response(JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin", permissions: ["campaigns.read", "campaigns.write", "inventory.read"] }), { status: 200 }));
+      if (url.includes("advertiser-organizations")) return Promise.resolve(new Response(JSON.stringify(SEED_ORGS), { status: 200 }));
+      if (url.includes("advertiser-brands")) return Promise.resolve(new Response(JSON.stringify(SEED_BRANDS), { status: 200 }));
+      if (url.includes("advertiser-contracts")) return Promise.resolve(new Response(JSON.stringify(SEED_CONTRACTS), { status: 200 }));
+      if (url.includes("/display-surfaces")) return Promise.resolve(new Response(JSON.stringify([{ id: "s1", store_id: "st1", code: "S01", resolution_w: 1920, resolution_h: 1080, is_active: true }]), { status: 200 }));
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    });
+
+    const router = createRouter("/campaigns/new");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Доступность инвентаря")).toBeTruthy(); });
+    expect(screen.getByText("Проверить")).toBeTruthy();
+  });
+
+  it("shows availability result on check", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) return Promise.resolve(new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 }));
+      if (url.endsWith("/me")) return Promise.resolve(new Response(JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin", permissions: ["campaigns.read", "campaigns.write", "inventory.read"] }), { status: 200 }));
+      if (url.includes("advertiser-organizations")) return Promise.resolve(new Response(JSON.stringify(SEED_ORGS), { status: 200 }));
+      if (url.includes("advertiser-brands")) return Promise.resolve(new Response(JSON.stringify(SEED_BRANDS), { status: 200 }));
+      if (url.includes("advertiser-contracts")) return Promise.resolve(new Response(JSON.stringify(SEED_CONTRACTS), { status: 200 }));
+      if (url.includes("/display-surfaces")) return Promise.resolve(new Response(JSON.stringify([{ id: "s1", store_id: "st1", code: "S01", resolution_w: 1920, resolution_h: 1080, is_active: true }]), { status: 200 }));
+      if (url.includes("/inventory/availability")) return Promise.resolve(new Response(JSON.stringify({ surface_id: "s1", starts_at: "2026-01-01T00:00:00Z", ends_at: "2026-02-01T00:00:00Z", all_available: true, total_requested: 0, total_available: 100, slots: [], conflicts: [] }), { status: 200 }));
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    });
+
+    const router = createRouter("/campaigns/new");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Доступность инвентаря")).toBeTruthy(); });
+    // Select surface and fill dates
+    const surfaceSelect = document.getElementById("fc-surface") as HTMLSelectElement;
+    await userEvent.selectOptions(surfaceSelect, "s1");
+    const startInput = document.getElementById("c-start") as HTMLInputElement;
+    const endInput = document.getElementById("c-end") as HTMLInputElement;
+    await userEvent.clear(startInput); await userEvent.type(startInput, "2026-01-01");
+    await userEvent.clear(endInput); await userEvent.type(endInput, "2026-02-01");
+    await userEvent.click(screen.getByText("Проверить"));
+
+    await waitFor(() => { expect(screen.getByText("Доступно")).toBeTruthy(); });
+  });
 });
