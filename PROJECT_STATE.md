@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 20b8760     | TBD            | A6/S-091 follow-up — honest emergency wording |
+| develop | 20b8760     | 374ce56        | A6/S-091 follow-up — honest emergency wording |
 | main    | cab9014     | —              | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
