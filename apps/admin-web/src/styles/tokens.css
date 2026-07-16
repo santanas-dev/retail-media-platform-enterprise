@@ -1,0 +1,159 @@
+/* =====================================================================
+   Retail Media Platform — Admin Web Design Tokens (S-073)
+   WCAG AA–conscious color palette, spacing, radius, focus ring.
+   Apply once via import in main.tsx.
+   ===================================================================== */
+
+:root {
+  /* ── Neutral (slate/gray) ── */
+  --rmp-gray-50:  #f8fafc;
+  --rmp-gray-100: #f1f5f9;
+  --rmp-gray-200: #e2e8f0;
+  --rmp-gray-300: #cbd5e1;
+  --rmp-gray-400: #94a3b8;
+  --rmp-gray-500: #64748b;
+  --rmp-gray-600: #475569;
+  --rmp-gray-700: #334155;
+  --rmp-gray-800: #1e293b;
+  --rmp-gray-900: #0f172a;
+
+  /* ── Primary (blue) ── */
+  --rmp-primary-50:  #eff6ff;
+  --rmp-primary-100: #dbeafe;
+  --rmp-primary-500: #2563eb;
+  --rmp-primary-600: #1d4ed8;
+  --rmp-primary-700: #1e40af;
+
+  /* ── Success (green) ── */
+  --rmp-success-50:  #f0fdf4;
+  --rmp-success-100: #dcfce7;
+  --rmp-success-600: #16a34a;
+  --rmp-success-700: #15803d;
+  --rmp-success-800: #166534;
+
+  /* ── Warning (amber) ── */
+  --rmp-warning-50:  #fffbeb;
+  --rmp-warning-100: #fef3c7;
+  --rmp-warning-600: #d97706;
+  --rmp-warning-700: #b45309;
+
+  /* ── Danger (red) ── */
+  --rmp-danger-50:  #fef2f2;
+  --rmp-danger-100: #fee2e2;
+  --rmp-danger-600: #dc2626;
+  --rmp-danger-700: #b91c1c;
+  --rmp-danger-800: #991b1b;
+
+  /* ── Semantic aliases ── */
+  --rmp-bg-page:          var(--rmp-gray-50);
+  --rmp-bg-surface:       #fff;
+  --rmp-border:           var(--rmp-gray-200);
+  --rmp-border-strong:    var(--rmp-gray-300);
+  --rmp-text-primary:     var(--rmp-gray-900);
+  --rmp-text-secondary:   var(--rmp-gray-500);
+  --rmp-text-muted:       var(--rmp-gray-400);
+  --rmp-text-inverse:     #fff;
+
+  /* ── Sidebar ── */
+  --rmp-sidebar-bg:       var(--rmp-gray-800);
+  --rmp-sidebar-text:     var(--rmp-gray-200);
+  --rmp-sidebar-active:   var(--rmp-gray-700);
+  --rmp-sidebar-hover:    rgba(255,255,255,0.06);
+
+  /* ── Status colors — WCAG AA ≥ 4.5:1 on white ── */
+  --rmp-status-active-text:    var(--rmp-success-700);
+  --rmp-status-active-bg:      var(--rmp-success-100);
+  --rmp-status-draft-text:     var(--rmp-gray-600);
+  --rmp-status-draft-bg:       var(--rmp-gray-100);
+  --rmp-status-review-text:    var(--rmp-warning-700);
+  --rmp-status-review-bg:      var(--rmp-warning-100);
+  --rmp-status-rejected-text:  var(--rmp-danger-700);
+  --rmp-status-rejected-bg:    var(--rmp-danger-100);
+
+  /* ── Spacing ── */
+  --rmp-space-1: 0.25rem;
+  --rmp-space-2: 0.5rem;
+  --rmp-space-3: 0.75rem;
+  --rmp-space-4: 1rem;
+  --rmp-space-5: 1.25rem;
+  --rmp-space-6: 1.5rem;
+  --rmp-space-8: 2rem;
+
+  /* ── Radius ── */
+  --rmp-radius-sm: 4px;
+  --rmp-radius-md: 6px;
+  --rmp-radius-lg: 8px;
+
+  /* ── Shadows ── */
+  --rmp-shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --rmp-shadow-md: 0 1px 3px rgba(0,0,0,0.10);
+  --rmp-shadow-lg: 0 4px 12px rgba(0,0,0,0.10);
+
+  /* ── Focus ring ── */
+  --rmp-focus-ring: 0 0 0 2px var(--rmp-primary-500);
+  --rmp-focus-ring-offset: 0 0 0 2px #fff, 0 0 0 4px var(--rmp-primary-500);
+
+  /* ── Typography ── */
+  --rmp-font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --rmp-font-size-xs:  0.75rem;
+  --rmp-font-size-sm:  0.8125rem;
+  --rmp-font-size-base: 0.875rem;
+  --rmp-font-size-lg:  1rem;
+  --rmp-font-size-xl:  1.25rem;
+  --rmp-font-size-2xl: 1.5rem;
+}
+
+/* ── Global reset ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--rmp-font-family);
+  font-size: var(--rmp-font-size-base);
+  color: var(--rmp-text-primary);
+  background: var(--rmp-bg-page);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Focus visibility — never remove browser outline unless replaced ── */
+:focus-visible {
+  outline: 2px solid var(--rmp-primary-500);
+  outline-offset: 2px;
+}
+
+/* ── Link reset ── */
+a {
+  color: var(--rmp-primary-600);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* ── Table baseline ── */
+.rmp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--rmp-font-size-sm);
+}
+.rmp-table th {
+  padding: var(--rmp-space-2) var(--rmp-space-3);
+  font-weight: 600;
+  color: var(--rmp-text-secondary);
+  font-size: var(--rmp-font-size-xs);
+  text-align: left;
+  background: var(--rmp-gray-100);
+  border-bottom: 2px solid var(--rmp-border);
+}
+.rmp-table td {
+  padding: var(--rmp-space-2) var(--rmp-space-3);
+  vertical-align: top;
+  border-bottom: 1px solid var(--rmp-border);
+}
+.rmp-table tr:hover td {
+  background: var(--rmp-gray-50);
+}

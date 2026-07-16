@@ -174,7 +174,7 @@ Separately covered:
 | S-070 | Fleet/device health workspace | P2 | 🚧 planned |
 | S-071 | Emergency workspace / kill-switch UI | P2 | ✅ done |
 | S-072 | Inventory domain gap analysis and plan | P2 | ✅ done |
-| S-073 | UI design-system / a11y foundation / i18n strategy | P3 | 🚧 planned |
+| S-073 | UI design-system / a11y foundation | P3 | ✅ done (foundation) |
 | S-074 | v0.6.2/v0.7 readiness review | — | 🚧 planned |
 | Tenant model ADR before v2.6 | 🟡 Decision needed — ADR-018 |
 | Password reset invite/email flow | Deferred |

@@ -23,72 +23,8 @@ const NAV_ITEMS: NavItem[] = [
 
 function hasAnyPermission(userPermissions: string[] | undefined, required: string[]): boolean {
   if (!userPermissions || userPermissions.length === 0) return false;
-  // system_admin typically has all permissions — check one of them
   return required.some((p) => userPermissions.includes(p));
 }
-
-const styles = {
-  shell: {
-    display: "flex",
-    minHeight: "100vh",
-    fontFamily: "system-ui, sans-serif",
-  },
-  sidebar: {
-    width: 220,
-    background: "#1e293b",
-    color: "#e2e8f0",
-    padding: "1rem 0",
-    flexShrink: 0,
-  },
-  logo: {
-    padding: "0 1rem 1rem",
-    fontSize: "0.875rem",
-    fontWeight: 600,
-    color: "#fff",
-    borderBottom: "1px solid #334155",
-    marginBottom: "0.5rem",
-  },
-  navLink: (active: boolean): React.CSSProperties => ({
-    display: "block",
-    padding: "0.5rem 1rem",
-    color: active ? "#fff" : "#94a3b8",
-    textDecoration: "none",
-    fontSize: "0.875rem",
-    background: active ? "#334155" : "transparent",
-  }),
-  userRow: {
-    marginTop: "auto",
-    padding: "0.75rem 1rem",
-    borderTop: "1px solid #334155",
-    fontSize: "0.8rem",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  logoutBtn: {
-    background: "none",
-    border: "1px solid #475569",
-    color: "#94a3b8",
-    padding: "0.2rem 0.5rem",
-    borderRadius: 4,
-    cursor: "pointer",
-    fontSize: "0.75rem",
-  },
-  main: {
-    flex: 1,
-    padding: "1.5rem",
-    background: "#f8fafc",
-    overflow: "auto",
-  },
-  loading: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: "100vh",
-    fontFamily: "system-ui, sans-serif",
-    color: "#64748b",
-  },
-};
 
 export default function Layout() {
   const { user, loading, logout } = useAuth();
@@ -102,7 +38,20 @@ export default function Layout() {
   }, [user]);
 
   if (loading) {
-    return <div style={styles.loading}>Загрузка...</div>;
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+          fontFamily: "var(--rmp-font-family)",
+          color: "var(--rmp-text-secondary)",
+        }}
+      >
+        Загрузка...
+      </div>
+    );
   }
 
   function handleLogout() {
@@ -111,30 +60,105 @@ export default function Layout() {
   }
 
   return (
-    <div style={styles.shell}>
-      <aside style={styles.sidebar}>
-        <div style={styles.logo}>ЦУР</div>
+    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "var(--rmp-font-family)" }}>
+      <aside
+        style={{
+          width: 220,
+          background: "var(--rmp-sidebar-bg)",
+          color: "var(--rmp-sidebar-text)",
+          padding: "var(--rmp-space-4) 0",
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            padding: "0 var(--rmp-space-4) var(--rmp-space-4)",
+            fontSize: "var(--rmp-font-size-base)",
+            fontWeight: 600,
+            color: "var(--rmp-text-inverse)",
+            borderBottom: "1px solid var(--rmp-gray-700)",
+            marginBottom: "var(--rmp-space-2)",
+          }}
+        >
+          ЦУР
+        </div>
         <nav style={{ display: "flex", flexDirection: "column", flex: 1 }}>
           {visibleItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
-              style={({ isActive }) => styles.navLink(isActive)}
+              style={({ isActive }) => ({
+                display: "block",
+                padding: "var(--rmp-space-2) var(--rmp-space-4)",
+                color: isActive ? "var(--rmp-text-inverse)" : "var(--rmp-gray-400)",
+                textDecoration: "none",
+                fontSize: "var(--rmp-font-size-base)",
+                background: isActive ? "var(--rmp-sidebar-active)" : "transparent",
+                transition: "background 0.15s, color 0.15s",
+              })}
+              onMouseEnter={(e) => {
+                if (!e.currentTarget.classList.contains("active")) {
+                  e.currentTarget.style.background = "var(--rmp-sidebar-hover)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!e.currentTarget.classList.contains("active")) {
+                  e.currentTarget.style.background = "transparent";
+                }
+              }}
             >
               {item.label}
             </NavLink>
           ))}
-          <div style={styles.userRow}>
+          <div
+            style={{
+              marginTop: "auto",
+              padding: "var(--rmp-space-3) var(--rmp-space-4)",
+              borderTop: "1px solid var(--rmp-gray-700)",
+              fontSize: "var(--rmp-font-size-sm)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
               {user?.display_name || user?.username || "—"}
             </span>
-            <button type="button" onClick={handleLogout} style={styles.logoutBtn}>
+            <button
+              type="button"
+              onClick={handleLogout}
+              style={{
+                background: "none",
+                border: "1px solid var(--rmp-gray-600)",
+                color: "var(--rmp-gray-400)",
+                padding: "0.15rem 0.5rem",
+                borderRadius: "var(--rmp-radius-sm)",
+                cursor: "pointer",
+                fontSize: "var(--rmp-font-size-xs)",
+                transition: "background 0.15s, color 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--rmp-sidebar-hover)";
+                e.currentTarget.style.color = "var(--rmp-text-inverse)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "none";
+                e.currentTarget.style.color = "var(--rmp-gray-400)";
+              }}
+            >
               Выход
             </button>
           </div>
         </nav>
       </aside>
-      <main style={styles.main}>
+      <main
+        style={{
+          flex: 1,
+          padding: "var(--rmp-space-6)",
+          background: "var(--rmp-bg-page)",
+          overflow: "auto",
+        }}
+      >
         <Outlet />
       </main>
     </div>

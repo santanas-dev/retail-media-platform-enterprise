@@ -4,6 +4,7 @@ import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 import { AuthProvider } from "./auth/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import "./styles/tokens.css";
 import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
 import CampaignListPage from "./pages/CampaignListPage";

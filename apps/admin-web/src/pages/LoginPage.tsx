@@ -5,17 +5,20 @@ import { useAuth } from "../auth/AuthContext";
 type AuthProvider = "local_advertiser" | "local_break_glass" | "ad";
 
 const PROVIDER_LABELS: Record<AuthProvider, string> = {
+  ad: "Сотрудник / AD",
   local_advertiser: "Рекламодатель",
   local_break_glass: "Break-glass Admin",
-  ad: "Сотрудник / AD",
 };
+
+/** Admin portal — default to AD (employee) provider, not advertiser. */
+const DEFAULT_PROVIDER: AuthProvider = "ad";
 
 export default function LoginPage() {
   const { login, loading, error } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [provider, setProvider] = useState<AuthProvider>("local_advertiser");
+  const [provider, setProvider] = useState<AuthProvider>(DEFAULT_PROVIDER);
   const [localError, setLocalError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent) {
@@ -42,25 +45,24 @@ export default function LoginPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#f5f5f5",
-        fontFamily: "system-ui, sans-serif",
+        background: "var(--rmp-gray-100)",
+        fontFamily: "var(--rmp-font-family)",
       }}
     >
-      <form
-        onSubmit={handleSubmit}
+      <main
         style={{
-          background: "#fff",
-          padding: "2rem",
-          borderRadius: 8,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+          background: "var(--rmp-bg-surface)",
+          padding: "var(--rmp-space-8)",
+          borderRadius: "var(--rmp-radius-lg)",
+          boxShadow: "var(--rmp-shadow-md)",
           width: "100%",
-          maxWidth: 360,
+          maxWidth: 380,
         }}
       >
-        <h1 style={{ margin: "0 0 0.5rem", fontSize: "1.25rem" }}>
+        <h1 style={{ margin: "0 0 var(--rmp-space-2)", fontSize: "var(--rmp-font-size-xl)", fontWeight: 600 }}>
           Центр управления рекламой
         </h1>
-        <p style={{ margin: "0 0 1.5rem", color: "#666", fontSize: "0.875rem" }}>
+        <p style={{ margin: "0 0 var(--rmp-space-6)", color: "var(--rmp-text-secondary)", fontSize: "var(--rmp-font-size-base)" }}>
           Войдите в систему
         </p>
 
@@ -68,12 +70,12 @@ export default function LoginPage() {
           <div
             role="alert"
             style={{
-              background: "#fef2f2",
-              color: "#991b1b",
-              padding: "0.5rem 0.75rem",
-              borderRadius: 4,
-              marginBottom: "1rem",
-              fontSize: "0.875rem",
+              background: "var(--rmp-danger-50)",
+              color: "var(--rmp-danger-800)",
+              padding: "var(--rmp-space-2) var(--rmp-space-3)",
+              borderRadius: "var(--rmp-radius-sm)",
+              marginBottom: "var(--rmp-space-4)",
+              fontSize: "var(--rmp-font-size-base)",
             }}
           >
             {displayError}
@@ -82,7 +84,7 @@ export default function LoginPage() {
 
         <label
           htmlFor="login-provider"
-          style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.875rem" }}
+          style={{ display: "block", marginBottom: "var(--rmp-space-1)", fontWeight: 500, fontSize: "var(--rmp-font-size-base)" }}
         >
           Тип учётной записи
         </label>
@@ -92,13 +94,13 @@ export default function LoginPage() {
           onChange={(e) => setProvider(e.target.value as AuthProvider)}
           style={{
             width: "100%",
-            padding: "0.5rem",
-            marginBottom: "1rem",
-            border: "1px solid #d1d5db",
-            borderRadius: 4,
-            fontSize: "0.875rem",
+            padding: "var(--rmp-space-2)",
+            marginBottom: "var(--rmp-space-4)",
+            border: "1px solid var(--rmp-border-strong)",
+            borderRadius: "var(--rmp-radius-sm)",
+            fontSize: "var(--rmp-font-size-base)",
             boxSizing: "border-box",
-            background: "#fff",
+            background: "var(--rmp-bg-surface)",
           }}
         >
           {Object.entries(PROVIDER_LABELS).map(([key, label]) => (
@@ -108,7 +110,7 @@ export default function LoginPage() {
 
         <label
           htmlFor="login-username"
-          style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.875rem" }}
+          style={{ display: "block", marginBottom: "var(--rmp-space-1)", fontWeight: 500, fontSize: "var(--rmp-font-size-base)" }}
         >
           Имя пользователя
         </label>
@@ -121,18 +123,18 @@ export default function LoginPage() {
           autoFocus
           style={{
             width: "100%",
-            padding: "0.5rem",
-            marginBottom: "1rem",
-            border: "1px solid #d1d5db",
-            borderRadius: 4,
-            fontSize: "0.875rem",
+            padding: "var(--rmp-space-2)",
+            marginBottom: "var(--rmp-space-4)",
+            border: "1px solid var(--rmp-border-strong)",
+            borderRadius: "var(--rmp-radius-sm)",
+            fontSize: "var(--rmp-font-size-base)",
             boxSizing: "border-box",
           }}
         />
 
         <label
           htmlFor="login-password"
-          style={{ display: "block", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.875rem" }}
+          style={{ display: "block", marginBottom: "var(--rmp-space-1)", fontWeight: 500, fontSize: "var(--rmp-font-size-base)" }}
         >
           Пароль
         </label>
@@ -144,11 +146,11 @@ export default function LoginPage() {
           required
           style={{
             width: "100%",
-            padding: "0.5rem",
-            marginBottom: "1rem",
-            border: "1px solid #d1d5db",
-            borderRadius: 4,
-            fontSize: "0.875rem",
+            padding: "var(--rmp-space-2)",
+            marginBottom: "var(--rmp-space-4)",
+            border: "1px solid var(--rmp-border-strong)",
+            borderRadius: "var(--rmp-radius-sm)",
+            fontSize: "var(--rmp-font-size-base)",
             boxSizing: "border-box",
           }}
         />
@@ -158,19 +160,19 @@ export default function LoginPage() {
           disabled={loading}
           style={{
             width: "100%",
-            padding: "0.5rem",
-            background: loading ? "#9ca3af" : "#2563eb",
-            color: "#fff",
+            padding: "var(--rmp-space-2) var(--rmp-space-4)",
+            background: loading ? "var(--rmp-gray-400)" : "var(--rmp-primary-600)",
+            color: "var(--rmp-text-inverse)",
             border: "none",
-            borderRadius: 4,
-            fontSize: "0.875rem",
+            borderRadius: "var(--rmp-radius-sm)",
+            fontSize: "var(--rmp-font-size-base)",
             fontWeight: 500,
             cursor: loading ? "default" : "pointer",
           }}
         >
           {loading ? "Вход..." : "Войти"}
         </button>
-      </form>
+      </main>
     </div>
   );
 }

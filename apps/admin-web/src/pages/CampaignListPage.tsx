@@ -12,9 +12,25 @@ import type {
   AdvertiserOrganizationOut,
   AdvertiserBrandOut,
 } from "../api/types";
-import { statusLabel, statusColor } from "../api/types";
+import { statusLabel } from "../api/types";
+import PageHeader from "../components/PageHeader";
+import StatusBadge from "../components/StatusBadge";
+import type { StatusBadgeVariant } from "../components/StatusBadge";
 
 const PAGE_SIZE = 50;
+
+/** Map campaign status → StatusBadge variant */
+function statusVariant(status: string): StatusBadgeVariant {
+  switch (status) {
+    case "active":            return "active";
+    case "draft":             return "draft";
+    case "pending_approval":  return "review";
+    case "approved":          return "active";
+    case "rejected":          return "rejected";
+    case "paused":            return "neutral";
+    default:                  return "neutral";
+  }
+}
 
 export default function CampaignListPage() {
   const navigate = useNavigate();
@@ -24,12 +40,10 @@ export default function CampaignListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Lookup maps
   const [orgs, setOrgs] = useState<Map<string, AdvertiserOrganizationOut>>(new Map());
   const [brands, setBrands] = useState<Map<string, AdvertiserBrandOut>>(new Map());
   const [flights, setFlights] = useState<CampaignFlightOut[]>([]);
 
-  // Status filter
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const filteredCampaigns = statusFilter === "all"
     ? campaigns
@@ -45,7 +59,6 @@ export default function CampaignListPage() {
         listAdvertisers(),
         listBrands(),
       ]);
-
       setCampaigns(campsPage.items);
       setTotal(campsPage.total);
       setOffset(pageOffset);
@@ -59,12 +72,8 @@ export default function CampaignListPage() {
     }
   }, []);
 
-  useEffect(() => {
-    load(0);
-  }, [load]);
+  useEffect(() => { load(0); }, [load]);
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
   const hasPrev = offset > 0;
   const hasNext = offset + PAGE_SIZE < total;
 
@@ -72,18 +81,18 @@ export default function CampaignListPage() {
 
   if (loading) {
     return (
-      <div style={styles.centered}>
-        <p style={styles.muted}>Загрузка кампаний...</p>
+      <div style={centered}>
+        <p style={{ color: "var(--rmp-text-secondary)", fontSize: "var(--rmp-font-size-base)" }}>Загрузка кампаний...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={styles.centered}>
-        <div style={styles.errorBox}>
+      <div style={centered}>
+        <div style={{ background: "var(--rmp-danger-50)", color: "var(--rmp-danger-800)", padding: "var(--rmp-space-4)", borderRadius: "var(--rmp-radius-md)", maxWidth: 480 }}>
           <p style={{ margin: 0, fontWeight: 600 }}>Ошибка</p>
-          <p style={{ margin: "0.25rem 0 0", fontSize: "0.875rem" }}>{error}</p>
+          <p style={{ margin: "var(--rmp-space-1) 0 0", fontSize: "var(--rmp-font-size-base)" }}>{error}</p>
         </div>
       </div>
     );
@@ -92,16 +101,14 @@ export default function CampaignListPage() {
   if (filteredCampaigns.length === 0) {
     return (
       <div>
-        <h2 style={styles.heading}>Кампании</h2>
+        <PageHeader title="Кампании" />
         <FilterChips current={statusFilter} onChange={setStatusFilter} />
-        <div style={styles.emptyBox}>
+        <div style={{ background: "var(--rmp-gray-50)", border: "1px dashed var(--rmp-border-strong)", borderRadius: "var(--rmp-radius-md)", padding: "var(--rmp-space-8)", textAlign: "center", color: "var(--rmp-text-secondary)" }}>
           <p style={{ margin: 0, fontWeight: 500 }}>
             {statusFilter === "all" ? "Нет кампаний" : "Нет кампаний с этим статусом"}
           </p>
-          <p style={{ margin: "0.25rem 0 0", fontSize: "0.875rem", color: "#94a3b8" }}>
-            {statusFilter === "all"
-              ? "Создайте первую кампанию, чтобы она появилась здесь."
-              : "Измените фильтр или создайте новую кампанию."}
+          <p style={{ margin: "var(--rmp-space-1) 0 0", fontSize: "var(--rmp-font-size-base)", color: "var(--rmp-text-muted)" }}>
+            {statusFilter === "all" ? "Создайте первую кампанию." : "Измените фильтр или создайте новую кампанию."}
           </p>
         </div>
       </div>
@@ -117,86 +124,62 @@ export default function CampaignListPage() {
 
   function brandName(c: CampaignOut): string | null {
     if (!c.advertiser_brand_id) return null;
-    const b = brands.get(c.advertiser_brand_id);
-    return b?.name ?? null;
+    return brands.get(c.advertiser_brand_id)?.name ?? null;
   }
 
   function flightSummary(c: CampaignOut): string {
-    const campaignFlights = flights
-      .filter((f) => f.campaign_id === c.id)
-      .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
-
+    const campaignFlights = flights.filter((f) => f.campaign_id === c.id).sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
     if (campaignFlights.length === 0) return "—";
-
     const first = new Date(campaignFlights[0].start_at);
     const last = new Date(campaignFlights[campaignFlights.length - 1].end_at);
-
-    const fmt = (d: Date) =>
-      d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
-
-    if (campaignFlights.length === 1) {
-      return `${fmt(first)} – ${fmt(last)}`;
-    }
+    const fmt = (d: Date) => d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+    if (campaignFlights.length === 1) return `${fmt(first)} – ${fmt(last)}`;
     return `${campaignFlights.length} пер., ${fmt(first)} – ${fmt(last)}`;
   }
 
   function formatDate(iso: string): string {
-    return new Date(iso).toLocaleDateString("ru-RU", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
+    return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
   }
-
-  // ── Render ──
 
   return (
     <div>
-      <h2 style={styles.heading}>Кампании</h2>
+      <PageHeader title="Кампании" />
       <FilterChips current={statusFilter} onChange={setStatusFilter} />
-      <table style={styles.table}>
+      <table className="rmp-table">
         <thead>
           <tr>
-            <th style={styles.th}>Название</th>
-            <th style={styles.th}>Статус</th>
-            <th style={styles.th}>Рекламодатель</th>
-            <th style={styles.th}>Период</th>
-            <th style={styles.th}>Обновлено</th>
+            <th>Название</th>
+            <th>Статус</th>
+            <th>Рекламодатель</th>
+            <th>Период</th>
+            <th>Обновлено</th>
           </tr>
         </thead>
         <tbody>
           {filteredCampaigns.map((c) => (
             <tr
               key={c.id}
-              style={{ ...styles.row, cursor: "pointer" }}
+              style={{ cursor: "pointer" }}
               onClick={() => navigate(`/campaigns/${c.id}`)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") navigate(`/campaigns/${c.id}`);
-              }}
+              onKeyDown={(e) => { if (e.key === "Enter") navigate(`/campaigns/${c.id}`); }}
               tabIndex={0}
               role="link"
               aria-label={`Перейти к кампании ${c.name}`}
             >
-              <td style={styles.td}>
+              <td>
                 <div style={{ fontWeight: 500 }}>{c.name}</div>
-                <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
-                  {c.code}
-                  {brandName(c) ? ` · ${brandName(c)}` : ""}
+                <div style={{ fontSize: "var(--rmp-font-size-xs)", color: "var(--rmp-text-muted)" }}>
+                  {c.code}{brandName(c) ? ` · ${brandName(c)}` : ""}
                 </div>
               </td>
-              <td style={styles.td}>
-                <span
-                  style={{
-                    ...styles.badge,
-                    background: statusColor(c.status),
-                  }}
-                >
+              <td>
+                <StatusBadge variant={statusVariant(c.status)}>
                   {statusLabel(c.status)}
-                </span>
+                </StatusBadge>
               </td>
-              <td style={styles.td}>{orgName(c)}</td>
-              <td style={styles.td}>{flightSummary(c)}</td>
-              <td style={{ ...styles.td, fontSize: "0.8rem", color: "#64748b" }}>
+              <td>{orgName(c)}</td>
+              <td>{flightSummary(c)}</td>
+              <td style={{ fontSize: "var(--rmp-font-size-sm)", color: "var(--rmp-text-secondary)" }}>
                 {formatDate(c.updated_at)}
               </td>
             </tr>
@@ -204,11 +187,8 @@ export default function CampaignListPage() {
         </tbody>
       </table>
       <Pagination
-        total={total}
-        offset={offset}
-        limit={PAGE_SIZE}
-        hasPrev={hasPrev}
-        hasNext={hasNext}
+        total={total} offset={offset} limit={PAGE_SIZE}
+        hasPrev={hasPrev} hasNext={hasNext}
         onPrev={() => load(offset - PAGE_SIZE)}
         onNext={() => load(offset + PAGE_SIZE)}
       />
@@ -216,76 +196,35 @@ export default function CampaignListPage() {
   );
 }
 
-// ── Pagination component ──
+// ── Pagination ──
 
-function Pagination({
-  total,
-  offset,
-  limit,
-  hasPrev,
-  hasNext,
-  onPrev,
-  onNext,
-}: {
-  total: number;
-  offset: number;
-  limit: number;
-  hasPrev: boolean;
-  hasNext: boolean;
-  onPrev: () => void;
-  onNext: () => void;
+function Pagination({ total, offset, limit, hasPrev, hasNext, onPrev, onNext }: {
+  total: number; offset: number; limit: number; hasPrev: boolean; hasNext: boolean;
+  onPrev: () => void; onNext: () => void;
 }) {
   if (total <= limit) return null;
-
   const from = offset + 1;
   const to = Math.min(offset + limit, total);
-
   return (
-    <div style={pgnStyles.row}>
-      <span style={pgnStyles.info}>
-        {from}–{to} из {total}
-      </span>
-      <div style={{ display: "flex", gap: "0.25rem" }}>
-        <button
-          onClick={onPrev}
-          disabled={!hasPrev}
-          style={pgnStyles.btn(hasPrev)}
-        >
-          ← Назад
-        </button>
-        <button
-          onClick={onNext}
-          disabled={!hasNext}
-          style={pgnStyles.btn(hasNext)}
-        >
-          Вперёд →
-        </button>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "var(--rmp-space-3)", fontSize: "var(--rmp-font-size-sm)" }}>
+      <span style={{ color: "var(--rmp-text-secondary)" }}>{from}–{to} из {total}</span>
+      <div style={{ display: "flex", gap: "var(--rmp-space-1)" }}>
+        <button onClick={onPrev} disabled={!hasPrev} style={pgnBtn(hasPrev)}>← Назад</button>
+        <button onClick={onNext} disabled={!hasNext} style={pgnBtn(hasNext)}>Вперёд →</button>
       </div>
     </div>
   );
 }
 
-const pgnStyles = {
-  row: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: "0.75rem",
-    fontSize: "0.8125rem",
-  } as React.CSSProperties,
-  info: {
-    color: "#64748b",
-  } as React.CSSProperties,
-  btn: (enabled: boolean): React.CSSProperties => ({
-    padding: "0.2rem 0.6rem",
-    fontSize: "0.75rem",
-    border: "1px solid #cbd5e1",
-    borderRadius: 4,
-    background: enabled ? "#fff" : "#f1f5f9",
-    color: enabled ? "#334155" : "#94a3b8",
+function pgnBtn(enabled: boolean): React.CSSProperties {
+  return {
+    padding: "0.15rem 0.5rem", fontSize: "var(--rmp-font-size-xs)",
+    border: "1px solid var(--rmp-border-strong)", borderRadius: "var(--rmp-radius-sm)",
+    background: enabled ? "var(--rmp-bg-surface)" : "var(--rmp-gray-100)",
+    color: enabled ? "var(--rmp-text-primary)" : "var(--rmp-text-muted)",
     cursor: enabled ? "pointer" : "default",
-  }),
-};
+  };
+}
 
 // ── Filter chips ──
 
@@ -297,30 +236,21 @@ const FILTER_OPTIONS = [
   { value: "approved", label: "Согласованные" },
 ];
 
-function FilterChips({
-  current,
-  onChange,
-}: {
-  current: string;
-  onChange: (v: string) => void;
-}) {
+function FilterChips({ current, onChange }: { current: string; onChange: (v: string) => void }) {
   return (
-    <div style={{ display: "flex", gap: "0.35rem", marginBottom: "0.75rem", flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: "0.35rem", marginBottom: "var(--rmp-space-3)", flexWrap: "wrap" }}>
       {FILTER_OPTIONS.map((opt) => (
         <button
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
           style={{
-            padding: "0.2rem 0.6rem",
-            borderRadius: 999,
-            border: current === opt.value ? "1px solid #2563eb" : "1px solid #d1d5db",
-            background: current === opt.value ? "#eff6ff" : "#fff",
-            color: current === opt.value ? "#1d4ed8" : "#475569",
-            fontSize: "0.75rem",
-            fontWeight: current === opt.value ? 600 : 400,
-            cursor: "pointer",
-            lineHeight: "1.5",
+            padding: "0.2rem 0.6rem", borderRadius: 999,
+            border: current === opt.value ? "1px solid var(--rmp-primary-500)" : "1px solid var(--rmp-border-strong)",
+            background: current === opt.value ? "var(--rmp-primary-50)" : "var(--rmp-bg-surface)",
+            color: current === opt.value ? "var(--rmp-primary-700)" : "var(--rmp-text-secondary)",
+            fontSize: "var(--rmp-font-size-xs)", fontWeight: current === opt.value ? 600 : 400,
+            cursor: "pointer", lineHeight: "1.5",
           }}
         >
           {opt.label}
@@ -330,73 +260,8 @@ function FilterChips({
   );
 }
 
-// ── Styles ──
+// ── Shared ──
 
-const styles: Record<string, React.CSSProperties> = {
-  heading: {
-    margin: "0 0 1rem",
-    fontSize: "1.25rem",
-    fontWeight: 600,
-  },
-  centered: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 200,
-  },
-  muted: {
-    color: "#64748b",
-    fontSize: "0.875rem",
-  },
-  errorBox: {
-    background: "#fef2f2",
-    color: "#991b1b",
-    padding: "1rem",
-    borderRadius: 6,
-    maxWidth: 480,
-  },
-  emptyBox: {
-    background: "#f8fafc",
-    border: "1px dashed #cbd5e1",
-    borderRadius: 6,
-    padding: "2rem",
-    textAlign: "center" as const,
-    color: "#64748b",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse" as const,
-    fontSize: "0.875rem",
-    background: "#fff",
-    borderRadius: 6,
-    overflow: "hidden",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
-  },
-  th: {
-    textAlign: "left" as const,
-    padding: "0.5rem 0.75rem",
-    fontWeight: 600,
-    color: "#475569",
-    borderBottom: "1px solid #e2e8f0",
-    fontSize: "0.75rem",
-    textTransform: "uppercase" as const,
-    letterSpacing: "0.05em",
-  },
-  td: {
-    padding: "0.6rem 0.75rem",
-    borderBottom: "1px solid #f1f5f9",
-    verticalAlign: "middle" as const,
-  },
-  row: {
-    transition: "background 0.1s",
-  },
-  badge: {
-    display: "inline-block",
-    padding: "0.15rem 0.5rem",
-    borderRadius: 999,
-    fontSize: "0.75rem",
-    fontWeight: 500,
-    color: "#fff",
-    lineHeight: "1.4",
-  },
+const centered: React.CSSProperties = {
+  display: "flex", alignItems: "center", justifyContent: "center", minHeight: 200,
 };

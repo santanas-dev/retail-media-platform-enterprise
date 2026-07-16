@@ -58,7 +58,7 @@ remediation sequence.
 
 | # | Finding | Impact | Proposed Ticket |
 |---|---------|--------|-----------------|
-| P3-1 | No design system tokens/components | Inconsistent UI, slow iteration | S-073 |
+| P3-1 | No design system tokens/components | Inconsistent UI, slow iteration | S-073 ✅ |
 | P3-2 | Inline-style sprawl in page components | Maintenance burden | S-073 |
 | P3-3 | Contrast / accessibility issues | WCAG non-compliance | S-073 |
 | P3-4 | Missing h1 / page landmarks | Screen-reader navigation | S-073 |
@@ -140,12 +140,17 @@ S-072 ✅ ─► Inventory domain gap analysis and plan  (done 2026-07-16)
           ├─ Player/KSO assessment: можно начинать после S-079 (minimal inventory contract: availability + booking)
           └─ Deferred: pricing, programmatic, billing, ClickHouse analytics → v2.6+
 
-S-073 ─► UI design-system / a11y foundation
-          ├─ Design tokens + component library start
-          ├─ Accessibility audit fixes (contrast, landmarks, focus)
-          └─ i18n strategy document
+S-073 ✅ ─► UI design-system / a11y foundation  (foundation done 2026-07-16)
+          ├─ Design tokens: tokens.css — 60+ custom properties, WCAG AA colors, spacing, focus ring
+          ├─ Shared components: Button (primary/secondary/danger/ghost), StatusBadge, PageHeader
+          ├─ Pages migrated: LoginPage, Layout, CampaignListPage, CreativeModerationPage, InventoryPage
+          ├─ Admin login default provider → AD (was local_advertiser)
+          ├─ Contrast fixes: replaced white-on-colored badges with WCAG-compliant text-on-background
+          ├─ Accessibility: <main> landmarks, focus-visible ring, h1 page headers, hover states on nav
+          ├─ Known limitations: full WCAG audit pending, advertiser-web not touched, i18n deferred
+          └─ CI: 101/101 tests green, tsc --noEmit clean
 
-S-074 ─► v0.6.2 / v0.7 readiness review
+S-074 ─► v0.6.2/v0.7 readiness review
           ├─ pop-ingestor architecture review
           ├─ ADR-003 device identity gap
           ├─ ТЗ extraction integrity

@@ -3,11 +3,12 @@ import { listModerationQueue, approveCreative, rejectCreative } from "../api/cam
 import { ApiError } from "../api/client";
 import type { CreativeModerationQueueItem } from "../api/types";
 import { moderationStatusLabel, statusLabel } from "../api/types";
+import PageHeader from "../components/PageHeader";
+import StatusBadge from "../components/StatusBadge";
+import type { StatusBadgeVariant } from "../components/StatusBadge";
 
 function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("ru-RU", {
-    day: "numeric", month: "short", year: "numeric",
-  });
+  return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
 }
 
 function fmtSize(bytes: number): string {
@@ -29,22 +30,27 @@ function fmtDuration(ms: number | null): string {
   return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
 }
 
+function modVariant(s: string): StatusBadgeVariant {
+  switch (s) {
+    case "approved": return "active";
+    case "rejected": return "rejected";
+    default: return "review";
+  }
+}
+
 const PAGE_SIZE = 50;
 
-function Pagination({
-  total, offset, limit, hasPrev, hasNext, onPrev, onNext,
-}: {
-  total: number; offset: number; limit: number;
-  hasPrev: boolean; hasNext: boolean;
+function Pagination({ total, offset, limit, hasPrev, hasNext, onPrev, onNext }: {
+  total: number; offset: number; limit: number; hasPrev: boolean; hasNext: boolean;
   onPrev: () => void; onNext: () => void;
 }) {
   if (total <= limit) return null;
   const from = offset + 1;
   const to = Math.min(offset + limit, total);
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.75rem", fontSize: "0.8125rem" }}>
-      <span style={{ color: "#64748b" }}>{from}–{to} из {total}</span>
-      <div style={{ display: "flex", gap: "0.25rem" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "var(--rmp-space-3)", fontSize: "var(--rmp-font-size-sm)" }}>
+      <span style={{ color: "var(--rmp-text-secondary)" }}>{from}–{to} из {total}</span>
+      <div style={{ display: "flex", gap: "var(--rmp-space-1)" }}>
         <button onClick={onPrev} disabled={!hasPrev} style={pgnBtn(hasPrev)}>← Назад</button>
         <button onClick={onNext} disabled={!hasNext} style={pgnBtn(hasNext)}>Вперёд →</button>
       </div>
@@ -54,9 +60,11 @@ function Pagination({
 
 function pgnBtn(enabled: boolean): React.CSSProperties {
   return {
-    padding: "0.2rem 0.6rem", fontSize: "0.75rem", border: "1px solid #cbd5e1",
-    borderRadius: 4, background: enabled ? "#fff" : "#f1f5f9",
-    color: enabled ? "#334155" : "#94a3b8", cursor: enabled ? "pointer" : "default",
+    padding: "0.15rem 0.5rem", fontSize: "var(--rmp-font-size-xs)",
+    border: "1px solid var(--rmp-border-strong)", borderRadius: "var(--rmp-radius-sm)",
+    background: enabled ? "var(--rmp-bg-surface)" : "var(--rmp-gray-100)",
+    color: enabled ? "var(--rmp-text-primary)" : "var(--rmp-text-muted)",
+    cursor: enabled ? "pointer" : "default",
   };
 }
 
@@ -110,19 +118,14 @@ export default function CreativeModerationPage() {
     setActionError(null);
     try {
       await rejectCreative(assetId, { reason: rejectReason.trim() });
-      setRejectingId(null);
-      setRejectReason("");
+      setRejectingId(null); setRejectReason("");
       await load(filter, offset);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Ошибка при отклонении");
     }
   };
 
-  const openReject = (id: string) => {
-    setRejectingId(id);
-    setRejectReason("");
-    setActionError(null);
-  };
+  const openReject = (id: string) => { setRejectingId(id); setRejectReason(""); setActionError(null); };
 
   const FILTERS = [
     { value: "pending_review", label: "На проверке" },
@@ -133,102 +136,91 @@ export default function CreativeModerationPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "1rem" }}>
-        Модерация креативов
-      </h1>
+      <PageHeader title="Модерация креативов" />
       {actionError && (
-        <div style={{ padding: "0.5rem 1rem", marginBottom: "0.5rem", background: "#fef2f2", color: "#dc2626", borderRadius: 4, fontSize: "0.875rem" }}>
+        <div style={{ padding: "var(--rmp-space-2) var(--rmp-space-4)", marginBottom: "var(--rmp-space-2)", background: "var(--rmp-danger-50)", color: "var(--rmp-danger-600)", borderRadius: "var(--rmp-radius-sm)", fontSize: "var(--rmp-font-size-base)" }}>
           {actionError}
         </div>
       )}
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+      <div style={{ display: "flex", gap: "var(--rmp-space-2)", marginBottom: "var(--rmp-space-4)" }}>
         {FILTERS.map((f) => (
           <button
             key={f.value}
             onClick={() => setFilter(f.value)}
             style={{
-              padding: "0.25rem 0.75rem",
-              borderRadius: 4,
-              border: "1px solid #cbd5e1",
-              background: filter === f.value ? "#1e293b" : "#fff",
-              color: filter === f.value ? "#fff" : "#334155",
-              cursor: "pointer",
-              fontSize: "0.8125rem",
+              padding: "var(--rmp-space-1) var(--rmp-space-3)", borderRadius: "var(--rmp-radius-sm)",
+              border: "1px solid var(--rmp-border-strong)",
+              background: filter === f.value ? "var(--rmp-gray-800)" : "var(--rmp-bg-surface)",
+              color: filter === f.value ? "var(--rmp-text-inverse)" : "var(--rmp-text-primary)",
+              cursor: "pointer", fontSize: "var(--rmp-font-size-sm)",
             }}
           >
             {f.label}
           </button>
         ))}
       </div>
-      {loading && <p style={{ color: "#64748b" }}>Загрузка...</p>}
-      {error && !loading && <p style={{ color: "#dc2626" }}>{error}</p>}
+      {loading && <p style={{ color: "var(--rmp-text-secondary)" }}>Загрузка...</p>}
+      {error && !loading && <p style={{ color: "var(--rmp-danger-600)" }}>{error}</p>}
       {!loading && !error && items.length === 0 && (
-        <p style={{ color: "#64748b" }}>Очередь пуста</p>
+        <p style={{ color: "var(--rmp-text-secondary)" }}>Очередь пуста</p>
       )}
       {!loading && items.length > 0 && (
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
+        <table className="rmp-table">
           <thead>
-            <tr style={{ background: "#f1f5f9", textAlign: "left" }}>
-              <th style={thStyle}>Креатив</th>
-              <th style={thStyle}>Рекламодатель</th>
-              <th style={thStyle}>Тип</th>
-              <th style={thStyle}>Размер</th>
-              <th style={thStyle}>Статус</th>
-              <th style={thStyle}>Модерация</th>
-              <th style={thStyle}>Создан</th>
-              <th style={thStyle}>Действия</th>
+            <tr>
+              <th>Креатив</th>
+              <th>Рекламодатель</th>
+              <th>Тип</th>
+              <th>Размер</th>
+              <th>Статус</th>
+              <th>Модерация</th>
+              <th>Создан</th>
+              <th>Действия</th>
             </tr>
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.id} style={{ borderBottom: "1px solid #e2e8f0" }}>
-                <td style={tdStyle}>
+              <tr key={item.id}>
+                <td>
                   <div style={{ fontWeight: 600 }}>{item.name}</div>
-                  <div style={{ color: "#64748b", fontSize: "0.75rem" }}>{item.code}</div>
+                  <div style={{ color: "var(--rmp-text-secondary)", fontSize: "var(--rmp-font-size-xs)" }}>{item.code}</div>
                 </td>
-                <td style={tdStyle}>{item.advertiser_name ?? item.advertiser_code ?? "—"}</td>
-                <td style={tdStyle}>{item.media_type}</td>
-                <td style={tdStyle}>
+                <td>{item.advertiser_name ?? item.advertiser_code ?? "—"}</td>
+                <td>{item.media_type}</td>
+                <td>
                   {fmtSize(item.file_size_bytes)}
                   {item.resolution_w && <><br />{fmtResolution(item.resolution_w, item.resolution_h)}</>}
                   {item.duration_ms && <><br />{fmtDuration(item.duration_ms)}</>}
                 </td>
-                <td style={tdStyle}>{statusLabel(item.status)}</td>
-                <td style={tdStyle}>
-                  <span style={{
-                    color: item.moderation_status === "approved" ? "#059669"
-                      : item.moderation_status === "rejected" ? "#dc2626"
-                      : "#d97706",
-                    fontWeight: 500,
-                  }}>
+                <td>{statusLabel(item.status)}</td>
+                <td>
+                  <StatusBadge variant={modVariant(item.moderation_status)}>
                     {moderationStatusLabel(item.moderation_status)}
-                  </span>
+                  </StatusBadge>
                   {item.moderation_notes && item.moderation_status === "rejected" && (
-                    <div style={{ color: "#64748b", fontSize: "0.75rem", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ color: "var(--rmp-text-secondary)", fontSize: "var(--rmp-font-size-xs)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {item.moderation_notes}
                     </div>
                   )}
                 </td>
-                <td style={tdStyle}>{fmtDate(item.created_at)}</td>
-                <td style={tdStyle}>
+                <td>{fmtDate(item.created_at)}</td>
+                <td>
                   {rejectingId === item.id ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       <input
-                        type="text"
-                        placeholder="Причина отказа"
-                        value={rejectReason}
-                        onChange={(e) => setRejectReason(e.target.value)}
-                        style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem", border: "1px solid #cbd5e1", borderRadius: 4, width: 140 }}
+                        type="text" placeholder="Причина отказа"
+                        value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
+                        style={{ padding: "var(--rmp-space-1) var(--rmp-space-2)", fontSize: "var(--rmp-font-size-xs)", border: "1px solid var(--rmp-border-strong)", borderRadius: "var(--rmp-radius-sm)", width: 140 }}
                       />
                       <div style={{ display: "flex", gap: 4 }}>
-                        <button onClick={() => handleReject(item.id)} disabled={!rejectReason.trim()} style={actionBtnStyle("#dc2626", !rejectReason.trim())}>Отклонить</button>
-                        <button onClick={() => setRejectingId(null)} style={actionBtnStyle("#64748b")}>Отмена</button>
+                        <button onClick={() => handleReject(item.id)} disabled={!rejectReason.trim()} style={actionBtn("var(--rmp-danger-600)", !rejectReason.trim())}>Отклонить</button>
+                        <button onClick={() => setRejectingId(null)} style={actionBtn("var(--rmp-text-secondary)")}>Отмена</button>
                       </div>
                     </div>
                   ) : (
                     <div style={{ display: "flex", gap: 4 }}>
-                      <button onClick={() => handleApprove(item.id)} style={actionBtnStyle("#059669")}>Одобрить</button>
-                      <button onClick={() => openReject(item.id)} style={actionBtnStyle("#dc2626")}>Отклонить</button>
+                      <button onClick={() => handleApprove(item.id)} style={actionBtn("var(--rmp-success-600)")}>Одобрить</button>
+                      <button onClick={() => openReject(item.id)} style={actionBtn("var(--rmp-danger-600)")}>Отклонить</button>
                     </div>
                   )}
                 </td>
@@ -238,37 +230,20 @@ export default function CreativeModerationPage() {
         </table>
       )}
       {!loading && items.length > 0 && (
-        <Pagination
-          total={total} offset={offset} limit={PAGE_SIZE}
+        <Pagination total={total} offset={offset} limit={PAGE_SIZE}
           hasPrev={hasPrev} hasNext={hasNext}
-          onPrev={() => load(filter, offset - PAGE_SIZE)}
-          onNext={() => load(filter, offset + PAGE_SIZE)}
-        />
+          onPrev={() => load(filter, offset - PAGE_SIZE)} onNext={() => load(filter, offset + PAGE_SIZE)} />
       )}
     </div>
   );
 }
 
-const thStyle: React.CSSProperties = {
-  padding: "0.5rem 0.75rem",
-  fontWeight: 600,
-  color: "#475569",
-  fontSize: "0.75rem",
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: "0.5rem 0.75rem",
-  verticalAlign: "top",
-};
-
-function actionBtnStyle(color: string, disabled = false): React.CSSProperties {
+function actionBtn(color: string, disabled = false): React.CSSProperties {
   return {
-    padding: "0.15rem 0.5rem",
-    fontSize: "0.75rem",
-    border: `1px solid ${color}`,
-    borderRadius: 4,
-    background: disabled ? "#e2e8f0" : "#fff",
-    color: disabled ? "#94a3b8" : color,
+    padding: "0.15rem 0.5rem", fontSize: "var(--rmp-font-size-xs)",
+    border: `1px solid ${color}`, borderRadius: "var(--rmp-radius-sm)",
+    background: disabled ? "var(--rmp-gray-200)" : "var(--rmp-bg-surface)",
+    color: disabled ? "var(--rmp-text-muted)" : color,
     cursor: disabled ? "default" : "pointer",
   };
 }
