@@ -9,7 +9,7 @@
 
 | Branch  | SHA      | Note |
 |---------|----------|------|
-| develop | 80276f1  | S-089 fix: slot_fill_percent >100% |
+| develop | e37e4b6  | S-089 fix: slot_fill_percent >100% + CI green |
 | main    | cab9014  | C1 merged (v0.8) |
 
 ## Active Workstreams
