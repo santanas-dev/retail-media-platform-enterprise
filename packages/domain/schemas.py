@@ -897,3 +897,45 @@ class ADTestResultOut(BaseModel):
     message: str
     tested_at: datetime | None = None
     error_code: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# S-070 — Fleet / Device Health
+# ---------------------------------------------------------------------------
+
+
+class DeviceOut(BaseModel):
+    """Safe device representation — no secrets/tokens/HMAC keys."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    store_id: str
+    device_type_id: str
+    code: str
+    serial_number: str = ""
+    os_version: str = ""
+    ip_address: str = ""
+    status: str
+    last_seen_at: datetime | None = None
+    current_manifest_id: str | None = None
+    cache_size_bytes: int = 0
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class DeviceSummaryOut(BaseModel):
+    """Aggregated fleet health summary."""
+
+    total: int = 0
+    active: int = 0
+    inactive: int = 0
+    error: int = 0
+    unregistered: int = 0
+
+
+class PaginatedDevices(BaseModel):
+    items: list[DeviceOut]
+    total: int
+    limit: int
+    offset: int

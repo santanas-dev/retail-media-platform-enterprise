@@ -206,3 +206,36 @@ export interface PaginatedAuditEvents {
   limit: number;
   offset: number;
 }
+
+// ── S-070 — Fleet / Device Health ──
+
+export interface DeviceOut {
+  id: string;
+  store_id: string;
+  device_type_id: string;
+  code: string;
+  serial_number: string;
+  os_version: string;
+  ip_address: string;
+  status: string;
+  last_seen_at: string | null;
+  current_manifest_id: string | null;
+  cache_size_bytes: number;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface DeviceSummaryOut {
+  total: number;
+  active: number;
+  inactive: number;
+  error: number;
+  unregistered: number;
+}
+
+export interface PaginatedDevices {
+  items: DeviceOut[];
+  total: number;
+  limit: number;
+  offset: number;
+}

@@ -17,6 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/users", label: "Пользователи", requiredPermissions: ["users.read"] },
   { to: "/settings/ad", label: "Настройки AD", requiredPermissions: ["users.manage"] },
   { to: "/audit", label: "Журнал аудита", requiredPermissions: ["audit.read"] },
+  { to: "/devices", label: "Устройства", requiredPermissions: ["devices.read"] },
 ];
 
 function hasAnyPermission(userPermissions: string[] | undefined, required: string[]): boolean {

@@ -3189,3 +3189,70 @@ async def update_local_credential_password(
         )
     )
     return result.rowcount > 0
+
+
+# ---------------------------------------------------------------------------
+# S-070 — Fleet / Device Health
+# ---------------------------------------------------------------------------
+
+
+async def list_devices(
+    session: AsyncSession,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+    status: str | None = None,
+) -> tuple[list["PhysicalDevice"], int]:
+    """Return paginated physical devices (newest first), with optional status filter."""
+    from packages.domain.models import PhysicalDevice
+
+    base = select(func.count()).select_from(PhysicalDevice)
+    if status is not None:
+        base = base.where(PhysicalDevice.status == status)
+    total = await session.scalar(base)
+
+    stmt = (
+        select(PhysicalDevice)
+        .order_by(PhysicalDevice.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    if status is not None:
+        stmt = stmt.where(PhysicalDevice.status == status)
+    result = await session.execute(stmt)
+    return list(result.scalars().all()), total or 0
+
+
+async def get_device(session: AsyncSession, device_id: str) -> "PhysicalDevice | None":
+    """Get a single device by id."""
+    from packages.domain.models import PhysicalDevice
+
+    stmt = select(PhysicalDevice).where(PhysicalDevice.id == device_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def get_device_summary(session: AsyncSession) -> dict[str, int]:
+    """Return fleet health summary counts."""
+    from packages.domain.models import PhysicalDevice
+
+    total = await session.scalar(select(func.count()).select_from(PhysicalDevice))
+    active = await session.scalar(
+        select(func.count()).select_from(PhysicalDevice).where(PhysicalDevice.status == "active")
+    )
+    inactive = await session.scalar(
+        select(func.count()).select_from(PhysicalDevice).where(PhysicalDevice.status == "inactive")
+    )
+    error = await session.scalar(
+        select(func.count()).select_from(PhysicalDevice).where(PhysicalDevice.status == "error")
+    )
+    unregistered = await session.scalar(
+        select(func.count()).select_from(PhysicalDevice).where(PhysicalDevice.status == "unregistered")
+    )
+    return {
+        "total": total or 0,
+        "active": active or 0,
+        "inactive": inactive or 0,
+        "error": error or 0,
+        "unregistered": unregistered or 0,
+    }

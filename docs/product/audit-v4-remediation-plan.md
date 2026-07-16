@@ -49,7 +49,7 @@ remediation sequence.
 | P2-5 | Manifest signature not persisted / threat model not documented | Integrity verification gap | S-067 ✅ done |
 | P2-6 | Admin menu not filtered by user permissions | UX confusion, security-relevant | S-069 ✅ |
 | P2-7 | No audit log UI — audit_events_operational write-only | Operators can't review audit trail | S-069 ✅ |
-| P2-8 | No device/fleet health UI | Operational blindness | S-070 |
+| P2-8 | No device/fleet health UI | Operational blindness | S-070 ✅ |
 | P2-9 | No emergency workspace / kill-switch UI | ADR-013 architecture proven but no operator UI | S-071 |
 | P2-10 | Inventory domain not implemented per ТЗ §6.3 (airtime, forecasting, conflicts, sold-out) | Core domain gap | S-072 |
 | P2-11 | 152-ФЗ operational docs/procedures not prepared | Compliance risk | S-073 |
@@ -117,7 +117,11 @@ S-069 ✅ ─► Admin UI: audit log + permission-filtered menu  (done 2026-07-1
           ├─ Menu filtering by user permissions — 8 nav items with requiredPermissions
           └─ No backend changes needed (audit-events endpoint was already paginated)
 
-S-070 ─► Fleet/device health workspace (plan or MVP)
+S-070 ✅ ─► Fleet/device health workspace  (done 2026-07-16)
+          ├─ GET /devices (paginated), /devices/summary, /devices/{id}
+          ├─ Admin-web DeviceHealthPage: summary cards + table
+          ├─ devices.read permission already existed in seed
+          └─ Honest «нет данных» for player version, free space, errors — telemetry not yet collected
           └─ Device status dashboard, last-seen, health indicators
 
 S-071 ─► Emergency workspace (plan or MVP)
