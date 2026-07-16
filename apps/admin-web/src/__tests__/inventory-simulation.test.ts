@@ -13,8 +13,8 @@ vi.mock("../api/client", () => ({
   },
   ApiError: class extends Error {
     status: number;
-    constructor(message: string, status: number) {
-      super(message);
+    constructor(status: number, body: unknown) {
+      super(typeof body === "string" ? body : String(body));
       this.status = status;
       this.name = "ApiError";
     }
@@ -86,7 +86,7 @@ describe("simulateInventory API", () => {
   it("propagates API errors", async () => {
     const { ApiError } = await import("../api/client");
     vi.mocked(api.post).mockRejectedValueOnce(
-      new ApiError("Campaign not found", 404),
+      new ApiError(404, "Campaign not found"),
     );
 
     await expect(simulateInventory("c-unknown")).rejects.toThrow(

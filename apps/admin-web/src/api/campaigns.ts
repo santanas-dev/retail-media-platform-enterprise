@@ -51,6 +51,7 @@ import type {
   InventoryRuleCreate,
   InventoryRuleUpdate,
   CampaignInventoryReservationsResponse,
+  InventorySimulationResponse,
 } from "./types";
 
 // ── Campaigns ──
