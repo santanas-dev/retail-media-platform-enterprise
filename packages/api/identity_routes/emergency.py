@@ -66,6 +66,19 @@ async def emergency_activate(
         target_id=override.id,
         details={"reason": body.reason},
     )
+    # Outbox event — propagate to runtime/player via NATS relay
+    await repository.enqueue_outbox_event(
+        db,
+        event_type="emergency.changed",
+        aggregate_type="emergency_override",
+        aggregate_id=override.id,
+        payload={
+            "active": True,
+            "reason": body.reason,
+            "activated_by": _actor_from_claims(claims),
+            "activated_at": override.activated_at.isoformat() if override.activated_at else None,
+        },
+    )
     return EmergencyStatusOut(
         active=True,
         reason=override.reason,
@@ -98,5 +111,18 @@ async def emergency_deactivate(
         target_type="emergency_override",
         target_id=override.id,
         details={"reason": body.reason},
+    )
+    # Outbox event — propagate to runtime/player via NATS relay
+    await repository.enqueue_outbox_event(
+        db,
+        event_type="emergency.changed",
+        aggregate_type="emergency_override",
+        aggregate_id=override.id,
+        payload={
+            "active": False,
+            "reason": body.reason,
+            "deactivated_by": _actor_from_claims(claims),
+            "deactivated_at": override.deactivated_at.isoformat() if override.deactivated_at else None,
+        },
     )
     return EmergencyStatusOut(active=False)

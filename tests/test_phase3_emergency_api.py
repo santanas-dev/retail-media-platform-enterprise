@@ -99,9 +99,14 @@ class TestEmergencyActivate(AuthzMixin, unittest.TestCase):
         "packages.api.identity_routes.emergency.repository.create_audit_event",
         new_callable=AsyncMock,
     )
-    def test_activate_success(self, mock_audit, mock_activate):
+    @patch(
+        "packages.api.identity_routes.emergency.repository.enqueue_outbox_event",
+        new_callable=AsyncMock,
+    )
+    def test_activate_success(self, mock_outbox, mock_audit, mock_activate):
         mock_activate.return_value = _mock_override()
         mock_audit.return_value = None
+        mock_outbox.return_value = "ev-001"
         self._setup_authz(perms={"emergency.manage"})
         client = TestClient(_get_app())
         resp = client.post(
@@ -188,6 +193,40 @@ class TestEmergencyActivate(AuthzMixin, unittest.TestCase):
         )
         self.assertEqual(resp.status_code, 403)
 
+    @patch(
+        "packages.api.identity_routes.emergency.repository.activate_emergency_override",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "packages.api.identity_routes.emergency.repository.create_audit_event",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "packages.api.identity_routes.emergency.repository.enqueue_outbox_event",
+        new_callable=AsyncMock,
+    )
+    def test_activate_enqueues_outbox_event(
+        self, mock_outbox, mock_audit, mock_activate,
+    ):
+        """Activate must enqueue an emergency.changed outbox event."""
+        mock_activate.return_value = _mock_override()
+        mock_audit.return_value = None
+        mock_outbox.return_value = "ev-001"
+        self._setup_authz(perms={"emergency.manage"})
+        client = TestClient(_get_app())
+        resp = client.post(
+            "/api/v1/identity/emergency/activate",
+            json={"reason": "Технические работы"},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 200)
+        mock_outbox.assert_called_once()
+        call_kwargs = mock_outbox.call_args.kwargs
+        self.assertEqual(call_kwargs["event_type"], "emergency.changed")
+        self.assertEqual(call_kwargs["aggregate_type"], "emergency_override")
+        self.assertEqual(call_kwargs["payload"]["active"], True)
+        self.assertEqual(call_kwargs["payload"]["reason"], "Технические работы")
+
 
 # ── Deactivate ──
 
@@ -202,9 +241,14 @@ class TestEmergencyDeactivate(AuthzMixin, unittest.TestCase):
         "packages.api.identity_routes.emergency.repository.create_audit_event",
         new_callable=AsyncMock,
     )
-    def test_deactivate_success(self, mock_audit, mock_deactivate):
+    @patch(
+        "packages.api.identity_routes.emergency.repository.enqueue_outbox_event",
+        new_callable=AsyncMock,
+    )
+    def test_deactivate_success(self, mock_outbox, mock_audit, mock_deactivate):
         mock_deactivate.return_value = _mock_override(active=False)
         mock_audit.return_value = None
+        mock_outbox.return_value = "ev-002"
         self._setup_authz(perms={"emergency.manage"})
         client = TestClient(_get_app())
         resp = client.post(
@@ -263,6 +307,40 @@ class TestEmergencyDeactivate(AuthzMixin, unittest.TestCase):
             headers=_auth(_token()),
         )
         self.assertEqual(resp.status_code, 403)
+
+    @patch(
+        "packages.api.identity_routes.emergency.repository.deactivate_emergency_override",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "packages.api.identity_routes.emergency.repository.create_audit_event",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "packages.api.identity_routes.emergency.repository.enqueue_outbox_event",
+        new_callable=AsyncMock,
+    )
+    def test_deactivate_enqueues_outbox_event(
+        self, mock_outbox, mock_audit, mock_deactivate,
+    ):
+        """Deactivate must enqueue an emergency.changed outbox event."""
+        mock_deactivate.return_value = _mock_override(active=False)
+        mock_audit.return_value = None
+        mock_outbox.return_value = "ev-002"
+        self._setup_authz(perms={"emergency.manage"})
+        client = TestClient(_get_app())
+        resp = client.post(
+            "/api/v1/identity/emergency/deactivate",
+            json={"reason": "Работы завершены"},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 200)
+        mock_outbox.assert_called_once()
+        call_kwargs = mock_outbox.call_args.kwargs
+        self.assertEqual(call_kwargs["event_type"], "emergency.changed")
+        self.assertEqual(call_kwargs["aggregate_type"], "emergency_override")
+        self.assertEqual(call_kwargs["payload"]["active"], False)
+        self.assertEqual(call_kwargs["payload"]["reason"], "Работы завершены")
 
 
 # ── No secrets in response ──

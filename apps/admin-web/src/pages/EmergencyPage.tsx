@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { api, type EmergencyStatusOut } from "../api/client";
+import { api, ApiError, type EmergencyStatusOut } from "../api/client";
 
 const styles = {
   page: { fontFamily: "system-ui, sans-serif" },
@@ -34,6 +34,7 @@ export default function EmergencyPage() {
   const [status, setStatus] = useState<EmergencyStatusOut | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [permissionDenied, setPermissionDenied] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [confirmMode, setConfirmMode] = useState<"activate" | "deactivate" | null>(null);
@@ -41,11 +42,16 @@ export default function EmergencyPage() {
   const fetchStatus = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setPermissionDenied(false);
     try {
       const res = await api.get<EmergencyStatusOut>("/emergency/status");
       setStatus(res);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Ошибка загрузки");
+      if (e instanceof ApiError && e.status === 403) {
+        setPermissionDenied(true);
+      } else {
+        setError(e instanceof Error ? e.message : "Ошибка загрузки");
+      }
     } finally {
       setLoading(false);
     }
@@ -63,7 +69,13 @@ export default function EmergencyPage() {
       setConfirmMode(null);
       await fetchStatus();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Ошибка активации");
+      if (e instanceof ApiError && e.status === 403) {
+        setError("Недостаточно прав для активации аварийного режима");
+      } else if (e instanceof ApiError && e.status === 409) {
+        setError("Аварийный режим уже активен");
+      } else {
+        setError(e instanceof Error ? e.message : "Ошибка активации");
+      }
       setConfirmMode(null);
     }
   }
@@ -78,7 +90,13 @@ export default function EmergencyPage() {
       setConfirmMode(null);
       await fetchStatus();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Ошибка деактивации");
+      if (e instanceof ApiError && e.status === 403) {
+        setError("Недостаточно прав для деактивации аварийного режима");
+      } else if (e instanceof ApiError && e.status === 409) {
+        setError("Аварийный режим не активен");
+      } else {
+        setError(e instanceof Error ? e.message : "Ошибка деактивации");
+      }
       setConfirmMode(null);
     }
   }
@@ -90,6 +108,11 @@ export default function EmergencyPage() {
       <h1 style={styles.h1}>Аварийный режим</h1>
 
       {loading && <div style={styles.loading}>Загрузка...</div>}
+      {permissionDenied && (
+        <div style={styles.error}>
+          Недостаточно прав для доступа к аварийному режиму. Требуется разрешение emergency.read.
+        </div>
+      )}
       {error && <div style={styles.error}>{error}</div>}
       {successMsg && <div style={styles.success}>{successMsg}</div>}
 

@@ -323,9 +323,377 @@ describe("emergency page — error handling", () => {
     );
 
     await waitFor(() => {
-      // EmergencyPage uses e.message for Error instances, "Ошибка загрузки" for non-Error
       const errorEl = screen.getByText(/Network error/i);
       expect(errorEl).toBeTruthy();
+    });
+  });
+});
+
+describe("emergency page — permission denied", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it("shows permission denied when status returns 403", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : String(input);
+
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ access_token: "test-at", token_type: "Bearer", expires_in: 1800 }),
+            { status: 200 },
+          ),
+        );
+      }
+
+      if (url.endsWith("/auth/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              sub: "u-limited",
+              auth_provider: "local_break_glass",
+              username: "limited",
+              display_name: "Ограниченный",
+              permissions: ["campaigns.read"],
+              must_change_password: false,
+            }),
+            { status: 200 },
+          ),
+        );
+      }
+
+      if (url.includes("/emergency/status")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ detail: "Forbidden" }), { status: 403 }),
+        );
+      }
+
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    });
+
+    const router = createEmergencyRouter();
+    render(
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      const deniedEl = screen.getByText(/Недостаточно прав для доступа к аварийному режиму/i);
+      expect(deniedEl).toBeTruthy();
+    });
+  });
+});
+
+describe("emergency page — deactivate confirmation", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it("shows confirmation step when deactivate button is clicked", async () => {
+    const user = userEvent.setup();
+    // First fetch returns active status
+    let statusCalled = false;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : String(input);
+
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ access_token: "test-at", token_type: "Bearer", expires_in: 1800 }),
+            { status: 200 },
+          ),
+        );
+      }
+
+      if (url.endsWith("/auth/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              sub: "u-admin",
+              auth_provider: "local_break_glass",
+              username: "admin",
+              display_name: "Администратор",
+              permissions: ["emergency.read", "emergency.manage"],
+              must_change_password: false,
+            }),
+            { status: 200 },
+          ),
+        );
+      }
+
+      if (url.includes("/emergency/status")) {
+        statusCalled = true;
+        return Promise.resolve(
+          new Response(
+            JSON.stringify(ACTIVE_STATUS),
+            { status: 200 },
+          ),
+        );
+      }
+
+      if (url.includes("/emergency/deactivate")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ active: false }), { status: 200 }),
+        );
+      }
+
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    });
+
+    renderEmergencyPage(ACTIVE_STATUS);
+
+    await waitFor(() => {
+      expect(screen.getByText("АКТИВЕН")).toBeTruthy();
+    });
+
+    // Type reason
+    const textarea = screen.getByPlaceholderText("Опишите причину отключения аварийного режима");
+    await user.type(textarea, "Причина деактивации");
+
+    // Click deactivate button
+    const btn = screen.getByText("Деактивировать аварийный режим");
+    await user.click(btn);
+
+    // Confirmation should appear
+    await waitFor(() => {
+      expect(screen.getByText("Подтвердите деактивацию:")).toBeTruthy();
+      expect(screen.getByText("Да, деактивировать")).toBeTruthy();
+      expect(screen.getByText("Отмена")).toBeTruthy();
+    });
+  });
+});
+
+describe("emergency page — success messages", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it("shows success message after activation", async () => {
+    const user = userEvent.setup();
+    renderEmergencyPage(INACTIVE_STATUS);
+
+    await waitFor(() => {
+      expect(screen.getByText("Активировать аварийный режим")).toBeTruthy();
+    });
+
+    // Type reason and click activate
+    const textarea = screen.getByPlaceholderText("Опишите причину включения аварийного режима");
+    await user.type(textarea, "Тестовая причина");
+    const btn = screen.getByText("Активировать аварийный режим");
+    await user.click(btn);
+
+    // Confirmation step
+    await waitFor(() => {
+      expect(screen.getByText("Да, активировать")).toBeTruthy();
+    });
+
+    await user.click(screen.getByText("Да, активировать"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Аварийный режим активирован")).toBeTruthy();
+    });
+  });
+
+  it("shows success message after deactivation", async () => {
+    const user = userEvent.setup();
+    renderEmergencyPage(ACTIVE_STATUS);
+
+    await waitFor(() => {
+      expect(screen.getByText("АКТИВЕН")).toBeTruthy();
+    });
+
+    // Type reason and click deactivate
+    const textarea = screen.getByPlaceholderText("Опишите причину отключения аварийного режима");
+    await user.type(textarea, "Причина деактивации");
+    const btn = screen.getByText("Деактивировать аварийный режим");
+    await user.click(btn);
+
+    // Confirmation step
+    await waitFor(() => {
+      expect(screen.getByText("Да, деактивировать")).toBeTruthy();
+    });
+
+    await user.click(screen.getByText("Да, деактивировать"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Аварийный режим деактивирован")).toBeTruthy();
+    });
+  });
+});
+
+describe("emergency page — conflict errors", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it("shows conflict error on activate when already active (409)", async () => {
+    const user = userEvent.setup();
+    renderEmergencyPage(INACTIVE_STATUS);
+
+    await waitFor(() => {
+      expect(screen.getByText("Активировать аварийный режим")).toBeTruthy();
+    });
+
+    // Type reason and click activate
+    const textarea = screen.getByPlaceholderText("Опишите причину включения аварийного режима");
+    await user.type(textarea, "Тест");
+    const btn = screen.getByText("Активировать аварийный режим");
+    await user.click(btn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Да, активировать")).toBeTruthy();
+    });
+
+    // Override fetch to return 409 for the duration of this click
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : String(input);
+
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ access_token: "test-at", token_type: "Bearer", expires_in: 1800 }),
+            { status: 200 },
+          ),
+        );
+      }
+
+      if (url.endsWith("/auth/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              sub: "u-admin",
+              auth_provider: "local_break_glass",
+              username: "admin",
+              display_name: "Администратор",
+              permissions: ["emergency.read", "emergency.manage"],
+              must_change_password: false,
+            }),
+            { status: 200 },
+          ),
+        );
+      }
+
+      if (url.includes("/emergency/status")) {
+        return Promise.resolve(
+          new Response(JSON.stringify(INACTIVE_STATUS), { status: 200 }),
+        );
+      }
+
+      if (url.includes("/emergency/activate")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ detail: "Emergency mode is already active" }),
+            { status: 409 },
+          ),
+        );
+      }
+
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    });
+
+    await user.click(screen.getByText("Да, активировать"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Аварийный режим уже активен")).toBeTruthy();
+    });
+  });
+
+  it("shows conflict error on deactivate when not active (409)", async () => {
+    const user = userEvent.setup();
+    // Override fetch to return active status first, then 409 on deactivate
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : String(input);
+
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ access_token: "test-at", token_type: "Bearer", expires_in: 1800 }),
+            { status: 200 },
+          ),
+        );
+      }
+
+      if (url.endsWith("/auth/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              sub: "u-admin",
+              auth_provider: "local_break_glass",
+              username: "admin",
+              display_name: "Администратор",
+              permissions: ["emergency.read", "emergency.manage"],
+              must_change_password: false,
+            }),
+            { status: 200 },
+          ),
+        );
+      }
+
+      if (url.includes("/emergency/status")) {
+        return Promise.resolve(
+          new Response(JSON.stringify(ACTIVE_STATUS), { status: 200 }),
+        );
+      }
+
+      if (url.includes("/emergency/deactivate")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ detail: "No active emergency mode to deactivate" }),
+            { status: 409 },
+          ),
+        );
+      }
+
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    });
+
+    const router = createEmergencyRouter();
+    render(
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("АКТИВЕН")).toBeTruthy();
+    });
+
+    // Type reason
+    const textarea = screen.getByPlaceholderText("Опишите причину отключения аварийного режима");
+    await user.type(textarea, "Тест");
+    const btn = screen.getByText("Деактивировать аварийный режим");
+    await user.click(btn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Да, деактивировать")).toBeTruthy();
+    });
+
+    await user.click(screen.getByText("Да, деактивировать"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Аварийный режим не активен")).toBeTruthy();
     });
   });
 });
