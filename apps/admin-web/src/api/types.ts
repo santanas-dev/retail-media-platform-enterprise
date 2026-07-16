@@ -566,6 +566,113 @@ export function contactTypeLabel(t: string): string {
   return CONTACT_TYPE_LABELS[t] ?? t;
 }
 
+// ── S-078: Inventory Availability ──
+
+export interface InventoryAvailabilityRequest {
+  surface_id: string;
+  starts_at: string;
+  ends_at: string;
+  requested_capacity_units?: number | null;
+  requested_sov_percent?: number | null;
+}
+
+export interface InventorySlotAvailability {
+  slot_id: string;
+  slot_date: string;
+  slot_hour: number;
+  total_capacity: number;
+  booked_capacity: number;
+  reserved_capacity: number;
+  available_capacity: number;
+  requested_capacity: number;
+  available: boolean;
+  sold_out: boolean;
+  blocked: boolean;
+}
+
+export interface InventoryAvailabilityResponse {
+  surface_id: string;
+  starts_at: string;
+  ends_at: string;
+  all_available: boolean;
+  total_requested: number;
+  total_available: number;
+  slots: InventorySlotAvailability[];
+  conflicts: InventorySlotAvailability[];
+}
+
+// ── S-080: Inventory Conflicts ──
+
+export interface InventoryConflictItem {
+  conflict_type: string;
+  severity: string;
+  surface_id: string;
+  message: string;
+  rule_id?: string | null;
+  rule_type?: string | null;
+  slot_date?: string | null;
+  slot_hour?: number | null;
+  available_capacity?: number | null;
+  requested_capacity?: number | null;
+  max_sov_percent?: number | null;
+  requested_sov_percent?: number | null;
+  capacity_units?: number | null;
+  placement_id?: string | null;
+}
+
+export interface InventoryConflictCheckRequest {
+  surface_id: string;
+  starts_at: string;
+  ends_at: string;
+  requested_capacity_units?: number | null;
+  requested_sov_percent?: number | null;
+  campaign_id?: string | null;
+}
+
+export interface InventoryConflictCheckResponse {
+  has_conflicts: boolean;
+  blocking: InventoryConflictItem[];
+  warnings: InventoryConflictItem[];
+}
+
+// ── S-079: Inventory Reservations ──
+
+export interface CampaignInventoryReservationOut {
+  booking_id: string;
+  campaign_id?: string | null;
+  placement_id?: string | null;
+  slot_id: string;
+  capacity_units: number;
+  status: string;
+  reserved_until?: string | null;
+  committed_at?: string | null;
+  released_at?: string | null;
+  release_reason: string;
+  created_at?: string | null;
+}
+
+export interface CampaignInventoryReservationsResponse {
+  campaign_id: string;
+  reservations: CampaignInventoryReservationOut[];
+  total: number;
+}
+
+// ── Inventory Rules (read-only placeholder) ──
+
+export interface InventoryRuleOut {
+  id: string;
+  scope_type: string;
+  scope_id?: string | null;
+  rule_type: string;
+  priority: number;
+  value_json: Record<string, unknown>;
+  is_active: boolean;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export const AUTH_PROVIDER_LABELS: Record<string, string> = {
   local: "Локальная",
   local_advertiser: "Локальная (рекламодатель)",

@@ -41,6 +41,11 @@ import type {
   CampaignRejectRequest,
   CampaignCreativeAttachRequest,
   PaginatedResponse,
+  InventoryAvailabilityRequest,
+  InventoryAvailabilityResponse,
+  InventoryConflictCheckRequest,
+  InventoryConflictCheckResponse,
+  CampaignInventoryReservationsResponse,
 } from "./types";
 
 // ── Campaigns ──
@@ -389,11 +394,6 @@ export function rejectCreative(
   );
 }
 
-/**
- * Upload a file directly to a presigned URL.
- * Does NOT send Authorization — the presigned URL already carries credentials.
- * Calls onProgress(bytesUploaded, totalBytes) if provided.
- */
 export async function uploadFileToPresignedUrl(
   uploadUrl: string,
   file: File,
@@ -419,4 +419,38 @@ export async function uploadFileToPresignedUrl(
     xhr.onerror = () => reject(new Error("Сетевая ошибка при загрузке файла"));
     xhr.send(file);
   });
+}
+
+// ── S-078: Inventory Availability ──
+
+export function checkAvailability(
+  body: InventoryAvailabilityRequest,
+): Promise<InventoryAvailabilityResponse> {
+  return api.post<InventoryAvailabilityResponse>("/inventory/availability", body);
+}
+
+// ── S-080: Inventory Conflicts ──
+
+export function checkConflicts(
+  body: InventoryConflictCheckRequest,
+): Promise<InventoryConflictCheckResponse> {
+  return api.post<InventoryConflictCheckResponse>("/inventory/conflicts/check", body);
+}
+
+export function getCampaignInventoryConflicts(
+  campaignId: string,
+): Promise<InventoryConflictCheckResponse> {
+  return api.get<InventoryConflictCheckResponse>(
+    `/campaigns/${campaignId}/inventory-conflicts`,
+  );
+}
+
+// ── S-079: Inventory Reservations ──
+
+export function getCampaignInventoryReservations(
+  campaignId: string,
+): Promise<CampaignInventoryReservationsResponse> {
+  return api.get<CampaignInventoryReservationsResponse>(
+    `/campaigns/${campaignId}/inventory-reservations`,
+  );
 }
