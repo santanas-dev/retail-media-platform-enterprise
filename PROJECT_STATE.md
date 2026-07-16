@@ -9,28 +9,30 @@
 
 | Branch  | SHA      | Note |
 |---------|----------|------|
-| develop | 8930e3e  | C1 docs commit |
+| develop | 39dc8bc  | H0 fix |
 | main    | 4db6dc0  | v0.7 published |
 
 ## Active Workstreams
 
+### H0 — Flaky test_backoff_respected_on_second_run ✅ RESOLVED
+- **Verdict: confirmed timing flake, not real backoff regression.**
+- Root cause: `_make_engine_and_clean()` only deleted `test.relay.%` events. Foreign pending/failed outbox events from other test suites (pop, campaigns) survived cleanup and consumed the shared `fail_next(1)` token.
+- Fix (SHA 39dc8bc): `_make_engine_and_clean()` now deletes ALL pending/failed events regardless of event_type. Added +1s margin + 0.1s sleep in per-test isolation.
+- CI proof: Run #29515994509 — 34/34 green, behavioural success.
+- 10/10 local, 9/9 outbox relay suite.
+
 ### C1 — Creative Moderation + Campaign Approval RLS 🟡
-- Fix applied on develop (SHA 4adde45 → 8930e3e)
-- 4 endpoints under NOBYPASSRLS, 8 behavioural tests (all pass locally)
+- Fix applied on develop (SHA 4adde45 → 39dc8bc)
+- 4 endpoints under NOBYPASSRLS, 8 behavioural tests (all pass)
 - **NOT CLOSED — blocked on:**
-  a) ADR-008 gate (behavioural CI) must be **green** — currently red due to H0 flaky test
+  a) ~~ADR-008 gate~~ — gate is now GREEN ✅ (H0 resolved)
   b) Merge to main pending
 - Bug fixed: `AdvertiserOrganization.name` → `legal_name` (4 places)
 - Seed gap closed: `creatives.moderate` in role_permissions for system_admin/security_admin
 
 ### C2 — ❗ Only open Critical
-- Blocked behind H0 + C1 closure
-
-### H0 — Flaky test_backoff_respected_on_second_run 🔴
-- `tests/behavioral/test_outbox_relay.py::TestOutboxRelayBehavioral::test_backoff_respected_on_second_run`
-- **Failing on CI, colours ADR-008 gate red on develop**
-- Must be fixed or quarantined — **only after timing-only proof that this is pure flake**
-- Sequence: H0 → C2 → C1 merge to main
+- Blocked behind C1 closure (merge to main)
+- Sequence: C1 merge to main → C2
 
 ## Completed (Player Blockers A1–A3)
 
