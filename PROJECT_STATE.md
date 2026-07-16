@@ -9,7 +9,7 @@
 
 | Branch  | SHA      | Note |
 |---------|----------|------|
-| develop | 47e7d44  | C2 fix |
+| develop | 9216a54  | D1 fix |
 | main    | 4db6dc0  | v0.7 published |
 
 ## Active Workstreams
@@ -24,7 +24,7 @@
 ### C1 — Creative Moderation + Campaign Approval RLS 🟡
 - Fix applied on develop (SHA 4adde45 → 39dc8bc)
 - 4 endpoints under NOBYPASSRLS, 8 behavioural tests (all pass)
-- **NOT CLOSED — merge to main after C2 completes**
+- **NOT CLOSED — merge to main after D2 completes**
 - No remaining blockers: ADR-008 gate GREEN ✅ (H0 resolved)
 - Bug fixed: `AdvertiserOrganization.name` → `legal_name` (4 places)
 - Seed gap closed: `creatives.moderate` in role_permissions for system_admin/security_admin
@@ -38,6 +38,16 @@
 - CI proof: Run #29519917049 — 34/34 green, ADR-008 behavioural success.
 - ldap3 already in requirements.txt and CI — no dependency fix needed.
 - Auth model unchanged beyond LDAPS cert validation scope.
+
+### D1 — Extracted TZ table reattachment ✅ RESOLVED
+- **Verdict: documentation integrity fix — tables divorced from sections.**
+- Root cause: sequential extraction numbering did not match section numbering. Gaps at sections 9, 13, 21, 22 shifted all subsequent assignments.
+- Fix (SHA 9216a54): content-based semantic mapping of 36 tables to 25 sections. Section 14 now correctly shows security requirements (auth/RBAC/devices/API/personal data), not device statuses.
+- 0 orphan `## TABLE` headers remain. Original `.docx` untouched.
+
+### D2 — Roadmap sync with PROJECT_STATE 🔄 IN PROGRESS
+- Roadmap `roadmap-s020-2026-07-10.xlsx` has stale statuses: S-036 marked done but C1 not closed; S-048 marked done but C2 was Critical.
+- Fix: align roadmap statuses with PROJECT_STATE truth, add behavioral-proof alignment rule to `roadmap-maintenance-rules.md`.
 
 ## Completed (Player Blockers A1–A3)
 
