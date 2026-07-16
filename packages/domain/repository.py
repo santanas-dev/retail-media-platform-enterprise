@@ -3457,12 +3457,18 @@ async def review_advertiser_application(
     app = await session.get(AdvertiserApplication, application_id)
     if app is None:
         raise ValueError("Application not found")
-    if app.status != "new":
-        raise ValueError(f"Application cannot be reviewed — current status: {app.status}")
 
-    if action == "approve":
+    if action == "reviewing":
+        if app.status != "new":
+            raise ValueError(f"Cannot start review — current status: {app.status}")
+        app.status = "reviewing"
+    elif action == "approve":
+        if app.status not in ("new", "reviewing"):
+            raise ValueError(f"Cannot approve — current status: {app.status}")
         app.status = "approved"
     elif action == "reject":
+        if app.status not in ("new", "reviewing"):
+            raise ValueError(f"Cannot reject — current status: {app.status}")
         app.status = "rejected"
     else:
         raise ValueError(f"Invalid action: {action}")

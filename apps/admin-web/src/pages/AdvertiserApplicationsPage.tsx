@@ -23,12 +23,14 @@ const S = {
 
 const STATUS_LABELS: Record<string, string> = {
   new: "Новая",
+  reviewing: "На рассмотрении",
   approved: "Одобрена",
   rejected: "Отклонена",
 };
 
 const STATUS_COLORS: Record<string, string> = {
   new: "#3b82f6",
+  reviewing: "#f59e0b",
   approved: "#16a34a",
   rejected: "#dc2626",
 };
@@ -63,12 +65,17 @@ export default function AdvertiserApplicationsPage() {
 
   useEffect(() => { fetchList(); }, [fetchList]);
 
-  async function handleReview(action: "approve" | "reject", appId: string) {
+  async function handleReview(action: "reviewing" | "approve" | "reject", appId: string) {
     setError(null);
     setSuccess(null);
     try {
       await api.post(`/advertiser-applications/${appId}/review`, { action, reason });
-      setSuccess(action === "approve" ? "Заявка одобрена. Организация создана." : "Заявка отклонена.");
+      const messages: Record<string, string> = {
+        reviewing: "Заявка переведена в статус «На рассмотрении».",
+        approve: "Заявка одобрена. Организация создана.",
+        reject: "Заявка отклонена.",
+      };
+      setSuccess(messages[action]);
       setReason("");
       setSelected(null);
       await fetchList();
@@ -111,7 +118,7 @@ export default function AdvertiserApplicationsPage() {
                   <span style={S.badge(STATUS_COLORS[a.status] || "#94a3b8")}>{STATUS_LABELS[a.status] || a.status}</span>
                 </td>
                 <td style={S.td}>{formatDt(a.created_at)}</td>
-                <td style={S.td}>{a.status === "new" ? "⏳" : a.status === "approved" ? "✅" : "❌"}</td>
+                <td style={S.td}>{a.status === "new" ? "⏳" : a.status === "reviewing" ? "🔍" : a.status === "approved" ? "✅" : "❌"}</td>
               </tr>
             ))}
           </tbody>
@@ -131,6 +138,14 @@ export default function AdvertiserApplicationsPage() {
           {selected.review_reason && <><div style={S.label}>Причина решения</div><div style={S.value}>{selected.review_reason}</div></>}
 
           {selected.status === "new" && (
+            <div>
+              <div style={S.actions}>
+                <button style={S.btn("#f59e0b")} onClick={() => handleReview("reviewing", selected.id)}>Начать рассмотрение</button>
+              </div>
+            </div>
+          )}
+
+          {selected.status === "reviewing" && (
             <div>
               <div style={S.label}>Причина решения</div>
               <textarea style={S.textarea} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Причина одобрения или отклонения" />

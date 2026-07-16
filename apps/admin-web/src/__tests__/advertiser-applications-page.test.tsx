@@ -112,8 +112,8 @@ describe("advertiser applications page — detail", () => {
     await user.click(screen.getByText("ООО Тест"));
 
     await waitFor(() => {
-      expect(screen.getByText("Одобрить")).toBeTruthy();
-      expect(screen.getByText("Отклонить")).toBeTruthy();
+      // new applications show "Начать рассмотрение" button
+      expect(screen.getByText("Начать рассмотрение")).toBeTruthy();
     });
   });
 
@@ -129,6 +129,43 @@ describe("advertiser applications page — detail", () => {
       // Should NOT show approve/reject buttons for approved app
       const approveBtns = screen.queryAllByText("Одобрить");
       expect(approveBtns.length).toBe(0);
+    });
+  });
+});
+
+describe("advertiser applications page — reviewing status", () => {
+  beforeEach(() => { localStorage.clear(); vi.restoreAllMocks(); });
+  afterEach(() => { localStorage.clear(); });
+
+  const APPS_WITH_REVIEWING = {
+    items: [
+      { id: "a1", company_name: "ООО Тест", contact_name: "Иван", email: "i@t.ru", phone: "", website: "", comment: "", consent: true, status: "reviewing", reviewer_id: null, review_reason: null, reviewed_at: null, created_at: "2026-07-17T10:00:00Z", updated_at: "2026-07-17T10:00:00Z" },
+    ],
+    total: 1,
+    limit: 50,
+    offset: 0,
+  };
+
+  it("renders На рассмотрении badge", async () => {
+    setupFetch({ "/advertiser-applications": APPS_WITH_REVIEWING });
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("На рассмотрении")).toBeTruthy();
+    });
+  });
+
+  it("shows approve/reject buttons when reviewing status selected", async () => {
+    const user = userEvent.setup();
+    setupFetch({ "/advertiser-applications": APPS_WITH_REVIEWING });
+    renderPage();
+
+    await waitFor(() => { expect(screen.getByText("ООО Тест")).toBeTruthy(); });
+    await user.click(screen.getByText("ООО Тест"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Одобрить")).toBeTruthy();
+      expect(screen.getByText("Отклонить")).toBeTruthy();
     });
   });
 });
