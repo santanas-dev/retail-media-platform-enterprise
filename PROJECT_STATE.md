@@ -9,7 +9,7 @@
 
 | Branch  | SHA      | Note |
 |---------|----------|------|
-| develop | df3b946  | D2 fix |
+| develop | db532d6  | D2 follow-up |
 | main    | 4db6dc0  | v0.7 published |
 
 ## Active Workstreams
