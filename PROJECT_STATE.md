@@ -5,12 +5,18 @@
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
 
-## Current HEAD
+## Repository Checkpoint
 
-| Branch  | SHA      | Note |
-|---------|----------|------|
-| develop | 76b3fdf  | D3 roadmap coverage audit |
-| main    | cab9014  | C1 merged (v0.8) |
+| Branch  | Payload SHA | State/Docs SHA | Note |
+|---------|-------------|----------------|------|
+| develop | 76b3fdf     | a1a2c8e        | D3 roadmap coverage audit → PROJECT_STATE updated, next=A5 |
+| main    | cab9014     | —              | C1 merged (v0.8) |
+
+> **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
+> PROJECT_STATE is canonical for task status and records the last verified payload/state
+> checkpoints; it must not pretend to self-reference its own commit SHA. The Payload SHA
+> is the last substantive commit whose result was verified (code, tests, CI). The State/Docs
+> SHA is the commit that updated PROJECT_STATE/documentation after verification, if distinct.
 
 ## Active Workstreams
 
