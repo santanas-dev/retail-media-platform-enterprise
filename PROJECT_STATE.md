@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 38aa844     | 3e81931        | S-090 follow-up tests (loading, error, by-surface, plan/fact) |
+|| develop | 0e4c320     | TBD            | A6/S-091 Emergency controls |
 | main    | cab9014     | —              | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -86,9 +86,9 @@
 
 ## Next Active Workstream
 
-**A6 / S-091 — Emergency controls.**
+**A6 / S-091 — Emergency controls.** ✅ RESOLVED
 
-## Completed (Player Blockers A1–A4)
+## Completed (Player Blockers A1–A6)
 
 | ID | Task | Status |
 |----|------|--------|
@@ -96,12 +96,14 @@
 | A2 S-087 | Sold-out alternatives | ✅ |
 | A3 S-088 | Rules management UI | ✅ |
 | A4 S-089 | Inventory simulation | ✅ |
+| A5 S-090 | Campaign dashboard | ✅ |
+| A6 S-091 | Emergency controls | ✅ |
 
 ## Pending
 
 | ID | Task | Status |
 |----|------|--------|
-| A6 S-091 | Emergency controls | ⏳ |
+| —   | —     | —      |
 
 ## Environment
 
