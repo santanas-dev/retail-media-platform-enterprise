@@ -612,6 +612,34 @@ git push origin :refs/tags/v0.5-business-portal-complete
 
 ---
 
+### v0.7-inventory-foundation — Inventory Domain MVP
+
+**Planned.**  Architecture design in progress (S-076).  Tag not yet proposed.
+
+#### Planned Capabilities
+
+- **Inventory domain:** InventorySlot, InventoryBooking, InventoryRule models (S-077)
+- **Availability calculator:** Time-slot capacity per surface/date/hour (S-078)
+- **Booking lifecycle:** reserve → commit → release → expire with TTL + campaign integration (S-079)
+- **Conflict detection:** 8 conflict types — schedule overlap, SOV overbooking, inactive surface, emergency, etc. (S-080)
+- **Inventory calendar UI:** Visual calendar with color-coded availability (S-081)
+- **Sold-out detection + alternatives:** What's full and what to suggest instead (S-082)
+- **Inventory reports:** Free/booked/reserved reports + SLA metrics (S-083)
+- **Emergency integration:** Emergency mode blocks inventory slots (S-084)
+- **Device health integration:** Offline devices reduce effective capacity (S-085)
+
+#### Not Blocking
+
+- Player/KSO can start in parallel; minimum contract: S-079 (availability check + booking + campaign integration)
+
+#### Deferred
+
+- Forecast engine (ML/statistical) — separate spike
+- Pricing / rate cards / billing / programmatic — v2.6+
+- ClickHouse for inventory analytics — v0.8+
+
+---
+
 ## Future Branch: v2.6 Next Branch
 
 v2.6 — дальнейшее развитие портала после закрытия первого ТЗ (v2.5).

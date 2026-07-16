@@ -155,6 +155,12 @@
 
 ## 4. Proposed Architecture
 
+> **⚠️ S-076 design phase (2026-07-16):** Architecture document created.
+> See `docs/architecture/inventory-domain-model.md` for the authoritative
+> entity model, lifecycle, API candidates, and S-ticket sequence.
+> Gap table below preserved for traceability; detailed design in the
+> architecture document.
+
 ### 4.1 Data Model Candidates
 
 **InventorySlot (новая таблица):**
@@ -231,6 +237,12 @@ class InventoryRule(Base):
 ---
 
 ## 5. Recommended S-Ticket Sequence
+
+> **Updated in S-076.** See `docs/architecture/inventory-domain-model.md` §8
+> for the revised sequence:
+> S-077 (schema) → S-078 (availability) → S-079 (booking + campaign integration)
+> → S-080 (conflicts + rules) → S-081 (calendar UI) → S-082 (sold-out) → S-083 (reports)
+> → S-084 (emergency) → S-085 (device health) → S-086 (forecast).
 
 ### Phase 1 — Foundation (MVP inventory domain)
 

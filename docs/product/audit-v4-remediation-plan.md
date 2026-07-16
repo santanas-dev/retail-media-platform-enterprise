@@ -157,6 +157,21 @@ S-074 ─► ✅ v0.6.2 readiness review  (done 2026-07-16)
           └─ ✅ Docs honesty fixes: stale tracker header/backlog, production-gaps-triage header
 ```
 
+S-075 ✅ ─► Publish v0.6.2 audit remediation  (done 2026-07-16)
+          ├─ ✅ Tag: v0.6.2-audit-remediation → 90e91cb (S-073 code baseline)
+          ├─ ✅ CI: #29484402650 — 34/34 green on main including Behavioural
+          └─ ✅ Main fast-forwarded to aca1fb0. All 8 release tags intact.
+
+S-076 🟡 ─► Inventory domain foundation: model design  (in progress 2026-07-16)
+          ├─ Architecture document: docs/architecture/inventory-domain-model.md
+          ├─ Entities: InventorySlot, InventoryBooking, InventoryRule, AvailabilitySnapshot, Conflict
+          ├─ Booking lifecycle: reserved → committed → released → expired. TTL 24h. Overbooking configurable.
+          ├─ Conflict detection: 8 types — schedule_overlap, sov_overbooking, inactive_surface, emergency_blocked, etc.
+          ├─ API candidates: 13 admin endpoints + 1 advertiser-hint (future)
+          ├─ Revised sequence: S-077 (schema) through S-086 (forecast)
+          └─ → Implementation start: S-077 (migrations + repository)
+```
+
 ## 5. What Is NOT Blocked by This Audit
 
 - KSO player / sidecar / hardware — separate v0.9 milestone

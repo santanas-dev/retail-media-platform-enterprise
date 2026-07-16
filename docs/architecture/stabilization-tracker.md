@@ -175,7 +175,9 @@ Separately covered:
 | S-071 | Emergency workspace / kill-switch UI | P2 | ✅ done |
 | S-072 | Inventory domain gap analysis and plan | P2 | ✅ done |
 | S-073 | UI design-system / a11y foundation | P3 | ✅ done (foundation) |
-| S-074 | v0.6.2 audit-remediation readiness review | — | 🟡 in review |
+| S-074 | v0.6.2 audit-remediation readiness review | — | ✅ done |
+| S-075 | Publish v0.6.2-audit-remediation | — | ✅ done (tag at 90e91cb, CI #29484402650 green) |
+| S-076 | Inventory domain foundation — architecture model design | P0 | 🟡 in progress |
 | Tenant model ADR before v2.6 | 🟡 Decision needed — ADR-018 |
 | Password reset invite/email flow | Deferred |
 | Advertiser approve/reject campaigns | Deferred — admin-only |
