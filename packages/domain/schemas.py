@@ -1127,3 +1127,43 @@ class CampaignInventoryReservationsResponse(BaseModel):
     campaign_id: str
     reservations: list[CampaignInventoryReservationOut]
     total: int
+
+
+# ---------------------------------------------------------------------------
+# S-080 — Inventory Conflict Detection schemas
+# ---------------------------------------------------------------------------
+
+
+class InventoryConflictItem(BaseModel):
+    """Single conflict found during availability/reservation check."""
+    conflict_type: str
+    severity: str  # "blocking" | "warning"
+    surface_id: str
+    message: str
+    rule_id: str | None = None
+    rule_type: str | None = None
+    slot_date: str | None = None
+    slot_hour: int | None = None
+    available_capacity: int | None = None
+    requested_capacity: int | None = None
+    max_sov_percent: int | None = None
+    requested_sov_percent: int | None = None
+    capacity_units: int | None = None
+    placement_id: str | None = None
+
+
+class InventoryConflictCheckRequest(BaseModel):
+    """Request to check for inventory conflicts."""
+    surface_id: str
+    starts_at: datetime
+    ends_at: datetime
+    requested_capacity_units: int | None = Field(None, ge=1)
+    requested_sov_percent: int | None = Field(None, ge=1, le=100)
+    campaign_id: str | None = None
+
+
+class InventoryConflictCheckResponse(BaseModel):
+    """Result of conflict detection check."""
+    has_conflicts: bool
+    blocking: list[InventoryConflictItem] = Field(default_factory=list)
+    warnings: list[InventoryConflictItem] = Field(default_factory=list)
