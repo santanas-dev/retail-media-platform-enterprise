@@ -9,7 +9,7 @@
 
 | Branch  | SHA      | Note |
 |---------|----------|------|
-| develop | 7256460  | S-089 simulation |
+| develop | 80276f1  | S-089 fix: slot_fill_percent >100% |
 | main    | cab9014  | C1 merged (v0.8) |
 
 ## Active Workstreams
@@ -49,9 +49,9 @@
 - POST /inventory/simulate — aggregates availability + conflicts + applied rules
 - 🧪 Симуляция button in campaign overview (draft, canApprove)
 - Results panel: overall_fit, per-surface fill%, conflicts
-- 8 backend tests + 3 frontend tests
-- CI: #29525532107 — 34/34 green, ADR-008 behavioural success
-- SHA: 7256460
+- 13 backend tests (8 schema + 5 endpoint) + 3 frontend tests
+- **Fix (SHA 80276f1):** removed `le=100.0` cap on `slot_fill_percent` — overbook scenarios (>100%) were rejecting their own valid output. Added real endpoint tests via TestClient.
+- CI: pending for 80276f1 (previous: #29525532107 — 34/34 green)
 - Roadmap `roadmap-s020-2026-07-10.xlsx` aligned with PROJECT_STATE truth.
 - C1 status: 🟡 Готово для пилота (not closed on main). S-048: ✅ Готово with C2 proof.
 - H0/C2/D1 visible in Коммиты/Заметки columns with SHA and CI run references.
@@ -73,8 +73,9 @@
 
 ## Next Active Workstream
 
-**A5 / S-090 — Campaign dashboard.**
-Post-campaign analytics dashboard with plan/fact, geography, device health.
+**D3 — Roadmap coverage audit.**
+Verify all roadmap items have corresponding S-tickets and that no completed work is missing from the roadmap.
+Deferred: A5/S-090 Campaign dashboard, A6/S-091 Emergency controls.
 
 ## Completed (Player Blockers A1–A4)
 
@@ -89,7 +90,7 @@ Post-campaign analytics dashboard with plan/fact, geography, device health.
 
 | ID | Task | Status |
 |----|------|--------|
-| A4 S-089 | Inventory simulation | ⏳ |
+| D3 | Roadmap coverage audit | ⏳ |
 | A5 S-090 | Campaign dashboard | ⏳ |
 | A6 S-091 | Emergency controls | ⏳ |
 
