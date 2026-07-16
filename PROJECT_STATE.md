@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 0e4c320     | 2c22922        | A6/S-091 Emergency controls |
+| develop | 0e4c320     | fe3c52b        | A6/S-091 Emergency controls |
 | main    | cab9014     | —              | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
