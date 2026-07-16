@@ -4759,3 +4759,133 @@ async def suggest_inventory_alternatives(
     # Sort by score desc
     alternatives.sort(key=lambda a: a["score"], reverse=True)
     return alternatives[:max_results]
+
+
+# ---------------------------------------------------------------------------
+# S-089 — Inventory Simulation
+# ---------------------------------------------------------------------------
+
+
+async def simulate_campaign_inventory(
+    session: AsyncSession,
+    campaign_id: str,
+    default_total_capacity: int = 100,
+) -> dict:
+    """Run pre-approval inventory simulation for all placements in a campaign.
+
+    Returns:
+        dict with: campaign_id, overall_fit, placements (list of per-placement
+        results with fit, slot_fill, conflicts, applied_rules).
+    """
+    from packages.domain.models import CampaignPlacement, CampaignFlight
+
+    placements_result = await session.execute(
+        select(CampaignPlacement).where(
+            CampaignPlacement.campaign_id == campaign_id,
+            CampaignPlacement.display_surface_id.isnot(None),
+        )
+    )
+    placements_list = placements_result.scalars().all()
+
+    flights_result = await session.execute(
+        select(CampaignFlight).where(CampaignFlight.campaign_id == campaign_id)
+    )
+    flights_list = flights_result.scalars().all()
+
+    placement_results: list[dict] = []
+    any_blocking = False
+    total_blocking = 0
+    total_warnings = 0
+
+    for placement in placements_list:
+        placement_fit = True
+        all_conflicts: list[dict] = []
+        all_applied_rules: list[dict] = []
+        total_req = 0
+        total_avail = 0
+
+        for flight in flights_list:
+            if not flight.start_at or not flight.end_at:
+                continue
+
+            sov = placement.share_of_voice_pct or 100
+
+            # Availability check (slot-level capacity)
+            avail = await compute_inventory_availability(
+                session,
+                display_surface_id=placement.display_surface_id,
+                starts_at=flight.start_at,
+                ends_at=flight.end_at,
+                requested_sov_percent=sov,
+                default_total_capacity=default_total_capacity,
+            )
+            total_req += avail.get("total_requested", 0)
+            total_avail += avail.get("total_available", 0)
+            if not avail.get("all_available", True):
+                placement_fit = False
+
+            # Conflict detection (rules: blackout, internal_block, max_sov)
+            conflicts = await detect_inventory_conflicts(
+                session,
+                display_surface_id=placement.display_surface_id,
+                starts_at=flight.start_at,
+                ends_at=flight.end_at,
+                requested_sov_percent=sov,
+                campaign_id=campaign_id,
+                default_total_capacity=default_total_capacity,
+            )
+            for b in conflicts.get("blocking", []):
+                b["placement_id"] = placement.id
+                placement_fit = False
+                all_conflicts.append(b)
+                total_blocking += 1
+            for w in conflicts.get("warnings", []):
+                w["placement_id"] = placement.id
+                all_conflicts.append(w)
+                total_warnings += 1
+
+            # Collect applied rules
+            rules = await list_inventory_rules(session)
+            for rule in rules:
+                if not rule.is_active:
+                    continue
+                rdict = {
+                    "rule_id": str(rule.id),
+                    "rule_type": rule.rule_type,
+                    "scope_type": rule.scope_type,
+                    "scope_id": rule.scope_id,
+                    "value_json": rule.value_json,
+                    "priority": rule.priority,
+                }
+                if rdict not in all_applied_rules:
+                    all_applied_rules.append(rdict)
+
+        # Surface details
+        surface = await get_display_surface(session, placement.display_surface_id)
+        fill_pct = round((total_req / max(total_avail, 1)) * 100, 1)
+
+        placement_results.append({
+            "placement_id": str(placement.id),
+            "surface_id": placement.display_surface_id,
+            "surface_code": getattr(surface, "code", None) if surface else None,
+            "surface_name": getattr(surface, "name", None) if surface else None,
+            "store_code": getattr(surface, "store_code", None) if surface else None,
+            "store_name": getattr(surface, "store_name", None) if surface else None,
+            "fit": placement_fit,
+            "slot_fill_percent": fill_pct,
+            "total_requested": total_req,
+            "total_available": total_avail,
+            "conflicts": all_conflicts,
+            "applied_rules": all_applied_rules,
+        })
+
+        if not placement_fit:
+            any_blocking = True
+
+    return {
+        "campaign_id": campaign_id,
+        "overall_fit": not any_blocking,
+        "placements": placement_results,
+        "blocking_count": total_blocking,
+        "warning_count": total_warnings,
+    }

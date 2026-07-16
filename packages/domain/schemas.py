@@ -1207,3 +1207,38 @@ class InventoryAlternativesResponse(BaseModel):
     surface_id: str
     alternatives: list[InventoryAlternative] = Field(default_factory=list)
     total_found: int
+
+
+# ---------------------------------------------------------------------------
+# S-089 — Inventory Simulation
+# ---------------------------------------------------------------------------
+
+
+class InventorySimulationRequest(BaseModel):
+    """Request a pre-approval inventory simulation for a campaign."""
+    campaign_id: str
+
+
+class InventorySimulationPlacementResult(BaseModel):
+    """Per-placement simulation result."""
+    placement_id: str
+    surface_id: str
+    surface_code: str | None = None
+    surface_name: str | None = None
+    store_code: str | None = None
+    store_name: str | None = None
+    fit: bool
+    slot_fill_percent: float = Field(0.0, ge=0.0, le=100.0)
+    total_requested: int = 0
+    total_available: int = 0
+    conflicts: list[InventoryConflictItem] = Field(default_factory=list)
+    applied_rules: list[dict] = Field(default_factory=list)
+
+
+class InventorySimulationResponse(BaseModel):
+    """Full pre-approval simulation result for a campaign."""
+    campaign_id: str
+    overall_fit: bool
+    placements: list[InventorySimulationPlacementResult] = Field(default_factory=list)
+    blocking_count: int = 0
+    warning_count: int = 0

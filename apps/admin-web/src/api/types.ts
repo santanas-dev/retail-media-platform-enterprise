@@ -739,3 +739,32 @@ export const AUTH_PROVIDER_LABELS: Record<string, string> = {
 export function authProviderLabel(p: string): string {
   return AUTH_PROVIDER_LABELS[p] ?? p;
 }
+
+// ── S-089: Inventory Simulation ──
+
+export interface InventorySimulationRequest {
+  campaign_id: string;
+}
+
+export interface InventorySimulationPlacementResult {
+  placement_id: string;
+  surface_id: string;
+  surface_code?: string;
+  surface_name?: string;
+  store_code?: string;
+  store_name?: string;
+  fit: boolean;
+  slot_fill_percent: number;
+  total_requested: number;
+  total_available: number;
+  conflicts: InventoryConflictItem[];
+  applied_rules: Record<string, unknown>[];
+}
+
+export interface InventorySimulationResponse {
+  campaign_id: string;
+  overall_fit: boolean;
+  placements: InventorySimulationPlacementResult[];
+  blocking_count: number;
+  warning_count: number;
+}
