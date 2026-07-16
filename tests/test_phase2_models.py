@@ -34,7 +34,7 @@ class TestPhase2Metadata(unittest.TestCase):
         """Metadata table count — grows with each phase."""
         from packages.domain.models import Base
         count = len(Base.metadata.tables)
-        self.assertEqual(count, 49, f"Expected 49 tables, got {count}")
+        self.assertEqual(count, 50, f"Expected 50 tables, got {count}")
 
 
 class TestPhase2ModelColumns(unittest.TestCase):
