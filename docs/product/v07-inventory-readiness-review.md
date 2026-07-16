@@ -105,14 +105,16 @@ Before S-077–S-081, a player could receive conflicting placements for the same
 
 ### Verdict: GO — v0.7-inventory-foundation
 
+**⏳ Not yet published.** Tag not created. Main not updated. Ready for S-083 publish step.
+
 | Field | Value |
 |-------|-------|
 | **Tag name** | `v0.7-inventory-foundation` |
 | **Tag target** | `f993541` (develop HEAD after S-081 merge) |
 | **Tag type** | annotated (`git tag -a`) |
-| **Tag scope** | code baseline — inventory foundation (S-077 schema, S-078 availability, S-079 reservation, S-080 conflicts, S-081 UI) |
-| **When to tag** | after S-082 review merged to develop, in separate release-prep branch |
-| **Release notes** | 5 S-tickets: availability calculator (23 tests), reservation lifecycle + campaign integration (24 tests), conflict detection engine (18 tests, 6 conflict types), inventory calendar UI (19 vitest tests, 4 tabs), plus foundational schema/repository (S-077) |
+| **Tag scope** | code baseline — inventory foundation |
+| **When to tag** | S-083 publish step (separate release-prep branch) |
+| **Release notes** | 5 S-tickets: availability (23 tests), reservation (24 tests), conflicts (18 tests, 6 types), UI calendar (19 vitest), plus schema (S-077) |
 
 ### Post-release next:
 

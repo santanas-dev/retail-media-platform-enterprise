@@ -614,9 +614,13 @@ git push origin :refs/tags/v0.5-business-portal-complete
 
 ### v0.7-inventory-foundation — Inventory Domain MVP
 
-**✅ Ready for release.** All 5 S-tickets complete (S-077–S-081). Release candidate on develop at `f993541`.
+**✅ Release candidate — GO from readiness review (S-082). Not yet published.**
+
+All 5 S-tickets complete (S-077–S-081). Code baseline on develop at `f993541`.
+Will be published in separate publish step (S-083).
 
 **Proposed tag:** `v0.7-inventory-foundation` on `f993541` (code baseline after S-081 merge).
+**Status:** tag NOT created, main NOT updated. Ready for S-083 publish step.
 
 #### Delivered Capabilities
 
