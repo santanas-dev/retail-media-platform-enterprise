@@ -252,13 +252,12 @@ class InventoryRule(Base):
 | S-077 | Inventory schema + repository skeleton — 3 таблицы, migration 015, Pydantic схемы, CRUD | S-076 | ✅ done |
 | S-078 | Availability calculator — POST /inventory/availability, почасовые слоты, SOV→units, get-or-create | S-077 | ✅ done |
 | S-079 | Booking/reservation lifecycle — reserve/commit/release API + campaign integration | S-078 | ✅ done |
-| S-080 | Conflict detection engine — SOV enforcement, schedule overlap, priority/limit violation | S-079 | ⏳ запланирован |
-| S-081 | Inventory rules admin API + UI — CRUD правил инвентаря + календарь доступности | S-079 | ⏳ запланирован |
+| S-080 | Conflict detection engine — SOV enforcement, schedule overlap, priority/limit violation | S-079 | ✅ done |
+| S-081 | Inventory calendar UI — admin-web: availability checker + conflict checker + rules placeholder (4 tabs). Backend: no changes. | S-080 | ✅ done |
 
 ### Phase 2 — Visibility & Reporting
 
-| S-081 | Inventory calendar UI — календарь доступности по store/surface | S-079, S-080 | 1 task |
-| S-082 | Sold-out detection + альтернативы | S-079 | 1 task |
+| S-082 | Sold-out detection + альтернативы | S-079 | ⏳ запланирован |
 | S-083 | Inventory reports: свободно/занято, план/факт, SLA | S-079 | 1 task |
 
 ### Phase 3 — Runtime Integration
