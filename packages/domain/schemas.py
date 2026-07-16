@@ -1228,7 +1228,7 @@ class InventorySimulationPlacementResult(BaseModel):
     store_code: str | None = None
     store_name: str | None = None
     fit: bool
-    slot_fill_percent: float = Field(0.0, ge=0.0, le=100.0)
+    slot_fill_percent: float = Field(0.0, ge=0.0)
     total_requested: int = 0
     total_available: int = 0
     conflicts: list[InventoryConflictItem] = Field(default_factory=list)
