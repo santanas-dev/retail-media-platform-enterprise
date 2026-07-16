@@ -647,7 +647,7 @@ async def list_moderation_queue(
             CreativeAsset.moderation_notes,
             CreativeAsset.created_at,
             CreativeAsset.updated_at,
-            AdvertiserOrganization.name.label("advertiser_name"),
+            AdvertiserOrganization.legal_name.label("advertiser_name"),
             AdvertiserOrganization.code.label("advertiser_code"),
         )
         .outerjoin(
@@ -701,7 +701,7 @@ async def list_moderation_queue_paginated(
             CreativeAsset.moderation_notes,
             CreativeAsset.created_at,
             CreativeAsset.updated_at,
-            AdvertiserOrganization.name.label("advertiser_name"),
+            AdvertiserOrganization.legal_name.label("advertiser_name"),
             AdvertiserOrganization.code.label("advertiser_code"),
         )
         .outerjoin(
@@ -804,7 +804,7 @@ async def list_approval_queue(
             Campaign.name.label("campaign_name"),
             Campaign.status.label("campaign_status"),
             Campaign.advertiser_organization_id.label("advertiser_org_id"),
-            AdvertiserOrganization.name.label("advertiser_org_name"),
+            AdvertiserOrganization.legal_name.label("advertiser_org_name"),
             AdvertiserBrand.name.label("advertiser_brand_name"),
             CampaignStatusHistory.changed_at.label("requested_at"),
             CampaignStatusHistory.changed_by.label("requested_by"),
@@ -950,7 +950,7 @@ async def _approval_queue_rows_by_ids(
             Campaign.name.label("campaign_name"),
             Campaign.status.label("campaign_status"),
             Campaign.advertiser_organization_id.label("advertiser_org_id"),
-            AdvertiserOrganization.name.label("advertiser_org_name"),
+            AdvertiserOrganization.legal_name.label("advertiser_org_name"),
             AdvertiserBrand.name.label("advertiser_brand_name"),
             CampaignStatusHistory.changed_at.label("requested_at"),
             CampaignStatusHistory.changed_by.label("requested_by"),
