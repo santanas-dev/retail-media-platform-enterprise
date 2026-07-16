@@ -150,24 +150,7 @@ def c1_fixtures():
       VALUES ('{ADMIN_LC}', '{ADMIN_USER}', 'local_advertiser', '{ph}', 'active')
     ; INSERT INTO user_roles (id, user_id, role_id)
       SELECT '{ADMIN_UR}', '{ADMIN_USER}', id FROM roles WHERE code='system_admin'
-    -- Grant creatives.moderate + campaigns.approve to system_admin (seed may be stale)
-    ; INSERT INTO role_permissions (id, role_id, permission_id)
-      SELECT 'rp-c1-sa-mod-cr', r.id, p.id
-      FROM roles r CROSS JOIN permissions p
-      WHERE r.code='system_admin' AND p.code='creatives.moderate'
-      AND NOT EXISTS (
-        SELECT 1 FROM role_permissions
-        WHERE role_id=r.id AND permission_id=p.id
-      )
-    ; INSERT INTO role_permissions (id, role_id, permission_id)
-      SELECT 'rp-c1-sa-ap-camp', r.id, p.id
-      FROM roles r CROSS JOIN permissions p
-      WHERE r.code='system_admin' AND p.code='campaigns.approve'
-      AND NOT EXISTS (
-        SELECT 1 FROM role_permissions
-        WHERE role_id=r.id AND permission_id=p.id
-      )
-    -- Grant creatives.moderate + campaigns.approve to advertiser role
+    -- Grant creatives.moderate + campaigns.approve to advertiser role (scoped moderator)
     ; INSERT INTO role_permissions (id, role_id, permission_id)
       SELECT 'rp-c1-mod-cr', r.id, p.id
       FROM roles r CROSS JOIN permissions p
