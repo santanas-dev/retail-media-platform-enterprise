@@ -173,7 +173,7 @@ Separately covered:
 | S-069 | Admin UI: audit log + permission-filtered menu | P2 | 🚧 planned |
 | S-070 | Fleet/device health workspace | P2 | 🚧 planned |
 | S-071 | Emergency workspace / kill-switch UI | P2 | ✅ done |
-| S-072 | Inventory domain gap analysis (ТЗ §6.3) | P2 | 🚧 planned |
+| S-072 | Inventory domain gap analysis and plan | P2 | ✅ done |
 | S-073 | UI design-system / a11y foundation / i18n strategy | P3 | 🚧 planned |
 | S-074 | v0.6.2/v0.7 readiness review | — | 🚧 planned |
 | Tenant model ADR before v2.6 | 🟡 Decision needed — ADR-018 |

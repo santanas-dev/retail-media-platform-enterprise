@@ -51,7 +51,7 @@ remediation sequence.
 | P2-7 | No audit log UI — audit_events_operational write-only | Operators can't review audit trail | S-069 ✅ |
 | P2-8 | No device/fleet health UI | Operational blindness | S-070 ✅ |
 | P2-9 | No emergency workspace / kill-switch UI | ADR-013 architecture proven but no operator UI | S-071 ✅ |
-| P2-10 | Inventory domain not implemented per ТЗ §6.3 (airtime, forecasting, conflicts, sold-out) | Core domain gap | S-072 |
+| P2-10 | Inventory domain not implemented per ТЗ §6.3 (airtime, forecasting, conflicts, sold-out) | Core domain gap | S-072 ✅ |
 | P2-11 | 152-ФЗ operational docs/procedures not prepared | Compliance risk | S-073 |
 
 ### P3 — UI / Product Maturity
@@ -133,8 +133,12 @@ S-071 ✅ ─► Emergency workspace / kill-switch UI  (done 2026-07-16)
           ├─ 14 backend tests + 12 frontend tests
           └─ Outbox event emergency.changed on state transitions
 
-S-072 ─► Inventory domain gap analysis and plan
-          └─ ТЗ §6.3: airtime, forecasting, conflicts, sold-out, rules
+S-072 ✅ ─► Inventory domain gap analysis and plan  (done 2026-07-16)
+          ├─ Current state: static catalog — stores, surfaces, is_active toggle
+          ├─ ТЗ §6.3 gap: нет airtime, forecast, conflict detection, SOV enforcement, статусов, sold-out
+          ├─ Proposed phased plan: S-075 model → S-076 availability → S-077 booking lifecycle → S-078 conflicts → S-079 campaign integration
+          ├─ Player/KSO assessment: можно начинать после S-079 (minimal inventory contract: availability + booking)
+          └─ Deferred: pricing, programmatic, billing, ClickHouse analytics → v2.6+
 
 S-073 ─► UI design-system / a11y foundation
           ├─ Design tokens + component library start

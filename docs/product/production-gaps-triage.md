@@ -159,7 +159,7 @@ See gap categories below. No gap is production-ready — each requires explicit 
 | Monitoring baseline | Prometheus metrics on control-api + device-gateway. Grafana dashboard (4 panels: API latency, error rate, DB pool, NATS queue). | **Deferred to v0.6** — business portal tasks consumed v0.5 cycle |
 | Audit retention | Extend `login_attempts` to general audit table. Retention policy (90 days dev, 365 production). Log review runbook. | **Partially done** — audit events for user management (S-035e). Approval/moderation audit P2 follow-up. Retention policy deferred to v0.6 |
 | ADR-018 decision | Stakeholder meeting. Document decision (single-retailer vs multi-retailer/syndication). Update ADR-018 status: Accepted or Rejected. | **Deferred** — proposed, no decision yet |
-| Business portal completeness | Admin + advertiser portals fully operational (S-033…S-040). Campaign CRUD, creative moderation, approval inbox, inventory UI, advertiser page, PoP export. | **✅ Done** — S-042 readiness review CONDITIONAL GO, CI green 34/34 |
+| Business portal completeness | Admin + advertiser portals fully operational (S-033…S-040). Campaign CRUD, creative moderation, approval inbox, inventory catalog UI, advertiser page, PoP export. **Inventory is static catalog only — full domain per ТЗ §6.3 not implemented.** | **✅ Done** — S-042 readiness review CONDITIONAL GO, CI green 34/34 |
 
 **Deliverable:** v0.5 Business Portal Complete RC ready. Production CI + backup/restore done. Monitoring + LDAPS deferred to v0.6.
 
