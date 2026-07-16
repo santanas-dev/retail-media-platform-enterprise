@@ -24,15 +24,14 @@
 ### C1 — Creative Moderation + Campaign Approval RLS 🟡
 - Fix applied on develop (SHA 4adde45 → 39dc8bc)
 - 4 endpoints under NOBYPASSRLS, 8 behavioural tests (all pass)
-- **NOT CLOSED — blocked on:**
-  a) ~~ADR-008 gate~~ — gate is now GREEN ✅ (H0 resolved)
-  b) Merge to main pending
+- **NOT CLOSED — merge to main after C2 completes**
+- No remaining blockers: ADR-008 gate GREEN ✅ (H0 resolved)
 - Bug fixed: `AdvertiserOrganization.name` → `legal_name` (4 places)
 - Seed gap closed: `creatives.moderate` in role_permissions for system_admin/security_admin
 
-### C2 — ❗ Only open Critical
-- Blocked behind C1 closure (merge to main)
-- Sequence: C1 merge to main → C2
+### C2 — ❗ Next active Critical (after H0)
+- Now unblocked: H0 resolved, C1 merge to main comes *after* C2
+- Sequence: H0 (done) → C2 → C1 merge to main
 
 ## Completed (Player Blockers A1–A3)
 
