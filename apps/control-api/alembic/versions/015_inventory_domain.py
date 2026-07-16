@@ -137,7 +137,7 @@ def upgrade() -> None:
         sa.Column("scope_id", sa.String(36), nullable=True),
         sa.Column("rule_type", sa.String(64), nullable=False),
         sa.Column("priority", sa.Integer(), nullable=False, server_default="100"),
-        sa.Column("value_json", postgresql.JSONB(), nullable=False, server_default="'{}'"),
+        sa.Column("value_json", postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default="true"),
         sa.Column("starts_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("ends_at", sa.DateTime(timezone=True), nullable=True),
