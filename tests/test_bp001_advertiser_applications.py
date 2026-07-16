@@ -490,3 +490,4 @@ class TestNoSecretsInResponse(AuthzMixin, unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+# BP-001 follow-up CI trigger
