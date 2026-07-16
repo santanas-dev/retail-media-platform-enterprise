@@ -33,6 +33,8 @@ from packages.domain.schemas import (
     CampaignRejectRequest,
     CampaignStatusHistoryOut,
     CampaignUpdateRequest,
+    CampaignInventoryReservationOut,
+    CampaignInventoryReservationsResponse,
     CreativeAssetOut,
     PaginatedResponse,
 )
@@ -747,3 +749,29 @@ async def attach_creative_endpoint(
         headers={"source_service": "control-api"},
     )
     return _serialize_creative_asset(asset)
+
+
+# ---------------------------------------------------------------------------
+# S-079 — Campaign Inventory Reservations
+# ---------------------------------------------------------------------------
+
+
+@router.get("/campaigns/{campaign_id}/inventory-reservations",
+            response_model=CampaignInventoryReservationsResponse)
+async def list_campaign_inventory_reservations(
+    campaign_id: str,
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("inventory.read")),
+    _rls=Depends(set_rls_context),
+):
+    """List all inventory bookings for a campaign."""
+    bookings = await repository.get_inventory_reservations_for_campaign(
+        db, campaign_id,
+    )
+    return CampaignInventoryReservationsResponse(
+        campaign_id=campaign_id,
+        reservations=[
+            CampaignInventoryReservationOut(**b) for b in bookings
+        ],
+        total=len(bookings),
+    )

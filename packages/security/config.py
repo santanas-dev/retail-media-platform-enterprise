@@ -117,6 +117,9 @@ class SecurityConfig:
     # Inventory (S-078) — default slot capacity for unconfigured slots
     inventory_default_slot_capacity: int = 100
 
+    # Inventory (S-079) — reservation TTL in hours before auto-expiry
+    inventory_reservation_ttl_hours: int = 24
+
     def __post_init__(self) -> None:
         # Load JWT_SECRET from env if not provided
         if not self.jwt_secret:
@@ -174,6 +177,10 @@ class SecurityConfig:
         inv_cap = os.environ.get("INVENTORY_DEFAULT_SLOT_CAPACITY", "")
         if inv_cap:
             self.inventory_default_slot_capacity = int(inv_cap)
+        # Load inventory reservation TTL (S-079)
+        inv_ttl = os.environ.get("INVENTORY_RESERVATION_TTL_HOURS", "")
+        if inv_ttl:
+            self.inventory_reservation_ttl_hours = int(inv_ttl)
         # Load metrics auth token (S-065)
         self.metrics_auth_token = os.environ.get(
             "METRICS_AUTH_TOKEN", self.metrics_auth_token

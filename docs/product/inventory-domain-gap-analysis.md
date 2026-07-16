@@ -251,7 +251,7 @@ class InventoryRule(Base):
 | S-076 | Inventory domain model — architecture design (5 entities, 8 conflict types, lifecycle) | — | ✅ done |
 | S-077 | Inventory schema + repository skeleton — 3 таблицы, migration 015, Pydantic схемы, CRUD | S-076 | ✅ done |
 | S-078 | Availability calculator — POST /inventory/availability, почасовые слоты, SOV→units, get-or-create | S-077 | ✅ done |
-| S-079 | Booking/reservation lifecycle — reserve/commit/release API + campaign integration | S-078 | ⏳ запланирован |
+| S-079 | Booking/reservation lifecycle — reserve/commit/release API + campaign integration | S-078 | ✅ done |
 | S-080 | Conflict detection engine — SOV enforcement, schedule overlap, priority/limit violation | S-079 | ⏳ запланирован |
 | S-081 | Inventory rules admin API + UI — CRUD правил инвентаря + календарь доступности | S-079 | ⏳ запланирован |
 

@@ -1100,3 +1100,30 @@ class InventoryAvailabilityResponse(BaseModel):
     total_available: int
     slots: list[InventorySlotAvailability]
     conflicts: list[InventorySlotAvailability]
+
+
+# ---------------------------------------------------------------------------
+# S-079 — Inventory Reservation schemas
+# ---------------------------------------------------------------------------
+
+
+class CampaignInventoryReservationOut(BaseModel):
+    """Single inventory booking row for a campaign."""
+    booking_id: str
+    campaign_id: str | None = None
+    placement_id: str | None = None
+    slot_id: str
+    capacity_units: int
+    status: str
+    reserved_until: str | None = None
+    committed_at: str | None = None
+    released_at: str | None = None
+    release_reason: str = ""
+    created_at: str | None = None
+
+
+class CampaignInventoryReservationsResponse(BaseModel):
+    """List of inventory reservations for a campaign."""
+    campaign_id: str
+    reservations: list[CampaignInventoryReservationOut]
+    total: int
