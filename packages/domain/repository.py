@@ -1301,6 +1301,53 @@ async def request_campaign_approval(
 
     now = datetime.now(tz.utc)
     old_status = campaign.status
+
+    # S-079: Auto-reserve inventory before transitioning to pending_approval.
+    # Trigger decision: reserve during request_approval (not placement CRUD)
+    # because draft placements change often.  Only reserve when transitioning
+    # to pending_approval.
+    from packages.security.config import get_security_config as _get_cfg
+    cfg = _get_cfg()
+    placements_for_reserve = await session.execute(
+        select(CampaignPlacement).where(
+            CampaignPlacement.campaign_id == campaign_id,
+            CampaignPlacement.display_surface_id.isnot(None),
+        )
+    )
+    placements_for_reserve = placements_for_reserve.scalars().all()
+
+    # Release any stale reservations from previous request_approval attempts
+    # (e.g., if the campaign was rejected and re-submitted, old reservations
+    #  may still be in 'reserved' state and need cleanup before re-reserve).
+    await release_inventory_for_campaign(session, campaign_id, "re-reserve cleanup")
+
+    for placement in placements_for_reserve:
+        # Find the flight that covers this placement's date window
+        flight_result = await session.execute(
+            select(CampaignFlight).where(
+                CampaignFlight.campaign_id == campaign_id,
+            )
+        )
+        flights_for_placement = flight_result.scalars().all()
+        for flight in flights_for_placement:
+            if not flight.start_at or not flight.end_at:
+                continue
+            try:
+                await reserve_inventory_for_placement(
+                    session,
+                    campaign_id=campaign_id,
+                    placement_id=placement.id,
+                    display_surface_id=placement.display_surface_id,
+                    starts_at=flight.start_at,
+                    ends_at=flight.end_at,
+                    sov_percent=placement.share_of_voice_pct or 100,
+                    default_total_capacity=cfg.inventory_default_slot_capacity,
+                    reservation_ttl_hours=cfg.inventory_reservation_ttl_hours,
+                )
+            except ValueError:
+                # Inventory unavailable — fail approval request
+                return campaign.status, campaign.status
+
     campaign.status = "pending_approval"
     campaign.updated_at = now
 
@@ -1405,6 +1452,10 @@ async def approve_campaign(
 
     now = datetime.now(tz.utc)
     old_status = campaign.status
+
+    # S-079: Commit reserved inventory → booked
+    await commit_inventory_for_campaign(session, campaign_id)
+
     campaign.status = "approved"
     campaign.updated_at = now
 
@@ -1487,6 +1538,10 @@ async def reject_campaign(
 
     now = datetime.now(tz.utc)
     old_status = campaign.status
+
+    # S-079: Release reserved/committed inventory on rejection
+    await release_inventory_for_campaign(session, campaign_id, reason[:512])
+
     campaign.status = "rejected"
     campaign.updated_at = now
 
@@ -3352,13 +3407,16 @@ async def get_or_create_inventory_slot(
     row = result.scalar_one_or_none()
     if row is not None:
         return row
+    import uuid
     slot = InventorySlot(
+        id=str(uuid.uuid4()),
         display_surface_id=display_surface_id,
         slot_date=slot_date,
         slot_hour=slot_hour,
         total_capacity=total_capacity,
     )
     session.add(slot)
+    await session.flush()
     return slot
 
 
@@ -3639,3 +3697,382 @@ async def compute_inventory_availability(
         "slots": slots_data,
         "conflicts": conflicts,
     }
+
+
+# ---------------------------------------------------------------------------
+# S-079 — Inventory Reservation Lifecycle
+# ---------------------------------------------------------------------------
+
+
+async def reserve_inventory_for_placement(
+    session: AsyncSession,
+    *,
+    campaign_id: str,
+    placement_id: str,
+    display_surface_id: str,
+    starts_at: datetime,
+    ends_at: datetime,
+    capacity_units: int | None = None,
+    sov_percent: int | None = None,
+    default_total_capacity: int = 100,
+    reservation_ttl_hours: int = 24,
+) -> dict:
+    """Reserve inventory capacity for a single placement.
+
+    Expands the flight period into hourly slots, checks availability,
+    and creates InventoryBooking rows with status='reserved'.
+    Idempotent: re-reserving the same placement reuses existing bookings
+    (no double-count).
+
+    Returns:
+        {
+            "reserved": True,
+            "bookings_created": int,
+            "bookings_reused": int,
+            "slots": [...],  # slot details
+        }
+        — or raises ValueError on insufficient capacity.
+    """
+    from datetime import timedelta, timezone as tz
+
+    if ends_at <= starts_at:
+        raise ValueError("ends_at must be after starts_at")
+    if capacity_units is not None and sov_percent is not None:
+        raise ValueError("Provide either capacity_units or sov_percent, not both")
+    if sov_percent is not None and not (0 < sov_percent <= 100):
+        raise ValueError("sov_percent must be in (0, 100]")
+
+    # Check if already reserved for this placement (idempotency)
+    from sqlalchemy import select as sa_select
+    existing_result = await session.execute(
+        sa_select(InventoryBooking).where(
+            InventoryBooking.campaign_placement_id == placement_id,
+            InventoryBooking.status.in_(["reserved", "committed"]),
+        )
+    )
+    existing = existing_result.scalars().all()
+    if existing:
+        slots_info = []
+        for b in existing:
+            slot = await session.get(InventorySlot, b.inventory_slot_id)
+            if slot:
+                slots_info.append({
+                    "slot_id": slot.id,
+                    "slot_date": str(slot.slot_date) if slot.slot_date else "",
+                    "slot_hour": slot.slot_hour,
+                    "capacity_units": b.capacity_units,
+                })
+        return {
+            "reserved": True,
+            "bookings_created": 0,
+            "bookings_reused": len(existing),
+            "slots": slots_info,
+        }
+
+    # Expand into hourly slots
+    current = starts_at.replace(minute=0, second=0, microsecond=0)
+    end_hour = ends_at.replace(minute=0, second=0, microsecond=0)
+    slot_pairs = []
+    while current < end_hour:
+        slot_pairs.append((current.date(), current.hour))
+        current += timedelta(hours=1)
+
+    if not slot_pairs:
+        raise ValueError("time range must cover at least one full hour")
+
+    now = datetime.now(tz.utc)
+    reserved_until = now + timedelta(hours=reservation_ttl_hours)
+
+    # Phase 1: get-or-create slots, compute capacity per slot
+    slots_needed: list[tuple[InventorySlot, int]] = []
+    for slot_date, slot_hour in slot_pairs:
+        slot = await get_or_create_inventory_slot(
+            session,
+            display_surface_id=display_surface_id,
+            slot_date=slot_date,
+            slot_hour=slot_hour,
+            total_capacity=default_total_capacity,
+        )
+
+        if capacity_units is not None:
+            requested = capacity_units
+        elif sov_percent is not None:
+            import math
+            total_cap = slot.total_capacity or default_total_capacity
+            requested = int(math.ceil(total_cap * sov_percent / 100))
+        else:
+            requested = 0
+
+        available = slot.available_capacity
+        if available < requested:
+            raise ValueError(
+                f"Insufficient capacity for slot {slot_date}T{slot_hour:02d}:00: "
+                f"available={available}, requested={requested}"
+            )
+        slots_needed.append((slot, requested))
+
+    # Phase 2: create bookings and update slot reserved_capacity
+    bookings_created = 0
+    slots_info = []
+    for slot, requested in slots_needed:
+        booking = InventoryBooking(
+            campaign_id=campaign_id,
+            campaign_placement_id=placement_id,
+            inventory_slot_id=slot.id,
+            capacity_units=requested,
+            status="reserved",
+            reserved_until=reserved_until,
+        )
+        session.add(booking)
+        bookings_created += 1
+
+        slot.reserved_capacity = (slot.reserved_capacity or 0) + requested
+        slot.status = slot.recompute_status()
+        slot.updated_at = now
+
+        slots_info.append({
+            "slot_id": slot.id,
+            "slot_date": str(slot.slot_date) if slot.slot_date else "",
+            "slot_hour": slot.slot_hour,
+            "capacity_units": requested,
+        })
+
+    return {
+        "reserved": True,
+        "bookings_created": bookings_created,
+        "bookings_reused": 0,
+        "slots": slots_info,
+    }
+
+
+async def commit_inventory_for_campaign(
+    session: AsyncSession,
+    campaign_id: str,
+) -> int:
+    """Commit all reserved bookings for a campaign.
+
+    Transitions status 'reserved' → 'committed',
+    moves capacity from slot.reserved_capacity → slot.booked_capacity.
+
+    Returns number of bookings committed.
+    """
+    from sqlalchemy import select as sa_select
+    from datetime import timezone as tz
+
+    result = await session.execute(
+        sa_select(InventoryBooking).where(
+            InventoryBooking.campaign_id == campaign_id,
+            InventoryBooking.status == "reserved",
+        )
+    )
+    bookings = result.scalars().all()
+    if not bookings:
+        return 0
+
+    now = datetime.now(tz.utc)
+    committed = 0
+    for booking in bookings:
+        slot = await session.get(InventorySlot, booking.inventory_slot_id)
+        if slot is None:
+            continue
+
+        # Move capacity: reserved → booked
+        cap = booking.capacity_units
+        slot.reserved_capacity = max(0, (slot.reserved_capacity or 0) - cap)
+        slot.booked_capacity = (slot.booked_capacity or 0) + cap
+        slot.status = slot.recompute_status()
+        slot.updated_at = now
+
+        booking.status = "committed"
+        booking.committed_at = now
+        booking.updated_at = now
+        committed += 1
+
+    return committed
+
+
+async def release_inventory_for_campaign(
+    session: AsyncSession,
+    campaign_id: str,
+    reason: str = "",
+) -> int:
+    """Release all reserved/committed bookings for a campaign.
+
+    Transitions status → 'released', decrements capacity from slots.
+
+    Returns number of bookings released.
+    """
+    from sqlalchemy import select as sa_select
+    from datetime import timezone as tz
+
+    result = await session.execute(
+        sa_select(InventoryBooking).where(
+            InventoryBooking.campaign_id == campaign_id,
+            InventoryBooking.status.in_(["reserved", "committed"]),
+        )
+    )
+    bookings = result.scalars().all()
+    if not bookings:
+        return 0
+
+    now = datetime.now(tz.utc)
+    released = 0
+    for booking in bookings:
+        slot = await session.get(InventorySlot, booking.inventory_slot_id)
+        if slot is None:
+            continue
+
+        cap = booking.capacity_units
+        if booking.status == "reserved":
+            slot.reserved_capacity = max(0, (slot.reserved_capacity or 0) - cap)
+        elif booking.status == "committed":
+            slot.booked_capacity = max(0, (slot.booked_capacity or 0) - cap)
+        slot.status = slot.recompute_status()
+        slot.updated_at = now
+
+        booking.status = "released"
+        booking.released_at = now
+        booking.release_reason = reason[:512]
+        booking.updated_at = now
+        released += 1
+
+    return released
+
+
+async def expire_inventory_reservations(
+    session: AsyncSession,
+) -> int:
+    """Expire reservations past their reserved_until deadline.
+
+    Transitions status 'reserved' → 'expired', decrements reserved_capacity.
+
+    Returns number of bookings expired.
+    """
+    from sqlalchemy import select as sa_select
+    from datetime import timezone as tz
+
+    now = datetime.now(tz.utc)
+    result = await session.execute(
+        sa_select(InventoryBooking).where(
+            InventoryBooking.status == "reserved",
+            InventoryBooking.reserved_until < now,
+        )
+    )
+    bookings = result.scalars().all()
+    if not bookings:
+        return 0
+
+    expired = 0
+    for booking in bookings:
+        slot = await session.get(InventorySlot, booking.inventory_slot_id)
+        if slot is not None:
+            slot.reserved_capacity = max(
+                0, (slot.reserved_capacity or 0) - booking.capacity_units
+            )
+            slot.status = slot.recompute_status()
+            slot.updated_at = now
+
+        booking.status = "expired"
+        booking.release_reason = "auto-expired"
+        booking.updated_at = now
+        expired += 1
+
+    return expired
+
+
+async def get_inventory_reservations_for_campaign(
+    session: AsyncSession,
+    campaign_id: str,
+) -> list[dict]:
+    """Return all inventory bookings for a campaign."""
+    from sqlalchemy import select as sa_select
+
+    result = await session.execute(
+        sa_select(InventoryBooking).where(
+            InventoryBooking.campaign_id == campaign_id,
+        ).order_by(InventoryBooking.created_at.desc())
+    )
+    bookings = result.scalars().all()
+
+    return [
+        {
+            "booking_id": b.id,
+            "campaign_id": b.campaign_id,
+            "placement_id": b.campaign_placement_id,
+            "slot_id": b.inventory_slot_id,
+            "capacity_units": b.capacity_units,
+            "status": b.status,
+            "reserved_until": b.reserved_until.isoformat() if b.reserved_until else None,
+            "committed_at": b.committed_at.isoformat() if b.committed_at else None,
+            "released_at": b.released_at.isoformat() if b.released_at else None,
+            "release_reason": b.release_reason,
+            "created_at": b.created_at.isoformat() if b.created_at else None,
+        }
+        for b in bookings
+    ]
+
+
+async def check_inventory_available_for_campaign(
+    session: AsyncSession,
+    campaign_id: str,
+    default_total_capacity: int = 100,
+) -> tuple[bool, str]:
+    """Check if inventory is available for all placements in a campaign.
+
+    Returns (available: bool, detail: str).
+    """
+    from packages.domain.models import CampaignPlacement, CampaignFlight
+
+    # Get all placements with surface targets
+    placements_result = await session.execute(
+        select(CampaignPlacement).where(
+            CampaignPlacement.campaign_id == campaign_id,
+            CampaignPlacement.display_surface_id.isnot(None),
+        )
+    )
+    placements = placements_result.scalars().all()
+
+    if not placements:
+        return False, "No placements with display surface targets found"
+
+    # Get flights to determine date range
+    flights_result = await session.execute(
+        select(CampaignFlight).where(
+            CampaignFlight.campaign_id == campaign_id,
+        )
+    )
+    flights = flights_result.scalars().all()
+    if not flights:
+        return False, "No flights found"
+
+    # Use the union of all flight periods
+    for placement in placements:
+        if not placement.display_surface_id:
+            continue
+        for flight in flights:
+            if not flight.start_at or not flight.end_at:
+                continue
+            try:
+                result = await compute_inventory_availability(
+                    session,
+                    display_surface_id=placement.display_surface_id,
+                    starts_at=flight.start_at,
+                    ends_at=flight.end_at,
+                    requested_sov_percent=placement.share_of_voice_pct or 100,
+                    default_total_capacity=default_total_capacity,
+                )
+                if not result["all_available"]:
+                    conflict_slots = result.get("conflicts", [])
+                    first = conflict_slots[0] if conflict_slots else {}
+                    return False, (
+                        f"Inventory unavailable for surface "
+                        f"{placement.display_surface_id}: "
+                        f"slot {first.get('slot_date', '?')}T"
+                        f"{first.get('slot_hour', '?')}:00 "
+                        f"available={first.get('available_capacity', 0)}, "
+                        f"needed={first.get('requested_capacity', 0)}"
+                    )
+            except ValueError as e:
+                return False, f"Availability check failed: {e}"
+
+    return True, "Inventory available for all placements"
