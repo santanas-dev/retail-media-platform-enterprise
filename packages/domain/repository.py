@@ -4435,3 +4435,288 @@ async def apply_inventory_rules_to_slot(
         "blackout": blackout,
         "internal_block_capacity": internal_block_capacity,
     }
+
+
+# ---------------------------------------------------------------------------
+# S-087 — Inventory Alternatives Recommendation
+# ---------------------------------------------------------------------------
+
+ALTERNATIVE_SAME_STORE_SURFACE = "SAME_STORE_SURFACE"
+ALTERNATIVE_SAME_SURFACE_TIME = "SAME_SURFACE_TIME"
+ALTERNATIVE_LOWER_SOV = "LOWER_SOV"
+ALTERNATIVE_LATER_TIME = "LATER_TIME"
+
+
+async def suggest_inventory_alternatives(
+    session: AsyncSession,
+    *,
+    display_surface_id: str,
+    starts_at: datetime,
+    ends_at: datetime,
+    requested_capacity_units: int | None = None,
+    requested_sov_percent: int | None = None,
+    max_results: int = 5,
+    default_total_capacity: int = 100,
+) -> list[dict]:
+    """Suggest alternatives when a surface/slot is unavailable.
+
+    Priority order:
+    1. Same store, different active surface (score = 100)
+    2. Same surface, nearby time slot ±1–2 hours (score = 80)
+    3. Lower SOV on same surface if partial capacity exists (score = 60)
+    4. Later date/time on same surface with enough capacity (score = 40)
+
+    Returns list of dicts sorted by score desc, capped at max_results.
+    Each dict has: alternative_type, surface_id, surface_code, surface_name,
+    store_id, store_code, store_name, starts_at, ends_at, available_capacity,
+    suggested_capacity_units, suggested_sov_percent, reason, score.
+    """
+    from datetime import timedelta
+
+    alternatives: list[dict] = []
+
+    if requested_capacity_units is not None and requested_sov_percent is not None:
+        raise ValueError(
+            "Provide either requested_capacity_units or requested_sov_percent, not both"
+        )
+
+    # Get requested surface context
+    surface = await get_display_surface(session, display_surface_id)
+    if surface is None:
+        return []
+
+    store_id = surface.store_id
+    store_code = surface.store_code if hasattr(surface, "store_code") else None
+    store_name = surface.store_name if hasattr(surface, "store_name") else None
+    surface_code = surface.code
+    surface_name = surface.code
+
+    # Helper: check if a surface can satisfy the request over the time range
+    async def _can_satisfy(sid: str, cap: int | None, sov: int | None) -> tuple[bool, int]:
+        try:
+            avail = await compute_inventory_availability(
+                session,
+                display_surface_id=sid,
+                starts_at=starts_at,
+                ends_at=ends_at,
+                requested_capacity_units=cap,
+                requested_sov_percent=sov,
+                default_total_capacity=default_total_capacity,
+            )
+            if avail.get("all_available"):
+                return True, avail.get("total_available", 0)
+            # Partial: check if any slots available
+            total_avail = avail.get("total_available", 0)
+            if total_avail > 0 and cap and total_avail >= cap:
+                return True, total_avail
+            return False, total_avail
+        except ValueError:
+            return False, 0
+
+    # Also check no blocking conflicts
+    async def _has_blocking_conflicts(sid: str) -> bool:
+        result = await detect_inventory_conflicts(
+            session,
+            display_surface_id=sid,
+            starts_at=starts_at,
+            ends_at=ends_at,
+            requested_capacity_units=requested_capacity_units,
+            requested_sov_percent=requested_sov_percent,
+            default_total_capacity=default_total_capacity,
+        )
+        return result.get("has_conflicts", False)
+
+    cap = requested_capacity_units
+    sov = requested_sov_percent
+
+    # -----------------------------------------------------------------------
+    # 1. SAME_STORE_SURFACE — other surfaces in the same store
+    # -----------------------------------------------------------------------
+    from sqlalchemy import select as sa_select
+
+    store_surfaces_stmt = (
+        sa_select(
+            DisplaySurface.id,
+            DisplaySurface.code,
+            Store.id.label("sid"),
+            Store.code.label("scode"),
+            Store.name.label("sname"),
+        )
+        .outerjoin(Store, DisplaySurface.store_id == Store.id)
+        .where(
+            DisplaySurface.store_id == store_id,
+            DisplaySurface.id != display_surface_id,
+            DisplaySurface.is_active == True,
+        )
+        .limit(max_results * 2)
+    )
+    result = await session.execute(store_surfaces_stmt)
+    store_surfaces = [dict(row._mapping) for row in result.fetchall()]
+
+    for alt_surf in store_surfaces:
+        if len(alternatives) >= max_results:
+            break
+        surf_id = alt_surf["id"]
+        has_conflicts = await _has_blocking_conflicts(surf_id)
+        if has_conflicts:
+            continue
+        ok, avail_cap = await _can_satisfy(surf_id, cap, sov)
+        if ok:
+            alternatives.append({
+                "alternative_type": ALTERNATIVE_SAME_STORE_SURFACE,
+                "surface_id": surf_id,
+                "surface_code": alt_surf.get("code"),
+                "surface_name": alt_surf.get("name"),
+                "store_id": alt_surf.get("sid", store_id),
+                "store_code": alt_surf.get("scode", store_code),
+                "store_name": alt_surf.get("sname", store_name),
+                "starts_at": starts_at.isoformat(),
+                "ends_at": ends_at.isoformat(),
+                "available_capacity": avail_cap,
+                "suggested_capacity_units": cap,
+                "suggested_sov_percent": sov,
+                "reason": (
+                    f"Поверхность «{alt_surf.get('code', '?')}» "
+                    f"в том же магазине доступна: {avail_cap} ед."
+                ),
+                "score": 100,
+            })
+
+    # -----------------------------------------------------------------------
+    # 2. SAME_SURFACE_TIME — nearby time slots on the same surface
+    # -----------------------------------------------------------------------
+    duration = ends_at - starts_at
+    for offset_hours in [1, 2, -1, -2]:
+        if len(alternatives) >= max_results:
+            break
+        new_start = starts_at + timedelta(hours=offset_hours)
+        new_end = ends_at + timedelta(hours=offset_hours)
+        # Only forward in time (later recommendations are more practical)
+        if new_start <= starts_at:
+            continue
+        try:
+            avail = await compute_inventory_availability(
+                session,
+                display_surface_id=display_surface_id,
+                starts_at=new_start,
+                ends_at=new_end,
+                requested_capacity_units=cap,
+                requested_sov_percent=sov,
+                default_total_capacity=default_total_capacity,
+            )
+            if avail.get("all_available"):
+                # Check conflicts at new time
+                conflicts = await detect_inventory_conflicts(
+                    session,
+                    display_surface_id=display_surface_id,
+                    starts_at=new_start,
+                    ends_at=new_end,
+                    requested_capacity_units=cap,
+                    requested_sov_percent=sov,
+                    default_total_capacity=default_total_capacity,
+                )
+                if not conflicts.get("has_conflicts"):
+                    alternatives.append({
+                        "alternative_type": ALTERNATIVE_SAME_SURFACE_TIME,
+                        "surface_id": display_surface_id,
+                        "surface_code": surface_code,
+                        "surface_name": surface_name,
+                        "store_id": store_id,
+                        "store_code": store_code,
+                        "store_name": store_name,
+                        "starts_at": new_start.isoformat(),
+                        "ends_at": new_end.isoformat(),
+                        "available_capacity": avail.get("total_available", 0),
+                        "suggested_capacity_units": cap,
+                        "suggested_sov_percent": sov,
+                        "reason": (
+                            f"На {offset_hours}ч позже на той же поверхности "
+                            f"доступно: {avail.get('total_available', 0)} ед."
+                        ),
+                        "score": 80,
+                    })
+        except ValueError:
+            continue
+
+    # -----------------------------------------------------------------------
+    # 3. LOWER_SOV — partial capacity on same surface
+    # -----------------------------------------------------------------------
+    if len(alternatives) < max_results and cap and cap > 1:
+        reduced_cap = max(1, cap // 2)
+        ok, avail_cap = await _can_satisfy(display_surface_id, reduced_cap, None)
+        if ok:
+            # Verify no blocking conflicts
+            conflicts = await detect_inventory_conflicts(
+                session,
+                display_surface_id=display_surface_id,
+                starts_at=starts_at,
+                ends_at=ends_at,
+                requested_capacity_units=reduced_cap,
+                requested_sov_percent=None,
+                default_total_capacity=default_total_capacity,
+            )
+            if not conflicts.get("has_conflicts"):
+                alternatives.append({
+                    "alternative_type": ALTERNATIVE_LOWER_SOV,
+                    "surface_id": display_surface_id,
+                    "surface_code": surface_code,
+                    "surface_name": surface_name,
+                    "store_id": store_id,
+                    "store_code": store_code,
+                    "store_name": store_name,
+                    "starts_at": starts_at.isoformat(),
+                    "ends_at": ends_at.isoformat(),
+                    "available_capacity": avail_cap,
+                    "suggested_capacity_units": reduced_cap,
+                    "suggested_sov_percent": None,
+                    "reason": (
+                        f"Можно снизить до {reduced_cap} ед. — "
+                        f"частичная ёмкость доступна: {avail_cap} ед."
+                    ),
+                    "score": 60,
+                })
+
+    # -----------------------------------------------------------------------
+    # 4. LATER_TIME — later date/hour on same surface
+    # -----------------------------------------------------------------------
+    if len(alternatives) < max_results:
+        for day_offset in [1, 2, 3]:
+            if len(alternatives) >= max_results:
+                break
+            new_start = starts_at + timedelta(days=day_offset)
+            new_end = ends_at + timedelta(days=day_offset)
+            ok, avail_cap = await _can_satisfy(display_surface_id, cap, sov)
+            if ok:
+                conflicts = await detect_inventory_conflicts(
+                    session,
+                    display_surface_id=display_surface_id,
+                    starts_at=new_start,
+                    ends_at=new_end,
+                    requested_capacity_units=cap,
+                    requested_sov_percent=sov,
+                    default_total_capacity=default_total_capacity,
+                )
+                if not conflicts.get("has_conflicts"):
+                    alternatives.append({
+                        "alternative_type": ALTERNATIVE_LATER_TIME,
+                        "surface_id": display_surface_id,
+                        "surface_code": surface_code,
+                        "surface_name": surface_name,
+                        "store_id": store_id,
+                        "store_code": store_code,
+                        "store_name": store_name,
+                        "starts_at": new_start.isoformat(),
+                        "ends_at": new_end.isoformat(),
+                        "available_capacity": avail_cap,
+                        "suggested_capacity_units": cap,
+                        "suggested_sov_percent": sov,
+                        "reason": (
+                            f"На {day_offset} дн. позже на той же поверхности "
+                            f"доступно: {avail_cap} ед."
+                        ),
+                        "score": 40,
+                    })
+
+    # Sort by score desc
+    alternatives.sort(key=lambda a: a["score"], reverse=True)
+    return alternatives[:max_results]

@@ -45,6 +45,8 @@ import type {
   InventoryAvailabilityResponse,
   InventoryConflictCheckRequest,
   InventoryConflictCheckResponse,
+  InventoryAlternativesRequest,
+  InventoryAlternativesResponse,
   CampaignInventoryReservationsResponse,
 } from "./types";
 
@@ -453,4 +455,12 @@ export function getCampaignInventoryReservations(
   return api.get<CampaignInventoryReservationsResponse>(
     `/campaigns/${campaignId}/inventory-reservations`,
   );
+}
+
+// ── S-087: Inventory Alternatives ──
+
+export function suggestAlternatives(
+  body: InventoryAlternativesRequest,
+): Promise<InventoryAlternativesResponse> {
+  return api.post<InventoryAlternativesResponse>("/inventory/alternatives", body);
 }

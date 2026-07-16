@@ -1167,3 +1167,43 @@ class InventoryConflictCheckResponse(BaseModel):
     has_conflicts: bool
     blocking: list[InventoryConflictItem] = Field(default_factory=list)
     warnings: list[InventoryConflictItem] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# S-087 — Inventory Alternatives
+# ---------------------------------------------------------------------------
+
+
+class InventoryAlternative(BaseModel):
+    """Single suggested alternative placement."""
+    alternative_type: str  # SAME_STORE_SURFACE | SAME_SURFACE_TIME | LOWER_SOV | LATER_TIME
+    surface_id: str
+    surface_code: str | None = None
+    surface_name: str | None = None
+    store_id: str | None = None
+    store_code: str | None = None
+    store_name: str | None = None
+    starts_at: str
+    ends_at: str
+    available_capacity: int
+    suggested_capacity_units: int | None = None
+    suggested_sov_percent: int | None = None
+    reason: str
+    score: int  # higher = better match
+
+
+class InventoryAlternativesRequest(BaseModel):
+    """Request alternatives for an unavailable placement."""
+    surface_id: str
+    starts_at: datetime
+    ends_at: datetime
+    requested_capacity_units: int | None = Field(None, ge=1)
+    requested_sov_percent: int | None = Field(None, ge=1, le=100)
+    max_results: int = Field(5, ge=1, le=20)
+
+
+class InventoryAlternativesResponse(BaseModel):
+    """Suggested alternatives when a placement is unavailable."""
+    surface_id: str
+    alternatives: list[InventoryAlternative] = Field(default_factory=list)
+    total_found: int

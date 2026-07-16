@@ -7,6 +7,7 @@ import {
   createCampaign,
   listDisplaySurfaces,
   checkAvailability,
+  suggestAlternatives,
 } from "../api/campaigns";
 import type {
   AdvertiserOrganizationOut,
@@ -15,6 +16,7 @@ import type {
   CampaignCreateRequest,
   DisplaySurfaceRefOut,
   InventoryAvailabilityResponse,
+  InventoryAlternativesResponse,
 } from "../api/types";
 import { ApiError } from "../api/client";
 
@@ -67,6 +69,8 @@ export default function CampaignCreatePage() {
   const [forecastResult, setForecastResult] = useState<InventoryAvailabilityResponse | null>(null);
   const [forecastLoading, setForecastLoading] = useState(false);
   const [forecastError, setForecastError] = useState<string | null>(null);
+  const [alternatives, setAlternatives] = useState<InventoryAlternativesResponse | null>(null);
+  const [altLoading, setAltLoading] = useState(false);
 
   // Load reference data
   useEffect(() => {
@@ -144,6 +148,7 @@ export default function CampaignCreatePage() {
   async function handleForecast() {
     if (!forecastSurface || !startAt || !endAt) return;
     setForecastLoading(true); setForecastError(null); setForecastResult(null);
+    setAlternatives(null);
     try {
       const result = await checkAvailability({
         surface_id: forecastSurface,
@@ -151,9 +156,30 @@ export default function CampaignCreatePage() {
         ends_at: new Date(endAt).toISOString(),
       });
       setForecastResult(result);
+      // If not available, fetch alternatives
+      if (!result.all_available) {
+        await handleAlternatives();
+      }
     } catch (e: unknown) {
       setForecastError(e instanceof ApiError ? e.message : "Ошибка проверки");
     } finally { setForecastLoading(false); }
+  }
+
+  // Fetch alternatives for unavailable surface
+  async function handleAlternatives() {
+    if (!forecastSurface || !startAt || !endAt) return;
+    setAltLoading(true);
+    try {
+      const result = await suggestAlternatives({
+        surface_id: forecastSurface,
+        starts_at: new Date(startAt).toISOString(),
+        ends_at: new Date(endAt).toISOString(),
+        max_results: 5,
+      });
+      setAlternatives(result);
+    } catch {
+      setAlternatives(null);
+    } finally { setAltLoading(false); }
   }
 
   // Submit
@@ -505,6 +531,26 @@ export default function CampaignCreatePage() {
               </div>
             )}
             {forecastError && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginTop: "0.5rem" }}>{forecastError}</div>}
+            {/* S-087 — Alternatives */}
+            {!forecastResult?.all_available && alternatives && (
+              <div style={{ marginTop: "0.75rem", padding: "0.5rem", border: "1px solid var(--rmp-border-strong)", borderRadius: "var(--rmp-radius-sm)", fontSize: "0.8rem" }}>
+                <strong>Возможные альтернативы ({alternatives.total_found}):</strong>
+                {altLoading ? (
+                  <p style={{ color: "#64748b", margin: "0.25rem 0 0" }}>Загрузка...</p>
+                ) : alternatives.alternatives.length === 0 ? (
+                  <p style={{ color: "#64748b", margin: "0.25rem 0 0" }}>Альтернатив не найдено. Попробуйте изменить период или запрошенную ёмкость.</p>
+                ) : (
+                  <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.2rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+                    {alternatives.alternatives.map((alt, i) => (
+                      <li key={i}>
+                        <strong>{alt.surface_code || alt.surface_id}</strong> — {alt.reason}{" "}
+                        <span style={{ color: "var(--rmp-success-600)" }}>(доступно: {alt.available_capacity} ед.{alt.suggested_capacity_units ? `, предложено: ${alt.suggested_capacity_units} ед.` : ""})</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </fieldset>
         )}
 

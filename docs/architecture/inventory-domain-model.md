@@ -420,6 +420,7 @@ GET /inventory/availability?surface_id=...&store_id=...&cluster_id=...&date=2026
 
 | S-081 | Inventory calendar UI + availability checker | S-079, S-080 | Admin-web: InventoryCalendarPage. CampaignCreatePage integration. |
 | S-082 | Sold-out detection + alternatives | S-079 | SoldOutView component. «Предложить альтернативный магазин/время». |
+| S-087 | Alternatives recommendation engine (MVP deterministic) | S-078, S-080 | POST /inventory/alternatives. 4-strategy: same store → time shift → lower SOV → later time. Frontend: CampaignCreatePage + CampaignDetailPage. |
 | S-083 | Inventory reports + SLA | S-079 | `/inventory/report/availability`, `/inventory/report/sla`. Admin-web reports. |
 
 ### Phase 3 — Runtime Integration

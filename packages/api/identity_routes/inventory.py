@@ -16,6 +16,9 @@ from packages.domain.schemas import (
     BranchOut,
     ClusterOut,
     DisplaySurfaceOut,
+    InventoryAlternative,
+    InventoryAlternativesRequest,
+    InventoryAlternativesResponse,
     InventoryAvailabilityRequest,
     InventoryAvailabilityResponse,
     InventorySlotAvailability,
@@ -226,6 +229,45 @@ async def check_inventory_conflicts(
         has_conflicts=result["has_conflicts"],
         blocking=[InventoryConflictItem(**b) for b in result["blocking"]],
         warnings=[InventoryConflictItem(**w) for w in result["warnings"]],
+    )
+
+
+# ---------------------------------------------------------------------------
+# S-087 — Inventory Alternatives
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/inventory/alternatives",
+    response_model=InventoryAlternativesResponse,
+)
+async def suggest_alternatives(
+    body: InventoryAlternativesRequest,
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("inventory.read")),
+):
+    """Suggest alternative surfaces/slots when a placement is unavailable.
+
+    Prioritises: same store different surface → nearby time → lower SOV
+    → later date.  Returns up to max_results alternatives sorted by score.
+    """
+    from packages.security.config import SecurityConfig
+
+    config = SecurityConfig()
+    alternatives = await repository.suggest_inventory_alternatives(
+        db,
+        display_surface_id=body.surface_id,
+        starts_at=body.starts_at,
+        ends_at=body.ends_at,
+        requested_capacity_units=body.requested_capacity_units,
+        requested_sov_percent=body.requested_sov_percent,
+        max_results=body.max_results,
+        default_total_capacity=config.inventory_default_slot_capacity,
+    )
+    return InventoryAlternativesResponse(
+        surface_id=body.surface_id,
+        alternatives=[InventoryAlternative(**a) for a in alternatives],
+        total_found=len(alternatives),
     )
 
 
