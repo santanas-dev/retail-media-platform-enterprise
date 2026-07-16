@@ -29,6 +29,7 @@ import {
   createUploadIntent,
   completeUpload,
   uploadFileToPresignedUrl,
+  simulateInventory,
 } from "../api/campaigns";
 import type {
   CampaignOut,
@@ -58,6 +59,7 @@ import type {
   InventoryAvailabilityResponse,
   InventorySlotAvailability,
   InventoryAlternativesResponse,
+  InventorySimulationResponse,
 } from "../api/types";
 import { checkAvailability, suggestAlternatives } from "../api/campaigns";
 import { ApiError, getToken, IDENTITY_BASE_URL } from "../api/client";
@@ -165,6 +167,11 @@ export default function CampaignDetailPage() {
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
   const [placementAlternatives, setPlacementAlternatives] = useState<InventoryAlternativesResponse | null>(null);
   const [altLoading, setAltLoading] = useState(false);
+
+  // ── S-089 Simulation state ──
+  const [simulationResult, setSimulationResult] = useState<InventorySimulationResponse | null>(null);
+  const [simulationLoading, setSimulationLoading] = useState(false);
+  const [simulationError, setSimulationError] = useState<string | null>(null);
 
   // S-009j: standalone creative asset intake (library)
   const [assetCode, setAssetCode] = useState("");
@@ -510,6 +517,19 @@ export default function CampaignDetailPage() {
   function renderOverview() {
     const canApprove = flights.length > 0 && placements.length > 0 && creatives.length > 0;
 
+    async function handleSimulate() {
+      setSimulationError(null);
+      setSimulationLoading(true);
+      try {
+        const res = await simulateInventory(campaign.id);
+        setSimulationResult(res);
+      } catch (e: unknown) {
+        setSimulationError(e instanceof Error ? e.message : "Ошибка симуляции");
+      } finally {
+        setSimulationLoading(false);
+      }
+    }
+
     async function handleRequestApproval() {
       setApprovalError(null);
       setApprovalSubmitting(true);
@@ -544,6 +564,13 @@ export default function CampaignDetailPage() {
                 Кампания в черновике.
                 {!canApprove && " Добавьте минимум один флайт, плейсмент и креатив для отправки на согласование."}
               </div>
+              {/* ── S-089 Simulation ── */}
+              {canApprove && (
+                <button type="button" style={{ ...css.secondaryBtn, fontSize: "0.75rem" }}
+                  onClick={handleSimulate} disabled={simulationLoading}>
+                  {simulationLoading ? "Симуляция..." : "🧪 Симуляция"}
+                </button>
+              )}
               <button
                 type="button"
                 style={{
@@ -560,6 +587,38 @@ export default function CampaignDetailPage() {
               <div style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
             )}
           </div>
+        )}
+
+        {/* ── S-089 Simulation results ── */}
+        {simulationResult && (
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", border: "1px solid var(--rmp-border-strong)", borderRadius: 6, fontSize: "0.8rem" }}>
+            <strong style={{ color: simulationResult.overall_fit ? "var(--rmp-success-600)" : "var(--rmp-danger-600)" }}>
+              {simulationResult.overall_fit ? "✅ Кампания помещается" : "❌ Кампания не помещается"}
+            </strong>
+            <span style={{ marginLeft: "0.5rem", color: "#64748b" }}>
+              ({simulationResult.blocking_count} блок., {simulationResult.warning_count} пред.)
+            </span>
+            {simulationResult.placements.map((p, i) => (
+              <div key={i} style={{ marginTop: "0.4rem", padding: "0.35rem", background: p.fit ? "#f0fdf4" : "#fef2f2", borderRadius: 4 }}>
+                <span style={{ fontWeight: 600 }}>{p.surface_code || p.surface_id}</span>
+                {" "}— fill {p.slot_fill_percent}% ({p.total_requested}/{p.total_available})
+                {!p.fit && <span style={{ color: "var(--rmp-danger-600)", marginLeft: "0.5rem" }}>⚠ конфликт</span>}
+                {p.conflicts.length > 0 && (
+                  <ul style={{ margin: "0.15rem 0 0", paddingLeft: "1.2rem", fontSize: "0.75rem" }}>
+                    {p.conflicts.slice(0, 3).map((c, j) => (
+                      <li key={j} style={{ color: c.severity === "blocking" ? "var(--rmp-danger-600)" : "#92400e" }}>
+                        {c.message}
+                      </li>
+                    ))}
+                    {p.conflicts.length > 3 && <li style={{ color: "#64748b" }}>...и ещё {p.conflicts.length - 3}</li>}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {simulationError && (
+          <div style={{ color: "#dc2626", fontSize: "0.8rem", marginBottom: "1rem" }}>{simulationError}</div>
         )}
 
         {/* ── Pending approval: approve / reject or read-only ── */}
