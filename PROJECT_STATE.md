@@ -9,8 +9,8 @@
 
 | Branch  | SHA      | Note |
 |---------|----------|------|
-| develop | 859be9e  | pre-merge prep |
-| main    | 09dc77a  | C1 merged (v0.8) |
+| develop | cab9014  | synced with main (post-C1 merge) |
+| main    | cab9014  | C1 merged (v0.8) |
 
 ## Active Workstreams
 
@@ -49,6 +49,25 @@
 - H0/C2/D1 visible in Коммиты/Заметки columns with SHA and CI run references.
 - New rule added to `roadmap-maintenance-rules.md`: статус «✅ Готово» в карте требует behavioral proof из PROJECT_STATE.
 - Workbook structure: 2 sheets, 91×5 + 38×8 — unchanged.
+
+## Open Issues
+
+| Priority | Count | Details |
+|----------|-------|---------|
+| Critical | 0 | — |
+| High | 0 | — |
+| Medium/Low | 0 open; see `docs/product/audit-v4-remediation-plan.md` for closed v0.6.1 findings |
+
+> **Audit note:** audit-v4 documents reference SHA `00060cc` for CRITICAL-1 (LDAPS) and
+> CRITICAL-2 (moderation RLS). These were closed at v0.6.1, but C2 later found the LDAPS
+> fix incomplete — C2 fix SHA is `47e7d44` (CI #29519917049). Current canonical status
+> is in this PROJECT_STATE.md, not in the audit docs.
+
+## Next Active Workstream
+
+**A4 / S-089 — Inventory simulation.**
+Pre-publication inventory simulation: predict slot fill, detect conflicts,
+validate campaign fit before approval. Depends on A1–A3 (✅ done).
 
 ## Completed (Player Blockers A1–A3)
 
