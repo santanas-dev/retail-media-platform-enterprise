@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 76b3fdf     | a1a2c8e        | D3 roadmap coverage audit → PROJECT_STATE updated, next=A5 |
+| develop | 56f8037     | 56f8037        | S-090 campaign dashboard (single commit — code+CI green) |
 | main    | cab9014     | —              | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -61,12 +61,14 @@
 - Results panel: overall_fit, per-surface fill%, conflicts
 - 13 backend tests (8 schema + 5 endpoint) + 3 frontend tests
 - **Fix (SHA 80276f1):** removed `le=100.0` cap on `slot_fill_percent` — overbook scenarios (>100%) were rejecting their own valid output. Added real endpoint tests via TestClient.
-- CI: #29526308583 — 34/34 green (SHA 80276f1)
-- Roadmap `roadmap-s020-2026-07-10.xlsx` aligned with PROJECT_STATE truth.
-- C1 status: 🟡 Готово для пилота (not closed on main). S-048: ✅ Готово with C2 proof.
-- H0/C2/D1 visible in Коммиты/Заметки columns with SHA and CI run references.
-- New rule added to `roadmap-maintenance-rules.md`: статус «✅ Готово» в карте требует behavioral proof из PROJECT_STATE.
-- Workbook structure: 2 sheets, 91×5 + 38×8 — unchanged.
+### A5 / S-090 — Campaign dashboard ✅ RESOLVED
+- **Verdict: dashboard tab added to admin-web CampaignDetailPage.**
+- Plan/Fact: plan from placement max_impressions, fact from PoP summary.
+- Deviation with color coding (green/yellow/red), delivery status, underdelivery warning.
+- By-day + by-surface breakdowns. Device health with honest limitation note (S-097).
+- No backend changes — reuses existing PoP reporting endpoints.
+- 5 vitest tests: plan/fact, empty, critical underdelivery, device health, by-day.
+- CI: #29529434884 — 34/34 green. Admin-web: 132/132 (127 + 5).
 
 ## Open Issues
 
@@ -83,8 +85,7 @@
 
 ## Next Active Workstream
 
-**A5 / S-090 — Campaign dashboard.**
-Post-campaign analytics dashboard with plan/fact, geography, device health.
+**A6 / S-091 — Emergency controls.**
 
 ## Completed (Player Blockers A1–A4)
 
@@ -99,7 +100,6 @@ Post-campaign analytics dashboard with plan/fact, geography, device health.
 
 | ID | Task | Status |
 |----|------|--------|
-| A5 S-090 | Campaign dashboard | ⏳ |
 | A6 S-091 | Emergency controls | ⏳ |
 
 ## Environment
