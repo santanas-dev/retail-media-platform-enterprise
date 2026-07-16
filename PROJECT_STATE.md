@@ -86,7 +86,7 @@
 
 ## Next Active Workstream
 
-**A6 / S-091 — Emergency controls.** ✅ RESOLVED
+None — A1–A6 completed; awaiting next prioritisation.
 
 ## Completed (Player Blockers A1–A6)
 

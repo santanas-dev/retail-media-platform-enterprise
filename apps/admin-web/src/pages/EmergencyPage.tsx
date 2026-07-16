@@ -139,8 +139,10 @@ export default function EmergencyPage() {
 
           {isActive && (
             <div style={styles.warning}>
-              <strong>⚠️ Внимание:</strong> аварийный режим активен. Все устройства прекратят показ рекламы.
-              Реальная остановка показа будет применена устройствами после реализации player-side emergency handling.
+              <strong>⚠️ Внимание:</strong> аварийный режим активирован на уровне платформы.
+              Состояние сохранено в backend, события аудита и outbox записаны.
+              Остановка показа на реальных устройствах произойдёт только после реализации
+              player-side emergency handling в KSO runtime.
             </div>
           )}
 
@@ -209,8 +211,8 @@ export default function EmergencyPage() {
           )}
 
           <div style={styles.meta}>
-            Аварийный режим работает на уровне платформы. При активации все устройства прекращают показ.
-            Текущая версия: backend state + audit готовы. Player-side enforcement будет реализован в KSO runtime.
+            Текущий scope: platform emergency state (backend) + audit/outbox events.
+            Player-side enforcement (остановка показа на устройствах) — deferred, требует KSO runtime integration.
           </div>
         </>
       )}

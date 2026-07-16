@@ -190,7 +190,7 @@ describe("emergency page — active", () => {
     renderEmergencyPage(ACTIVE_STATUS);
 
     await waitFor(() => {
-      const warning = screen.getByText(/аварийный режим активен/i);
+      const warning = screen.getByText(/аварийный режим активирован/i);
       expect(warning).toBeTruthy();
     });
   });
@@ -266,6 +266,21 @@ describe("emergency page — confirmation flow", () => {
       const notice = screen.getByText(/Player-side enforcement/i);
       expect(notice).toBeTruthy();
     });
+  });
+
+  it("does not claim devices will actually stop playback", async () => {
+    renderEmergencyPage(INACTIVE_STATUS);
+
+    await waitFor(() => {
+      // Verify honest scope wording is present
+      const scope = screen.getByText(/platform emergency state.*backend/i);
+      expect(scope).toBeTruthy();
+    });
+
+    // Verify old misleading claims are absent
+    const allText = document.body.textContent || "";
+    expect(allText).not.toMatch(/все устройства прекратят показ/i);
+    expect(allText).not.toMatch(/при активации все устройства прекращают показ/i);
   });
 });
 
