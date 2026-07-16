@@ -9,8 +9,8 @@
 
 | Branch  | SHA      | Note |
 |---------|----------|------|
-| develop | db532d6  | D2 follow-up |
-| main    | 4db6dc0  | v0.7 published |
+| develop | 859be9e  | pre-merge prep |
+| main    | 09dc77a  | C1 merged (v0.8) |
 
 ## Active Workstreams
 
@@ -21,13 +21,11 @@
 - CI proof: Run #29515994509 — 34/34 green, behavioural success.
 - 10/10 local, 9/9 outbox relay suite.
 
-### C1 — Creative Moderation + Campaign Approval RLS 🟡
-- Fix applied on develop (SHA 4adde45 → 39dc8bc)
-- 4 endpoints under NOBYPASSRLS, 8 behavioural tests (all pass)
-- **NOT CLOSED — merge to main after D2 resolved**
-- No remaining blockers: ADR-008 gate GREEN ✅ (H0 resolved)
-- Bug fixed: `AdvertiserOrganization.name` → `legal_name` (4 places)
-- Seed gap closed: `creatives.moderate` in role_permissions for system_admin/security_admin
+### C1 — Creative Moderation + Campaign Approval RLS ✅ CLOSED
+- Merged to main (SHA 09dc77a). CI #29522278631 — 34/34 green, ADR-008 behavioural success.
+- Fix applied: 4 endpoints under NOBYPASSRLS, 8 behavioural tests (all pass).
+- Bug fixed: `AdvertiserOrganization.name` → `legal_name` (4 places).
+- Seed gap closed: `creatives.moderate` in role_permissions for system_admin/security_admin.
 
 ### C2 — LDAPS certificate validation ✅ RESOLVED
 - **Verdict: real bug — two paths silently dropped TLS to CERT_NONE.**
