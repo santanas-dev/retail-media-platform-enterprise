@@ -22,6 +22,7 @@ from packages.api.identity_routes.creatives import router as creatives_router
 from packages.api.identity_routes.reporting import router as reporting_router
 from packages.api.identity_routes.inventory import router as inventory_router
 from packages.api.identity_routes.devices import router as devices_router
+from packages.api.identity_routes.emergency import router as emergency_router
 
 # Backward-compatible re-exports for test patches.
 # Tests patch ``packages.api.identity.repository.XXX`` — ``repository`` must be
@@ -40,3 +41,4 @@ router.include_router(creatives_router)
 router.include_router(reporting_router)
 router.include_router(inventory_router)
 router.include_router(devices_router)
+router.include_router(emergency_router)

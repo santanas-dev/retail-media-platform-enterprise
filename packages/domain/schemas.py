@@ -939,3 +939,25 @@ class PaginatedDevices(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# ---------------------------------------------------------------------------
+# S-071 — Emergency Override
+# ---------------------------------------------------------------------------
+
+
+class EmergencyStatusOut(BaseModel):
+    """Current emergency override status."""
+
+    active: bool = False
+    reason: str = ""
+    activated_by: str | None = None
+    activated_at: datetime | None = None
+
+
+class EmergencyActivateRequest(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=500)
+
+
+class EmergencyDeactivateRequest(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=500)

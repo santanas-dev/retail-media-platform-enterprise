@@ -17,6 +17,7 @@ import InventoryPage from "./pages/InventoryPage";
 import ApprovalInboxPage from "./pages/ApprovalInboxPage";
 import AuditLogPage from "./pages/AuditLogPage";
 import DeviceHealthPage from "./pages/DeviceHealthPage";
+import EmergencyPage from "./pages/EmergencyPage";
 
 /** Route-level error fallback — resets when the user navigates to a different route. */
 function RouteErrorFallback() {
@@ -84,6 +85,7 @@ const router = createBrowserRouter([
       { path: "campaigns/approvals", element: <ApprovalInboxPage /> },
       { path: "audit", element: <AuditLogPage /> },
       { path: "devices", element: <DeviceHealthPage /> },
+      { path: "emergency", element: <EmergencyPage /> },
     ],
   },
 ]);

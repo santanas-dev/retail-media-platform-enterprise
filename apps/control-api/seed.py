@@ -41,6 +41,8 @@ SEED_PERM_IDS = {
     "organization.read": "00000000-0000-0000-0000-000000000105",
     "channels.read":   "00000000-0000-0000-0000-000000000106",
     "devices.read":    "00000000-0000-0000-0000-000000000107",
+    "emergency.read":  "00000000-0000-0000-0000-00000000010e",
+    "emergency.manage":"00000000-0000-0000-0000-00000000010f",
     "advertisers.read":       "00000000-0000-0000-0000-000000000108",
     "advertisers.manage":     "00000000-0000-0000-0000-000000000109",
     "advertisers.contacts.read":  "00000000-0000-0000-0000-00000000010a",
@@ -250,6 +252,14 @@ VALUES ('{SEED_PERM_IDS["devices.read"]}', 'devices.read', 'Просмотр у�
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["emergency.read"]}', 'emergency.read', 'Просмотр аварийного режима')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["emergency.manage"]}', 'emergency.manage', 'Управление аварийным режимом')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
 VALUES ('{SEED_PERM_IDS["advertisers.read"]}', 'advertisers.read', 'Просмотр рекламодателей')
 ON CONFLICT (code) DO NOTHING;
 
@@ -353,6 +363,14 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(127)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["devices.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(162)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["emergency.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(163)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["emergency.manage"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)

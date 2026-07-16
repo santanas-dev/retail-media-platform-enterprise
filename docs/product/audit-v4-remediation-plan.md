@@ -50,7 +50,7 @@ remediation sequence.
 | P2-6 | Admin menu not filtered by user permissions | UX confusion, security-relevant | S-069 ✅ |
 | P2-7 | No audit log UI — audit_events_operational write-only | Operators can't review audit trail | S-069 ✅ |
 | P2-8 | No device/fleet health UI | Operational blindness | S-070 ✅ |
-| P2-9 | No emergency workspace / kill-switch UI | ADR-013 architecture proven but no operator UI | S-071 |
+| P2-9 | No emergency workspace / kill-switch UI | ADR-013 architecture proven but no operator UI | S-071 ✅ |
 | P2-10 | Inventory domain not implemented per ТЗ §6.3 (airtime, forecasting, conflicts, sold-out) | Core domain gap | S-072 |
 | P2-11 | 152-ФЗ operational docs/procedures not prepared | Compliance risk | S-073 |
 
@@ -124,8 +124,14 @@ S-070 ✅ ─► Fleet/device health workspace  (done 2026-07-16)
           └─ Honest «нет данных» for player version, free space, errors — telemetry not yet collected
           └─ Device status dashboard, last-seen, health indicators
 
-S-071 ─► Emergency workspace (plan or MVP)
-          └─ Kill-switch UI, pause/immediate/emergency controls
+S-071 ✅ ─► Emergency workspace / kill-switch UI  (done 2026-07-16)
+          ├─ POST /emergency/activate + /deactivate (reason required, idempotent 409)
+          ├─ GET /emergency/status (active flag, reason, activated_by, activated_at)
+          ├─ emergency.read + emergency.manage permissions, seed, audit events
+          ├─ Admin-web EmergencyPage: status card, confirmation step, warning banners
+          ├─ Honest limitation: «Player-side enforcement будет реализован в KSO runtime»
+          ├─ 14 backend tests + 12 frontend tests
+          └─ Outbox event emergency.changed on state transitions
 
 S-072 ─► Inventory domain gap analysis and plan
           └─ ТЗ §6.3: airtime, forecasting, conflicts, sold-out, rules

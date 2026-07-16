@@ -3256,3 +3256,68 @@ async def get_device_summary(session: AsyncSession) -> dict[str, int]:
         "error": error or 0,
         "unregistered": unregistered or 0,
     }
+
+
+# ---------------------------------------------------------------------------
+# S-071 — Emergency Override
+# ---------------------------------------------------------------------------
+
+
+async def get_active_emergency_override(session: AsyncSession) -> "EmergencyOverride | None":
+    """Get the currently active global emergency override, or None."""
+    from packages.domain.models import EmergencyOverride
+
+    stmt = (
+        select(EmergencyOverride)
+        .where(EmergencyOverride.level == "global")
+        .where(EmergencyOverride.active.is_(True))
+        .order_by(EmergencyOverride.activated_at.desc())
+        .limit(1)
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def activate_emergency_override(
+    session: AsyncSession,
+    *,
+    reason: str,
+    activated_by: str,
+) -> "EmergencyOverride":
+    """Activate global emergency mode. Raises ValueError if already active."""
+    from packages.domain.models import EmergencyOverride
+    from datetime import timezone
+
+    existing = await get_active_emergency_override(session)
+    if existing:
+        raise ValueError("Emergency mode is already active")
+
+    override = EmergencyOverride(
+        level="global",
+        active=True,
+        reason=reason,
+        activated_by=activated_by,
+        activated_at=datetime.now(timezone.utc),
+    )
+    session.add(override)
+    return override
+
+
+async def deactivate_emergency_override(
+    session: AsyncSession,
+    *,
+    reason: str,
+    deactivated_by: str,
+) -> "EmergencyOverride":
+    """Deactivate the active global emergency mode. Raises ValueError if not active."""
+    from datetime import timezone
+
+    existing = await get_active_emergency_override(session)
+    if not existing:
+        raise ValueError("No active emergency mode to deactivate")
+
+    existing.active = False
+    existing.deactivated_by = deactivated_by
+    existing.deactivated_at = datetime.now(timezone.utc)
+    existing.deactivated_reason = reason
+    return existing

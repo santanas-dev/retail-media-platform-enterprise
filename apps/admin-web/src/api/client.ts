@@ -207,7 +207,14 @@ export interface PaginatedAuditEvents {
   offset: number;
 }
 
-// ── S-070 — Fleet / Device Health ──
+// ── S-071 — Emergency ──
+
+export interface EmergencyStatusOut {
+  active: boolean;
+  reason: string;
+  activated_by: string | null;
+  activated_at: string | null;
+}
 
 export interface DeviceOut {
   id: string;

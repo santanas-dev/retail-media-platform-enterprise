@@ -437,6 +437,33 @@ class AuditEventOperational(Base):
 
 
 # ---------------------------------------------------------------------------
+# Emergency Override (S-071)
+# ---------------------------------------------------------------------------
+
+
+class EmergencyOverride(Base):
+    """Global/platform emergency kill-switch — blocks all playback when active.
+
+    MVP: global level only. Store/device/campaign levels deferred to player-side.
+    Fail-closed semantics: if the runtime cannot fetch the override state, it halts playback (ADR-013 §2).
+    """
+
+    __tablename__ = "emergency_overrides"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    level = Column(String(32), nullable=False, default="global")
+    target_id = Column(String(36), nullable=True)
+    active = Column(Boolean, nullable=False, default=False)
+    reason = Column(String(512), nullable=False, default="")
+    activated_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    activated_at = Column(DateTime(timezone=True), nullable=True)
+    deactivated_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    deactivated_at = Column(DateTime(timezone=True), nullable=True)
+    deactivated_reason = Column(String(512), nullable=False, default="")
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
+# ---------------------------------------------------------------------------
 # Auth Persistence (Phase 3.2a)
 # ---------------------------------------------------------------------------
 
