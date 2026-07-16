@@ -72,7 +72,7 @@ type PlacementWithForm = CampaignPlacementOut & { _editing?: boolean };
 type CreativeLink = CampaignCreativeOut & { asset: CreativeAssetOut | null };
 type CreativeLinkWithForm = CreativeLink & { _editing?: boolean };
 
-type Tab = "overview" | "flights" | "placements" | "creatives" | "reporting";
+type Tab = "overview" | "flights" | "placements" | "creatives" | "reporting" | "dashboard";
 
 interface DetailData {
   campaign: CampaignOut;
@@ -449,9 +449,9 @@ export default function CampaignDetailPage() {
     }
   }, [data]);
 
-  // Lazy-load PoP data when reporting tab is activated
+  // Lazy-load PoP data when reporting or dashboard tab is activated
   useEffect(() => {
-    if (activeTab === "reporting" && !popLoaded && !popLoading && data) {
+    if ((activeTab === "reporting" || activeTab === "dashboard") && !popLoaded && !popLoading && data) {
       loadPopData(data.campaign.id);
     }
   }, [activeTab, popLoaded, popLoading, data, loadPopData]);
@@ -1465,6 +1465,195 @@ export default function CampaignDetailPage() {
     );
   }
 
+  function renderDashboard() {
+    // Plan: sum of max_impressions across all placements
+    const totalPlan = placements.reduce((sum, p) => sum + (p.max_impressions ?? 0), 0);
+    const hasPlan = totalPlan > 0;
+
+    // Fact: actual impressions from PoP
+    const actual = popSummary?.impressions_count ?? 0;
+    const hasPoP = popSummary !== null && popSummary.impressions_count > 0;
+
+    // Deviation
+    const deviationAbs = hasPlan ? actual - totalPlan : null;
+    const deviationPct = hasPlan && totalPlan > 0
+      ? Math.round(((actual - totalPlan) / totalPlan) * 100)
+      : null;
+
+    // Delivery status
+    let deliveryLabel = "—";
+    let deliveryColor = "#94a3b8";
+    if (hasPlan && hasPoP) {
+      if (deviationPct !== null && deviationPct >= -5) {
+        deliveryLabel = deviationPct >= 0 ? "Перевыполнение" : "В норме";
+        deliveryColor = "#16a34a";
+      } else if (deviationPct !== null && deviationPct >= -30) {
+        deliveryLabel = "Недопоказ";
+        deliveryColor = "#d97706";
+      } else {
+        deliveryLabel = "Критичный недопоказ";
+        deliveryColor = "#dc2626";
+      }
+    }
+
+    // ── Card component ──
+    function DCard({ label, value, color }: { label: string; value: string; color?: string }) {
+      return (
+        <div style={{ ...css.reportCard }}>
+          <div style={css.reportCardLabel}>{label}</div>
+          <div style={{ ...css.reportCardValue, color: color ?? "#0f172a" }}>{value}</div>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+
+        {/* ── Loading ── */}
+        {popLoading && (
+          <div style={css.section}>
+            <p style={css.muted}>Загрузка дашборда...</p>
+          </div>
+        )}
+
+        {/* ── Error ── */}
+        {!popLoading && popError && (
+          <div style={css.section}>
+            <div style={{ padding: "0.75rem", background: "#fef2f2", borderRadius: 4, border: "1px solid #fecaca", color: "#991b1b", fontSize: "0.875rem" }}>
+              {popError}
+            </div>
+          </div>
+        )}
+
+        {/* ── Loaded ── */}
+        {!popLoading && !popError && (
+          <div>
+            {/* ── Plan / Fact Cards ── */}
+            <div style={{ ...css.section, marginBottom: "1rem" }}>
+              <h3 style={{ ...css.subheading, marginTop: 0 }}>План / Факт</h3>
+              <div style={css.reportGrid}>
+                <DCard label={hasPlan ? "План (показы)" : "План"} value={hasPlan ? totalPlan.toLocaleString("ru-RU") : "Не задан"} />
+                <DCard label={hasPoP ? "Факт (показы)" : "Факт"} value={hasPoP ? actual.toLocaleString("ru-RU") : "Нет данных"} color={hasPoP ? undefined : "#94a3b8"} />
+                {deviationAbs !== null && (
+                  <DCard label="Отклонение" value={`${deviationAbs >= 0 ? "+" : ""}${deviationAbs.toLocaleString("ru-RU")} (${deviationPct !== null && deviationPct >= 0 ? "+" : ""}${deviationPct}%)`}
+                    color={deviationPct !== null && deviationPct >= -5 ? "#16a34a" : deviationPct !== null && deviationPct >= -30 ? "#d97706" : "#dc2626"} />
+                )}
+                <DCard label="Статус доставки" value={deliveryLabel} color={deliveryColor} />
+              </div>
+
+              {/* Underdelivery note */}
+              {hasPlan && hasPoP && deviationPct !== null && deviationPct < -5 && (
+                <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.75rem", background: "#fffbeb", borderRadius: 4, border: "1px solid #fde68a", fontSize: "0.8rem", color: "#92400e" }}>
+                  ⚠️ Недопоказ: план {totalPlan.toLocaleString("ru-RU")}, факт {actual.toLocaleString("ru-RU")} ({deviationPct}%).
+                  Причины недопоказа — см. вкладку «Отчётность» (по дням / по поверхностям).
+                  Автоматические компенсации — в плане (S-096).
+                </div>
+              )}
+              {!hasPoP && (
+                <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.75rem", background: "#f8fafc", borderRadius: 4, border: "1px solid #e2e8f0", fontSize: "0.8rem", color: "#64748b" }}>
+                  Пока нет подтверждённых показов. Данные появятся после поступления PoP-событий.
+                </div>
+              )}
+              {hasPoP && !hasPlan && (
+                <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.75rem", background: "#f8fafc", borderRadius: 4, border: "1px solid #e2e8f0", fontSize: "0.8rem", color: "#64748b" }}>
+                  План показов не задан в плейсментах. Добавьте max_impressions в плейсменты для расчёта план/факт.
+                </div>
+              )}
+            </div>
+
+            {/* ── By-Day breakdown ── */}
+            {popByDay.length > 0 && (
+              <div style={{ ...css.section, marginBottom: "1rem" }}>
+                <h3 style={{ ...css.subheading, marginTop: 0 }}>По дням</h3>
+                <table style={css.miniTable}>
+                  <thead>
+                    <tr>
+                      <th style={css.miniTh}>Дата</th>
+                      <th style={{ ...css.miniTh, textAlign: "right" }}>Показы</th>
+                      <th style={{ ...css.miniTh, textAlign: "right" }}>Длительность</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {popByDay.map((row, i) => (
+                      <tr key={i}>
+                        <td style={css.miniTd}>{row.date}</td>
+                        <td style={{ ...css.miniTd, textAlign: "right" }}>{row.impressions_count.toLocaleString("ru-RU")}</td>
+                        <td style={{ ...css.miniTd, textAlign: "right" }}>{fmtDuration(row.total_duration_ms)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* ── By-Surface breakdown ── */}
+            {popBySurface.length > 0 && (
+              <div style={{ ...css.section, marginBottom: "1rem" }}>
+                <h3 style={{ ...css.subheading, marginTop: 0 }}>По поверхностям / географии</h3>
+                <table style={css.miniTable}>
+                  <thead>
+                    <tr>
+                      <th style={css.miniTh}>Поверхность</th>
+                      <th style={{ ...css.miniTh, textAlign: "right" }}>Показы</th>
+                      <th style={{ ...css.miniTh, textAlign: "right" }}>Длительность</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {popBySurface.map((row, i) => (
+                      <tr key={i}>
+                        <td style={css.miniTd}>{row.surface_id}</td>
+                        <td style={{ ...css.miniTd, textAlign: "right" }}>{row.impressions_count.toLocaleString("ru-RU")}</td>
+                        <td style={{ ...css.miniTd, textAlign: "right" }}>{fmtDuration(row.total_duration_ms)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* ── Device Health ── */}
+            <div style={{ ...css.section, marginBottom: "1rem" }}>
+              <h3 style={{ ...css.subheading, marginTop: 0 }}>Здоровье устройств</h3>
+              {popSummary && popSummary.unique_devices > 0 ? (
+                <div>
+                  <div style={css.reportGrid}>
+                    <DCard label="Устройств с показами" value={popSummary.unique_devices.toLocaleString("ru-RU")} color="#2563eb" />
+                    <DCard label="Поверхностей" value={popSummary.unique_surfaces.toLocaleString("ru-RU")} />
+                  </div>
+                  <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.75rem", background: "#f8fafc", borderRadius: 4, border: "1px solid #e2e8f0", fontSize: "0.8rem", color: "#64748b" }}>
+                    <strong>Ограничение:</strong> операционный центр здоровья устройств (online/offline, ошибки плеера, heartbeat, версии) — в плане (S-097).
+                    Сейчас доступно только количество устройств, подтвердивших показы (PoP).
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: "1.5rem 1rem", textAlign: "center" }}>
+                  <p style={{ fontSize: "0.9rem", color: "#94a3b8", margin: "0 0 0.5rem" }}>
+                    Нет данных об устройствах
+                  </p>
+                  <p style={{ fontSize: "0.75rem", color: "#cbd5e1" }}>
+                    Данные появятся после поступления PoP-событий
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* ── No PoP at all ── */}
+            {!hasPoP && popByDay.length === 0 && popBySurface.length === 0 && (
+              <div style={{ ...css.section, padding: "2rem 1rem", textAlign: "center" }}>
+                <p style={{ fontSize: "0.9rem", color: "#94a3b8", margin: "0 0 0.5rem" }}>
+                  Пока нет подтверждённых показов
+                </p>
+                <p style={{ fontSize: "0.75rem", color: "#cbd5e1" }}>
+                  Дашборд обновится после поступления PoP-событий от устройств
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function renderReporting() {
     // ── Card component ──
     function Card({ label, value }: { label: string; value: string }) {
@@ -1597,8 +1786,8 @@ export default function CampaignDetailPage() {
 
   // ── Main render ──
 
-  const tabNames: Record<Tab, string> = { overview: "Обзор", flights: "Флайты", placements: "Плейсменты", creatives: "Креативы", reporting: "Отчётность" };
-  const tabs: Tab[] = ["overview", "flights", "placements", "creatives", "reporting"];
+  const tabNames: Record<Tab, string> = { overview: "Обзор", flights: "Флайты", placements: "Плейсменты", creatives: "Креативы", reporting: "Отчётность", dashboard: "Дашборд" };
+  const tabs: Tab[] = ["overview", "flights", "placements", "creatives", "dashboard", "reporting"];
 
   return (
     <div>
@@ -1624,6 +1813,7 @@ export default function CampaignDetailPage() {
       {activeTab === "placements" && renderPlacements()}
       {activeTab === "creatives" && renderCreatives()}
       {activeTab === "reporting" && renderReporting()}
+      {activeTab === "dashboard" && renderDashboard()}
     </div>
   );
 }

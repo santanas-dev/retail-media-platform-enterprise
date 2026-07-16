@@ -1016,3 +1016,139 @@ describe("CampaignDetailPage — S-009e", () => {
     });
   });
 });
+
+// ── S-090: Campaign Dashboard ──
+
+describe("CampaignDetailPage — S-090 Dashboard", () => {
+  beforeEach(() => { localStorage.clear(); vi.restoreAllMocks(); });
+  afterEach(() => { localStorage.clear(); });
+
+  const POP_SUMMARY = {
+    campaign_id: "c1",
+    impressions_count: 8_500,
+    total_duration_ms: 1_200_000,
+    first_rendered_at: "2026-06-01T08:00:00Z",
+    last_rendered_at: "2026-06-15T20:00:00Z",
+    unique_devices: 42,
+    unique_surfaces: 10,
+  };
+
+  const POP_BY_DAY = [
+    { date: "2026-06-01", impressions_count: 600, total_duration_ms: 85000 },
+    { date: "2026-06-02", impressions_count: 580, total_duration_ms: 82000 },
+  ];
+
+  const POP_BY_SURFACE = [
+    { surface_id: "surf-1", impressions_count: 4500, total_duration_ms: 640000 },
+    { surface_id: "surf-2", impressions_count: 4000, total_duration_ms: 560000 },
+  ];
+
+  const PLACEMENTS_WITH_PLAN = [
+    { id: "p1", campaign_id: "c1", display_surface_id: "surf-1", store_id: "st1",
+      share_of_voice_pct: 50, priority: 10, status: "active",
+      max_impressions: 10000, impressions_delivered: 0,
+      start_at: null, end_at: null, created_at: "2026-06-01T00:00:00Z", updated_at: "2026-06-01T00:00:00Z" },
+  ];
+
+  it("shows plan/fact with underdelivery status", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches({
+      "/pop/summary": () => Promise.resolve(new Response(JSON.stringify(POP_SUMMARY), { status: 200 })),
+      "/pop/by-day": () => Promise.resolve(new Response(JSON.stringify(POP_BY_DAY), { status: 200 })),
+      "/pop/by-surface": () => Promise.resolve(new Response(JSON.stringify(POP_BY_SURFACE), { status: 200 })),
+      "campaign-placements": () => Promise.resolve(new Response(JSON.stringify(PLACEMENTS_WITH_PLAN), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Дашборд"));
+
+    await waitFor(() => {
+      expect(screen.getByText("План / Факт")).toBeTruthy();
+    });
+  });
+
+  it("shows empty dashboard state when no PoP data", async () => {
+    mockAuthenticatedSession();
+    const zeroSummary = { campaign_id: "c1", impressions_count: 0, total_duration_ms: 0,
+      first_rendered_at: null, last_rendered_at: null, unique_devices: 0, unique_surfaces: 0 };
+    mockAllFetches({
+      "/pop/summary": () => Promise.resolve(new Response(JSON.stringify(zeroSummary), { status: 200 })),
+      "/pop/by-day": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+      "/pop/by-surface": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Дашборд"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Пока нет подтверждённых показов")).toBeTruthy();
+    });
+  });
+
+  it("shows critical underdelivery warning", async () => {
+    mockAuthenticatedSession();
+    const lowPop = { ...POP_SUMMARY, impressions_count: 2_000 };
+    mockAllFetches({
+      "/pop/summary": () => Promise.resolve(new Response(JSON.stringify(lowPop), { status: 200 })),
+      "/pop/by-day": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+      "/pop/by-surface": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+      "campaign-placements": () => Promise.resolve(new Response(JSON.stringify(PLACEMENTS_WITH_PLAN), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Дашборд"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Критичный недопоказ")).toBeTruthy();
+    });
+  });
+
+  it("shows device health with limitation note", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches({
+      "/pop/summary": () => Promise.resolve(new Response(JSON.stringify(POP_SUMMARY), { status: 200 })),
+      "/pop/by-day": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+      "/pop/by-surface": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Дашборд"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Здоровье устройств")).toBeTruthy();
+      expect(screen.getByText(/S-097/)).toBeTruthy();
+    });
+  });
+
+  it("shows by-day table in dashboard", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches({
+      "/pop/summary": () => Promise.resolve(new Response(JSON.stringify(POP_SUMMARY), { status: 200 })),
+      "/pop/by-day": () => Promise.resolve(new Response(JSON.stringify(POP_BY_DAY), { status: 200 })),
+      "/pop/by-surface": () => Promise.resolve(new Response(JSON.stringify([]), { status: 200 })),
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Дашборд"));
+
+    await waitFor(() => {
+      expect(screen.getByText("По дням")).toBeTruthy();
+      expect(screen.getByText("2026-06-01")).toBeTruthy();
+    });
+  });
+});
