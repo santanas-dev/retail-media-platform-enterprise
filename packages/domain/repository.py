@@ -3742,6 +3742,23 @@ async def reserve_inventory_for_placement(
     if sov_percent is not None and not (0 < sov_percent <= 100):
         raise ValueError("sov_percent must be in (0, 100]")
 
+    # S-080: Pre-check for blocking conflicts (blackout, inactive surface, max_sov)
+    conflicts = await detect_inventory_conflicts(
+        session,
+        display_surface_id=display_surface_id,
+        starts_at=starts_at,
+        ends_at=ends_at,
+        requested_capacity_units=capacity_units,
+        requested_sov_percent=sov_percent,
+        campaign_id=campaign_id,
+        default_total_capacity=default_total_capacity,
+    )
+    if conflicts["has_conflicts"]:
+        first = conflicts["blocking"][0]
+        raise ValueError(
+            f"Blocked by {first['conflict_type']}: {first['message']}"
+        )
+
     # Check if already reserved for this placement (idempotency)
     from sqlalchemy import select as sa_select
     existing_result = await session.execute(
@@ -4100,3 +4117,321 @@ async def check_inventory_available_for_campaign(
                 return False, f"Availability check failed: {e}"
 
     return True, "Inventory available for all placements"
+
+
+# ---------------------------------------------------------------------------
+# S-080 — Inventory Conflict Detection + Rules
+# ---------------------------------------------------------------------------
+
+
+# Conflict types as constants
+CONFLICT_CAPACITY_OVERBOOKED = "CAPACITY_OVERBOOKED"
+CONFLICT_SURFACE_INACTIVE = "SURFACE_INACTIVE"
+CONFLICT_BLACKOUT_RULE = "BLACKOUT_RULE"
+CONFLICT_INTERNAL_BLOCK = "INTERNAL_BLOCK"
+CONFLICT_SOV_OVER_100 = "SOV_OVER_100"
+CONFLICT_MAX_SOV_RULE = "MAX_SOV_RULE"
+
+# Severity
+SEVERITY_BLOCKING = "blocking"
+SEVERITY_WARNING = "warning"
+
+
+async def _get_applicable_rules(
+    session: AsyncSession,
+    *,
+    display_surface_id: str | None = None,
+) -> list[InventoryRule]:
+    """Return active rules applicable to a surface, ordered by precedence.
+
+    Precedence: surface > store > cluster > branch > global.
+    Within same scope_type: higher priority wins.
+    Inactive rules and rules outside starts_at/ends_at window are excluded.
+    """
+    from datetime import timezone as tz
+
+    now = datetime.now(tz.utc)
+    all_active = await session.execute(
+        select(InventoryRule).where(
+            InventoryRule.is_active == True,
+        ).order_by(InventoryRule.priority.desc())
+    )
+    rules = all_active.scalars().all()
+
+    # Filter by time window
+    applicable = []
+    for r in rules:
+        if r.starts_at and r.starts_at > now:
+            continue
+        if r.ends_at and r.ends_at < now:
+            continue
+        applicable.append(r)
+
+    # Scope precedence: surface > store > cluster > branch > global
+    scope_rank = {"surface": 5, "store": 4, "cluster": 3, "branch": 2, "global": 1}
+
+    def _rule_precedence(rule: InventoryRule) -> tuple[int, int]:
+        """Higher is more specific. Priority breaks ties within same scope."""
+        return (scope_rank.get(rule.scope_type, 0), rule.priority or 0)
+
+    applicable.sort(key=_rule_precedence, reverse=True)
+    return applicable
+
+
+def _parse_rule_value(rule: InventoryRule) -> dict:
+    """Safely parse rule value_json. Returns empty dict on failure."""
+    if rule.value_json is None:
+        return {}
+    if isinstance(rule.value_json, dict):
+        return rule.value_json
+    return {}
+
+
+async def detect_inventory_conflicts(
+    session: AsyncSession,
+    *,
+    display_surface_id: str,
+    starts_at: datetime,
+    ends_at: datetime,
+    requested_capacity_units: int | None = None,
+    requested_sov_percent: int | None = None,
+    campaign_id: str | None = None,
+    default_total_capacity: int = 100,
+) -> dict:
+    """Detect all inventory conflicts for a placement request.
+
+    Returns:
+        {
+            "has_conflicts": bool,
+            "blocking": list[dict],  # cannot proceed
+            "warnings": list[dict],  # can proceed with caution
+        }
+    """
+    blocking: list[dict] = []
+    warnings: list[dict] = []
+
+    # 1. SURFACE_INACTIVE — check if surface exists and is active
+    surface = await session.get(DisplaySurface, display_surface_id)
+    if surface is None:
+        blocking.append({
+            "conflict_type": CONFLICT_SURFACE_INACTIVE,
+            "severity": SEVERITY_BLOCKING,
+            "surface_id": display_surface_id,
+            "message": "Display surface not found",
+        })
+        return {"has_conflicts": True, "blocking": blocking, "warnings": warnings}
+    if not surface.is_active:
+        blocking.append({
+            "conflict_type": CONFLICT_SURFACE_INACTIVE,
+            "severity": SEVERITY_BLOCKING,
+            "surface_id": display_surface_id,
+            "message": "Display surface is inactive",
+        })
+        return {"has_conflicts": True, "blocking": blocking, "warnings": warnings}
+
+    # 2. Apply inventory rules
+    applicable_rules = await _get_applicable_rules(
+        session, display_surface_id=display_surface_id,
+    )
+
+    for rule in applicable_rules:
+        rule_val = _parse_rule_value(rule)
+
+        # Only apply rules scoped to this surface, its store, or global
+        if rule.scope_type == "surface" and rule.scope_id != display_surface_id:
+            continue
+        # For store/cluster/branch scopes, we'd need the surface→store chain;
+        # MVP: only surface and global scopes are fully supported
+        if rule.scope_type not in ("surface", "global"):
+            continue
+
+        if rule.rule_type == "blackout":
+            reason = rule_val.get("reason", "Blackout period")
+            blocking.append({
+                "conflict_type": CONFLICT_BLACKOUT_RULE,
+                "severity": SEVERITY_BLOCKING,
+                "surface_id": display_surface_id,
+                "rule_id": rule.id,
+                "rule_type": rule.rule_type,
+                "message": f"Blackout rule: {reason}",
+            })
+
+        elif rule.rule_type == "internal_block":
+            cap = rule_val.get("capacity_units", 0)
+            blocking.append({
+                "conflict_type": CONFLICT_INTERNAL_BLOCK,
+                "severity": SEVERITY_BLOCKING,
+                "surface_id": display_surface_id,
+                "rule_id": rule.id,
+                "rule_type": rule.rule_type,
+                "capacity_units": cap,
+                "message": f"Internal block: {cap} capacity units reserved",
+            })
+
+        elif rule.rule_type == "max_sov":
+            max_pct = rule_val.get("max_sov_percent", 100)
+            if requested_sov_percent and requested_sov_percent > max_pct:
+                blocking.append({
+                    "conflict_type": CONFLICT_MAX_SOV_RULE,
+                    "severity": SEVERITY_BLOCKING,
+                    "surface_id": display_surface_id,
+                    "rule_id": rule.id,
+                    "rule_type": rule.rule_type,
+                    "max_sov_percent": max_pct,
+                    "requested_sov_percent": requested_sov_percent,
+                    "message": (
+                        f"Requested SOV {requested_sov_percent}% exceeds "
+                        f"max allowed {max_pct}%"
+                    ),
+                })
+
+    # 3. CAPACITY_OVERBOOKED — check actual slot capacity
+    try:
+        avail = await compute_inventory_availability(
+            session,
+            display_surface_id=display_surface_id,
+            starts_at=starts_at,
+            ends_at=ends_at,
+            requested_capacity_units=requested_capacity_units,
+            requested_sov_percent=requested_sov_percent,
+            default_total_capacity=default_total_capacity,
+        )
+    except ValueError as e:
+        blocking.append({
+            "conflict_type": CONFLICT_CAPACITY_OVERBOOKED,
+            "severity": SEVERITY_BLOCKING,
+            "surface_id": display_surface_id,
+            "message": str(e),
+        })
+        return {"has_conflicts": True, "blocking": blocking, "warnings": warnings}
+
+    if not avail.get("all_available"):
+        for conflict_slot in avail.get("conflicts", []):
+            blocking.append({
+                "conflict_type": CONFLICT_CAPACITY_OVERBOOKED,
+                "severity": SEVERITY_BLOCKING,
+                "surface_id": display_surface_id,
+                "slot_date": conflict_slot.get("slot_date"),
+                "slot_hour": conflict_slot.get("slot_hour"),
+                "available_capacity": conflict_slot.get("available_capacity"),
+                "requested_capacity": conflict_slot.get("requested_capacity"),
+                "message": (
+                    f"Slot {conflict_slot.get('slot_date', '?')}T"
+                    f"{conflict_slot.get('slot_hour', '?')}:00 overbooked: "
+                    f"available={conflict_slot.get('available_capacity', 0)}, "
+                    f"needed={conflict_slot.get('requested_capacity', 0)}"
+                ),
+            })
+
+    # 4. SOV_OVER_100 — check if total SOV exceeds 100%
+    if requested_sov_percent is not None:
+        # Sum existing committed+reserved SOV for overlapping slots
+        # MVP: simple check — if any slot has >100% total reserved+booked+requested
+        total_demand = (
+            (avail.get("total_requested", 0) / max(avail.get("total_available", 1), 1))
+            * 100
+        )
+        if total_demand > 100:
+            warnings.append({
+                "conflict_type": CONFLICT_SOV_OVER_100,
+                "severity": SEVERITY_WARNING,
+                "surface_id": display_surface_id,
+                "total_demand_pct": round(total_demand, 1),
+                "message": f"Total SOV demand exceeds 100% ({total_demand:.1f}%)",
+            })
+
+    has_conflicts = len(blocking) > 0
+    return {
+        "has_conflicts": has_conflicts,
+        "blocking": blocking,
+        "warnings": warnings,
+    }
+
+
+async def get_inventory_conflicts_for_campaign(
+    session: AsyncSession,
+    campaign_id: str,
+    default_total_capacity: int = 100,
+) -> dict:
+    """Get inventory conflicts for all placements in a campaign."""
+    from packages.domain.models import CampaignPlacement, CampaignFlight
+
+    placements_result = await session.execute(
+        select(CampaignPlacement).where(
+            CampaignPlacement.campaign_id == campaign_id,
+            CampaignPlacement.display_surface_id.isnot(None),
+        )
+    )
+    placements = placements_result.scalars().all()
+
+    flights_result = await session.execute(
+        select(CampaignFlight).where(CampaignFlight.campaign_id == campaign_id)
+    )
+    flights = flights_result.scalars().all()
+
+    all_blocking: list[dict] = []
+    all_warnings: list[dict] = []
+
+    for placement in placements:
+        for flight in flights:
+            if not flight.start_at or not flight.end_at:
+                continue
+            result = await detect_inventory_conflicts(
+                session,
+                display_surface_id=placement.display_surface_id,
+                starts_at=flight.start_at,
+                ends_at=flight.end_at,
+                requested_sov_percent=placement.share_of_voice_pct or 100,
+                campaign_id=campaign_id,
+                default_total_capacity=default_total_capacity,
+            )
+            for b in result.get("blocking", []):
+                b["placement_id"] = placement.id
+                all_blocking.append(b)
+            for w in result.get("warnings", []):
+                w["placement_id"] = placement.id
+                all_warnings.append(w)
+
+    return {
+        "has_conflicts": len(all_blocking) > 0,
+        "blocking": all_blocking,
+        "warnings": all_warnings,
+    }
+
+
+async def apply_inventory_rules_to_slot(
+    session: AsyncSession,
+    slot: InventorySlot,
+    *,
+    display_surface_id: str,
+) -> dict:
+    """Apply active inventory rules to a single slot.
+
+    Returns the effective blocked capacity from rules (internal_block)
+    and whether the slot is under blackout.
+    """
+    rules = await _get_applicable_rules(
+        session, display_surface_id=display_surface_id,
+    )
+
+    blackout = False
+    internal_block_capacity = 0
+
+    for rule in rules:
+        if rule.scope_type == "surface" and rule.scope_id != display_surface_id:
+            continue
+        if rule.scope_type not in ("surface", "global"):
+            continue
+
+        rule_val = _parse_rule_value(rule)
+
+        if rule.rule_type == "blackout":
+            blackout = True
+
+        elif rule.rule_type == "internal_block":
+            internal_block_capacity += rule_val.get("capacity_units", 0)
+
+    return {
+        "blackout": blackout,
+        "internal_block_capacity": internal_block_capacity,
+    }

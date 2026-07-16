@@ -19,6 +19,9 @@ from packages.domain.schemas import (
     InventoryAvailabilityRequest,
     InventoryAvailabilityResponse,
     InventorySlotAvailability,
+    InventoryConflictCheckRequest,
+    InventoryConflictCheckResponse,
+    InventoryConflictItem,
     InventoryStoreOut,
     InventorySurfaceOut,
     InventorySurfacePatchRequest,
@@ -185,4 +188,65 @@ async def check_availability(
         total_available=result["total_available"],
         slots=[InventorySlotAvailability(**s) for s in result["slots"]],
         conflicts=[InventorySlotAvailability(**c) for c in result["conflicts"]],
+    )
+
+
+# ---------------------------------------------------------------------------
+# S-080 — Inventory Conflict Detection
+# ---------------------------------------------------------------------------
+
+
+@router.post("/inventory/conflicts/check",
+             response_model=InventoryConflictCheckResponse)
+async def check_inventory_conflicts(
+    body: InventoryConflictCheckRequest,
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("inventory.read")),
+    _rls=Depends(set_rls_context),
+):
+    """Check for inventory conflicts before reservation/approval.
+
+    Detects: surface inactive, blackout rules, internal blocks,
+    max SOV violations, capacity overbooking.
+    """
+    from packages.security.config import SecurityConfig
+
+    config = SecurityConfig()
+    result = await repository.detect_inventory_conflicts(
+        db,
+        display_surface_id=body.surface_id,
+        starts_at=body.starts_at,
+        ends_at=body.ends_at,
+        requested_capacity_units=body.requested_capacity_units,
+        requested_sov_percent=body.requested_sov_percent,
+        campaign_id=body.campaign_id,
+        default_total_capacity=config.inventory_default_slot_capacity,
+    )
+    return InventoryConflictCheckResponse(
+        has_conflicts=result["has_conflicts"],
+        blocking=[InventoryConflictItem(**b) for b in result["blocking"]],
+        warnings=[InventoryConflictItem(**w) for w in result["warnings"]],
+    )
+
+
+@router.get("/campaigns/{campaign_id}/inventory-conflicts",
+            response_model=InventoryConflictCheckResponse)
+async def get_campaign_inventory_conflicts(
+    campaign_id: str,
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("inventory.read")),
+    _rls=Depends(set_rls_context),
+):
+    """Get inventory conflicts for all placements in a campaign."""
+    from packages.security.config import SecurityConfig
+
+    config = SecurityConfig()
+    result = await repository.get_inventory_conflicts_for_campaign(
+        db, campaign_id,
+        default_total_capacity=config.inventory_default_slot_capacity,
+    )
+    return InventoryConflictCheckResponse(
+        has_conflicts=result["has_conflicts"],
+        blocking=[InventoryConflictItem(**b) for b in result["blocking"]],
+        warnings=[InventoryConflictItem(**w) for w in result["warnings"]],
     )
