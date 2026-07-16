@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
 | **Last updated:** 2026-07-17
-| **Current phase:** v0.7 published. S-087 (A2) sold-out alternatives.|
+| **Current phase:** v0.7 published. S-088 (A3) inventory rules management UI.|
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -191,6 +191,7 @@ Separately covered:
 | S-085 | Business functions completion gate — 6 BLOCKERS found | P0 | ✅ done |
 | S-086 | A1: Availability forecast during campaign creation | P0 | ✅ done |
 | S-087 | A2: Sold-out + alternatives during campaign creation | P0 | ✅ done |
+| S-088 | A3: Inventory rules management UI | P0 | ✅ done |
 | Tenant model ADR before v2.6 | 🟡 Decision needed — ADR-018 |
 | Password reset invite/email flow | Deferred |
 | Advertiser approve/reject campaigns | Deferred — admin-only |

@@ -673,6 +673,28 @@ export interface InventoryRuleOut {
   updated_at: string;
 }
 
+export interface InventoryRuleCreate {
+  scope_type: string;
+  scope_id?: string | null;
+  rule_type: string;
+  priority: number;
+  value_json: Record<string, unknown>;
+  is_active: boolean;
+  starts_at?: string | null;
+  ends_at?: string | null;
+}
+
+export interface InventoryRuleUpdate {
+  scope_type?: string | null;
+  scope_id?: string | null;
+  rule_type?: string | null;
+  priority?: number | null;
+  value_json?: Record<string, unknown> | null;
+  is_active?: boolean | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+}
+
 // ── S-087: Inventory Alternatives ──
 
 export interface InventoryAlternative {

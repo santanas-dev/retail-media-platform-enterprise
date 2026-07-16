@@ -3582,6 +3582,45 @@ async def set_inventory_rule_active(
     return rule
 
 
+async def update_inventory_rule(
+    session: AsyncSession,
+    *,
+    rule_id: str,
+    scope_type: str | None = None,
+    scope_id: str | None = None,
+    rule_type: str | None = None,
+    priority: int | None = None,
+    value_json: dict | None = None,
+    is_active: bool | None = None,
+    starts_at=None,
+    ends_at=None,
+) -> InventoryRule | None:
+    """Partial update of an inventory rule. Only provided non-None fields are changed."""
+    rule = await session.get(InventoryRule, rule_id)
+    if rule is None:
+        return None
+    from datetime import timezone as _tz
+    now = datetime.now(_tz.utc)
+    if scope_type is not None:
+        rule.scope_type = scope_type
+    if scope_id is not None:
+        rule.scope_id = scope_id
+    if rule_type is not None:
+        rule.rule_type = rule_type
+    if priority is not None:
+        rule.priority = priority
+    if value_json is not None:
+        rule.value_json = value_json
+    if is_active is not None:
+        rule.is_active = is_active
+    if starts_at is not None:
+        rule.starts_at = starts_at
+    if ends_at is not None:
+        rule.ends_at = ends_at
+    rule.updated_at = now
+    return rule
+
+
 # ---------------------------------------------------------------------------
 # Inventory Availability Calculator (S-078)
 # ---------------------------------------------------------------------------
