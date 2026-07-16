@@ -9,7 +9,7 @@
 
 | Branch  | SHA      | Note |
 |---------|----------|------|
-| develop | 39dc8bc  | H0 fix |
+| develop | 47e7d44  | C2 fix |
 | main    | 4db6dc0  | v0.7 published |
 
 ## Active Workstreams
@@ -29,9 +29,15 @@
 - Bug fixed: `AdvertiserOrganization.name` → `legal_name` (4 places)
 - Seed gap closed: `creatives.moderate` in role_permissions for system_admin/security_admin
 
-### C2 — ❗ Next active Critical (after H0)
-- Now unblocked: H0 resolved, C1 merge to main comes *after* C2
-- Sequence: H0 (done) → C2 → C1 merge to main
+### C2 — LDAPS certificate validation ✅ RESOLVED
+- **Verdict: real bug — two paths silently dropped TLS to CERT_NONE.**
+- Root cause 1: `_connect()` gated TLS creation on `ad_use_tls` flag. When False, `tls=None` and ldap3 defaulted to `CERT_NONE`.
+- Root cause 2: `elif` chain had no fallback — unrecognised `cert_val` (typo, etc.) left `tls_kwargs` empty → `tls=None`.
+- Fix (SHA 47e7d44): removed `ad_use_tls` gate; TLS always created from cert policy. Added fail-secure `else` → `CERT_REQUIRED`. Fixed no-op test `test_connect_tls_required_uses_cert_required`.
+- New tests: unknown cert_val → CERT_REQUIRED; ad_use_tls=False → still CERT_REQUIRED; source-inspection: fail-secure else, no ad_use_tls gate.
+- CI proof: Run #29519917049 — 34/34 green, ADR-008 behavioural success.
+- ldap3 already in requirements.txt and CI — no dependency fix needed.
+- Auth model unchanged beyond LDAPS cert validation scope.
 
 ## Completed (Player Blockers A1–A3)
 
