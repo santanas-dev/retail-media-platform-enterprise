@@ -51,7 +51,7 @@
 - Results panel: overall_fit, per-surface fill%, conflicts
 - 13 backend tests (8 schema + 5 endpoint) + 3 frontend tests
 - **Fix (SHA 80276f1):** removed `le=100.0` cap on `slot_fill_percent` — overbook scenarios (>100%) were rejecting their own valid output. Added real endpoint tests via TestClient.
-- CI: pending for 80276f1 (previous: #29525532107 — 34/34 green)
+- CI: #29526308583 — 34/34 green (SHA 80276f1)
 - Roadmap `roadmap-s020-2026-07-10.xlsx` aligned with PROJECT_STATE truth.
 - C1 status: 🟡 Готово для пилота (not closed on main). S-048: ✅ Готово with C2 proof.
 - H0/C2/D1 visible in Коммиты/Заметки columns with SHA and CI run references.
