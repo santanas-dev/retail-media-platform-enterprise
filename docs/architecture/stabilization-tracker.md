@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
 | **Last updated:** 2026-07-17
-| **Current phase:** v0.7 inventory foundation — S-076–S-081 done. S-082 readiness review in progress.|
+| **Current phase:** v0.7 published. S-088 (A3) inventory rules management UI.|
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -186,6 +186,12 @@ Separately covered:
 | S-080 | Inventory conflict detection + rules MVP | P0 | ✅ done |
 | S-081 | Inventory calendar UI — admin-web tabs (catalog/availability/conflicts/rules) | P0 | ✅ done |
 | S-082 | v0.7 Inventory Foundation readiness review | P0 | ✅ done |
+| S-083 | Publish v0.7-inventory-foundation | P0 | ✅ done |
+| S-084 | Business readiness gate before KSO/player | P0 | ✅ done |
+| S-085 | Business functions completion gate — 6 BLOCKERS found | P0 | ✅ done |
+| S-086 | A1: Availability forecast during campaign creation | P0 | ✅ done |
+| S-087 | A2: Sold-out + alternatives during campaign creation | P0 | ✅ done |
+| S-088 | A3: Inventory rules management UI | P0 | ✅ done |
 | Tenant model ADR before v2.6 | 🟡 Decision needed — ADR-018 |
 | Password reset invite/email flow | Deferred |
 | Advertiser approve/reject campaigns | Deferred — admin-only |

@@ -77,11 +77,17 @@ async def _insert(engine, event_type="test.relay.success", **kwargs):
 
 
 async def _make_engine_and_clean():
-    """Create engine and clean stale relay test events."""
+    """Create engine and clean ALL stale pending/failed outbox events.
+
+    Previous version only deleted ``test.relay.%`` events.  Foreign
+    pending/failed events from other test suites (pop, campaigns, etc.)
+    survive and can consume the shared ``fail_next(1)`` token in
+    backoff tests, making them non-deterministic.
+    """
     engine = create_async_engine(DB_URL, echo=False)
     async with engine.begin() as conn:
         await conn.execute(
-            text("DELETE FROM outbox_events WHERE event_type LIKE 'test.relay.%'")
+            text("DELETE FROM outbox_events WHERE status IN ('pending','failed')")
         )
     return engine
 
@@ -319,9 +325,15 @@ class TestOutboxRelayBehavioral:
                 # next_attempt_at <= NOW.  A foreign due event can consume the
                 # shared fail_next(1) token, making the test non-deterministic.
                 # We zap every due row so our event is the ONLY candidate.
+                #
+                # TIMING: fetch_pending_events() uses its own NOW().  If the
+                # clock ticks between our DELETE and fetch_pending_events(),
+                # an event with next_attempt_at in that micro-gap survives.
+                # We add 1-second forward margin to the DELETE and a brief
+                # sleep to ensure the clock has advanced past the cutoff.
                 async with engine.begin() as conn:
-                    from datetime import datetime, timezone
-                    now = datetime.now(timezone.utc)
+                    from datetime import datetime, timezone, timedelta
+                    now = datetime.now(timezone.utc) + timedelta(seconds=1)
                     await conn.execute(
                         text(
                             "DELETE FROM outbox_events "
@@ -330,6 +342,7 @@ class TestOutboxRelayBehavioral:
                         ),
                         {"now": now},
                     )
+                await asyncio.sleep(0.1)
 
                 relay = OutboxRelay(pub, engine)
                 await _insert(engine, event_type="test.relay.backoff",

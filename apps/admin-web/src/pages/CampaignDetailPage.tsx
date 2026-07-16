@@ -54,6 +54,12 @@ import type {
   DisplaySurfaceRefOut,
 } from "../api/types";
 import { statusLabel, statusColor } from "../api/types";
+import type {
+  InventoryAvailabilityResponse,
+  InventorySlotAvailability,
+  InventoryAlternativesResponse,
+} from "../api/types";
+import { checkAvailability, suggestAlternatives } from "../api/campaigns";
 import { ApiError, getToken, IDENTITY_BASE_URL } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
@@ -152,6 +158,13 @@ export default function CampaignDetailPage() {
   const [placementMaxImp, setPlacementMaxImp] = useState("");
   const [placementSubmitting, setPlacementSubmitting] = useState(false);
   const [placementError, setPlacementError] = useState<string | null>(null);
+
+  // ── Availability forecast state ──
+  const [availabilityResult, setAvailabilityResult] = useState<InventoryAvailabilityResponse | null>(null);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
+  const [placementAlternatives, setPlacementAlternatives] = useState<InventoryAlternativesResponse | null>(null);
+  const [altLoading, setAltLoading] = useState(false);
 
   // S-009j: standalone creative asset intake (library)
   const [assetCode, setAssetCode] = useState("");
@@ -824,6 +837,51 @@ export default function CampaignDetailPage() {
       }
     }
 
+    async function handleCheckAvailability() {
+      if (!placementSurface || !data) return;
+      setAvailabilityLoading(true);
+      setAvailabilityError(null);
+      setAvailabilityResult(null);
+      setPlacementAlternatives(null);
+      try {
+        const startDt = data.campaign.start_at ? new Date(data.campaign.start_at) : new Date();
+        const endDt = data.campaign.end_at ? new Date(data.campaign.end_at) : new Date(startDt.getTime() + 7 * 86400000);
+        const result = await checkAvailability({
+          surface_id: placementSurface,
+          starts_at: startDt.toISOString(),
+          ends_at: endDt.toISOString(),
+          requested_sov_percent: parseInt(placementSov, 10) || null,
+        });
+        setAvailabilityResult(result);
+        if (!result.all_available) {
+          await handlePlacementAlternatives(startDt, endDt);
+        }
+      } catch (e: unknown) {
+        setAvailabilityError(e instanceof ApiError ? e.message : "Ошибка проверки доступности");
+      } finally {
+        setAvailabilityLoading(false);
+      }
+    }
+
+    async function handlePlacementAlternatives(startDt: Date, endDt: Date) {
+      if (!placementSurface) return;
+      setAltLoading(true);
+      try {
+        const altResult = await suggestAlternatives({
+          surface_id: placementSurface,
+          starts_at: startDt.toISOString(),
+          ends_at: endDt.toISOString(),
+          requested_sov_percent: parseInt(placementSov, 10) || null,
+          max_results: 5,
+        });
+        setPlacementAlternatives(altResult);
+      } catch {
+        setPlacementAlternatives(null);
+      } finally {
+        setAltLoading(false);
+      }
+    }
+
     function resetPlacementForm() {
       setPlacementSurface("");
       setPlacementStore("");
@@ -916,6 +974,12 @@ export default function CampaignDetailPage() {
                       {placementSubmitting ? "..." : "Добавить"}
                     </button>
                     <button type="button" style={css.cancelBtn} onClick={resetPlacementForm}>Отмена</button>
+                    {placementSurface && (
+                      <button type="button" style={{ ...css.secondaryBtn, fontSize: "0.75rem" }}
+                        onClick={handleCheckAvailability} disabled={availabilityLoading}>
+                        {availabilityLoading ? "..." : "🔍 Доступность"}
+                      </button>
+                    )}
                   </div>
                 </div>
                 {!hasRefData && !refLoading && (
@@ -924,6 +988,45 @@ export default function CampaignDetailPage() {
                   </p>
                 )}
                 {placementError && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginTop: "0.5rem" }}>{placementError}</div>}
+                {availabilityResult && (
+                  <div style={{ marginTop: "0.75rem", padding: "0.5rem", border: "1px solid var(--rmp-border-strong)", borderRadius: "var(--rmp-radius-sm)", fontSize: "0.8rem" }}>
+                    <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                      <span>Слотов: <strong>{availabilityResult.slots.length}</strong></span>
+                      <span>Запрошено: <strong>{availabilityResult.total_requested}</strong></span>
+                      <span>Доступно: <strong style={{ color: availabilityResult.all_available ? "var(--rmp-success-600)" : "var(--rmp-danger-600)" }}>{availabilityResult.total_available}</strong></span>
+                      <span>Конфликтов: <strong style={{ color: availabilityResult.conflicts.length > 0 ? "var(--rmp-danger-600)" : "var(--rmp-success-600)" }}>{availabilityResult.conflicts.length}</strong></span>
+                      <span>Итог: <strong style={{ color: availabilityResult.all_available ? "var(--rmp-success-600)" : "var(--rmp-danger-600)" }}>{availabilityResult.all_available ? "Доступно" : "Недоступно"}</strong></span>
+                    </div>
+                    {availabilityResult.conflicts.length > 0 && (
+                      <div style={{ color: "var(--rmp-danger-600)", marginTop: "0.25rem" }}>
+                        ⚠️ Конфликты: проверьте «Инвентарь → Конфликты».
+                      </div>
+                    )}
+                  </div>
+                )}
+                {availabilityError && (
+                  <div style={{ color: "#dc2626", fontSize: "0.8rem", marginTop: "0.5rem" }}>{availabilityError}</div>
+                )}
+                {/* S-087 — Placement alternatives */}
+                {!availabilityResult?.all_available && placementAlternatives && (
+                  <div style={{ marginTop: "0.5rem", padding: "0.4rem", border: "1px solid var(--rmp-border-strong)", borderRadius: "var(--rmp-radius-sm)", fontSize: "0.8rem" }}>
+                    <strong>Возможные альтернативы ({placementAlternatives.total_found}):</strong>
+                    {altLoading ? (
+                      <p style={{ color: "#64748b", margin: "0.15rem 0 0" }}>Поиск альтернатив...</p>
+                    ) : placementAlternatives.alternatives.length === 0 ? (
+                      <p style={{ color: "#64748b", margin: "0.15rem 0 0" }}>Нет альтернатив. Попробуйте изменить период или SOV.</p>
+                    ) : (
+                      <ul style={{ margin: "0.25rem 0 0", paddingLeft: "1.2rem", display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+                        {placementAlternatives.alternatives.map((alt, i) => (
+                          <li key={i}>
+                            <strong>{alt.surface_code || alt.surface_id}</strong> — {alt.reason}{" "}
+                            <span style={{ color: "var(--rmp-success-600)" }}>({alt.available_capacity} ед.)</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
               </form>
             )}
           </div>

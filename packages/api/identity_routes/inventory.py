@@ -16,6 +16,12 @@ from packages.domain.schemas import (
     BranchOut,
     ClusterOut,
     DisplaySurfaceOut,
+    InventoryAlternative,
+    InventoryAlternativesRequest,
+    InventoryAlternativesResponse,
+    InventoryRuleOut,
+    InventoryRuleCreate,
+    InventoryRuleUpdate,
     InventoryAvailabilityRequest,
     InventoryAvailabilityResponse,
     InventorySlotAvailability,
@@ -229,6 +235,45 @@ async def check_inventory_conflicts(
     )
 
 
+# ---------------------------------------------------------------------------
+# S-087 — Inventory Alternatives
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/inventory/alternatives",
+    response_model=InventoryAlternativesResponse,
+)
+async def suggest_alternatives(
+    body: InventoryAlternativesRequest,
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("inventory.read")),
+):
+    """Suggest alternative surfaces/slots when a placement is unavailable.
+
+    Prioritises: same store different surface → nearby time → lower SOV
+    → later date.  Returns up to max_results alternatives sorted by score.
+    """
+    from packages.security.config import SecurityConfig
+
+    config = SecurityConfig()
+    alternatives = await repository.suggest_inventory_alternatives(
+        db,
+        display_surface_id=body.surface_id,
+        starts_at=body.starts_at,
+        ends_at=body.ends_at,
+        requested_capacity_units=body.requested_capacity_units,
+        requested_sov_percent=body.requested_sov_percent,
+        max_results=body.max_results,
+        default_total_capacity=config.inventory_default_slot_capacity,
+    )
+    return InventoryAlternativesResponse(
+        surface_id=body.surface_id,
+        alternatives=[InventoryAlternative(**a) for a in alternatives],
+        total_found=len(alternatives),
+    )
+
+
 @router.get("/campaigns/{campaign_id}/inventory-conflicts",
             response_model=InventoryConflictCheckResponse)
 async def get_campaign_inventory_conflicts(
@@ -250,3 +295,134 @@ async def get_campaign_inventory_conflicts(
         blocking=[InventoryConflictItem(**b) for b in result["blocking"]],
         warnings=[InventoryConflictItem(**w) for w in result["warnings"]],
     )
+
+
+# ---------------------------------------------------------------------------
+# S-088 — Inventory Rules Management
+# ---------------------------------------------------------------------------
+
+_RULE_TYPES = frozenset(["blackout", "internal_block", "max_sov"])
+_SCOPE_TYPES = frozenset(["global", "branch", "cluster", "store", "surface"])
+
+
+def _validate_rule(body) -> None:
+    """Validate rule payload — raises HTTPException on failure."""
+    rt = body.rule_type
+    if rt is not None and rt not in _RULE_TYPES:
+        raise HTTPException(422, f"Unsupported rule_type: '{rt}'. Must be one of: {', '.join(sorted(_RULE_TYPES))}")
+
+    st = body.scope_type
+    if st is not None and st not in _SCOPE_TYPES:
+        raise HTTPException(422, f"Unsupported scope_type: '{st}'. Must be one of: {', '.join(sorted(_SCOPE_TYPES))}")
+
+    if st is not None and st != "global" and body.scope_id is None:
+        raise HTTPException(422, f"scope_id is required for scope_type '{st}'")
+
+    if body.starts_at is not None and body.ends_at is not None and body.starts_at >= body.ends_at:
+        raise HTTPException(422, "starts_at must be before ends_at")
+
+    vj = body.value_json
+    if vj is not None:
+        _validate_value_json(rt or "", vj)
+
+
+def _validate_value_json(rule_type: str, value: dict) -> None:
+    """Validate value_json per rule_type."""
+    if rule_type == "internal_block":
+        cap = value.get("capacity_units")
+        if cap is None or not isinstance(cap, int) or cap <= 0:
+            raise HTTPException(422, "internal_block requires capacity_units > 0")
+    elif rule_type == "max_sov":
+        pct = value.get("max_sov_percent")
+        if pct is None or not isinstance(pct, int) or not (0 < pct <= 100):
+            raise HTTPException(422, "max_sov requires max_sov_percent in (0, 100]")
+    elif rule_type == "blackout":
+        pass
+
+
+@router.get("/inventory/rules", response_model=list[InventoryRuleOut])
+async def list_rules(
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("inventory.read")),
+):
+    """List all inventory rules, ordered by priority desc."""
+    items = await repository.list_inventory_rules(db)
+    return [InventoryRuleOut.model_validate(r) for r in items]
+
+
+@router.post("/inventory/rules", response_model=InventoryRuleOut, status_code=201)
+async def create_rule(
+    body: InventoryRuleCreate,
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("inventory.manage")),
+):
+    """Create a new inventory rule."""
+    _validate_rule(body)
+    rule = await repository.create_inventory_rule(
+        db,
+        scope_type=body.scope_type,
+        scope_id=body.scope_id,
+        rule_type=body.rule_type,
+        priority=body.priority,
+        value_json=body.value_json,
+        is_active=body.is_active,
+        starts_at=body.starts_at,
+        ends_at=body.ends_at,
+    )
+    await db.flush()
+    return InventoryRuleOut.model_validate(rule)
+
+
+@router.patch("/inventory/rules/{rule_id}", response_model=InventoryRuleOut)
+async def update_rule(
+    rule_id: str,
+    body: InventoryRuleUpdate,
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("inventory.manage")),
+):
+    """Partial update of an inventory rule."""
+    _validate_rule(body)
+    rule = await repository.update_inventory_rule(
+        db,
+        rule_id=rule_id,
+        scope_type=body.scope_type,
+        scope_id=body.scope_id,
+        rule_type=body.rule_type,
+        priority=body.priority,
+        value_json=body.value_json,
+        is_active=body.is_active,
+        starts_at=body.starts_at,
+        ends_at=body.ends_at,
+    )
+    if rule is None:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    await db.flush()
+    return InventoryRuleOut.model_validate(rule)
+
+
+@router.post("/inventory/rules/{rule_id}/activate", response_model=InventoryRuleOut)
+async def activate_rule(
+    rule_id: str,
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("inventory.manage")),
+):
+    """Activate an inventory rule."""
+    rule = await repository.set_inventory_rule_active(db, rule_id=rule_id, is_active=True)
+    if rule is None:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    await db.flush()
+    return InventoryRuleOut.model_validate(rule)
+
+
+@router.post("/inventory/rules/{rule_id}/deactivate", response_model=InventoryRuleOut)
+async def deactivate_rule(
+    rule_id: str,
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("inventory.manage")),
+):
+    """Deactivate an inventory rule."""
+    rule = await repository.set_inventory_rule_active(db, rule_id=rule_id, is_active=False)
+    if rule is None:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    await db.flush()
+    return InventoryRuleOut.model_validate(rule)

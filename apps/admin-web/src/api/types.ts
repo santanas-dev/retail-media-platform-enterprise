@@ -673,6 +673,62 @@ export interface InventoryRuleOut {
   updated_at: string;
 }
 
+export interface InventoryRuleCreate {
+  scope_type: string;
+  scope_id?: string | null;
+  rule_type: string;
+  priority: number;
+  value_json: Record<string, unknown>;
+  is_active: boolean;
+  starts_at?: string | null;
+  ends_at?: string | null;
+}
+
+export interface InventoryRuleUpdate {
+  scope_type?: string | null;
+  scope_id?: string | null;
+  rule_type?: string | null;
+  priority?: number | null;
+  value_json?: Record<string, unknown> | null;
+  is_active?: boolean | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+}
+
+// ── S-087: Inventory Alternatives ──
+
+export interface InventoryAlternative {
+  alternative_type: string;
+  surface_id: string;
+  surface_code?: string | null;
+  surface_name?: string | null;
+  store_id?: string | null;
+  store_code?: string | null;
+  store_name?: string | null;
+  starts_at: string;
+  ends_at: string;
+  available_capacity: number;
+  suggested_capacity_units?: number | null;
+  suggested_sov_percent?: number | null;
+  reason: string;
+  score: number;
+}
+
+export interface InventoryAlternativesRequest {
+  surface_id: string;
+  starts_at: string;
+  ends_at: string;
+  requested_capacity_units?: number | null;
+  requested_sov_percent?: number | null;
+  max_results: number;
+}
+
+export interface InventoryAlternativesResponse {
+  surface_id: string;
+  alternatives: InventoryAlternative[];
+  total_found: number;
+}
+
 export const AUTH_PROVIDER_LABELS: Record<string, string> = {
   local: "Локальная",
   local_advertiser: "Локальная (рекламодатель)",

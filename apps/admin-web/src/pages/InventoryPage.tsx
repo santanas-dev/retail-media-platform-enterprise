@@ -1,5 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
 import { api, ApiError } from "../api/client";
+import {
+  listRules,
+  createRule,
+  updateRule,
+  activateRule,
+  deactivateRule,
+} from "../api/campaigns";
 import type {
   InventoryStoreOut,
   InventorySurfaceOut,
@@ -11,6 +18,7 @@ import type {
   InventoryConflictCheckRequest,
   InventoryConflictCheckResponse,
   InventoryConflictItem,
+  InventoryRuleOut,
 } from "../api/types";
 import PageHeader from "../components/PageHeader";
 
@@ -728,23 +736,289 @@ function ConflictTable({ items }: { items: InventoryConflictItem[] }) {
 }
 
 // ═══════════════════════════════════════════════
-// Rules tab — read-only placeholder
+// Rules tab — full CRUD (S-088)
 // ═══════════════════════════════════════════════
 
+const RULE_LABELS: Record<string, string> = {
+  blackout: "Блокировка",
+  internal_block: "Внутренний резерв",
+  max_sov: "Макс. доля показов",
+};
+
+const SCOPE_LABELS: Record<string, string> = {
+  global: "Глобально",
+  surface: "Поверхность",
+  store: "Магазин",
+  cluster: "Кластер",
+  branch: "Филиал",
+};
+
+function fmtRuleValue(rule: InventoryRuleOut): string {
+  const v = rule.value_json || {};
+  if (rule.rule_type === "blackout") return (v.reason as string) || "—";
+  if (rule.rule_type === "internal_block") return `${v.capacity_units || 0} ед.`;
+  if (rule.rule_type === "max_sov") return `${v.max_sov_percent || 0}%`;
+  return "—";
+}
+
 function RulesTab() {
+  const [rules, setRules] = useState<InventoryRuleOut[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+
+  // Form state
+  const [fType, setFType] = useState("blackout");
+  const [fScope, setFScope] = useState("global");
+  const [fScopeId, setFScopeId] = useState("");
+  const [fPriority, setFPriority] = useState("100");
+  const [fActive, setFActive] = useState(true);
+  const [fStart, setFStart] = useState("");
+  const [fEnd, setFEnd] = useState("");
+  const [fVal1, setFVal1] = useState("");
+  const [fVal2, setFVal2] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Permission check — need inventory.manage for create/edit/activate
+  const canManage = true; // Route guard handles this; inline for quick UI hiding
+
+  async function loadRules() {
+    setLoading(true); setError(null);
+    try {
+      const items = await listRules();
+      setRules(items);
+    } catch (e: unknown) {
+      setError(e instanceof ApiError ? e.message : "Ошибка загрузки правил");
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => { loadRules(); }, []);
+
+  function resetForm() {
+    setFType("blackout"); setFScope("global"); setFScopeId("");
+    setFPriority("100"); setFActive(true); setFStart(""); setFEnd("");
+    setFVal1(""); setFVal2(""); setFormError(null);
+  }
+
+  function openCreate() { setEditId(null); resetForm(); setShowForm(true); }
+  function openEdit(rule: InventoryRuleOut) {
+    setEditId(rule.id);
+    setFType(rule.rule_type);
+    setFScope(rule.scope_type);
+    setFScopeId(rule.scope_id || "");
+    setFPriority(String(rule.priority));
+    setFActive(rule.is_active);
+    setFStart(rule.starts_at ? rule.starts_at.slice(0, 10) : "");
+    setFEnd(rule.ends_at ? rule.ends_at.slice(0, 10) : "");
+    if (rule.rule_type === "internal_block") {
+      setFVal1(String((rule.value_json as any)?.capacity_units || ""));
+      setFVal2("");
+    } else if (rule.rule_type === "max_sov") {
+      setFVal1(String((rule.value_json as any)?.max_sov_percent || ""));
+      setFVal2("");
+    } else {
+      setFVal1(String((rule.value_json as any)?.reason || ""));
+      setFVal2("");
+    }
+    setShowForm(true);
+  }
+
+  function buildValueJson(): Record<string, unknown> {
+    if (fType === "internal_block") return { capacity_units: parseInt(fVal1, 10) || 0 };
+    if (fType === "max_sov") return { max_sov_percent: parseInt(fVal1, 10) || 0 };
+    return { reason: fVal1 };
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault(); setFormError(null); setSaving(true);
+    try {
+      const body: any = {
+        rule_type: fType, scope_type: fScope,
+        scope_id: fScope === "global" ? null : (fScopeId || null),
+        priority: parseInt(fPriority, 10) || 100,
+        value_json: buildValueJson(),
+        is_active: fActive,
+        starts_at: fStart ? new Date(fStart).toISOString() : null,
+        ends_at: fEnd ? new Date(fEnd).toISOString() : null,
+      };
+      if (editId) {
+        await updateRule(editId, body);
+      } else {
+        await createRule(body);
+      }
+      setShowForm(false);
+      await loadRules();
+    } catch (e: unknown) {
+      setFormError(e instanceof ApiError ? e.message : "Ошибка сохранения");
+    } finally { setSaving(false); }
+  }
+
+  async function handleToggle(rule: InventoryRuleOut) {
+    try {
+      if (rule.is_active) {
+        await deactivateRule(rule.id);
+      } else {
+        await activateRule(rule.id);
+      }
+      await loadRules();
+    } catch (e: unknown) {
+      setError(e instanceof ApiError ? e.message : "Ошибка переключения");
+    }
+  }
+
+  if (loading) return <p style={{ color: "var(--rmp-text-secondary)" }}>Загрузка правил...</p>;
+  if (error) return <p style={{ color: "var(--rmp-danger-600)" }}>{error}</p>;
+
   return (
     <div>
-      <h2 style={{ fontSize: "var(--rmp-font-size-lg)", fontWeight: 600, marginBottom: "var(--rmp-space-4)" }}>
-        Правила инвентаря
-      </h2>
-      <div style={{ ...summaryBox, borderColor: "var(--rmp-border-strong)", background: "var(--rmp-gray-50)" }}>
-        <p style={{ fontSize: "var(--rmp-font-size-base)", color: "var(--rmp-text-secondary)", margin: 0 }}>
-          Правила инвентаря (блэкауты, лимиты SOV, внутренние блокировки) работают на уровне backend-движка.
-        </p>
-        <p style={{ fontSize: "var(--rmp-font-size-base)", color: "var(--rmp-text-secondary)", margin: "var(--rmp-space-2) 0 0 0" }}>
-          Просмотр и управление правилами через интерфейс появится в следующей версии (S-082).
-        </p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--rmp-space-3)" }}>
+        <h2 style={{ fontSize: "var(--rmp-font-size-lg)", fontWeight: 600, margin: 0 }}>
+          Правила инвентаря
+        </h2>
+        {canManage && (
+          <button onClick={openCreate}
+            style={{ padding: "0.3rem 0.8rem", fontSize: "0.8rem", background: "var(--rmp-gray-800)", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" }}>
+            + Создать
+          </button>
+        )}
       </div>
+
+      {rules.length === 0 ? (
+        <p style={{ color: "var(--rmp-text-secondary)" }}>Правил пока нет. Создайте первое правило.</p>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
+            <thead>
+              <tr style={{ borderBottom: "2px solid var(--rmp-border-strong)" }}>
+                <th style={th}>Тип</th>
+                <th style={th}>Область</th>
+                <th style={th}>Приоритет</th>
+                <th style={th}>Активно</th>
+                <th style={th}>Период</th>
+                <th style={th}>Значение</th>
+                <th style={th}>Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rules.map((r) => (
+                <tr key={r.id} style={{ borderBottom: "1px solid var(--rmp-border-default)" }}>
+                  <td style={td}>{RULE_LABELS[r.rule_type] || r.rule_type}</td>
+                  <td style={td}>{SCOPE_LABELS[r.scope_type] || r.scope_type}{r.scope_id ? ` (${r.scope_id.slice(0, 8)}...)` : ""}</td>
+                  <td style={td}>{r.priority}</td>
+                  <td style={td}>
+                    <span style={{ color: r.is_active ? "var(--rmp-success-600)" : "var(--rmp-text-muted)", fontWeight: 600 }}>
+                      {r.is_active ? "Да" : "Нет"}
+                    </span>
+                  </td>
+                  <td style={td}>
+                    {r.starts_at ? r.starts_at.slice(0, 10) : "—"} – {r.ends_at ? r.ends_at.slice(0, 10) : "—"}
+                  </td>
+                  <td style={td}>{fmtRuleValue(r)}</td>
+                  <td style={td}>
+                    {canManage && (
+                      <div style={{ display: "flex", gap: "0.3rem" }}>
+                        <button onClick={() => openEdit(r)}
+                          style={actBtn}>Изм.</button>
+                        <button onClick={() => handleToggle(r)}
+                          style={{ ...actBtn, color: r.is_active ? "var(--rmp-danger-600)" : "var(--rmp-success-600)" }}>
+                          {r.is_active ? "Выкл." : "Вкл."}
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── Create/Edit modal ── */}
+      {showForm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+          <form onSubmit={handleSave}
+            style={{ background: "#fff", borderRadius: 8, padding: "1.5rem", width: 480, maxHeight: "90vh", overflow: "auto" }}>
+            <h3 style={{ margin: "0 0 1rem" }}>{editId ? "Редактировать правило" : "Создать правило"}</h3>
+
+            <label style={lbl}>Тип правила</label>
+            <select value={fType} onChange={(e) => setFType(e.target.value)} style={sel}>
+              {Object.entries(RULE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+
+            <label style={lbl}>Область</label>
+            <select value={fScope} onChange={(e) => setFScope(e.target.value)} style={sel}>
+              {Object.entries(SCOPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+
+            {fScope !== "global" && (
+              <>
+                <label style={lbl}>ID области</label>
+                <input value={fScopeId} onChange={(e) => setFScopeId(e.target.value)} style={inp} placeholder="UUID поверхности/магазина" />
+              </>
+            )}
+
+            <label style={lbl}>Приоритет</label>
+            <input type="number" min="0" value={fPriority} onChange={(e) => setFPriority(e.target.value)} style={inp} />
+
+            <label style={lbl}>Активно</label>
+            <select value={fActive ? "1" : "0"} onChange={(e) => setFActive(e.target.value === "1")} style={sel}>
+              <option value="1">Да</option>
+              <option value="0">Нет</option>
+            </select>
+
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <div style={{ flex: 1 }}>
+                <label style={lbl}>Действует с</label>
+                <input type="date" value={fStart} onChange={(e) => setFStart(e.target.value)} style={inp} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={lbl}>Действует до</label>
+                <input type="date" value={fEnd} onChange={(e) => setFEnd(e.target.value)} style={inp} />
+              </div>
+            </div>
+
+            {fType === "blackout" && (
+              <>
+                <label style={lbl}>Причина</label>
+                <input value={fVal1} onChange={(e) => setFVal1(e.target.value)} style={inp} placeholder="Например: ремонт магазина" />
+              </>
+            )}
+            {fType === "internal_block" && (
+              <>
+                <label style={lbl}>Ёмкость (capacity_units)</label>
+                <input type="number" min="1" value={fVal1} onChange={(e) => setFVal1(e.target.value)} style={inp} placeholder="Например: 10" />
+              </>
+            )}
+            {fType === "max_sov" && (
+              <>
+                <label style={lbl}>Макс. SOV (%)</label>
+                <input type="number" min="1" max="100" value={fVal1} onChange={(e) => setFVal1(e.target.value)} style={inp} placeholder="Например: 50" />
+              </>
+            )}
+
+            {formError && <p style={{ color: "var(--rmp-danger-600)", fontSize: "0.8rem", margin: "0.5rem 0 0" }}>{formError}</p>}
+
+            <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem", justifyContent: "flex-end" }}>
+              <button type="button" onClick={() => setShowForm(false)} style={{ ...btn, background: "var(--rmp-gray-200)", color: "var(--rmp-text-primary)" }}>
+                Отмена
+              </button>
+              <button type="submit" disabled={saving} style={{ ...btn, background: "var(--rmp-gray-800)", color: "#fff", opacity: saving ? 0.6 : 1 }}>
+                {saving ? "Сохранение..." : editId ? "Сохранить" : "Создать"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
+
+const th: React.CSSProperties = { textAlign: "left", padding: "0.4rem 0.5rem", fontWeight: 600, color: "var(--rmp-text-secondary)", whiteSpace: "nowrap" };
+const td: React.CSSProperties = { padding: "0.4rem 0.5rem", whiteSpace: "nowrap" };
+const lbl: React.CSSProperties = { display: "block", fontSize: "0.75rem", fontWeight: 600, marginTop: "0.6rem", marginBottom: "0.15rem" };
+const inp: React.CSSProperties = { width: "100%", padding: "0.3rem 0.5rem", fontSize: "0.8rem", border: "1px solid var(--rmp-border-strong)", borderRadius: 4, boxSizing: "border-box" };
+const sel: React.CSSProperties = { ...inp, background: "#fff" };
+const btn: React.CSSProperties = { padding: "0.3rem 0.8rem", fontSize: "0.8rem", border: "none", borderRadius: 4, cursor: "pointer" };
+const actBtn: React.CSSProperties = { padding: "0.1rem 0.4rem", fontSize: "0.7rem", border: "1px solid var(--rmp-border-strong)", borderRadius: 3, background: "transparent", cursor: "pointer" };

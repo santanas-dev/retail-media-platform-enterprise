@@ -109,6 +109,7 @@ function setupFetch(
     stores: unknown;
     availability: unknown;
     conflicts: unknown;
+    rules: unknown;
     perms: string[];
     errorUrl: string;
     errorStatus: number;
@@ -162,6 +163,10 @@ function setupFetch(
       return Promise.resolve(new Response(JSON.stringify(overrides.conflicts ?? MOCK_CONFLICTS_CLEAN), { status: 200 }));
     }
 
+    if (url.includes("/inventory/rules")) {
+      return Promise.resolve(new Response(JSON.stringify(overrides.rules ?? []), { status: 200 }));
+    }
+
     return Promise.resolve(new Response("{}", { status: 200 }));
   });
 }
@@ -208,12 +213,13 @@ describe("InventoryPage — S-081 tabs", () => {
     expect(screen.getByText("Проверка конфликтов")).toBeDefined();
   });
 
-  it("switches to rules tab and shows placeholder", async () => {
+  it("switches to rules tab and shows create button", async () => {
     renderInventory();
     await waitFor(() => { expect(screen.getByText("Правила")).toBeDefined(); });
     await userEvent.click(screen.getByText("Правила"));
-    expect(screen.getByText("Правила инвентаря")).toBeDefined();
-    expect(screen.getByText(/работают на уровне backend-движка/)).toBeDefined();
+    // Rules tab now loads from API — mock returns empty list
+    await waitFor(() => { expect(screen.getByText(/Правил пока нет/)).toBeDefined(); });
+    expect(screen.getByText("+ Создать")).toBeDefined();
   });
 });
 

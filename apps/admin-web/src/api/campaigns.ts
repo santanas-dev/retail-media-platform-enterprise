@@ -45,6 +45,11 @@ import type {
   InventoryAvailabilityResponse,
   InventoryConflictCheckRequest,
   InventoryConflictCheckResponse,
+  InventoryAlternativesRequest,
+  InventoryAlternativesResponse,
+  InventoryRuleOut,
+  InventoryRuleCreate,
+  InventoryRuleUpdate,
   CampaignInventoryReservationsResponse,
 } from "./types";
 
@@ -453,4 +458,34 @@ export function getCampaignInventoryReservations(
   return api.get<CampaignInventoryReservationsResponse>(
     `/campaigns/${campaignId}/inventory-reservations`,
   );
+}
+
+// ── S-087: Inventory Alternatives ──
+
+export function suggestAlternatives(
+  body: InventoryAlternativesRequest,
+): Promise<InventoryAlternativesResponse> {
+  return api.post<InventoryAlternativesResponse>("/inventory/alternatives", body);
+}
+
+// ── S-088: Inventory Rules ──
+
+export function listRules(): Promise<InventoryRuleOut[]> {
+  return api.get<InventoryRuleOut[]>("/inventory/rules");
+}
+
+export function createRule(body: InventoryRuleCreate): Promise<InventoryRuleOut> {
+  return api.post<InventoryRuleOut>("/inventory/rules", body);
+}
+
+export function updateRule(ruleId: string, body: InventoryRuleUpdate): Promise<InventoryRuleOut> {
+  return api.patch<InventoryRuleOut>(`/inventory/rules/${ruleId}`, body);
+}
+
+export function activateRule(ruleId: string): Promise<InventoryRuleOut> {
+  return api.post<InventoryRuleOut>(`/inventory/rules/${ruleId}/activate`, {});
+}
+
+export function deactivateRule(ruleId: string): Promise<InventoryRuleOut> {
+  return api.post<InventoryRuleOut>(`/inventory/rules/${ruleId}/deactivate`, {});
 }
