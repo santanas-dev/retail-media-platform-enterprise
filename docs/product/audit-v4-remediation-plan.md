@@ -150,11 +150,11 @@ S-073 ✅ ─► UI design-system / a11y foundation  (foundation done 2026-07-16
           ├─ Known limitations: full WCAG audit pending, advertiser-web not touched, i18n deferred
           └─ CI: 101/101 tests green, tsc --noEmit clean
 
-S-074 ─► v0.6.2/v0.7 readiness review
-          ├─ pop-ingestor architecture review
-          ├─ ADR-003 device identity gap
-          ├─ ТЗ extraction integrity
-          └─ Go/no-go for v0.7
+S-074 ─► ✅ v0.6.2 readiness review  (done 2026-07-16)
+          ├─ ✅ All Critical/P1/P2 findings closed (25/30 → 25 closed, 5 partial, 5 deferred)
+          ├─ ✅ Release recommendation: GO — develop is ready for v0.6.2-audit-remediation
+          ├─ ✅ Proposed tag: v0.6.2-audit-remediation → code baseline 90e91cb
+          └─ ✅ Docs honesty fixes: stale tracker header/backlog, production-gaps-triage header
 ```
 
 ## 5. What Is NOT Blocked by This Audit

@@ -572,7 +572,43 @@ git push origin :refs/tags/v0.5-business-portal-complete
 
 - `docs/product/audit-v4-remediation-plan.md` — remaining P1/P2/P3 findings, proposed S-062…S-074 sequence
 - **S-062 ✅ done (2026-07-15):** no-op async tests fixed (22 awakened), audit events (7 new tests), dependency truth (minio, PyJWT, CI)
-- Next milestone: v0.6.2 or v0.7 audit remediation (S-063+ pending)
+- **S-063…S-073 ✅ done (2026-07-15/16):** All P1/P2 findings closed. P3 UI foundation delivered.
+- **S-074 ✅ done (2026-07-16):** Readiness review — GO recommendation for v0.6.2.
+- Next milestone: v0.6.2-audit-remediation tag
+
+---
+
+### v0.6.2-audit-remediation — Audit v4 Remediation
+
+**Proposed.**  Tag not yet created.
+
+#### Metadata
+- **Tag:** v0.6.2-audit-remediation
+- **Date:** 2026-07-16 (proposed)
+- **Code baseline:** `90e91cb` (S-073 merge — last code commit on develop)
+- **Predecessor:** v0.6.1-critical-hotfix (`00060cc`)
+- **CI baseline:** [#29483217520](https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/29483217520) — 34/34 green
+
+#### Closed Findings
+
+- **CRITICAL (2/2):** LDAPS cert validation + RLS moderation context — closed in v0.6.1
+- **P1 (9/9):** No-op async auth (22 awakened), login/break-glass audit (7 tests), dependency truth, PoP timezone, approval concurrency (FOR UPDATE + behavioural proof), metrics auth, device rate limiting, pagination
+- **P2 (9/10):** Redis manifest cache, DB pool tuning, delivery_manifests/pop_events_raw retention, manifest signature, permission-filtered menu, audit log UI, device health workspace, emergency workspace (backend + UI + outbox), inventory domain gap analysis (implementation S-075+)
+- **P3 (1/7 foundation):** Design tokens (60+ CSS properties), shared components (Button, StatusBadge, PageHeader), 5 pages migrated, admin login default → AD. Full WCAG audit + remaining pages deferred.
+- **Architecture:** device-gateway 403 leak fixed, _scope_ids try/finally guarantee, MinIO provisioning documented
+
+#### Known Limitations (unchanged from v0.6 + new deferred)
+
+- Inventory domain implementation → S-075+
+- Full WCAG audit, remaining UI pages migration → v0.7
+- i18n strategy → v0.7
+- 152-ФЗ compliance docs → v0.7
+- pop-ingestor service extraction → v0.8
+- All v0.6 Known Limitations still apply (KSO, ClickHouse, billing, etc.)
+
+#### Release Docs
+
+- `docs/product/audit-v4-remediation-readiness-review.md` — full status matrix, GO recommendation
 
 ---
 

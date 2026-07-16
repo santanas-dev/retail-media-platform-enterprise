@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
 | **Last updated:** 2026-07-15
-| **Current phase:** v0.6.1 Critical Hotfix published (tag v0.6.1-critical-hotfix, main at 00060cc). Audit v4 remediation in progress (S-062 auth/test/dependency truth). KSO/player remains deferred/out of scope.|
+| **Current phase:** v0.6.2 audit remediation complete through S-073. S-074 readiness review in progress. KSO/player remains deferred/out of scope.|
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -161,8 +161,8 @@ Separately covered:
 
 | Ticket | Area | Priority | Status |
 |--------|------|----------|--------|
-| S-062 | Auth/test/dependency truth (no-op async, audit login/logout, requirements) | P1 | 🚧 planned |
-| S-063 | PoP by-day timezone correctness | P1 | 🚧 planned |
+| S-062 | Auth/test/dependency truth (no-op async, audit login/logout, requirements) | P1 | ✅ done |
+| S-063 | PoP by-day timezone correctness | P1 | ✅ done |
 | S-064 | Approval concurrency + audit consistency | P1 | ✅ done |
 | S-064a | Approval concurrency behavioural proof | P1 | ✅ done |
 | S-065 | Metrics/rate-limit/device-gateway hardening | P1 | ✅ done |
@@ -170,12 +170,12 @@ Separately covered:
 | S-066a | Pagination CI truth / test mock fix | P1 | ✅ done |
 | S-067 | Manifest performance + Redis cache | P2 | ✅ done |
 | S-068 | DB pool + retention strategy (delivery_manifests, pop_events_raw) | P2 | ✅ done |
-| S-069 | Admin UI: audit log + permission-filtered menu | P2 | 🚧 planned |
-| S-070 | Fleet/device health workspace | P2 | 🚧 planned |
+| S-069 | Admin UI: audit log + permission-filtered menu | P2 | ✅ done |
+| S-070 | Fleet/device health workspace | P2 | ✅ done |
 | S-071 | Emergency workspace / kill-switch UI | P2 | ✅ done |
 | S-072 | Inventory domain gap analysis and plan | P2 | ✅ done |
 | S-073 | UI design-system / a11y foundation | P3 | ✅ done (foundation) |
-| S-074 | v0.6.2/v0.7 readiness review | — | 🚧 planned |
+| S-074 | v0.6.2 audit-remediation readiness review | — | 🟡 in review |
 | Tenant model ADR before v2.6 | 🟡 Decision needed — ADR-018 |
 | Password reset invite/email flow | Deferred |
 | Advertiser approve/reject campaigns | Deferred — admin-only |

@@ -2,12 +2,12 @@
 
 | **Created:** 2026-07-11 |
 | **Version:** 1.3 |
-| **Status:** active — v0.6.1 Critical Hotfix published; audit v4 remediation planned |
+| **Status:** active — v0.6.1 Critical Hotfix published; audit v4 remediation complete through S-073, S-074 readiness review in progress |
 | **Branch:** develop |
 
 > **⚠️ Audit v4 remediation in progress (S-061):** Critical findings closed in
 > v0.6.1 (S-059/S-060). P1/P2/P3 remediation plan: `docs/product/audit-v4-remediation-plan.md`.
-> Next block: S-062 (✅ done: auth/test/dependency truth), then S-063 (PoP timezone) through S-074 (readiness review).
+> Next: S-074 (readiness review in progress) — all S-062 through S-073 complete.
 
 ## A. Current Baseline
 
