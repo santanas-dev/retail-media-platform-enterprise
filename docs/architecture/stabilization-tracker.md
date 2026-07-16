@@ -1,7 +1,7 @@
 # Stabilization Tracker — Retail Media Platform Enterprise
 
 | **Last updated:** 2026-07-17
-| **Current phase:** v0.7 published. S-085 business functions completion gate: 6 BLOCKERS found. Player deferred.|
+| **Current phase:** v0.7 published. S-086 (A1) availability forecast during campaign creation.|
 
 ## Pilot Backend Readiness (2026-07-09)
 
@@ -189,6 +189,7 @@ Separately covered:
 | S-083 | Publish v0.7-inventory-foundation | P0 | ✅ done |
 | S-084 | Business readiness gate before KSO/player | P0 | ✅ done |
 | S-085 | Business functions completion gate — 6 BLOCKERS found | P0 | ✅ done |
+| S-086 | A1: Availability forecast during campaign creation | P0 | ✅ done |
 | Tenant model ADR before v2.6 | 🟡 Decision needed — ADR-018 |
 | Password reset invite/email flow | Deferred |
 | Advertiser approve/reject campaigns | Deferred — admin-only |

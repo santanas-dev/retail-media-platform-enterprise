@@ -5,12 +5,16 @@ import {
   listBrands,
   listContracts,
   createCampaign,
+  listDisplaySurfaces,
+  checkAvailability,
 } from "../api/campaigns";
 import type {
   AdvertiserOrganizationOut,
   AdvertiserBrandOut,
   AdvertiserContractOut,
   CampaignCreateRequest,
+  DisplaySurfaceRefOut,
+  InventoryAvailabilityResponse,
 } from "../api/types";
 import { ApiError } from "../api/client";
 
@@ -56,6 +60,14 @@ export default function CampaignCreatePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ── Availability forecast state ──
+  const [surfaces, setSurfaces] = useState<DisplaySurfaceRefOut[]>([]);
+  const [surfacesLoaded, setSurfacesLoaded] = useState(false);
+  const [forecastSurface, setForecastSurface] = useState("");
+  const [forecastResult, setForecastResult] = useState<InventoryAvailabilityResponse | null>(null);
+  const [forecastLoading, setForecastLoading] = useState(false);
+  const [forecastError, setForecastError] = useState<string | null>(null);
+
   // Load reference data
   useEffect(() => {
     let cancelled = false;
@@ -82,6 +94,15 @@ export default function CampaignCreatePage() {
     }
 
     load();
+
+    // Load surfaces for availability forecast
+    (async () => {
+      try {
+        const sf = await listDisplaySurfaces();
+        if (!cancelled) { setSurfaces(sf.filter(s => s.is_active)); setSurfacesLoaded(true); }
+      } catch { if (!cancelled) setSurfacesLoaded(true); }
+    })();
+
     return () => {
       cancelled = true;
     };
@@ -117,6 +138,22 @@ export default function CampaignCreatePage() {
     if (!orgId) return "Выберите рекламодателя";
     if (!contractId) return "Выберите договор";
     return null;
+  }
+
+  // Availability forecast
+  async function handleForecast() {
+    if (!forecastSurface || !startAt || !endAt) return;
+    setForecastLoading(true); setForecastError(null); setForecastResult(null);
+    try {
+      const result = await checkAvailability({
+        surface_id: forecastSurface,
+        starts_at: new Date(startAt).toISOString(),
+        ends_at: new Date(endAt).toISOString(),
+      });
+      setForecastResult(result);
+    } catch (e: unknown) {
+      setForecastError(e instanceof ApiError ? e.message : "Ошибка проверки");
+    } finally { setForecastLoading(false); }
   }
 
   // Submit
@@ -432,6 +469,44 @@ export default function CampaignCreatePage() {
             </div>
           </div>
         </fieldset>
+
+        {/* ── Availability forecast ── */}
+        {surfacesLoaded && surfaces.length > 0 && (
+          <fieldset style={css.fieldset}>
+            <legend style={css.legend}>Доступность инвентаря</legend>
+            <p style={{ fontSize: "0.8rem", color: "#64748b", margin: "0 0 0.75rem" }}>
+              Проверка показывает предварительную доступность. Финальное бронирование — при отправке на согласование.
+            </p>
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-end", flexWrap: "wrap" }}>
+              <div>
+                <label htmlFor="fc-surface" style={{ ...css.label, fontSize: "0.8rem" }}>Поверхность</label>
+                <select id="fc-surface" value={forecastSurface} onChange={(e) => { setForecastSurface(e.target.value); setForecastResult(null); }}
+                  style={{ ...css.select, width: 260 }}>
+                  <option value="">— Выберите поверхность —</option>
+                  {surfaces.map((s) => (
+                    <option key={s.id} value={s.id}>{s.code} ({s.resolution_w}×{s.resolution_h})</option>
+                  ))}
+                </select>
+              </div>
+              <button type="button" onClick={handleForecast} disabled={!forecastSurface || !startAt || !endAt || forecastLoading}
+                style={{ padding: "0.4rem 0.8rem", fontSize: "0.8rem", background: "var(--rmp-gray-800)", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", opacity: (!forecastSurface || !startAt || !endAt || forecastLoading) ? 0.5 : 1 }}>
+                {forecastLoading ? "..." : "Проверить"}
+              </button>
+            </div>
+            {/* Result */}
+            {forecastResult && (
+              <div style={{ marginTop: "0.75rem", padding: "0.5rem", border: "1px solid var(--rmp-border-strong)", borderRadius: "var(--rmp-radius-sm)", fontSize: "0.8rem" }}>
+                <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                  <span>Слотов: <strong>{forecastResult.slots.length}</strong></span>
+                  <span>Доступно: <strong style={{ color: forecastResult.all_available ? "var(--rmp-success-600)" : "var(--rmp-danger-600)" }}>{forecastResult.total_available}</strong></span>
+                  <span>Конфликтов: <strong>{forecastResult.conflicts.length}</strong></span>
+                  <span>Итог: <strong style={{ color: forecastResult.all_available ? "var(--rmp-success-600)" : "var(--rmp-danger-600)" }}>{forecastResult.all_available ? "Доступно" : "Недоступно"}</strong></span>
+                </div>
+              </div>
+            )}
+            {forecastError && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginTop: "0.5rem" }}>{forecastError}</div>}
+          </fieldset>
+        )}
 
         {/* ── Actions ── */}
         <div style={css.actions}>
