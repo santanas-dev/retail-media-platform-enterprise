@@ -24,7 +24,7 @@ class TestDeviceOnboardSuccess(unittest.IsolatedAsyncioTestCase):
     async def test_onboard_new_device_success(self, mock_bind, mock_create, mock_get_code, mock_dev, mock_claim):
         from packages.api.device_routes.onboard import device_onboard
 
-        mock_claim.return_value = MagicMock()  # atomic claim succeeds
+        mock_claim.return_value = True  # atomic claim succeeds
 
         mock_code = MagicMock()
         mock_code.status = "claimed"
@@ -60,7 +60,7 @@ class TestDeviceOnboardRejection(unittest.IsolatedAsyncioTestCase):
     @patch("packages.api.device_routes.onboard.repository.claim_onboarding_code", new_callable=AsyncMock)
     @patch("packages.api.device_routes.onboard.repository.get_onboarding_code", new_callable=AsyncMock)
     async def test_invalid_code_not_found(self, mock_get, mock_claim):
-        mock_claim.return_value = None
+        mock_claim.return_value = False
         mock_get.return_value = None
         from fastapi import HTTPException
         with self.assertRaises(HTTPException) as ctx:
@@ -71,7 +71,7 @@ class TestDeviceOnboardRejection(unittest.IsolatedAsyncioTestCase):
     @patch("packages.api.device_routes.onboard.repository.claim_onboarding_code", new_callable=AsyncMock)
     @patch("packages.api.device_routes.onboard.repository.get_onboarding_code", new_callable=AsyncMock)
     async def test_revoked_code_rejected(self, mock_get, mock_claim):
-        mock_claim.return_value = None
+        mock_claim.return_value = False
         mock_code = MagicMock()
         mock_code.status = "revoked"
         mock_code.expires_at = None
@@ -86,7 +86,7 @@ class TestDeviceOnboardRejection(unittest.IsolatedAsyncioTestCase):
     @patch("packages.api.device_routes.onboard.repository.get_onboarding_code", new_callable=AsyncMock)
     async def test_expired_code_rejected(self, mock_get, mock_claim):
         from datetime import datetime, timedelta, timezone
-        mock_claim.return_value = None
+        mock_claim.return_value = False
         mock_code = MagicMock()
         mock_code.status = "expired"
         mock_code.expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
@@ -101,7 +101,7 @@ class TestDeviceOnboardRejection(unittest.IsolatedAsyncioTestCase):
     @patch("packages.api.device_routes.onboard.repository.get_onboarding_code", new_callable=AsyncMock)
     @patch("packages.api.device_routes.onboard.repository.get_device_by_fingerprint", new_callable=AsyncMock)
     async def test_already_used_code_different_fingerprint_rejected(self, mock_dev, mock_get, mock_claim):
-        mock_claim.return_value = None
+        mock_claim.return_value = False
         mock_code = MagicMock()
         mock_code.status = "used"
         mock_code.physical_device_id = "dev-old"
@@ -119,7 +119,7 @@ class TestDeviceOnboardRejection(unittest.IsolatedAsyncioTestCase):
     @patch("packages.api.device_routes.onboard.repository.bind_code_to_device", new_callable=AsyncMock)
     async def test_fingerprint_already_bound_idempotent(self, mock_bind, mock_dev, mock_claim):
         """Claim succeeds, fingerprint exists → idempotent: bind and return existing."""
-        mock_claim.return_value = MagicMock()
+        mock_claim.return_value = True
         mock_device = MagicMock(id="dev-existing", status="active")
         mock_dev.return_value = mock_device
 
@@ -141,7 +141,7 @@ class TestDeviceOnboardIdempotent(unittest.IsolatedAsyncioTestCase):
     @patch("packages.api.device_routes.onboard.repository.get_device_by_fingerprint", new_callable=AsyncMock)
     async def test_same_code_same_fingerprint_returns_existing_device(self, mock_dev, mock_get, mock_claim):
         """Used code + same fingerprint → idempotent: return existing device token."""
-        mock_claim.return_value = None
+        mock_claim.return_value = False
         mock_code = MagicMock()
         mock_code.status = "used"
         mock_code.physical_device_id = "dev-1"

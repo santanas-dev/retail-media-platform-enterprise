@@ -48,8 +48,8 @@ async def device_onboard(
     """
     # Atomic consume: claim the code in one DB round-trip.
     # If two requests race for the same code, only one wins.
-    claimed_code = await repository.claim_onboarding_code(db, body.device_code)
-    if claimed_code is None:
+    ok = await repository.claim_onboarding_code(db, body.device_code)
+    if not ok:
         # Code not found or not in 'active' state — diagnose why
         code = await repository.get_onboarding_code(db, body.device_code)
         if code is None:

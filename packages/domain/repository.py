@@ -5477,25 +5477,27 @@ async def consume_onboarding_code(
 
 
 async def claim_onboarding_code(session: AsyncSession, device_code: str):
-    """Atomically claim an onboarding code: UPDATE status='claimed' WHERE status='active'.
+    """Atomically claim an onboarding code.
 
-    Returns the updated DeviceOnboardingCode if claimed, None otherwise.
-    Uses RETURNING to avoid rowcount ambiguity across drivers.
+    Uses raw SQL UPDATE ... WHERE status='active' RETURNING id
+    for reliable asyncpg compatibility.
+    Returns True if a row was claimed, False otherwise.
     """
     from datetime import datetime, timezone
-    from packages.domain.models import DeviceOnboardingCode
+    from sqlalchemy import text
 
     result = await session.execute(
-        update(DeviceOnboardingCode)
-        .where(
-            DeviceOnboardingCode.code == device_code,
-            DeviceOnboardingCode.status == "active",
-            DeviceOnboardingCode.expires_at > datetime.now(timezone.utc),
-        )
-        .values(status="claimed", used_at=datetime.now(timezone.utc))
-        .returning(DeviceOnboardingCode)
+        text("""
+            UPDATE device_onboarding_codes
+            SET status = 'claimed', used_at = :now
+            WHERE code = :code
+              AND status = 'active'
+              AND expires_at > :now
+            RETURNING id
+        """),
+        {"code": device_code, "now": datetime.now(timezone.utc)},
     )
-    return result.scalar_one_or_none()
+    return result.fetchone() is not None
 
 
 async def bind_code_to_device(
