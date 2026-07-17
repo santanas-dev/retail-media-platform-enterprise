@@ -113,9 +113,16 @@
 
 ## Next Active Workstream
 
-**EDGE-001 ✅ RESOLVED** — CI #29581038157 ✅ (34/34, incl. Behavioural PostgreSQL ADR-008).  
-**EDGE-001 v2 Hardening** — CI #29589031870 ✅ (34/34). FINGERPRINT_CONFLICT + revert_claim + concurrent proof.
-Следующий workstream: EDGE-002 manifest delivery hardening / heartbeat foundation.
+**EDGE-001 ✅ RESOLVED** — CI #29589031870 ✅ (34/34). FINGERPRINT_CONFLICT + revert_claim + concurrent proof.
+**PLAYER-AUD-001 ✅ COMPLETED** — аудит старого player/sidecar (commit `b1846c1`). Результат ниже.
+Следующий workstream: **EDGE-002** manifest delivery hardening / heartbeat foundation (рекомендация аудита).
+
+## PLAYER-AUD-001 — Audit Report (2026-07-17)
+
+**Source:** `santanas-dev/retail-media-platform` (old repo), commit `b1846c1`.
+**Scope:** `apps/kso_player` + `apps/kso_sidecar_agent`, read-only, no code transfer.
+**Discovery commands:** `PYTHONPATH=apps/kso_player:apps/kso_sidecar_agent python3 -m pytest`.
+**Tests:** 262/262 player, 327/327 sidecar (with cross-PATH), 0 skipped, all pure Python stdlib — no external deps.
 
 ## EDGE-001 — Device Onboarding Contract ✅ RESOLVED (hardened 2026-07-17)
 
