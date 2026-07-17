@@ -2314,6 +2314,28 @@ async def create_delivery_attempt(
 
 
 
+async def get_device_retailer_id_and_status(
+    session: AsyncSession,
+    physical_device_id: str,
+) -> tuple[str, str] | None:
+    """Return (retailer_id, status) for a device, or None.
+
+    Used by the device-gateway to resolve the device's tenant scope
+    via an owner-role session BEFORE setting app-level RLS context
+    on the request session.
+    """
+    from packages.domain.models import PhysicalDevice
+    row = (
+        await session.execute(
+            select(PhysicalDevice.retailer_id, PhysicalDevice.status)
+            .where(PhysicalDevice.id == physical_device_id)
+        )
+    ).first()
+    if row is None:
+        return None
+    return row[0], row[1]
+
+
 async def get_physical_device_for_manifest_delivery(
     session: AsyncSession,
     physical_device_id: str,
