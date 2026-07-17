@@ -86,7 +86,7 @@ def _auth(token: str):
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 
 @pytest.fixture
-def client(app, db_available):
+def client(app, db_available, test_users):
     reset_security_config()
     return TestClient(app)
 
