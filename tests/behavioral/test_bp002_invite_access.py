@@ -175,14 +175,14 @@ def bp2_fixtures(db_available):
         ('{_APP_ID}', 'ООО БП2 Тест', 'Иван', '{_CONTACT_EMAIL}',
          'approved', '{_ORG_A_ID}')
 
-    -- Pending invite
+    -- Pending invite (created_by=NULL — FK to users, admin user not needed for test)
     ; INSERT INTO advertiser_invites
         (id, advertiser_application_id, advertiser_organization_id,
          token, contact_email, status, expires_at, created_by)
       VALUES
         ('{_INVITE_ID}', '{_APP_ID}', '{_ORG_A_ID}',
          '{_TOKEN}', '{_CONTACT_EMAIL}', 'pending',
-         NOW() + INTERVAL '7 days', '{_ADMIN_ID}')
+         NOW() + INTERVAL '7 days', NULL)
     """
     asyncio.run(_run_sql(setup_sql))
     yield {
@@ -235,7 +235,7 @@ def expired_invite(db_available):
       VALUES
         ('beh-bp2-exp-inv-0000001', 'beh-bp2-exp-app-0000001',
          'beh-bp2-exp-org-0000001', '{expired_token}', 'exp@t.local',
-         'pending', NOW() - INTERVAL '1 hour', '{_ADMIN_ID}')
+         'pending', NOW() - INTERVAL '1 hour', NULL)
     """
     asyncio.run(_run_sql(setup))
     yield expired_token
@@ -534,7 +534,7 @@ class TestConcurrentAccept:
         self.client = client
         self.fix = bp2_fixtures
 
-    def test_concurrent_invite_accept_creates_single_access(self):
+    def test_concurrent_invite_accept_creates_single_access(self, app):
         """Two simultaneous accepts → exactly ONE user created."""
         token = self.fix["token"]
         password = self.fix["password"]
@@ -543,8 +543,7 @@ class TestConcurrentAccept:
             """Run accept in thread (TestClient is sync, not async-safe)."""
             # Create a fresh TestClient per thread to avoid shared state
             from fastapi.testclient import TestClient as TC
-            from tests.behavioral.conftest import app as app_obj
-            tc = TC(app_obj)
+            tc = TC(app)
             return tc.post(
                 f"/api/v1/public/advertiser-invites/{token}/accept",
                 json={"password": password},
