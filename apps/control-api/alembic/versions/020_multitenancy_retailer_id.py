@@ -133,9 +133,10 @@ def upgrade() -> None:
             f"UPDATE {table} SET retailer_id = '{DEFAULT_RETAILER_ID}' WHERE retailer_id IS NULL"
         )
 
-    # ── 5. SET NOT NULL ──
+    # ── 5. SET NOT NULL + DEFAULT (pilot safety: existing code may insert without retailer_id) ──
     for table in ALL_TENANT:
         op.execute(f"ALTER TABLE {table} ALTER COLUMN retailer_id SET NOT NULL")
+        op.execute(f"ALTER TABLE {table} ALTER COLUMN retailer_id SET DEFAULT '{DEFAULT_RETAILER_ID}'")
 
     # ── 6. FK constraints ──
     for table in ALL_TENANT:
