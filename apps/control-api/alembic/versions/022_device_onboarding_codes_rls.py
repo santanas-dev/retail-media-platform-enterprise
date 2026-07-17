@@ -49,8 +49,15 @@ def upgrade() -> None:
         WITH CHECK ({RETAILER_RLS})
     """)
 
+    op.execute(f"""
+        CREATE POLICY device_onboarding_codes_upd
+        ON device_onboarding_codes FOR UPDATE
+        USING ({RETAILER_RLS})
+    """)
+
 
 def downgrade() -> None:
     op.execute("DROP POLICY IF EXISTS device_onboarding_codes_sel ON device_onboarding_codes")
     op.execute("DROP POLICY IF EXISTS device_onboarding_codes_ins ON device_onboarding_codes")
+    op.execute("DROP POLICY IF EXISTS device_onboarding_codes_upd ON device_onboarding_codes")
     op.execute("ALTER TABLE device_onboarding_codes NO FORCE ROW LEVEL SECURITY")
