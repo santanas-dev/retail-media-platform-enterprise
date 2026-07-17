@@ -151,6 +151,7 @@ def _setup_sql(ph):
     ; DELETE FROM campaign_status_history WHERE changed_by LIKE 'beh-%'
     ; DELETE FROM campaign_approvals WHERE reviewed_by LIKE 'beh-%'
     ; DELETE FROM audit_events_operational WHERE actor_user_id LIKE 'beh-%' OR target_id LIKE 'beh-%'
+    ; DELETE FROM device_onboarding_codes WHERE created_by LIKE 'beh-%'
     ; DELETE FROM users WHERE id LIKE 'beh-%'
     -- S-033: ensure ADV-001 advertiser org exists for user-management tests
     ; INSERT INTO advertiser_organizations (id,code,legal_name,display_name,status) VALUES
@@ -378,6 +379,7 @@ _CLEANUP = """
     ; DELETE FROM local_credentials WHERE user_id LIKE 'beh-%'
     ; DELETE FROM user_roles WHERE user_id LIKE 'beh-%'
     ; DELETE FROM audit_events_operational WHERE actor_user_id LIKE 'beh-%' OR target_id LIKE 'beh-%'
+    ; DELETE FROM device_onboarding_codes WHERE created_by LIKE 'beh-%'
     ; DELETE FROM users WHERE id LIKE 'beh-%'
     -- S-033: cleanup users created dynamically (UUID IDs via create endpoint)
     ; DELETE FROM refresh_sessions WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'beh-test-%')
