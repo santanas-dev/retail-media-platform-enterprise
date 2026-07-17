@@ -91,6 +91,7 @@ class TestManifestResponseSafety(unittest.TestCase):
             "device_code": "DEV-001",
             "store_id": "s1",
             "store_code": "ST-001",
+            "retailer_id": "ret-001",
             "channel_type": "KSO",
             "device_type": "KSO-DEVICE",
             "display_surfaces": [
@@ -114,6 +115,11 @@ class TestManifestResponseSafety(unittest.TestCase):
                 "on_network_lost": "continue_last_valid",
                 "filler_media_ids": [],
                 "emit_pop": False,
+            },
+            "emergency": {
+                "active": False,
+                "activated_at": None,
+                "reason": "",
             },
             "signature": {
                 "algorithm": "HMAC-SHA256",
@@ -458,6 +464,192 @@ class TestManifestRedisCache(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         mock_full.assert_called_once()
         mock_cache_set.assert_called_once_with("d1", mock_full.return_value)
+
+
+# ---------------------------------------------------------------------------
+# EDGE-002 — Device status rejection + 200 response tests
+# ---------------------------------------------------------------------------
+
+
+class TestDeviceStatusRejection(unittest.TestCase):
+    """Device must be active/online to receive a manifest."""
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, os.path.join(
+            os.path.dirname(__file__), "..", "apps", "device-gateway",
+        ))
+        cls.app_mod = __import__("main")
+
+    def setUp(self):
+        self.app = self.app_mod.app
+        self.mock_session = AsyncMock()
+        async def _fake_get_db():
+            yield self.mock_session
+        self.app.dependency_overrides[self.app_mod.get_db] = _fake_get_db
+        self.client = TestClient(self.app)
+
+    def tearDown(self):
+        self.app.dependency_overrides.clear()
+
+    @patch("main.get_physical_device_for_manifest_delivery", new_callable=AsyncMock)
+    @patch("main.verify_access_token")
+    @patch("main.check_rate_limit")
+    def test_inactive_device_returns_403(self, mock_rate, mock_verify, mock_phys):
+        mock_rate.return_value = True
+        mock_verify.return_value = {"sub": "d1", "auth_provider": "device"}
+        mock_phys.return_value = "inactive"
+        resp = self.client.get(
+            "/api/v1/device/manifest/latest",
+            headers={"Authorization": "Bearer token"},
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    @patch("main.get_physical_device_for_manifest_delivery", new_callable=AsyncMock)
+    @patch("main.verify_access_token")
+    @patch("main.check_rate_limit")
+    def test_revoked_device_returns_403(self, mock_rate, mock_verify, mock_phys):
+        mock_rate.return_value = True
+        mock_verify.return_value = {"sub": "d1", "auth_provider": "device"}
+        mock_phys.return_value = "revoked"
+        resp = self.client.get(
+            "/api/v1/device/manifest/latest",
+            headers={"Authorization": "Bearer token"},
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    @patch("main.get_physical_device_for_manifest_delivery", new_callable=AsyncMock)
+    @patch("main.verify_access_token")
+    @patch("main.check_rate_limit")
+    def test_unregistered_device_returns_403(self, mock_rate, mock_verify, mock_phys):
+        mock_rate.return_value = True
+        mock_verify.return_value = {"sub": "d1", "auth_provider": "device"}
+        mock_phys.return_value = "unregistered"
+        resp = self.client.get(
+            "/api/v1/device/manifest/latest",
+            headers={"Authorization": "Bearer token"},
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    @patch("main.get_physical_device_for_manifest_delivery", new_callable=AsyncMock)
+    @patch("main.verify_access_token")
+    @patch("main.check_rate_limit")
+    def test_nonexistent_device_returns_404(self, mock_rate, mock_verify, mock_phys):
+        mock_rate.return_value = True
+        mock_verify.return_value = {"sub": "d1", "auth_provider": "device"}
+        mock_phys.return_value = None
+        resp = self.client.get(
+            "/api/v1/device/manifest/latest",
+            headers={"Authorization": "Bearer token"},
+        )
+        self.assertEqual(resp.status_code, 404)
+
+
+class TestManifest200Response(unittest.TestCase):
+    """Full 200 response through HTTP layer with retailer_id and emergency."""
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, os.path.join(
+            os.path.dirname(__file__), "..", "apps", "device-gateway",
+        ))
+        cls.app_mod = __import__("main")
+
+    def setUp(self):
+        self.app = self.app_mod.app
+        self.mock_session = AsyncMock()
+        async def _fake_get_db():
+            yield self.mock_session
+        self.app.dependency_overrides[self.app_mod.get_db] = _fake_get_db
+        self.client = TestClient(self.app)
+
+    def tearDown(self):
+        self.app.dependency_overrides.clear()
+
+    @patch("main.set_manifest_cache", new_callable=AsyncMock)
+    @patch("main.get_manifest_cache", new_callable=AsyncMock)
+    @patch("main.get_latest_manifest_for_device", new_callable=AsyncMock)
+    @patch("main.get_latest_manifest_metadata", new_callable=AsyncMock)
+    @patch("main.get_physical_device_for_manifest_delivery", new_callable=AsyncMock)
+    @patch("main.verify_access_token")
+    @patch("main.check_rate_limit")
+    def test_200_includes_retailer_id_and_emergency(
+        self, mock_rate, mock_verify, mock_phys, mock_meta,
+        mock_full, mock_cache_get, mock_cache_set,
+    ):
+        mock_rate.return_value = True
+        mock_verify.return_value = {"sub": "d1", "auth_provider": "device"}
+        mock_phys.return_value = "active"
+        mock_meta.return_value = {
+            "manifest_id": "m1", "content_hash": "abc123",
+            "manifest_version": 1, "generated_at": "2026-01-01T00:00:00",
+        }
+        mock_cache_get.return_value = None
+        mock_full.return_value = {
+            "manifest_id": "m1", "manifest_version": 1,
+            "schema_version": "1.0", "device_id": "d1",
+            "device_code": "DEV-001", "store_id": "s1",
+            "store_code": "ST-001", "retailer_id": "ret-001",
+            "channel_type": "KSO", "device_type": "KSO-DEVICE",
+            "display_surfaces": [{"surface_id": "sf1", "surface_code": "SURF-1"}],
+            "playlist": [{"creative_asset_id": "ca-1", "media_type": "video/mp4",
+                          "sha256_checksum": "deadbeef", "duration_ms": 15000}],
+            "media_files": [], "adapter_payload": {},
+            "valid_from": "2026-08-01T00:00:00+00:00", "valid_to": None,
+            "offline_ttl_hours": 168,
+            "fallback_rules": {"on_manifest_expired": "show_fallback",
+                               "on_network_lost": "continue_last_valid",
+                               "filler_media_ids": [], "emit_pop": False},
+            "emergency": {"active": False, "activated_at": None, "reason": ""},
+            "signature": {"algorithm": "HMAC-SHA256", "value": ""},
+            "generated_at": "2026-08-01T00:00:00+00:00",
+            "content_hash": "abc123",
+        }
+
+        resp = self.client.get(
+            "/api/v1/device/manifest/latest",
+            headers={"Authorization": "Bearer token"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn("retailer_id", data)
+        self.assertIn("emergency", data)
+        self.assertIn("active", data["emergency"])
+        self.assertEqual(data["retailer_id"], "ret-001")
+        self.assertIn("ETag", resp.headers)
+
+    @patch("main.set_manifest_cache", new_callable=AsyncMock)
+    @patch("main.get_manifest_cache", new_callable=AsyncMock)
+    @patch("main.get_latest_manifest_for_device", new_callable=AsyncMock)
+    @patch("main.get_latest_manifest_metadata", new_callable=AsyncMock)
+    @patch("main.get_physical_device_for_manifest_delivery", new_callable=AsyncMock)
+    @patch("main.verify_access_token")
+    @patch("main.check_rate_limit")
+    def test_200_ignores_client_retailer_id(
+        self, mock_rate, mock_verify, mock_phys, mock_meta,
+        mock_full, mock_cache_get, mock_cache_set,
+    ):
+        """Client cannot influence retailer_id — it comes from device record."""
+        mock_rate.return_value = True
+        mock_verify.return_value = {"sub": "d1", "auth_provider": "device"}
+        mock_phys.return_value = "active"
+        mock_meta.return_value = {
+            "manifest_id": "m1", "content_hash": "abc123",
+            "manifest_version": 1,
+        }
+        mock_cache_get.return_value = None
+        mock_full.return_value = {
+            "manifest_id": "m1", "manifest_version": 1,
+            "content_hash": "abc123", "device_id": "d1",
+            "retailer_id": "real-retailer-from-device",
+        }
+
+        resp = self.client.get(
+            "/api/v1/device/manifest/latest?retailer_id=hijacked-retailer",
+            headers={"Authorization": "Bearer token"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json().get("retailer_id"), "real-retailer-from-device")
 
 
 if __name__ == "__main__":

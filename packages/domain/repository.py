@@ -2507,6 +2507,7 @@ async def get_latest_manifest_for_device(
         "device_code": device_code,
         "store_id": device_store_id,
         "store_code": store_code,
+        "retailer_id": device.retailer_id if device and device.retailer_id else "",
         "channel_type": channel_type,
         "device_type": device_type_code,
         "display_surfaces": display_surfaces,
@@ -2521,6 +2522,11 @@ async def get_latest_manifest_for_device(
             "on_network_lost": "continue_last_valid",
             "filler_media_ids": [],
             "emit_pop": False,
+        },
+        "emergency": {
+            "active": False,
+            "activated_at": None,
+            "reason": "",
         },
         "signature": {
             "algorithm": "HMAC-SHA256",

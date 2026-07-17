@@ -88,7 +88,16 @@
       }
     },
     "content_hash": { "type": "string" },
-    "generated_at": { "type": ["string", "null"] }
+    "generated_at": { "type": ["string", "null"] },
+    "retailer_id": { "type": "string" },
+    "emergency": {
+      "type": "object",
+      "properties": {
+        "active": { "type": "boolean" },
+        "activated_at": { "type": ["string", "null"] },
+        "reason": { "type": "string" }
+      }
+    }
   },
   "additionalProperties": false,
   "not": {
