@@ -215,6 +215,7 @@ class PhysicalDevice(Base):
     )
     last_seen_at = Column(DateTime(timezone=True), nullable=True)
     current_manifest_id = Column(String(36), nullable=True)
+    retailer_id = Column(String(36), ForeignKey("retailers.id"), nullable=True)
     cache_size_bytes = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
@@ -259,6 +260,38 @@ class DeviceStatusHistory(Base):
     details_json = Column(JSONB, nullable=True)
 
     device = relationship("PhysicalDevice", back_populates="status_history")
+
+
+class DeviceOnboardingCode(Base):
+    """One-time device onboarding code — issued by admin, consumed by device.
+
+    Links a retailer/store to a physical device via hardware_fingerprint.
+    Single-use: status moves active→used on successful onboarding.
+    Expired/revoked codes reject onboarding.
+    """
+
+    __tablename__ = "device_onboarding_codes"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    code = Column(String(128), nullable=False, unique=True, index=True)
+    retailer_id = Column(String(36), ForeignKey("retailers.id"), nullable=False, index=True)
+    store_id = Column(String(36), ForeignKey("stores.id"), nullable=True)
+    device_type_id = Column(String(36), ForeignKey("device_types.id"), nullable=True)
+    status = Column(
+        String(32), nullable=False, default="active",
+        comment="active | used | expired | revoked",
+    )
+    hardware_fingerprint_bound = Column(String(255), nullable=True)
+    physical_device_id = Column(String(36), ForeignKey("physical_devices.id"), nullable=True)
+    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+
+    retailer = relationship("Retailer")
+    store = relationship("Store")
+    device_type = relationship("DeviceType")
+    physical_device = relationship("PhysicalDevice", foreign_keys=[physical_device_id])
 
 
 # ---------------------------------------------------------------------------
@@ -1308,4 +1341,5 @@ REQUIRED_TABLES = frozenset({
     "advertiser_applications",
     "advertiser_invites",
     "campaign_briefs",
+    "device_onboarding_codes",
 })

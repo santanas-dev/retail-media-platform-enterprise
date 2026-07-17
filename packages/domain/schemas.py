@@ -958,6 +958,57 @@ class ADTestResultOut(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# EDGE-001 — Device Onboarding
+# ---------------------------------------------------------------------------
+
+
+class DeviceOnboardRequest(BaseModel):
+    """Device self-onboarding request — no JWT, just device_code + fingerprint."""
+
+    device_code: str = Field(..., min_length=8, max_length=128)
+    hardware_fingerprint: str = Field(..., min_length=1, max_length=255)
+
+
+class DeviceOnboardResponse(BaseModel):
+    """Successful onboarding — returns device identity + access token."""
+
+    device_id: str
+    status: str
+    access_token: str
+    token_type: str = "bearer"
+
+
+class DeviceCodeCreateRequest(BaseModel):
+    """Admin request to create a device onboarding code."""
+
+    retailer_id: str
+    store_id: str | None = None
+    device_type_id: str | None = None
+    ttl_hours: int = Field(default=24, ge=1, le=720)
+
+
+class DeviceCodeOut(BaseModel):
+    """Admin-visible device onboarding code info."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    code: str
+    retailer_id: str
+    store_id: str | None = None
+    device_type_id: str | None = None
+    status: str
+    hardware_fingerprint_bound: str | None = None
+    physical_device_id: str | None = None
+    created_at: datetime | None = None
+    expires_at: datetime | None = None
+    used_at: datetime | None = None
+
+
+# ---------------------------------------------------------------------------
+
+
 class DeviceOut(BaseModel):
     """Safe device representation — no secrets/tokens/HMAC keys."""
 

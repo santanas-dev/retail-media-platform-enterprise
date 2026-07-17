@@ -5382,3 +5382,95 @@ async def submit_campaign_brief(
     brief.updated_at = datetime.now(tz.utc)
     session.add(brief)
     return brief
+
+
+# ---------------------------------------------------------------------------
+# EDGE-001 — Device Onboarding
+# ---------------------------------------------------------------------------
+
+
+async def create_device_onboarding_code(
+    session: AsyncSession,
+    *,
+    retailer_id: str,
+    store_id: str | None = None,
+    device_type_id: str | None = None,
+    created_by: str | None = None,
+    ttl_hours: int = 24,
+):
+    """Create a one-time device onboarding code. Uses secrets.token_urlsafe for CSPRNG."""
+    import secrets
+    from datetime import datetime, timedelta, timezone
+    from packages.domain.models import DeviceOnboardingCode
+
+    code = DeviceOnboardingCode(
+        code=secrets.token_urlsafe(32),
+        retailer_id=retailer_id,
+        store_id=store_id,
+        device_type_id=device_type_id,
+        status="active",
+        created_by=created_by,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=ttl_hours),
+    )
+    session.add(code)
+    return code
+
+
+async def get_onboarding_code(session: AsyncSession, device_code: str):
+    """Look up an onboarding code by its code string."""
+    from packages.domain.models import DeviceOnboardingCode
+    result = await session.execute(
+        select(DeviceOnboardingCode).where(DeviceOnboardingCode.code == device_code)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_device_by_fingerprint(session: AsyncSession, hardware_fingerprint: str):
+    """Find a physical device by hardware fingerprint."""
+    from packages.domain.models import PhysicalDevice
+    result = await session.execute(
+        select(PhysicalDevice).where(
+            PhysicalDevice.hardware_fingerprint == hardware_fingerprint
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_physical_device_onboard(
+    session: AsyncSession,
+    *,
+    store_id: str,
+    device_type_id: str | None = None,
+    code: str = "",
+    hardware_fingerprint: str = "",
+    retailer_id: str | None = None,
+):
+    """Create a new physical device during onboarding. Status = active."""
+    from packages.domain.models import PhysicalDevice
+    device = PhysicalDevice(
+        store_id=store_id,
+        device_type_id=device_type_id or "00000000-0000-0000-0000-000000000001",
+        code=code or hardware_fingerprint[:64],
+        hardware_fingerprint=hardware_fingerprint,
+        status="active",
+    )
+    if retailer_id:
+        device.retailer_id = retailer_id
+    session.add(device)
+    return device
+
+
+async def consume_onboarding_code(
+    session: AsyncSession,
+    onboarding_code,
+    physical_device,
+    hardware_fingerprint: str,
+) -> None:
+    """Mark an onboarding code as used and bind it to the device."""
+    from datetime import datetime, timezone
+    onboarding_code.status = "used"
+    onboarding_code.hardware_fingerprint_bound = hardware_fingerprint
+    onboarding_code.physical_device_id = physical_device.id
+    onboarding_code.used_at = datetime.now(timezone.utc)
+    session.add(onboarding_code)
+    session.add(physical_device)
