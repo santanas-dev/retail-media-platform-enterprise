@@ -155,7 +155,7 @@ def bp4_fixtures(db_available):
     VALUES ('{BRIEF_B}', '{ORG_B}', 'Brief Beta', 'draft', '{USER_A}', NOW(), NOW());
     """
 
-    _run_sql(setup)
+    asyncio.run(_run_sql(setup))
     yield
 
     cleanup = f"""
@@ -167,7 +167,7 @@ def bp4_fixtures(db_available):
     DELETE FROM users WHERE id LIKE 'beh-bp4-%';
     DELETE FROM advertiser_organizations WHERE id LIKE 'beh-bp4-%';
     """
-    _run_sql(cleanup)
+    asyncio.run(_run_sql(cleanup))
 
 
 # ── Tests ────────────────────────────────────────────────────────────────────
@@ -240,7 +240,7 @@ class TestBP004BriefRLS:
         assert data["status"] == "draft"
 
         # Cleanup
-        _run_sql(f"DELETE FROM campaign_briefs WHERE id = '{data['id']}'")
+        asyncio.run(_run_sql(f"DELETE FROM campaign_briefs WHERE id = '{data['id']}'"))
 
     # ── Direct DB RLS proof ──
 
