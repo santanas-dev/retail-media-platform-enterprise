@@ -1,12 +1,14 @@
 """
-EDGE-001 — Device Onboarding unit tests (hardened).
+EDGE-001 — Device Onboarding unit tests (hardened v2).
 
 Covers:
 - Successful onboarding with atomic claim
 - Invalid/expired/revoked/used code rejection
-- Fingerprint conflict
-- Idempotent: same code + same fingerprint
+- FINGERPRINT_CONFLICT: active new code + already registered fingerprint → 403
+- Idempotent: same used code + same fingerprint → 200 (returns existing device_id)
+- Code already used + different fingerprint → 403
 - Admin code creation requires devices.manage permission
+- Claimed-but-unbound failure path: code reverts to active on fingerprint conflict
 """
 
 import unittest
@@ -116,16 +118,22 @@ class TestDeviceOnboardRejection(unittest.IsolatedAsyncioTestCase):
 
     @patch("packages.api.device_routes.onboard.repository.claim_onboarding_code", new_callable=AsyncMock)
     @patch("packages.api.device_routes.onboard.repository.get_device_by_fingerprint", new_callable=AsyncMock)
-    @patch("packages.api.device_routes.onboard.repository.bind_code_to_device", new_callable=AsyncMock)
-    async def test_fingerprint_already_bound_idempotent(self, mock_bind, mock_dev, mock_claim):
-        """Claim succeeds, fingerprint exists → idempotent: bind and return existing."""
-        mock_claim.return_value = True
-        mock_device = MagicMock(id="dev-existing", status="active")
-        mock_dev.return_value = mock_device
+    @patch("packages.api.device_routes.onboard.repository.revert_claim", new_callable=AsyncMock)
+    async def test_active_code_existing_fingerprint_rejected(self, mock_revert, mock_dev, mock_claim):
+        """New active code + already-registered fingerprint → 403 FINGERPRINT_CONFLICT.
 
-        resp = await self._call("new-code-12345", "fp-existing-1")
-        self.assertEqual(resp.device_id, "dev-existing")
-        self.assertEqual(resp.status, "active")
+        The code must NOT "stick" to an existing device.  Claim is reverted so the
+        code stays usable for a different fingerprint.
+        """
+        mock_claim.return_value = True  # claim succeeds
+        mock_dev.return_value = MagicMock(id="dev-existing", status="active")
+
+        from fastapi import HTTPException
+        with self.assertRaises(HTTPException) as ctx:
+            await self._call("new-active-code", "fp-existing-1")
+        self.assertEqual(ctx.exception.status_code, 403)
+        self.assertIn("FINGERPRINT_CONFLICT", str(ctx.exception.detail))
+        mock_revert.assert_called_once()  # claim must be reverted
 
 
 class TestDeviceOnboardIdempotent(unittest.IsolatedAsyncioTestCase):
@@ -139,9 +147,9 @@ class TestDeviceOnboardIdempotent(unittest.IsolatedAsyncioTestCase):
     @patch("packages.api.device_routes.onboard.repository.claim_onboarding_code", new_callable=AsyncMock)
     @patch("packages.api.device_routes.onboard.repository.get_onboarding_code", new_callable=AsyncMock)
     @patch("packages.api.device_routes.onboard.repository.get_device_by_fingerprint", new_callable=AsyncMock)
-    async def test_same_code_same_fingerprint_returns_existing_device(self, mock_dev, mock_get, mock_claim):
-        """Used code + same fingerprint → idempotent: return existing device token."""
-        mock_claim.return_value = False
+    async def test_used_code_same_fingerprint_returns_existing_device(self, mock_dev, mock_get, mock_claim):
+        """Used code + same fingerprint + same device_id → idempotent return."""
+        mock_claim.return_value = False  # already used
         mock_code = MagicMock()
         mock_code.status = "used"
         mock_code.physical_device_id = "dev-1"
@@ -153,6 +161,7 @@ class TestDeviceOnboardIdempotent(unittest.IsolatedAsyncioTestCase):
         resp = await self._call("used-code", "fp-same-12345")
         self.assertEqual(resp.device_id, "dev-1")
         self.assertEqual(resp.status, "active")
+        self.assertIsNotNone(resp.access_token)
 
 
 class TestDeviceCodeCreation(unittest.IsolatedAsyncioTestCase):

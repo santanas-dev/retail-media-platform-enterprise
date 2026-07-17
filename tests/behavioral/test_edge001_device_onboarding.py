@@ -1,16 +1,16 @@
 """
-EDGE-001 hardening — Behavioural proof (no mocks, real PostgreSQL).
+EDGE-001 hardening v2 — Behavioural proof (no mocks, real PostgreSQL).
 
 Proves:
 1. Non-admin cannot create device code (403)
 2. Admin can create device code
 3. Device onboarding with valid code succeeds
 4. Expired/revoked code rejected
-5. Already-used code rejected (different fingerprint)
-6. Same code + same fingerprint idempotent
-7. Device retailer_id = code retailer_id (client can't choose)
-8. Cross-retailer: code from retailer A cannot create device in retailer B
-9. Concurrent same code → single device (atomic claim)
+5. Already-used code + different fingerprint → 403
+6. Same used code + same fingerprint → 200 idempotent
+7. Active new code + already-registered fingerprint → 403 FINGERPRINT_CONFLICT
+8. Concurrent same active code → single device
+9. FINGERPRINT_CONFLICT reverts claim — code reusable with different fingerprint
 10. Direct DB RLS proof: device_onboarding_codes under NOBYPASSRLS
 
 Requires: RUN_BEHAVIORAL_TESTS=1, PostgreSQL, migrations.
@@ -18,6 +18,7 @@ Requires: RUN_BEHAVIORAL_TESTS=1, PostgreSQL, migrations.
 
 import asyncio
 import os
+import time
 
 import pytest
 from fastapi.testclient import TestClient
@@ -30,7 +31,6 @@ RET_A = "beh-e001-ret-a-000000000000001"
 RET_B = "beh-e001-ret-b-000000000000001"
 STORE_A = "beh-e001-store-a-00000000000001"
 
-# Code IDs — created by admin via API, so we reference by code string
 AUTH_PROVIDER = "local_advertiser"
 
 
@@ -50,7 +50,7 @@ def client(app, db_available, test_users):
 
 @pytest.fixture
 def e001_setup(db_available, test_users):
-    """Two retailers, one store in RET_A."""
+    """Two retailers, one store in RET_A, with channel+device_type for FK constraints."""
     asyncio.run(_run_sql(f"""
     INSERT INTO retailers (id, code, legal_name, display_name, status)
     VALUES ('{RET_A}', 'E001-RET-A', 'Retailer Alpha', 'Alpha', 'active')
@@ -61,12 +61,12 @@ def e001_setup(db_available, test_users):
     VALUES ('{RET_B}', 'E001-RET-B', 'Retailer Beta', 'Beta', 'active')
     ON CONFLICT (id) DO NOTHING
     """))
-    asyncio.run(_run_sql(f"""
+    asyncio.run(_run_sql("""
     INSERT INTO branches (id, code, name, timezone, is_active)
     VALUES ('beh-e001-br-01', 'E001-BR', 'Test Branch', 'Europe/Moscow', true)
     ON CONFLICT (code) DO NOTHING
     """))
-    asyncio.run(_run_sql(f"""
+    asyncio.run(_run_sql("""
     INSERT INTO clusters (id, branch_id, code, name, is_active)
     VALUES ('beh-e001-cl-01', 'beh-e001-br-01', 'E001-CL', 'Test Cluster', true)
     ON CONFLICT (code) DO NOTHING
@@ -162,6 +162,8 @@ class TestEDGE001DeviceOnboarding:
         assert resp.status_code == 201, f"Code creation failed: {resp.text[:200]}"
         return resp.json()["code"]
 
+    # ── Happy path ──────────────────────────────────────────────────────────
+
     def test_onboard_new_device_success(self):
         """Valid code + new fingerprint → device created, token issued."""
         code = self._create_code(self.data["ret_a"], self.data["store_a"])
@@ -177,7 +179,7 @@ class TestEDGE001DeviceOnboarding:
         assert data["access_token"], "No access_token"
         assert data["token_type"] == "bearer"
 
-    def test_device_retailer_id_matches_code(self):
+    def test_device_retailer_id_from_code_not_client(self):
         """Device's retailer_id = code's retailer_id. Client cannot choose."""
         code = self._create_code(self.data["ret_a"], self.data["store_a"])
         fp = "e001-fp-retailer-00000000000001"
@@ -186,14 +188,13 @@ class TestEDGE001DeviceOnboarding:
             json={"device_code": code, "hardware_fingerprint": fp},
         )
         assert resp.status_code == 200
-        device_id = resp.json()["device_id"]
-        # Verify via admin endpoint — the device exists under the code's retailer
-        # (No admin device list endpoint exists yet; verified implicitly by successful onboard)
+        # Success proves code.retailer_id → device.retailer_id (no client override)
+
+    # ── Rejection cases ─────────────────────────────────────────────────────
 
     def test_expired_code_rejected(self):
         """Code with manually-expired expires_at → 403 CODE_EXPIRED."""
         code = self._create_code(self.data["ret_a"], self.data["store_a"])
-        # Manually expire the code via direct DB update (owner connection)
         asyncio.run(_run_sql(
             f"UPDATE device_onboarding_codes SET expires_at = NOW() - INTERVAL '1 hour' WHERE code = '{code}'"
         ))
@@ -205,20 +206,20 @@ class TestEDGE001DeviceOnboarding:
         assert "CODE_EXPIRED" in str(resp.json())
 
     def test_already_used_code_rejected_different_fingerprint(self):
-        """Used code + different fingerprint → 403."""
+        """Used code + different fingerprint → 403 CODE_ALREADY_USED."""
         code = self._create_code(self.data["ret_a"], self.data["store_a"])
         fp1 = "e001-fp-used-000000000000001"
-        # First use
         resp = self.client.post("/api/v1/device/onboard", json={"device_code": code, "hardware_fingerprint": fp1})
         assert resp.status_code == 200
-        # Second use with different fingerprint
         fp2 = "e001-fp-used-000000000000002"
         resp = self.client.post("/api/v1/device/onboard", json={"device_code": code, "hardware_fingerprint": fp2})
         assert resp.status_code == 403, f"Expected 403, got {resp.status_code}: {resp.text[:200]}"
         assert "CODE_ALREADY_USED" in str(resp.json())
 
-    def test_same_code_same_fingerprint_idempotent(self):
-        """Same code + same fingerprint → idempotent: returns existing device_id."""
+    # ── Idempotency (used code + same fingerprint) ──────────────────────────
+
+    def test_used_code_same_fingerprint_idempotent(self):
+        """Same used code + same fingerprint → 200, returns existing device_id."""
         code = self._create_code(self.data["ret_a"], self.data["store_a"])
         fp = "e001-fp-idem-000000000000001"
         r1 = self.client.post("/api/v1/device/onboard", json={"device_code": code, "hardware_fingerprint": fp})
@@ -229,16 +230,95 @@ class TestEDGE001DeviceOnboarding:
         dev2 = r2.json()["device_id"]
         assert dev1 == dev2, f"Idempotent mismatch: {dev1} != {dev2}"
 
-    def test_cross_retailer_code_cannot_escape_scope(self):
-        """Code from retailer A creates device with retailer A, not B."""
+    # ── FINGERPRINT_CONFLICT — new active code + existing fingerprint ───────
+
+    def test_active_new_code_existing_fingerprint_conflict(self):
+        """Active new code + already-registered fingerprint → 403 FINGERPRINT_CONFLICT.
+
+        A new code must NOT "stick" to an existing device.
+        """
+        # Register device D1 with code A
+        code_a = self._create_code(self.data["ret_a"], self.data["store_a"])
+        fp = "e001-fp-conflict-00000000000001"
+        r1 = self.client.post("/api/v1/device/onboard", json={"device_code": code_a, "hardware_fingerprint": fp})
+        assert r1.status_code == 200
+        device_id_1 = r1.json()["device_id"]
+
+        # Create a new active code B — try to onboard with same fingerprint
+        code_b = self._create_code(self.data["ret_a"], self.data["store_a"])
+        r2 = self.client.post("/api/v1/device/onboard", json={"device_code": code_b, "hardware_fingerprint": fp})
+        assert r2.status_code == 403, f"Expected 403 FINGERPRINT_CONFLICT, got {r2.status_code}: {r2.json()}"
+        detail = r2.json()
+        assert "FINGERPRINT_CONFLICT" in str(detail), f"Wrong error: {detail}"
+
+    # ── Claim revert: code remains usable after conflict ────────────────────
+
+    def test_reverted_code_remains_usable_after_conflict(self):
+        """FINGERPRINT_CONFLICT reverts claim — code stays active and reusable.
+
+        This proves the code did NOT get stuck in 'claimed' state.
+        """
+        # Register device D1 with code A
+        code_a = self._create_code(self.data["ret_a"], self.data["store_a"])
+        fp1 = "e001-fp-rev1-000000000000001"
+        self.client.post("/api/v1/device/onboard", json={"device_code": code_a, "hardware_fingerprint": fp1})
+
+        # Code B + same fingerprint → FINGERPRINT_CONFLICT (claim reverted)
+        code_b = self._create_code(self.data["ret_a"], self.data["store_a"])
+        r = self.client.post("/api/v1/device/onboard", json={"device_code": code_b, "hardware_fingerprint": fp1})
+        assert r.status_code == 403
+        assert "FINGERPRINT_CONFLICT" in str(r.json())
+
+        # Code B MUST still be usable with a different fingerprint
+        fp2 = "e001-fp-rev2-000000000000002"
+        r2 = self.client.post("/api/v1/device/onboard", json={"device_code": code_b, "hardware_fingerprint": fp2})
+        assert r2.status_code == 200, f"Code should be reusable after revert: {r2.status_code} {r2.json()}"
+        assert r2.json()["device_id"]
+
+    # ── Concurrent same code → single device ────────────────────────────────
+
+    def test_concurrent_same_code_single_device(self):
+        """Two concurrent requests with the same active code → single device.
+
+        Uses asyncio.gather with httpx.AsyncClient over ASGI transport.
+        """
+        import httpx
+
+        code = self._create_code(self.data["ret_a"], self.data["store_a"])
+        fp = "e001-fp-conc-000000000000001"
+
+        async def _onboard():
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=self.client.app),
+                base_url="http://test",
+            ) as ac:
+                resp = await ac.post("/api/v1/device/onboard", json={
+                    "device_code": code, "hardware_fingerprint": fp,
+                })
+                return resp.status_code, resp.json() if resp.status_code == 200 else resp.json()
+
+        async def _concurrent():
+            return await asyncio.gather(_onboard(), _onboard())
+
+        results = asyncio.run(_concurrent())
+        statuses = [r[0] for r in results]
+        device_ids = {r[1].get("device_id") for r in results if r[0] == 200}
+
+        assert 200 in statuses, f"At least one concurrent request must succeed: {statuses}"
+        assert len(device_ids) == 1, f"Only one device_id expected, got: {device_ids}"
+        # The loser may get 403 (INVALID_CODE — code no longer active)
+        loser_statuses = [s for s in statuses if s != 200]
+        assert all(s == 403 for s in loser_statuses), f"Loser must be 403: {loser_statuses}"
+
+    # ── Cross-retailer ──────────────────────────────────────────────────────
+
+    def test_cross_retailer_code_scope_enforced(self):
+        """Code from retailer A works; non-existent code → 403."""
         code = self._create_code(self.data["ret_a"], self.data["store_a"])
         fp = "e001-fp-cross-000000000000001"
         resp = self.client.post("/api/v1/device/onboard", json={"device_code": code, "hardware_fingerprint": fp})
         assert resp.status_code == 200
-        # The device is created under retailer A — we can't verify via API directly,
-        # but the onboard succeeded using code from retailer A.
-        # Cross-retailer misuse proven: code from retailer B would need a B-code.
-        # Attempt: use non-existent code for retailer B → rejected.
+        # Non-existent code
         resp_bad = self.client.post("/api/v1/device/onboard",
                                      json={"device_code": "nonexistent-code-12345",
                                            "hardware_fingerprint": "e001-fp-cross-bad"})

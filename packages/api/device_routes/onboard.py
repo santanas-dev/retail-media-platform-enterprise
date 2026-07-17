@@ -70,10 +70,14 @@ async def device_onboard(
     # Code claimed — now validate fingerprint
     existing_device = await repository.get_device_by_fingerprint(db, body.hardware_fingerprint)
     if existing_device:
-        # Already registered — idempotent: associate and return existing
-        await repository.bind_code_to_device(db, body.device_code, existing_device, body.hardware_fingerprint)
-        token = create_access_token(str(existing_device.id), "device")
-        return DeviceOnboardResponse(device_id=str(existing_device.id), status=existing_device.status, access_token=token)
+        # Fingerprint already registered and this is a NEW code (just claimed).
+        # A new code must NOT "stick" to an existing device — reject with revert.
+        await repository.revert_claim(db, body.device_code)
+        raise HTTPException(status_code=403, detail={
+            "code": "FINGERPRINT_CONFLICT",
+            "message": "Hardware fingerprint is already registered with a different device. "
+                       "Use the original onboarding code for idempotent re-onboarding.",
+        })
 
     # New device — create and bind
     code = await repository.get_onboarding_code(db, body.device_code)

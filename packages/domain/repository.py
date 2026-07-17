@@ -5500,6 +5500,25 @@ async def claim_onboarding_code(session: AsyncSession, device_code: str):
     return result.fetchone() is not None
 
 
+async def revert_claim(session: AsyncSession, device_code: str) -> None:
+    """Revert a claimed code back to 'active'.
+
+    Used when the claim succeeds but a subsequent check (e.g. fingerprint conflict)
+    rejects the request — the code must not be left in a claimed state.
+    Follows the 'rolled-back or terminal error' contract from EDGE-001 hardening.
+    """
+    from sqlalchemy import text
+
+    await session.execute(
+        text("""
+            UPDATE device_onboarding_codes
+            SET status = 'active', used_at = NULL
+            WHERE code = :code AND status = 'claimed'
+        """),
+        {"code": device_code},
+    )
+
+
 async def bind_code_to_device(
     session: AsyncSession,
     device_code: str,
