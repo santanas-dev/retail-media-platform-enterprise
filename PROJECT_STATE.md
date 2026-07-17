@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 32a742b     | (next)         | EDGE-001 hardened — permission gate, RLS, atomic claim, 16 tests, CI #29586874099 ✅ |
+| develop | 32a742b     | 50f6c82         | EDGE-001 hardened — permission gate, RLS, atomic claim, 16 tests, CI #29586874099 ✅ |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
