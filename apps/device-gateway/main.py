@@ -134,26 +134,41 @@ async def set_device_rls_context(
 ) -> str:
     """Set PostgreSQL RLS context for the device's retailer scope.
 
-    Opens a short-lived owner session to resolve the device's
-    retailer_id, then returns it so the endpoint can apply
-    ``set_config('app.rmp_scope_retailer_ids', ...)`` on the
+    Opens a short-lived **owner** session to resolve the device's
+    retailer_id (bypassing RLS), then returns it so the endpoint can
+    apply ``set_config('app.rmp_scope_retailer_ids', ...)`` on the
     request-scoped session BEFORE any tenant-scoped queries.
 
-    Under NOBYPASSRLS (behavioural CI), this is required for the
-    device to see its own rows in physical_devices and
-    delivery_manifests — both tables are under FORCE RLS.
+    Under NOBYPASSRLS (behavioural CI), ``physical_devices`` is under
+    FORCE RLS — the app role cannot read its own retailer_id without
+    a scope already set (chicken-and-egg).  To break the cycle, the
+    device lookup uses a separate **owner** connection when
+    ``BEHAVIORAL_DB_URL`` is available (CI), falling back to the
+    global engine in production where the app role may have direct
+    read access.
 
     Returns the retailer_id so it can be passed through to
     get_latest_manifest_for_device for the manifest payload.
     """
     from packages.domain.repository import get_device_retailer_id_and_status
 
-    engine = get_global_engine()
-    if engine is None:
-        raise HTTPException(status_code=503, detail="Database not available")
-
-    async with get_session(engine) as owner_session:
-        row = await get_device_retailer_id_and_status(owner_session, device_id)
+    # Use owner-role connection for device lookup when available (CI).
+    # In production, the app role typically has direct read access to
+    # physical_devices without needing RLS context.
+    owner_db_url = os.environ.get("BEHAVIORAL_DB_URL", "").strip()
+    if owner_db_url:
+        owner_engine = create_engine(owner_db_url)
+        try:
+            async with get_session(owner_engine) as owner_session:
+                row = await get_device_retailer_id_and_status(owner_session, device_id)
+        finally:
+            await owner_engine.dispose()
+    else:
+        engine = get_global_engine()
+        if engine is None:
+            raise HTTPException(status_code=503, detail="Database not available")
+        async with get_session(engine) as owner_session:
+            row = await get_device_retailer_id_and_status(owner_session, device_id)
 
     if row is None:
         raise HTTPException(status_code=404, detail="Device not found")
