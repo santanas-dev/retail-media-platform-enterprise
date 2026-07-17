@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-17 (PLAN-001)
+**Last updated:** 2026-07-17 (EDGE-001 v2 closure)
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 32a742b     | 50f6c82         | EDGE-001 hardened — permission gate, RLS, atomic claim, 16 tests, CI #29586874099 ✅ |
+| develop | 2dad5f0     | 7b31171         | EDGE-001 v2 — FINGERPRINT_CONFLICT, revert_claim, concurrent proof, CI #29589031870 ✅ |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -113,12 +113,13 @@
 
 ## Next Active Workstream
 
-**EDGE-001 ✅ RESOLVED** — CI #29581038157 ✅ (34/34, incl. Behavioural PostgreSQL ADR-008).
+**EDGE-001 ✅ RESOLVED** — CI #29581038157 ✅ (34/34, incl. Behavioural PostgreSQL ADR-008).  
+**EDGE-001 v2 Hardening** — CI #29589031870 ✅ (34/34). FINGERPRINT_CONFLICT + revert_claim + concurrent proof.
 Следующий workstream: EDGE-002 manifest delivery hardening / heartbeat foundation.
 
 ## EDGE-001 — Device Onboarding Contract ✅ RESOLVED (hardened 2026-07-17)
 
-- **Verdict: device_code + hardware_fingerprint → device identity + access_token. Security boundary proven.**
+- **Verdict v2: active code + existing fingerprint → 403 FINGERPRINT_CONFLICT. Idempotent only for used code + same device_id.**
 - **Model:** `DeviceOnboardingCode` (54th table). `PhysicalDevice.retailer_id` added to ORM.
 - **API:**
   - `POST /api/v1/device/onboard` — public (no JWT), atomic claim via `UPDATE ... WHERE status='active' RETURNING id`
@@ -127,12 +128,19 @@
 - **RLS:** Migration 022 — ENABLE/FORCE RLS + SELECT/INSERT/UPDATE policies with retailer scope + admin bypass.
 - **Atomic claim:** raw SQL `UPDATE ... RETURNING id` prevents concurrent double-onboarding.
 - **Fail-closed:** invalid/expired/revoked/used code → 403. Cross-retailer: retailer from code, not client.
-- **Idempotent:** same code + same fingerprint returns existing device identity.
-- **Tests (16 total):**
-  - 8 unit: success, 4× rejection, idempotent, fingerprint-bound idempotent, admin code creation
-  - 8 behavioral (real PostgreSQL, no mocks): non-admin/noperms 403, admin creates code, onboard success, expired rejection (manual expiry via SQL), used-code rejection, idempotent, cross-retailer, direct DB RLS proof (NOBYPASSRLS: scope A → A codes, empty→deny, admin→all)
+- **v2 FINGERPRINT_CONFLICT:** new active code + already-registered fingerprint → 403. Claim reverted via `revert_claim()` — code stays reusable.
+- **Idempotent:** used code + same fingerprint + same device_id returns existing device identity.
+- **Tests (21 total):**
+  - 8 unit: success, 5× rejection (incl. FINGERPRINT_CONFLICT), idempotent, admin code creation
+  - 13 behavioral (real PostgreSQL, no mocks): non-admin/noperms 403, admin creates code, onboard success, expired rejection, used-code rejection, idempotent, **FINGERPRINT_CONFLICT (new code + registered fp → 403)**, **revert-proof (code reusable after conflict)**, **concurrent same code → single device**, cross-retailer, direct DB RLS proof (NOBYPASSRLS: scope A → A codes, empty→deny, admin→all)
 - **Deferred:** real certificate issuance, device RLS behavioral for physical_devices, heartbeat/PoP/manifest.
-- **CI:** #29586874099 ✅ (34/34 green, incl. Behavioural PostgreSQL + ADR-008).
+- **v1 CI:** #29586874099 ✅, **v2 CI:** #29589031870 ✅ (34/34 green, incl. Behavioural PostgreSQL + ADR-008).
+- **v2 Proof (5 behavioral gates):**
+  - `test_active_new_code_existing_fingerprint_conflict` — active code + registered fp → 403 FINGERPRINT_CONFLICT
+  - `test_used_code_same_fingerprint_idempotent` — used code + same fp + same device_id → 200
+  - `test_already_used_code_rejected_different_fingerprint` — used code + different fp → 403 CODE_ALREADY_USED
+  - `test_reverted_code_remains_usable_after_conflict` — claim откатывается, код переиспользуем
+  - `test_concurrent_same_code_single_device` — конкурентный запрос → один device_id
 
 ## ADR-018-IMPL-001 — Multitenancy Foundation ✅ RESOLVED
 
