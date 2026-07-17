@@ -33,7 +33,7 @@ class TestInventoryModelTableCount(unittest.TestCase):
 
     def test_metadata_table_count(self):
         count = len(Base.metadata.tables)
-        self.assertEqual(count, 51, f"Expected 51 tables, got {count}")
+        self.assertEqual(count, 52, f"Expected 52 tables, got {count}")
 
 
 # ---------------------------------------------------------------------------
