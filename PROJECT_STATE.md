@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 0410d64     | TBD           | BP-004 campaign briefs — CI #29569017641 ✅ (34/34) |
+| develop | 0410d64     | 759035f         | BP-004 campaign briefs — CI #29569017641 ✅ (34/34) |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
