@@ -49,6 +49,7 @@ async def _setup_fixtures():
     try:
         async with engine.begin() as conn:
             await conn.execute(text("SET LOCAL app.rmp_is_admin = 'true'"))
+            await conn.execute(text("SET LOCAL app.rmp_scope_retailer_ids = '00000000-0000-4000-a000-000000000001'"))
             await conn.execute(text("SET LOCAL app.rmp_scope_advertiser_ids = ''"))
 
             await conn.execute(text(f"""
@@ -111,6 +112,10 @@ async def _count_visible(scope_org_id, is_admin):
             await conn.execute(
                 text("SELECT set_config('app.rmp_is_admin', :v, true)"),
                 {"v": "true" if is_admin else "false"},
+            )
+            await conn.execute(
+                text("SELECT set_config('app.rmp_scope_retailer_ids', :v, true)"),
+                {"v": "00000000-0000-4000-a000-000000000001"},
             )
             await conn.execute(
                 text("SELECT set_config('app.rmp_scope_advertiser_ids', :v, true)"),
