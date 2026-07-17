@@ -223,6 +223,8 @@ def upgrade() -> None:
 
     # ── 9. RLS for derived tables (no advertiser FK, retailer scope only) ──
     for table in DERIVED_TABLES:
+        for suffix in ("sel", "ins", "upd", "del"):
+            op.execute(f"DROP POLICY IF EXISTS {table}_rls_{suffix} ON {table}")
         op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
         op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
         for op_type in ("SELECT", "INSERT", "UPDATE", "DELETE"):
@@ -244,6 +246,8 @@ def upgrade() -> None:
 
     # ── 10. RLS for hierarchy tables (branches, stores, etc.) ──
     for table in HIERARCHY_TABLES:
+        for suffix in ("sel", "ins", "upd", "del"):
+            op.execute(f"DROP POLICY IF EXISTS {table}_rls_{suffix} ON {table}")
         op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
         op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
         for op_type in ("SELECT", "INSERT", "UPDATE", "DELETE"):
