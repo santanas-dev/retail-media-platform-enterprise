@@ -995,6 +995,7 @@ class AdvertiserApplicationOut(BaseModel):
     reviewer_id: str | None = None
     review_reason: str | None = None
     reviewed_at: datetime | None = None
+    organization_id: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -1015,6 +1016,33 @@ class AdvertiserApplicationListOut(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# ---------------------------------------------------------------------------
+# Advertiser Invite (BP-002)
+# ---------------------------------------------------------------------------
+
+
+class AdvertiserInviteOut(BaseModel):
+    """Invite visible to admin."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    advertiser_application_id: str | None = None
+    advertiser_organization_id: str
+    token: str
+    contact_email: str
+    status: str
+    created_by: str | None = None
+    created_at: datetime
+    expires_at: datetime
+    accepted_at: datetime | None = None
+    accepted_by_user_id: str | None = None
+
+
+class AcceptAdvertiserInvite(BaseModel):
+    """Public — accept invite with password."""
+    password: str = Field(..., min_length=8, max_length=128)
 
 
 # ---------------------------------------------------------------------------

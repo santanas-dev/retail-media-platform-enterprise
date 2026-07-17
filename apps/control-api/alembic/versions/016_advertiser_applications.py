@@ -30,6 +30,7 @@ def upgrade() -> None:
         sa.Column("reviewer_id", sa.String(36), sa.ForeignKey("users.id"), nullable=True),
         sa.Column("review_reason", sa.Text(), nullable=True, server_default=""),
         sa.Column("reviewed_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("organization_id", sa.String(36), sa.ForeignKey("advertiser_organizations.id"), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
     )

@@ -19,6 +19,9 @@ const S = {
   btn: (bg: string) => ({ padding: "0.4rem 1rem", border: "none", borderRadius: 4, background: bg, color: "#fff", fontWeight: 600, cursor: "pointer", fontSize: "0.85rem" }) as const,
   textarea: { width: "100%", minHeight: 60, padding: "0.5rem", border: "1px solid #cbd5e1", borderRadius: 4, fontSize: "0.85rem", resize: "vertical" as const },
   success: { padding: "1rem", color: "#166534", background: "#f0fdf4", borderRadius: 6, marginBottom: "1rem" },
+  tokenBox: { marginTop: "1rem", padding: "0.75rem", borderRadius: 6, background: "#fefce8", border: "1px solid #fde68a", fontSize: "0.8rem" },
+  tokenCode: { fontSize: "0.75rem", fontFamily: "monospace", background: "#f1f5f9", padding: "0.25rem 0.5rem", borderRadius: 4, wordBreak: "break-all" as const },
+  note: { color: "#92400e", fontSize: "0.75rem", marginTop: "0.5rem" },
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -35,9 +38,30 @@ const STATUS_COLORS: Record<string, string> = {
   rejected: "#dc2626",
 };
 
+const INVITE_STATUS_LABELS: Record<string, string> = {
+  pending: "Ожидает принятия",
+  accepted: "Принято",
+  expired: "Истекло",
+};
+
+const INVITE_STATUS_COLORS: Record<string, string> = {
+  pending: "#8b5cf6",
+  accepted: "#16a34a",
+  expired: "#94a3b8",
+};
+
 function formatDt(iso: string | null): string {
   if (!iso) return "—";
   try { return new Date(iso).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" }); } catch { return iso; }
+}
+
+interface InviteData {
+  id: string;
+  token: string;
+  contact_email: string;
+  status: string;
+  expires_at: string;
+  accepted_at: string | null;
 }
 
 export default function AdvertiserApplicationsPage() {
@@ -48,6 +72,8 @@ export default function AdvertiserApplicationsPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [selected, setSelected] = useState<AdvertiserApplicationOut | null>(null);
   const [reason, setReason] = useState("");
+  const [invite, setInvite] = useState<InviteData | null>(null);
+  const [inviteLoading, setInviteLoading] = useState(false);
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -65,6 +91,26 @@ export default function AdvertiserApplicationsPage() {
 
   useEffect(() => { fetchList(); }, [fetchList]);
 
+  const fetchInvite = useCallback(async (appId: string) => {
+    setInviteLoading(true);
+    try {
+      const data = await api.get<InviteData | null>(`/advertiser-applications/${appId}/invite`);
+      setInvite(data);
+    } catch {
+      setInvite(null);
+    } finally {
+      setInviteLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selected && selected.status === "approved") {
+      fetchInvite(selected.id);
+    } else {
+      setInvite(null);
+    }
+  }, [selected, fetchInvite]);
+
   async function handleReview(action: "reviewing" | "approve" | "reject", appId: string) {
     setError(null);
     setSuccess(null);
@@ -81,6 +127,18 @@ export default function AdvertiserApplicationsPage() {
       await fetchList();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Ошибка");
+    }
+  }
+
+  async function handleCreateInvite(appId: string) {
+    setError(null);
+    setSuccess(null);
+    try {
+      await api.post(`/advertiser-applications/${appId}/invite`);
+      setSuccess("Приглашение создано.");
+      await fetchInvite(appId);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Ошибка создания приглашения");
     }
   }
 
@@ -104,8 +162,8 @@ export default function AdvertiserApplicationsPage() {
               <th style={S.th}>Контакт</th>
               <th style={S.th}>Email</th>
               <th style={S.th}>Статус</th>
+              <th style={S.th}>Приглашение</th>
               <th style={S.th}>Дата</th>
-              <th style={S.th}></th>
             </tr>
           </thead>
           <tbody>
@@ -117,8 +175,10 @@ export default function AdvertiserApplicationsPage() {
                 <td style={S.td}>
                   <span style={S.badge(STATUS_COLORS[a.status] || "#94a3b8")}>{STATUS_LABELS[a.status] || a.status}</span>
                 </td>
+                <td style={S.td}>
+                  {a.status === "approved" ? (selected?.id === a.id ? "..." : "—") : "—"}
+                </td>
                 <td style={S.td}>{formatDt(a.created_at)}</td>
-                <td style={S.td}>{a.status === "new" ? "⏳" : a.status === "reviewing" ? "🔍" : a.status === "approved" ? "✅" : "❌"}</td>
               </tr>
             ))}
           </tbody>
@@ -153,6 +213,42 @@ export default function AdvertiserApplicationsPage() {
                 <button style={S.btn("#16a34a")} onClick={() => handleReview("approve", selected.id)}>Одобрить</button>
                 <button style={S.btn("#dc2626")} onClick={() => handleReview("reject", selected.id)}>Отклонить</button>
               </div>
+            </div>
+          )}
+
+          {selected.status === "approved" && (
+            <div>
+              <div style={S.label}>Приглашение</div>
+              {inviteLoading ? (
+                <div style={S.value}>Загрузка...</div>
+              ) : invite ? (
+                <div>
+                  <div style={S.value}>
+                    <span style={S.badge(INVITE_STATUS_COLORS[invite.status] || "#94a3b8")}>
+                      {INVITE_STATUS_LABELS[invite.status] || invite.status}
+                    </span>
+                    {" "}до {formatDt(invite.expires_at)}
+                    {invite.accepted_at && <> — принято {formatDt(invite.accepted_at)}</>}
+                  </div>
+                  <div style={S.tokenBox}>
+                    <div style={S.label}>Код приглашения (dev/pilot — реальная отправка email будет позже)</div>
+                    <div style={S.tokenCode}>{invite.token}</div>
+                    <div style={S.note}>⚠️ В режиме разработки токен показывается в интерфейсе. Скопируйте код и передайте контактному лицу. В production токен будет отправляться по email.</div>
+                  </div>
+                  <div style={S.actions}>
+                    <button style={S.btn("#8b5cf6")} onClick={() => handleCreateInvite(selected.id)}>
+                      {invite.status === "expired" || invite.status === "accepted" ? "Создать новое приглашение" : "Переслать приглашение"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div style={S.value}>Не отправлено</div>
+                  <div style={S.actions}>
+                    <button style={S.btn("#8b5cf6")} onClick={() => handleCreateInvite(selected.id)}>Создать приглашение</button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

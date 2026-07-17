@@ -487,8 +487,31 @@ class AdvertiserApplication(Base):
     reviewer_id = Column(String(36), ForeignKey("users.id"), nullable=True)
     review_reason = Column(Text, nullable=True, default="")
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    organization_id = Column(String(36), ForeignKey("advertiser_organizations.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
+class AdvertiserInvite(Base):
+    """One-time invite token for advertiser access activation (BP-002)."""
+
+    __tablename__ = "advertiser_invites"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    advertiser_application_id = Column(
+        String(36), ForeignKey("advertiser_applications.id"), nullable=True, index=True,
+    )
+    advertiser_organization_id = Column(
+        String(36), ForeignKey("advertiser_organizations.id"), nullable=False, index=True,
+    )
+    token = Column(String(128), nullable=False, unique=True, index=True)
+    contact_email = Column(String(255), nullable=False)
+    status = Column(String(32), nullable=False, default="pending", index=True)
+    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    accepted_at = Column(DateTime(timezone=True), nullable=True)
+    accepted_by_user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
 
 
 # ---------------------------------------------------------------------------
@@ -1236,4 +1259,5 @@ REQUIRED_TABLES = frozenset({
     "inventory_bookings",
     "inventory_rules",
     "advertiser_applications",
+    "advertiser_invites",
 })

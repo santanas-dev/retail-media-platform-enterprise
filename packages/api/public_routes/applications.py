@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from packages.api.dependencies import get_db
 from packages.domain import repository
-from packages.domain.schemas import AdvertiserApplicationCreate, AdvertiserApplicationOut
+from packages.domain.schemas import AdvertiserApplicationCreate, AdvertiserApplicationOut, AcceptAdvertiserInvite
 from packages.observability.rate_limit import (
     check_rate_limit,
     get_rate_limit_key,
@@ -64,3 +64,38 @@ async def submit_application(
     )
 
     return application
+
+
+# ── Invite acceptance (BP-002) ──
+
+
+@router.post(
+    "/advertiser-invites/{token}/accept",
+)
+async def accept_invite(
+    token: str,
+    body: AcceptAdvertiserInvite,
+    db=Depends(get_db),
+):
+    """Accept an advertiser invite with password. Creates user, membership, credential, scoped role."""
+    from packages.domain.schemas import AdvertiserInviteOut
+
+    try:
+        invite = await repository.accept_advertiser_invite(
+            db,
+            token=token,
+            password=body.password,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    await repository.create_audit_event(
+        db,
+        actor_user_id=invite.accepted_by_user_id or "public",
+        action="advertiser_invite.accepted",
+        target_type="advertiser_invite",
+        target_id=invite.id,
+        details={"organization_id": invite.advertiser_organization_id},
+    )
+
+    return {"status": "ok", "detail": "Приглашение принято. Теперь вы можете войти в портал."}

@@ -12,6 +12,7 @@ import CreativeLibraryPage from "./pages/CreativeLibraryPage";
 import ProfilePage from "./pages/ProfilePage";
 import CampaignCreatePage from "./pages/CampaignCreatePage";
 import ApplyAdvertiserPage from "./pages/ApplyAdvertiserPage";
+import AcceptInvitePage from "./pages/AcceptInvitePage";
 
 /** Route-level error fallback — resets when the user navigates to a different route. */
 function RouteErrorFallback() {
@@ -57,6 +58,10 @@ const router = createBrowserRouter([
   {
     path: "/become-advertiser",
     element: <ApplyAdvertiserPage />,
+  },
+  {
+    path: "/accept-invite/:token",
+    element: <AcceptInvitePage />,
   },
   {
     path: "/login",

@@ -10,6 +10,7 @@ from packages.domain.schemas import (
     AdvertiserApplicationOut,
     AdvertiserApplicationReview,
     AdvertiserApplicationListOut,
+    AdvertiserInviteOut,
 )
 
 router = APIRouter()
@@ -96,6 +97,8 @@ async def review_application(
             db,
             application=app,
         )
+        # Store organization_id on application for later invite creation
+        app.organization_id = org_id
         await repository.create_audit_event(
             db,
             actor_user_id=actor,
@@ -109,3 +112,57 @@ async def review_application(
         )
 
     return app
+
+
+# ── Invite management (BP-002) ──
+
+
+@router.get("/advertiser-applications/{application_id}/invite", response_model=AdvertiserInviteOut | None)
+async def get_application_invite(
+    application_id: str,
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("advertiser_applications.read")),
+    _rls=Depends(set_rls_context),
+):
+    """Return the current invite for an application, or null if none."""
+    from packages.domain.schemas import AdvertiserInviteOut
+    return await repository.get_invite_for_application(db, application_id)
+
+
+@router.post("/advertiser-applications/{application_id}/invite", response_model=AdvertiserInviteOut, status_code=201)
+async def create_application_invite(
+    application_id: str,
+    db=Depends(get_db),
+    claims: dict = Depends(require_permission("advertiser_applications.review")),
+    _rls=Depends(set_rls_context),
+):
+    """Create a new invite for an approved application. Old pending invites are expired."""
+    from packages.domain.schemas import AdvertiserInviteOut
+
+    application = await repository.get_advertiser_application(db, application_id)
+    if application is None:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+    if application.status != "approved":
+        raise HTTPException(status_code=409, detail="Приглашение можно создать только для одобренной заявки")
+
+    if not application.organization_id:
+        raise HTTPException(status_code=409, detail="У заявки нет связанной организации — сначала одобрите заявку")
+
+    invite = await repository.create_advertiser_invite(
+        db,
+        advertiser_application_id=application_id,
+        advertiser_organization_id=application.organization_id,
+        contact_email=application.email,
+        created_by=_actor_from_claims(claims),
+    )
+
+    await repository.create_audit_event(
+        db,
+        actor_user_id=_actor_from_claims(claims),
+        action="advertiser_invite.created",
+        target_type="advertiser_invite",
+        target_id=invite.id,
+        details={"application_id": application_id, "email": invite.contact_email},
+    )
+
+    return invite

@@ -3510,6 +3510,150 @@ async def create_advertiser_from_application(
 
 
 # ---------------------------------------------------------------------------
+# Advertiser Invite (BP-002)
+# ---------------------------------------------------------------------------
+
+
+def _generate_invite_token() -> str:
+    """CSPRNG token — 64 hex chars."""
+    import secrets
+    return secrets.token_hex(32)
+
+
+async def create_advertiser_invite(
+    session: AsyncSession,
+    *,
+    advertiser_application_id: str,
+    advertiser_organization_id: str,
+    contact_email: str,
+    created_by: str,
+    ttl_days: int = 7,
+) -> "AdvertiserInvite":
+    """Create a one-time invite token. Marks any existing pending invites for this app as expired."""
+    from datetime import timezone, timedelta
+    from packages.domain.models import AdvertiserInvite
+
+    # Expire any existing pending invites for this application
+    stmt = (
+        sa_update(AdvertiserInvite)
+        .where(
+            AdvertiserInvite.advertiser_application_id == advertiser_application_id,
+            AdvertiserInvite.status == "pending",
+        )
+        .values(status="expired")
+    )
+    await session.execute(stmt)
+
+    now = datetime.now(timezone.utc)
+    invite = AdvertiserInvite(
+        advertiser_application_id=advertiser_application_id,
+        advertiser_organization_id=advertiser_organization_id,
+        token=_generate_invite_token(),
+        contact_email=contact_email,
+        status="pending",
+        created_by=created_by,
+        created_at=now,
+        expires_at=now + timedelta(days=ttl_days),
+    )
+    session.add(invite)
+    await session.flush()
+    return invite
+
+
+async def get_invite_for_application(
+    session: AsyncSession,
+    application_id: str,
+) -> "AdvertiserInvite | None":
+    """Get the current invite for an application (most recent, any status)."""
+    from packages.domain.models import AdvertiserInvite
+
+    stmt = (
+        select(AdvertiserInvite)
+        .where(AdvertiserInvite.advertiser_application_id == application_id)
+        .order_by(AdvertiserInvite.created_at.desc())
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def get_advertiser_invite_by_token(
+    session: AsyncSession,
+    token: str,
+) -> "AdvertiserInvite | None":
+    """Look up invite by token."""
+    from packages.domain.models import AdvertiserInvite
+
+    stmt = select(AdvertiserInvite).where(AdvertiserInvite.token == token)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def accept_advertiser_invite(
+    session: AsyncSession,
+    *,
+    token: str,
+    password: str,
+) -> "AdvertiserInvite":
+    """Accept invite: validate token, create user/membership/role/credential.
+
+    Raises ValueError if token invalid, expired, or already used.
+    Returns the updated invite.
+    """
+    from datetime import timezone
+    from packages.domain.models import AdvertiserInvite
+    from packages.security.password import hash_password
+
+    invite = await get_advertiser_invite_by_token(session, token)
+    if invite is None:
+        raise ValueError("Недействительный код приглашения")
+
+    if invite.status == "accepted":
+        raise ValueError("Приглашение уже использовано")
+
+    if invite.status == "expired" or invite.expires_at < datetime.now(timezone.utc):
+        invite.status = "expired"
+        raise ValueError("Срок действия приглашения истёк")
+
+    if invite.status != "pending":
+        raise ValueError(f"Приглашение не может быть принято — статус: {invite.status}")
+
+    # Create user with advertiser access
+    from packages.domain.models import AdvertiserOrganization
+
+    org = await session.get(AdvertiserOrganization, invite.advertiser_organization_id)
+    if org is None:
+        raise ValueError("Организация не найдена")
+
+    # Derive username from email
+    username = invite.contact_email.split("@")[0][:64]
+    code = f"adv-{username[:32]}"
+
+    # Get advertiser role
+    stmt = select(Role).where(Role.code == "advertiser")
+    advertiser_role = (await session.execute(stmt)).scalar_one_or_none()
+    if advertiser_role is None:
+        raise ValueError("Роль advertiser не найдена — проверьте seed")
+
+    user = await create_local_advertiser_user(
+        session,
+        user_id=str(uuid.uuid4()),
+        code=code,
+        username=invite.contact_email,
+        display_name=invite.contact_email.split("@")[0],
+        password_hash=hash_password(password),
+        advertiser_organization_id=invite.advertiser_organization_id,
+        role_id=advertiser_role.id,
+        must_change_password=False,
+        is_active=True,
+    )
+
+    invite.status = "accepted"
+    invite.accepted_at = datetime.now(timezone.utc)
+    invite.accepted_by_user_id = user.id
+
+    return invite
+
+
+# ---------------------------------------------------------------------------
 # Inventory Domain (v0.7 Foundation — S-077)
 # ---------------------------------------------------------------------------
 

@@ -34,9 +34,11 @@ def _mock_app(**kw) -> object:
         "comment": "Хотим размещать рекламу",
         "consent": True,
         "status": "new",
+        "creator_id": None,
         "reviewer_id": None,
         "review_reason": "",
         "reviewed_at": None,
+        "organization_id": None,
         "created_at": datetime(2026, 7, 17, 10, 0, 0, tzinfo=timezone.utc),
         "updated_at": datetime(2026, 7, 17, 10, 0, 0, tzinfo=timezone.utc),
     }
@@ -344,6 +346,7 @@ class TestAdminReview(AuthzMixin, unittest.TestCase):
 
         # Step 2: reviewing → approve
         mock_review.return_value = _mock_app(status="approved")
+        mock_create_org.return_value = "org-001"
         resp = client.post(
             "/api/v1/identity/advertiser-applications/app-001/review",
             json={"action": "approve", "reason": "OK"},
