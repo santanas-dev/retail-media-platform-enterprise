@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 2dad5f0     | e2bbb2d         | EDGE-001 v2 — FINGERPRINT_CONFLICT, revert_claim, concurrent proof, CI #29589031870 ✅ |
+| develop | 2dad5f0     | 719c76e         | EDGE-001 v2 + PLAYER-AUD-001 full report, CI #29589031870 ✅ |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
