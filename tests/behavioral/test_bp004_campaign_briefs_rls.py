@@ -97,24 +97,23 @@ def bp4_fixtures(db_available):
     ph = bcrypt.hashpw(PASSWORD.encode(), bcrypt.gensalt(rounds=4)).decode()
 
     setup = f"""
-    -- Ensure advertiser role exists and has permissions
-    INSERT INTO roles (id, code, name, description, is_system)
-    VALUES ('{ROLE_A}', 'advertiser', 'Рекламодатель', 'Scoped advertiser', false)
-    ON CONFLICT (id) DO NOTHING;
-
+    -- Use the existing advertiser role from conftest (code='advertiser', idempotent)
     -- Ensure the required permissions are assigned to the advertiser role
-    ; INSERT INTO role_permissions (id, role_id, permission_id)
-    VALUES ('{ROLE_A.replace("role","rp1")}', '{ROLE_A}',
+    INSERT INTO role_permissions (id, role_id, permission_id)
+    VALUES ('{ROLE_A.replace("role","rp1")}',
+        (SELECT id FROM roles WHERE code='advertiser'),
         (SELECT id FROM permissions WHERE code = 'campaigns.read'))
     ON CONFLICT DO NOTHING;
 
     ; INSERT INTO role_permissions (id, role_id, permission_id)
-    VALUES ('{ROLE_A.replace("role","rp2")}', '{ROLE_A}',
+    VALUES ('{ROLE_A.replace("role","rp2")}',
+        (SELECT id FROM roles WHERE code='advertiser'),
         (SELECT id FROM permissions WHERE code = 'campaigns.manage'))
     ON CONFLICT DO NOTHING;
 
     ; INSERT INTO role_permissions (id, role_id, permission_id)
-    VALUES ('{ROLE_A.replace("role","rp3")}', '{ROLE_A}',
+    VALUES ('{ROLE_A.replace("role","rp3")}',
+        (SELECT id FROM roles WHERE code='advertiser'),
         (SELECT id FROM permissions WHERE code = 'organization.read'))
     ON CONFLICT DO NOTHING;
 
@@ -138,7 +137,8 @@ def bp4_fixtures(db_available):
 
     -- Scoped role assignment: advertiser scope = ORG_A
     ; INSERT INTO user_roles (id, user_id, role_id, scope_type, scope_id)
-    VALUES ('{USER_ROLE_A}', '{USER_A}', '{ROLE_A}', 'advertiser', '{ORG_A}')
+    VALUES ('{USER_ROLE_A}', '{USER_A}',
+        (SELECT id FROM roles WHERE code='advertiser'), 'advertiser', '{ORG_A}')
     ON CONFLICT DO NOTHING;
 
     -- Membership
