@@ -356,6 +356,8 @@ _CLEANUP = """
     ; DELETE FROM creative_assets WHERE created_by LIKE 'beh-%'
     ; DELETE FROM campaigns WHERE created_by LIKE 'beh-%'
     ; DELETE FROM advertiser_contracts WHERE id LIKE 'beh-%'
+    ; DELETE FROM advertiser_invites WHERE id LIKE 'beh-%'
+    ; DELETE FROM advertiser_applications WHERE id LIKE 'beh-%'
     ; DELETE FROM campaign_approvals WHERE reviewed_by LIKE 'beh-%'
     ; DELETE FROM campaign_status_history WHERE changed_by LIKE 'beh-%'
     ; DELETE FROM login_attempts WHERE username_or_email_hash LIKE 'beh-test-%'

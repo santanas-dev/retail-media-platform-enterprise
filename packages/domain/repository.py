@@ -3602,7 +3602,13 @@ async def accept_advertiser_invite(
     from packages.domain.models import AdvertiserInvite
     from packages.security.password import hash_password
 
-    invite = await get_advertiser_invite_by_token(session, token)
+    # SELECT ... FOR UPDATE — row-level lock prevents concurrent double-accept
+    stmt = (
+        select(AdvertiserInvite)
+        .where(AdvertiserInvite.token == token)
+        .with_for_update()
+    )
+    invite = (await session.execute(stmt)).scalar_one_or_none()
     if invite is None:
         raise ValueError("Недействительный код приглашения")
 
