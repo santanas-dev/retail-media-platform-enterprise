@@ -26,14 +26,13 @@ from packages.security.config import reset_security_config
 from packages.security.jwt import create_access_token
 from tests.behavioral.conftest import _run_sql, USER_IDS
 
-# ── Test data IDs ──────────────────────────────────────────────────────────
 RET_A = "beh-018-ret-a-000000000000001"
 RET_B = "beh-018-ret-b-000000000000001"
 ORG_A = "beh-018-org-a-000000000000001"
-ORG_A2 = "beh-018-org-a2-000000000000001"  # second org in same retailer
+ORG_A2 = "beh-018-org-a2-000000000000001"
 ORG_B = "beh-018-org-b-000000000000001"
 BRIEF_A = "beh-018-brief-a-0000000000001"
-BRIEF_A2 = "beh-018-brief-a2-0000000000001"  # brief in ORG_A2
+BRIEF_A2 = "beh-018-brief-a2-0000000000001"
 BRIEF_B = "beh-018-brief-b-0000000000001"
 AUTH_PROVIDER = "local_advertiser"
 USER_SCOPED_A = "beh-018-usr-scoped-a-00000001"
@@ -57,117 +56,161 @@ def client(app, db_available, test_users):
 
 @pytest.fixture
 def adr018_setup(db_available, test_users):
-    """Two retailers, three orgs (two in RET_A, one in RET_B), briefs.
-
-    Also creates two scoped advertiser users:
-      - USER_SCOPED_A:  scoped to ORG_A (RET_A)
-      - USER_SCOPED_A2: scoped to ORG_A2 (RET_A, same retailer)
-    """
-    setup = f"""
-    ; INSERT INTO retailers (id, code, legal_name, display_name, status)
+    """Two retailers, three orgs (two in RET_A, one in RET_B), briefs,
+    two scoped users, one no-scope user."""
+    # Each group is a separate _run_sql call — no comment/semicolon splitter issues.
+    asyncio.run(_run_sql(f"""
+    INSERT INTO retailers (id, code, legal_name, display_name, status)
     VALUES ('{RET_A}', 'RETAILER-A', 'Retailer Alpha', 'Alpha', 'active')
     ON CONFLICT (id) DO NOTHING
-    ; INSERT INTO retailers (id, code, legal_name, display_name, status)
+    """))
+    asyncio.run(_run_sql(f"""
+    INSERT INTO retailers (id, code, legal_name, display_name, status)
     VALUES ('{RET_B}', 'RETAILER-B', 'Retailer Beta', 'Beta', 'active')
     ON CONFLICT (id) DO NOTHING
-
-    ; INSERT INTO advertiser_organizations (id, code, legal_name, display_name, status, retailer_id)
+    """))
+    asyncio.run(_run_sql(f"""
+    INSERT INTO advertiser_organizations (id, code, legal_name, display_name, status, retailer_id)
     VALUES ('{ORG_A}', 'ADR018-ORG-A', 'Org Alpha', 'Org Alpha', 'active', '{RET_A}')
-    ON CONFLICT (code) DO NOTHING;
+    ON CONFLICT (code) DO NOTHING
+    """))
+    asyncio.run(_run_sql(f"""
     INSERT INTO advertiser_organizations (id, code, legal_name, display_name, status, retailer_id)
     VALUES ('{ORG_A2}', 'ADR018-ORG-A2', 'Org Alpha 2', 'Org Alpha 2', 'active', '{RET_A}')
-    ON CONFLICT (code) DO NOTHING;
+    ON CONFLICT (code) DO NOTHING
+    """))
+    asyncio.run(_run_sql(f"""
     INSERT INTO advertiser_organizations (id, code, legal_name, display_name, status, retailer_id)
     VALUES ('{ORG_B}', 'ADR018-ORG-B', 'Org Beta', 'Org Beta', 'active', '{RET_B}')
-    ON CONFLICT (code) DO NOTHING;
-
-    ; INSERT INTO campaign_briefs (id, advertiser_organization_id, title, status, created_by, created_at, updated_at)
-    VALUES ('{BRIEF_A}', '{ORG_A}', 'Brief Alpha RetA', 'draft', '{USER_IDS["advertiser"]}', NOW(), NOW());
+    ON CONFLICT (code) DO NOTHING
+    """))
+    asyncio.run(_run_sql(f"""
     INSERT INTO campaign_briefs (id, advertiser_organization_id, title, status, created_by, created_at, updated_at)
-    VALUES ('{BRIEF_A2}', '{ORG_A2}', 'Brief Alpha2 RetA', 'draft', '{USER_IDS["advertiser"]}', NOW(), NOW());
+    VALUES ('{BRIEF_A}', '{ORG_A}', 'Brief Alpha RetA', 'draft', '{USER_IDS["advertiser"]}', NOW(), NOW())
+    """))
+    asyncio.run(_run_sql(f"""
     INSERT INTO campaign_briefs (id, advertiser_organization_id, title, status, created_by, created_at, updated_at)
-    VALUES ('{BRIEF_B}', '{ORG_B}', 'Brief Beta RetB', 'draft', '{USER_IDS["advertiser"]}', NOW(), NOW());
-
-    ; INSERT INTO roles (id, code, name, description, is_system)
+    VALUES ('{BRIEF_A2}', '{ORG_A2}', 'Brief Alpha2 RetA', 'draft', '{USER_IDS["advertiser"]}', NOW(), NOW())
+    """))
+    asyncio.run(_run_sql(f"""
+    INSERT INTO campaign_briefs (id, advertiser_organization_id, title, status, created_by, created_at, updated_at)
+    VALUES ('{BRIEF_B}', '{ORG_B}', 'Brief Beta RetB', 'draft', '{USER_IDS["advertiser"]}', NOW(), NOW())
+    """))
+    # Ensure advertiser role + permissions exist
+    asyncio.run(_run_sql("""
+    INSERT INTO roles (id, code, name, description, is_system)
     SELECT '00000000-0000-0000-0000-000000000114', 'advertiser', 'Advertiser',
            'Advertiser cabinet user', false
-    WHERE NOT EXISTS (SELECT 1 FROM roles WHERE code='advertiser');
-
-    ; INSERT INTO permissions (id, code, name) VALUES
-      ('00000000-0000-0000-0000-00000000010c', 'campaigns.read', 'READ_CAMPAIGNS')
-      ON CONFLICT (code) DO NOTHING
-    ; INSERT INTO permissions (id, code, name) VALUES
-      ('00000000-0000-0000-0000-00000000010f', 'creatives.read', 'READ_CREATIVES')
-      ON CONFLICT (code) DO NOTHING
-    ; INSERT INTO role_permissions (id, role_id, permission_id)
-      SELECT 'rp-018-adv-cr',
-             (SELECT id FROM roles WHERE code='advertiser'),
-             (SELECT id FROM permissions WHERE code='campaigns.read')
-      WHERE NOT EXISTS (
-        SELECT 1 FROM role_permissions
-        WHERE role_id=(SELECT id FROM roles WHERE code='advertiser')
-        AND permission_id=(SELECT id FROM permissions WHERE code='campaigns.read')
-      )
-    ; INSERT INTO role_permissions (id, role_id, permission_id)
-      SELECT 'rp-018-adv-creatr',
-             (SELECT id FROM roles WHERE code='advertiser'),
-             (SELECT id FROM permissions WHERE code='creatives.read')
-      WHERE NOT EXISTS (
-        SELECT 1 FROM role_permissions
-        WHERE role_id=(SELECT id FROM roles WHERE code='advertiser')
-        AND permission_id=(SELECT id FROM permissions WHERE code='creatives.read')
-      )
-
-    ; INSERT INTO users (id, code, username, email, display_name, auth_provider, status)
-      VALUES ('{USER_SCOPED_A}', 'BEH-018-SA', 'beh-018-scoped-a',
-              'beh-018-sa@t.local', 'Scoped A', '{AUTH_PROVIDER}', 'active')
-    ; INSERT INTO local_credentials (id, user_id, credential_type, password_hash, status)
-      VALUES ('lc-018-sa', '{USER_SCOPED_A}', '{AUTH_PROVIDER}',
-              '$2b$04$aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'active')
-    ; INSERT INTO user_roles (id, user_id, role_id, scope_type, scope_id)
-      SELECT 'ur-018-sa', '{USER_SCOPED_A}',
-             (SELECT id FROM roles WHERE code='advertiser'),
-             'advertiser', '{ORG_A}'
-    ; INSERT INTO advertiser_user_memberships (id, user_id, advertiser_organization_id, status)
-      VALUES ('aum-018-sa', '{USER_SCOPED_A}', '{ORG_A}', 'active')
-
-    ; INSERT INTO users (id, code, username, email, display_name, auth_provider, status)
-      VALUES ('{USER_SCOPED_A2}', 'BEH-018-SA2', 'beh-018-scoped-a2',
-              'beh-018-sa2@t.local', 'Scoped A2', '{AUTH_PROVIDER}', 'active')
-    ; INSERT INTO local_credentials (id, user_id, credential_type, password_hash, status)
-      VALUES ('lc-018-sa2', '{USER_SCOPED_A2}', '{AUTH_PROVIDER}',
-              '$2b$04$aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'active')
-    ; INSERT INTO user_roles (id, user_id, role_id, scope_type, scope_id)
-      SELECT 'ur-018-sa2', '{USER_SCOPED_A2}',
-             (SELECT id FROM roles WHERE code='advertiser'),
-             'advertiser', '{ORG_A2}'
-    ; INSERT INTO advertiser_user_memberships (id, user_id, advertiser_organization_id, status)
-      VALUES ('aum-018-sa2', '{USER_SCOPED_A2}', '{ORG_A2}', 'active')
-    """
-    asyncio.run(_run_sql(setup))
+    WHERE NOT EXISTS (SELECT 1 FROM roles WHERE code='advertiser')
+    """))
+    asyncio.run(_run_sql("""
+    INSERT INTO permissions (id, code, name) VALUES
+    ('00000000-0000-0000-0000-00000000010c', 'campaigns.read', 'READ_CAMPAIGNS')
+    ON CONFLICT (code) DO NOTHING
+    """))
+    asyncio.run(_run_sql("""
+    INSERT INTO permissions (id, code, name) VALUES
+    ('00000000-0000-0000-0000-00000000010f', 'creatives.read', 'READ_CREATIVES')
+    ON CONFLICT (code) DO NOTHING
+    """))
+    asyncio.run(_run_sql("""
+    INSERT INTO role_permissions (id, role_id, permission_id)
+    SELECT 'rp-018-adv-cr',
+           (SELECT id FROM roles WHERE code='advertiser'),
+           (SELECT id FROM permissions WHERE code='campaigns.read')
+    WHERE NOT EXISTS (
+      SELECT 1 FROM role_permissions
+      WHERE role_id=(SELECT id FROM roles WHERE code='advertiser')
+      AND permission_id=(SELECT id FROM permissions WHERE code='campaigns.read')
+    )
+    """))
+    asyncio.run(_run_sql("""
+    INSERT INTO role_permissions (id, role_id, permission_id)
+    SELECT 'rp-018-adv-creatr',
+           (SELECT id FROM roles WHERE code='advertiser'),
+           (SELECT id FROM permissions WHERE code='creatives.read')
+    WHERE NOT EXISTS (
+      SELECT 1 FROM role_permissions
+      WHERE role_id=(SELECT id FROM roles WHERE code='advertiser')
+      AND permission_id=(SELECT id FROM permissions WHERE code='creatives.read')
+    )
+    """))
+    # Scoped user A (ORG_A, RET_A)
+    asyncio.run(_run_sql(f"""
+    INSERT INTO users (id, code, username, email, display_name, auth_provider, status)
+    VALUES ('{USER_SCOPED_A}', 'BEH-018-SA', 'beh-018-scoped-a',
+            'beh-018-sa@t.local', 'Scoped A', '{AUTH_PROVIDER}', 'active')
+    """))
+    asyncio.run(_run_sql(f"""
+    INSERT INTO local_credentials (id, user_id, credential_type, password_hash, status)
+    VALUES ('lc-018-sa', '{USER_SCOPED_A}', '{AUTH_PROVIDER}',
+            '$2b$04$aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'active')
+    """))
+    asyncio.run(_run_sql(f"""
+    INSERT INTO user_roles (id, user_id, role_id, scope_type, scope_id)
+    SELECT 'ur-018-sa', '{USER_SCOPED_A}',
+           (SELECT id FROM roles WHERE code='advertiser'),
+           'advertiser', '{ORG_A}'
+    """))
+    asyncio.run(_run_sql(f"""
+    INSERT INTO advertiser_user_memberships (id, user_id, advertiser_organization_id, status)
+    VALUES ('aum-018-sa', '{USER_SCOPED_A}', '{ORG_A}', 'active')
+    """))
+    # Scoped user A2 (ORG_A2, same retailer RET_A)
+    asyncio.run(_run_sql(f"""
+    INSERT INTO users (id, code, username, email, display_name, auth_provider, status)
+    VALUES ('{USER_SCOPED_A2}', 'BEH-018-SA2', 'beh-018-scoped-a2',
+            'beh-018-sa2@t.local', 'Scoped A2', '{AUTH_PROVIDER}', 'active')
+    """))
+    asyncio.run(_run_sql(f"""
+    INSERT INTO local_credentials (id, user_id, credential_type, password_hash, status)
+    VALUES ('lc-018-sa2', '{USER_SCOPED_A2}', '{AUTH_PROVIDER}',
+            '$2b$04$aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'active')
+    """))
+    asyncio.run(_run_sql(f"""
+    INSERT INTO user_roles (id, user_id, role_id, scope_type, scope_id)
+    SELECT 'ur-018-sa2', '{USER_SCOPED_A2}',
+           (SELECT id FROM roles WHERE code='advertiser'),
+           'advertiser', '{ORG_A2}'
+    """))
+    asyncio.run(_run_sql(f"""
+    INSERT INTO advertiser_user_memberships (id, user_id, advertiser_organization_id, status)
+    VALUES ('aum-018-sa2', '{USER_SCOPED_A2}', '{ORG_A2}', 'active')
+    """))
+    # No-scope user (operator role, no advertiser scope)
+    asyncio.run(_run_sql(f"""
+    INSERT INTO users (id, code, username, email, display_name, auth_provider, status)
+    VALUES ('{USER_NO_SCOPE}', 'BEH-018-NS', 'beh-018-noscope',
+            'beh-018-ns@t.local', 'NoScope', '{AUTH_PROVIDER}', 'active')
+    """))
+    asyncio.run(_run_sql(f"""
+    INSERT INTO local_credentials (id, user_id, credential_type, password_hash, status)
+    VALUES ('lc-018-ns', '{USER_NO_SCOPE}', '{AUTH_PROVIDER}',
+            '$2b$04$aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'active')
+    """))
+    asyncio.run(_run_sql(f"""
+    INSERT INTO user_roles (id, user_id, role_id)
+    SELECT 'ur-018-ns', '{USER_NO_SCOPE}',
+           (SELECT id FROM roles WHERE code='operator')
+    """))
     yield {
-        "ret_a": RET_A,
-        "ret_b": RET_B,
-        "org_a": ORG_A,
-        "org_a2": ORG_A2,
-        "org_b": ORG_B,
-        "brief_a": BRIEF_A,
-        "brief_a2": BRIEF_A2,
-        "brief_b": BRIEF_B,
-        "user_scoped_a": USER_SCOPED_A,
-        "user_scoped_a2": USER_SCOPED_A2,
+        "ret_a": RET_A, "ret_b": RET_B,
+        "org_a": ORG_A, "org_a2": ORG_A2, "org_b": ORG_B,
+        "brief_a": BRIEF_A, "brief_a2": BRIEF_A2, "brief_b": BRIEF_B,
+        "user_scoped_a": USER_SCOPED_A, "user_scoped_a2": USER_SCOPED_A2,
+        "user_no_scope": USER_NO_SCOPE,
     }
-    cleanup = f"""
-    DELETE FROM refresh_sessions WHERE user_id LIKE 'beh-018-%';
-    DELETE FROM advertiser_user_memberships WHERE id LIKE 'aum-018-%';
-    DELETE FROM user_roles WHERE id LIKE 'ur-018-%';
-    DELETE FROM local_credentials WHERE id LIKE 'lc-018-%';
-    DELETE FROM campaign_briefs WHERE id LIKE 'beh-018-%';
-    DELETE FROM advertiser_organizations WHERE id LIKE 'beh-018-%';
-    DELETE FROM users WHERE id LIKE 'beh-018-%';
-    DELETE FROM retailers WHERE id LIKE 'beh-018-%';
-    """
-    asyncio.run(_run_sql(cleanup))
+    # Cleanup
+    asyncio.run(_run_sql(f"""
+    DELETE FROM refresh_sessions WHERE user_id LIKE 'beh-018-%'
+    """))
+    asyncio.run(_run_sql("DELETE FROM advertiser_user_memberships WHERE id LIKE 'aum-018-%'"))
+    asyncio.run(_run_sql("DELETE FROM user_roles WHERE id LIKE 'ur-018-%'"))
+    asyncio.run(_run_sql("DELETE FROM local_credentials WHERE id LIKE 'lc-018-%'"))
+    asyncio.run(_run_sql("DELETE FROM campaign_briefs WHERE id LIKE 'beh-018-%'"))
+    asyncio.run(_run_sql("DELETE FROM advertiser_organizations WHERE id LIKE 'beh-018-%'"))
+    asyncio.run(_run_sql("DELETE FROM users WHERE id LIKE 'beh-018-%'"))
+    asyncio.run(_run_sql("DELETE FROM retailers WHERE id LIKE 'beh-018-%'"))
 
 
 @pytest.mark.usefixtures("adr018_setup")
@@ -180,9 +223,7 @@ class TestADR018MultitenancyRLS:
         self.token_scoped_a = _token(self.data["user_scoped_a"])
         self.token_scoped_a2 = _token(self.data["user_scoped_a2"])
         self.token_admin = _token(USER_IDS["readonly"])
-        self.token_noperms = _token(USER_IDS["noperms"])
-
-    # ── 1. Retailer A sees only own briefs ────────────────────────────────
+        self.token_no_scope = _token(self.data["user_no_scope"])
 
     def test_retailer_a_sees_only_own_briefs(self):
         """Scoped to ORG_A — sees BRIEF_A, NOT BRIEF_B or BRIEF_A2."""
@@ -190,14 +231,12 @@ class TestADR018MultitenancyRLS:
             "/api/v1/identity/campaign-briefs",
             headers=_auth(self.token_scoped_a),
         )
-        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text[:200]}"
         items = resp.json()["items"]
         brief_ids = {b["id"] for b in items}
         assert self.data["brief_a"] in brief_ids, f"Missing BRIEF_A: {brief_ids}"
         assert self.data["brief_b"] not in brief_ids, f"BRIEF_B leaked: {brief_ids}"
         assert self.data["brief_a2"] not in brief_ids, f"BRIEF_A2 leaked: {brief_ids}"
-
-    # ── 2. Retailer A cannot access retailer B brief detail ────────────────
 
     def test_retailer_a_cannot_get_retailer_b_brief(self):
         """Cross-retailer brief detail → 404 (RLS hides the resource)."""
@@ -205,11 +244,7 @@ class TestADR018MultitenancyRLS:
             f"/api/v1/identity/campaign-briefs/{self.data['brief_b']}",
             headers=_auth(self.token_scoped_a),
         )
-        assert resp.status_code == 404, (
-            f"Expected 404, got {resp.status_code}: {resp.text[:200]}"
-        )
-
-    # ── 3. Two advertisers in same retailer isolated by advertiser scope ──
+        assert resp.status_code == 404, f"Expected 404, got {resp.status_code}"
 
     def test_same_retailer_advertiser_scope_isolation(self):
         """Scoped to ORG_A2 — sees BRIEF_A2, NOT BRIEF_A (same retailer)."""
@@ -217,7 +252,7 @@ class TestADR018MultitenancyRLS:
             "/api/v1/identity/campaign-briefs",
             headers=_auth(self.token_scoped_a2),
         )
-        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}"
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text[:200]}"
         items = resp.json()["items"]
         brief_ids = {b["id"] for b in items}
         assert self.data["brief_a2"] in brief_ids, f"Missing BRIEF_A2: {brief_ids}"
@@ -230,11 +265,7 @@ class TestADR018MultitenancyRLS:
             f"/api/v1/identity/campaign-briefs/{self.data['brief_a']}",
             headers=_auth(self.token_scoped_a2),
         )
-        assert resp.status_code == 404, (
-            f"Expected 404 for cross-org brief, got {resp.status_code}"
-        )
-
-    # ── 4. Same data pattern in another retailer is hidden ─────────────────
+        assert resp.status_code == 404, f"Expected 404, got {resp.status_code}"
 
     def test_same_data_other_retailer_hidden(self):
         """Brief in RET_B is invisible to user scoped to RET_A."""
@@ -248,19 +279,15 @@ class TestADR018MultitenancyRLS:
         assert self.data["brief_b"] not in brief_ids, f"BRIEF_B leaked: {brief_ids}"
         assert self.data["brief_a"] in brief_ids
 
-    # ── 5. Empty scope deny-all ───────────────────────────────────────────
-
     def test_empty_scope_denies_all(self):
-        """noperms user (operator role, no advertiser scope) → 403."""
+        """Dedicated no-scope user (operator, no advertiser scope) → 403."""
         resp = self.client.get(
             "/api/v1/identity/campaign-briefs",
-            headers=_auth(self.token_noperms),
+            headers=_auth(self.token_no_scope),
         )
         assert resp.status_code == 403, (
-            f"Expected 403, got {resp.status_code}"
+            f"Expected 403 for no-scope user, got {resp.status_code}: {resp.text[:200]}"
         )
-
-    # ── 6. Admin bypass sees both retailers ────────────────────────────────
 
     def test_admin_sees_both_retailers(self):
         """system_admin bypasses RLS — sees briefs from both retailers."""
@@ -274,8 +301,6 @@ class TestADR018MultitenancyRLS:
         assert self.data["brief_a"] in brief_ids, "Admin missing BRIEF_A"
         assert self.data["brief_b"] in brief_ids, "Admin missing BRIEF_B"
         assert self.data["brief_a2"] in brief_ids, "Admin missing BRIEF_A2"
-
-    # ── 7. Direct DB proof under retail_media_app / NOBYPASSRLS ───────────
 
     def test_direct_db_rls_proof_retailer_isolation(self):
         """Connect as retail_media_app (NOBYPASSRLS).
@@ -296,78 +321,37 @@ class TestADR018MultitenancyRLS:
         async def _prove():
             conn = await asyncpg.connect(APP_DB_URL)
             try:
-                # -- Scope RET_A + ORG_A/ORG_A2 --
-                await conn.execute(
-                    "SELECT set_config('app.rmp_scope_retailer_ids', $1, true)",
-                    RET_A,
-                )
-                await conn.execute(
-                    "SELECT set_config('app.rmp_scope_advertiser_ids', $1, true)",
-                    f"{ORG_A},{ORG_A2}",
-                )
-                await conn.execute(
-                    "SELECT set_config('app.rmp_is_admin', 'false', true)"
-                )
-                rows_a = await conn.fetch(
-                    "SELECT id FROM campaign_briefs ORDER BY id"
-                )
+                await conn.execute("SET app.rmp_scope_retailer_ids = $1", RET_A)
+                await conn.execute("SET app.rmp_scope_advertiser_ids = $1", f"{ORG_A},{ORG_A2}")
+                await conn.execute("SET app.rmp_is_admin = 'false'")
+                rows_a = await conn.fetch("SELECT id FROM campaign_briefs ORDER BY id")
                 ids_a = {r["id"] for r in rows_a}
                 assert BRIEF_A in ids_a, f"RET_A scope missing BRIEF_A: {ids_a}"
                 assert BRIEF_A2 in ids_a, f"RET_A scope missing BRIEF_A2: {ids_a}"
                 assert BRIEF_B not in ids_a, f"RET_A scope leaked BRIEF_B: {ids_a}"
 
-                # -- Scope RET_B + ORG_B --
-                await conn.execute(
-                    "SELECT set_config('app.rmp_scope_retailer_ids', $1, true)",
-                    RET_B,
-                )
-                await conn.execute(
-                    "SELECT set_config('app.rmp_scope_advertiser_ids', $1, true)",
-                    ORG_B,
-                )
-                rows_b = await conn.fetch(
-                    "SELECT id FROM campaign_briefs ORDER BY id"
-                )
+                await conn.execute("SET app.rmp_scope_retailer_ids = $1", RET_B)
+                await conn.execute("SET app.rmp_scope_advertiser_ids = $1", ORG_B)
+                rows_b = await conn.fetch("SELECT id FROM campaign_briefs ORDER BY id")
                 ids_b = {r["id"] for r in rows_b}
                 assert BRIEF_B in ids_b, f"RET_B scope missing BRIEF_B: {ids_b}"
                 assert BRIEF_A not in ids_b, f"RET_B scope leaked BRIEF_A: {ids_b}"
                 assert BRIEF_A2 not in ids_b, f"RET_B scope leaked BRIEF_A2: {ids_b}"
 
-                # -- Empty scope → deny-all --
-                await conn.execute(
-                    "SELECT set_config('app.rmp_scope_retailer_ids', '', true)"
-                )
-                await conn.execute(
-                    "SELECT set_config('app.rmp_scope_advertiser_ids', '', true)"
-                )
-                await conn.execute(
-                    "SELECT set_config('app.rmp_is_admin', 'false', true)"
-                )
-                rows_empty = await conn.fetch(
-                    "SELECT id FROM campaign_briefs ORDER BY id"
-                )
-                assert len(rows_empty) == 0, (
-                    f"Empty scope should deny all, got: {[r['id'] for r in rows_empty]}"
-                )
+                await conn.execute("SET app.rmp_scope_retailer_ids = ''")
+                await conn.execute("SET app.rmp_scope_advertiser_ids = ''")
+                await conn.execute("SET app.rmp_is_admin = 'false'")
+                rows_empty = await conn.fetch("SELECT id FROM campaign_briefs ORDER BY id")
+                assert len(rows_empty) == 0, f"Empty scope deny-all failed: {[r['id'] for r in rows_empty]}"
 
-                # -- Admin bypass --
-                await conn.execute(
-                    "SELECT set_config('app.rmp_scope_retailer_ids', '', true)"
-                )
-                await conn.execute(
-                    "SELECT set_config('app.rmp_scope_advertiser_ids', '', true)"
-                )
-                await conn.execute(
-                    "SELECT set_config('app.rmp_is_admin', 'true', true)"
-                )
-                rows_admin = await conn.fetch(
-                    "SELECT id FROM campaign_briefs ORDER BY id"
-                )
+                await conn.execute("SET app.rmp_scope_retailer_ids = ''")
+                await conn.execute("SET app.rmp_scope_advertiser_ids = ''")
+                await conn.execute("SET app.rmp_is_admin = 'true'")
+                rows_admin = await conn.fetch("SELECT id FROM campaign_briefs ORDER BY id")
                 ids_admin = {r["id"] for r in rows_admin}
-                assert BRIEF_A in ids_admin, "Admin bypass missing BRIEF_A"
-                assert BRIEF_B in ids_admin, "Admin bypass missing BRIEF_B"
-                assert BRIEF_A2 in ids_admin, "Admin bypass missing BRIEF_A2"
-
+                assert BRIEF_A in ids_admin, "Admin missing BRIEF_A"
+                assert BRIEF_B in ids_admin, "Admin missing BRIEF_B"
+                assert BRIEF_A2 in ids_admin, "Admin missing BRIEF_A2"
             finally:
                 await conn.close()
 
