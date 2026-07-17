@@ -125,6 +125,51 @@ async def get_device_id_from_token(request: Request) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Device RLS Context Dependency (EDGE-002-FU)
+# ---------------------------------------------------------------------------
+
+
+async def set_device_rls_context(
+    device_id: str = Depends(get_device_id_from_token),
+) -> str:
+    """Set PostgreSQL RLS context for the device's retailer scope.
+
+    Opens a short-lived owner session to resolve the device's
+    retailer_id, then returns it so the endpoint can apply
+    ``set_config('app.rmp_scope_retailer_ids', ...)`` on the
+    request-scoped session BEFORE any tenant-scoped queries.
+
+    Under NOBYPASSRLS (behavioural CI), this is required for the
+    device to see its own rows in physical_devices and
+    delivery_manifests — both tables are under FORCE RLS.
+
+    Returns the retailer_id so it can be passed through to
+    get_latest_manifest_for_device for the manifest payload.
+    """
+    from packages.domain.repository import get_device_retailer_id_and_status
+
+    engine = get_global_engine()
+    if engine is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with get_session(engine) as owner_session:
+        row = await get_device_retailer_id_and_status(owner_session, device_id)
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    retailer_id, device_status = row
+
+    if device_status not in ("active", "online"):
+        raise HTTPException(
+            status_code=403,
+            detail="Device not authorized",
+        )
+
+    return retailer_id
+
+
+# ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
 
@@ -195,6 +240,7 @@ async def health_ready():
 async def get_latest_manifest(
     request: Request,
     device_id: str = Depends(get_device_id_from_token),
+    retailer_id: str = Depends(set_device_rls_context),
     session: AsyncSession = Depends(get_db),
 ):
     """Return the latest manifest for the authenticated device, or 404.
@@ -210,25 +256,28 @@ async def get_latest_manifest(
     Full manifest assembly (6+ queries + HMAC) only runs when content_hash
     differs from If-None-Match.
     """
+    # EDGE-002-FU: Apply device RLS context on the session.
+    # Under NOBYPASSRLS (behavioural CI), physical_devices and
+    # delivery_manifests are under FORCE RLS.  The device's
+    # retailer_id was already resolved by set_device_rls_context
+    # via an owner-role session — we now set the scope on this
+    # request session so subsequent queries can see the device's
+    # own rows.
+    from sqlalchemy import text
+    await session.execute(
+        text("SELECT set_config('app.rmp_scope_retailer_ids', :ids, true)"),
+        {"ids": retailer_id},
+    )
+    await session.execute(
+        text("SELECT set_config('app.rmp_is_admin', 'false', true)"),
+    )
+
     # S-065: rate limit per device before any DB work
     rate_key = get_rate_limit_key(request, device_id)
     if not check_rate_limit(rate_key, DEVICE_MANIFEST_RATE_LIMIT):
         raise HTTPException(
             status_code=429,
             detail="Too many requests",
-        )
-
-    device_status = await get_physical_device_for_manifest_delivery(session, device_id)
-    if device_status is None:
-        raise HTTPException(status_code=404, detail="Device not found")
-    if device_status not in ("active", "online"):
-        # S-065: generic error — never leak internal device status
-        logger.warning(
-            "Manifest denied for device %s (status=%s)", device_id[:8], device_status,
-        )
-        raise HTTPException(
-            status_code=403,
-            detail="Device not authorized",
         )
 
     # S-067: fast ETag path — lightweight metadata query (1 SELECT)

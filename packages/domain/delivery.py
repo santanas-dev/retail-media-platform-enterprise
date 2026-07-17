@@ -386,6 +386,7 @@ def generate_manifest_json(
     device_code: str = "",
     store_id: str = "",
     store_code: str = "",
+    retailer_id: str = "",
     channel_type: str = "",
     device_type: str = "",
     surface_ids: list[str],
@@ -411,6 +412,7 @@ def generate_manifest_json(
         "device_code": device_code,
         "store_id": store_id,
         "store_code": store_code,
+        "retailer_id": retailer_id,
         "channel_type": channel_type,
         "device_type": device_type,
         "display_surfaces": [
@@ -431,6 +433,11 @@ def generate_manifest_json(
             "on_network_lost": "continue_last_valid",
             "filler_media_ids": [],
             "emit_pop": False,
+        },
+        "emergency": {
+            "active": False,
+            "activated_at": None,
+            "reason": "",
         },
         "signature": {
             "algorithm": "HMAC-SHA256",

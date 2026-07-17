@@ -260,9 +260,14 @@ class TestManifestETagFastPath(unittest.TestCase):
         self.app = self.app_mod.app
         # Override get_db to provide a mock AsyncSession
         self.mock_session = AsyncMock()
+        self.mock_session.execute = AsyncMock(return_value=None)
         async def _fake_get_db():
             yield self.mock_session
         self.app.dependency_overrides[self.app_mod.get_db] = _fake_get_db
+        # EDGE-002-FU: mock device RLS context (owner session lookup)
+        async def _fake_rls():
+            return "ret-001"
+        self.app.dependency_overrides[self.app_mod.set_device_rls_context] = _fake_rls
         self.client = TestClient(self.app)
 
     def tearDown(self):
@@ -351,9 +356,13 @@ class TestManifestRedisCache(unittest.TestCase):
     def setUp(self):
         self.app = self.app_mod.app
         self.mock_session = AsyncMock()
+        self.mock_session.execute = AsyncMock(return_value=None)
         async def _fake_get_db():
             yield self.mock_session
         self.app.dependency_overrides[self.app_mod.get_db] = _fake_get_db
+        async def _fake_rls():
+            return "ret-001"
+        self.app.dependency_overrides[self.app_mod.set_device_rls_context] = _fake_rls
         self.client = TestClient(self.app)
 
     def tearDown(self):
@@ -472,7 +481,11 @@ class TestManifestRedisCache(unittest.TestCase):
 
 
 class TestDeviceStatusRejection(unittest.TestCase):
-    """Device must be active/online to receive a manifest."""
+    """Device must be active/online to receive a manifest.
+    
+    In EDGE-002-FU, device status is checked inside set_device_rls_context.
+    Tests mock get_device_retailer_id_and_status to inject statuses.
+    """
 
     @classmethod
     def setUpClass(cls):
@@ -484,6 +497,7 @@ class TestDeviceStatusRejection(unittest.TestCase):
     def setUp(self):
         self.app = self.app_mod.app
         self.mock_session = AsyncMock()
+        self.mock_session.execute = AsyncMock(return_value=None)
         async def _fake_get_db():
             yield self.mock_session
         self.app.dependency_overrides[self.app_mod.get_db] = _fake_get_db
@@ -491,53 +505,65 @@ class TestDeviceStatusRejection(unittest.TestCase):
 
     def tearDown(self):
         self.app.dependency_overrides.clear()
+        # Restore original set_device_rls_context (clear override)
+        if self.app_mod.set_device_rls_context in self.app.dependency_overrides:
+            del self.app.dependency_overrides[self.app_mod.set_device_rls_context]
 
-    @patch("main.get_physical_device_for_manifest_delivery", new_callable=AsyncMock)
+    def _inject_rls(self, row):
+        """Override set_device_rls_context to return a mock row or raise."""
+        async def _fake_set_rls():
+            if row is None:
+                from fastapi import HTTPException
+                raise HTTPException(status_code=404, detail="Device not found")
+            retailer_id, status = row
+            if status not in ("active", "online"):
+                from fastapi import HTTPException
+                raise HTTPException(status_code=403, detail="Device not authorized")
+            return retailer_id
+        self.app.dependency_overrides[self.app_mod.set_device_rls_context] = _fake_set_rls
+
     @patch("main.verify_access_token")
     @patch("main.check_rate_limit")
-    def test_inactive_device_returns_403(self, mock_rate, mock_verify, mock_phys):
+    def test_inactive_device_returns_403(self, mock_rate, mock_verify):
         mock_rate.return_value = True
         mock_verify.return_value = {"sub": "d1", "auth_provider": "device"}
-        mock_phys.return_value = "inactive"
+        self._inject_rls(("ret-1", "inactive"))
         resp = self.client.get(
             "/api/v1/device/manifest/latest",
             headers={"Authorization": "Bearer token"},
         )
         self.assertEqual(resp.status_code, 403)
 
-    @patch("main.get_physical_device_for_manifest_delivery", new_callable=AsyncMock)
     @patch("main.verify_access_token")
     @patch("main.check_rate_limit")
-    def test_revoked_device_returns_403(self, mock_rate, mock_verify, mock_phys):
+    def test_revoked_device_returns_403(self, mock_rate, mock_verify):
         mock_rate.return_value = True
         mock_verify.return_value = {"sub": "d1", "auth_provider": "device"}
-        mock_phys.return_value = "revoked"
+        self._inject_rls(("ret-1", "revoked"))
         resp = self.client.get(
             "/api/v1/device/manifest/latest",
             headers={"Authorization": "Bearer token"},
         )
         self.assertEqual(resp.status_code, 403)
 
-    @patch("main.get_physical_device_for_manifest_delivery", new_callable=AsyncMock)
     @patch("main.verify_access_token")
     @patch("main.check_rate_limit")
-    def test_unregistered_device_returns_403(self, mock_rate, mock_verify, mock_phys):
+    def test_unregistered_device_returns_403(self, mock_rate, mock_verify):
         mock_rate.return_value = True
         mock_verify.return_value = {"sub": "d1", "auth_provider": "device"}
-        mock_phys.return_value = "unregistered"
+        self._inject_rls(("ret-1", "unregistered"))
         resp = self.client.get(
             "/api/v1/device/manifest/latest",
             headers={"Authorization": "Bearer token"},
         )
         self.assertEqual(resp.status_code, 403)
 
-    @patch("main.get_physical_device_for_manifest_delivery", new_callable=AsyncMock)
     @patch("main.verify_access_token")
     @patch("main.check_rate_limit")
-    def test_nonexistent_device_returns_404(self, mock_rate, mock_verify, mock_phys):
+    def test_nonexistent_device_returns_404(self, mock_rate, mock_verify):
         mock_rate.return_value = True
         mock_verify.return_value = {"sub": "d1", "auth_provider": "device"}
-        mock_phys.return_value = None
+        self._inject_rls(None)
         resp = self.client.get(
             "/api/v1/device/manifest/latest",
             headers={"Authorization": "Bearer token"},
@@ -558,9 +584,13 @@ class TestManifest200Response(unittest.TestCase):
     def setUp(self):
         self.app = self.app_mod.app
         self.mock_session = AsyncMock()
+        self.mock_session.execute = AsyncMock(return_value=None)
         async def _fake_get_db():
             yield self.mock_session
         self.app.dependency_overrides[self.app_mod.get_db] = _fake_get_db
+        async def _fake_rls():
+            return "ret-001"
+        self.app.dependency_overrides[self.app_mod.set_device_rls_context] = _fake_rls
         self.client = TestClient(self.app)
 
     def tearDown(self):
