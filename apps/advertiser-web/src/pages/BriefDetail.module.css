@@ -1,0 +1,141 @@
+.wrapper {
+  padding: 1.5rem;
+  max-width: 720px;
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 1rem;
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.loading, .error {
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+}
+
+.error {
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  background: #fee2e2;
+  color: #991b1b;
+  border-radius: 6px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.status_draft { background: #f3f4f6; color: #6b7280; }
+.status_submitted { background: #dbeafe; color: #1d4ed8; }
+.status_reviewing { background: #fef3c7; color: #b45309; }
+.status_accepted { background: #d1fae5; color: #065f46; }
+.status_rejected { background: #fee2e2; color: #991b1b; }
+
+.section {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 0;
+}
+
+.row + .row {
+  border-top: 1px solid #f3f4f6;
+}
+
+.label {
+  font-weight: 500;
+  color: #6b7280;
+  font-size: 0.9rem;
+  min-width: 120px;
+}
+
+.meta {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.btnEdit, .btnSubmit {
+  padding: 0.55rem 1.25rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btnEdit {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  color: #374151;
+}
+
+.btnEdit:hover {
+  background: #f9fafb;
+}
+
+.btnSubmit {
+  background: #2563eb;
+  border: 1px solid #2563eb;
+  color: #fff;
+}
+
+.btnSubmit:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.btnSubmit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.submittedNote {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: #f0f9ff;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: #0369a1;
+}

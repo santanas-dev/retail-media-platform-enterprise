@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { to: "/dashboard", label: "Кабинет" },
   { to: "/campaigns", label: "Кампании" },
   { to: "/creatives", label: "Креативы" },
+  { to: "/briefs", label: "Заявки" },
   { to: "/documents", label: "Документы", disabled: true },
   { to: "/support", label: "Поддержка", disabled: true },
   { to: "/profile", label: "Профиль" },

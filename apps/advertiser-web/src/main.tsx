@@ -9,6 +9,9 @@ import LoginPage from "./pages/LoginPage";
 import CampaignListPage from "./pages/CampaignListPage";
 import CampaignDetailPage from "./pages/CampaignDetailPage";
 import CreativeLibraryPage from "./pages/CreativeLibraryPage";
+import BriefListPage from "./pages/BriefListPage";
+import BriefCreatePage from "./pages/BriefCreatePage";
+import BriefDetailPage from "./pages/BriefDetailPage";
 import ProfilePage from "./pages/ProfilePage";
 import CampaignCreatePage from "./pages/CampaignCreatePage";
 import DashboardPage from "./pages/DashboardPage";
@@ -85,6 +88,9 @@ const router = createBrowserRouter([
       { path: "campaigns/new", element: <CampaignCreatePage /> },
       { path: "campaigns/:id", element: <CampaignDetailPage /> },
       { path: "creatives", element: <CreativeLibraryPage /> },
+      { path: "briefs", element: <BriefListPage /> },
+      { path: "briefs/new", element: <BriefCreatePage /> },
+      { path: "briefs/:id", element: <BriefDetailPage /> },
       { path: "documents", element: <DocumentsPlaceholderPage /> },
       { path: "support", element: <SupportPlaceholderPage /> },
       { path: "profile", element: <ProfilePage /> },

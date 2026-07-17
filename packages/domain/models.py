@@ -65,6 +65,7 @@ __all__ = [
     "CampaignCreative",
     "CampaignApproval",
     "CampaignStatusHistory",
+    "CampaignBrief",
     "OutboxEvent",
     "DeliveryPlan",
     "DeliveryManifest",
@@ -794,6 +795,35 @@ class CampaignStatusHistory(Base):
     reason = Column(Text, nullable=True)
 
 
+class CampaignBrief(Base):
+    """Advertiser campaign brief / placement request — draft→submitted→reviewing→accepted/rejected."""
+    __tablename__ = "campaign_briefs"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('draft','submitted','reviewing','accepted','rejected')",
+            name="ck_cb_status",
+        ),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    advertiser_organization_id = Column(
+        String(36), ForeignKey("advertiser_organizations.id"), nullable=False, index=True,
+    )
+    title = Column(String(255), nullable=False)
+    objective = Column(Text, nullable=True)
+    product_category = Column(String(255), nullable=True)
+    target_period_from = Column(Date, nullable=True)
+    target_period_to = Column(Date, nullable=True)
+    budget_amount = Column(Numeric(18, 2), nullable=True)
+    budget_currency = Column(String(3), nullable=False, default="RUB")
+    preferred_channels = Column(Text, nullable=True)
+    comment = Column(Text, nullable=True)
+    status = Column(String(32), nullable=False, default="draft")
+    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
 class LocalCredential(Base):
     __tablename__ = "local_credentials"
     __table_args__ = (
@@ -1260,4 +1290,5 @@ REQUIRED_TABLES = frozenset({
     "inventory_rules",
     "advertiser_applications",
     "advertiser_invites",
+    "campaign_briefs",
 })

@@ -487,6 +487,58 @@ class CampaignUpdateRequest(BaseModel):
     priority: int | None = None
 
 
+# ---------------------------------------------------------------------------
+# BP-004 — Campaign Brief / Placement Request
+# ---------------------------------------------------------------------------
+
+
+class CampaignBriefOut(BaseModel):
+    """Campaign brief read-only DTO. No PII, no storage secrets."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    advertiser_organization_id: str
+    title: str
+    objective: str | None = None
+    product_category: str | None = None
+    target_period_from: date_type | None = None
+    target_period_to: date_type | None = None
+    budget_amount: float | None = None
+    budget_currency: str = "RUB"
+    preferred_channels: str | None = None
+    comment: str | None = None
+    status: str
+    created_by: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class CampaignBriefCreateRequest(BaseModel):
+    """Create a draft campaign brief."""
+    title: str = Field(..., min_length=1, max_length=255)
+    objective: str | None = None
+    product_category: str | None = None
+    target_period_from: date_type | None = None
+    target_period_to: date_type | None = None
+    budget_amount: float | None = None
+    budget_currency: str = "RUB"
+    preferred_channels: str | None = None
+    comment: str | None = None
+
+
+class CampaignBriefUpdateRequest(BaseModel):
+    """Update a draft brief — all fields optional."""
+    title: str | None = Field(None, min_length=1, max_length=255)
+    objective: str | None = None
+    product_category: str | None = None
+    target_period_from: date_type | None = None
+    target_period_to: date_type | None = None
+    budget_amount: float | None = None
+    budget_currency: str | None = None
+    preferred_channels: str | None = None
+    comment: str | None = None
+
+
 class CampaignArchiveResponse(BaseModel):
     """Response after archiving a campaign."""
     message: str = "Campaign archived"

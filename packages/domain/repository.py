@@ -5194,3 +5194,166 @@ async def simulate_campaign_inventory(
         "blocking_count": total_blocking,
         "warning_count": total_warnings,
     }
+
+
+# ---------------------------------------------------------------------------
+# BP-004 — Campaign Brief / Placement Request
+# ---------------------------------------------------------------------------
+
+
+async def list_campaign_briefs(
+    session: AsyncSession,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+    scope_advertiser_ids: frozenset[str] | None = None,
+) -> tuple[list, int]:
+    """List briefs scoped to current advertiser orgs."""
+    from packages.domain.models import CampaignBrief
+
+    stmt = select(func.count()).select_from(CampaignBrief)
+    if scope_advertiser_ids:
+        stmt = stmt.where(
+            CampaignBrief.advertiser_organization_id.in_(scope_advertiser_ids),
+        )
+    total = await session.scalar(stmt)
+
+    stmt = (
+        select(CampaignBrief)
+        .order_by(CampaignBrief.updated_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    if scope_advertiser_ids:
+        stmt = stmt.where(
+            CampaignBrief.advertiser_organization_id.in_(scope_advertiser_ids),
+        )
+    result = await session.execute(stmt)
+    return list(result.scalars().all()), total or 0
+
+
+async def get_campaign_brief(
+    session: AsyncSession,
+    brief_id: str,
+    scope_advertiser_ids: frozenset[str] | None = None,
+):
+    from packages.domain.models import CampaignBrief
+
+    stmt = select(CampaignBrief).where(CampaignBrief.id == brief_id)
+    if scope_advertiser_ids:
+        stmt = stmt.where(
+            CampaignBrief.advertiser_organization_id.in_(scope_advertiser_ids),
+        )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def create_campaign_brief(
+    session: AsyncSession,
+    *,
+    advertiser_organization_id: str,
+    title: str,
+    created_by: str,
+    objective: str | None = None,
+    product_category: str | None = None,
+    target_period_from=None,
+    target_period_to=None,
+    budget_amount=None,
+    budget_currency: str = "RUB",
+    preferred_channels: str | None = None,
+    comment: str | None = None,
+    scope_advertiser_ids: frozenset[str] | None = None,
+) -> str:
+    """Create a draft brief. Returns brief id.
+
+    Raises ScopeError if org not in scope.
+    """
+    import uuid
+    from datetime import datetime, timezone as tz
+    from packages.domain.models import CampaignBrief
+
+    _assert_org_in_scope(advertiser_organization_id, scope_advertiser_ids)
+
+    brief_id = str(uuid.uuid4())
+    now = datetime.now(tz.utc)
+    brief = CampaignBrief(
+        id=brief_id,
+        advertiser_organization_id=advertiser_organization_id,
+        title=title,
+        objective=objective,
+        product_category=product_category,
+        target_period_from=target_period_from,
+        target_period_to=target_period_to,
+        budget_amount=budget_amount,
+        budget_currency=budget_currency,
+        preferred_channels=preferred_channels,
+        comment=comment,
+        status="draft",
+        created_by=created_by,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(brief)
+    return brief_id
+
+
+async def update_campaign_brief(
+    session: AsyncSession,
+    brief_id: str,
+    *,
+    scope_advertiser_ids: frozenset[str] | None = None,
+    **kwargs,
+):
+    """Update draft brief fields. Returns updated brief or None if not found/scoped."""
+    from packages.domain.models import CampaignBrief
+
+    stmt = select(CampaignBrief).where(CampaignBrief.id == brief_id)
+    if scope_advertiser_ids:
+        stmt = stmt.where(
+            CampaignBrief.advertiser_organization_id.in_(scope_advertiser_ids),
+        )
+    result = await session.execute(stmt)
+    brief = result.scalar_one_or_none()
+    if brief is None:
+        return None
+    if brief.status != "draft":
+        raise ValueError(f"Cannot update brief in status: {brief.status}")
+
+    allowed = {
+        "title", "objective", "product_category", "target_period_from",
+        "target_period_to", "budget_amount", "budget_currency",
+        "preferred_channels", "comment",
+    }
+    for k, v in kwargs.items():
+        if k in allowed and v is not None:
+            setattr(brief, k, v)
+    brief.updated_at = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+    session.add(brief)
+    return brief
+
+
+async def submit_campaign_brief(
+    session: AsyncSession,
+    brief_id: str,
+    scope_advertiser_ids: frozenset[str] | None = None,
+):
+    """Submit a draft brief. Returns updated brief or raises ValueError."""
+    from datetime import datetime, timezone as tz
+    from packages.domain.models import CampaignBrief
+
+    stmt = select(CampaignBrief).where(CampaignBrief.id == brief_id)
+    if scope_advertiser_ids:
+        stmt = stmt.where(
+            CampaignBrief.advertiser_organization_id.in_(scope_advertiser_ids),
+        )
+    result = await session.execute(stmt)
+    brief = result.scalar_one_or_none()
+    if brief is None:
+        return None
+    if brief.status != "draft":
+        raise ValueError(f"Cannot submit brief in status: {brief.status}")
+
+    brief.status = "submitted"
+    brief.updated_at = datetime.now(tz.utc)
+    session.add(brief)
+    return brief
