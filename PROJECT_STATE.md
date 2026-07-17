@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | daa71c0     | 8459092         | BP-002 invite/access — CI #29561742303 ✅ (34/34) |
+| develop | da5a0d8     | _TBD_          | BP-002 follow-up — CI #29564594270 ✅ (34/34, behavioural) |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -86,17 +86,18 @@
 
 ## Next Active Workstream
 
-**None** — BP-002 completed; awaiting next prioritisation.
+**None** — BP-002 follow-up completed; awaiting next prioritisation.
 
-## BP-002 — Advertiser Invite / Access Activation ✅ RESOLVED
+## BP-002 — Advertiser Invite / Access Activation ✅ RESOLVED (follow-up closure)
 
-- **Verdict: invite→accept flow with user/membership/role/credential creation.**
+- **Verdict: invite→accept→login→cross-org isolation proven with behavioural tests.**
 - **Model:** `AdvertiserInvite` table (token, status pending/accepted/expired, 7-day TTL).
+- **Race condition fix:** `SELECT ... FOR UPDATE` on token lookup in `accept_advertiser_invite`.
 - **Admin:** `POST .../invite` creates CSPRNG token, `GET .../invite` shows current status.
-- **Accept:** `POST /public/advertiser-invites/{token}/accept` with password → `create_local_advertiser_user()`.
-- **UI:** admin invite status + create/resend button; advertiser `/accept-invite/:token` page.
-- **Backend:** 31 tests (18 BP-001 + 13 BP-002). **Admin-web:** 150/150. **Advertiser-web:** 79/79.
-- Payload SHA: daa71c0. CI: #29561742303 ✅ (34/34 green, incl. Behavioral PostgreSQL).
+- **Accept:** `POST /public/advertiser-invites/{token}/accept` → `create_local_advertiser_user()`.
+- **Behavioral proof (9 tests, no mocks):** accept creates User+Credential+UserRole+Membership; login; /me; cross-org isolation (brands); token reuse/expired/invalid rejection; concurrent double-accept → single user.
+- **Backend:** 31 unit + 9 behavioural. **Admin-web:** 150/150. **Advertiser-web:** 79/79.
+- Payload SHA: da5a0d8. CI: #29564594270 ✅ (34/34 green incl. ADR-008 Behavioural PostgreSQL).
 
 ## BP-001 Follow-up — Anti-spam + Reviewing + Public form ✅ RESOLVED
 
