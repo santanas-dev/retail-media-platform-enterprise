@@ -88,8 +88,8 @@ def e001_setup(db_available, test_users):
     ON CONFLICT (code) DO NOTHING
     """))
     yield {"ret_a": RET_A, "ret_b": RET_B, "store_a": STORE_A}
-    asyncio.run(_run_sql("DELETE FROM device_onboarding_codes WHERE id LIKE 'beh-e001-%'"))
-    asyncio.run(_run_sql("DELETE FROM physical_devices WHERE id LIKE 'beh-e001-%'"))
+    asyncio.run(_run_sql("DELETE FROM device_onboarding_codes WHERE id LIKE 'beh-e001-%' OR retailer_id LIKE 'beh-e001-%'"))
+    asyncio.run(_run_sql("DELETE FROM physical_devices WHERE id LIKE 'beh-e001-%' OR retailer_id LIKE 'beh-e001-%'"))
     asyncio.run(_run_sql("DELETE FROM device_types WHERE id LIKE 'beh-e001-%'"))
     asyncio.run(_run_sql("DELETE FROM channels WHERE id LIKE 'beh-e001-%'"))
     asyncio.run(_run_sql("DELETE FROM stores WHERE id LIKE 'beh-e001-%'"))
