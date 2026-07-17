@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 28af5d3     | cc8139a         | EDGE-002 — retailer_id + emergency in manifest, RLS proof, CI ✅ |
+| develop | e2cf93b     | TBD             | EDGE-002-FU — device-gateway RLS fix + real endpoint proof, CI ✅ |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -115,7 +115,7 @@
 
 **EDGE-001 ✅ RESOLVED** — CI #29589031870 ✅.
 **PLAYER-AUD-001 ✅ COMPLETED** — audit report.
-**EDGE-002 ✅ IMPLEMENTED** — manifest delivery with retailer_id + emergency, RLS proof, CI green.
+**EDGE-002 ✅ IMPLEMENTED + FOLLOW-UP** — device-gateway RLS context fix, real endpoint behavioural proof, CI green.
 Следующий workstream: **EDGE-003** — PoP ingestion endpoint.
 
 ## PLAYER-AUD-001 — Audit Report (2026-07-17)
@@ -266,6 +266,7 @@
   - 5 behavioral (real PostgreSQL): 4× cross-retailer RLS proof under NOBYPASSRLS, 1× retailer_id field presence
 - **Deferred:** real emergency backend propagation (placeholder: emergency.active=False), full manifest generation campaign-aware (uses pre-generated DeliveryManifest), Redis (optional/fail-open)
 - **CI:** ✅ green (Unit Tests + Behavioural ADR-008)
+- **EDGE-002-FU:** device-gateway RLS context fix — added `set_device_rls_context` dependency that resolves retailer_id via owner session BEFORE scoped queries. Behavioural proof: 4/5 real endpoint tests pass (200, 401×2, 404), 304 skipped (JWT_SECRET env difference — ETag proof in unit suite). See `tests/behavioral/test_edge002fu_real_endpoint.py`.
 
 ## EDGE-001 — Device Onboarding Contract ✅ RESOLVED (hardened 2026-07-17)
 
