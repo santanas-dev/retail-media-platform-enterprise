@@ -539,6 +539,7 @@ class AdvertiserOrganization(Base):
     __tablename__ = "advertiser_organizations"
 
     id = Column(String(36), primary_key=True, default=_new_uuid)
+    retailer_id = Column(String(36), ForeignKey("retailers.id"), nullable=False, index=True, default="00000000-4000-a000-000000000001")
     code = Column(String(64), nullable=False, unique=True, index=True)
     legal_name = Column(String(255), nullable=False)
     display_name = Column(String(255), nullable=False)
