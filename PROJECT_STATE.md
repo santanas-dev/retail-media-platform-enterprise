@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | f5d5a52     | cfc87f3         | BP-004 follow-up: RLS + behavioral proof — CI #29570688800 ✅ (34/34) |
+| develop | 512cca9     | (next)         | ADR-018 behavioural proof strengthened — 8 tests, CI #29579774858 ✅ (34/34) |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -118,15 +118,24 @@
 
 ## ADR-018-IMPL-001 — Multitenancy Foundation ✅ RESOLVED
 
-- **Verdict: retailer_id + two-level RLS (retailer + advertiser) implemented.**
+- **Verdict: retailer_id + two-level RLS (retailer + advertiser) implemented and proven.**
 - **Model:** `Retailer` table (53rd). `retailer_id` on 31 tenant-scoped tables via migration 020.
 - **RLS:** Two-level policies (retailer + advertiser) on all tenant tables. `advertiser_organizations` uses `id`, `advertiser_applications` uses `organization_id` — special RLS blocks.
 - **ScopeContext:** `retailer_scope_ids` added. `set_rls_context` sets `app.rmp_scope_retailer_ids`.
 - **Scope resolution:** `resolve_scope_context` loads retailer IDs from `advertiser_organizations.retailer_id`.
 - **Seed:** Default retailer (`code='default'`). `advertiser_organizations` INSERT includes `retailer_id`.
 - **Backfill:** Migration backfills existing rows to default retailer. DEFAULT on `retailer_id` for pilot safety.
-- **Behavioral tests:** 6 tests passed (cross-retailer isolation, admin bypass, empty scope deny-all).
-- **CI:** #29575414679 ✅ (34/34 green, incl. Behavioural PostgreSQL + ADR-008).
+- **Behavioral proof (8 tests, strengthened 2026-07-17):**
+  - `test_retailer_a_sees_only_own_briefs` — scoped user sees BRIEF_A, NOT BRIEF_B/BRIEF_A2
+  - `test_retailer_a_cannot_get_retailer_b_brief` — cross-retailer detail → 404
+  - `test_same_retailer_advertiser_scope_isolation` — two advertisers same retailer isolated
+  - `test_same_retailer_cross_org_brief_detail_404` — cross-org detail → 404
+  - `test_same_data_other_retailer_hidden` — analogous brief in other retailer invisible
+  - `test_empty_scope_denies_all` — no-scope user sees nothing (403 or 200+empty)
+  - `test_admin_sees_both_retailers` — system_admin bypass sees all briefs
+  - `test_direct_db_rls_proof_retailer_isolation` — asyncpg NOBYPASSRLS: SET LOCAL scope A → A rows, not B; empty→deny-all; admin→all
+- **Key fix (512cca9):** fixture brief INSERTs must set explicit `retailer_id` — DB default assigns `DEFAULT_RETAILER_ID`, which RLS then filters out for scoped users in other retailers.
+- **CI:** #29579774858 ✅ (34/34 green, incl. Behavioural PostgreSQL + ADR-008).
 
 ## BP-004 — Campaign Brief / Placement Request ✅ RESOLVED
 
