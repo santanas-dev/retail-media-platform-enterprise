@@ -18,7 +18,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from packages.security.config set_security_config
+from packages.security.config import reset_security_config
 from tests.behavioral.conftest import _run_sql
 
 # ── IDs ────────────────────────────────────────────────────────────────────
