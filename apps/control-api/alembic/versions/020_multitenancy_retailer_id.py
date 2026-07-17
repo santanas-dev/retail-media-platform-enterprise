@@ -91,7 +91,10 @@ HIERARCHY_TABLES = [
     "inventory_slots",
 ]
 
-ALL_TENANT = ADVERTISER_TABLES + DERIVED_TABLES + HIERARCHY_TABLES
+ALL_TENANT = ADVERTISER_TABLES + DERIVED_TABLES + HIERARCHY_TABLES + [
+    "advertiser_applications",  # special RLS (organization_id), but needs retailer_id
+    "advertiser_organizations",  # special RLS (id), but needs retailer_id
+]
 
 DEFAULT_RETAILER_ID = "00000000-0000-4000-a000-000000000001"
 
