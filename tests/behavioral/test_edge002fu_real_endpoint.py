@@ -109,6 +109,15 @@ def e002fu_setup():
         'e002fu-fp-b', 'active', '{RET_B}')
     ON CONFLICT (id) DO NOTHING
     """))
+    # Create a minimal campaign for FK constraint
+    asyncio.run(_run_sql("""
+    INSERT INTO campaigns (id, code, name, advertiser_organization_id,
+        status, start_at, end_at, retailer_id)
+    VALUES ('beh-e002fu-camp-01', 'E002FU-CAMP', 'Test Campaign',
+        '00000000-0000-0000-0000-000000000001',
+        'active', '2026-01-01T00:00:00Z', '2026-12-31T23:59:59Z', '""" + RET_A + """')
+    ON CONFLICT (id) DO NOTHING
+    """))
 
     # Create a delivery manifest for device A
     from datetime import datetime, timezone
@@ -118,7 +127,7 @@ def e002fu_setup():
         physical_device_id, manifest_version, status,
         content_hash, generated_at, created_at, updated_at)
     VALUES ('beh-e002fu-dm-01', '{MANIFEST_A_ID}',
-        '00000000-0000-0000-0000-000000000001',
+        'beh-e002fu-camp-01',
         '{DEVICE_A_ID}', 1, 'generated',
         'e002fu-hash-abc123', '{now}', '{now}', '{now}')
     ON CONFLICT (id) DO NOTHING
@@ -127,6 +136,7 @@ def e002fu_setup():
 
 def e002fu_teardown():
     asyncio.run(_run_sql("DELETE FROM delivery_manifests WHERE id LIKE 'beh-e002fu-%'"))
+    asyncio.run(_run_sql("DELETE FROM campaigns WHERE id LIKE 'beh-e002fu-%'"))
     asyncio.run(_run_sql("DELETE FROM physical_devices WHERE id LIKE 'beh-e002fu-%'"))
     asyncio.run(_run_sql("DELETE FROM device_types WHERE id LIKE 'beh-e002fu-%'"))
     asyncio.run(_run_sql("DELETE FROM channels WHERE id LIKE 'beh-e002fu-%'"))
