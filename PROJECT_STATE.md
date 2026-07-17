@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 61004f4     | _TBD_          | BP-003 portal shell — CI #29567469569 ✅ (34/34) |
+| develop | 61004f4     | 34ac3fd         | BP-003 portal shell — CI #29567469569 ✅ (34/34) |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
