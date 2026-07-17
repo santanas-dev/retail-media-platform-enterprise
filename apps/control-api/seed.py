@@ -71,6 +71,7 @@ SEED_BG_USER_ID =      "00000000-0000-0000-0000-000000000150"
 SEED_BG_USER_ROLE_ID = "00000000-0000-0000-0000-000000000160"
 
 # Auth persistence seed IDs (Phase 3.2a)
+SEED_RETAILER_ID =        "00000000-0000-4000-a000-000000000001"
 SEED_ADV_ORG_ID =         "00000000-0000-0000-0000-000000000200"
 SEED_ADV_MEMBERSHIP_ID =  "00000000-0000-0000-0000-000000000201"
 SEED_ADV_USER_ID =        "00000000-0000-0000-0000-000000000202"
@@ -581,10 +582,15 @@ ON CONFLICT (user_id, role_id) WHERE scope_type IS NULL AND scope_id IS NULL DO 
 
 -- Auth persistence (Phase 3.2a)
 
+-- Default retailer (ADR-018)
+INSERT INTO retailers (id, code, legal_name, display_name, status)
+VALUES ('{SEED_RETAILER_ID}', 'default', 'Default Retailer', 'Default Retailer', 'active')
+ON CONFLICT (id) DO NOTHING;
+
 -- Test advertiser organization
-INSERT INTO advertiser_organizations (id, code, legal_name, display_name)
+INSERT INTO advertiser_organizations (id, code, legal_name, display_name, retailer_id)
 VALUES ('{SEED_ADV_ORG_ID}', 'ADV-001',
-        'ООО «Рекламный Альянс»', 'Рекламный Альянс')
+        'ООО «Рекламный Альянс»', 'Рекламный Альянс', '{SEED_RETAILER_ID}')
 ON CONFLICT (code) DO NOTHING;
 
 -- Test advertiser user (no credential — record only)

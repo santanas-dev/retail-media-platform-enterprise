@@ -113,10 +113,8 @@
 
 ## Next Active Workstream
 
-**ADR-018 — Multitenancy: retailer_id + two-level RLS (retailer + advertiser).**
-После PLAN-001 (этот коммит) — только ADR-018 implementation workstream.
-Никакой другой код, миграции, API, RLS не начинать до закрытия ADR-018.
-Edge (фаза 1) не стартует до ADR-018.
+**ADR-018-IMPL-001 в процессе** — Multitenancy foundation: retailer_id + two-level RLS.
+После green CI ADR-018-IMPL-001 — Edge/player (фаза 1).
 
 ## BP-004 — Campaign Brief / Placement Request ✅ RESOLVED
 

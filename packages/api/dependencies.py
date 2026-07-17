@@ -164,9 +164,12 @@ async def set_rls_context(
 
     is_admin = "true" if scope.is_admin else "false"
     advertiser_csv = ",".join(sorted(scope.advertiser_scope_ids)) if scope.advertiser_scope_ids else ""
+    retailer_csv = ",".join(sorted(scope.retailer_scope_ids)) if scope.retailer_scope_ids else ""
 
     await db.execute(text("SELECT set_config('app.rmp_user_id', :uid, true)"), {"uid": scope.user_id})
     await db.execute(text("SELECT set_config('app.rmp_is_admin', :a, true)"), {"a": is_admin})
+    await db.execute(text("SELECT set_config('app.rmp_scope_retailer_ids', :ids, true)"),
+                     {"ids": retailer_csv})
     await db.execute(text("SELECT set_config('app.rmp_scope_advertiser_ids', :ids, true)"),
                      {"ids": advertiser_csv})
 

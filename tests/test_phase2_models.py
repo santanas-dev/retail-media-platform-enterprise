@@ -34,7 +34,7 @@ class TestPhase2Metadata(unittest.TestCase):
         """Metadata table count — grows with each phase."""
         from packages.domain.models import Base
         count = len(Base.metadata.tables)
-        self.assertEqual(count, 52, f"Expected 52 tables, got {count}")
+        self.assertEqual(count, 53, f"Expected 53 tables, got {count}")
 
 
 class TestPhase2ModelColumns(unittest.TestCase):
@@ -458,7 +458,7 @@ class TestPhase21SeedIdentity(unittest.TestCase):
         self.assertIsNotNone(m, "Cannot find SEED_SQL")
         sql = m.group(1)
         inserts = [l for l in sql.split("\n") if l.strip().upper().startswith("INSERT")]
-        self.assertEqual(len(inserts), 108, f"Expected 108 INSERTs, got {len(inserts)}")
+        self.assertEqual(len(inserts), 109, f"Expected 109 INSERTs, got {len(inserts)}")
 
 
 class TestPhase21AuditEventModel(unittest.TestCase):

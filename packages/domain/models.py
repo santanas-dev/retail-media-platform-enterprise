@@ -23,6 +23,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -49,6 +50,7 @@ __all__ = [
     "AccessScope",
     "UserAccessScope",
     "AuditEventOperational",
+    "Retailer",
     "AdvertiserOrganization",
     "AdvertiserUserMembership",
     "AdvertiserBrand",
@@ -518,6 +520,19 @@ class AdvertiserInvite(Base):
 # ---------------------------------------------------------------------------
 # Auth Persistence (Phase 3.2a)
 # ---------------------------------------------------------------------------
+
+
+class Retailer(Base):
+    """Multi-tenant retailer (ADR-018). Top-level tenant boundary."""
+    __tablename__ = "retailers"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    code = Column(String(64), nullable=False, unique=True, index=True)
+    legal_name = Column(String(255), nullable=False)
+    display_name = Column(String(255), nullable=False)
+    status = Column(String(20), nullable=False, default="active", server_default="active")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
 
 class AdvertiserOrganization(Base):
@@ -1264,6 +1279,7 @@ class InventoryRule(Base):
 
 
 REQUIRED_TABLES = frozenset({
+    "retailers",
     "branches", "clusters", "stores",
     "channels", "device_types", "capability_profiles",
     "physical_devices", "device_certificates", "device_status_history",
