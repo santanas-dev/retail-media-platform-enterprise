@@ -328,6 +328,18 @@ def _setup_sql(ph):
         WHERE role_id='00000000-0000-0000-0000-000000000114'
         AND permission_id=(SELECT id FROM permissions WHERE code='campaigns.manage')
       )
+    -- EDGE-001: devices.manage permission + system_admin grant
+    ; INSERT INTO permissions (id, code, name) VALUES
+      ('00000000-0000-0000-0000-000000000110','devices.manage','Управление устройствами')
+      ON CONFLICT (code) DO NOTHING
+    ; INSERT INTO role_permissions (id,role_id,permission_id)
+      SELECT 'rp-beh-sa-devmg',r.id,p.id
+      FROM roles r CROSS JOIN permissions p
+      WHERE r.code='system_admin' AND p.code='devices.manage'
+      AND NOT EXISTS (
+        SELECT 1 FROM role_permissions
+        WHERE role_id=r.id AND permission_id=p.id
+      )
     """
 
 

@@ -5474,3 +5474,48 @@ async def consume_onboarding_code(
     onboarding_code.used_at = datetime.now(timezone.utc)
     session.add(onboarding_code)
     session.add(physical_device)
+
+
+async def claim_onboarding_code(session: AsyncSession, device_code: str) -> bool:
+    """Atomically claim an onboarding code: UPDATE status='used' WHERE status='active'.
+
+    Returns True if exactly one row was updated (code claimed successfully).
+    Returns False if the code was not found or not in 'active' state.
+    This is race-condition-safe — concurrent callers see only one winner.
+    """
+    from datetime import datetime, timezone
+    from packages.domain.models import DeviceOnboardingCode
+
+    result = await session.execute(
+        update(DeviceOnboardingCode)
+        .where(
+            DeviceOnboardingCode.code == device_code,
+            DeviceOnboardingCode.status == "active",
+            DeviceOnboardingCode.expires_at > datetime.now(timezone.utc),
+        )
+        .values(status="claimed", used_at=datetime.now(timezone.utc))
+    )
+    return result.rowcount == 1
+
+
+async def bind_code_to_device(
+    session: AsyncSession,
+    device_code: str,
+    physical_device,
+    hardware_fingerprint: str,
+) -> None:
+    """Complete the code→device binding after a successful claim."""
+    from datetime import datetime, timezone
+    from packages.domain.models import DeviceOnboardingCode
+
+    result = await session.execute(
+        select(DeviceOnboardingCode).where(DeviceOnboardingCode.code == device_code)
+    )
+    code = result.scalar_one_or_none()
+    if code is None:
+        return
+    code.status = "used"
+    code.hardware_fingerprint_bound = hardware_fingerprint
+    code.physical_device_id = physical_device.id
+    code.used_at = datetime.now(timezone.utc)
+    session.add(code)
