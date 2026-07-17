@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 0410d64     | 759035f         | BP-004 campaign briefs — CI #29569017641 ✅ (34/34) |
+| develop | f5d5a52     | TBD           | BP-004 follow-up: RLS + behavioral proof — CI #29570688800 ✅ (34/34) |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -86,19 +86,21 @@
 
 ## Next Active Workstream
 
-**None** — BP-004 completed; awaiting next prioritisation.
+**None** — BP-004 follow-up completed; awaiting next prioritisation.
 
 ## BP-004 — Campaign Brief / Placement Request ✅ RESOLVED
 
 - **Verdict: advertiser can create draft briefs, submit them, view detail; cross-org isolated.**
 - **Model:** `CampaignBrief` (52nd table) — draft/submitted/reviewing/accepted/rejected lifecycle.
-- **Repository:** list/get/create/update/submit with `scope_advertiser_ids` tenant scoping.
+- **Repository:** list/get/create/update/submit with `scope_advertiser_ids` tenant scoping; empty frozenset = deny-all (fail-closed).
+- **RLS:** migration 019 — ENABLE/FORCE ROW LEVEL SECURITY + SELECT/INSERT/UPDATE policies on `campaign_briefs`.
 - **Router:** advertiser-scoped endpoints: list/detail (campaigns.read), create/update/submit (campaigns.manage).
 - **Frontend:** BriefListPage (empty/list/loading/error), BriefCreatePage (form+validation), BriefDetailPage (detail+submit+readonly submitted state).
 - **Navigation:** «Заявки» item added to advertiser portal sidebar.
-- **Backend tests:** 16/16 (list/detail/create/update/submit/cross-org/403/no-secrets).
+- **Backend tests:** 16/16 unit (list/detail/create/update/submit/cross-org/403/no-secrets).
+- **Behavioral tests:** 7/7 (list scoping, cross-org detail 404, cross-org update/submit denied, create-uses-scope, direct RLS proof).
 - **Frontend tests:** 7/7 vitest (empty, list, loading, error, detail draft, detail submitted, submit button).
-- Payload SHA: 0410d64. CI: #29569017641 ✅ (34/34 green, incl. Behavioural PostgreSQL).
+- Payload SHA: f5d5a52. CI: #29570688800 ✅ (34/34 green, incl. Behavioural PostgreSQL + ADR-008).
 
 ## BP-003 — Advertiser Portal Shell / «Мой кабинет» ✅ RESOLVED
 
