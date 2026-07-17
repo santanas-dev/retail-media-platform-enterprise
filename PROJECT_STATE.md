@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 48e1f7d     | ac196a1         | EDGE-001 device onboarding — 9 tests, CI #29581038157 ✅ (34/34) |
+| develop | 32a742b     | (next)         | EDGE-001 hardened — permission gate, RLS, atomic claim, 16 tests, CI #29586874099 ✅ |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -116,20 +116,23 @@
 **EDGE-001 ✅ RESOLVED** — CI #29581038157 ✅ (34/34, incl. Behavioural PostgreSQL ADR-008).
 Следующий workstream: EDGE-002 manifest delivery hardening / heartbeat foundation.
 
-## EDGE-001 — Device Onboarding Contract ✅ RESOLVED
+## EDGE-001 — Device Onboarding Contract ✅ RESOLVED (hardened 2026-07-17)
 
-- **Verdict: device_code + hardware_fingerprint → device identity + access_token.**
-- **Model:** `DeviceOnboardingCode` (54th table) — one-time CSPRNG code bound to retailer, optional store/device_type. Lifecycle: active→used (expired/revoked reject).
+- **Verdict: device_code + hardware_fingerprint → device identity + access_token. Security boundary proven.**
+- **Model:** `DeviceOnboardingCode` (54th table). `PhysicalDevice.retailer_id` added to ORM.
 - **API:**
-  - `POST /api/v1/device/onboard` — public (no JWT), device_code + hardware_fingerprint → device_id + access_token (device JWT, auth_provider=device)
-  - `POST /api/v1/identity/device-codes` — admin creates onboarding codes (retailer-scoped, configurable TTL)
-- **Fail-closed:** invalid/expired/revoked/used code → 403. Cross-retailer: code from retailer A cannot onboard in retailer B.
-- **Idempotent:** same code + same fingerprint returns existing device identity + token.
-- **ADR-018 compliance:** `DeviceOnboardingCode.retailer_id` NOT NULL. `PhysicalDevice.retailer_id` added to ORM model. Onboarding assigns retailer from code, not from client.
-- **Table count:** 53→54. REQUIRED_TABLES updated.
-- **Unit tests (9/9):** success, invalid/expired/revoked/used rejection, fingerprint conflict, idempotent (×2), admin code creation.
-- **Deferred:** real certificate issuance (placeholder only), device RLS behavioral tests (no new RLS policies needed — uses existing `physical_devices`), heartbeat/PoP/manifest (separate tasks).
-- **CI:** #29581038157 ✅ (34/34 green, incl. Behavioural PostgreSQL + ADR-008).
+  - `POST /api/v1/device/onboard` — public (no JWT), atomic claim via `UPDATE ... WHERE status='active' RETURNING id`
+  - `POST /api/v1/identity/device-codes` — admin only (`require_permission("devices.manage")`)
+- **Permission:** `devices.manage` added to seed/conftest, granted to system_admin.
+- **RLS:** Migration 022 — ENABLE/FORCE RLS + SELECT/INSERT/UPDATE policies with retailer scope + admin bypass.
+- **Atomic claim:** raw SQL `UPDATE ... RETURNING id` prevents concurrent double-onboarding.
+- **Fail-closed:** invalid/expired/revoked/used code → 403. Cross-retailer: retailer from code, not client.
+- **Idempotent:** same code + same fingerprint returns existing device identity.
+- **Tests (16 total):**
+  - 8 unit: success, 4× rejection, idempotent, fingerprint-bound idempotent, admin code creation
+  - 8 behavioral (real PostgreSQL, no mocks): non-admin/noperms 403, admin creates code, onboard success, expired rejection (manual expiry via SQL), used-code rejection, idempotent, cross-retailer, direct DB RLS proof (NOBYPASSRLS: scope A → A codes, empty→deny, admin→all)
+- **Deferred:** real certificate issuance, device RLS behavioral for physical_devices, heartbeat/PoP/manifest.
+- **CI:** #29586874099 ✅ (34/34 green, incl. Behavioural PostgreSQL + ADR-008).
 
 ## ADR-018-IMPL-001 — Multitenancy Foundation ✅ RESOLVED
 
