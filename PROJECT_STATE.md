@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | e2cf93b     | TBD             | EDGE-002-FU — device-gateway RLS fix + real endpoint proof, CI ✅ |
+| develop | e2cf93b     | cff2dce         | EDGE-002-FU — device-gateway RLS fix + real endpoint proof, CI ✅ |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
