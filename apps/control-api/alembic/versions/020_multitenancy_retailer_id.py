@@ -52,7 +52,6 @@ RETAILER_ONLY = f"({_IS_ADMIN} OR retailer_id = ANY({_SCOPE_RETAILER}))"
 
 # Tables with advertiser_organization_id → two-level RLS
 ADVERTISER_TABLES = [
-    "advertiser_applications",
     "advertiser_brands",
     "advertiser_contacts",
     "advertiser_contracts",
@@ -170,6 +169,30 @@ def upgrade() -> None:
                     CREATE POLICY {table}_rls_{suffix} ON {table}
                         FOR {op_type}
                         {clause} ({TWO_LEVEL});
+                """)
+
+    # ── 8b. advertiser_applications uses organization_id (not advertiser_organization_id) ──
+    APP_ORG_TWO_LEVEL = TWO_LEVEL.replace("advertiser_organization_id", "organization_id")
+    for table in ["advertiser_applications"]:
+        for suffix in ("sel", "ins", "upd", "del"):
+            op.execute(f"DROP POLICY IF EXISTS {table}_rls_{suffix} ON {table}")
+        op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
+        op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
+        for op_type in ("SELECT", "INSERT", "UPDATE", "DELETE"):
+            suffix = {"SELECT": "sel", "INSERT": "ins", "UPDATE": "upd", "DELETE": "del"}[op_type]
+            clause = "USING" if op_type == "SELECT" else ("WITH CHECK" if op_type == "INSERT" else "USING")
+            if op_type == "UPDATE":
+                op.execute(f"""
+                    CREATE POLICY {table}_rls_{suffix} ON {table}
+                        FOR {op_type}
+                        USING ({APP_ORG_TWO_LEVEL})
+                        WITH CHECK ({APP_ORG_TWO_LEVEL});
+                """)
+            else:
+                op.execute(f"""
+                    CREATE POLICY {table}_rls_{suffix} ON {table}
+                        FOR {op_type}
+                        {clause} ({APP_ORG_TWO_LEVEL});
                 """)
 
     # ── 9. RLS for derived tables (no advertiser FK, retailer scope only) ──
