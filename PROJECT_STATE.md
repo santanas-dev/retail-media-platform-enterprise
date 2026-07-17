@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-17
+**Last updated:** 2026-07-17 (PLAN-001)
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -84,9 +84,39 @@
 > fix incomplete — C2 fix SHA is `47e7d44` (CI #29519917049). Current canonical status
 > is in this PROJECT_STATE.md, not in the audit docs.
 
+## Strategic Product Decisions (PLAN-001, 2026-07-17)
+
+1. **Мультиарендность закладываем сейчас.** `retailer_id` + двухуровневая RLS
+   (retailer + advertiser). ADR-018 — следующий активный воркстрим. Без этого
+   нельзя: финансы, атрибуция, competitive separation.
+
+2. **Продуктовая модель — цифровая вывеска.** Proof-of-Play достаточно для
+   подтверждения показов. Attribution / интеграция с чеками **отложены по
+   решению бизнеса** — это не пробел, а осознанный выбор.
+
+3. **Время кампаний — по местному времени магазина.** Требуется ADR и
+   доработка модели: campaign start/end, PoP-агрегация по дням.
+
+4. **Рекламодатели: managed + self-service.** Self-service нужен, но не первым.
+   Сначала managed/core flow. Self-service — medium priority (фаза 5).
+
+## Roadmap Phases (PLAN-001)
+
+| Фаза | Содержание | Статус |
+|------|-----------|--------|
+| **0.5 — Архитектура** | ADR-018 multitenancy, ADR store-local time, fix PoP-by-day | 🚧 В работе |
+| **1 — Edge / один КСО** | Device onboarding, manifest signing, kill-switch player-side, real player, build distribution | ⚪ Не начато |
+| **2 — Масштаб дёшево** | Redis cache + rate-limit, HTTP 304, retention/partitioning | ⚪ Не начато |
+| **3 — Эксплуатация** | Device fleet health, underdelivery/compensation, staged rollout, §14 security ops | ⚪ Не начато |
+| **4 — Каналы** | КСО scale, кассиры, mobile/push, Android/ESL/LED | ⚪ Не начато |
+| **5 — Self-service guardrails** | Self-service, attribution deferred, programmatic/dynamic later | ⚪ Не начато |
+
 ## Next Active Workstream
 
-**None** — BP-004 follow-up completed; awaiting next prioritisation.
+**ADR-018 — Multitenancy: retailer_id + two-level RLS (retailer + advertiser).**
+После PLAN-001 (этот коммит) — только ADR-018 implementation workstream.
+Никакой другой код, миграции, API, RLS не начинать до закрытия ADR-018.
+Edge (фаза 1) не стартует до ADR-018.
 
 ## BP-004 — Campaign Brief / Placement Request ✅ RESOLVED
 
