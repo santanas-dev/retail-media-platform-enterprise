@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 61004f4     | 34ac3fd         | BP-003 portal shell — CI #29567469569 ✅ (34/34) |
+| develop | 0410d64     | TBD           | BP-004 campaign briefs — CI #29569017641 ✅ (34/34) |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -86,7 +86,19 @@
 
 ## Next Active Workstream
 
-**None** — BP-003 completed; awaiting next prioritisation.
+**None** — BP-004 completed; awaiting next prioritisation.
+
+## BP-004 — Campaign Brief / Placement Request ✅ RESOLVED
+
+- **Verdict: advertiser can create draft briefs, submit them, view detail; cross-org isolated.**
+- **Model:** `CampaignBrief` (52nd table) — draft/submitted/reviewing/accepted/rejected lifecycle.
+- **Repository:** list/get/create/update/submit with `scope_advertiser_ids` tenant scoping.
+- **Router:** advertiser-scoped endpoints: list/detail (campaigns.read), create/update/submit (campaigns.manage).
+- **Frontend:** BriefListPage (empty/list/loading/error), BriefCreatePage (form+validation), BriefDetailPage (detail+submit+readonly submitted state).
+- **Navigation:** «Заявки» item added to advertiser portal sidebar.
+- **Backend tests:** 16/16 (list/detail/create/update/submit/cross-org/403/no-secrets).
+- **Frontend tests:** 7/7 vitest (empty, list, loading, error, detail draft, detail submitted, submit button).
+- Payload SHA: 0410d64. CI: #29569017641 ✅ (34/34 green, incl. Behavioural PostgreSQL).
 
 ## BP-003 — Advertiser Portal Shell / «Мой кабинет» ✅ RESOLVED
 
