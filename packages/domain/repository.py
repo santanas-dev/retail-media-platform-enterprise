@@ -5476,12 +5476,11 @@ async def consume_onboarding_code(
     session.add(physical_device)
 
 
-async def claim_onboarding_code(session: AsyncSession, device_code: str) -> bool:
-    """Atomically claim an onboarding code: UPDATE status='used' WHERE status='active'.
+async def claim_onboarding_code(session: AsyncSession, device_code: str):
+    """Atomically claim an onboarding code: UPDATE status='claimed' WHERE status='active'.
 
-    Returns True if exactly one row was updated (code claimed successfully).
-    Returns False if the code was not found or not in 'active' state.
-    This is race-condition-safe — concurrent callers see only one winner.
+    Returns the updated DeviceOnboardingCode if claimed, None otherwise.
+    Uses RETURNING to avoid rowcount ambiguity across drivers.
     """
     from datetime import datetime, timezone
     from packages.domain.models import DeviceOnboardingCode
@@ -5494,8 +5493,9 @@ async def claim_onboarding_code(session: AsyncSession, device_code: str) -> bool
             DeviceOnboardingCode.expires_at > datetime.now(timezone.utc),
         )
         .values(status="claimed", used_at=datetime.now(timezone.utc))
+        .returning(DeviceOnboardingCode)
     )
-    return result.rowcount == 1
+    return result.scalar_one_or_none()
 
 
 async def bind_code_to_device(

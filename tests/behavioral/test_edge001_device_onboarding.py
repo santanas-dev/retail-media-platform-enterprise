@@ -190,11 +190,12 @@ class TestEDGE001DeviceOnboarding:
         # (No admin device list endpoint exists yet; verified implicitly by successful onboard)
 
     def test_expired_code_rejected(self):
-        """Code with ttl=0 (immediately expired) → 403."""
-        code = self._create_code(self.data["ret_a"], self.data["store_a"], ttl=0)
-        # Wait briefly for expiry
-        import time
-        time.sleep(1)
+        """Code with manually-expired expires_at → 403 CODE_EXPIRED."""
+        code = self._create_code(self.data["ret_a"], self.data["store_a"])
+        # Manually expire the code via direct DB update (owner connection)
+        asyncio.run(_run_sql(
+            f"UPDATE device_onboarding_codes SET expires_at = NOW() - INTERVAL '1 hour' WHERE code = '{code}'"
+        ))
         resp = self.client.post(
             "/api/v1/device/onboard",
             json={"device_code": code, "hardware_fingerprint": "e001-fp-expired-01"},
