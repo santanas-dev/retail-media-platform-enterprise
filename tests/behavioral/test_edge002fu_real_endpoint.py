@@ -139,11 +139,11 @@ def e002fu_setup():
     asyncio.run(_run_sql(f"""
     INSERT INTO delivery_manifests (id, manifest_id, campaign_id,
         physical_device_id, manifest_version, status,
-        content_hash, generated_at, created_at, updated_at)
+        content_hash, generated_at, created_at)
     VALUES ('beh-e002fu-dm-01', '{MANIFEST_A_ID}',
         'beh-e002fu-camp-01',
         '{DEVICE_A_ID}', 1, 'generated',
-        'e002fu-hash-abc123', '{now}', '{now}', '{now}')
+        'e002fu-hash-abc123', '{now}', '{now}')
     ON CONFLICT (id) DO NOTHING
     """))
 
