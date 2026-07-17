@@ -11,6 +11,9 @@ import CampaignDetailPage from "./pages/CampaignDetailPage";
 import CreativeLibraryPage from "./pages/CreativeLibraryPage";
 import ProfilePage from "./pages/ProfilePage";
 import CampaignCreatePage from "./pages/CampaignCreatePage";
+import DashboardPage from "./pages/DashboardPage";
+import DocumentsPlaceholderPage from "./pages/DocumentsPlaceholderPage";
+import SupportPlaceholderPage from "./pages/SupportPlaceholderPage";
 import ApplyAdvertiserPage from "./pages/ApplyAdvertiserPage";
 import AcceptInvitePage from "./pages/AcceptInvitePage";
 
@@ -76,11 +79,14 @@ const router = createBrowserRouter([
     ),
     errorElement: <RouteErrorFallback />,
     children: [
-      { index: true, element: <Navigate to="/campaigns" replace /> },
+      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { path: "dashboard", element: <DashboardPage /> },
       { path: "campaigns", element: <CampaignListPage /> },
       { path: "campaigns/new", element: <CampaignCreatePage /> },
       { path: "campaigns/:id", element: <CampaignDetailPage /> },
       { path: "creatives", element: <CreativeLibraryPage /> },
+      { path: "documents", element: <DocumentsPlaceholderPage /> },
+      { path: "support", element: <SupportPlaceholderPage /> },
       { path: "profile", element: <ProfilePage /> },
     ],
   },

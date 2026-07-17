@@ -4,9 +4,11 @@ import { useAuth } from "../auth/AuthContext";
 import s from "./Layout.module.css";
 
 const NAV_ITEMS = [
+  { to: "/dashboard", label: "Кабинет" },
   { to: "/campaigns", label: "Кампании" },
   { to: "/creatives", label: "Креативы" },
-  { to: "/reports", label: "Отчётность", disabled: true },
+  { to: "/documents", label: "Документы", disabled: true },
+  { to: "/support", label: "Поддержка", disabled: true },
   { to: "/profile", label: "Профиль" },
 ];
 

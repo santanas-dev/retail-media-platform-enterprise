@@ -1,0 +1,103 @@
+/* Dashboard — "Мой кабинет" */
+.wrapper {
+  max-width: 720px;
+}
+
+.title {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin: 0 0 1.25rem;
+  color: #1e293b;
+}
+
+/* ── Card ── */
+.card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.cardTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #334155;
+  margin: 0 0 0.75rem;
+  cursor: default;
+}
+
+/* ── Definition list ── */
+.dl {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.dl dt {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.dl dd {
+  margin: 0;
+  color: #1e293b;
+}
+
+/* ── Badge ── */
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.inactive {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.suspended {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* ── Permissions ── */
+.permList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.permItem {
+  background: #f1f5f9;
+  color: #475569;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-family: monospace;
+}
+
+/* ── Misc ── */
+.muted {
+  color: #64748b;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.empty {
+  text-align: center;
+  padding: 2rem;
+  color: #94a3b8;
+}

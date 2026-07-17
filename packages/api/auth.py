@@ -23,6 +23,7 @@ from packages.domain import repository
 from packages.auth.schemas import AuthFailure, AuthSuccess
 from packages.auth.service import AuthService
 from packages.domain.schemas import (
+    AdvertiserOrganizationOut,
     ChangePasswordRequest,
     ChangePasswordResponse,
     LoginRequest,
@@ -266,6 +267,28 @@ async def me(
             if cred is not None:
                 must_change_password = cred.must_change_password
 
+    # Resolve advertiser organization from scoped user role
+    advertiser_org_id: str | None = None
+    advertiser_org: AdvertiserOrganizationOut | None = None
+    if user_id:
+        from packages.domain.models import UserRole, AdvertiserOrganization
+        from sqlalchemy import select
+        stmt = (
+            select(UserRole)
+            .where(
+                UserRole.user_id == user_id,
+                UserRole.scope_type == "advertiser",
+            )
+            .limit(1)
+        )
+        result = await db.execute(stmt)
+        user_role = result.scalar_one_or_none()
+        if user_role and user_role.scope_id:
+            advertiser_org_id = user_role.scope_id
+            org = await db.get(AdvertiserOrganization, advertiser_org_id)
+            if org:
+                advertiser_org = AdvertiserOrganizationOut.model_validate(org)
+
     return MeResponse(
         sub=user_id,
         auth_provider=auth_provider,
@@ -273,6 +296,8 @@ async def me(
         display_name=display_name,
         permissions=perms,
         must_change_password=must_change_password,
+        advertiser_organization_id=advertiser_org_id,
+        advertiser_organization=advertiser_org,
     )
 
 

@@ -237,6 +237,8 @@ class MeResponse(BaseModel):
     display_name: str = ""
     permissions: list[str] = []
     must_change_password: bool = False
+    advertiser_organization_id: str | None = None
+    advertiser_organization: "AdvertiserOrganizationOut | None" = None
 
 
 # ---------------------------------------------------------------------------
