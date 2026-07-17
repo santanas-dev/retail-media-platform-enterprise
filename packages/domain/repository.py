@@ -5449,7 +5449,7 @@ async def create_physical_device_onboard(
     from packages.domain.models import PhysicalDevice
     device = PhysicalDevice(
         store_id=store_id,
-        device_type_id=device_type_id or "00000000-0000-0000-0000-000000000001",
+        device_type_id=device_type_id,
         code=code or hardware_fingerprint[:64],
         hardware_fingerprint=hardware_fingerprint,
         status="active",

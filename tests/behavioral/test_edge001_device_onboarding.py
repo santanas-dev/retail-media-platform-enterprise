@@ -155,7 +155,8 @@ class TestEDGE001DeviceOnboarding:
     def _create_code(self, retailer_id, store_id=None, ttl=24):
         resp = self.client.post(
             "/api/v1/identity/device-codes",
-            json={"retailer_id": retailer_id, "store_id": store_id, "ttl_hours": ttl},
+            json={"retailer_id": retailer_id, "store_id": store_id,
+                  "device_type_id": "beh-e001-dt-01", "ttl_hours": ttl},
             headers=_auth(self.token_admin),
         )
         assert resp.status_code == 201, f"Code creation failed: {resp.text[:200]}"
