@@ -5208,8 +5208,17 @@ async def list_campaign_briefs(
     offset: int = 0,
     scope_advertiser_ids: frozenset[str] | None = None,
 ) -> tuple[list, int]:
-    """List briefs scoped to current advertiser orgs."""
+    """List briefs scoped to current advertiser orgs.
+
+    scope_advertiser_ids:
+        None   — admin/internal (no filter)
+        empty  — deny all
+        set    — filter by those org IDs
+    """
     from packages.domain.models import CampaignBrief
+
+    if scope_advertiser_ids is not None and not scope_advertiser_ids:
+        return ([], 0)
 
     stmt = select(func.count()).select_from(CampaignBrief)
     if scope_advertiser_ids:
@@ -5237,7 +5246,11 @@ async def get_campaign_brief(
     brief_id: str,
     scope_advertiser_ids: frozenset[str] | None = None,
 ):
+    """None=admin, empty=deny all, set=filter."""
     from packages.domain.models import CampaignBrief
+
+    if scope_advertiser_ids is not None and not scope_advertiser_ids:
+        return None
 
     stmt = select(CampaignBrief).where(CampaignBrief.id == brief_id)
     if scope_advertiser_ids:
@@ -5266,11 +5279,15 @@ async def create_campaign_brief(
 ) -> str:
     """Create a draft brief. Returns brief id.
 
-    Raises ScopeError if org not in scope.
+    Raises ScopeError if org not in scope or scope is empty.
     """
     import uuid
     from datetime import datetime, timezone as tz
     from packages.domain.models import CampaignBrief
+
+    if scope_advertiser_ids is not None and not scope_advertiser_ids:
+        from packages.domain.exceptions import ScopeError
+        raise ScopeError("No advertiser scope — brief creation denied")
 
     _assert_org_in_scope(advertiser_organization_id, scope_advertiser_ids)
 
@@ -5304,8 +5321,12 @@ async def update_campaign_brief(
     scope_advertiser_ids: frozenset[str] | None = None,
     **kwargs,
 ):
-    """Update draft brief fields. Returns updated brief or None if not found/scoped."""
+    """Update draft brief fields. Returns updated brief or None if not found/scoped.
+    None=admin, empty=deny all, set=filter."""
     from packages.domain.models import CampaignBrief
+
+    if scope_advertiser_ids is not None and not scope_advertiser_ids:
+        return None
 
     stmt = select(CampaignBrief).where(CampaignBrief.id == brief_id)
     if scope_advertiser_ids:
@@ -5337,9 +5358,13 @@ async def submit_campaign_brief(
     brief_id: str,
     scope_advertiser_ids: frozenset[str] | None = None,
 ):
-    """Submit a draft brief. Returns updated brief or raises ValueError."""
+    """Submit a draft brief. Returns updated brief or raises ValueError.
+    None=admin, empty=deny all, set=filter."""
     from datetime import datetime, timezone as tz
     from packages.domain.models import CampaignBrief
+
+    if scope_advertiser_ids is not None and not scope_advertiser_ids:
+        return None
 
     stmt = select(CampaignBrief).where(CampaignBrief.id == brief_id)
     if scope_advertiser_ids:
