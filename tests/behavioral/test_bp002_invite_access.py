@@ -10,15 +10,15 @@ Requires: RUN_BEHAVIORAL_TESTS=1, running PostgreSQL, migrations + seed applied.
 import asyncio
 import concurrent.futures
 import os
-import re
-import time
+
+
 
 import bcrypt
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from packages.security.config import reset_security_config
+from packages.security.config set_security_config
 from tests.behavioral.conftest import _run_sql
 
 # ── IDs ────────────────────────────────────────────────────────────────────
@@ -29,7 +29,6 @@ _APP_ID = "beh-bp2-app-00000000000000001"
 _INVITE_ID = "beh-bp2-inv-00000000000000001"
 _TOKEN = "bp2-behavioral-test-token-64-chars-x-aaaaaaaaaaaaaaaaaaaaaaaaaaa"
 _CONTACT_EMAIL = "ivan-bp2@test.local"
-_ADMIN_ID = "beh-bp2-admin-000000000000001"
 
 _PASSWORD = "SecurePass123!"
 
@@ -112,6 +111,10 @@ def bp2_fixtures(db_available):
     ; DELETE FROM audit_events_operational WHERE actor_user_id LIKE 'beh-bp2-%'
        OR target_id LIKE 'beh-bp2-%'
     ; DELETE FROM users WHERE id LIKE 'beh-bp2-%'
+    ; DELETE FROM advertiser_user_memberships WHERE advertiser_organization_id LIKE 'beh-bp2-%'
+    ; DELETE FROM user_roles WHERE scope_id LIKE 'beh-bp2-%'
+    ; DELETE FROM local_credentials WHERE user_id IN (SELECT id FROM users WHERE username = 'ivan-bp2@test.local')
+    ; DELETE FROM users WHERE username = 'ivan-bp2@test.local'
     ; DELETE FROM advertiser_organizations WHERE id LIKE 'beh-bp2-%'
 
     -- Two advertiser organizations
@@ -204,6 +207,10 @@ def bp2_fixtures(db_available):
     ; DELETE FROM audit_events_operational WHERE actor_user_id LIKE 'beh-bp2-%'
        OR target_id LIKE 'beh-bp2-%'
     ; DELETE FROM users WHERE id LIKE 'beh-bp2-%'
+    ; DELETE FROM advertiser_user_memberships WHERE advertiser_organization_id LIKE 'beh-bp2-%'
+    ; DELETE FROM user_roles WHERE scope_id LIKE 'beh-bp2-%'
+    ; DELETE FROM local_credentials WHERE user_id IN (SELECT id FROM users WHERE username = 'ivan-bp2@test.local')
+    ; DELETE FROM users WHERE username = 'ivan-bp2@test.local'
     ; DELETE FROM advertiser_organizations WHERE id LIKE 'beh-bp2-%'
     """
     asyncio.run(_run_sql(cleanup_sql))
