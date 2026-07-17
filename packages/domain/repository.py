@@ -124,6 +124,32 @@ async def find_user_by_id(session: AsyncSession, user_id: str) -> User | None:
     return result.scalar_one_or_none()
 
 
+async def get_advertiser_org_for_user(
+    session: AsyncSession, user_id: str
+) -> tuple[str | None, "AdvertiserOrganization | None"]:
+    """Resolve advertiser organization from user's scoped role.
+
+    Returns (org_id, org) or (None, None) if user has no advertiser scope.
+    """
+    from packages.domain.models import UserRole, AdvertiserOrganization
+
+    stmt = (
+        select(UserRole)
+        .where(
+            UserRole.user_id == user_id,
+            UserRole.scope_type == "advertiser",
+        )
+        .limit(1)
+    )
+    result = await session.execute(stmt)
+    user_role = result.scalar_one_or_none()
+    if not user_role or not user_role.scope_id:
+        return None, None
+
+    org = await session.get(AdvertiserOrganization, user_role.scope_id)
+    return (user_role.scope_id, org) if org else (None, None)
+
+
 async def get_user_permissions(
     session: AsyncSession, user_id: str
 ) -> set[str]:
