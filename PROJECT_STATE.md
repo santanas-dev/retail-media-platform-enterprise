@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 0b82fab     | e3a1aa2         | BP-001 follow-up — CI #29535773165 ✅ (34/34) |
+| develop | daa71c0     | 8459092         | BP-002 invite/access — CI #29561742303 ✅ (34/34) |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -86,7 +86,17 @@
 
 ## Next Active Workstream
 
-**None** — BP-001 completed; awaiting next prioritisation.
+**None** — BP-002 completed; awaiting next prioritisation.
+
+## BP-002 — Advertiser Invite / Access Activation ✅ RESOLVED
+
+- **Verdict: invite→accept flow with user/membership/role/credential creation.**
+- **Model:** `AdvertiserInvite` table (token, status pending/accepted/expired, 7-day TTL).
+- **Admin:** `POST .../invite` creates CSPRNG token, `GET .../invite` shows current status.
+- **Accept:** `POST /public/advertiser-invites/{token}/accept` with password → `create_local_advertiser_user()`.
+- **UI:** admin invite status + create/resend button; advertiser `/accept-invite/:token` page.
+- **Backend:** 31 tests (18 BP-001 + 13 BP-002). **Admin-web:** 150/150. **Advertiser-web:** 79/79.
+- Payload SHA: daa71c0. CI: #29561742303 ✅ (34/34 green, incl. Behavioral PostgreSQL).
 
 ## BP-001 Follow-up — Anti-spam + Reviewing + Public form ✅ RESOLVED
 
