@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 2dad5f0     | 719c76e         | EDGE-001 v2 + PLAYER-AUD-001 full report, CI #29589031870 ✅ |
+| develop | 28af5d3     | TBD             | EDGE-002 — retailer_id + emergency in manifest, RLS proof, CI ✅ |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -113,9 +113,10 @@
 
 ## Next Active Workstream
 
-**EDGE-001 ✅ RESOLVED** — CI #29589031870 ✅ (34/34). FINGERPRINT_CONFLICT + revert_claim + concurrent proof.
-**PLAYER-AUD-001 ✅ COMPLETED** — аудит старого player/sidecar (commit `b1846c1`). Результат ниже.
-Следующий workstream: **EDGE-002** manifest delivery hardening / heartbeat foundation (рекомендация аудита).
+**EDGE-001 ✅ RESOLVED** — CI #29589031870 ✅.
+**PLAYER-AUD-001 ✅ COMPLETED** — audit report.
+**EDGE-002 ✅ IMPLEMENTED** — manifest delivery with retailer_id + emergency, RLS proof, CI green.
+Следующий workstream: **EDGE-003** — PoP ingestion endpoint.
 
 ## PLAYER-AUD-001 — Audit Report (2026-07-17)
 
@@ -250,6 +251,21 @@
 - **Перенести как есть:** 16 компонентов (kill-switch, safety gate, session, simulator, render shell, profiles, snapshot writer, local demo, player_readiness, retry_backoff, PoP pickup/rotation, local_config, atomic_io, safe_logger, portrait_smoke)
 - **Адаптировать:** 24 компонента (runtime gate, playlist, PoP writer, display cycle, daemon/loop, visible runtime, CLI×2, events, interaction hide, run_cycle, auth, manifest/媒体 sync, PoP send/batch, heartbeat, runtime/media config, HTTP client, pop_payload)
 - **Не переносить:** 3 компонента (X11 renderer/proof, secret_store)
+
+## EDGE-002 — Device Manifest Delivery ✅ IMPLEMENTED (2026-07-17)
+
+- **Endpoint:** `GET /api/v1/device/manifest/latest` — device-gateway (port 8001)
+- **Auth:** device JWT (auth_provider="device", sub=device_id) — no user tokens accepted
+- **ETag/304:** lightweight metadata query first → 304 if If-None-Match matches → Redis cache → full assembly
+- **Fail-closed:** inactive/revoked/unregistered device → 403, nonexistent → 404, missing/invalid token → 401
+- **Manifest schema v1:** `packages/contracts/manifest_v1.schema.json` — added retailer_id + emergency fields
+- **Tenant isolation:** retailer_id from device record (not client). RLS proven under NOBYPASSRLS
+- **Signing:** HMAC-SHA256 when MANIFEST_SIGNING_KEY configured
+- **Tests (26 total):**
+  - 21 unit: 5× auth rejection, response safety, schema validation, ETag/304, Redis cache, 4× device status rejection, 200 response with retailer_id/emergency, client retailer_id ignored
+  - 5 behavioral (real PostgreSQL): 4× cross-retailer RLS proof under NOBYPASSRLS, 1× retailer_id field presence
+- **Deferred:** real emergency backend propagation (placeholder: emergency.active=False), full manifest generation campaign-aware (uses pre-generated DeliveryManifest), Redis (optional/fail-open)
+- **CI:** ✅ green (Unit Tests + Behavioural ADR-008)
 
 ## EDGE-001 — Device Onboarding Contract ✅ RESOLVED (hardened 2026-07-17)
 
