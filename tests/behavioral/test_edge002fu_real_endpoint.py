@@ -24,6 +24,11 @@ import sys
 import unittest
 from unittest.mock import patch
 
+import pytest
+
+if not os.environ.get("RUN_BEHAVIORAL_TESTS"):
+    pytest.skip("RUN_BEHAVIORAL_TESTS=1 not set", allow_module_level=True)
+
 # Inject device-gateway into path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "apps", "device-gateway"))
 
