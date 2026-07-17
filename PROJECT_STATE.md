@@ -113,8 +113,20 @@
 
 ## Next Active Workstream
 
-**ADR-018-IMPL-001 в процессе** — Multitenancy foundation: retailer_id + two-level RLS.
-После green CI ADR-018-IMPL-001 — Edge/player (фаза 1).
+**ADR-018-IMPL-001 ✅ RESOLVED** — CI #29575414679 ✅ (34/34, incl. Behavioural PostgreSQL ADR-008).
+Следующий workstream: Edge/player (фаза 1).
+
+## ADR-018-IMPL-001 — Multitenancy Foundation ✅ RESOLVED
+
+- **Verdict: retailer_id + two-level RLS (retailer + advertiser) implemented.**
+- **Model:** `Retailer` table (53rd). `retailer_id` on 31 tenant-scoped tables via migration 020.
+- **RLS:** Two-level policies (retailer + advertiser) on all tenant tables. `advertiser_organizations` uses `id`, `advertiser_applications` uses `organization_id` — special RLS blocks.
+- **ScopeContext:** `retailer_scope_ids` added. `set_rls_context` sets `app.rmp_scope_retailer_ids`.
+- **Scope resolution:** `resolve_scope_context` loads retailer IDs from `advertiser_organizations.retailer_id`.
+- **Seed:** Default retailer (`code='default'`). `advertiser_organizations` INSERT includes `retailer_id`.
+- **Backfill:** Migration backfills existing rows to default retailer. DEFAULT on `retailer_id` for pilot safety.
+- **Behavioral tests:** 6 tests passed (cross-retailer isolation, admin bypass, empty scope deny-all).
+- **CI:** #29575414679 ✅ (34/34 green, incl. Behavioural PostgreSQL + ADR-008).
 
 ## BP-004 — Campaign Brief / Placement Request ✅ RESOLVED
 
