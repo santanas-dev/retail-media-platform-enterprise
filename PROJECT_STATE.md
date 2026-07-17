@@ -124,6 +124,133 @@
 **Discovery commands:** `PYTHONPATH=apps/kso_player:apps/kso_sidecar_agent python3 -m pytest`.
 **Tests:** 262/262 player, 327/327 sidecar (with cross-PATH), 0 skipped, all pure Python stdlib — no external deps.
 
+### Key files covering playback, manifest, media sync, PoP, heartbeat, kill-switch
+
+| Concern | Old repo files |
+|---------|---------------|
+| **Playback cycle** | `kso_player/runtime_daemon.py`, `runtime_loop.py`, `runtime_cycle.py`, `display_cycle.py` |
+| **Manifest fetch/store** | `kso_sidecar_agent/manifest_client.py`, `manifest_store.py`, `run_cycle_manifest.py`, `kso_gateway_client.py`, `kso_manifest_gateway_extractor.py` |
+| **Manifest → playlist** | `kso_player/playlist.py`, `render_plan.py` |
+| **Media sync/cache** | `kso_sidecar_agent/media_client.py`, `media_cache.py`, `run_cycle_media.py` |
+| **PoP local write** | `kso_player/pop_writer.py`, `events.py` |
+| **PoP pickup → send** | `kso_sidecar_agent/pop_pickup.py`, `pop_sender.py`, `pop_sender_retry.py`, `pop_sender_runner.py`, `pop_batch.py`, `pop_send_package.py`, `pop_scoped_send.py` |
+| **PoP rotation** | `kso_sidecar_agent/pop_rotation_plan.py`, `pop_rotation_apply.py`, `pop_rotation_files.py`, `pop_rotation_materializer.py` |
+| **Heartbeat** | `kso_sidecar_agent/heartbeat_client.py`, `run_cycle_heartbeat.py` |
+| **Kill-switch** | `kso_player/kill_switch.py` |
+| **Runtime gate (state)** | `kso_player/runtime_gate.py`, `state_observer.py` |
+| **Safety gate** | `kso_player/safety.py` |
+| **Session / item select** | `kso_player/session.py`, `simulator.py` |
+| **Render shell (HTML/JS)** | `kso_player/player_shell/` (bootstrap.js, player.js, index.html, styles.css, bootstrap_snapshot.js) |
+| **Snapshot writer** | `kso_player/runtime_snapshot_writer.py`, `shell_snapshot.py` |
+| **Sidecar orchestrator** | `kso_sidecar_agent/run_cycle.py`, `kso_sidecar_daemon.py` |
+| **Retry/backoff** | `kso_sidecar_agent/retry_backoff.py` |
+| **CLI (both)** | `kso_player/cli.py`, `kso_sidecar_agent/cli.py` |
+
+### Transfer table: KSO Player (`kso_player/` — 37 modules + `player_shell/`)
+
+| Компонент | Ключевые файлы | Что делает | Статус | Причина |
+|-----------|---------------|-----------|--------|--------|
+| Runtime gate | `runtime_gate.py` | Читает `state/kso_state.json`, fail-closed: play только при `idle` + свежий timestamp | Адаптировать | Нужен новый источник состояния — не локальный JSON, а endpoint или sidecar IPC |
+| Kill-switch | `kill_switch.py` | Файл-флаг `/run/verny/kso/kill_switch`: есть → hide, нет → show, ошибка → hide | Перенести как есть | 65 строк, pure Python, fail-safe, без зависимостей |
+| Safety gate | `safety.py` | 9 состояний КСО → play/hold/stop. Fail-closed | Перенести как есть | Core logic без интеграции |
+| Playlist | `playlist.py` | Читает `manifest/current_manifest.json` → `PlayerPlaylist` | Адаптировать | Manifest-схема изменится (ADR-016), core логика переиспользуема |
+| Session | `session.py` | In-memory session state, round-robin выбор item | Перенести как есть | Pure logic, нет путей/секретов |
+| Simulator | `simulator.py` | `simulate_playback_step()` — полный пайплайн без реального playback | Перенести как есть | Ключевой для тестирования без Chromium |
+| PoP writer | `pop_writer.py` | Append-only JSONL + flush+fsync | Адаптировать | Схема PoP изменится под enterprise |
+| Display cycle | `display_cycle.py` | gate → snapshot → wait → PoP | Адаптировать | Привязка к локальному state |
+| Runtime daemon | `runtime_daemon.py` | Long-running loop: подготовка → циклы → stop_check → health JSON | Адаптировать | Нужны: device JWT, systemd unit |
+| Runtime loop | `runtime_loop.py` | Multi-cycle с живой ротацией snapshot | Адаптировать | Та же причина |
+| Visible runtime | `visible_runtime.py` | Подготовка workspace + Chromium launch | Адаптировать | Пути к chromium/shell переедут |
+| Snapshot writer | `runtime_snapshot_writer.py` | Atomic write `bootstrap_snapshot.js` | Перенести как есть | Без бэкенда |
+| Shell snapshot | `shell_snapshot.py` | Сборка render-snapshot для JS-оболочки | Адаптировать | Manifest-схема |
+| Render shell | `player_shell/` (5 файлов) | HTML+JS+CSS: Chromium kiosk-оболочка | Перенести как есть | Чистый фронт |
+| Display profiles | `profiles/` (2 файла) | Профили: portrait 768×1366 | Перенести как есть | |
+| CLI | `cli.py` (673 строки) | 15+ команд | Адаптировать | Команды переподключить к enterprise |
+| Events | `events.py` | `build_playback_event_draft/completed` | Адаптировать | Схема событий под enterprise |
+| X11 renderer | `x11_click_through_renderer.py`, `x11_screensaver_runner.py` | X11-специфичный рендерер | Не переносить | X11-специфичен; enterprise — Chromium kiosk |
+| X11 proof | `x11_click_through_proof.py` | X11-харнесс | Не переносить | Та же причина |
+| Portrait smoke | `portrait_smoke.py` | Дымовой тест портретного профиля | Перенести как есть | |
+| Interaction hide | `interaction_hide.py` | Скрытие при касании экрана | Адаптировать | Зависит от KSO-специфичного input |
+| Local demo | `local_demo_fixture.py`, `local_chromium_demo_runner.py`, `local_visual_demo_prepare.py` | Demo-fixture для локального тестирования | Перенести как есть | Ключевые для dev-цикла |
+
+### Transfer table: KSO Sidecar Agent (`kso_sidecar_agent/` — 50 модулей)
+
+| Компонент | Ключевые файлы | Что делает | Статус | Причина |
+|-----------|---------------|-----------|--------|--------|
+| Run cycle | `run_cycle.py` (~1160 строк) | Оркестратор: auth → manifest → media → heartbeat → PoP → report | Адаптировать | Ключевой модуль. Нужен enterprise device JWT + новый manifest/PoP API |
+| Auth | `run_cycle_auth.py`, `device_auth_client.py`, `token_state.py` | Device auth: secret_store → token → refresh | Адаптировать | Заменить на enterprise `/device/onboard` + device JWT |
+| Manifest sync | `manifest_client.py`, `manifest_store.py`, `run_cycle_manifest.py`, `kso_gateway_client.py`, `kso_manifest_gateway_extractor.py`, `kso_safe_manifest_context.py` | Fetch → extract → save manifest | Адаптировать | Новый endpoint `/device/manifest/latest` (ETag, ADR-016) |
+| Media sync | `media_client.py`, `media_cache.py`, `run_cycle_media.py` | Download → cache media files | Адаптировать | Новый media endpoint, enterprise MinIO |
+| PoP pickup | `pop_pickup.py`, `pop_pending_lock.py`, `pop_pending_rewrite.py` | Читает JSONL от player → готовит к отправке | Перенести как есть | Локальный I/O, не зависит от backend API |
+| PoP send | `pop_sender.py`, `pop_sender_retry.py`, `pop_sender_runner.py`, `pop_send_package.py`, `pop_scoped_send.py` | Отправка PoP в backend с retry | Адаптировать | Новый PoP endpoint, нужен device JWT |
+| PoP rotation | `pop_rotation_plan.py`, `pop_rotation_apply.py`, `pop_rotation_files.py`, `pop_rotation_materializer.py` | Ротация sent → quarantine → delete | Перенести как есть | Локальная файловая логика |
+| PoP batch | `pop_batch.py` | Пакетная отправка PoP | Адаптировать | Новый batch endpoint |
+| Heartbeat | `heartbeat_client.py`, `run_cycle_heartbeat.py` | HTTP heartbeat: device state → backend | Адаптировать | Нужен enterprise heartbeat endpoint |
+| Runtime config | `runtime_config_client.py`, `runtime_config_store.py`, `run_cycle_runtime_config.py` | Fetch + save runtime config | Адаптировать | Нужен enterprise runtime-config endpoint |
+| Media report | `media_cache_report_client.py`, `run_cycle_media_report.py` | Отправка отчёта о media cache | Адаптировать | Новый endpoint |
+| Retry | `retry_backoff.py` | Retry с exponential backoff | Перенести как есть | Pure logic |
+| CLI | `cli.py` | 20+ команд CLI | Адаптировать | Переподключить к enterprise endpoints |
+| Daemon | `kso_sidecar_daemon.py` | Демон-процесс (pid/lock/stop) | Адаптировать | Нужен systemd unit |
+| Secret store | `secret_store.py` | Локальное хранение device secret | Не переносить | Заменяется enterprise device JWT из EDGE-001 |
+| Player readiness | `player_readiness.py` | Проверка готовности player (manifest + media) | Перенести как есть | Локальная проверка |
+| HTTP client | `http_client.py` | Общий HTTP-клиент | Адаптировать | URL'ы под enterprise |
+| Local config | `local_config.py` | Чтение локального конфига | Перенести как есть | |
+| Atomic I/O | `atomic_io.py` | Atomic file write | Перенести как есть | |
+| Safe logger | `safe_logger.py` | Безопасное логирование (без forbidden substrings) | Перенести как есть | |
+| Pop payload | `pop_payload.py` | Построение PoP payload | Адаптировать | Новая схема + retailer_id |
+
+### Gap-list до Фазы 1 (register → manifest → play → PoP → heartbeat)
+
+| # | Gap | Блокирует | Что нужно |
+|---|-----|-----------|-----------|
+| 1 | Enterprise manifest endpoint (`/device/manifest/latest`) | Весь цикл | EDGE-002 — manifest delivery с ETag, подписью, ADR-016 |
+| 2 | Enterprise heartbeat endpoint | Фаза 1 | Новый endpoint в control-api |
+| 3 | Enterprise PoP ingestion endpoint | Фаза 1 | Новый endpoint, схема с retailer_id, валидация |
+| 4 | Device JWT в sidecar | Sidecar→backend auth | EDGE-001 даёт JWT — sidecar должен использовать его вместо secret_store |
+| 5 | Runtime state source | Player gate | Нужен IPC от sidecar или state-adapter вместо локального `kso_state.json` |
+| 6 | systemd units | Production deploy | `.service` + `.timer` для player-daemon и sidecar-daemon |
+| 7 | Chromium kiosk на целевом KSO | Визуальный playback | Проверка совместимости Chromium с Sherman-J 5.1 |
+| 8 | Manifest schema migration | Player playlist | Старый manifest (schemaVersion 1) → enterprise ADR-016 manifest |
+| 9 | Backend kill-switch | Безопасность | Сейчас kill-switch — локальный файл. Нужен backend → sidecar → player propagation |
+
+### Совместимость с enterprise backend (ADR-018 / EDGE-001)
+
+| Возможность | Статус в старом коде | Совместимость |
+|-------------|---------------------|---------------|
+| Device JWT | `device_auth_client.py` читает из secret_store | Заменить на EDGE-001 `/device/onboard` JWT |
+| retailer_id | Отсутствует | Добавить во все структуры (PoP, manifest, heartbeat) |
+| `/device/onboard` | Нет аналога | EDGE-001 реализован |
+| `/device/manifest/latest` | Старый gateway-manifest endpoint | Нужен EDGE-002 |
+| PoP contract | Локальный JSONL → batch → POST | Нужен enterprise PoP endpoint |
+| Heartbeat contract | `POST /device/heartbeat` | Нужен enterprise endpoint |
+| RLS | Не применимо (нет БД на player/sidecar) | N/A — backend-зона |
+
+### Что НЕ проверено и почему
+
+| Пункт | Причина |
+|-------|---------|
+| Реальный Chromium launch | Требует X11/дисплей — невозможно в CI/headless без GPU |
+| Интеграция с КСО Sherman-J 5.1 | Нет доступа к реальному терминалу |
+| systemd unit | В репозитории нет `.service` файлов — не реализовано |
+| Сетевые тесты sidecar (`test_pop_sender_http.py`, `test_run_cycle_e2e.py`) | Таймаутятся без реального backend — исключены из прогона |
+| X11-специфичные тесты без X11 | 2 файла с X11-зависимостью — пропущены, помечены «не переносить» |
+| Производительность на целевом KSO | Нет целевого железа |
+
+### Recommendation: EDGE-002 (not PLAYER-IMPORT-001)
+
+**Why not PLAYER-IMPORT-001:**
+- Старый player/sidecar доказал работоспособность (589 тестов, 100% pass)
+- Переносить код сейчас нельзя — нет enterprise manifest endpoint. Player/sidecar завязаны на manifest/media URLs, которых в enterprise ещё нет.
+- EDGE-002 закрывает gap #1 (manifest delivery) → появляется контракт, под который можно адаптировать player.
+- Последовательность: EDGE-002 (manifest) → EDGE-003 (PoP ingestion) → EDGE-004 (heartbeat) → PLAYER-IMPORT-001 (перенос адаптированного кода).
+- PLAYER-AUD-001 дал полную карту для планирования, но не для переноса.
+
+### Transfer summary
+
+- **Перенести как есть:** 16 компонентов (kill-switch, safety gate, session, simulator, render shell, profiles, snapshot writer, local demo, player_readiness, retry_backoff, PoP pickup/rotation, local_config, atomic_io, safe_logger, portrait_smoke)
+- **Адаптировать:** 24 компонента (runtime gate, playlist, PoP writer, display cycle, daemon/loop, visible runtime, CLI×2, events, interaction hide, run_cycle, auth, manifest/媒体 sync, PoP send/batch, heartbeat, runtime/media config, HTTP client, pop_payload)
+- **Не переносить:** 3 компонента (X11 renderer/proof, secret_store)
+
 ## EDGE-001 — Device Onboarding Contract ✅ RESOLVED (hardened 2026-07-17)
 
 - **Verdict v2: active code + existing fingerprint → 403 FINGERPRINT_CONFLICT. Idempotent only for used code + same device_id.**
