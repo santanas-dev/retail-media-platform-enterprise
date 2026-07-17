@@ -115,6 +115,7 @@ def bp2_fixtures(db_available):
     ; DELETE FROM user_roles WHERE scope_id LIKE 'beh-bp2-%'
     ; DELETE FROM local_credentials WHERE user_id IN (SELECT id FROM users WHERE username = 'ivan-bp2@test.local')
     ; DELETE FROM audit_events_operational WHERE actor_user_id IN (SELECT id FROM users WHERE username = 'ivan-bp2@test.local') OR target_id IN (SELECT id FROM users WHERE username = 'ivan-bp2@test.local')
+    ; DELETE FROM refresh_sessions WHERE user_id IN (SELECT id FROM users WHERE username = 'ivan-bp2@test.local')
     ; DELETE FROM users WHERE username = 'ivan-bp2@test.local'
     ; DELETE FROM advertiser_organizations WHERE id LIKE 'beh-bp2-%'
 
@@ -212,6 +213,7 @@ def bp2_fixtures(db_available):
     ; DELETE FROM user_roles WHERE scope_id LIKE 'beh-bp2-%'
     ; DELETE FROM local_credentials WHERE user_id IN (SELECT id FROM users WHERE username = 'ivan-bp2@test.local')
     ; DELETE FROM audit_events_operational WHERE actor_user_id IN (SELECT id FROM users WHERE username = 'ivan-bp2@test.local') OR target_id IN (SELECT id FROM users WHERE username = 'ivan-bp2@test.local')
+    ; DELETE FROM refresh_sessions WHERE user_id IN (SELECT id FROM users WHERE username = 'ivan-bp2@test.local')
     ; DELETE FROM users WHERE username = 'ivan-bp2@test.local'
     ; DELETE FROM advertiser_organizations WHERE id LIKE 'beh-bp2-%'
     """
