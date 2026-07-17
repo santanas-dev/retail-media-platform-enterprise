@@ -38,6 +38,7 @@ BRIEF_B = "beh-018-brief-b-0000000000001"
 AUTH_PROVIDER = "local_advertiser"
 USER_SCOPED_A = "beh-018-usr-scoped-a-00000001"
 USER_SCOPED_A2 = "beh-018-usr-scoped-a2-00000001"
+USER_NO_SCOPE = "beh-018-usr-no-scope-000001"
 
 
 def _token(user_id: str) -> str:
@@ -279,8 +280,8 @@ class TestADR018MultitenancyRLS:
     def test_direct_db_rls_proof_retailer_isolation(self):
         """Connect as retail_media_app (NOBYPASSRLS).
 
-        SET LOCAL app.rmp_scope_retailer_ids = RET_A → RET_A rows, NOT RET_B.
-        SET LOCAL app.rmp_scope_retailer_ids = RET_B → RET_B rows, NOT RET_A.
+        campaign_briefs uses TWO_LEVEL RLS (retailer_id AND advertiser_organization_id).
+        SET LOCAL both scopes → scope A returns A rows, NOT B rows.
         Empty scope → deny-all. Admin bypass → all rows.
         """
         import asyncpg
@@ -295,10 +296,14 @@ class TestADR018MultitenancyRLS:
         async def _prove():
             conn = await asyncpg.connect(APP_DB_URL)
             try:
-                # ── Scope RET_A ──
+                # -- Scope RET_A + ORG_A/ORG_A2 --
                 await conn.execute(
                     "SELECT set_config('app.rmp_scope_retailer_ids', $1, true)",
                     RET_A,
+                )
+                await conn.execute(
+                    "SELECT set_config('app.rmp_scope_advertiser_ids', $1, true)",
+                    f"{ORG_A},{ORG_A2}",
                 )
                 await conn.execute(
                     "SELECT set_config('app.rmp_is_admin', 'false', true)"
@@ -311,10 +316,14 @@ class TestADR018MultitenancyRLS:
                 assert BRIEF_A2 in ids_a, f"RET_A scope missing BRIEF_A2: {ids_a}"
                 assert BRIEF_B not in ids_a, f"RET_A scope leaked BRIEF_B: {ids_a}"
 
-                # ── Scope RET_B ──
+                # -- Scope RET_B + ORG_B --
                 await conn.execute(
                     "SELECT set_config('app.rmp_scope_retailer_ids', $1, true)",
                     RET_B,
+                )
+                await conn.execute(
+                    "SELECT set_config('app.rmp_scope_advertiser_ids', $1, true)",
+                    ORG_B,
                 )
                 rows_b = await conn.fetch(
                     "SELECT id FROM campaign_briefs ORDER BY id"
@@ -324,9 +333,12 @@ class TestADR018MultitenancyRLS:
                 assert BRIEF_A not in ids_b, f"RET_B scope leaked BRIEF_A: {ids_b}"
                 assert BRIEF_A2 not in ids_b, f"RET_B scope leaked BRIEF_A2: {ids_b}"
 
-                # ── Empty scope → deny-all ──
+                # -- Empty scope → deny-all --
                 await conn.execute(
                     "SELECT set_config('app.rmp_scope_retailer_ids', '', true)"
+                )
+                await conn.execute(
+                    "SELECT set_config('app.rmp_scope_advertiser_ids', '', true)"
                 )
                 await conn.execute(
                     "SELECT set_config('app.rmp_is_admin', 'false', true)"
@@ -338,9 +350,12 @@ class TestADR018MultitenancyRLS:
                     f"Empty scope should deny all, got: {[r['id'] for r in rows_empty]}"
                 )
 
-                # ── Admin bypass ──
+                # -- Admin bypass --
                 await conn.execute(
                     "SELECT set_config('app.rmp_scope_retailer_ids', '', true)"
+                )
+                await conn.execute(
+                    "SELECT set_config('app.rmp_scope_advertiser_ids', '', true)"
                 )
                 await conn.execute(
                     "SELECT set_config('app.rmp_is_admin', 'true', true)"
