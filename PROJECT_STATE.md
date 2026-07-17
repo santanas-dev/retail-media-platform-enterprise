@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 512cca9     | 36e493c         | ADR-018 behavioural proof strengthened — 8 tests, CI #29579774858 ✅ (34/34) |
+| develop | 48e1f7d     | (next)         | EDGE-001 device onboarding — 9 tests, CI #29581038157 ✅ (34/34) |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -113,8 +113,23 @@
 
 ## Next Active Workstream
 
-**ADR-018-IMPL-001 ✅ RESOLVED** — CI #29575414679 ✅ (34/34, incl. Behavioural PostgreSQL ADR-008).
-Следующий workstream: Edge/player (фаза 1).
+**EDGE-001 ✅ RESOLVED** — CI #29581038157 ✅ (34/34, incl. Behavioural PostgreSQL ADR-008).
+Следующий workstream: EDGE-002 manifest delivery hardening / heartbeat foundation.
+
+## EDGE-001 — Device Onboarding Contract ✅ RESOLVED
+
+- **Verdict: device_code + hardware_fingerprint → device identity + access_token.**
+- **Model:** `DeviceOnboardingCode` (54th table) — one-time CSPRNG code bound to retailer, optional store/device_type. Lifecycle: active→used (expired/revoked reject).
+- **API:**
+  - `POST /api/v1/device/onboard` — public (no JWT), device_code + hardware_fingerprint → device_id + access_token (device JWT, auth_provider=device)
+  - `POST /api/v1/identity/device-codes` — admin creates onboarding codes (retailer-scoped, configurable TTL)
+- **Fail-closed:** invalid/expired/revoked/used code → 403. Cross-retailer: code from retailer A cannot onboard in retailer B.
+- **Idempotent:** same code + same fingerprint returns existing device identity + token.
+- **ADR-018 compliance:** `DeviceOnboardingCode.retailer_id` NOT NULL. `PhysicalDevice.retailer_id` added to ORM model. Onboarding assigns retailer from code, not from client.
+- **Table count:** 53→54. REQUIRED_TABLES updated.
+- **Unit tests (9/9):** success, invalid/expired/revoked/used rejection, fingerprint conflict, idempotent (×2), admin code creation.
+- **Deferred:** real certificate issuance (placeholder only), device RLS behavioral tests (no new RLS policies needed — uses existing `physical_devices`), heartbeat/PoP/manifest (separate tasks).
+- **CI:** #29581038157 ✅ (34/34 green, incl. Behavioural PostgreSQL + ADR-008).
 
 ## ADR-018-IMPL-001 — Multitenancy Foundation ✅ RESOLVED
 
