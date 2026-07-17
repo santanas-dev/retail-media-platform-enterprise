@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | da5a0d8     | e116133         | BP-002 follow-up — CI #29564594270 ✅ (34/34, behavioural) |
+| develop | 61004f4     | _TBD_          | BP-003 portal shell — CI #29567469569 ✅ (34/34) |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -86,7 +86,18 @@
 
 ## Next Active Workstream
 
-**None** — BP-002 follow-up completed; awaiting next prioritisation.
+**None** — BP-003 completed; awaiting next prioritisation.
+
+## BP-003 — Advertiser Portal Shell / «Мой кабинет» ✅ RESOLVED
+
+- **Verdict: advertiser dashboard with real org/user data, nav, honest empty states.**
+- **Backend:** `/me` now returns `advertiser_organization_id` + `advertiser_organization` (resolved from scoped user_role in `get_advertiser_org_for_user` repo function). Graceful fallback for mock DB tests.
+- **DashboardPage:** org card (legal name, display name, code, status badge) + user card (display name, login, access type, provider) + permissions list.
+- **Navigation:** Кабинет, Кампании, Креативы, Документы (deferred), Поддержка (deferred), Профиль.
+- **Empty states:** DocumentsPlaceholderPage, SupportPlaceholderPage — честные формулировки без обещаний.
+- **Frontend tests:** 5 dashboard tests (org info, no-org, loading, expired session, permissions).
+- **Backend:** 85 tests (incl. /me tests). **Admin-web:** 150/150. **Advertiser-web:** 84/84 + 2 skipped.
+- Payload SHA: 61004f4. CI: #29567469569 ✅ (34/34 green, incl. Behavioural PostgreSQL).
 
 ## BP-002 — Advertiser Invite / Access Activation ✅ RESOLVED (follow-up closure)
 
