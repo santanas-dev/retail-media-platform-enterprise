@@ -111,8 +111,8 @@ def e002fu_setup():
     """))
     # Create a minimal advertiser org for FK constraint
     asyncio.run(_run_sql("""
-    INSERT INTO advertiser_organizations (id, code, legal_name, status, retailer_id)
-    VALUES ('beh-e002fu-org-01', 'E002FU-ORG', 'Test Org', 'active', '""" + RET_A + """')
+    INSERT INTO advertiser_organizations (id, code, legal_name, display_name, status, retailer_id)
+    VALUES ('beh-e002fu-org-01', 'E002FU-ORG', 'Test Org', 'Test Org Display', 'active', '""" + RET_A + """')
     ON CONFLICT (id) DO NOTHING
     """))
     # Create a minimal campaign for FK constraint
