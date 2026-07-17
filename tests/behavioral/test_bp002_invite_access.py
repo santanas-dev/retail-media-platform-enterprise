@@ -105,7 +105,6 @@ def bp2_fixtures(db_available):
     -- Cleanup previous BP-002 test data
     ; DELETE FROM advertiser_invites WHERE id LIKE 'beh-bp2-%'
     ; DELETE FROM advertiser_applications WHERE id LIKE 'beh-bp2-%'
-    ; DELETE FROM advertiser_organizations WHERE id LIKE 'beh-bp2-%'
     ; DELETE FROM refresh_sessions WHERE user_id LIKE 'beh-bp2-%'
     ; DELETE FROM advertiser_user_memberships WHERE user_id LIKE 'beh-bp2-%'
     ; DELETE FROM local_credentials WHERE user_id LIKE 'beh-bp2-%'
@@ -113,6 +112,7 @@ def bp2_fixtures(db_available):
     ; DELETE FROM audit_events_operational WHERE actor_user_id LIKE 'beh-bp2-%'
        OR target_id LIKE 'beh-bp2-%'
     ; DELETE FROM users WHERE id LIKE 'beh-bp2-%'
+    ; DELETE FROM advertiser_organizations WHERE id LIKE 'beh-bp2-%'
 
     -- Two advertiser organizations
     ; INSERT INTO advertiser_organizations (id, code, legal_name, display_name, status) VALUES
@@ -197,7 +197,6 @@ def bp2_fixtures(db_available):
     cleanup_sql = f"""
     DELETE FROM advertiser_invites WHERE id LIKE 'beh-bp2-%'
     ; DELETE FROM advertiser_applications WHERE id LIKE 'beh-bp2-%'
-    ; DELETE FROM advertiser_organizations WHERE id LIKE 'beh-bp2-%'
     ; DELETE FROM refresh_sessions WHERE user_id LIKE 'beh-bp2-%'
     ; DELETE FROM advertiser_user_memberships WHERE user_id LIKE 'beh-bp2-%'
     ; DELETE FROM local_credentials WHERE user_id LIKE 'beh-bp2-%'
@@ -205,6 +204,7 @@ def bp2_fixtures(db_available):
     ; DELETE FROM audit_events_operational WHERE actor_user_id LIKE 'beh-bp2-%'
        OR target_id LIKE 'beh-bp2-%'
     ; DELETE FROM users WHERE id LIKE 'beh-bp2-%'
+    ; DELETE FROM advertiser_organizations WHERE id LIKE 'beh-bp2-%'
     """
     asyncio.run(_run_sql(cleanup_sql))
 
@@ -274,7 +274,7 @@ class TestInviteAcceptCreatesRealAccess:
 
         # Before: no BP-002 user
         users_before = _query_one(
-            "SELECT COUNT(*) AS cnt FROM users WHERE id LIKE 'beh-bp2-%'"
+            "SELECT COUNT(*) AS cnt FROM users WHERE username = 'ivan-bp2@test.local'"
         )
         assert users_before["cnt"] == 0, "No BP-002 users should exist before accept"
 
@@ -286,10 +286,11 @@ class TestInviteAcceptCreatesRealAccess:
         assert resp.status_code == 200, resp.text
         assert resp.json()["status"] == "ok"
 
-        # After: user created
+        # After: user created (username = contact email from the invite)
         user = _query_one(
             "SELECT id, username, display_name, auth_provider, status "
-            "FROM users WHERE id LIKE 'beh-bp2-%'"
+            "FROM users WHERE username = :username",
+            {"username": _CONTACT_EMAIL},
         )
         assert user is not None, "User should exist after accept"
         assert user["auth_provider"] == "local_advertiser"
@@ -356,7 +357,7 @@ class TestInvitedAdvertiserCanLogin:
         assert resp.status_code == 200, f"Accept failed: {resp.text}"
 
         user = _query_one(
-            "SELECT username FROM users WHERE id LIKE 'beh-bp2-%'"
+            "SELECT username FROM users WHERE username = 'ivan-bp2@test.local'"
         )
         assert user is not None
         return user["username"]
@@ -422,7 +423,7 @@ class TestCrossOrgIsolation:
         assert resp.status_code == 200, f"Accept failed: {resp.text}"
 
         user = _query_one(
-            "SELECT username FROM users WHERE id LIKE 'beh-bp2-%'"
+            "SELECT username FROM users WHERE username = 'ivan-bp2@test.local'"
         )
         login_resp = self.client.post("/api/v1/auth/login", json={
             "username_or_email": user["username"],
@@ -498,7 +499,7 @@ class TestTokenReuseRejected:
 
         # Verify only ONE user created
         users = _query_all(
-            "SELECT id FROM users WHERE id LIKE 'beh-bp2-%'"
+            "SELECT id FROM users WHERE username = 'ivan-bp2@test.local'"
         )
         assert len(users) == 1, (
             f"Token reuse created {len(users)} users, expected 1"
@@ -565,7 +566,7 @@ class TestConcurrentAccept:
 
         # Verify exactly ONE user created
         users = _query_all(
-            "SELECT id, username FROM users WHERE id LIKE 'beh-bp2-%'"
+            "SELECT id, username FROM users WHERE username = 'ivan-bp2@test.local'"
         )
         assert len(users) == 1, (
             f"Concurrent accept created {len(users)} users! IDs: {[u['id'] for u in users]}"
@@ -573,18 +574,18 @@ class TestConcurrentAccept:
 
         # Verify exactly ONE credential
         creds = _query_all(
-            "SELECT id FROM local_credentials WHERE user_id LIKE 'beh-bp2-%'"
+            "SELECT id FROM local_credentials WHERE user_id IN (SELECT id FROM users WHERE username = 'ivan-bp2@test.local')"
         )
         assert len(creds) == 1, f"Expected 1 credential, got {len(creds)}"
 
         # Verify exactly ONE membership
         members = _query_all(
-            "SELECT id FROM advertiser_user_memberships WHERE user_id LIKE 'beh-bp2-%'"
+            "SELECT id FROM advertiser_user_memberships WHERE user_id IN (SELECT id FROM users WHERE username = 'ivan-bp2@test.local')"
         )
         assert len(members) == 1, f"Expected 1 membership, got {len(members)}"
 
         # Verify exactly ONE user_role
         roles = _query_all(
-            "SELECT id FROM user_roles WHERE user_id LIKE 'beh-bp2-%'"
+            "SELECT id FROM user_roles WHERE user_id IN (SELECT id FROM users WHERE username = 'ivan-bp2@test.local')"
         )
         assert len(roles) == 1, f"Expected 1 user_role, got {len(roles)}"
