@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 48e1f7d     | (next)         | EDGE-001 device onboarding — 9 tests, CI #29581038157 ✅ (34/34) |
+| develop | 48e1f7d     | ac196a1         | EDGE-001 device onboarding — 9 tests, CI #29581038157 ✅ (34/34) |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
