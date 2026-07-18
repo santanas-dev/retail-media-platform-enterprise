@@ -1079,6 +1079,7 @@ async def create_campaign(
     budget_limit_amount=None,
     budget_limit_currency: str = "RUB",
     priority: int = 0,
+    placement_basis: str = "commercial",
     scope_advertiser_ids: frozenset[str] | None = None,
 ) -> str:
     """Create a new campaign in draft status. Returns campaign id.
@@ -1108,23 +1109,24 @@ async def create_campaign(
     now = datetime.now(tz.utc)
 
     campaign = Campaign(
-        id=campaign_id,
-        advertiser_organization_id=advertiser_organization_id,
-        advertiser_brand_id=advertiser_brand_id,
-        advertiser_contract_id=advertiser_contract_id,
-        code=code,
-        name=name,
-        description=description,
-        status="draft",
-        priority=priority,
-        budget_limit_amount=budget_limit_amount,
-        budget_limit_currency=budget_limit_currency,
-        start_at=start_at,
-        end_at=end_at,
-        timezone=timezone,
-        created_by=created_by,
-        created_at=now,
-        updated_at=now,
+    id=campaign_id,
+    advertiser_organization_id=advertiser_organization_id,
+    advertiser_brand_id=advertiser_brand_id,
+    advertiser_contract_id=advertiser_contract_id,
+    code=code,
+    name=name,
+    description=description,
+    status="draft",
+    priority=priority,
+    budget_limit_amount=budget_limit_amount,
+    budget_limit_currency=budget_limit_currency,
+    start_at=start_at,
+    end_at=end_at,
+    timezone=timezone,
+    placement_basis=placement_basis,
+    created_by=created_by,
+    created_at=now,
+    updated_at=now,
     )
     session.add(campaign)
 

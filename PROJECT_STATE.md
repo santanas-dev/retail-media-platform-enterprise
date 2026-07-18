@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (RECONCILE-001 — roadmap overclaims removed, 0 violations)
+**Last updated:** 2026-07-18 (G1-FIX — campaign.create reachable + placement_basis + green smoke)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -542,8 +542,16 @@ UI-TRUTH-BOOTSTRAP ✅ **RESOLVED** — user-journeys.md canonicalised + Done Ga
 
 | ID | Task | Status |
 |----|------|--------|
-| G1-FIX | Next: add «Создать кампанию» button + placement basis field + green campaign.create smoke | 🚧 awaiting prioritisation |
+| G2-FIX | Next: user.assign_roles UI + green smoke (closes P0 G2) | 🚧 awaiting prioritisation |
 | PLAYER-IMPORT-001 | Historical recommendation (PLAYER-AUD-001) | ⏸️ deferred — not active next |
+
+## G1-FIX — Campaign Create Reachable + Placement Basis ✅ RESOLVED
+
+- **UI:** Кнопка «Создать кампанию» (`data-testid="campaign-create-open"`) в CampaignListPage — видна всегда, ведёт на `/campaigns/new`.
+- **Placement basis:** обязательное поле в форме создания (dropdown: commercial/internal/compensation/test). Сохраняется в БД (миграция 026, модель, схема, API).
+- **Smoke:** `test_uismoke__campaign__create` → зелёный (login → клик «Создать кампанию» → форма → submit → проверка).
+- **Registry:** campaign.create → status: reachable.
+- **Next:** G2-FIX — user.assign_roles UI + smoke.
 
 ## RECONCILE-001 — Roadmap Overclaims Removed ✅ RESOLVED
 

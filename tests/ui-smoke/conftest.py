@@ -15,14 +15,18 @@ if not _RUN_SMOKE:
         return True
 
     # Stub fixtures that won't be used (pytest still imports conftest)
-    def _stub():
+    def _stub(*args, **kwargs):
         pass
 
     smoke_page = _stub
     browser_context_args = _stub
     login_as_break_glass_admin = _stub
     navigate_to_campaigns = _stub
-    try_find_create_campaign_button = _stub
+    click_create_campaign_button = _stub
+    choose_first_contract = _stub
+    fill_campaign_code_and_name = _stub
+    submit_campaign_form = _stub
+    verify_campaign_created = _stub
 
 else:
     import pytest
@@ -63,21 +67,27 @@ else:
         campaigns_link.click(force=True)
         page.wait_for_load_state("networkidle")
 
-    def try_find_create_campaign_button(page: Page) -> None:
-        selectors = [
-            'text="Создать кампанию"',
-            'text="Новая кампания"',
-            'a[href="/campaigns/new"]',
-            'button:has-text("Создать")',
-            '[data-testid="create-campaign-btn"]',
-        ]
-        for sel in selectors:
-            if page.locator(sel).count() > 0:
-                return
-        raise AssertionError(
-            "G1 CONFIRMED: No 'Create Campaign' button found on campaign list page. "
-            "CampaignListPage renders text 'Создайте первую кампанию' but provides "
-            "no clickable element to navigate to /campaigns/new. "
-            "Tested selectors: "
-            + ", ".join(selectors)
-        )
+    def click_create_campaign_button(page: Page) -> None:
+        btn = page.locator('[data-testid="campaign-create-open"]')
+        expect(btn).to_be_visible(timeout=5000)
+        btn.click()
+        page.wait_for_url("**/campaigns/new", timeout=10000)
+        page.wait_for_load_state("networkidle")
+
+    def choose_first_contract(page: Page) -> None:
+        page.select_option("#c-contract", index=1)
+
+    def fill_campaign_code_and_name(
+        page: Page, code: str, name: str
+    ) -> None:
+        page.fill("#c-code", code)
+        page.fill("#c-name", name)
+
+    def submit_campaign_form(page: Page) -> None:
+        page.click('button[type="submit"]')
+
+    def verify_campaign_created(page: Page) -> None:
+        page.wait_for_url("**/campaigns/**", timeout=15000)
+        page.wait_for_load_state("networkidle")
+        # Should be on campaign detail page — look for campaign name
+        expect(page.locator("h2")).to_contain_text("Smoke", timeout=5000)

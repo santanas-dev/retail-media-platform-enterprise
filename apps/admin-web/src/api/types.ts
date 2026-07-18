@@ -31,6 +31,7 @@ export interface CampaignOut {
   start_at: string | null;
   end_at: string | null;
   timezone: string;
+  placement_basis: string;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -321,9 +322,10 @@ export interface CampaignCreateRequest {
   budget_limit_amount: number | null;
   budget_limit_currency: string;
   priority: number;
+  placement_basis: string;
 }
 
-// ── Flight Mutation ──
+// ── Campaign Update Request ──
 
 export interface CampaignFlightCreateRequest {
   name: string | null;

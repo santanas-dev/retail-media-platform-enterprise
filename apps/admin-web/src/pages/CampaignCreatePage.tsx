@@ -57,6 +57,7 @@ export default function CampaignCreatePage() {
   const [budgetAmount, setBudgetAmount] = useState("");
   const [budgetCurrency] = useState("RUB");
   const [priority, setPriority] = useState("0");
+  const [placementBasis, setPlacementBasis] = useState("commercial");
 
   // Submit state
   const [submitting, setSubmitting] = useState(false);
@@ -209,6 +210,7 @@ export default function CampaignCreatePage() {
         budget_limit_amount: budgetAmount ? parseFloat(budgetAmount) : null,
         budget_limit_currency: budgetCurrency,
         priority: parseInt(priority, 10) || 0,
+        placement_basis: placementBasis,
       };
 
       const created = await createCampaign(body);
@@ -418,6 +420,25 @@ export default function CampaignCreatePage() {
               </div>
             </>
           )}
+        </fieldset>
+
+        {/* ── Placement basis ── (G1-FIX) */}
+        <fieldset style={css.fieldset}>
+          <legend style={css.legend}>Основание размещения</legend>
+          <div style={css.fieldRow}>
+            <select
+              id="c-placement-basis"
+              data-testid="campaign-create-placement-basis"
+              value={placementBasis}
+              onChange={(e) => setPlacementBasis(e.target.value)}
+              style={css.select}
+            >
+              <option value="commercial">Коммерческое размещение</option>
+              <option value="internal">Внутреннее размещение</option>
+              <option value="compensation">Компенсация / make-good</option>
+              <option value="test">Тестовое размещение</option>
+            </select>
+          </div>
         </fieldset>
 
         {/* ── Schedule ── */}

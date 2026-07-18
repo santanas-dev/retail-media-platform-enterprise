@@ -29,14 +29,14 @@ features:
     path:
       - login (campaign_manager или break-glass admin)
       - Кампании (sidebar)
-      - Создать кампанию (button)
+      - Создать кампанию (data-testid="campaign-create-open")
       - заполнить форму: название, рекламодатель, контракт, бренд, основание размещения
       - Сохранить → редирект на карточку кампании (draft)
     smoke: test_uismoke__campaign__create
     priority: P0
     roles: [system_admin, campaign_manager]
-    status: blocked
-    gap: "G1: CampaignListPage рендерит текст 'Создайте первую кампанию', но не содержит кнопки/ссылки на /campaigns/new. Маршрут существует, но живой пользователь не может дойти кликами."
+    status: reachable
+    gap: ""
 
   - id: campaign.edit
     frontend: admin-web

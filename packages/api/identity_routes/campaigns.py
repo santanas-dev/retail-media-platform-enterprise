@@ -171,6 +171,7 @@ async def create_campaign_endpoint(
             budget_limit_amount=body.budget_limit_amount,
             budget_limit_currency=body.budget_limit_currency,
             priority=body.priority,
+            placement_basis=body.placement_basis,
             scope_advertiser_ids=_scope_ids(scope),
         )
     except CrossOrgReferenceError as e:

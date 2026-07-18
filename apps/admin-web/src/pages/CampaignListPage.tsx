@@ -143,7 +143,22 @@ export default function CampaignListPage() {
 
   return (
     <div>
-      <PageHeader title="Кампании" />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+        <PageHeader title="Кампании" />
+        <button
+          type="button"
+          data-testid="campaign-create-open"
+          onClick={() => navigate("/campaigns/new")}
+          style={{
+            padding: "0.5rem 1rem", fontSize: "var(--rmp-font-size-base)",
+            background: "var(--rmp-primary-600)", color: "#fff",
+            border: "none", borderRadius: "var(--rmp-radius-sm)",
+            cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
+          }}
+        >
+          Создать кампанию
+        </button>
+      </div>
       <FilterChips current={statusFilter} onChange={setStatusFilter} />
       <table className="rmp-table">
         <thead>

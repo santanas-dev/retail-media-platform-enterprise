@@ -713,6 +713,7 @@ class Campaign(Base):
     start_at = Column(DateTime(timezone=True), nullable=True)
     end_at = Column(DateTime(timezone=True), nullable=True)
     timezone = Column(String(64), nullable=False, default="Europe/Moscow")
+    placement_basis = Column(String(32), nullable=False, default="commercial")
     created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)

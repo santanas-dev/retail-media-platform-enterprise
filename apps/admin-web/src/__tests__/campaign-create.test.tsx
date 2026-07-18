@@ -224,6 +224,7 @@ describe("CampaignCreatePage", () => {
       start_at: "2026-04-01T00:00:00.000Z",
       end_at: "2026-05-31T00:00:00.000Z",
       timezone: "Europe/Moscow",
+      placement_basis: "commercial",
       created_by: "u1",
       created_at: "2026-03-20T10:00:00Z",
       updated_at: "2026-03-20T10:00:00Z",
