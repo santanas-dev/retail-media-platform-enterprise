@@ -2394,6 +2394,7 @@ async def record_device_heartbeat(
     result.health_state = health_state
     result.runtime_version = runtime_version[:64] if runtime_version else ""
     result.player_version = player_version[:128] if player_version else ""
+    await session.flush()
     return True
 
 
