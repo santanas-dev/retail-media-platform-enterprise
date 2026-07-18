@@ -186,7 +186,13 @@ class TestEDGE004HeartbeatEndpoint:
         import asyncpg
 
         async def _check():
-            url = os.environ.get("DATABASE_URL", "").strip()
+            # Use owner-role URL for direct DB verification (fixtures write via
+            # BEHAVIORAL_DB_URL; under NOBYPASSRLS the app role can't see
+            # physical_devices without RLS context set).
+            url = (
+                os.environ.get("BEHAVIORAL_DB_URL")
+                or os.environ.get("DATABASE_URL", "")
+            ).strip()
             if not url:
                 pytest.skip("DATABASE_URL not set")
             url = url.replace("postgresql+asyncpg://", "postgresql://")
@@ -309,7 +315,10 @@ class TestEDGE004HeartbeatEndpoint:
         import asyncpg
 
         async def _check():
-            url = os.environ.get("DATABASE_URL", "").strip()
+            url = (
+                os.environ.get("BEHAVIORAL_DB_URL")
+                or os.environ.get("DATABASE_URL", "")
+            ).strip()
             if not url:
                 pytest.skip("DATABASE_URL not set")
             url = url.replace("postgresql+asyncpg://", "postgresql://")
