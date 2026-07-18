@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (G2-FIX — user.assign_roles reachable + green UI-smoke)
+**Last updated:** 2026-07-19 (G2-FIX-FU2 — smoke hardened + PROJECT_STATE hygiene)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -13,7 +13,8 @@ UI-TRUTH-001A-FU ✅ **RESOLVED** — State hygiene + CI proof, CI #29656035552.
 UI-TRUTH-BOOTSTRAP ✅ **RESOLVED** — user-journeys.md canonicalised + Done Gate codified in AGENTS.md.
 G1-FIX ✅ **RESOLVED** — campaign.create reachable + placement_basis (d4f91e4).
 G1-FIX-FU ✅ **RESOLVED** — placement_basis validation + RBAC button visibility (0b9198d).
-G2-FIX ✅ **RESOLVED** — user.assign_roles reachable, green UI-smoke, consistency 0.
+G2-FIX ✅ **RESOLVED** — user.assign_roles reachable, backend+frontend+unit tests green, CI #29661909182 (35/35).
+G2-FIX-FU2 ✅ **RESOLVED** — smoke hardened (deterministic role, specific assert), PROJECT_STATE PS-001 hygiene, honest smoke-proof.
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -22,7 +23,7 @@ G2-FIX ✅ **RESOLVED** — user.assign_roles reachable, green UI-smoke, consist
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 81bc2bb | 81bc2bb | G2-FIX — user.assign_roles reachable + green smoke |
+| develop | 81bc2bb | TBD | G2-FIX — user.assign_roles reachable |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -548,6 +549,17 @@ G2-FIX ✅ **RESOLVED** — user.assign_roles reachable, green UI-smoke, consist
 | G2-FIX | ✅ resolved — user.assign_roles reachable + green smoke | ✅ RESOLVED |
 | G3-FIX | Next: advertiser.create_org UI + green smoke (closes P0 G3) | 🚧 awaiting prioritisation |
 | PLAYER-IMPORT-001 | Historical recommendation (PLAYER-AUD-001) | ⏸️ deferred — not active next |
+
+## G2-FIX-FU2 — Smoke Hardened + PROJECT_STATE Hygiene ✅ RESOLVED
+
+- **Smoke test hardened:** `test_uismoke__user__assign_roles` теперь детерминированный:
+  - Выбирает роль `operator` по `value` (role_code), не по lambda или index.
+  - Проверяет, что `TARGET_ROLE_CODE = "operator"` доступен в dropdown.
+  - После save assert: конкретный `role_code` появился в списке текущих ролей.
+  - Никаких `select_option(label=lambda ...)`, никаких API-вызовов, только /login через page.goto().
+- **PROJECT_STATE hygiene:** дата → 2026-07-19, PS-001 checkpoint (payload SHA ≠ state/docs SHA).
+- **Smoke-proof честность:** UI-smoke = manual-only (UI_SMOKE_RUN=1), не входит в ordinary CI. Proof требует здорового clean-boot стека.
+- **Next:** G3-FIX — advertiser.create_org.
 
 ## G2-FIX — User Assign Roles Reachable + Green Smoke ✅ RESOLVED
 
