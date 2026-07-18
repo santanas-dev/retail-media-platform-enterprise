@@ -1,12 +1,13 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (EDGE-004 ✅ — Device Heartbeat / Health Endpoint, CI #29652842195 green)
+**Last updated:** 2026-07-18 (EDGE-004-FU ✅ — heartbeat proof hardened, honest state)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
 EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof (admin bypass), CI #29649000788 green (6/6).
 EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOBYPASSRLS), CI #29652235623 green (5/5).
-EDGE-004 ✅ **RESOLVED** — Device Heartbeat / Health Endpoint, CI #29652842195 green (10/10 EDGE-004, 346 passed).
+EDGE-004 ✅ **RESOLVED** — Device Heartbeat initial implementation.
+EDGE-004-FU ✅ **RESOLVED** — Heartbeat proof hardened (12 tests, no admin bypass, honest state).
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -15,7 +16,7 @@ EDGE-004 ✅ **RESOLVED** — Device Heartbeat / Health Endpoint, CI #2965284219
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 082f9aa | 082f9aa | EDGE-004 ✅ — Device Heartbeat / Health Endpoint |
+| develop | 082f9aa | _this_commit_ | EDGE-004-FU ✅ — proof hardened, honest state |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -414,7 +415,7 @@ EDGE-004 ✅ **RESOLVED** — Device Heartbeat / Health Endpoint, CI #2965284219
 
 ## EDGE-004 — Device Heartbeat / Health Endpoint ✅ RESOLVED
 
-- **Verdict: device heartbeat with RLS security proof under NOBYPASSRLS.**
+- **Verdict: device heartbeat with RLS security proof under NOBYPASSRLS. Proof hardened in EDGE-004-FU.**
 - **Endpoint:** `POST /api/v1/device/heartbeat` — device-gateway (port 8001)
 - **Auth:** device JWT required (auth_provider="device", sub=device_id); user/admin tokens → 401
 - **RLS context:** `set_device_rls_context` (EDGE-002-FU v4) sets retailer scope on request session before handler runs
@@ -424,10 +425,11 @@ EDGE-004 ✅ **RESOLVED** — Device Heartbeat / Health Endpoint, CI #2965284219
 - **Fail-closed:** inactive/revoked device → 403, missing/invalid/non-device token → 401, nonexistent → 404
 - **Response:** `{"status": "accepted", "server_time": "<ISO>", "health_state": "<state>"}`
 - **Deferred:** command channel / remote control, UI fleet health dashboard, staged rollout
-- **Tests (10/10):**
-  - 7 endpoint: device A → 200 + health_state updated, defaults healthy, user token 401, no auth 401, invalid token 401, inactive device 403, device A cannot touch device B, client device_id spoof ignored
-  - 3 direct DB RLS: bootstrap sees only device A, no bootstrap sees zero, bootstrap B sees device B not A
-- **CI:** #29652842195 ✅ (34/34 green — Unit Tests, Behavioural ADR-008, all gates)
+- **Tests (12/12, no admin bypass):**
+  - 9 endpoint: device A → 200, defaults healthy, **strict heartbeat DB proof (pre-read NULL → POST → post-read: non-null + payload match + timestamp freshness)**, user token 401, no auth 401, invalid token 401, inactive device 403, device A cannot touch device B, client device_id spoof ignored
+  - 3 direct DB RLS: bootstrap A → sees device A not B, bootstrap B → sees device B not A, no bootstrap → sees zero
+- **CI (initial):** #29652842195 ✅ (34/34 green)
+- **Payload SHA:** `082f9aa`
 
 ## EDGE-001 — Device Onboarding Contract ✅ RESOLVED (hardened 2026-07-17)
 
@@ -536,7 +538,7 @@ EDGE-004 ✅ **RESOLVED** — Device Heartbeat / Health Endpoint, CI #2965284219
 
 | ID | Task | Status |
 |----|------|--------|
-| —   | —     | —      |
+| PLAYER-IMPORT-001 | Next Active Workstream after EDGE-004-FU | 🚧 planned |
 
 ## Environment
 

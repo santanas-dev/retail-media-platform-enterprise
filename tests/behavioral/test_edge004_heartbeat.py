@@ -182,7 +182,7 @@ class TestEDGE004HeartbeatEndpoint:
         assert data["health_state"] == "healthy"
 
     def test_heartbeat_updates_last_heartbeat_at_in_db(self):
-        """After heartbeat, last_heartbeat_at is set (not NULL)."""
+        """Send heartbeat → DB row updated: last_heartbeat_at non-null, payload matches."""
         import asyncpg
 
         async def _check():
@@ -192,32 +192,62 @@ class TestEDGE004HeartbeatEndpoint:
             url = url.replace("postgresql+asyncpg://", "postgresql://")
             conn = await asyncpg.connect(url)
             try:
-                # Check before
-                row = await conn.fetchrow(
-                    "SELECT last_heartbeat_at FROM physical_devices WHERE id = $1",
-                    DEVICE_A_ID,
-                )
-                heartbeat_before = row[0] if row else None
-
-                # Send heartbeat via HTTP
-                # (already done if test ran first, but we check the DB anyway)
-
-                row_after = await conn.fetchrow(
+                # ── Pre-read: last_heartbeat_at must be NULL (never heartbeat before) ──
+                before = await conn.fetchrow(
                     "SELECT last_heartbeat_at, health_state, runtime_version, "
                     "player_version FROM physical_devices WHERE id = $1",
                     DEVICE_A_ID,
                 )
-                # After any valid test, these should be set
-                return row_after
+                assert before is not None, "Device A should exist in DB"
+                assert before[0] is None, (
+                    f"Expected NULL before heartbeat, got {before[0]}"
+                )
+
+                # ── Action: send heartbeat via real endpoint ──
+                resp = self.client.post(
+                    "/api/v1/device/heartbeat",
+                    json={
+                        "health_state": "degraded",
+                        "runtime_version": "rt-1.2.3",
+                        "player_version": "player-build-99",
+                    },
+                    headers=_auth(_token(DEVICE_A_ID)),
+                )
+                assert resp.status_code == 200, (
+                    f"Heartbeat POST expected 200, got {resp.status_code}: {resp.text[:200]}"
+                )
+
+                # ── Post-read: assert DB reflects the heartbeat ──
+                after = await conn.fetchrow(
+                    "SELECT last_heartbeat_at, health_state, runtime_version, "
+                    "player_version FROM physical_devices WHERE id = $1",
+                    DEVICE_A_ID,
+                )
+                assert after is not None
+                assert after[0] is not None, (
+                    "last_heartbeat_at still NULL after heartbeat"
+                )
+                assert after[1] == "degraded", (
+                    f"health_state mismatch: expected 'degraded', got {after[1]}"
+                )
+                assert after[2] == "rt-1.2.3", (
+                    f"runtime_version mismatch: got {after[2]}"
+                )
+                assert after[3] == "player-build-99", (
+                    f"player_version mismatch: got {after[3]}"
+                )
+                # Timestamp must be strictly after pre-read NULL (= never set)
+                # and within last 60 seconds
+                from datetime import datetime, timezone
+                now = datetime.now(tz=timezone.utc)
+                diff = (now - after[0]).total_seconds()
+                assert 0 <= diff < 60, (
+                    f"Heartbeat timestamp too far from now: {diff:.0f}s"
+                )
             finally:
                 await conn.close()
 
-        row = asyncio.run(_check())
-        if row is not None:
-            # If a heartbeat was sent, it should have data
-            assert row[1] in ("healthy", "unknown", ""), (
-                f"Unexpected health_state: {row[1]}"
-            )
+        asyncio.run(_check())
 
     # ── Negative paths ──────────────────────────────────────────────────
 
@@ -373,6 +403,33 @@ class TestEDGE004DirectDBRLS:
                 beh_ids = [i for i in ids if i.startswith("beh-e004-")]
                 assert beh_ids == [], (
                     f"Expected empty list for beh-e004 devices (RLS deny all), got: {beh_ids}"
+                )
+            finally:
+                await conn.close()
+
+        asyncio.run(_run())
+
+    def test_bootstrap_sees_only_device_b(self):
+        """app.rmp_device_id = B → sees device B row, NOT device A."""
+        import asyncpg
+
+        async def _run():
+            conn = await asyncpg.connect(self._app_db_url())
+            try:
+                await conn.execute(
+                    "SELECT set_config('app.rmp_device_id', $1, false)",
+                    DEVICE_B_ID,
+                )
+                rows = await conn.fetch("SELECT id FROM physical_devices")
+                ids = [r[0] for r in rows]
+                assert DEVICE_B_ID in ids, (
+                    f"Device B ({DEVICE_B_ID}) not visible with bootstrap"
+                )
+                assert DEVICE_A_ID not in ids, (
+                    f"Device A ({DEVICE_A_ID}) leaked via device B bootstrap"
+                )
+                assert len(ids) == 1, (
+                    f"Expected exactly 1 device, got {len(ids)}: {ids}"
                 )
             finally:
                 await conn.close()
