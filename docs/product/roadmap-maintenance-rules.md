@@ -110,3 +110,36 @@
   PROJECT_STATE — канонический источник истины о состоянии задач.
 - После закрытия критической задачи (H0, C2, D1) проверять, что статус
   в дорожной карте обновлён и ссылается на SHA/CI run закрывающего коммита.
+
+## Синхронизация с feature-registry и UI-smoke (UI-TRUTH-001B)
+
+С **REGISTRY-EXPAND** (2026-07-18) введено правило консистентности:
+
+**Бизнес-функцию в дорожной карте запрещено помечать «✅ Готово» или
+«🟡 Готово для пилота», если соответствующие ей записи в
+`docs/product/feature-registry.yaml` имеют статус `blocked`.**
+
+Конкретно:
+- Статус `✅ Готово` / `🟡 Готово для пилота` в колонке «Статус»
+  Бизнес-функций Roadmap разрешён **только** если ВСЕ соответствующие
+  функции feature-registry имеют `status: reachable` и зелёный UI-smoke
+  (для UI-функций) или зелёный behavioral proof (для service-функций).
+- Если хотя бы одна функция домена `blocked` — статус в дорожной карте
+  должен быть не выше `🟠 Частично готово` с указанием причины в
+  колонке «Что ещё нельзя».
+- Service-функции (manifest, PoP, onboarding, heartbeat, observability)
+  проверяются по behavioral CI, а не по UI-smoke.
+
+**Автоматический сторож** (`scripts/roadmap-consistency-check.py`)
+запускается в CI как non-blocking audit job. Он находит рассинхроны
+между roadmap, registry и smoke-тестами. Режимы:
+
+- `python3 scripts/roadmap-consistency-check.py` — audit mode (exit 0)
+- `python3 scripts/roadmap-consistency-check.py --strict` — blocking mode
+  (exit 1 при нарушениях, включается после reconcile)
+
+**Порядок reconcile:**
+1. Довести UI-smoke до зелёного для P0-журнеев (G1→G4).
+2. Обновить feature-registry: `status: reachable` для закрытых журнеев.
+3. Обновить roadmap: статусы на основе registry.
+4. После полного reconcile — включить `--strict` в CI.

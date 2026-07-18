@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (REGISTRY-EXPAND-FU — smoke name sync: campaign__create)
+**Last updated:** 2026-07-18 (UI-TRUTH-001B — roadmap-consistency guard, audit mode)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -542,8 +542,31 @@ UI-TRUTH-BOOTSTRAP ✅ **RESOLVED** — user-journeys.md canonicalised + Done Ga
 
 | ID | Task | Status |
 |----|------|--------|
-| UI-TRUTH-001B | Next: roadmap-consistency guard (CI gate: no «Готово» без зелёного smoke по journey id) | 🚧 awaiting prioritisation |
+| G1-FIX | Next: add «Создать кампанию» button + green campaign.create smoke (closes P0 G1) | 🚧 awaiting prioritisation |
 | PLAYER-IMPORT-001 | Historical recommendation (PLAYER-AUD-001): player/sidecar code transfer when enterprise manifest/PoP/heartbeat endpoints are ready | ⏸️ deferred — not active next |
+
+## UI-TRUTH-001B — Roadmap-Consistency Guard (audit mode) ✅ RESOLVED
+
+- **Guard script:** `scripts/roadmap-consistency-check.py`
+  - Читает feature-registry.yaml, tests/ui-smoke/, roadmap.xlsx
+  - Проверяет: валидность registry, UI reachable без smoke, roadmap «Готово» vs registry blocked
+  - `--audit` (default): exit 0, печатает findings
+  - `--strict`: exit 1 при нарушениях (будущий CI gate)
+- **Audit runner:** `scripts/roadmap-consistency-audit.sh`
+- **CI job:** `roadmap-consistency-audit` — non-blocking (`continue-on-error: true`)
+- **Current findings (2026-07-18): 7**
+  1. «Вход сотрудников» 🟡 Готово → campaign.create/self.login blocked
+  2. «Роли и права» ✅ Готово → user.assign_roles blocked (G2)
+  3. «Личный кабинет» ✅ Готово → self.* blocked
+  4. «Создание кампаний» 🟡 Готово → campaign.create blocked (G1)
+  5. «Согласование» 🟡 Готово → campaign.approve/reject blocked
+  6. «Загрузка креативов» 🟡 Готово → creative.* blocked
+  7. «Инвентарь» ✅ Готово → inventory.* blocked
+- **Behavioral proof:**
+  - campaign.create smoke найден: `tests/ui-smoke/test_uismoke__campaign__create.py`
+  - 0 UI features с reachable без smoke
+- **Rules:** `docs/product/roadmap-maintenance-rules.md` — новая секция «Синхронизация с feature-registry и UI-smoke»
+- **Next:** G1-FIX — закрыть P0-дыру G1 (кнопка «Создать кампанию») или reconcile roadmap
 
 ## REGISTRY-EXPAND — Feature Registry Expanded to All Journeys ✅ RESOLVED
 
