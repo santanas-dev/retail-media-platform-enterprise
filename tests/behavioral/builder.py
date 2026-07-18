@@ -287,9 +287,9 @@ class BehBuilder:
         jid = self._uid("dma")
         self._exec(f"""
         INSERT INTO delivery_manifest_assets (id, manifest_id, creative_asset_id,
-            sha256_checksum, retailer_id)
+            sha256_checksum, media_type, retailer_id)
         VALUES ('{jid}', '{manifest_id}', '{asset_id}', 'sha256:deadbeef0000000000000000',
-            '{retailer_id}')
+            'image/png', '{retailer_id}')
         ON CONFLICT (id) DO NOTHING;
         """)
 
