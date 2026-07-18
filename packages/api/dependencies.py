@@ -288,6 +288,78 @@ async def get_device_id_from_token(request: Request) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Device RLS Context (EDGE-002-FU v4 — shared between device-gateway & pop)
+# ---------------------------------------------------------------------------
+
+
+async def set_device_rls_context(
+    device_id: str = Depends(get_device_id_from_token),
+    session = Depends(get_db),
+) -> None:
+    """Bootstrap device RLS context on the request session.
+
+    Production-safe bootstrap (no owner/bypass in request path):
+
+    1. Set ``app.rmp_device_id = device_id`` — RLS policy on
+       ``physical_devices`` allows SELECT when ``id`` matches this
+       session variable (migration 023).
+
+    2. Read ``retailer_id`` + ``status`` from ``physical_devices``
+       — now visible because the bootstrap policy matches the row.
+
+    3. Clear ``app.rmp_device_id`` — bootstrap served its purpose.
+
+    4. Validate status (active/online).  Reject inactive/revoked.
+
+    5. Set ``app.rmp_scope_retailer_ids = retailer_id`` so subsequent
+       tenant-scoped queries (delivery_manifests, pop_events_raw, etc.)
+       see only this retailer's data.
+
+    Under NOBYPASSRLS (CI), the app role CANNOT bypass RLS, and no
+    owner-role connection is used.  The bootstrap is a targeted,
+    single-row-gated policy, not a general privilege elevation.
+    """
+    from sqlalchemy import text
+
+    from packages.domain.repository import get_device_retailer_id_and_status
+
+    # Step 1 — bootstrap: allow reading our own device row
+    await session.execute(
+        text("SELECT set_config('app.rmp_device_id', :id, true)"),
+        {"id": device_id},
+    )
+
+    # Step 2 — read retailer_id + status (visible via bootstrap RLS)
+    row = await get_device_retailer_id_and_status(session, device_id)
+
+    # Step 3 — clear bootstrap
+    await session.execute(
+        text("SELECT set_config('app.rmp_device_id', '', true)"),
+    )
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    retailer_id, device_status = row
+    if device_status not in ("active", "online"):
+        raise HTTPException(
+            status_code=403,
+            detail="Device not authorized",
+        )
+
+    # Step 4 — set permanent retailer scope for subsequent queries
+    await session.execute(
+        text(
+            "SELECT set_config('app.rmp_scope_retailer_ids', :ids, true)"
+        ),
+        {"ids": retailer_id},
+    )
+    await session.execute(
+        text("SELECT set_config('app.rmp_is_admin', 'false', true)"),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Pagination
 # ---------------------------------------------------------------------------
 
