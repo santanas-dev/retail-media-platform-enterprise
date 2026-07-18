@@ -146,22 +146,19 @@ def _build_credentials_sql() -> tuple[str, str, str]:
     adv_hash = _hash_password(_DEV_PASSWORDS["advertiser_test"])
     sql = f"""
 -- Pilot-local bootstrap credentials (S-016 — dual auth readiness)
--- DEV ONLY — seeded when ENVIRONMENT=dev or SEED_DEV_CREDENTIALS=true.
--- In production these must be overridden via env-provided password hashes
+-- DEV ONLY — seeded when ENVIRONMENT=dev or SEED_DEV_CREDENTIALS=*** In production these must be overridden via env-provided password hashes
 -- or an external secrets manager.  See docs/runbook/clean-install-login.md.
-;
 ;
 INSERT INTO local_credentials (id, user_id, credential_type, password_hash,
     password_hash_algorithm, must_change_password, status)
 VALUES ('{SEED_BG_CREDENTIAL_ID}', '{SEED_BG_USER_ID}', 'local_break_glass',
     '{bg_hash}', 'bcrypt', true, 'active')
-ON CONFLICT (user_id) DO NOTHING;  -- Break-glass admin credential
-
+ON CONFLICT (user_id) DO NOTHING;
 INSERT INTO local_credentials (id, user_id, credential_type, password_hash,
     password_hash_algorithm, must_change_password, status)
 VALUES ('{SEED_ADV_CREDENTIAL_ID}', '{SEED_ADV_USER_ID}', 'local_advertiser',
     '{adv_hash}', 'bcrypt', true, 'active')
-ON CONFLICT (user_id) DO NOTHING;  -- Test advertiser credential (product path)
+ON CONFLICT (user_id) DO NOTHING;
 """
     return sql, bg_hash, adv_hash
 

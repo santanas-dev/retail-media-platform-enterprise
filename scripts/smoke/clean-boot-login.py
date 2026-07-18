@@ -63,10 +63,11 @@ def main() -> None:
     dc("down", "-v", "--remove-orphans")
     print("")
 
-    # Step 2: Build (no cache to ensure fresh Dockerfile)
-    print("--- Step 2: Building control-api (no cache) ---")
-    r = dc("build", "--no-cache", "control-api")
-    ok(r.returncode == 0, "build control-api")
+    # Step 2: Build both services (no cache to ensure fresh Dockerfile)
+    print("--- Step 2: Building control-api + db-setup (no cache) ---")
+    r1 = dc("build", "--no-cache", "control-api")
+    r2 = dc("build", "--no-cache", "db-setup")
+    ok(r1.returncode == 0 and r2.returncode == 0, "build control-api + db-setup")
     print("")
 
     # Step 3: Start infra
@@ -80,7 +81,7 @@ def main() -> None:
     start = time.time()
     while time.time() - start < TIMEOUT:
         try:
-            code, _ = http("GET", "/api/v1/health")
+            code, _ = http("GET", "/health/live")
             if code == 200:
                 print(f"{GREEN}PASS{NC}: control-api healthy after {int(time.time()-start)}s")
                 break
