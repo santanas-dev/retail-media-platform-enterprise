@@ -116,7 +116,44 @@
 **EDGE-001 ✅ RESOLVED** — CI #29589031870 ✅.
 **PLAYER-AUD-001 ✅ COMPLETED** — audit report.
 **EDGE-002 ✅ RESOLVED (v4 production-safe)** — app.rmp_device_id bootstrap, no owner lookup, CI #29635004193 ✅.
-Следующий workstream: **EDGE-003** — PoP ingestion endpoint.
+
+Приоритет после внешнего аудита 2026-07-18 (P0 safety first):
+1. **K1** — emergency override → manifest.
+2. **K2** — manifest signature verification before player execution.
+3. **RM1, R1, T1** — roadmap/docs/release process hygiene.
+4. **EDGE-003** — PoP ingestion endpoint (после K1/K2, если product owner не переопределит).
+
+## Verified Audit Backlog — 2026-07-18
+
+Внешний аудит 2026-07-18 проверил состояние репозитория после EDGE-002.
+Зарегистрированы подтверждённые backlog-пункты — ничего не отмечено done,
+это только регистрация.
+
+### P0 — safety / must-fix
+
+| Код | Описание | Done = |
+|-----|----------|--------|
+| **K1** | Emergency override не доходит до manifest — backend-состояние меняется, но device manifest возвращает `emergency.active=false` | Behavioural test: admin активирует emergency → следующий device manifest имеет `emergency.active=true` под NOBYPASSRLS |
+| **K2** | Manifest signature verification before player execution не доказана — server signing существует, но runtime/player verification placeholder/deferred | Tampered manifest rejected before apply/play |
+| **RM1** | Roadmap stale vs PROJECT_STATE — roadmap-ячейки не синхронизированы с фактическим статусом в PROJECT_STATE | Roadmap cells updated on both sheets, no structure changes |
+| **R1** | Release point v0.8 — зафиксировать baseline для внешнего аудита | HUMAN/Hermes release process, not code |
+| **T1** | Behavioral test data builder — тесты создают фикстуры вручную, нет переиспользуемого builder-паттерна | Новый behavioural test использует builder, существующие behavioural tests green |
+
+### P1 — important / should-fix
+
+| Код | Описание | Done = |
+|-----|----------|--------|
+| **M1** | Default retailer masks missing scope — `retailer_id DEFAULT '00000000-...'` скрывает ошибки, когда scope не установлен | Behavioural test: INSERT без scope → fails loudly |
+| **P1s** | PROJECT_STATE self-SHA/checkpoint churn — `(this commit)` placeholder и цикл amend→новый SHA | Agreed process removes placeholder/self-reference loop |
+
+### P2 — operations / cross-cutting
+
+| Код | Описание | Кто |
+|-----|----------|-----|
+| **B1** | Device fleet health/rollback before 300+ devices | Код |
+| **B2** | Read-only CI access for independent audit | HUMAN |
+| **B3** | Physical KSO or exact OS image — параллельно с EDGE-003/004 | HUMAN |
+| **B4** | PoP quality/honesty differentiation strategy | HUMAN |
 
 ## PLAYER-AUD-001 — Audit Report (2026-07-17)
 
