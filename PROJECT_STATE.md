@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-07-18 (CLEAN-BOOT-001 ✅ — clean docker boot → login smoke)
 
-RM1 ✅ **RESOLVED** — roadmap cells updated for K1/K2/emergency/signature.
+CLEAN-BOOT-001 ✅ **RESOLVED** — clean docker boot → login smoke (8/8 checks).
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -11,7 +11,7 @@ RM1 ✅ **RESOLVED** — roadmap cells updated for K1/K2/emergency/signature.
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | a16737e | a16737e | CLEAN-BOOT-001 ✅ — clean boot login smoke |
+| develop | a16737e | ddd4443 | CLEAN-BOOT-001 ✅ — clean boot login smoke |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
