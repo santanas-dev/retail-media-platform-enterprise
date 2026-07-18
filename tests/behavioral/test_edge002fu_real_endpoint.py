@@ -309,65 +309,69 @@ class TestEDGE002FUDirectDBRLS:
     - app.rmp_device_id = DEVICE_A → device B row is NOT visible
     """
 
-    @pytest.fixture(autouse=True)
-    async def _app_connection(self, db_available):
-        """Create a direct asyncpg connection as the app role (NOBYPASSRLS)."""
-        import asyncpg
+    def _app_db_url(self):
         import os
-
-        app_db_url = os.environ.get("DATABASE_URL", "").strip()
-        if not app_db_url:
+        url = os.environ.get("DATABASE_URL", "").strip()
+        if not url:
             pytest.skip("DATABASE_URL not set")
-        # asyncpg expects plain postgresql://, not postgresql+asyncpg://
-        app_db_url = app_db_url.replace("postgresql+asyncpg://", "postgresql://")
+        return url.replace("postgresql+asyncpg://", "postgresql://")
 
-        self._conn = await asyncpg.connect(app_db_url)
-        yield
-        await self._conn.close()
-
-    @pytest.mark.asyncio
-    async def test_bootstrap_sees_only_device_a(self):
+    def test_bootstrap_sees_only_device_a(self):
         """app.rmp_device_id = A → sees device A row, NOT device B."""
-        await self._conn.execute(
-            "SELECT set_config('app.rmp_device_id', $1, true)", DEVICE_A_ID,
-        )
-        try:
-            rows = await self._conn.fetch("SELECT id FROM physical_devices")
-            ids = [r[0] for r in rows]
-            assert DEVICE_A_ID in ids, \
-                f"Device A ({DEVICE_A_ID}) not visible with bootstrap"
-            assert DEVICE_B_ID not in ids, \
-                f"Device B ({DEVICE_B_ID}) leaked via device A bootstrap"
-            assert len(ids) == 1, \
-                f"Expected exactly 1 device, got {len(ids)}: {ids}"
-        finally:
-            await self._conn.execute(
-                "SELECT set_config('app.rmp_device_id', '', true)",
-            )
+        import asyncpg
 
-    @pytest.mark.asyncio
-    async def test_no_bootstrap_sees_zero_devices(self):
+        async def _run():
+            conn = await asyncpg.connect(self._app_db_url())
+            try:
+                await conn.execute(
+                    "SELECT set_config('app.rmp_device_id', $1, true)",
+                    DEVICE_A_ID,
+                )
+                rows = await conn.fetch("SELECT id FROM physical_devices")
+                ids = [r[0] for r in rows]
+                assert DEVICE_A_ID in ids, \
+                    f"Device A ({DEVICE_A_ID}) not visible with bootstrap"
+                assert DEVICE_B_ID not in ids, \
+                    f"Device B ({DEVICE_B_ID}) leaked via device A bootstrap"
+                assert len(ids) == 1, \
+                    f"Expected exactly 1 device, got {len(ids)}: {ids}"
+            finally:
+                await conn.close()
+        asyncio.run(_run())
+
+    def test_no_bootstrap_sees_zero_devices(self):
         """Without app.rmp_device_id, app role sees ZERO physical_devices
         (no scope, no bootstrap → RLS denies all)."""
-        rows = await self._conn.fetch("SELECT id FROM physical_devices")
-        ids = [r[0] for r in rows]
-        assert ids == [], \
-            f"Expected empty list (RLS deny all), got: {ids}"
+        import asyncpg
 
-    @pytest.mark.asyncio
-    async def test_bootstrap_b_sees_device_b_not_a(self):
+        async def _run():
+            conn = await asyncpg.connect(self._app_db_url())
+            try:
+                rows = await conn.fetch("SELECT id FROM physical_devices")
+                ids = [r[0] for r in rows]
+                assert ids == [], \
+                    f"Expected empty list (RLS deny all), got: {ids}"
+            finally:
+                await conn.close()
+        asyncio.run(_run())
+
+    def test_bootstrap_b_sees_device_b_not_a(self):
         """app.rmp_device_id = B → sees device B, not device A."""
-        await self._conn.execute(
-            "SELECT set_config('app.rmp_device_id', $1, true)", DEVICE_B_ID,
-        )
-        try:
-            rows = await self._conn.fetch("SELECT id FROM physical_devices")
-            ids = [r[0] for r in rows]
-            assert DEVICE_B_ID in ids, \
-                f"Device B ({DEVICE_B_ID}) not visible with bootstrap"
-            assert DEVICE_A_ID not in ids, \
-                f"Device A ({DEVICE_A_ID}) leaked via device B bootstrap"
-        finally:
-            await self._conn.execute(
-                "SELECT set_config('app.rmp_device_id', '', true)",
-            )
+        import asyncpg
+
+        async def _run():
+            conn = await asyncpg.connect(self._app_db_url())
+            try:
+                await conn.execute(
+                    "SELECT set_config('app.rmp_device_id', $1, true)",
+                    DEVICE_B_ID,
+                )
+                rows = await conn.fetch("SELECT id FROM physical_devices")
+                ids = [r[0] for r in rows]
+                assert DEVICE_B_ID in ids, \
+                    f"Device B ({DEVICE_B_ID}) not visible with bootstrap"
+                assert DEVICE_A_ID not in ids, \
+                    f"Device A ({DEVICE_A_ID}) leaked via device B bootstrap"
+            finally:
+                await conn.close()
+        asyncio.run(_run())
