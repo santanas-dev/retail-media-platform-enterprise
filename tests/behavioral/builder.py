@@ -225,6 +225,7 @@ class BehBuilder:
         self,
         store_id: str,
         device_id: str,
+        retailer_id: str,
     ) -> str:
         """Create logical_carrier → display_surface. Returns surface_id."""
         lcid = self._uid("lc")
@@ -236,8 +237,8 @@ class BehBuilder:
         """)
         self._exec(f"""
         INSERT INTO display_surfaces (id, logical_carrier_id, store_id, code,
-            resolution_w, resolution_h)
-        VALUES ('{sid}', '{lcid}', '{store_id}', '{sid}', 1440, 1080)
+            resolution_w, resolution_h, retailer_id)
+        VALUES ('{sid}', '{lcid}', '{store_id}', '{sid}', 1440, 1080, '{retailer_id}')
         ON CONFLICT (code) DO NOTHING;
         """)
         return sid
@@ -265,12 +266,14 @@ class BehBuilder:
         self,
         manifest_id: str,
         surface_id: str,
+        retailer_id: str,
     ) -> None:
         """Link manifest → display_surface via delivery_manifest_surfaces."""
         jid = self._uid("dms")
         self._exec(f"""
-        INSERT INTO delivery_manifest_surfaces (id, manifest_id, display_surface_id)
-        VALUES ('{jid}', '{manifest_id}', '{surface_id}')
+        INSERT INTO delivery_manifest_surfaces (id, manifest_id, display_surface_id,
+            retailer_id)
+        VALUES ('{jid}', '{manifest_id}', '{surface_id}', '{retailer_id}')
         ON CONFLICT (id) DO NOTHING;
         """)
 
@@ -278,13 +281,15 @@ class BehBuilder:
         self,
         manifest_id: str,
         asset_id: str,
+        retailer_id: str,
     ) -> None:
         """Link manifest → creative_asset via delivery_manifest_assets."""
         jid = self._uid("dma")
         self._exec(f"""
         INSERT INTO delivery_manifest_assets (id, manifest_id, creative_asset_id,
-            sha256_checksum)
-        VALUES ('{jid}', '{manifest_id}', '{asset_id}', 'sha256:deadbeef0000000000000000')
+            sha256_checksum, retailer_id)
+        VALUES ('{jid}', '{manifest_id}', '{asset_id}', 'sha256:deadbeef0000000000000000',
+            '{retailer_id}')
         ON CONFLICT (id) DO NOTHING;
         """)
 

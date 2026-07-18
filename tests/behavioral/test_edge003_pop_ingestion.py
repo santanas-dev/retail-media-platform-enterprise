@@ -42,11 +42,11 @@ def pop_setup(db_available):
     dev = b.device(chain["store_id"], cd["device_type_id"], rid)
     org = b.advertiser(rid)
     camp = b.campaign(org["org_id"], org["contract_id"], rid)
-    surf = b.surface(chain["store_id"], dev)
+    surf = b.surface(chain["store_id"], dev, rid)
     asset = b.creative_asset(org["org_id"])
     man = b.manifest(camp, dev, rid)
-    b.manifest_surface(man, surf)
-    b.manifest_asset(man, asset)
+    b.manifest_surface(man, surf, rid)
+    b.manifest_asset(man, asset, rid)
     yield {
         "builder": b,
         "device_id": dev,
