@@ -1,16 +1,20 @@
 # Clean-Install Login — Dual Auth Readiness (S-016)
 
-**Last updated:** 2026-07-10
-**Applies to:** v0.1-admin-campaign-mvp and later
+**Last updated:** 2026-07-18 (CLEAN-BOOT-001 — verified working clean boot)
 
 ## Quick Start — Dev Environment
 
 ```bash
-# 1. Start infrastructure
-docker compose -f infra/compose/docker-compose.phase1.yml up -d
+# 1. Start infrastructure (postgres + redis + control-api)
+docker compose \
+  -f infra/compose/docker-compose.phase1.yml \
+  -f infra/compose/docker-compose.preview.yml \
+  up -d --build postgres redis control-api
 
-# 2. Apply migrations + seed (uses retail_media_owner role)
-docker compose -f infra/compose/docker-compose.phase1.yml \
+# 2. Apply migrations + seed + grant app role (uses preview.yml for SEED_DEV_CREDENTIALS)
+docker compose \
+  -f infra/compose/docker-compose.phase1.yml \
+  -f infra/compose/docker-compose.preview.yml \
   --profile setup run --rm db-setup
 
 # 3. Verify login
@@ -24,7 +28,7 @@ curl -s -X POST http://localhost:8000/api/v1/auth/login \
 ## Seeded Users
 
 Two users are seeded with local credentials when `ENVIRONMENT=dev` (or
-`SEED_DEV_CREDENTIALS=***:
+SEED_DEV_CREDENTIALS=true
 
 | Username | Password (DEV ONLY) | auth_provider | Role | must_change_password |
 |----------|--------------------|---------------|------|---------------------|

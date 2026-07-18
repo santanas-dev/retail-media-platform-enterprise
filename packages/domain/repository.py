@@ -124,6 +124,32 @@ async def find_user_by_id(session: AsyncSession, user_id: str) -> User | None:
     return result.scalar_one_or_none()
 
 
+async def get_advertiser_org_for_user(
+    session: AsyncSession, user_id: str
+) -> tuple[str | None, "AdvertiserOrganization | None"]:
+    """Resolve advertiser organization from user's scoped role.
+
+    Returns (org_id, org) or (None, None) if user has no advertiser scope.
+    """
+    from packages.domain.models import UserRole, AdvertiserOrganization
+
+    stmt = (
+        select(UserRole)
+        .where(
+            UserRole.user_id == user_id,
+            UserRole.scope_type == "advertiser",
+        )
+        .limit(1)
+    )
+    result = await session.execute(stmt)
+    user_role = result.scalar_one_or_none()
+    if not user_role or not user_role.scope_id:
+        return None, None
+
+    org = await session.get(AdvertiserOrganization, user_role.scope_id)
+    return (user_role.scope_id, org) if org else (None, None)
+
+
 async def get_user_permissions(
     session: AsyncSession, user_id: str
 ) -> set[str]:
@@ -2288,6 +2314,28 @@ async def create_delivery_attempt(
 
 
 
+async def get_device_retailer_id_and_status(
+    session: AsyncSession,
+    physical_device_id: str,
+) -> tuple[str, str] | None:
+    """Return (retailer_id, status) for a device, or None.
+
+    Used by the device-gateway to resolve the device's tenant scope
+    via an owner-role session BEFORE setting app-level RLS context
+    on the request session.
+    """
+    from packages.domain.models import PhysicalDevice
+    row = (
+        await session.execute(
+            select(PhysicalDevice.retailer_id, PhysicalDevice.status)
+            .where(PhysicalDevice.id == physical_device_id)
+        )
+    ).first()
+    if row is None:
+        return None
+    return row[0], row[1]
+
+
 async def get_physical_device_for_manifest_delivery(
     session: AsyncSession,
     physical_device_id: str,
@@ -2321,8 +2369,13 @@ async def get_latest_manifest_metadata(
     """Return lightweight manifest metadata for ETag / cache decisions.
 
     Single SELECT — no surface/asset/campaign join, no HMAC signing.
-    Returns ``{manifest_id, content_hash, manifest_version, generated_at}``
-    or None if no generated manifest exists for this device.
+    Returns ``{manifest_id, content_hash, manifest_version, generated_at,
+    emergency_active}`` or None if no generated manifest exists for this device.
+
+    ``emergency_active`` is included so that ETag / 304 changes when the
+    global emergency override is activated or deactivated — preventing
+    a stale manifest with emergency.active=false from being served after
+    an admin activates emergency.
     """
     from packages.domain.models import DeliveryManifest
 
@@ -2346,11 +2399,15 @@ async def get_latest_manifest_metadata(
     if row is None:
         return None
 
+    # K1: include emergency state so ETag changes on activation
+    emergency = await get_active_emergency_override(session)
+
     return {
         "manifest_id": row[0],
         "content_hash": row[1],
         "manifest_version": row[2],
         "generated_at": row[3].isoformat() if row[3] else None,
+        "emergency_active": emergency.active if emergency else False,
     }
 
 
@@ -2473,6 +2530,9 @@ async def get_latest_manifest_for_device(
             if ch:
                 channel_type = ch.code or ""
 
+    # K1: read real emergency override state from DB (global table, no RLS)
+    emergency_override = await get_active_emergency_override(session)
+
     result = {
         "manifest_id": manifest.manifest_id,
         "manifest_version": manifest.manifest_version,
@@ -2481,6 +2541,7 @@ async def get_latest_manifest_for_device(
         "device_code": device_code,
         "store_id": device_store_id,
         "store_code": store_code,
+        "retailer_id": device.retailer_id if device and device.retailer_id else "",
         "channel_type": channel_type,
         "device_type": device_type_code,
         "display_surfaces": display_surfaces,
@@ -2496,6 +2557,11 @@ async def get_latest_manifest_for_device(
             "filler_media_ids": [],
             "emit_pop": False,
         },
+        "emergency": {
+            "active": emergency_override.active if emergency_override else False,
+            "activated_at": emergency_override.activated_at.isoformat() if (emergency_override and emergency_override.activated_at) else None,
+            "reason": emergency_override.reason if emergency_override else "",
+        },
         "signature": {
             "algorithm": "HMAC-SHA256",
             "value": "",
@@ -2509,7 +2575,7 @@ async def get_latest_manifest_for_device(
     # but the signature is lost because create_delivery_manifest_record only
     # stores metadata.  Re-sign here so that device-gateway serves a signed
     # manifest when MANIFEST_SIGNING_KEY is configured.
-    from packages.domain.delivery import sign_manifest_payload
+    from packages.contracts.manifest_signing import sign_manifest_payload
     from packages.security.config import get_security_config
     signing_key = get_security_config().manifest_signing_key
     if signing_key:
@@ -3378,6 +3444,285 @@ async def deactivate_emergency_override(
     existing.deactivated_by = deactivated_by
     existing.deactivated_at = datetime.now(timezone.utc)
     existing.deactivated_reason = reason
+
+
+# ---------------------------------------------------------------------------
+# BP-001 — Advertiser Applications
+# ---------------------------------------------------------------------------
+
+
+async def create_advertiser_application(
+    session: AsyncSession,
+    *,
+    company_name: str,
+    contact_name: str,
+    email: str,
+    phone: str = "",
+    website: str = "",
+    comment: str = "",
+    consent: bool = False,
+) -> "AdvertiserApplication":
+    from packages.domain.models import AdvertiserApplication
+
+    app = AdvertiserApplication(
+        company_name=company_name,
+        contact_name=contact_name,
+        email=email,
+        phone=phone,
+        website=website,
+        comment=comment,
+        consent=consent,
+        status="new",
+    )
+    session.add(app)
+    return app
+
+
+async def list_advertiser_applications(
+    session: AsyncSession,
+    *,
+    status_filter: str | None = None,
+    offset: int = 0,
+    limit: int = 50,
+) -> tuple[list["AdvertiserApplication"], int]:
+    from packages.domain.models import AdvertiserApplication
+    from sqlalchemy import func
+
+    stmt = select(AdvertiserApplication)
+    if status_filter:
+        stmt = stmt.where(AdvertiserApplication.status == status_filter)
+    stmt = stmt.order_by(AdvertiserApplication.created_at.desc())
+
+    count_stmt = select(func.count()).select_from(stmt.alias())
+    total = (await session.execute(count_stmt)).scalar_one()
+
+    rows = (await session.execute(stmt.offset(offset).limit(limit))).scalars().all()
+    return list(rows), total
+
+
+async def get_advertiser_application(
+    session: AsyncSession,
+    application_id: str,
+) -> "AdvertiserApplication | None":
+    from packages.domain.models import AdvertiserApplication
+
+    return await session.get(AdvertiserApplication, application_id)
+
+
+async def review_advertiser_application(
+    session: AsyncSession,
+    *,
+    application_id: str,
+    action: str,
+    reviewer_id: str,
+    reason: str = "",
+) -> "AdvertiserApplication":
+    from datetime import timezone
+    from packages.domain.models import AdvertiserApplication
+
+    app = await session.get(AdvertiserApplication, application_id)
+    if app is None:
+        raise ValueError("Application not found")
+
+    if action == "reviewing":
+        if app.status != "new":
+            raise ValueError(f"Cannot start review — current status: {app.status}")
+        app.status = "reviewing"
+    elif action == "approve":
+        if app.status not in ("new", "reviewing"):
+            raise ValueError(f"Cannot approve — current status: {app.status}")
+        app.status = "approved"
+    elif action == "reject":
+        if app.status not in ("new", "reviewing"):
+            raise ValueError(f"Cannot reject — current status: {app.status}")
+        app.status = "rejected"
+    else:
+        raise ValueError(f"Invalid action: {action}")
+
+    app.reviewer_id = reviewer_id
+    app.review_reason = reason
+    app.reviewed_at = datetime.now(timezone.utc)
+    return app
+
+
+async def create_advertiser_from_application(
+    session: AsyncSession,
+    *,
+    application: "AdvertiserApplication",
+) -> str:
+    """Create AdvertiserOrganization from approved application. Returns org id."""
+    from packages.domain.models import AdvertiserOrganization
+
+    code = application.company_name.strip().lower().replace(" ", "-")[:64]
+    # Ensure unique code
+    base_code = code
+    suffix = 0
+    while True:
+        stmt = select(AdvertiserOrganization).where(AdvertiserOrganization.code == code)
+        exists = (await session.execute(stmt)).scalar_one_or_none()
+        if exists is None:
+            break
+        suffix += 1
+        code = f"{base_code[:60]}-{suffix}" if len(base_code) > 60 else f"{base_code}-{suffix}"
+
+    org = AdvertiserOrganization(
+        code=code,
+        legal_name=application.company_name,
+        display_name=application.company_name,
+        status="active",
+    )
+    session.add(org)
+    return org.id
+
+
+# ---------------------------------------------------------------------------
+# Advertiser Invite (BP-002)
+# ---------------------------------------------------------------------------
+
+
+def _generate_invite_token() -> str:
+    """CSPRNG token — 64 hex chars."""
+    import secrets
+    return secrets.token_hex(32)
+
+
+async def create_advertiser_invite(
+    session: AsyncSession,
+    *,
+    advertiser_application_id: str,
+    advertiser_organization_id: str,
+    contact_email: str,
+    created_by: str,
+    ttl_days: int = 7,
+) -> "AdvertiserInvite":
+    """Create a one-time invite token. Marks any existing pending invites for this app as expired."""
+    from datetime import timezone, timedelta
+    from packages.domain.models import AdvertiserInvite
+
+    # Expire any existing pending invites for this application
+    stmt = (
+        sa_update(AdvertiserInvite)
+        .where(
+            AdvertiserInvite.advertiser_application_id == advertiser_application_id,
+            AdvertiserInvite.status == "pending",
+        )
+        .values(status="expired")
+    )
+    await session.execute(stmt)
+
+    now = datetime.now(timezone.utc)
+    invite = AdvertiserInvite(
+        advertiser_application_id=advertiser_application_id,
+        advertiser_organization_id=advertiser_organization_id,
+        token=_generate_invite_token(),
+        contact_email=contact_email,
+        status="pending",
+        created_by=created_by,
+        created_at=now,
+        expires_at=now + timedelta(days=ttl_days),
+    )
+    session.add(invite)
+    await session.flush()
+    return invite
+
+
+async def get_invite_for_application(
+    session: AsyncSession,
+    application_id: str,
+) -> "AdvertiserInvite | None":
+    """Get the current invite for an application (most recent, any status)."""
+    from packages.domain.models import AdvertiserInvite
+
+    stmt = (
+        select(AdvertiserInvite)
+        .where(AdvertiserInvite.advertiser_application_id == application_id)
+        .order_by(AdvertiserInvite.created_at.desc())
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def get_advertiser_invite_by_token(
+    session: AsyncSession,
+    token: str,
+) -> "AdvertiserInvite | None":
+    """Look up invite by token."""
+    from packages.domain.models import AdvertiserInvite
+
+    stmt = select(AdvertiserInvite).where(AdvertiserInvite.token == token)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def accept_advertiser_invite(
+    session: AsyncSession,
+    *,
+    token: str,
+    password: str,
+) -> "AdvertiserInvite":
+    """Accept invite: validate token, create user/membership/role/credential.
+
+    Raises ValueError if token invalid, expired, or already used.
+    Returns the updated invite.
+    """
+    from datetime import timezone
+    from packages.domain.models import AdvertiserInvite
+    from packages.security.password import hash_password
+
+    # SELECT ... FOR UPDATE — row-level lock prevents concurrent double-accept
+    stmt = (
+        select(AdvertiserInvite)
+        .where(AdvertiserInvite.token == token)
+        .with_for_update()
+    )
+    invite = (await session.execute(stmt)).scalar_one_or_none()
+    if invite is None:
+        raise ValueError("Недействительный код приглашения")
+
+    if invite.status == "accepted":
+        raise ValueError("Приглашение уже использовано")
+
+    if invite.status == "expired" or invite.expires_at < datetime.now(timezone.utc):
+        invite.status = "expired"
+        raise ValueError("Срок действия приглашения истёк")
+
+    if invite.status != "pending":
+        raise ValueError(f"Приглашение не может быть принято — статус: {invite.status}")
+
+    # Create user with advertiser access
+    from packages.domain.models import AdvertiserOrganization
+
+    org = await session.get(AdvertiserOrganization, invite.advertiser_organization_id)
+    if org is None:
+        raise ValueError("Организация не найдена")
+
+    # Derive username from email
+    username = invite.contact_email.split("@")[0][:64]
+    code = f"adv-{username[:32]}"
+
+    # Get advertiser role
+    stmt = select(Role).where(Role.code == "advertiser")
+    advertiser_role = (await session.execute(stmt)).scalar_one_or_none()
+    if advertiser_role is None:
+        raise ValueError("Роль advertiser не найдена — проверьте seed")
+
+    user = await create_local_advertiser_user(
+        session,
+        user_id=str(uuid.uuid4()),
+        code=code,
+        username=invite.contact_email,
+        display_name=invite.contact_email.split("@")[0],
+        password_hash=hash_password(password),
+        advertiser_organization_id=invite.advertiser_organization_id,
+        role_id=advertiser_role.id,
+        must_change_password=False,
+        is_active=True,
+    )
+
+    invite.status = "accepted"
+    invite.accepted_at = datetime.now(timezone.utc)
+    invite.accepted_by_user_id = user.id
+
+    return invite
 
 
 # ---------------------------------------------------------------------------
@@ -4759,3 +5104,479 @@ async def suggest_inventory_alternatives(
     # Sort by score desc
     alternatives.sort(key=lambda a: a["score"], reverse=True)
     return alternatives[:max_results]
+
+
+# ---------------------------------------------------------------------------
+# S-089 — Inventory Simulation
+# ---------------------------------------------------------------------------
+
+
+async def simulate_campaign_inventory(
+    session: AsyncSession,
+    campaign_id: str,
+    default_total_capacity: int = 100,
+) -> dict:
+    """Run pre-approval inventory simulation for all placements in a campaign.
+
+    Returns:
+        dict with: campaign_id, overall_fit, placements (list of per-placement
+        results with fit, slot_fill, conflicts, applied_rules).
+    """
+    from packages.domain.models import CampaignPlacement, CampaignFlight
+
+    placements_result = await session.execute(
+        select(CampaignPlacement).where(
+            CampaignPlacement.campaign_id == campaign_id,
+            CampaignPlacement.display_surface_id.isnot(None),
+        )
+    )
+    placements_list = placements_result.scalars().all()
+
+    flights_result = await session.execute(
+        select(CampaignFlight).where(CampaignFlight.campaign_id == campaign_id)
+    )
+    flights_list = flights_result.scalars().all()
+
+    placement_results: list[dict] = []
+    any_blocking = False
+    total_blocking = 0
+    total_warnings = 0
+
+    for placement in placements_list:
+        placement_fit = True
+        all_conflicts: list[dict] = []
+        all_applied_rules: list[dict] = []
+        total_req = 0
+        total_avail = 0
+
+        for flight in flights_list:
+            if not flight.start_at or not flight.end_at:
+                continue
+
+            sov = placement.share_of_voice_pct or 100
+
+            # Availability check (slot-level capacity)
+            avail = await compute_inventory_availability(
+                session,
+                display_surface_id=placement.display_surface_id,
+                starts_at=flight.start_at,
+                ends_at=flight.end_at,
+                requested_sov_percent=sov,
+                default_total_capacity=default_total_capacity,
+            )
+            total_req += avail.get("total_requested", 0)
+            total_avail += avail.get("total_available", 0)
+            if not avail.get("all_available", True):
+                placement_fit = False
+
+            # Conflict detection (rules: blackout, internal_block, max_sov)
+            conflicts = await detect_inventory_conflicts(
+                session,
+                display_surface_id=placement.display_surface_id,
+                starts_at=flight.start_at,
+                ends_at=flight.end_at,
+                requested_sov_percent=sov,
+                campaign_id=campaign_id,
+                default_total_capacity=default_total_capacity,
+            )
+            for b in conflicts.get("blocking", []):
+                b["placement_id"] = placement.id
+                placement_fit = False
+                all_conflicts.append(b)
+                total_blocking += 1
+            for w in conflicts.get("warnings", []):
+                w["placement_id"] = placement.id
+                all_conflicts.append(w)
+                total_warnings += 1
+
+            # Collect applied rules
+            rules = await list_inventory_rules(session)
+            for rule in rules:
+                if not rule.is_active:
+                    continue
+                rdict = {
+                    "rule_id": str(rule.id),
+                    "rule_type": rule.rule_type,
+                    "scope_type": rule.scope_type,
+                    "scope_id": rule.scope_id,
+                    "value_json": rule.value_json,
+                    "priority": rule.priority,
+                }
+                if rdict not in all_applied_rules:
+                    all_applied_rules.append(rdict)
+
+        # Surface details
+        surface = await get_display_surface(session, placement.display_surface_id)
+        fill_pct = round((total_req / max(total_avail, 1)) * 100, 1)
+
+        placement_results.append({
+            "placement_id": str(placement.id),
+            "surface_id": placement.display_surface_id,
+            "surface_code": getattr(surface, "code", None) if surface else None,
+            "surface_name": getattr(surface, "name", None) if surface else None,
+            "store_code": getattr(surface, "store_code", None) if surface else None,
+            "store_name": getattr(surface, "store_name", None) if surface else None,
+            "fit": placement_fit,
+            "slot_fill_percent": fill_pct,
+            "total_requested": total_req,
+            "total_available": total_avail,
+            "conflicts": all_conflicts,
+            "applied_rules": all_applied_rules,
+        })
+
+        if not placement_fit:
+            any_blocking = True
+
+    return {
+        "campaign_id": campaign_id,
+        "overall_fit": not any_blocking,
+        "placements": placement_results,
+        "blocking_count": total_blocking,
+        "warning_count": total_warnings,
+    }
+
+
+# ---------------------------------------------------------------------------
+# BP-004 — Campaign Brief / Placement Request
+# ---------------------------------------------------------------------------
+
+
+async def list_campaign_briefs(
+    session: AsyncSession,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+    scope_advertiser_ids: frozenset[str] | None = None,
+) -> tuple[list, int]:
+    """List briefs scoped to current advertiser orgs.
+
+    scope_advertiser_ids:
+        None   — admin/internal (no filter)
+        empty  — deny all
+        set    — filter by those org IDs
+    """
+    from packages.domain.models import CampaignBrief
+
+    if scope_advertiser_ids is not None and not scope_advertiser_ids:
+        return ([], 0)
+
+    stmt = select(func.count()).select_from(CampaignBrief)
+    if scope_advertiser_ids:
+        stmt = stmt.where(
+            CampaignBrief.advertiser_organization_id.in_(scope_advertiser_ids),
+        )
+    total = await session.scalar(stmt)
+
+    stmt = (
+        select(CampaignBrief)
+        .order_by(CampaignBrief.updated_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    if scope_advertiser_ids:
+        stmt = stmt.where(
+            CampaignBrief.advertiser_organization_id.in_(scope_advertiser_ids),
+        )
+    result = await session.execute(stmt)
+    return list(result.scalars().all()), total or 0
+
+
+async def get_campaign_brief(
+    session: AsyncSession,
+    brief_id: str,
+    scope_advertiser_ids: frozenset[str] | None = None,
+):
+    """None=admin, empty=deny all, set=filter."""
+    from packages.domain.models import CampaignBrief
+
+    if scope_advertiser_ids is not None and not scope_advertiser_ids:
+        return None
+
+    stmt = select(CampaignBrief).where(CampaignBrief.id == brief_id)
+    if scope_advertiser_ids:
+        stmt = stmt.where(
+            CampaignBrief.advertiser_organization_id.in_(scope_advertiser_ids),
+        )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def create_campaign_brief(
+    session: AsyncSession,
+    *,
+    advertiser_organization_id: str,
+    title: str,
+    created_by: str,
+    objective: str | None = None,
+    product_category: str | None = None,
+    target_period_from=None,
+    target_period_to=None,
+    budget_amount=None,
+    budget_currency: str = "RUB",
+    preferred_channels: str | None = None,
+    comment: str | None = None,
+    scope_advertiser_ids: frozenset[str] | None = None,
+) -> str:
+    """Create a draft brief. Returns brief id.
+
+    Raises ScopeError if org not in scope or scope is empty.
+    """
+    import uuid
+    from datetime import datetime, timezone as tz
+    from packages.domain.models import CampaignBrief
+
+    if scope_advertiser_ids is not None and not scope_advertiser_ids:
+        from packages.domain.exceptions import ScopeError
+        raise ScopeError("No advertiser scope — brief creation denied")
+
+    _assert_org_in_scope(advertiser_organization_id, scope_advertiser_ids)
+
+    brief_id = str(uuid.uuid4())
+    now = datetime.now(tz.utc)
+    brief = CampaignBrief(
+        id=brief_id,
+        advertiser_organization_id=advertiser_organization_id,
+        title=title,
+        objective=objective,
+        product_category=product_category,
+        target_period_from=target_period_from,
+        target_period_to=target_period_to,
+        budget_amount=budget_amount,
+        budget_currency=budget_currency,
+        preferred_channels=preferred_channels,
+        comment=comment,
+        status="draft",
+        created_by=created_by,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(brief)
+    return brief_id
+
+
+async def update_campaign_brief(
+    session: AsyncSession,
+    brief_id: str,
+    *,
+    scope_advertiser_ids: frozenset[str] | None = None,
+    **kwargs,
+):
+    """Update draft brief fields. Returns updated brief or None if not found/scoped.
+    None=admin, empty=deny all, set=filter."""
+    from packages.domain.models import CampaignBrief
+
+    if scope_advertiser_ids is not None and not scope_advertiser_ids:
+        return None
+
+    stmt = select(CampaignBrief).where(CampaignBrief.id == brief_id)
+    if scope_advertiser_ids:
+        stmt = stmt.where(
+            CampaignBrief.advertiser_organization_id.in_(scope_advertiser_ids),
+        )
+    result = await session.execute(stmt)
+    brief = result.scalar_one_or_none()
+    if brief is None:
+        return None
+    if brief.status != "draft":
+        raise ValueError(f"Cannot update brief in status: {brief.status}")
+
+    allowed = {
+        "title", "objective", "product_category", "target_period_from",
+        "target_period_to", "budget_amount", "budget_currency",
+        "preferred_channels", "comment",
+    }
+    for k, v in kwargs.items():
+        if k in allowed and v is not None:
+            setattr(brief, k, v)
+    brief.updated_at = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+    session.add(brief)
+    return brief
+
+
+async def submit_campaign_brief(
+    session: AsyncSession,
+    brief_id: str,
+    scope_advertiser_ids: frozenset[str] | None = None,
+):
+    """Submit a draft brief. Returns updated brief or raises ValueError.
+    None=admin, empty=deny all, set=filter."""
+    from datetime import datetime, timezone as tz
+    from packages.domain.models import CampaignBrief
+
+    if scope_advertiser_ids is not None and not scope_advertiser_ids:
+        return None
+
+    stmt = select(CampaignBrief).where(CampaignBrief.id == brief_id)
+    if scope_advertiser_ids:
+        stmt = stmt.where(
+            CampaignBrief.advertiser_organization_id.in_(scope_advertiser_ids),
+        )
+    result = await session.execute(stmt)
+    brief = result.scalar_one_or_none()
+    if brief is None:
+        return None
+    if brief.status != "draft":
+        raise ValueError(f"Cannot submit brief in status: {brief.status}")
+
+    brief.status = "submitted"
+    brief.updated_at = datetime.now(tz.utc)
+    session.add(brief)
+    return brief
+
+
+# ---------------------------------------------------------------------------
+# EDGE-001 — Device Onboarding
+# ---------------------------------------------------------------------------
+
+
+async def create_device_onboarding_code(
+    session: AsyncSession,
+    *,
+    retailer_id: str,
+    store_id: str | None = None,
+    device_type_id: str | None = None,
+    created_by: str | None = None,
+    ttl_hours: int = 24,
+):
+    """Create a one-time device onboarding code. Uses secrets.token_urlsafe for CSPRNG."""
+    import secrets
+    from datetime import datetime, timedelta, timezone
+    from packages.domain.models import DeviceOnboardingCode
+
+    code = DeviceOnboardingCode(
+        code=secrets.token_urlsafe(32),
+        retailer_id=retailer_id,
+        store_id=store_id,
+        device_type_id=device_type_id,
+        status="active",
+        created_by=created_by,
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=ttl_hours),
+    )
+    session.add(code)
+    return code
+
+
+async def get_onboarding_code(session: AsyncSession, device_code: str):
+    """Look up an onboarding code by its code string."""
+    from packages.domain.models import DeviceOnboardingCode
+    result = await session.execute(
+        select(DeviceOnboardingCode).where(DeviceOnboardingCode.code == device_code)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_device_by_fingerprint(session: AsyncSession, hardware_fingerprint: str):
+    """Find a physical device by hardware fingerprint."""
+    from packages.domain.models import PhysicalDevice
+    result = await session.execute(
+        select(PhysicalDevice).where(
+            PhysicalDevice.hardware_fingerprint == hardware_fingerprint
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_physical_device_onboard(
+    session: AsyncSession,
+    *,
+    store_id: str,
+    device_type_id: str | None = None,
+    code: str = "",
+    hardware_fingerprint: str = "",
+    retailer_id: str | None = None,
+):
+    """Create a new physical device during onboarding. Status = active."""
+    from packages.domain.models import PhysicalDevice
+    device = PhysicalDevice(
+        store_id=store_id,
+        device_type_id=device_type_id,
+        code=code or hardware_fingerprint[:64],
+        hardware_fingerprint=hardware_fingerprint,
+        status="active",
+    )
+    if retailer_id:
+        device.retailer_id = retailer_id
+    session.add(device)
+    return device
+
+
+async def consume_onboarding_code(
+    session: AsyncSession,
+    onboarding_code,
+    physical_device,
+    hardware_fingerprint: str,
+) -> None:
+    """Mark an onboarding code as used and bind it to the device."""
+    from datetime import datetime, timezone
+    onboarding_code.status = "used"
+    onboarding_code.hardware_fingerprint_bound = hardware_fingerprint
+    onboarding_code.physical_device_id = physical_device.id
+    onboarding_code.used_at = datetime.now(timezone.utc)
+    session.add(onboarding_code)
+    session.add(physical_device)
+
+
+async def claim_onboarding_code(session: AsyncSession, device_code: str):
+    """Atomically claim an onboarding code.
+
+    Uses raw SQL UPDATE ... WHERE status='active' RETURNING id
+    for reliable asyncpg compatibility.
+    Returns True if a row was claimed, False otherwise.
+    """
+    from datetime import datetime, timezone
+    from sqlalchemy import text
+
+    result = await session.execute(
+        text("""
+            UPDATE device_onboarding_codes
+            SET status = 'claimed', used_at = :now
+            WHERE code = :code
+              AND status = 'active'
+              AND expires_at > :now
+            RETURNING id
+        """),
+        {"code": device_code, "now": datetime.now(timezone.utc)},
+    )
+    return result.fetchone() is not None
+
+
+async def revert_claim(session: AsyncSession, device_code: str) -> None:
+    """Revert a claimed code back to 'active'.
+
+    Used when the claim succeeds but a subsequent check (e.g. fingerprint conflict)
+    rejects the request — the code must not be left in a claimed state.
+    Follows the 'rolled-back or terminal error' contract from EDGE-001 hardening.
+    """
+    from sqlalchemy import text
+
+    await session.execute(
+        text("""
+            UPDATE device_onboarding_codes
+            SET status = 'active', used_at = NULL
+            WHERE code = :code AND status = 'claimed'
+        """),
+        {"code": device_code},
+    )
+
+
+async def bind_code_to_device(
+    session: AsyncSession,
+    device_code: str,
+    physical_device,
+    hardware_fingerprint: str,
+) -> None:
+    """Complete the code→device binding after a successful claim."""
+    from datetime import datetime, timezone
+    from packages.domain.models import DeviceOnboardingCode
+
+    result = await session.execute(
+        select(DeviceOnboardingCode).where(DeviceOnboardingCode.code == device_code)
+    )
+    code = result.scalar_one_or_none()
+    if code is None:
+        return
+    code.status = "used"
+    code.hardware_fingerprint_bound = hardware_fingerprint
+    code.physical_device_id = physical_device.id
+    code.used_at = datetime.now(timezone.utc)
+    session.add(code)

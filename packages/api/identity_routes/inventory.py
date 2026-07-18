@@ -31,6 +31,9 @@ from packages.domain.schemas import (
     InventoryStoreOut,
     InventorySurfaceOut,
     InventorySurfacePatchRequest,
+    InventorySimulationRequest,
+    InventorySimulationResponse,
+    InventorySimulationPlacementResult,
     PaginatedResponse,
     StoreOut,
 )
@@ -426,3 +429,39 @@ async def deactivate_rule(
         raise HTTPException(status_code=404, detail="Rule not found")
     await db.flush()
     return InventoryRuleOut.model_validate(rule)
+
+
+# ---------------------------------------------------------------------------
+# S-089 — Inventory Simulation
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/inventory/simulate",
+    response_model=InventorySimulationResponse,
+)
+async def simulate_inventory(
+    body: InventorySimulationRequest,
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("inventory.read")),
+    _rls=Depends(set_rls_context),
+):
+    """Run pre-approval inventory simulation for a campaign."""
+    from packages.security.config import SecurityConfig
+
+    config = SecurityConfig()
+    result = await repository.simulate_campaign_inventory(
+        db,
+        campaign_id=body.campaign_id,
+        default_total_capacity=config.inventory_default_slot_capacity,
+    )
+    return InventorySimulationResponse(
+        campaign_id=result["campaign_id"],
+        overall_fit=result["overall_fit"],
+        placements=[
+            InventorySimulationPlacementResult(**p)
+            for p in result["placements"]
+        ],
+        blocking_count=result["blocking_count"],
+        warning_count=result["warning_count"],
+    )

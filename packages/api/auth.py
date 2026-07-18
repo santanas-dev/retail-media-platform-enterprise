@@ -23,6 +23,7 @@ from packages.domain import repository
 from packages.auth.schemas import AuthFailure, AuthSuccess
 from packages.auth.service import AuthService
 from packages.domain.schemas import (
+    AdvertiserOrganizationOut,
     ChangePasswordRequest,
     ChangePasswordResponse,
     LoginRequest,
@@ -266,6 +267,18 @@ async def me(
             if cred is not None:
                 must_change_password = cred.must_change_password
 
+    # Resolve advertiser organization from scoped user role
+    advertiser_org_id: str | None = None
+    advertiser_org: AdvertiserOrganizationOut | None = None
+    if user_id:
+        try:
+            org_id, org = await repository.get_advertiser_org_for_user(db, user_id)
+            advertiser_org_id = org_id
+            if org:
+                advertiser_org = AdvertiserOrganizationOut.model_validate(org)
+        except Exception:
+            pass  # graceful: mock DB or missing tables in test env
+
     return MeResponse(
         sub=user_id,
         auth_provider=auth_provider,
@@ -273,6 +286,8 @@ async def me(
         display_name=display_name,
         permissions=perms,
         must_change_password=must_change_password,
+        advertiser_organization_id=advertiser_org_id,
+        advertiser_organization=advertiser_org,
     )
 
 

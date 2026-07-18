@@ -23,6 +23,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -49,6 +50,7 @@ __all__ = [
     "AccessScope",
     "UserAccessScope",
     "AuditEventOperational",
+    "Retailer",
     "AdvertiserOrganization",
     "AdvertiserUserMembership",
     "AdvertiserBrand",
@@ -65,6 +67,7 @@ __all__ = [
     "CampaignCreative",
     "CampaignApproval",
     "CampaignStatusHistory",
+    "CampaignBrief",
     "OutboxEvent",
     "DeliveryPlan",
     "DeliveryManifest",
@@ -212,6 +215,7 @@ class PhysicalDevice(Base):
     )
     last_seen_at = Column(DateTime(timezone=True), nullable=True)
     current_manifest_id = Column(String(36), nullable=True)
+    retailer_id = Column(String(36), ForeignKey("retailers.id"), nullable=True)
     cache_size_bytes = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
@@ -256,6 +260,38 @@ class DeviceStatusHistory(Base):
     details_json = Column(JSONB, nullable=True)
 
     device = relationship("PhysicalDevice", back_populates="status_history")
+
+
+class DeviceOnboardingCode(Base):
+    """One-time device onboarding code — issued by admin, consumed by device.
+
+    Links a retailer/store to a physical device via hardware_fingerprint.
+    Single-use: status moves active→used on successful onboarding.
+    Expired/revoked codes reject onboarding.
+    """
+
+    __tablename__ = "device_onboarding_codes"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    code = Column(String(128), nullable=False, unique=True, index=True)
+    retailer_id = Column(String(36), ForeignKey("retailers.id"), nullable=False, index=True)
+    store_id = Column(String(36), ForeignKey("stores.id"), nullable=True)
+    device_type_id = Column(String(36), ForeignKey("device_types.id"), nullable=True)
+    status = Column(
+        String(32), nullable=False, default="active",
+        comment="active | used | expired | revoked",
+    )
+    hardware_fingerprint_bound = Column(String(255), nullable=True)
+    physical_device_id = Column(String(36), ForeignKey("physical_devices.id"), nullable=True)
+    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+
+    retailer = relationship("Retailer")
+    store = relationship("Store")
+    device_type = relationship("DeviceType")
+    physical_device = relationship("PhysicalDevice", foreign_keys=[physical_device_id])
 
 
 # ---------------------------------------------------------------------------
@@ -466,14 +502,77 @@ class EmergencyOverride(Base):
 
 
 # ---------------------------------------------------------------------------
+# Advertiser Applications (BP-001)
+# ---------------------------------------------------------------------------
+
+
+class AdvertiserApplication(Base):
+    """Public advertiser lead/application — reviewed by admin before onboarding."""
+
+    __tablename__ = "advertiser_applications"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    company_name = Column(String(255), nullable=False)
+    contact_name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=False)
+    phone = Column(String(64), nullable=True, default="")
+    website = Column(String(512), nullable=True, default="")
+    comment = Column(Text, nullable=True, default="")
+    consent = Column(Boolean, nullable=False, default=False)
+    status = Column(String(32), nullable=False, default="new", index=True)
+    reviewer_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    review_reason = Column(Text, nullable=True, default="")
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    organization_id = Column(String(36), ForeignKey("advertiser_organizations.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
+class AdvertiserInvite(Base):
+    """One-time invite token for advertiser access activation (BP-002)."""
+
+    __tablename__ = "advertiser_invites"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    advertiser_application_id = Column(
+        String(36), ForeignKey("advertiser_applications.id"), nullable=True, index=True,
+    )
+    advertiser_organization_id = Column(
+        String(36), ForeignKey("advertiser_organizations.id"), nullable=False, index=True,
+    )
+    token = Column(String(128), nullable=False, unique=True, index=True)
+    contact_email = Column(String(255), nullable=False)
+    status = Column(String(32), nullable=False, default="pending", index=True)
+    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    accepted_at = Column(DateTime(timezone=True), nullable=True)
+    accepted_by_user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+
+
+# ---------------------------------------------------------------------------
 # Auth Persistence (Phase 3.2a)
 # ---------------------------------------------------------------------------
+
+
+class Retailer(Base):
+    """Multi-tenant retailer (ADR-018). Top-level tenant boundary."""
+    __tablename__ = "retailers"
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    code = Column(String(64), nullable=False, unique=True, index=True)
+    legal_name = Column(String(255), nullable=False)
+    display_name = Column(String(255), nullable=False)
+    status = Column(String(20), nullable=False, default="active", server_default="active")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
 
 class AdvertiserOrganization(Base):
     __tablename__ = "advertiser_organizations"
 
     id = Column(String(36), primary_key=True, default=_new_uuid)
+    retailer_id = Column(String(36), ForeignKey("retailers.id"), nullable=False, index=True, default="00000000-4000-a000-000000000001")
     code = Column(String(64), nullable=False, unique=True, index=True)
     legal_name = Column(String(255), nullable=False)
     display_name = Column(String(255), nullable=False)
@@ -743,6 +842,35 @@ class CampaignStatusHistory(Base):
     )
     changed_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
     reason = Column(Text, nullable=True)
+
+
+class CampaignBrief(Base):
+    """Advertiser campaign brief / placement request — draft→submitted→reviewing→accepted/rejected."""
+    __tablename__ = "campaign_briefs"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('draft','submitted','reviewing','accepted','rejected')",
+            name="ck_cb_status",
+        ),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    advertiser_organization_id = Column(
+        String(36), ForeignKey("advertiser_organizations.id"), nullable=False, index=True,
+    )
+    title = Column(String(255), nullable=False)
+    objective = Column(Text, nullable=True)
+    product_category = Column(String(255), nullable=True)
+    target_period_from = Column(Date, nullable=True)
+    target_period_to = Column(Date, nullable=True)
+    budget_amount = Column(Numeric(18, 2), nullable=True)
+    budget_currency = Column(String(3), nullable=False, default="RUB")
+    preferred_channels = Column(Text, nullable=True)
+    comment = Column(Text, nullable=True)
+    status = Column(String(32), nullable=False, default="draft")
+    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
 
 
 class LocalCredential(Base):
@@ -1185,6 +1313,7 @@ class InventoryRule(Base):
 
 
 REQUIRED_TABLES = frozenset({
+    "retailers",
     "branches", "clusters", "stores",
     "channels", "device_types", "capability_profiles",
     "physical_devices", "device_certificates", "device_status_history",
@@ -1209,4 +1338,8 @@ REQUIRED_TABLES = frozenset({
     "inventory_slots",
     "inventory_bookings",
     "inventory_rules",
+    "advertiser_applications",
+    "advertiser_invites",
+    "campaign_briefs",
+    "device_onboarding_codes",
 })

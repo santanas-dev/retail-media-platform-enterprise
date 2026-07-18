@@ -125,6 +125,78 @@ async def get_device_id_from_token(request: Request) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Device RLS Context Dependency (EDGE-002-FU v4)
+# ---------------------------------------------------------------------------
+
+
+async def set_device_rls_context(
+    device_id: str = Depends(get_device_id_from_token),
+    session: AsyncSession = Depends(get_db),
+) -> None:
+    """Bootstrap device RLS context on the request session.
+
+    Production-safe bootstrap (no owner/bypass in request path):
+
+    1. Set ``app.rmp_device_id = device_id`` — RLS policy on
+       ``physical_devices`` allows SELECT when ``id`` matches this
+       session variable (migration 023).
+
+    2. Read ``retailer_id`` + ``status`` from ``physical_devices``
+       — now visible because the bootstrap policy matches the row.
+
+    3. Clear ``app.rmp_device_id`` — bootstrap served its purpose.
+
+    4. Validate status (active/online).  Reject inactive/revoked.
+
+    5. Set ``app.rmp_scope_retailer_ids = retailer_id`` so subsequent
+       tenant-scoped queries (delivery_manifests, etc.) see only this
+       retailer's data.
+
+    Under NOBYPASSRLS (CI), the app role CANNOT bypass RLS, and no
+    owner-role connection is used.  The bootstrap is a targeted,
+    single-row-gated policy, not a general privilege elevation.
+    """
+    from sqlalchemy import text
+
+    from packages.domain.repository import get_device_retailer_id_and_status
+
+    # Step 1 — bootstrap: allow reading our own device row
+    await session.execute(
+        text("SELECT set_config('app.rmp_device_id', :id, true)"),
+        {"id": device_id},
+    )
+
+    # Step 2 — read retailer_id + status (visible via bootstrap RLS)
+    row = await get_device_retailer_id_and_status(session, device_id)
+
+    # Step 3 — clear bootstrap
+    await session.execute(
+        text("SELECT set_config('app.rmp_device_id', '', true)"),
+    )
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    retailer_id, device_status = row
+    if device_status not in ("active", "online"):
+        raise HTTPException(
+            status_code=403,
+            detail="Device not authorized",
+        )
+
+    # Step 4 — set permanent retailer scope for subsequent queries
+    await session.execute(
+        text(
+            "SELECT set_config('app.rmp_scope_retailer_ids', :ids, true)"
+        ),
+        {"ids": retailer_id},
+    )
+    await session.execute(
+        text("SELECT set_config('app.rmp_is_admin', 'false', true)"),
+    )
+
+
+# ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
 
@@ -195,6 +267,7 @@ async def health_ready():
 async def get_latest_manifest(
     request: Request,
     device_id: str = Depends(get_device_id_from_token),
+    _rls: None = Depends(set_device_rls_context),
     session: AsyncSession = Depends(get_db),
 ):
     """Return the latest manifest for the authenticated device, or 404.
@@ -206,10 +279,15 @@ async def get_latest_manifest(
     403: device not authorized
     429: rate limited
 
+    RLS context is already set on the session by set_device_rls_context
+    (EDGE-002-FU v4: production-safe device bootstrap via app.rmp_device_id).
+    No owner/bypass session is used in the request path.
+
     Performance: uses lightweight metadata query first (1 SELECT).
     Full manifest assembly (6+ queries + HMAC) only runs when content_hash
     differs from If-None-Match.
     """
+
     # S-065: rate limit per device before any DB work
     rate_key = get_rate_limit_key(request, device_id)
     if not check_rate_limit(rate_key, DEVICE_MANIFEST_RATE_LIMIT):
@@ -218,36 +296,33 @@ async def get_latest_manifest(
             detail="Too many requests",
         )
 
-    device_status = await get_physical_device_for_manifest_delivery(session, device_id)
-    if device_status is None:
-        raise HTTPException(status_code=404, detail="Device not found")
-    if device_status not in ("active", "online"):
-        # S-065: generic error — never leak internal device status
-        logger.warning(
-            "Manifest denied for device %s (status=%s)", device_id[:8], device_status,
-        )
-        raise HTTPException(
-            status_code=403,
-            detail="Device not authorized",
-        )
-
     # S-067: fast ETag path — lightweight metadata query (1 SELECT)
     meta = await get_latest_manifest_metadata(session, device_id)
     if meta is None:
         raise HTTPException(status_code=404, detail="No manifest available")
 
+    # K1: runtime ETag includes emergency state so 304 doesn't serve stale
+    # emergency.active=false after admin activation.
+    runtime_etag = f'{meta["content_hash"]}:em:{meta["emergency_active"]}'
+
     if_none_match = request.headers.get("If-None-Match", "").strip('"')
-    if if_none_match and meta["content_hash"] == if_none_match:
+    if if_none_match and runtime_etag == if_none_match:
         return Response(
             status_code=304,
-            headers={"ETag": f'"{meta["content_hash"]}"'},
+            headers={"ETag": f'"{runtime_etag}"'},
         )
 
-    # S-067: try Redis cache before full assembly
+    # S-067: try Redis cache before full assembly.
+    # K1: skip cache if emergency state differs from current — a cached
+    # manifest would have stale emergency.active.
     cached = await get_manifest_cache(device_id)
-    if cached is not None and cached.get("content_hash") == meta["content_hash"]:
+    cache_emergency_ok = (
+        cached is not None
+        and cached.get("emergency", {}).get("active") == meta["emergency_active"]
+    )
+    if cache_emergency_ok and cached.get("content_hash") == meta["content_hash"]:
         response_obj = JSONResponse(content=cached)
-        response_obj.headers["ETag"] = f'"{cached["content_hash"]}"'
+        response_obj.headers["ETag"] = f'"{runtime_etag}"'
         return response_obj
 
     # Full manifest assembly (only when content changed + cache miss)
@@ -259,8 +334,7 @@ async def get_latest_manifest(
     await set_manifest_cache(device_id, manifest)
 
     response_obj = JSONResponse(content=manifest)
-    if manifest.get("content_hash"):
-        response_obj.headers["ETag"] = f'"{manifest["content_hash"]}"'
+    response_obj.headers["ETag"] = f'"{runtime_etag}"'
     return response_obj
 
 

@@ -73,6 +73,12 @@ def _make_manifest(**overrides):
             "algorithm": "HMAC-SHA256",
             "value": "",
         },
+        "emergency": {
+            "active": False,
+            "activated_at": None,
+            "reason": "",
+        },
+        "retailer_id": "ret-001",
     }
     base.update(overrides)
     return base
@@ -183,6 +189,18 @@ class TestManifestSchemaValidation(unittest.TestCase):
         """Schema does not list storage_bucket/storage_key as declared properties."""
         self.assertNotIn("storage_bucket", SCHEMA.get("properties", {}))
         self.assertNotIn("storage_key", SCHEMA.get("properties", {}))
+
+    def test_rejects_missing_retailer_id(self):
+        manifest = _make_manifest()
+        del manifest["retailer_id"]
+        with self.assertRaises(Exception):
+            self.validator(instance=manifest, schema=SCHEMA)
+
+    def test_rejects_missing_emergency(self):
+        manifest = _make_manifest()
+        del manifest["emergency"]
+        with self.assertRaises(Exception):
+            self.validator(instance=manifest, schema=SCHEMA)
 
 
 if __name__ == "__main__":

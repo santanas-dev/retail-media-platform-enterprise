@@ -193,4 +193,12 @@ export interface MeResponse {
   display_name: string;
   permissions?: string[];
   must_change_password?: boolean;
+  advertiser_organization_id?: string | null;
+  advertiser_organization?: {
+    id: string;
+    code: string;
+    legal_name: string;
+    display_name: string;
+    status: string;
+  } | null;
 }

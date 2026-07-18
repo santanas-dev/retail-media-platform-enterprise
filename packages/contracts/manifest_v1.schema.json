@@ -10,6 +10,7 @@
     "schema_version",
     "device_id",
     "store_id",
+    "retailer_id",
     "channel_type",
     "display_surfaces",
     "playlist",
@@ -17,6 +18,7 @@
     "valid_to",
     "offline_ttl_hours",
     "fallback_rules",
+    "emergency",
     "signature"
   ],
   "properties": {
@@ -88,7 +90,16 @@
       }
     },
     "content_hash": { "type": "string" },
-    "generated_at": { "type": ["string", "null"] }
+    "generated_at": { "type": ["string", "null"] },
+    "retailer_id": { "type": "string" },
+    "emergency": {
+      "type": "object",
+      "properties": {
+        "active": { "type": "boolean" },
+        "activated_at": { "type": ["string", "null"] },
+        "reason": { "type": "string" }
+      }
+    }
   },
   "additionalProperties": false,
   "not": {

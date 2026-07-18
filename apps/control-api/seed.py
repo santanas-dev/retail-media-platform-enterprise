@@ -43,6 +43,8 @@ SEED_PERM_IDS = {
     "devices.read":    "00000000-0000-0000-0000-000000000107",
     "emergency.read":  "00000000-0000-0000-0000-000000000115",
     "emergency.manage":"00000000-0000-0000-0000-000000000116",
+    "advertiser_applications.read":  "00000000-0000-0000-0000-00000000011b",
+    "advertiser_applications.review": "00000000-0000-0000-0000-00000000011c",
     "advertisers.read":       "00000000-0000-0000-0000-000000000108",
     "advertisers.manage":     "00000000-0000-0000-0000-000000000109",
     "advertisers.contacts.read":  "00000000-0000-0000-0000-00000000010a",
@@ -69,6 +71,7 @@ SEED_BG_USER_ID =      "00000000-0000-0000-0000-000000000150"
 SEED_BG_USER_ROLE_ID = "00000000-0000-0000-0000-000000000160"
 
 # Auth persistence seed IDs (Phase 3.2a)
+SEED_RETAILER_ID =        "00000000-0000-4000-a000-000000000001"
 SEED_ADV_ORG_ID =         "00000000-0000-0000-0000-000000000200"
 SEED_ADV_MEMBERSHIP_ID =  "00000000-0000-0000-0000-000000000201"
 SEED_ADV_USER_ID =        "00000000-0000-0000-0000-000000000202"
@@ -143,18 +146,14 @@ def _build_credentials_sql() -> tuple[str, str, str]:
     adv_hash = _hash_password(_DEV_PASSWORDS["advertiser_test"])
     sql = f"""
 -- Pilot-local bootstrap credentials (S-016 — dual auth readiness)
--- DEV ONLY — seeded when ENVIRONMENT=dev or SEED_DEV_CREDENTIALS=true.
--- In production these must be overridden via env-provided password hashes
+-- DEV ONLY — seeded when ENVIRONMENT=dev or SEED_DEV_CREDENTIALS=*** In production these must be overridden via env-provided password hashes
 -- or an external secrets manager.  See docs/runbook/clean-install-login.md.
-
--- Break-glass admin credential
+;
 INSERT INTO local_credentials (id, user_id, credential_type, password_hash,
     password_hash_algorithm, must_change_password, status)
 VALUES ('{SEED_BG_CREDENTIAL_ID}', '{SEED_BG_USER_ID}', 'local_break_glass',
     '{bg_hash}', 'bcrypt', true, 'active')
 ON CONFLICT (user_id) DO NOTHING;
-
--- Test advertiser credential (product path — local_advertiser)
 INSERT INTO local_credentials (id, user_id, credential_type, password_hash,
     password_hash_algorithm, must_change_password, status)
 VALUES ('{SEED_ADV_CREDENTIAL_ID}', '{SEED_ADV_USER_ID}', 'local_advertiser',
@@ -257,6 +256,14 @@ ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO permissions (id, code, name)
 VALUES ('{SEED_PERM_IDS["emergency.manage"]}', 'emergency.manage', 'Управление аварийным режимом')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["advertiser_applications.read"]}', 'advertiser_applications.read', 'Просмотр заявок рекламодателей')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["advertiser_applications.review"]}', 'advertiser_applications.review', 'Рассмотрение заявок рекламодателей')
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO permissions (id, code, name)
@@ -371,6 +378,14 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(163)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["emergency.manage"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(164)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["advertiser_applications.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(165)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["advertiser_applications.review"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
@@ -563,10 +578,15 @@ ON CONFLICT (user_id, role_id) WHERE scope_type IS NULL AND scope_id IS NULL DO 
 
 -- Auth persistence (Phase 3.2a)
 
+-- Default retailer (ADR-018)
+INSERT INTO retailers (id, code, legal_name, display_name, status)
+VALUES ('{SEED_RETAILER_ID}', 'default', 'Default Retailer', 'Default Retailer', 'active')
+ON CONFLICT (id) DO NOTHING;
+
 -- Test advertiser organization
-INSERT INTO advertiser_organizations (id, code, legal_name, display_name)
+INSERT INTO advertiser_organizations (id, code, legal_name, display_name, retailer_id)
 VALUES ('{SEED_ADV_ORG_ID}', 'ADV-001',
-        'ООО «Рекламный Альянс»', 'Рекламный Альянс')
+        'ООО «Рекламный Альянс»', 'Рекламный Альянс', '{SEED_RETAILER_ID}')
 ON CONFLICT (code) DO NOTHING;
 
 -- Test advertiser user (no credential — record only)

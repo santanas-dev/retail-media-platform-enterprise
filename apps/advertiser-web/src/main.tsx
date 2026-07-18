@@ -9,8 +9,16 @@ import LoginPage from "./pages/LoginPage";
 import CampaignListPage from "./pages/CampaignListPage";
 import CampaignDetailPage from "./pages/CampaignDetailPage";
 import CreativeLibraryPage from "./pages/CreativeLibraryPage";
+import BriefListPage from "./pages/BriefListPage";
+import BriefCreatePage from "./pages/BriefCreatePage";
+import BriefDetailPage from "./pages/BriefDetailPage";
 import ProfilePage from "./pages/ProfilePage";
 import CampaignCreatePage from "./pages/CampaignCreatePage";
+import DashboardPage from "./pages/DashboardPage";
+import DocumentsPlaceholderPage from "./pages/DocumentsPlaceholderPage";
+import SupportPlaceholderPage from "./pages/SupportPlaceholderPage";
+import ApplyAdvertiserPage from "./pages/ApplyAdvertiserPage";
+import AcceptInvitePage from "./pages/AcceptInvitePage";
 
 /** Route-level error fallback — resets when the user navigates to a different route. */
 function RouteErrorFallback() {
@@ -54,6 +62,14 @@ function RouteErrorFallback() {
 
 const router = createBrowserRouter([
   {
+    path: "/become-advertiser",
+    element: <ApplyAdvertiserPage />,
+  },
+  {
+    path: "/accept-invite/:token",
+    element: <AcceptInvitePage />,
+  },
+  {
     path: "/login",
     element: <LoginPage />,
   },
@@ -66,11 +82,17 @@ const router = createBrowserRouter([
     ),
     errorElement: <RouteErrorFallback />,
     children: [
-      { index: true, element: <Navigate to="/campaigns" replace /> },
+      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { path: "dashboard", element: <DashboardPage /> },
       { path: "campaigns", element: <CampaignListPage /> },
       { path: "campaigns/new", element: <CampaignCreatePage /> },
       { path: "campaigns/:id", element: <CampaignDetailPage /> },
       { path: "creatives", element: <CreativeLibraryPage /> },
+      { path: "briefs", element: <BriefListPage /> },
+      { path: "briefs/new", element: <BriefCreatePage /> },
+      { path: "briefs/:id", element: <BriefDetailPage /> },
+      { path: "documents", element: <DocumentsPlaceholderPage /> },
+      { path: "support", element: <SupportPlaceholderPage /> },
       { path: "profile", element: <ProfilePage /> },
     ],
   },

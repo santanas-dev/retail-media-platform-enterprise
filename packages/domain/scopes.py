@@ -47,12 +47,13 @@ class ScopeContext:
     is_admin: bool = False
     role_codes: set[str] = field(default_factory=set)
     global_permissions: set[str] = field(default_factory=set)
+    retailer_scope_ids: set[str] = field(default_factory=set)
     advertiser_scope_ids: set[str] = field(default_factory=set)
     all_permissions: set[str] = field(default_factory=set)
 
     def __bool__(self) -> bool:
         """False for deny-all (empty scopes, not admin)."""
-        return self.is_admin or bool(self.global_permissions) or bool(self.advertiser_scope_ids)
+        return self.is_admin or bool(self.global_permissions) or bool(self.retailer_scope_ids) or bool(self.advertiser_scope_ids)
 
     @classmethod
     def deny_all(cls, user_id: str = "") -> ScopeContext:
@@ -110,6 +111,7 @@ async def resolve_scope_context(
         global_permissions: set[str] = set()
         all_permissions: set[str] = set()
         advertiser_scope_ids: set[str] = set()
+        retailer_scope_ids: set[str] = set()
 
         for ur in role_rows:
             scope_type = ur.scope_type  # None = unscoped
@@ -136,12 +138,17 @@ async def resolve_scope_context(
         membership_ids = await _load_advertiser_memberships(session, user_id)
         advertiser_scope_ids.update(membership_ids)
 
+        # ADR-018: resolve retailer scope from advertiser orgs
+        if advertiser_scope_ids:
+            retailer_scope_ids = await _load_retailer_ids(session, advertiser_scope_ids)
+
         return ScopeContext(
             user_id=user_id,
             is_admin=is_admin,
             role_codes=role_codes,
             global_permissions=global_permissions,
             all_permissions=all_permissions,
+            retailer_scope_ids=retailer_scope_ids,
             advertiser_scope_ids=advertiser_scope_ids,
         )
     finally:
@@ -196,3 +203,17 @@ async def _load_advertiser_memberships(
     )
     result = await session.execute(stmt)
     return {row[0] for row in result.fetchall()}
+
+
+async def _load_retailer_ids(
+    session: AsyncSession, advertiser_org_ids: set[str],
+) -> set[str]:
+    """ADR-018: return distinct retailer_ids for given advertiser orgs."""
+    from packages.domain.models import AdvertiserOrganization
+    stmt = (
+        select(AdvertiserOrganization.retailer_id)
+        .where(AdvertiserOrganization.id.in_(advertiser_org_ids))
+        .distinct()
+    )
+    result = await session.execute(stmt)
+    return {row[0] for row in result.fetchall() if row[0]}

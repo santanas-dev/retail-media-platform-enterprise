@@ -51,6 +51,7 @@ import type {
   InventoryRuleCreate,
   InventoryRuleUpdate,
   CampaignInventoryReservationsResponse,
+  InventorySimulationResponse,
 } from "./types";
 
 // ── Campaigns ──
@@ -488,4 +489,14 @@ export function activateRule(ruleId: string): Promise<InventoryRuleOut> {
 
 export function deactivateRule(ruleId: string): Promise<InventoryRuleOut> {
   return api.post<InventoryRuleOut>(`/inventory/rules/${ruleId}/deactivate`, {});
+}
+
+// ── S-089: Inventory Simulation ──
+
+export function simulateInventory(
+  campaignId: string,
+): Promise<InventorySimulationResponse> {
+  return api.post<InventorySimulationResponse>("/inventory/simulate", {
+    campaign_id: campaignId,
+  });
 }

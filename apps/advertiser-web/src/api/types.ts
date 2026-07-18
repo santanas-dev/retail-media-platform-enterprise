@@ -158,6 +158,58 @@ export interface CampaignApprovalOut {
   created_at: string;
 }
 
+// ── Campaign Brief (BP-004) ──
+
+export interface CampaignBriefOut {
+  id: string;
+  advertiser_organization_id: string;
+  title: string;
+  objective: string | null;
+  product_category: string | null;
+  target_period_from: string | null;
+  target_period_to: string | null;
+  budget_amount: number | null;
+  budget_currency: string;
+  preferred_channels: string | null;
+  comment: string | null;
+  status: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CampaignBriefCreateRequest {
+  title: string;
+  objective?: string;
+  product_category?: string;
+  target_period_from?: string;
+  target_period_to?: string;
+  budget_amount?: number;
+  budget_currency?: string;
+  preferred_channels?: string;
+  comment?: string;
+}
+
+export interface CampaignBriefUpdateRequest {
+  title?: string;
+  objective?: string;
+  product_category?: string;
+  target_period_from?: string;
+  target_period_to?: string;
+  budget_amount?: number;
+  budget_currency?: string;
+  preferred_channels?: string;
+  comment?: string;
+}
+
+export const BRIEF_STATUS_LABELS: Record<string, string> = {
+  draft: "Черновик",
+  submitted: "На рассмотрении",
+  reviewing: "На проверке",
+  accepted: "Принята",
+  rejected: "Отклонена",
+};
+
 // ── Campaign Status History ──
 
 export interface CampaignStatusHistoryOut {

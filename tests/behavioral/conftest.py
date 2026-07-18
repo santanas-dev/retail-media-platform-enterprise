@@ -151,6 +151,7 @@ def _setup_sql(ph):
     ; DELETE FROM campaign_status_history WHERE changed_by LIKE 'beh-%'
     ; DELETE FROM campaign_approvals WHERE reviewed_by LIKE 'beh-%'
     ; DELETE FROM audit_events_operational WHERE actor_user_id LIKE 'beh-%' OR target_id LIKE 'beh-%'
+    ; DELETE FROM device_onboarding_codes WHERE created_by LIKE 'beh-%'
     ; DELETE FROM users WHERE id LIKE 'beh-%'
     -- S-033: ensure ADV-001 advertiser org exists for user-management tests
     ; INSERT INTO advertiser_organizations (id,code,legal_name,display_name,status) VALUES
@@ -328,6 +329,18 @@ def _setup_sql(ph):
         WHERE role_id='00000000-0000-0000-0000-000000000114'
         AND permission_id=(SELECT id FROM permissions WHERE code='campaigns.manage')
       )
+    -- EDGE-001: devices.manage permission + system_admin grant
+    ; INSERT INTO permissions (id, code, name) VALUES
+      ('00000000-0000-0000-0000-000000000110','devices.manage','Управление устройствами')
+      ON CONFLICT (code) DO NOTHING
+    ; INSERT INTO role_permissions (id,role_id,permission_id)
+      SELECT 'rp-beh-sa-devmg',r.id,p.id
+      FROM roles r CROSS JOIN permissions p
+      WHERE r.code='system_admin' AND p.code='devices.manage'
+      AND NOT EXISTS (
+        SELECT 1 FROM role_permissions
+        WHERE role_id=r.id AND permission_id=p.id
+      )
     """
 
 
@@ -356,6 +369,8 @@ _CLEANUP = """
     ; DELETE FROM creative_assets WHERE created_by LIKE 'beh-%'
     ; DELETE FROM campaigns WHERE created_by LIKE 'beh-%'
     ; DELETE FROM advertiser_contracts WHERE id LIKE 'beh-%'
+    ; DELETE FROM advertiser_invites WHERE id LIKE 'beh-%'
+    ; DELETE FROM advertiser_applications WHERE id LIKE 'beh-%'
     ; DELETE FROM campaign_approvals WHERE reviewed_by LIKE 'beh-%'
     ; DELETE FROM campaign_status_history WHERE changed_by LIKE 'beh-%'
     ; DELETE FROM login_attempts WHERE username_or_email_hash LIKE 'beh-test-%'
@@ -364,6 +379,7 @@ _CLEANUP = """
     ; DELETE FROM local_credentials WHERE user_id LIKE 'beh-%'
     ; DELETE FROM user_roles WHERE user_id LIKE 'beh-%'
     ; DELETE FROM audit_events_operational WHERE actor_user_id LIKE 'beh-%' OR target_id LIKE 'beh-%'
+    ; DELETE FROM device_onboarding_codes WHERE created_by LIKE 'beh-%'
     ; DELETE FROM users WHERE id LIKE 'beh-%'
     -- S-033: cleanup users created dynamically (UUID IDs via create endpoint)
     ; DELETE FROM refresh_sessions WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'beh-test-%')

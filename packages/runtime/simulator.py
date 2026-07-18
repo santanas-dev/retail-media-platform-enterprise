@@ -18,6 +18,8 @@ import time
 import uuid
 from dataclasses import dataclass, field
 
+from packages.contracts.manifest_signing import verify_manifest_signature
+
 
 # ── Required manifest fields (per manifest_v1.schema.json + ADR-016) ──
 REQUIRED_MANIFEST_FIELDS = {
@@ -67,10 +69,12 @@ class RuntimeSimulator:
         device_id: str = "",
         device_code: str = "DEV-001",
         store_id: str = "",
+        signing_key: str = "",
     ):
         self.device_id = device_id
         self.device_code = device_code
         self.store_id = store_id
+        self.signing_key = signing_key  # MANIFEST_SIGNING_KEY for verification
 
         # Manifest state
         self._current_manifest: dict | None = None
@@ -145,13 +149,37 @@ class RuntimeSimulator:
                     ),
                 )
 
-        # Signature check placeholder (ADR-013 §1 — skeleton only)
+        # Signature verification (K2: real check, not placeholder)
         sig = manifest.get("signature", {})
-        if sig.get("value", "") == "INVALID":
+        sig_value = sig.get("value", "")
+        sig_algo = sig.get("algorithm", "")
+
+        # Reject the old magic-string placeholder (security: never accept it)
+        if sig_value == "INVALID":
             return ApplyResult(
                 success=False,
                 failure_reason="Manifest signature verification failed",
             )
+
+        if self.signing_key:
+            # Production mode: real signature required
+            if not sig_value:
+                return ApplyResult(
+                    success=False,
+                    failure_reason="Manifest signature is missing (signing key configured)",
+                )
+            if sig_algo != "HMAC-SHA256":
+                return ApplyResult(
+                    success=False,
+                    failure_reason=f"Unsupported signature algorithm: {sig_algo}",
+                )
+            if not verify_manifest_signature(manifest, sig_value, self.signing_key):
+                return ApplyResult(
+                    success=False,
+                    failure_reason="Manifest signature verification failed",
+                )
+        # When signing_key is not configured, accept unsigned manifests
+        # (test/dev mode only; production MUST set MANIFEST_SIGNING_KEY)
 
         # Atomic swap: move current → last-known-good, set new
         self._last_known_good = self._current_manifest

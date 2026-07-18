@@ -19,6 +19,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/audit", label: "Журнал аудита", requiredPermissions: ["audit.read"] },
   { to: "/devices", label: "Устройства", requiredPermissions: ["devices.read"] },
   { to: "/emergency", label: "Аварийный режим", requiredPermissions: ["emergency.read"] },
+  { to: "/advertiser-applications", label: "Заявки рекламодателей", requiredPermissions: ["advertiser_applications.read"] },
 ];
 
 function hasAnyPermission(userPermissions: string[] | undefined, required: string[]): boolean {

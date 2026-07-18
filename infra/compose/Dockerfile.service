@@ -14,6 +14,7 @@ ARG SERVICE_MODULE
 ARG SERVICE_PORT
 
 ENV RMP_SERVICE=${SERVICE_NAME}
+ENV SERVICE_MODULE=${SERVICE_MODULE}
 
 WORKDIR /app
 
@@ -23,6 +24,7 @@ RUN pip install --no-cache-dir -r apps/${SERVICE_NAME}/requirements.txt
 
 COPY packages/ ./packages/
 COPY apps/${SERVICE_NAME}/ ./apps/${SERVICE_NAME}/
+COPY infra/compose/ ./infra/compose/
 
 EXPOSE ${SERVICE_PORT}
 

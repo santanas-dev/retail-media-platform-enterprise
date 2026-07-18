@@ -237,6 +237,8 @@ class MeResponse(BaseModel):
     display_name: str = ""
     permissions: list[str] = []
     must_change_password: bool = False
+    advertiser_organization_id: str | None = None
+    advertiser_organization: "AdvertiserOrganizationOut | None" = None
 
 
 # ---------------------------------------------------------------------------
@@ -483,6 +485,58 @@ class CampaignUpdateRequest(BaseModel):
     budget_limit_amount: float | None = None
     budget_limit_currency: str | None = None
     priority: int | None = None
+
+
+# ---------------------------------------------------------------------------
+# BP-004 — Campaign Brief / Placement Request
+# ---------------------------------------------------------------------------
+
+
+class CampaignBriefOut(BaseModel):
+    """Campaign brief read-only DTO. No PII, no storage secrets."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    advertiser_organization_id: str
+    title: str
+    objective: str | None = None
+    product_category: str | None = None
+    target_period_from: date_type | None = None
+    target_period_to: date_type | None = None
+    budget_amount: float | None = None
+    budget_currency: str = "RUB"
+    preferred_channels: str | None = None
+    comment: str | None = None
+    status: str
+    created_by: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class CampaignBriefCreateRequest(BaseModel):
+    """Create a draft campaign brief."""
+    title: str = Field(..., min_length=1, max_length=255)
+    objective: str | None = None
+    product_category: str | None = None
+    target_period_from: date_type | None = None
+    target_period_to: date_type | None = None
+    budget_amount: float | None = None
+    budget_currency: str = "RUB"
+    preferred_channels: str | None = None
+    comment: str | None = None
+
+
+class CampaignBriefUpdateRequest(BaseModel):
+    """Update a draft brief — all fields optional."""
+    title: str | None = Field(None, min_length=1, max_length=255)
+    objective: str | None = None
+    product_category: str | None = None
+    target_period_from: date_type | None = None
+    target_period_to: date_type | None = None
+    budget_amount: float | None = None
+    budget_currency: str | None = None
+    preferred_channels: str | None = None
+    comment: str | None = None
 
 
 class CampaignArchiveResponse(BaseModel):
@@ -904,6 +958,57 @@ class ADTestResultOut(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# EDGE-001 — Device Onboarding
+# ---------------------------------------------------------------------------
+
+
+class DeviceOnboardRequest(BaseModel):
+    """Device self-onboarding request — no JWT, just device_code + fingerprint."""
+
+    device_code: str = Field(..., min_length=8, max_length=128)
+    hardware_fingerprint: str = Field(..., min_length=1, max_length=255)
+
+
+class DeviceOnboardResponse(BaseModel):
+    """Successful onboarding — returns device identity + access token."""
+
+    device_id: str
+    status: str
+    access_token: str
+    token_type: str = "bearer"
+
+
+class DeviceCodeCreateRequest(BaseModel):
+    """Admin request to create a device onboarding code."""
+
+    retailer_id: str
+    store_id: str | None = None
+    device_type_id: str | None = None
+    ttl_hours: int = Field(default=24, ge=1, le=720)
+
+
+class DeviceCodeOut(BaseModel):
+    """Admin-visible device onboarding code info."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    code: str
+    retailer_id: str
+    store_id: str | None = None
+    device_type_id: str | None = None
+    status: str
+    hardware_fingerprint_bound: str | None = None
+    physical_device_id: str | None = None
+    created_at: datetime | None = None
+    expires_at: datetime | None = None
+    used_at: datetime | None = None
+
+
+# ---------------------------------------------------------------------------
+
+
 class DeviceOut(BaseModel):
     """Safe device representation — no secrets/tokens/HMAC keys."""
 
@@ -961,6 +1066,88 @@ class EmergencyActivateRequest(BaseModel):
 
 class EmergencyDeactivateRequest(BaseModel):
     reason: str = Field(..., min_length=1, max_length=500)
+
+
+# ---------------------------------------------------------------------------
+# BP-001 — Advertiser Applications
+# ---------------------------------------------------------------------------
+
+
+class AdvertiserApplicationCreate(BaseModel):
+    """Public application — no auth required."""
+
+    company_name: str = Field(..., min_length=1, max_length=255)
+    contact_name: str = Field(..., min_length=1, max_length=255)
+    email: str = Field(..., min_length=1, max_length=255)
+    phone: str = Field(default="", max_length=64)
+    website: str = Field(default="", max_length=512)
+    comment: str = Field(default="", max_length=2000)
+    consent: bool = Field(...)
+
+
+class AdvertiserApplicationOut(BaseModel):
+    """Application visible to admin."""
+
+    id: str
+    company_name: str
+    contact_name: str
+    email: str
+    phone: str
+    website: str
+    comment: str
+    consent: bool
+    status: str
+    reviewer_id: str | None = None
+    review_reason: str | None = None
+    reviewed_at: datetime | None = None
+    organization_id: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AdvertiserApplicationReview(BaseModel):
+    """Admin review decision."""
+
+    action: str = Field(...)  # "approve" | "reject"
+    reason: str = Field(default="", max_length=1000)
+
+
+class AdvertiserApplicationListOut(BaseModel):
+    """Paginated list of applications."""
+
+    items: list[AdvertiserApplicationOut]
+    total: int
+    limit: int
+    offset: int
+
+
+# ---------------------------------------------------------------------------
+# Advertiser Invite (BP-002)
+# ---------------------------------------------------------------------------
+
+
+class AdvertiserInviteOut(BaseModel):
+    """Invite visible to admin."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    advertiser_application_id: str | None = None
+    advertiser_organization_id: str
+    token: str
+    contact_email: str
+    status: str
+    created_by: str | None = None
+    created_at: datetime
+    expires_at: datetime
+    accepted_at: datetime | None = None
+    accepted_by_user_id: str | None = None
+
+
+class AcceptAdvertiserInvite(BaseModel):
+    """Public — accept invite with password."""
+    password: str = Field(..., min_length=8, max_length=128)
 
 
 # ---------------------------------------------------------------------------
@@ -1207,3 +1394,38 @@ class InventoryAlternativesResponse(BaseModel):
     surface_id: str
     alternatives: list[InventoryAlternative] = Field(default_factory=list)
     total_found: int
+
+
+# ---------------------------------------------------------------------------
+# S-089 — Inventory Simulation
+# ---------------------------------------------------------------------------
+
+
+class InventorySimulationRequest(BaseModel):
+    """Request a pre-approval inventory simulation for a campaign."""
+    campaign_id: str
+
+
+class InventorySimulationPlacementResult(BaseModel):
+    """Per-placement simulation result."""
+    placement_id: str
+    surface_id: str
+    surface_code: str | None = None
+    surface_name: str | None = None
+    store_code: str | None = None
+    store_name: str | None = None
+    fit: bool
+    slot_fill_percent: float = Field(0.0, ge=0.0)
+    total_requested: int = 0
+    total_available: int = 0
+    conflicts: list[InventoryConflictItem] = Field(default_factory=list)
+    applied_rules: list[dict] = Field(default_factory=list)
+
+
+class InventorySimulationResponse(BaseModel):
+    """Full pre-approval simulation result for a campaign."""
+    campaign_id: str
+    overall_fit: bool
+    placements: list[InventorySimulationPlacementResult] = Field(default_factory=list)
+    blocking_count: int = 0
+    warning_count: int = 0

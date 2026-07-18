@@ -1,0 +1,142 @@
+.wrapper {
+  padding: 1.5rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 1rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.loading, .error {
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+}
+
+.error {
+  color: #c0392b;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1rem;
+  text-align: center;
+  color: #555;
+}
+
+.emptyIcon {
+  font-size: 2.5rem;
+  margin: 0 0 0.5rem;
+}
+
+.muted {
+  color: #999;
+  font-size: 0.9rem;
+  margin: 0.25rem 0 1rem;
+}
+
+.createBtn {
+  display: inline-block;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid #2563eb;
+  border-radius: 6px;
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  background: transparent;
+  cursor: pointer;
+}
+
+.createBtn:hover {
+  background: #2563eb;
+  color: #fff;
+}
+
+/* ── List cards ── */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.card {
+  display: block;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s;
+}
+
+.card:hover {
+  border-color: #2563eb;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.cardTitle {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.cardMeta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: #888;
+}
+
+/* ── Status badges ── */
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.status_draft {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.status_submitted {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.status_reviewing {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.status_accepted {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status_rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}

@@ -34,7 +34,7 @@ class TestPhase2Metadata(unittest.TestCase):
         """Metadata table count — grows with each phase."""
         from packages.domain.models import Base
         count = len(Base.metadata.tables)
-        self.assertEqual(count, 49, f"Expected 49 tables, got {count}")
+        self.assertEqual(count, 54, f"Expected 54 tables, got {count}")
 
 
 class TestPhase2ModelColumns(unittest.TestCase):
@@ -452,13 +452,13 @@ class TestPhase21SeedIdentity(unittest.TestCase):
                          f"INSERT count {insert_count} != ON CONFLICT count {conflict_count}")
 
     def test_seed_insert_count(self):
-        """Seed INSERT count — grows with each phase. S-023a: +8 advertiser role INSERTs (91)."""
+        """Seed INSERT count — grows with each phase. BP-001: +4 advertiser_applications INSERTs (108)."""
         src = self._SEED_SRC
         m = re.search(r'SEED_SQL = f"""(.+?)"""', src, re.DOTALL)
         self.assertIsNotNone(m, "Cannot find SEED_SQL")
         sql = m.group(1)
         inserts = [l for l in sql.split("\n") if l.strip().upper().startswith("INSERT")]
-        self.assertEqual(len(inserts), 104, f"Expected 104 INSERTs, got {len(inserts)}")
+        self.assertEqual(len(inserts), 109, f"Expected 109 INSERTs, got {len(inserts)}")
 
 
 class TestPhase21AuditEventModel(unittest.TestCase):
