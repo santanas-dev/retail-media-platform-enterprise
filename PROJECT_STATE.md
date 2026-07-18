@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (K2 — Manifest Signature Verification Before Player Execution)
+**Last updated:** 2026-07-18 (RM1 — Roadmap sync after K1/K2)
 
-K2 ✅ **RESOLVED** — CI #29638045838 ✅. 27/27 unit + behavioural green.
+RM1 ✅ **RESOLVED** — roadmap cells updated for K1/K2/emergency/signature.
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -11,7 +11,7 @@ K2 ✅ **RESOLVED** — CI #29638045838 ✅. 27/27 unit + behavioural green.
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 4a35179 | bb30a5b | K2 — Manifest Signature Verification, CI ✅ #29638045838 |
+| develop | 7bcc570 | bb30a5b | RM1 — Roadmap sync after K1/K2 |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -122,8 +122,9 @@ K2 ✅ **RESOLVED** — CI #29638045838 ✅. 27/27 unit + behavioural green.
 Приоритет после внешнего аудита 2026-07-18 (P0 safety first):
 1. **K1** ✅ — emergency override → manifest.
 2. **K2** ✅ — manifest signature verification before player execution.
-3. **RM1, R1, T1** — roadmap/docs/release process hygiene.
-4. **EDGE-003** — PoP ingestion endpoint (после K1/K2, если product owner не переопределит).
+3. **RM1** ✅ — roadmap/docs/release process hygiene.
+4. **R1, T1** — release point v0.8 + behavioural test data builder.
+5. **EDGE-003** — PoP ingestion endpoint (после process hygiene, если product owner не переопределит).
 
 ## K2 — Manifest Signature Verification Before Player Execution ✅ RESOLVED (2026-07-18)
 
@@ -170,7 +171,7 @@ K2 ✅ **RESOLVED** — CI #29638045838 ✅. 27/27 unit + behavioural green.
 |-----|----------|--------|
 | **K1** ✅ | Emergency override не доходит до manifest — backend-состояние меняется, но device manifest возвращает `emergency.active=false` | Behavioural test: admin активирует emergency → следующий device manifest имеет `emergency.active=true` под NOBYPASSRLS | CI #29636889061 |
 | **K2** ✅ | Manifest signature verification before player execution не доказана — server signing существует, но runtime/player verification placeholder/deferred | Tampered manifest rejected before apply/play | CI #29638045838 |
-| **RM1** | Roadmap stale vs PROJECT_STATE — roadmap-ячейки не синхронизированы с фактическим статусом в PROJECT_STATE | Roadmap cells updated on both sheets, no structure changes |
+| **RM1** ✅ | Roadmap stale vs PROJECT_STATE — roadmap-ячейки не синхронизированы с фактическим статусом в PROJECT_STATE | Roadmap cells updated on both sheets, no structure changes | SHA 7bcc570 |
 | **R1** | Release point v0.8 — зафиксировать baseline для внешнего аудита | HUMAN/Hermes release process, not code |
 | **T1** | Behavioral test data builder — тесты создают фикстуры вручную, нет переиспользуемого builder-паттерна | Новый behavioural test использует builder, существующие behavioural tests green |
 
