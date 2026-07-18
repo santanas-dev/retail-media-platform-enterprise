@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 83dbad9     | (this commit)   | EDGE-002-FU v3 — strict behavioural proof, CI ✅ (317/12) |
+| develop | 2f43951     | (this commit)   | EDGE-002-FU v4 — production-safe RLS bootstrap, CI ✅ #29635004193 |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -115,7 +115,7 @@
 
 **EDGE-001 ✅ RESOLVED** — CI #29589031870 ✅.
 **PLAYER-AUD-001 ✅ COMPLETED** — audit report.
-**EDGE-002 ✅ RESOLVED (v3 strict)** — real endpoint proof under NOBYPASSRLS, CI #29604556115 ✅ (317/12).
+**EDGE-002 ✅ RESOLVED (v4 production-safe)** — app.rmp_device_id bootstrap, no owner lookup, CI #29635004193 ✅.
 Следующий workstream: **EDGE-003** — PoP ingestion endpoint.
 
 ## PLAYER-AUD-001 — Audit Report (2026-07-17)
@@ -252,7 +252,7 @@
 - **Адаптировать:** 24 компонента (runtime gate, playlist, PoP writer, display cycle, daemon/loop, visible runtime, CLI×2, events, interaction hide, run_cycle, auth, manifest/媒体 sync, PoP send/batch, heartbeat, runtime/media config, HTTP client, pop_payload)
 - **Не переносить:** 3 компонента (X11 renderer/proof, secret_store)
 
-## EDGE-002 — Device Manifest Delivery ✅ RESOLVED (v3 strict, 2026-07-17)
+## EDGE-002 — Device Manifest Delivery ✅ RESOLVED (v4 production-safe, 2026-07-18)
 
 - **Endpoint:** `GET /api/v1/device/manifest/latest` — device-gateway (port 8001)
 - **Auth:** device JWT (auth_provider="device", sub=device_id) — no user tokens accepted
@@ -269,19 +269,14 @@
 - Cross-retailer: DB-level RLS proof only, no real endpoint tests
 - **Verdict:** rejected — proof too weak.
 
-### EDGE-002-FU v3 (strict proof) — 10 tests, strict assertions, CI #29604556115 ✅
-- **Root cause fix:** `set_device_rls_context` used `get_global_engine()` (app role) to query `physical_devices`. Under NOBYPASSRLS, this is a chicken-and-egg: need retailer_id to set RLS, but RLS blocks reading retailer_id. Fix: use `BEHAVIORAL_DB_URL` (owner role) for device lookup, fall back to app role in production.
-- **Strict 200:** `test_device_a_200_manifest` → `assert == 200` (was `in (200, 404)`)
-- **Strict 304:** `test_304_etag_strict` → r1=200+ETag, r2=`assert == 304` (was skipped)
-- **Cross-retailer endpoint proof:** `test_device_b_no_manifest_cross_retailer` → device B (retailer B, no manifest) → `assert == 404`
-- **No cross-retailer leak:** `test_device_b_token_cannot_access_device_a_endpoint` → device B token must NOT return device A data
-- **Client params ignored:** `test_client_retailer_id_ignored` → `?retailer_id=evil` → still returns device A's retailer
-- **Client body ignored:** `test_client_device_id_in_body_ignored` → `?device_id=evil` → still returns device A's ID
-- **User token rejected:** `test_user_token_rejected_401` → auth_provider≠device → 401
-- **Negative paths preserved:** `test_missing_auth_401`, `test_invalid_token_401`, `test_unknown_device_404`
-- **CI:** Unit Tests ✅, Behavioural PostgreSQL ADR-008 ✅ (317 passed, 12 skipped)
-- **Payload SHA:** `83dbad9`
-- **Previous proof verdict:** honest — v2 was "данные есть, но тесты написаны слабо — допускают 404 вместо 200, скипают 304, не доказывают cross-retailer на уровне endpoint"
+### EDGE-002-FU v4 (production-safe bootstrap) — 13 tests, CI #29635004193 ✅
+- **Root cause:** v3 used `BEHAVIORAL_DB_URL` (owner role) for device lookup — works in CI but chicken-and-egg in production under FORCE RLS.
+- **Fix:** Migration 023 adds `id = app.rmp_device_id` to `physical_devices` SELECT RLS policy. `set_device_rls_context` now uses the REQUEST session: set `app.rmp_device_id` → read retailer_id (visible via bootstrap) → clear bootstrap → set `app.rmp_scope_retailer_ids` → return. No owner/bypass in request path.
+- **Endpoint simplified:** `retailer_id` param removed, RLS context set entirely in dependency.
+- **Direct DB RLS proof (3 tests):** app-role with `app.rmp_device_id=A` sees only device A (not B), no bootstrap sees zero devices, bootstrap B sees device B not A.
+- **CI:** Unit Tests ✅, Behavioural ADR-008 ✅ (320 passed, 12 skipped)
+- **Payload SHA:** `2f43951`
+- **Honest v3 verdict:** v3 was strict assertion-wise but production bootstrap was test-env dependent — `set_device_rls_context` used owner-role connection in CI, would fail under FORCE RLS in production.
 
 ## EDGE-001 — Device Onboarding Contract ✅ RESOLVED (hardened 2026-07-17)
 
