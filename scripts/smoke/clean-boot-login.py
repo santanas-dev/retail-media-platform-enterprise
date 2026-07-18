@@ -63,14 +63,20 @@ def main() -> None:
     dc("down", "-v", "--remove-orphans")
     print("")
 
-    # Step 2: Start infra
-    print("--- Step 2: Starting postgres + redis + control-api ---")
-    r = dc("up", "-d", "--build", "postgres", "redis", "control-api")
+    # Step 2: Build (no cache to ensure fresh Dockerfile)
+    print("--- Step 2: Building control-api (no cache) ---")
+    r = dc("build", "--no-cache", "control-api")
+    ok(r.returncode == 0, "build control-api")
+    print("")
+
+    # Step 3: Start infra
+    print("--- Step 3: Starting postgres + redis + control-api ---")
+    r = dc("up", "-d", "postgres", "redis", "control-api")
     ok(r.returncode == 0, "compose up")
     print("")
 
-    # Step 3: Wait for healthy
-    print(f"--- Step 3: Waiting for control-api healthy (timeout {TIMEOUT}s) ---")
+    # Step 4: Wait for healthy
+    print(f"--- Step 4: Waiting for control-api healthy (timeout {TIMEOUT}s) ---")
     start = time.time()
     while time.time() - start < TIMEOUT:
         try:
@@ -85,8 +91,8 @@ def main() -> None:
         ok(False, f"control-api not healthy after {TIMEOUT}s")
     print("")
 
-    # Step 4: db-setup
-    print("--- Step 4: Running db-setup ---")
+    # Step 5: db-setup
+    print("--- Step 5: Running db-setup ---")
     r = dc("--profile", "setup", "run", "--rm", "db-setup")
     ok(r.returncode == 0, f"db-setup (exit {r.returncode})")
     if r.returncode != 0:
@@ -94,8 +100,8 @@ def main() -> None:
         print(r.stderr[-500:])
     print("")
 
-    # Step 5: Login
-    print("--- Step 5: POST /api/v1/auth/login ---")
+    # Step 6: Login
+    print("--- Step 6: POST /api/v1/auth/login ---")
     code, resp = http("POST", "/api/v1/auth/login", {
         "username_or_email": "advertiser_test",
         "password": "advertiser-dev-only",
@@ -106,16 +112,16 @@ def main() -> None:
     ok(bool(token), "access_token present")
     print("")
 
-    # Step 6: Campaigns
-    print("--- Step 6: GET /api/v1/identity/campaigns ---")
+    # Step 7: Campaigns
+    print("--- Step 7: GET /api/v1/identity/campaigns ---")
     code, resp = http("GET", "/api/v1/identity/campaigns", token=token)
     total = resp.get("total", 0)
     ok(code == 200, f"Campaigns HTTP {code}")
     ok(total > 0, f"total={total} (non-empty)")
     print("")
 
-    # Step 7: local_credentials
-    print("--- Step 7: Verify local_credentials seeded ---")
+    # Step 8: local_credentials
+    print("--- Step 8: Verify local_credentials seeded ---")
     r = subprocess.run(
         ["docker", "compose", "-f", COMPOSE1, "-f", COMPOSE2,
          "exec", "-T", "postgres",
