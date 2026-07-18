@@ -16,7 +16,7 @@ EDGE-004-FU ✅ **RESOLVED** — Heartbeat proof hardened (12 tests, no admin by
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 082f9aa | 4e57326 | EDGE-004-FU ✅ — proof hardened, honest state |
+| develop | cb14704 | _this_commit_ | EDGE-004-FU ✅ — proof hardened, honest state |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -428,8 +428,9 @@ EDGE-004-FU ✅ **RESOLVED** — Heartbeat proof hardened (12 tests, no admin by
 - **Tests (12/12, no admin bypass):**
   - 9 endpoint: device A → 200, defaults healthy, **strict heartbeat DB proof (pre-read NULL → POST → post-read: non-null + payload match + timestamp freshness)**, user token 401, no auth 401, invalid token 401, inactive device 403, device A cannot touch device B, client device_id spoof ignored
   - 3 direct DB RLS: bootstrap A → sees device A not B, bootstrap B → sees device B not A, no bootstrap → sees zero
-- **CI (initial):** #29652842195 ✅ (34/34 green)
-- **Payload SHA:** `082f9aa`
+- **CI (FU):** #29655140733 ✅ (34/34 green — 347 passed, 12 skipped)
+- **Root cause fix:** device-gateway `get_db` didn't have `session.begin()` — writes (ORM or raw SQL) didn't persist. Added `async with session.begin(): yield session`.
+- **Payload SHA:** `cb14704`
 
 ## EDGE-001 — Device Onboarding Contract ✅ RESOLVED (hardened 2026-07-17)
 
