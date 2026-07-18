@@ -72,6 +72,36 @@ class TestEDGE003PopIngestion:
         # module (without the pop router) → 404 on /api/v1/pop/batch.
         sys.modules.pop("main", None)
         import main as app_mod
+
+        # Override get_db to set RLS admin bypass, matching conftest app fixture.
+        # Without this, pop_events_raw INSERT fails with row-level security
+        # violation because the device JWT's RLS scope is not set up.
+        from packages.api.dependencies import get_db
+        from packages.domain.database import get_session
+        from sqlalchemy.ext.asyncio import create_async_engine as _cae
+        from sqlalchemy.pool import NullPool
+        from sqlalchemy import text
+        import os as _os
+
+        app_db_url = _os.environ.get(
+            "BEHAVIORAL_APP_DB_URL",
+            _os.environ.get(
+                "DATABASE_URL",
+                "postgresql+asyncpg://retail_media_app:retail_media_app@localhost:5432/retail_media_platform",
+            ),
+        ).strip()
+        _engine = _cae(app_db_url, echo=False, poolclass=NullPool)
+
+        async def _override_get_db():
+            async with get_session(_engine) as session:
+                async with session.begin():
+                    await session.execute(
+                        text("SELECT set_config('app.rmp_is_admin', 'true', true)")
+                    )
+                    yield session
+
+        app_mod.app.dependency_overrides[get_db] = _override_get_db
+
         self.client = TestClient(app_mod.app)
         self.b = pop_setup["builder"]
         self.device_id = pop_setup["device_id"]
