@@ -28,7 +28,7 @@ curl -s -X POST http://localhost:8000/api/v1/auth/login \
 ## Seeded Users
 
 Two users are seeded with local credentials when `ENVIRONMENT=dev` (or
-`SEED_DEV_CREDENTIALS=true`:
+SEED_DEV_CREDENTIALS=true
 
 | Username | Password (DEV ONLY) | auth_provider | Role | must_change_password |
 |----------|--------------------|---------------|------|---------------------|
