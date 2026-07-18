@@ -318,6 +318,8 @@ class TestEDGE002FUDirectDBRLS:
         app_db_url = os.environ.get("DATABASE_URL", "").strip()
         if not app_db_url:
             pytest.skip("DATABASE_URL not set")
+        # asyncpg expects plain postgresql://, not postgresql+asyncpg://
+        app_db_url = app_db_url.replace("postgresql+asyncpg://", "postgresql://")
 
         async def _connect():
             return await asyncpg.connect(app_db_url)
