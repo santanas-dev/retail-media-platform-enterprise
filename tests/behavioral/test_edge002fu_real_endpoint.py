@@ -148,6 +148,7 @@ class TestEDGE002FURealEndpoint:
     def setup(self, db_available):
         sys.path.insert(0, os.path.join(
             os.path.dirname(__file__), "..", "..", "apps", "device-gateway"))
+        sys.modules.pop("main", None)
         import main as app_mod
         self.app_mod = app_mod
         self.client = TestClient(app_mod.app)

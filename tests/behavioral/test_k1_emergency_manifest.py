@@ -56,6 +56,7 @@ class TestK1EmergencyInManifest:
     def setup(self, db_available, k1_setup):
         sys.path.insert(0, os.path.join(
             os.path.dirname(__file__), "..", "..", "apps", "device-gateway"))
+        sys.modules.pop("main", None)  # clear cached main from other tests (e.g. EDGE-003)
         import main as app_mod
         self.app_mod = app_mod
         self.client = TestClient(app_mod.app)
