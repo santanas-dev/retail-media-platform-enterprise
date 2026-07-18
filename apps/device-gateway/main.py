@@ -125,63 +125,75 @@ async def get_device_id_from_token(request: Request) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Device RLS Context Dependency (EDGE-002-FU)
+# Device RLS Context Dependency (EDGE-002-FU v4)
 # ---------------------------------------------------------------------------
 
 
 async def set_device_rls_context(
     device_id: str = Depends(get_device_id_from_token),
-) -> str:
-    """Set PostgreSQL RLS context for the device's retailer scope.
+    session: AsyncSession = Depends(get_db),
+) -> None:
+    """Bootstrap device RLS context on the request session.
 
-    Opens a short-lived **owner** session to resolve the device's
-    retailer_id (bypassing RLS), then returns it so the endpoint can
-    apply ``set_config('app.rmp_scope_retailer_ids', ...)`` on the
-    request-scoped session BEFORE any tenant-scoped queries.
+    Production-safe bootstrap (no owner/bypass in request path):
 
-    Under NOBYPASSRLS (behavioural CI), ``physical_devices`` is under
-    FORCE RLS — the app role cannot read its own retailer_id without
-    a scope already set (chicken-and-egg).  To break the cycle, the
-    device lookup uses a separate **owner** connection when
-    ``BEHAVIORAL_DB_URL`` is available (CI), falling back to the
-    global engine in production where the app role may have direct
-    read access.
+    1. Set ``app.rmp_device_id = device_id`` — RLS policy on
+       ``physical_devices`` allows SELECT when ``id`` matches this
+       session variable (migration 023).
 
-    Returns the retailer_id so it can be passed through to
-    get_latest_manifest_for_device for the manifest payload.
+    2. Read ``retailer_id`` + ``status`` from ``physical_devices``
+       — now visible because the bootstrap policy matches the row.
+
+    3. Clear ``app.rmp_device_id`` — bootstrap served its purpose.
+
+    4. Validate status (active/online).  Reject inactive/revoked.
+
+    5. Set ``app.rmp_scope_retailer_ids = retailer_id`` so subsequent
+       tenant-scoped queries (delivery_manifests, etc.) see only this
+       retailer's data.
+
+    Under NOBYPASSRLS (CI), the app role CANNOT bypass RLS, and no
+    owner-role connection is used.  The bootstrap is a targeted,
+    single-row-gated policy, not a general privilege elevation.
     """
+    from sqlalchemy import text
+
     from packages.domain.repository import get_device_retailer_id_and_status
 
-    # Use owner-role connection for device lookup when available (CI).
-    # In production, the app role typically has direct read access to
-    # physical_devices without needing RLS context.
-    owner_db_url = os.environ.get("BEHAVIORAL_DB_URL", "").strip()
-    if owner_db_url:
-        owner_engine = create_engine(owner_db_url)
-        try:
-            async with get_session(owner_engine) as owner_session:
-                row = await get_device_retailer_id_and_status(owner_session, device_id)
-        finally:
-            await owner_engine.dispose()
-    else:
-        engine = get_global_engine()
-        if engine is None:
-            raise HTTPException(status_code=503, detail="Database not available")
-        async with get_session(engine) as owner_session:
-            row = await get_device_retailer_id_and_status(owner_session, device_id)
+    # Step 1 — bootstrap: allow reading our own device row
+    await session.execute(
+        text("SELECT set_config('app.rmp_device_id', :id, true)"),
+        {"id": device_id},
+    )
+
+    # Step 2 — read retailer_id + status (visible via bootstrap RLS)
+    row = await get_device_retailer_id_and_status(session, device_id)
+
+    # Step 3 — clear bootstrap
+    await session.execute(
+        text("SELECT set_config('app.rmp_device_id', '', true)"),
+    )
 
     if row is None:
         raise HTTPException(status_code=404, detail="Device not found")
 
     retailer_id, device_status = row
-
     if device_status not in ("active", "online"):
         raise HTTPException(
             status_code=403,
             detail="Device not authorized",
         )
 
-    return retailer_id
+    # Step 4 — set permanent retailer scope for subsequent queries
+    await session.execute(
+        text(
+            "SELECT set_config('app.rmp_scope_retailer_ids', :ids, true)"
+        ),
+        {"ids": retailer_id},
+    )
+    await session.execute(
+        text("SELECT set_config('app.rmp_is_admin', 'false', true)"),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -255,7 +267,7 @@ async def health_ready():
 async def get_latest_manifest(
     request: Request,
     device_id: str = Depends(get_device_id_from_token),
-    retailer_id: str = Depends(set_device_rls_context),
+    _rls: None = Depends(set_device_rls_context),
     session: AsyncSession = Depends(get_db),
 ):
     """Return the latest manifest for the authenticated device, or 404.
@@ -267,25 +279,14 @@ async def get_latest_manifest(
     403: device not authorized
     429: rate limited
 
+    RLS context is already set on the session by set_device_rls_context
+    (EDGE-002-FU v4: production-safe device bootstrap via app.rmp_device_id).
+    No owner/bypass session is used in the request path.
+
     Performance: uses lightweight metadata query first (1 SELECT).
     Full manifest assembly (6+ queries + HMAC) only runs when content_hash
     differs from If-None-Match.
     """
-    # EDGE-002-FU: Apply device RLS context on the session.
-    # Under NOBYPASSRLS (behavioural CI), physical_devices and
-    # delivery_manifests are under FORCE RLS.  The device's
-    # retailer_id was already resolved by set_device_rls_context
-    # via an owner-role session — we now set the scope on this
-    # request session so subsequent queries can see the device's
-    # own rows.
-    from sqlalchemy import text
-    await session.execute(
-        text("SELECT set_config('app.rmp_scope_retailer_ids', :ids, true)"),
-        {"ids": retailer_id},
-    )
-    await session.execute(
-        text("SELECT set_config('app.rmp_is_admin', 'false', true)"),
-    )
 
     # S-065: rate limit per device before any DB work
     rate_key = get_rate_limit_key(request, device_id)

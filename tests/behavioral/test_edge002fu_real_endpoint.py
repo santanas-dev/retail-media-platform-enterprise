@@ -1,9 +1,13 @@
 """
-EDGE-002-FU — Behavioural proof: real device-gateway endpoint under NOBYPASSRLS.
+EDGE-002-FU v4 — Behavioural proof: real device-gateway endpoint under NOBYPASSRLS.
 
-Proves device JWT → 200/304/401/403/404 through the real endpoint.
-STRICT: 200 must be 200, 304 must be 304, no skips, no weak assertions.
-Uses the conftest's db_available + _run_sql for reliable DB access.
+v4: Production-safe bootstrap.  set_device_rls_context uses app.rmp_device_id
+(migration 023) to look up the device's retailer_id on the REQUEST session
+(app role).  No owner/bypass session in the request path.  RLS policy on
+physical_devices allows SELECT when id = app.rmp_device_id.
+
+Proves: device JWT → 200/304/401/404 through the real endpoint.
++ Direct DB RLS proof: app role with app.rmp_device_id sees only its own device row.
 """
 
 import asyncio
@@ -286,3 +290,100 @@ class TestEDGE002FURealEndpoint:
             headers=_auth(token),
         )
         assert resp.status_code == 404
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Direct DB RLS proof — app role with app.rmp_device_id bootstrap
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.usefixtures("e002fu_setup")
+class TestEDGE002FUDirectDBRLS:
+    """Direct DB RLS proof: app-role with app.rmp_device_id sees only own device.
+
+    These tests bypass the HTTP layer and connect directly to PostgreSQL
+    as the app role (retail_media_app, NOBYPASSRLS).  They prove that:
+
+    - app.rmp_device_id = DEVICE_A → SELECT sees device A row only
+    - app.rmp_device_id = '' → SELECT sees ZERO rows (no scope, no bootstrap)
+    - app.rmp_device_id = DEVICE_A → device B row is NOT visible
+    """
+
+    @pytest.fixture(autouse=True)
+    def _app_connection(self, db_available):
+        """Create a direct asyncpg connection as the app role (NOBYPASSRLS)."""
+        import asyncpg
+        import os
+
+        app_db_url = os.environ.get("DATABASE_URL", "").strip()
+        if not app_db_url:
+            pytest.skip("DATABASE_URL not set")
+
+        async def _connect():
+            return await asyncpg.connect(app_db_url)
+
+        self._conn = asyncio.run(_connect())
+
+        yield
+
+        async def _close():
+            await self._conn.close()
+        asyncio.run(_close())
+
+    def _set_device(self, device_id: str):
+        """Set app.rmp_device_id on the app-role session."""
+        async def _run():
+            await self._conn.execute(
+                "SELECT set_config('app.rmp_device_id', $1, true)",
+                device_id,
+            )
+        asyncio.run(_run())
+
+    def _clear_device(self):
+        async def _run():
+            await self._conn.execute(
+                "SELECT set_config('app.rmp_device_id', '', true)",
+            )
+        asyncio.run(_run())
+
+    def _fetch_device_ids(self) -> list:
+        """Return all physical_device IDs visible to the current session."""
+        async def _run():
+            rows = await self._conn.fetch(
+                "SELECT id FROM physical_devices"
+            )
+            return [r[0] for r in rows]
+        return asyncio.run(_run())
+
+    def test_bootstrap_sees_only_device_a(self):
+        """app.rmp_device_id = A → sees device A row, NOT device B."""
+        self._set_device(DEVICE_A_ID)
+        try:
+            ids = self._fetch_device_ids()
+            assert DEVICE_A_ID in ids, \
+                f"Device A ({DEVICE_A_ID}) not visible with bootstrap"
+            assert DEVICE_B_ID not in ids, \
+                f"Device B ({DEVICE_B_ID}) leaked via device A bootstrap"
+            assert len(ids) == 1, \
+                f"Expected exactly 1 device, got {len(ids)}: {ids}"
+        finally:
+            self._clear_device()
+
+    def test_no_bootstrap_sees_zero_devices(self):
+        """Without app.rmp_device_id, app role sees ZERO physical_devices
+        (no scope, no bootstrap → RLS denies all)."""
+        ids = self._fetch_device_ids()
+        assert ids == [], \
+            f"Expected empty list (RLS deny all), got: {ids}"
+
+    def test_bootstrap_b_sees_device_b_not_a(self):
+        """app.rmp_device_id = B → sees device B, not device A."""
+        self._set_device(DEVICE_B_ID)
+        try:
+            ids = self._fetch_device_ids()
+            assert DEVICE_B_ID in ids, \
+                f"Device B ({DEVICE_B_ID}) not visible with bootstrap"
+            assert DEVICE_A_ID not in ids, \
+                f"Device A ({DEVICE_A_ID}) leaked via device B bootstrap"
+        finally:
+            self._clear_device()

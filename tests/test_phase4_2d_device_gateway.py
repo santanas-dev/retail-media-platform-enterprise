@@ -264,9 +264,9 @@ class TestManifestETagFastPath(unittest.TestCase):
         async def _fake_get_db():
             yield self.mock_session
         self.app.dependency_overrides[self.app_mod.get_db] = _fake_get_db
-        # EDGE-002-FU: mock device RLS context (owner session lookup)
+        # EDGE-002-FU v4: mock device RLS context (bootstrap via app.rmp_device_id)
         async def _fake_rls():
-            return "ret-001"
+            pass  # sets RLS on session internally, returns None
         self.app.dependency_overrides[self.app_mod.set_device_rls_context] = _fake_rls
         self.client = TestClient(self.app)
 
@@ -361,7 +361,7 @@ class TestManifestRedisCache(unittest.TestCase):
             yield self.mock_session
         self.app.dependency_overrides[self.app_mod.get_db] = _fake_get_db
         async def _fake_rls():
-            return "ret-001"
+            pass  # sets RLS on session internally, returns None
         self.app.dependency_overrides[self.app_mod.set_device_rls_context] = _fake_rls
         self.client = TestClient(self.app)
 
@@ -510,7 +510,7 @@ class TestDeviceStatusRejection(unittest.TestCase):
             del self.app.dependency_overrides[self.app_mod.set_device_rls_context]
 
     def _inject_rls(self, row):
-        """Override set_device_rls_context to return a mock row or raise."""
+        """Override set_device_rls_context to validate a mock row or raise."""
         async def _fake_set_rls():
             if row is None:
                 from fastapi import HTTPException
@@ -519,7 +519,7 @@ class TestDeviceStatusRejection(unittest.TestCase):
             if status not in ("active", "online"):
                 from fastapi import HTTPException
                 raise HTTPException(status_code=403, detail="Device not authorized")
-            return retailer_id
+            # v4: sets RLS on session, returns None
         self.app.dependency_overrides[self.app_mod.set_device_rls_context] = _fake_set_rls
 
     @patch("main.verify_access_token")
@@ -589,7 +589,7 @@ class TestManifest200Response(unittest.TestCase):
             yield self.mock_session
         self.app.dependency_overrides[self.app_mod.get_db] = _fake_get_db
         async def _fake_rls():
-            return "ret-001"
+            pass  # sets RLS on session internally, returns None
         self.app.dependency_overrides[self.app_mod.set_device_rls_context] = _fake_rls
         self.client = TestClient(self.app)
 
