@@ -1,0 +1,27 @@
+# Retail Media Platform — Feature Registry
+# UI-TRUTH-001: Ground truth for what end-users can actually do through the UI.
+#
+# Convention:
+# - id:       stable feature identifier (domain.action)
+# - frontend: admin-web | advertiser-web
+# - name:     human-readable (Russian, user-facing name)
+# - route:    entry route (only login or a public landing page)
+# - path:     expected click path from entry route to feature completion
+# - smoke:    pytest test function name (test_uismoke__<id>)
+# - status:   reachable | blocked
+# - gap:      why blocked (only when status=blocked)
+
+features:
+  - id: campaign.create
+    frontend: admin-web
+    name: Создание кампании
+    route: /login
+    path:
+      - login (break-glass admin)
+      - Кампании (sidebar link)
+      - Создать кампанию (button in campaign list)
+      - заполнить форму (название, рекламодатель, контракт, бренд)
+      - submit → редирект на детали кампании
+    smoke: test_uismoke__campaign_create
+    status: blocked
+    gap: "G1: CampaignListPage рендерит текст 'Создайте первую кампанию', но не содержит кнопки/ссылки на /campaigns/new. Маршрут существует, CampaignCreatePage загружается, тесты работают через прямой goto на маршрут — но живой пользователь не может дойти."

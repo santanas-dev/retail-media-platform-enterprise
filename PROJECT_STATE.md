@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (EDGE-004-FU ✅ — heartbeat proof hardened, honest state)
+**Last updated:** 2026-07-18 (UI-TRUTH-001A — feature registry + smoke harness + G1 proof)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -540,6 +540,34 @@ EDGE-004-FU ✅ **RESOLVED** — Heartbeat proof hardened (12 tests, no admin by
 | ID | Task | Status |
 |----|------|--------|
 | PLAYER-IMPORT-001 | Next Active Workstream after EDGE-004-FU | 🚧 planned |
+
+## UI-TRUTH-001 — Feature Truth Registry & Smoke Proof 🚧 in progress
+
+**New Done Gate for business functions:**
+- Was: backend tests + API proof = feature done.
+- Now: backend + **reachable UI** + green UI-smoke = feature done.
+- UI-smoke runs against clean-boot stack, uses only real UI clicks (no direct goto, no API, no localStorage).
+
+### UI-TRUTH-001A ✅ RESOLVED — harness + G1 proof
+
+- **Feature registry:** `docs/product/feature-registry.yaml` — campaign.create as first entry.
+- **Smoke harness:** `tests/ui-smoke/conftest.py` — Playwright, login-only `page.goto()`, stable `#id` selectors.
+- **G1 proof:** `test_uismoke__campaign_create` — break-glass admin → login → sidebar → campaign list → no «Создать кампанию» button.
+- **Run:** `scripts/ui-smoke-audit.sh` (not blocking CI).
+- **Failure message:** `G1 CONFIRMED: No 'Create Campaign' button found on campaign list page.`
+
+### Confirmed Gaps (G1–G4)
+
+| Gap | Description | Status |
+|-----|-------------|--------|
+| G1 | CampaignListPage: no «Создать кампанию» button → /campaigns/new unreachable by real user | ✅ confirmed by UI-smoke |
+| G2 | UsersPage: creates only local_advertiser; no role/permission assignment UI | 🟡 confirmed (audit) |
+| G3 | AdvertisersPage: list/detail only; no UI for creating advertiser org | 🟡 confirmed (audit) |
+| G4 | ADSettingsPage: GET / POST test only; no save/persist | 🟡 confirmed (audit) |
+
+### Next after UI-TRUTH-001A
+
+roadmap-consistency or G1 fix (add «Создать кампанию» button), NOT PLAYER-IMPORT.
 
 ## Environment
 
