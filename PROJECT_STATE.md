@@ -19,7 +19,7 @@ UI-TRUTH-BOOTSTRAP ✅ **RESOLVED** — user-journeys.md canonicalised + Done Ga
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | d4f91e4 | bb5e744 | G1-FIX — campaign.create reachable + placement_basis |
+| develop | 0b9198d | (this — see next commit) | G1-FIX-FU — placement_basis validation + RBAC |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
