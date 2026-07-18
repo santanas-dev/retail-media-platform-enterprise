@@ -2369,8 +2369,13 @@ async def get_latest_manifest_metadata(
     """Return lightweight manifest metadata for ETag / cache decisions.
 
     Single SELECT — no surface/asset/campaign join, no HMAC signing.
-    Returns ``{manifest_id, content_hash, manifest_version, generated_at}``
-    or None if no generated manifest exists for this device.
+    Returns ``{manifest_id, content_hash, manifest_version, generated_at,
+    emergency_active}`` or None if no generated manifest exists for this device.
+
+    ``emergency_active`` is included so that ETag / 304 changes when the
+    global emergency override is activated or deactivated — preventing
+    a stale manifest with emergency.active=false from being served after
+    an admin activates emergency.
     """
     from packages.domain.models import DeliveryManifest
 
@@ -2394,11 +2399,15 @@ async def get_latest_manifest_metadata(
     if row is None:
         return None
 
+    # K1: include emergency state so ETag changes on activation
+    emergency = await get_active_emergency_override(session)
+
     return {
         "manifest_id": row[0],
         "content_hash": row[1],
         "manifest_version": row[2],
         "generated_at": row[3].isoformat() if row[3] else None,
+        "emergency_active": emergency.active if emergency else False,
     }
 
 
@@ -2521,6 +2530,9 @@ async def get_latest_manifest_for_device(
             if ch:
                 channel_type = ch.code or ""
 
+    # K1: read real emergency override state from DB (global table, no RLS)
+    emergency_override = await get_active_emergency_override(session)
+
     result = {
         "manifest_id": manifest.manifest_id,
         "manifest_version": manifest.manifest_version,
@@ -2546,9 +2558,9 @@ async def get_latest_manifest_for_device(
             "emit_pop": False,
         },
         "emergency": {
-            "active": False,
-            "activated_at": None,
-            "reason": "",
+            "active": emergency_override.active if emergency_override else False,
+            "activated_at": emergency_override.activated_at.isoformat() if (emergency_override and emergency_override.activated_at) else None,
+            "reason": emergency_override.reason if emergency_override else "",
         },
         "signature": {
             "algorithm": "HMAC-SHA256",

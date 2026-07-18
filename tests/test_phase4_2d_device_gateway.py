@@ -292,7 +292,7 @@ class TestManifestETagFastPath(unittest.TestCase):
         mock_phys.return_value = "active"
         mock_meta.return_value = {
             "manifest_id": "m1", "content_hash": "abc123",
-            "manifest_version": 1, "generated_at": "2026-01-01T00:00:00",
+            "manifest_version": 1, "generated_at": "2026-01-01T00:00:00", "emergency_active": False,
         }
         mock_cache_get.return_value = None
 
@@ -300,11 +300,11 @@ class TestManifestETagFastPath(unittest.TestCase):
             "/api/v1/device/manifest/latest",
             headers={
                 "Authorization": "Bearer token",
-                "If-None-Match": '"abc123"',
+                "If-None-Match": '"abc123:em:False"',
             },
         )
         self.assertEqual(resp.status_code, 304)
-        self.assertEqual(resp.headers["ETag"], '"abc123"')
+        self.assertEqual(resp.headers["ETag"], '"abc123:em:False"')
         mock_full.assert_not_called()
 
     @patch("main.get_manifest_cache", new_callable=AsyncMock)
@@ -324,9 +324,10 @@ class TestManifestETagFastPath(unittest.TestCase):
         mock_phys.return_value = "active"
         mock_meta.return_value = {
             "manifest_id": "m1", "content_hash": "abc123",
-            "manifest_version": 1, "generated_at": "2026-01-01T00:00:00",
+            "manifest_version": 1, "generated_at": "2026-01-01T00:00:00", "emergency_active": False,
         }
         mock_cache_get.return_value = None
+        mock_cache_set.return_value = None
         mock_full.return_value = {
             "manifest_id": "m1", "manifest_version": 1,
             "content_hash": "abc123", "device_id": "d1",
@@ -385,7 +386,7 @@ class TestManifestRedisCache(unittest.TestCase):
         mock_phys.return_value = "active"
         mock_meta.return_value = {
             "manifest_id": "m1", "content_hash": "abc123",
-            "manifest_version": 1,
+            "manifest_version": 1, "emergency_active": False,
         }
         mock_cache_get.return_value = {
             "manifest_id": "m1", "manifest_version": 1,
@@ -396,6 +397,7 @@ class TestManifestRedisCache(unittest.TestCase):
             "offline_ttl_hours": 168,
             "fallback_rules": {},
             "signature": {"algorithm": "HMAC-SHA256", "value": ""},
+            "emergency": {"active": False},
         }
 
         resp = self.client.get(
@@ -422,7 +424,7 @@ class TestManifestRedisCache(unittest.TestCase):
         mock_phys.return_value = "active"
         mock_meta.return_value = {
             "manifest_id": "m1", "content_hash": "abc123",
-            "manifest_version": 1,
+            "manifest_version": 1, "emergency_active": False,
         }
         mock_cache_get.return_value = None
         mock_full.return_value = {
@@ -455,7 +457,7 @@ class TestManifestRedisCache(unittest.TestCase):
         mock_phys.return_value = "active"
         mock_meta.return_value = {
             "manifest_id": "m2", "content_hash": "newhash",
-            "manifest_version": 2,
+            "manifest_version": 2, "emergency_active": False,
         }
         mock_cache_get.return_value = {
             "manifest_id": "m1", "manifest_version": 1,
@@ -612,7 +614,7 @@ class TestManifest200Response(unittest.TestCase):
         mock_phys.return_value = "active"
         mock_meta.return_value = {
             "manifest_id": "m1", "content_hash": "abc123",
-            "manifest_version": 1, "generated_at": "2026-01-01T00:00:00",
+            "manifest_version": 1, "generated_at": "2026-01-01T00:00:00", "emergency_active": False,
         }
         mock_cache_get.return_value = None
         mock_full.return_value = {
@@ -665,7 +667,7 @@ class TestManifest200Response(unittest.TestCase):
         mock_phys.return_value = "active"
         mock_meta.return_value = {
             "manifest_id": "m1", "content_hash": "abc123",
-            "manifest_version": 1,
+            "manifest_version": 1, "emergency_active": False,
         }
         mock_cache_get.return_value = None
         mock_full.return_value = {

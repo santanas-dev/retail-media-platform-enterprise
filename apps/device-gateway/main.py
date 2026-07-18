@@ -301,18 +301,28 @@ async def get_latest_manifest(
     if meta is None:
         raise HTTPException(status_code=404, detail="No manifest available")
 
+    # K1: runtime ETag includes emergency state so 304 doesn't serve stale
+    # emergency.active=false after admin activation.
+    runtime_etag = f'{meta["content_hash"]}:em:{meta["emergency_active"]}'
+
     if_none_match = request.headers.get("If-None-Match", "").strip('"')
-    if if_none_match and meta["content_hash"] == if_none_match:
+    if if_none_match and runtime_etag == if_none_match:
         return Response(
             status_code=304,
-            headers={"ETag": f'"{meta["content_hash"]}"'},
+            headers={"ETag": f'"{runtime_etag}"'},
         )
 
-    # S-067: try Redis cache before full assembly
+    # S-067: try Redis cache before full assembly.
+    # K1: skip cache if emergency state differs from current — a cached
+    # manifest would have stale emergency.active.
     cached = await get_manifest_cache(device_id)
-    if cached is not None and cached.get("content_hash") == meta["content_hash"]:
+    cache_emergency_ok = (
+        cached is not None
+        and cached.get("emergency", {}).get("active") == meta["emergency_active"]
+    )
+    if cache_emergency_ok and cached.get("content_hash") == meta["content_hash"]:
         response_obj = JSONResponse(content=cached)
-        response_obj.headers["ETag"] = f'"{cached["content_hash"]}"'
+        response_obj.headers["ETag"] = f'"{runtime_etag}"'
         return response_obj
 
     # Full manifest assembly (only when content changed + cache miss)
@@ -324,8 +334,7 @@ async def get_latest_manifest(
     await set_manifest_cache(device_id, manifest)
 
     response_obj = JSONResponse(content=manifest)
-    if manifest.get("content_hash"):
-        response_obj.headers["ETag"] = f'"{manifest["content_hash"]}"'
+    response_obj.headers["ETag"] = f'"{runtime_etag}"'
     return response_obj
 
 
