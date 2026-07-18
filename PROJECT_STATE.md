@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-07-18 (R1 ✅ — release baseline to main, CI #29642225070 green)
 
-R1 ✅ **RELEASED** — baseline to main: K1/K2/RM1/CLEAN-BOOT-001, CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime.
+R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -132,7 +132,7 @@ R1 ✅ **RELEASED** — baseline to main: K1/K2/RM1/CLEAN-BOOT-001, CI #29642225
 
 - **Verdict:** develop (b439dcf) merged to main → 3d201d6. CI #29642225070 green (34/34).
 - **Contents:** K1 (emergency override), K2 (manifest signature), RM1 (roadmap sync), CLEAN-BOOT-001 (clean boot smoke).
-- **Tag:** v0.8.0-r1-edge-safety-runtime.
+- **Tag:** v0.8.0-r1-edge-safety-runtime → 3d201d6 (annotated, merge commit on main).
 - **Next:** T1 — behavioural test data builder.
 
 ## CLEAN-BOOT-001 — Clean Docker Boot Login Smoke ✅ RESOLVED (2026-07-18)
