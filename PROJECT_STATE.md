@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (RM1 — Roadmap sync after K1/K2)
+**Last updated:** 2026-07-18 (CLEAN-BOOT-001 ✅ — clean docker boot → login smoke)
 
 RM1 ✅ **RESOLVED** — roadmap cells updated for K1/K2/emergency/signature.
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
@@ -11,7 +11,7 @@ RM1 ✅ **RESOLVED** — roadmap cells updated for K1/K2/emergency/signature.
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 7bcc570 | bb30a5b | RM1 — Roadmap sync after K1/K2 |
+| develop | a16737e | a16737e | CLEAN-BOOT-001 ✅ — clean boot login smoke |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -123,22 +123,43 @@ RM1 ✅ **RESOLVED** — roadmap cells updated for K1/K2/emergency/signature.
 1. **K1** ✅ — emergency override → manifest.
 2. **K2** ✅ — manifest signature verification before player execution.
 3. **RM1** ✅ — roadmap/docs/release process hygiene.
-4. **CLEAN-BOOT-001** — P1: clean docker boot → login smoke. Блокирует R1.
+4. **CLEAN-BOOT-001** ✅ — P1: clean docker boot → login smoke. **RESOLVED.**
 5. **R1, T1** — release point v0.8 + behavioural test data builder.
 6. **EDGE-003** — PoP ingestion endpoint (после process hygiene).
 
-## CLEAN-BOOT-001 — Clean Docker Boot Login Smoke (P1 before R1)
+## CLEAN-BOOT-001 — Clean Docker Boot Login Smoke ✅ RESOLVED (2026-07-18)
 
-**Status:** 🚧 В работе (2026-07-18)
+**Status:** ✅ RESOLVED.
 
-**Verdict:** CI зелёный, но чистый `docker compose up` по runbook не даёт рабочий логин.
+**Verdict:** Три бага мешали чистому `docker compose up → login` по runbook.
+Все исправлены, smoke пройден: 8/8 checks.
 
-**Обнаруженные дефекты:**
-- D-BOOT-1: Dockerfile.service `runpy.run_module` с именами вида `apps.control-api.main` — проверить импорт.
-- D-BOOT-2: db-setup не передаёт `SEED_DEV_CREDENTIALS`; seed credentials отключены.
-- D-BOOT-3: db-setup вызывает `grant-app-role.py`, но файл не скопирован в образ.
+**Root cause:**
+- D-BOOT-2 (seed credential split): `split(";\n")` в `_build_credentials_sql()` не
+  разрезал `ON CONFLICT (user_id) DO NOTHING;  -- comment` — `;` после `DO NOTHING`
+  отделён пробелами от `\n`. Оба INSERT в одном chunk → asyncpg глотал молча.
+- D-BOOT-3 (grant-app-role.py): `--no-cache` при build только для control-api,
+  db-setup использовал кэш старого образа без `COPY infra/compose/`.
+- Smoke health check: `/api/v1/health` → 404, control-api был жив.
 
-**Done =:** clean boot smoke проходит на свежих volumes; login 200 + campaigns 200.
+**Fixes (SHA a16737e):**
+- seed.py: inline-комментарии перенесены перед INSERT (не после `;`).
+  Split: 3 части → comments (skip) + 2 INSERT (exec).
+- smoke: health URL → `/health/live`, `--no-cache` для db-setup.
+
+**Smoke proof (full clean boot):**
+| Step | Result |
+|------|--------|
+| docker compose down -v | ✅ |
+| build control-api + db-setup (--no-cache) | ✅ |
+| compose up postgres + redis + control-api | ✅ |
+| control-api healthy | ✅ (2s) |
+| db-setup (migrations + seed + grant-app-role) | ✅ (exit 0) |
+| POST /api/v1/auth/login | ✅ (200 + token) |
+| GET /api/v1/identity/campaigns | ✅ (200, total=1) |
+| local_credentials count | ✅ (2 seeded) |
+
+**Payload SHA:** `a16737e`.
 
 ## K2 — Manifest Signature Verification Before Player Execution ✅ RESOLVED (2026-07-18)
 
