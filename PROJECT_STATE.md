@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-17 (EDGE-002-FU v3 — strict behavioural proof)
+**Last updated:** 2026-07-18 (EDGE-002-FU v4 — production-safe RLS bootstrap)
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -9,7 +9,7 @@
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 2f43951     | (this commit)   | EDGE-002-FU v4 — production-safe RLS bootstrap, CI ✅ #29635004193 |
+| develop | 2f43951     | 78b0cdc         | EDGE-002-FU v4 — production-safe RLS bootstrap, CI ✅ #29635004193 |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
