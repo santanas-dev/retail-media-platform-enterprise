@@ -157,7 +157,7 @@ RM1 ✅ **RESOLVED** — roadmap cells updated for K1/K2/emergency/signature.
 - **Behavioural ADR-008:** 324 passed, 12 skipped.
 - **CI:** #29636889061 ✅ (34/34 green).
 - **Payload SHA:** `8b9fef2` (code) + `71b5c4b` (migration).
-- **Deferred/not done:** player-side enforcement, K2 signature verification, store/device-level emergency.
+- **Deferred/not done:** player-side enforcement на реальном KSO, store/device-level emergency.
 
 ## Verified Audit Backlog — 2026-07-18
 
