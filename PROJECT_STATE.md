@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (UI-TRUTH-001A-FU — state hygiene + CI #29656035552 green)
+**Last updated:** 2026-07-18 (UI-TRUTH-BOOTSTRAP — user-journeys.md + Done Gate в AGENTS.md)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -9,6 +9,8 @@ EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOB
 EDGE-004 ✅ **RESOLVED** — Device Heartbeat initial implementation.
 EDGE-004-FU ✅ **RESOLVED** — Heartbeat proof hardened (12 tests, no admin bypass, honest state).
 UI-TRUTH-001A ✅ **RESOLVED** — Feature registry + smoke harness + G1 proof, CI #29656035552 green.
+UI-TRUTH-001A-FU ✅ **RESOLVED** — State hygiene + CI proof, CI #29656035552.
+UI-TRUTH-BOOTSTRAP ✅ **RESOLVED** — user-journeys.md canonicalised + Done Gate codified in AGENTS.md.
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -540,8 +542,8 @@ UI-TRUTH-001A ✅ **RESOLVED** — Feature registry + smoke harness + G1 proof, 
 
 | ID | Task | Status |
 |----|------|--------|
-| UI-TRUTH-001B | Next: roadmap consistency guard (or G1 fix) | 🚧 awaiting prioritisation |
-| PLAYER-IMPORT-001 | Deferred: player import (PLAYER-AUD-001 recommendation) | ⏸️ deferred |
+| REGISTRY-EXPAND | Next: expand feature-registry.yaml with remaining domains (campaign, user, advertiser, device) | 🚧 awaiting prioritisation |
+| PLAYER-IMPORT-001 | Historical recommendation (PLAYER-AUD-001): player/sidecar code transfer when enterprise manifest/PoP/heartbeat endpoints are ready | ⏸️ deferred — not active next |
 
 ## UI-TRUTH-001 — Feature Truth Registry & Smoke Proof 🚧 in progress
 
@@ -568,9 +570,21 @@ UI-TRUTH-001A ✅ **RESOLVED** — Feature registry + smoke harness + G1 proof, 
 | G3 | AdvertisersPage: list/detail only; no UI for creating advertiser org | 🟡 confirmed (audit) |
 | G4 | ADSettingsPage: GET / POST test only; no save/persist | 🟡 confirmed (audit) |
 
-### Next after UI-TRUTH-001A
+### Next after UI-TRUTH-BOOTSTRAP
 
-roadmap-consistency or G1 fix (add «Создать кампанию» button), NOT PLAYER-IMPORT.
+REGISTRY-EXPAND — расширить `feature-registry.yaml` на все домены (campaign, user, advertiser, device).
+PLAYER-IMPORT остаётся deferred, не next.
+
+## UI-TRUTH-BOOTSTRAP — User Journeys Canonicalised + Done Gate ✅ RESOLVED
+
+- **user-journeys.md** canonicalised from NAS source into `docs/product/user-journeys.md`
+  — 28 369 bytes, md5 `b0c76b0960bbcc7486787207f79c9345`.
+- **Done Gate** codified in `AGENTS.md` → «Что значит готово»:
+  journey обязателен, UI-smoke обязателен, только реальные клики,
+  feature-registry синхронизирован, частичная готовность — честный статус,
+  UI-smoke не блокирует CI.
+- **Next:** REGISTRY-EXPAND.
+- **PLAYER-IMPORT:** остаётся historical recommendation, не active next.
 
 ## Environment
 

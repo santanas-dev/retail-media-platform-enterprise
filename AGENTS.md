@@ -188,6 +188,42 @@ Minimum checks by area:
 If dependencies or infrastructure are unavailable, say exactly what was not run
 and provide the closest static or targeted verification.
 
+## Что значит готово
+
+Бизнес-функция считается **готовой** только при выполнении всех условий ниже.
+Бэкенд + API proof недостаточно — пользователь обязан достичь функции через
+реальный UI кликами.
+
+1. **Journey обязателен.** Бизнес-функцию нельзя пометить «Готово», если для
+   неё нет journey в `docs/product/user-journeys.md`. Journey содержит: id
+   (в формате `<domain>.<action>`), роль, стартовую страницу, пошаговые
+   клики до целевого экрана, ожидаемый результат, стабильные
+   `data-testid`-селекторы.
+
+2. **UI-smoke обязателен.** Бизнес-функцию нельзя пометить «Готово», если
+   для её journey id нет зелёного UI-smoke-теста. Имя теста:
+   `test_uismoke__<domain>__<action>` (точки → двойное подчёркивание).
+
+3. **Только реальные клики.** `page.goto()` в UI-smoke разрешён **только**
+   на `/login` или на публичную entry-страницу, указанную в journey как
+   стартовая. Весь дальнейший путь — **реальные клики** по UI
+   (кнопки, ссылки, табы). Никаких `page.goto("/campaigns/new")`,
+   `localStorage.setItem(...)`, прямых API-вызовов.
+
+4. **Feature-registry синхронизирован.** Каждая новая бизнес-фича должна
+   обновлять **три** источника синхронно по одному journey id:
+   - `docs/product/user-journeys.md` — путь,
+   - `docs/product/feature-registry.yaml` — запись в реестре,
+   - `tests/ui-smoke/test_uismoke__<domain>__<action>.py` — зелёный тест.
+
+5. **Частичная готовность — честный статус.** Если бэкенд готов, но
+   journey/smoke отсутствует, статус: **«бэкенд готов, UI нет»** или
+   **«частично»**. Слово «Готово» без выполненного UI-smoke — запрещено.
+
+6. **UI-smoke не блокирует CI.** Тесты в `tests/ui-smoke/` запускаются
+   только при `UI_SMOKE_RUN=1` и не собираются обычным pytest. Они —
+   инструмент аудита, а не CI-gate.
+
 ## Reporting
 
 Final reports must be short but concrete:
