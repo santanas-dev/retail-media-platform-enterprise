@@ -30,7 +30,14 @@ from tests.behavioral.conftest import _run_sql
 # ── FK-safe table order for cleanup (children before parents) ──
 
 _CLEANUP_TABLES = [
+    "pop_events_raw",
+    "pop_dedup_index",
+    "delivery_manifest_surfaces",
+    "delivery_manifest_assets",
     "delivery_manifests",
+    "creative_assets",
+    "display_surfaces",
+    "logical_carriers",
     "physical_devices",
     "campaigns",
     "advertiser_contracts",
@@ -213,6 +220,67 @@ class BehBuilder:
         ON CONFLICT (id) DO NOTHING;
         """)
         return mid
+
+    def surface(
+        self,
+        store_id: str,
+        device_id: str,
+    ) -> str:
+        """Create logical_carrier → display_surface. Returns surface_id."""
+        lcid = self._uid("lc")
+        sid = self._uid("surf")
+        self._exec(f"""
+        INSERT INTO logical_carriers (id, physical_device_id, code, carrier_type)
+        VALUES ('{lcid}', '{device_id}', '{lcid}', 'direct')
+        ON CONFLICT (code) DO NOTHING;
+        """)
+        self._exec(f"""
+        INSERT INTO display_surfaces (id, logical_carrier_id, store_id, code,
+            resolution_w, resolution_h)
+        VALUES ('{sid}', '{lcid}', '{store_id}', '{sid}', 1440, 1080)
+        ON CONFLICT (code) DO NOTHING;
+        """)
+        return sid
+
+    def creative_asset(
+        self,
+        advertiser_organization_id: str,
+        status: str = "ready",
+    ) -> str:
+        """Create creative_asset. Returns asset_id."""
+        aid = self._uid("asset")
+        self._exec(f"""
+        INSERT INTO creative_assets (id, advertiser_organization_id, code, name,
+            content_type, status, moderation_status)
+        VALUES ('{aid}', '{advertiser_organization_id}', '{aid}', 'Asset {aid[-4:]}',
+            'image/png', '{status}', 'approved')
+        ON CONFLICT (id) DO NOTHING;
+        """)
+        return aid
+
+    def manifest_surface(
+        self,
+        manifest_id: str,
+        surface_id: str,
+    ) -> None:
+        """Link manifest → display_surface via delivery_manifest_surfaces."""
+        self._exec(f"""
+        INSERT INTO delivery_manifest_surfaces (manifest_id, display_surface_id)
+        VALUES ('{manifest_id}', '{surface_id}')
+        ON CONFLICT DO NOTHING;
+        """)
+
+    def manifest_asset(
+        self,
+        manifest_id: str,
+        asset_id: str,
+    ) -> None:
+        """Link manifest → creative_asset via delivery_manifest_assets."""
+        self._exec(f"""
+        INSERT INTO delivery_manifest_assets (manifest_id, creative_asset_id)
+        VALUES ('{manifest_id}', '{asset_id}')
+        ON CONFLICT DO NOTHING;
+        """)
 
     def emergency_override(
         self,
