@@ -6,6 +6,7 @@ import {
   listAdvertisers,
   listBrands,
 } from "../api/campaigns";
+import { useAuth } from "../auth/AuthContext";
 import type {
   CampaignOut,
   CampaignFlightOut,
@@ -34,6 +35,8 @@ function statusVariant(status: string): StatusBadgeVariant {
 
 export default function CampaignListPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canCreate = user?.permissions?.includes("campaigns.manage") ?? false;
   const [campaigns, setCampaigns] = useState<CampaignOut[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -145,6 +148,7 @@ export default function CampaignListPage() {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
         <PageHeader title="Кампании" />
+        {canCreate && (
         <button
           type="button"
           data-testid="campaign-create-open"
@@ -158,6 +162,7 @@ export default function CampaignListPage() {
         >
           Создать кампанию
         </button>
+        )}
       </div>
       <FilterChips current={statusFilter} onChange={setStatusFilter} />
       <table className="rmp-table">

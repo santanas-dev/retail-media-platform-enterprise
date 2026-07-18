@@ -545,6 +545,8 @@ UI-TRUTH-BOOTSTRAP ✅ **RESOLVED** — user-journeys.md canonicalised + Done Ga
 | G2-FIX | Next: user.assign_roles UI + green smoke (closes P0 G2) | 🚧 awaiting prioritisation |
 | PLAYER-IMPORT-001 | Historical recommendation (PLAYER-AUD-001) | ⏸️ deferred — not active next |
 
+## G1-FIX-FU — Placement Basis Validation + RBAC Visibility ✅ RESOLVED
+
 ## G1-FIX — Campaign Create Reachable + Placement Basis ✅ RESOLVED
 
 - **UI:** Кнопка «Создать кампанию» (`data-testid="campaign-create-open"`) в CampaignListPage — видна всегда, ведёт на `/campaigns/new`.

@@ -358,7 +358,7 @@ class CampaignOut(BaseModel):
     start_at: datetime | None = None
     end_at: datetime | None = None
     timezone: str = "Europe/Moscow"
-    placement_basis: str = "commercial"
+    placement_basis: Literal["commercial", "internal", "compensation", "test"] = "commercial"
     created_by: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -471,7 +471,7 @@ class CampaignCreateRequest(BaseModel):
     budget_limit_amount: float | None = None
     budget_limit_currency: str = "RUB"
     priority: int = 0
-    placement_basis: str = "commercial"
+    placement_basis: Literal["commercial", "internal", "compensation", "test"] = "commercial"
 
 
 class CampaignUpdateRequest(BaseModel):
