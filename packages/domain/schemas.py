@@ -155,6 +155,25 @@ class CreateLocalAdvertiserResponse(BaseModel):
     message: str = "User created successfully."
 
 
+class AssignRoleRequest(BaseModel):
+    """Assign a role to a user, with optional advertiser scope."""
+    role_code: str = Field(..., min_length=1, max_length=128)
+    scope_type: Literal["advertiser"] | None = None
+    scope_id: str | None = Field(default=None, min_length=1, max_length=36)
+
+
+class AssignRoleResponse(BaseModel):
+    """Response after assigning a role to a user."""
+    id: str
+    user_id: str
+    role_id: str
+    role_code: str
+    role_name: str
+    scope_type: str | None = None
+    scope_id: str | None = None
+    message: str = "Role assigned."
+
+
 class ResetPasswordRequest(BaseModel):
     """Admin-initiated password reset for a local user."""
     new_temporary_password: str | None = Field(default=None, min_length=8, max_length=128)

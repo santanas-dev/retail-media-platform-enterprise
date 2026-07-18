@@ -770,3 +770,30 @@ export interface InventorySimulationResponse {
   blocking_count: number;
   warning_count: number;
 }
+
+// ── User Role Management ──
+
+export interface RoleOut {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  is_system: boolean;
+}
+
+export interface AssignRoleRequest {
+  role_code: string;
+  scope_type?: string | null;
+  scope_id?: string | null;
+}
+
+export interface AssignRoleResponse {
+  id: string;
+  user_id: string;
+  role_id: string;
+  role_code: string;
+  role_name: string;
+  scope_type: string | null;
+  scope_id: string | null;
+  message: string;
+}

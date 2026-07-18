@@ -7,7 +7,7 @@ Phase 3.0: Read-only query functions for identity/RBAC tables.
 from datetime import datetime
 import uuid
 
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -3342,6 +3342,57 @@ async def set_user_status(
         .values(status=status, updated_at=datetime.now(timezone.utc))
     )
     return result.rowcount > 0
+
+
+async def assign_user_role(
+    session: AsyncSession,
+    *,
+    user_id: str,
+    role_id: str,
+    scope_type: str | None = None,
+    scope_id: str | None = None,
+) -> UserRole:
+    """Assign a role to a user, with optional scope. Returns the UserRole row."""
+    import uuid as _uuid
+    from datetime import timezone as _tz
+
+    now = datetime.now(_tz.utc)
+    user_role = UserRole(
+        id=str(_uuid.uuid4()),
+        user_id=user_id,
+        role_id=role_id,
+        scope_type=scope_type,
+        scope_id=scope_id,
+        created_at=now,
+    )
+    session.add(user_role)
+    return user_role
+
+
+async def get_user_role_assignment(
+    session: AsyncSession, assignment_id: str
+) -> UserRole | None:
+    """Get a UserRole row by its id."""
+    stmt = select(UserRole).where(UserRole.id == assignment_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def remove_user_role(session: AsyncSession, assignment_id: str) -> bool:
+    """Delete a UserRole assignment by id. Returns True if deleted."""
+    result = await session.execute(
+        delete(UserRole).where(UserRole.id == assignment_id)
+    )
+    return result.rowcount > 0
+
+
+async def find_role_by_code(
+    session: AsyncSession, role_code: str
+) -> Role | None:
+    """Find a role by its code."""
+    stmt = select(Role).where(Role.code == role_code)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
 
 
 async def update_local_credential_password(

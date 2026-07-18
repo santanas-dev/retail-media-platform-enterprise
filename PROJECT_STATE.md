@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (G1-FIX — campaign.create reachable + placement_basis + green smoke)
+**Last updated:** 2026-07-18 (G2-FIX — user.assign_roles reachable + green UI-smoke)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -11,6 +11,9 @@ EDGE-004-FU ✅ **RESOLVED** — Heartbeat proof hardened (12 tests, no admin by
 UI-TRUTH-001A ✅ **RESOLVED** — Feature registry + smoke harness + G1 proof, CI #29656035552 green.
 UI-TRUTH-001A-FU ✅ **RESOLVED** — State hygiene + CI proof, CI #29656035552.
 UI-TRUTH-BOOTSTRAP ✅ **RESOLVED** — user-journeys.md canonicalised + Done Gate codified in AGENTS.md.
+G1-FIX ✅ **RESOLVED** — campaign.create reachable + placement_basis (d4f91e4).
+G1-FIX-FU ✅ **RESOLVED** — placement_basis validation + RBAC button visibility (0b9198d).
+G2-FIX ✅ **RESOLVED** — user.assign_roles reachable, green UI-smoke, consistency 0.
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -19,7 +22,7 @@ UI-TRUTH-BOOTSTRAP ✅ **RESOLVED** — user-journeys.md canonicalised + Done Ga
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 0b9198d | cc55e89 | G1-FIX-FU — placement_basis validation + RBAC |
+| develop | TBD | TBD | G2-FIX — user.assign_roles reachable + green smoke |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -542,8 +545,19 @@ UI-TRUTH-BOOTSTRAP ✅ **RESOLVED** — user-journeys.md canonicalised + Done Ga
 
 | ID | Task | Status |
 |----|------|--------|
-| G2-FIX | Next: user.assign_roles UI + green smoke (closes P0 G2) | 🚧 awaiting prioritisation |
+| G2-FIX | ✅ resolved — user.assign_roles reachable + green smoke | ✅ RESOLVED |
+| G3-FIX | Next: advertiser.create_org UI + green smoke (closes P0 G3) | 🚧 awaiting prioritisation |
 | PLAYER-IMPORT-001 | Historical recommendation (PLAYER-AUD-001) | ⏸️ deferred — not active next |
+
+## G2-FIX — User Assign Roles Reachable + Green Smoke ✅ RESOLVED
+
+- **Backend:** PUT `/users/{id}/roles` (roles.manage), DELETE `/users/{id}/roles/{assignment_id}` (roles.manage), audit events.
+- **Frontend:** UsersPage: кнопка «Роли» (data-testid="user-roles-open") видна только с `roles.manage`. Панель управления ролями: текущие роли, dropdown выбора, кнопка сохранения, кнопка удаления.
+- **Tests:** Backend 8/8 (assign success/404/403/422, remove success/404/wrong-user). Frontend 155/155 (3 новых теста RBAC).
+- **Smoke:** `test_uismoke__user__assign_roles` — login → Пользователи → «Роли» → выбрать роль → сохранить → проверить.
+- **Registry:** user.assign_roles → status: reachable.
+- **Consistency audit:** 0 findings, 2 smoke-функций.
+- **Next:** G3-FIX — advertiser.create_org.
 
 ## G1-FIX-FU — Placement Basis Validation + RBAC Visibility ✅ RESOLVED
 

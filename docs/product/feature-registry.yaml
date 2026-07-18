@@ -164,8 +164,7 @@ features:
     smoke: test_uismoke__user__assign_roles
     priority: P0
     roles: [system_admin]
-    status: blocked
-    gap: "G2: UsersPage создаёт только local_advertiser; нет UI для назначения ролей/прав."
+    status: reachable
 
   - id: advertiser.create_org
     frontend: admin-web
