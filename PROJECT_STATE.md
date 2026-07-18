@@ -22,7 +22,7 @@ G2-FIX ✅ **RESOLVED** — user.assign_roles reachable, green UI-smoke, consist
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 11df641 | TBD | G2-FIX — user.assign_roles reachable + green smoke |
+| develop | 11df641 | 741eec8 | G2-FIX — user.assign_roles reachable + green smoke |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
