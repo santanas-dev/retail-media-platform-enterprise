@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (UI-TRUTH-BOOTSTRAP — user-journeys.md + Done Gate в AGENTS.md)
+**Last updated:** 2026-07-18 (REGISTRY-EXPAND-FU — smoke name sync: campaign__create)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -570,7 +570,7 @@ UI-TRUTH-BOOTSTRAP ✅ **RESOLVED** — user-journeys.md canonicalised + Done Ga
 
 - **Feature registry:** `docs/product/feature-registry.yaml` — campaign.create as first entry.
 - **Smoke harness:** `tests/ui-smoke/conftest.py` — Playwright, login-only `page.goto()`, stable `#id` selectors.
-- **G1 proof:** `test_uismoke__campaign_create` — break-glass admin → login → sidebar → campaign list → no «Создать кампанию» button.
+- **G1 proof:** `test_uismoke__campaign__create` — break-glass admin → login → sidebar → campaign list → no «Создать кампанию» button.
 - **Run:** `scripts/ui-smoke-audit.sh` (not blocking CI, `UI_SMOKE_RUN=1` gate).
 - **CI (ordinary):** #29656035552 ✅ green — ui-smoke excluded via `pytest_ignore_collect` when `UI_SMOKE_RUN` not set.
 - **CI (smoke):** not in CI pipeline — manual audit only. When invoked, expected-red on G1.

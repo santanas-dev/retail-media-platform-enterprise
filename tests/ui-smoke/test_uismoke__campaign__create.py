@@ -21,7 +21,7 @@ from conftest import (
     navigate_to_campaigns,
     try_find_create_campaign_button,
 )
-def test_uismoke__campaign_create(smoke_page):
+def test_uismoke__campaign__create(smoke_page):
     """Break-glass admin can create a campaign through the UI.
 
     Step-by-step:
