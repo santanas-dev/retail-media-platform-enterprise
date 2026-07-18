@@ -70,7 +70,7 @@ async def lifespan(app: FastAPI):
 
 
 async def get_db():
-    """FastAPI dependency — yield an async session."""
+    """FastAPI dependency — yield an async session with active transaction."""
     engine = get_global_engine()
     if engine is None:
         raise HTTPException(
@@ -78,7 +78,8 @@ async def get_db():
             detail="Database not available",
         )
     async with get_session(engine) as session:
-        yield session
+        async with session.begin():
+            yield session
 
 
 # ---------------------------------------------------------------------------
