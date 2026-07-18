@@ -1,10 +1,11 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (EDGE-003 ✅ — PoP ingestion behavioural proof, CI #29649000788 green)
+**Last updated:** 2026-07-18 (EDGE-003-FU ✅ — PoP ingestion RLS / non-admin device proof, CI #29652235623 green)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
-EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof, CI #29649000788 green (6/6 tests).
+EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof (admin bypass), CI #29649000788 green (6/6).
+EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOBYPASSRLS), CI #29652235623 green (5/5).
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -13,7 +14,7 @@ EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof, CI #2964
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | ea5d4b6 | ea5d4b6 | EDGE-003 ✅ — PoP ingestion behavioural proof |
+| develop | aebf018 | aebf018 | EDGE-003-FU ✅ — RLS proof |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -128,7 +129,8 @@ EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof, CI #2964
 4. **CLEAN-BOOT-001** ✅ — P1: clean docker boot → login smoke. **RESOLVED.**
 5. **R1** ✅ — release baseline to main, CI #29642225070 green, tag v0.8.0-r1-edge-safety-runtime.
 6. **T1** ✅ — behavioural test data builder. BehBuilder + K1 converted. CI #29645034680 green (324 passed).
-7. **EDGE-003** ✅ — PoP ingestion endpoint behavioural proof. CI #29649000788 green (6/6 tests).
+7. **EDGE-003** ✅ — PoP ingestion endpoint behavioural proof (admin bypass, 6/6). CI #29649000788.
+8. **EDGE-003-FU** ✅ — PoP ingestion RLS / non-admin proof (NOBYPASSRLS, 5/5). CI #29652235623.
 
 ## R1 — Release Baseline to Main ✅ RELEASED (2026-07-18)
 
