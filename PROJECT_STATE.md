@@ -542,8 +542,22 @@ UI-TRUTH-BOOTSTRAP ✅ **RESOLVED** — user-journeys.md canonicalised + Done Ga
 
 | ID | Task | Status |
 |----|------|--------|
-| REGISTRY-EXPAND | Next: expand feature-registry.yaml with remaining domains (campaign, user, advertiser, device) | 🚧 awaiting prioritisation |
+| UI-TRUTH-001B | Next: roadmap-consistency guard (CI gate: no «Готово» без зелёного smoke по journey id) | 🚧 awaiting prioritisation |
 | PLAYER-IMPORT-001 | Historical recommendation (PLAYER-AUD-001): player/sidecar code transfer when enterprise manifest/PoP/heartbeat endpoints are ready | ⏸️ deferred — not active next |
+
+## REGISTRY-EXPAND — Feature Registry Expanded to All Journeys ✅ RESOLVED
+
+- **Source:** `docs/product/user-journeys.md` (40 journeys extracted from §3–§10).
+- **40 entries** in `docs/product/feature-registry.yaml`:
+  - 26 admin-web, 5 advertiser-web, 1 public, 8 service
+  - P0: 19 · P1: 20 · P2: 1
+- **Status breakdown:**
+  - **reachable: 5** — all service (manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability) — backed by green behavioral CI
+  - **blocked: 35** — 30 UI-no-smoke + 5 service-deferred
+- **Zero false reachable:** ни одной UI-записи без зелёного smoke.
+- **G1–G4 явно зафиксированы:** campaign.create→G1, user.assign_roles→G2, advertiser.create_org→G3, adsettings.configure→G4.
+- **campaign.create** smoke приведён к `test_uismoke__campaign__create` (двойное подчёркивание, соглашение AGENTS.md).
+- **Next:** UI-TRUTH-001B — roadmap-consistency guard.
 
 ## UI-TRUTH-001 — Feature Truth Registry & Smoke Proof 🚧 in progress
 
