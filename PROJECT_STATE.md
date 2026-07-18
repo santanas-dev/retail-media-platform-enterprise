@@ -1,11 +1,12 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (EDGE-003-FU ✅ — PoP ingestion RLS / non-admin device proof, CI #29652235623 green)
+**Last updated:** 2026-07-18 (EDGE-004 ✅ — Device Heartbeat / Health Endpoint, CI #29652842195 green)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
 EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof (admin bypass), CI #29649000788 green (6/6).
 EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOBYPASSRLS), CI #29652235623 green (5/5).
+EDGE-004 ✅ **RESOLVED** — Device Heartbeat / Health Endpoint, CI #29652842195 green (10/10 EDGE-004, 346 passed).
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -14,7 +15,7 @@ EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOB
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | aebf018 | aebf018 | EDGE-003-FU ✅ — RLS proof |
+| develop | 082f9aa | 082f9aa | EDGE-004 ✅ — Device Heartbeat / Health Endpoint |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -410,6 +411,23 @@ EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOB
 - **CI:** Unit Tests ✅, Behavioural ADR-008 ✅ (320 passed, 12 skipped)
 - **Payload SHA:** `2f43951`
 - **Honest v3 verdict:** v3 was strict assertion-wise but production bootstrap was test-env dependent — `set_device_rls_context` used owner-role connection in CI, would fail under FORCE RLS in production.
+
+## EDGE-004 — Device Heartbeat / Health Endpoint ✅ RESOLVED
+
+- **Verdict: device heartbeat with RLS security proof under NOBYPASSRLS.**
+- **Endpoint:** `POST /api/v1/device/heartbeat` — device-gateway (port 8001)
+- **Auth:** device JWT required (auth_provider="device", sub=device_id); user/admin tokens → 401
+- **RLS context:** `set_device_rls_context` (EDGE-002-FU v4) sets retailer scope on request session before handler runs
+- **Migration (025):** `physical_devices` extended with `last_heartbeat_at`, `health_state`, `runtime_version`, `player_version`
+- **Model:** `PhysicalDevice` columns added; `record_device_heartbeat()` atomic update in repository
+- **Payload rejected:** `device_id`, `retailer_id` — neither is a field in `HeartbeatRequest`
+- **Fail-closed:** inactive/revoked device → 403, missing/invalid/non-device token → 401, nonexistent → 404
+- **Response:** `{"status": "accepted", "server_time": "<ISO>", "health_state": "<state>"}`
+- **Deferred:** command channel / remote control, UI fleet health dashboard, staged rollout
+- **Tests (10/10):**
+  - 7 endpoint: device A → 200 + health_state updated, defaults healthy, user token 401, no auth 401, invalid token 401, inactive device 403, device A cannot touch device B, client device_id spoof ignored
+  - 3 direct DB RLS: bootstrap sees only device A, no bootstrap sees zero, bootstrap B sees device B not A
+- **CI:** #29652842195 ✅ (34/34 green — Unit Tests, Behavioural ADR-008, all gates)
 
 ## EDGE-001 — Device Onboarding Contract ✅ RESOLVED (hardened 2026-07-17)
 
