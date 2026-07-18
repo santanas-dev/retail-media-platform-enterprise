@@ -2575,7 +2575,7 @@ async def get_latest_manifest_for_device(
     # but the signature is lost because create_delivery_manifest_record only
     # stores metadata.  Re-sign here so that device-gateway serves a signed
     # manifest when MANIFEST_SIGNING_KEY is configured.
-    from packages.domain.delivery import sign_manifest_payload
+    from packages.contracts.manifest_signing import sign_manifest_payload
     from packages.security.config import get_security_config
     signing_key = get_security_config().manifest_signing_key
     if signing_key:

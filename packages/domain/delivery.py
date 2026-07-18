@@ -11,7 +11,7 @@ Layer: packages/domain/ — no api/auth/fastapi imports.
 from __future__ import annotations
 
 import hashlib
-import hmac
+from packages.contracts.manifest_signing import sign_manifest_payload, verify_manifest_signature  # noqa: F401 — re-export for callers
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -445,28 +445,6 @@ def generate_manifest_json(
         },
     }
     return manifest
-
-
-def sign_manifest_payload(payload: dict[str, Any], key: str) -> str:
-    """HMAC-SHA256 sign a manifest payload dict.
-
-    Excludes the 'signature' key from the signed payload to avoid
-    circular dependency.  Uses canonical JSON (sorted keys, no spacing)
-    for deterministic signing.
-
-    Returns hex-encoded HMAC digest.
-    """
-    import json
-    signable = {k: v for k, v in payload.items() if k != "signature"}
-    canonical = json.dumps(signable, sort_keys=True, separators=(",", ":"))
-    mac = hmac.new(key.encode("utf-8"), canonical.encode("utf-8"), hashlib.sha256)
-    return mac.hexdigest()
-
-
-def verify_manifest_signature(payload: dict[str, Any], signature: str, key: str) -> bool:
-    """Verify HMAC-SHA256 signature of a manifest payload (constant-time)."""
-    expected = sign_manifest_payload(payload, key)
-    return hmac.compare_digest(expected, signature)
 
 
 # ---------------------------------------------------------------------------
