@@ -2373,29 +2373,34 @@ async def record_device_heartbeat(
     """Record a device heartbeat: update last_heartbeat_at, health_state, and versions.
 
     Returns True if the device exists and was updated; False if not found.
-    The caller (set_device_rls_context) already validated device existence
-    and status, so the device should always be found.
+    Uses raw SQL UPDATE — device-gateway get_db has no session.begin(),
+    so ORM attribute assignment + flush() is not reliable.
     """
     from datetime import datetime, timezone
+    from sqlalchemy import text
 
-    from packages.domain.models import PhysicalDevice
+    now = datetime.now(tz=timezone.utc)
+    rt = runtime_version[:64] if runtime_version else ""
+    pv = player_version[:128] if player_version else ""
 
-    result = (
-        await session.execute(
-            select(PhysicalDevice)
-            .where(PhysicalDevice.id == physical_device_id)
-        )
-    ).scalar_one_or_none()
-
-    if result is None:
-        return False
-
-    result.last_heartbeat_at = datetime.now(tz=timezone.utc)
-    result.health_state = health_state
-    result.runtime_version = runtime_version[:64] if runtime_version else ""
-    result.player_version = player_version[:128] if player_version else ""
-    await session.flush()
-    return True
+    result = await session.execute(
+        text(
+            """UPDATE physical_devices
+               SET last_heartbeat_at = :now,
+                   health_state = :health_state,
+                   runtime_version = :runtime_version,
+                   player_version = :player_version
+               WHERE id = :device_id"""
+        ),
+        {
+            "now": now,
+            "health_state": health_state,
+            "runtime_version": rt,
+            "player_version": pv,
+            "device_id": physical_device_id,
+        },
+    )
+    return result.rowcount > 0
 
 
 async def get_latest_manifest_metadata(
