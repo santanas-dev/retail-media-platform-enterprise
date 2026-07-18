@@ -1131,6 +1131,10 @@ class PopEventRaw(Base):
         DateTime(timezone=True), nullable=False, default=_utcnow, index=True,
     )
     batch_id = Column(String(36), nullable=True, index=True)
+    retailer_id = Column(
+        String(36), ForeignKey("retailers.id"),
+        nullable=False, default="00000000-0000-4000-a000-000000000001",
+    )
 
 
 class PopDedupIndex(Base):
