@@ -30,8 +30,7 @@ from tests.behavioral.conftest import _run_sql
 # ── FK-safe table order for cleanup (children before parents) ──
 
 _CLEANUP_TABLES = [
-    "pop_events_raw",
-    "pop_dedup_index",
+    # ── id-prefix tables (children before parents) ──
     "delivery_manifest_surfaces",
     "delivery_manifest_assets",
     "delivery_manifests",
@@ -49,6 +48,18 @@ _CLEANUP_TABLES = [
     "branches",
     "retailers",
     "emergency_overrides",
+]
+
+# Tables cleaned up by FK target, not by their own id
+_FK_CLEANUP = [
+    ("pop_events_raw", "campaign_id"),
+    ("outbox_events", "aggregate_id"),
+    ("campaign_creatives", "campaign_id"),
+    ("campaign_creatives", "creative_asset_id"),
+    ("campaign_flights", "campaign_id"),
+    ("campaign_placements", "campaign_id"),
+    ("campaign_approvals", "campaign_id"),
+    ("campaign_status_history", "campaign_id"),
 ]
 
 
@@ -314,5 +325,9 @@ class BehBuilder:
 
     def cleanup(self) -> None:
         """Delete all rows matching this builder's prefix, in FK-safe order."""
+        # First: FK-dependent tables (delete by FK column, not by id)
+        for tbl, col in _FK_CLEANUP:
+            self._exec(f"DELETE FROM {tbl} WHERE {col} LIKE '{self.prefix}%';")
+        # Then: id-prefix tables
         for tbl in _CLEANUP_TABLES:
             self._exec(f"DELETE FROM {tbl} WHERE id LIKE '{self.prefix}%';")
