@@ -1,6 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (EDGE-002-FU v4 — production-safe RLS bootstrap)
+**Last updated:** 2026-07-18 (K1 — Emergency Override → Device Manifest)
+
+K1 ✅ **RESOLVED** — CI #29636889061 ✅. Behavioural proof: 4/4 passed.
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -133,7 +135,7 @@
 
 | Код | Описание | Done = |
 |-----|----------|--------|
-| **K1** | Emergency override не доходит до manifest — backend-состояние меняется, но device manifest возвращает `emergency.active=false` | Behavioural test: admin активирует emergency → следующий device manifest имеет `emergency.active=true` под NOBYPASSRLS |
+| **K1** ✅ | Emergency override не доходит до manifest — backend-состояние меняется, но device manifest возвращает `emergency.active=false` | Behavioural test: admin активирует emergency → следующий device manifest имеет `emergency.active=true` под NOBYPASSRLS | CI #29636889061 |
 | **K2** | Manifest signature verification before player execution не доказана — server signing существует, но runtime/player verification placeholder/deferred | Tampered manifest rejected before apply/play |
 | **RM1** | Roadmap stale vs PROJECT_STATE — roadmap-ячейки не синхронизированы с фактическим статусом в PROJECT_STATE | Roadmap cells updated on both sheets, no structure changes |
 | **R1** | Release point v0.8 — зафиксировать baseline для внешнего аудита | HUMAN/Hermes release process, not code |
