@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (UI-TRUTH-001A — feature registry + smoke harness + G1 proof)
+**Last updated:** 2026-07-18 (UI-TRUTH-001A-FU — state hygiene + CI #29656035552 green)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -8,6 +8,7 @@ EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof (admin by
 EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOBYPASSRLS), CI #29652235623 green (5/5).
 EDGE-004 ✅ **RESOLVED** — Device Heartbeat initial implementation.
 EDGE-004-FU ✅ **RESOLVED** — Heartbeat proof hardened (12 tests, no admin bypass, honest state).
+UI-TRUTH-001A ✅ **RESOLVED** — Feature registry + smoke harness + G1 proof, CI #29656035552 green.
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -16,7 +17,7 @@ EDGE-004-FU ✅ **RESOLVED** — Heartbeat proof hardened (12 tests, no admin by
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | cb14704 | ddad644 | EDGE-004-FU ✅ — proof hardened, honest state |
+| develop | 91053c4 | _this_commit_ | UI-TRUTH-001A-FU — state hygiene, CI green |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -539,7 +540,8 @@ EDGE-004-FU ✅ **RESOLVED** — Heartbeat proof hardened (12 tests, no admin by
 
 | ID | Task | Status |
 |----|------|--------|
-| PLAYER-IMPORT-001 | Next Active Workstream after EDGE-004-FU | 🚧 planned |
+| UI-TRUTH-001B | Next: roadmap consistency guard (or G1 fix) | 🚧 awaiting prioritisation |
+| PLAYER-IMPORT-001 | Deferred: player import (PLAYER-AUD-001 recommendation) | ⏸️ deferred |
 
 ## UI-TRUTH-001 — Feature Truth Registry & Smoke Proof 🚧 in progress
 
@@ -553,8 +555,9 @@ EDGE-004-FU ✅ **RESOLVED** — Heartbeat proof hardened (12 tests, no admin by
 - **Feature registry:** `docs/product/feature-registry.yaml` — campaign.create as first entry.
 - **Smoke harness:** `tests/ui-smoke/conftest.py` — Playwright, login-only `page.goto()`, stable `#id` selectors.
 - **G1 proof:** `test_uismoke__campaign_create` — break-glass admin → login → sidebar → campaign list → no «Создать кампанию» button.
-- **Run:** `scripts/ui-smoke-audit.sh` (not blocking CI).
-- **Failure message:** `G1 CONFIRMED: No 'Create Campaign' button found on campaign list page.`
+- **Run:** `scripts/ui-smoke-audit.sh` (not blocking CI, `UI_SMOKE_RUN=1` gate).
+- **CI (ordinary):** #29656035552 ✅ green — ui-smoke excluded via `pytest_ignore_collect` when `UI_SMOKE_RUN` not set.
+- **CI (smoke):** not in CI pipeline — manual audit only. When invoked, expected-red on G1.
 
 ### Confirmed Gaps (G1–G4)
 
