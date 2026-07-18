@@ -53,6 +53,8 @@ _CLEANUP_TABLES = [
 # Tables cleaned up by FK target, not by their own id
 _FK_CLEANUP = [
     ("pop_events_raw", "campaign_id"),
+    ("pop_events_raw", "creative_asset_id"),
+    ("pop_events_raw", "device_id"),
     ("outbox_events", "aggregate_id"),
     ("campaign_creatives", "campaign_id"),
     ("campaign_creatives", "creative_asset_id"),
