@@ -16,7 +16,7 @@ EDGE-004-FU ✅ **RESOLVED** — Heartbeat proof hardened (12 tests, no admin by
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | cb14704 | _this_commit_ | EDGE-004-FU ✅ — proof hardened, honest state |
+| develop | cb14704 | ddad644 | EDGE-004-FU ✅ — proof hardened, honest state |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
