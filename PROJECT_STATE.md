@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (K1 — Emergency Override → Device Manifest)
+**Last updated:** 2026-07-18 (K2 — Manifest Signature Verification Before Player Execution)
 
-K1 ✅ **RESOLVED** — CI #29636889061 ✅. Behavioural proof: 4/4 passed.
+K2 ✅ **RESOLVED** — CI #29638045838 ✅. 27/27 unit + behavioural green.
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -11,7 +11,7 @@ K1 ✅ **RESOLVED** — CI #29636889061 ✅. Behavioural proof: 4/4 passed.
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 8b9fef2 (code) + 71b5c4b (migration) | bb30a5b | K1 — Emergency Override → Device Manifest, CI ✅ #29636889061 |
+| develop | 4a35179 | bb30a5b | K2 — Manifest Signature Verification, CI ✅ #29638045838 |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -121,9 +121,24 @@ K1 ✅ **RESOLVED** — CI #29636889061 ✅. Behavioural proof: 4/4 passed.
 
 Приоритет после внешнего аудита 2026-07-18 (P0 safety first):
 1. **K1** ✅ — emergency override → manifest.
-2. **K2** — manifest signature verification before player execution.
+2. **K2** ✅ — manifest signature verification before player execution.
 3. **RM1, R1, T1** — roadmap/docs/release process hygiene.
 4. **EDGE-003** — PoP ingestion endpoint (после K1/K2, если product owner не переопределит).
+
+## K2 — Manifest Signature Verification Before Player Execution ✅ RESOLVED (2026-07-18)
+
+- **Verdict: runtime/player-side проверка подписи манифеста — реальная, не placeholder.**
+- **Fix:** вынес `sign_manifest_payload` + `verify_manifest_signature` + `canonical_json` в нейтральный слой `packages/contracts/manifest_signing.py` (HMAC-SHA256, canonical JSON, sort_keys, compact). Заменил placeholder-проверку `== "INVALID"` в `RuntimeSimulator.apply_manifest()` на реальную `verify_manifest_signature()`.
+- **Verifier location:** `RuntimeSimulator` (ADR-013 runtime contract) — подпись проверяется ДО atomic swap, ДО любых side effects.
+- **Signing key:** `RuntimeSimulator(signing_key=...)` — если ключ передан, требует валидную подпись и отвергает: missing signature, wrong key, wrong signature, unsupported algorithm (не HMAC-SHA256). Без ключа — backward compat (dev mode).
+- **Security:** старый magic-string `"INVALID"` явно отвергается (никогда не принимается).
+- **Tests (27 unit):**
+  - 11 signing-module: canonical_json (deterministic, sorted, compact, excludes signature), sign/verify (hex digest, valid/wrong-key/wrong-sig/empty/tampered)
+  - 16 runtime: valid signed → accepted, wrong sig → rejected, wrong key → rejected, unsupported algo → rejected, missing sig → rejected, tampered (retailer_id, playlist, emergency, content_hash, device_id, version) → rejected, last-known-good preserved after tamper, no playback after sig failure, backward compat unsigned accepted, INVALID magic string still rejected
+- **Existing tests:** 41/41 simulator + 38/38 manifest/device-gateway — 0 регрессий.
+- **CI:** #29638045838 ✅ (34/34 green).
+- **Payload SHA:** `4a35179`.
+- **Deferred/not done:** player-side enforcement на реальном KSO, EDGE-003 PoP, heartbeat.
 
 ## K1 — Emergency Override → Device Manifest ✅ RESOLVED (2026-07-18)
 
@@ -154,7 +169,7 @@ K1 ✅ **RESOLVED** — CI #29636889061 ✅. Behavioural proof: 4/4 passed.
 | Код | Описание | Done = |
 |-----|----------|--------|
 | **K1** ✅ | Emergency override не доходит до manifest — backend-состояние меняется, но device manifest возвращает `emergency.active=false` | Behavioural test: admin активирует emergency → следующий device manifest имеет `emergency.active=true` под NOBYPASSRLS | CI #29636889061 |
-| **K2** | Manifest signature verification before player execution не доказана — server signing существует, но runtime/player verification placeholder/deferred | Tampered manifest rejected before apply/play |
+| **K2** ✅ | Manifest signature verification before player execution не доказана — server signing существует, но runtime/player verification placeholder/deferred | Tampered manifest rejected before apply/play | CI #29638045838 |
 | **RM1** | Roadmap stale vs PROJECT_STATE — roadmap-ячейки не синхронизированы с фактическим статусом в PROJECT_STATE | Roadmap cells updated on both sheets, no structure changes |
 | **R1** | Release point v0.8 — зафиксировать baseline для внешнего аудита | HUMAN/Hermes release process, not code |
 | **T1** | Behavioral test data builder — тесты создают фикстуры вручную, нет переиспользуемого builder-паттерна | Новый behavioural test использует builder, существующие behavioural tests green |
