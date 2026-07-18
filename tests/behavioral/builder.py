@@ -249,11 +249,14 @@ class BehBuilder:
     ) -> str:
         """Create creative_asset. Returns asset_id."""
         aid = self._uid("asset")
+        key = f"assets/{aid}.png"
         self._exec(f"""
         INSERT INTO creative_assets (id, advertiser_organization_id, code, name,
-            content_type, status, moderation_status)
+            media_type, storage_bucket, storage_key, sha256_checksum,
+            file_size_bytes, status, moderation_status)
         VALUES ('{aid}', '{advertiser_organization_id}', '{aid}', 'Asset {aid[-4:]}',
-            'image/png', '{status}', 'approved')
+            'image/png', 'beh-bucket', '{key}', 'sha256:deadbeef0000000000000000', 1024,
+            '{status}', 'approved')
         ON CONFLICT (id) DO NOTHING;
         """)
         return aid
@@ -277,8 +280,9 @@ class BehBuilder:
     ) -> None:
         """Link manifest → creative_asset via delivery_manifest_assets."""
         self._exec(f"""
-        INSERT INTO delivery_manifest_assets (manifest_id, creative_asset_id)
-        VALUES ('{manifest_id}', '{asset_id}')
+        INSERT INTO delivery_manifest_assets (manifest_id, creative_asset_id,
+            sha256_checksum)
+        VALUES ('{manifest_id}', '{asset_id}', 'sha256:deadbeef0000000000000000')
         ON CONFLICT DO NOTHING;
         """)
 
