@@ -1,8 +1,9 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (R1 ✅ — release baseline to main, CI #29642225070 green)
+**Last updated:** 2026-07-18 (T1 ✅ — behavioural test data builder, CI #29645034680 green)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
+T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -125,15 +126,27 @@ R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34
 3. **RM1** ✅ — roadmap/docs/release process hygiene.
 4. **CLEAN-BOOT-001** ✅ — P1: clean docker boot → login smoke. **RESOLVED.**
 5. **R1** ✅ — release baseline to main, CI #29642225070 green, tag v0.8.0-r1-edge-safety-runtime.
-6. **T1** — behavioural test data builder (следующий).
-7. **EDGE-003** — PoP ingestion endpoint (после T1).
+6. **T1** ✅ — behavioural test data builder. BehBuilder + K1 converted. CI #29645034680 green (324 passed).
+7. **EDGE-003** — PoP ingestion endpoint (следующий).
 
 ## R1 — Release Baseline to Main ✅ RELEASED (2026-07-18)
 
 - **Verdict:** develop (b439dcf) merged to main → 3d201d6. CI #29642225070 green (34/34).
 - **Contents:** K1 (emergency override), K2 (manifest signature), RM1 (roadmap sync), CLEAN-BOOT-001 (clean boot smoke).
 - **Tag:** v0.8.0-r1-edge-safety-runtime → 3d201d6 (annotated, merge commit on main).
-- **Next:** T1 — behavioural test data builder.
+- **Next:** EDGE-003 — PoP ingestion endpoint.
+
+## T1 — Behavioural Test Data Builder ✅ RESOLVED (2026-07-18)
+
+- **Verdict:** minimal reusable `BehBuilder` class in `tests/behavioral/builder.py`.
+  K1 (emergency manifest) converted from 11 manual `_run_sql` inserts to 7 builder calls.
+- **Builder API:** `retailer()`, `store_chain()`, `channel_device_type()`,
+  `advertiser()`, `campaign()`, `device()`, `manifest()`, `emergency_override()`,
+  `deactivate_emergency()`, `cleanup()`.
+- **ID scheme:** `prefix-entity-NNNN` — auto-generated, no manual naming clashes.
+- **Cleanup:** single `b.cleanup()` call deletes by prefix in FK-safe order.
+- **CI:** #29645034680 ✅ (324 passed, 12 skipped, ADR-008 green).
+- **Not done:** remaining behavioural tests not yet converted — deferred to separate task.
 
 ## CLEAN-BOOT-001 — Clean Docker Boot Login Smoke ✅ RESOLVED (2026-07-18)
 
@@ -216,7 +229,7 @@ R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34
 | **K2** ✅ | Manifest signature verification before player execution не доказана — server signing существует, но runtime/player verification placeholder/deferred | Tampered manifest rejected before apply/play | CI #29638045838 |
 | **RM1** ✅ | Roadmap stale vs PROJECT_STATE — roadmap-ячейки не синхронизированы с фактическим статусом в PROJECT_STATE | Roadmap cells updated on both sheets, no structure changes | SHA 7bcc570 |
 | **R1** ✅ | Release point v0.8 — зафиксировать baseline для внешнего аудита | merge develop→main, CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime |
-| **T1** | Behavioral test data builder — тесты создают фикстуры вручную, нет переиспользуемого builder-паттерна | Новый behavioural test использует builder, существующие behavioural tests green |
+| **T1** ✅ | Behavioral test data builder — тесты создают фикстуры вручную, нет переиспользуемого builder-паттерна | BehBuilder module + K1 converted, CI #29645034680 green (324 passed) |
 
 ### P1 — important / should-fix
 
