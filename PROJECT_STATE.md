@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (UI-TRUTH-001B — roadmap-consistency guard, audit mode)
+**Last updated:** 2026-07-18 (RECONCILE-001 — roadmap overclaims removed, 0 violations)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -542,8 +542,17 @@ UI-TRUTH-BOOTSTRAP ✅ **RESOLVED** — user-journeys.md canonicalised + Done Ga
 
 | ID | Task | Status |
 |----|------|--------|
-| G1-FIX | Next: add «Создать кампанию» button + green campaign.create smoke (closes P0 G1) | 🚧 awaiting prioritisation |
-| PLAYER-IMPORT-001 | Historical recommendation (PLAYER-AUD-001): player/sidecar code transfer when enterprise manifest/PoP/heartbeat endpoints are ready | ⏸️ deferred — not active next |
+| G1-FIX | Next: add «Создать кампанию» button + placement basis field + green campaign.create smoke | 🚧 awaiting prioritisation |
+| PLAYER-IMPORT-001 | Historical recommendation (PLAYER-AUD-001) | ⏸️ deferred — not active next |
+
+## RECONCILE-001 — Roadmap Overclaims Removed ✅ RESOLVED
+
+- **7 roadmap overclaims сняты.** Статусы «✅ Готово» / «🟡 Готово для пилота» заменены на «🟠 Бэкенд готов, UI-smoke нет».
+- В ограничения добавлены конкретные blocked journey ID (G1–G4, campaign.create, user.assign_roles, self.*, inventory.*).
+- **Consistency audit: 0 violations.**
+- **Workbook структура не изменена:** 2 листа, 50×8.
+- **Rows changed:** 3 (Вход), 4 (Роли), 5 (Кабинет), 7 (Кампании), 8 (Согласование), 9 (Креативы), 22 (Инвентарь).
+- **Next:** G1-FIX — кнопка «Создать кампанию» + placement basis field + зелёный smoke.
 
 ## UI-TRUTH-001B — Roadmap-Consistency Guard (audit mode) ✅ RESOLVED
 
