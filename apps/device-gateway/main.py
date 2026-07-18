@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.observability.metrics import record_http_request, render_metrics
@@ -29,6 +30,7 @@ from packages.domain.repository import (
     get_latest_manifest_for_device,
     get_latest_manifest_metadata,
     get_physical_device_for_manifest_delivery,
+    record_device_heartbeat,
 )
 from packages.infrastructure.redis_cache import get_manifest_cache, set_manifest_cache
 from packages.observability import setup_logging, log_request_middleware
@@ -336,6 +338,60 @@ async def get_latest_manifest(
     response_obj = JSONResponse(content=manifest)
     response_obj.headers["ETag"] = f'"{runtime_etag}"'
     return response_obj
+
+
+# ---------------------------------------------------------------------------
+# Device Heartbeat (EDGE-004)
+# ---------------------------------------------------------------------------
+
+
+class HeartbeatRequest(BaseModel):
+    """Minimal device heartbeat payload.
+
+    device_id is NEVER accepted from the client — it's extracted from the
+    device JWT (sub claim) by get_device_id_from_token.
+    """
+    health_state: str = Field(default="healthy", max_length=32)
+    runtime_version: str = Field(default="", max_length=64)
+    player_version: str = Field(default="", max_length=128)
+
+
+@app.post("/api/v1/device/heartbeat")
+async def device_heartbeat(
+    body: HeartbeatRequest,
+    device_id: str = Depends(get_device_id_from_token),
+    _rls: None = Depends(set_device_rls_context),
+    session: AsyncSession = Depends(get_db),
+):
+    """Record a device heartbeat.
+
+    Device JWT required; user/admin tokens rejected.
+    device_id is extracted from JWT (not from payload).
+    RLS context is set on the session by set_device_rls_context
+    (EDGE-002-FU v4: production-safe device bootstrap).
+
+    200: heartbeat recorded
+    401: invalid/expired/missing/not-a-device token
+    403: device not authorized (inactive/revoked)
+    404: device not found
+    """
+    from datetime import datetime, timezone
+
+    updated = await record_device_heartbeat(
+        session,
+        device_id,
+        health_state=body.health_state,
+        runtime_version=body.runtime_version,
+        player_version=body.player_version,
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    return {
+        "status": "accepted",
+        "server_time": datetime.now(tz=timezone.utc).isoformat(),
+        "health_state": body.health_state,
+    }
 
 
 # ---------------------------------------------------------------------------

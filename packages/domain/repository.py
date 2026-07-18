@@ -2362,6 +2362,41 @@ async def get_physical_device_for_manifest_delivery(
     return device.status if device else None
 
 
+async def record_device_heartbeat(
+    session: AsyncSession,
+    physical_device_id: str,
+    *,
+    health_state: str = "healthy",
+    runtime_version: str = "",
+    player_version: str = "",
+) -> bool:
+    """Record a device heartbeat: update last_heartbeat_at, health_state, and versions.
+
+    Returns True if the device exists and was updated; False if not found.
+    The caller (set_device_rls_context) already validated device existence
+    and status, so the device should always be found.
+    """
+    from datetime import datetime, timezone
+
+    from packages.domain.models import PhysicalDevice
+
+    result = (
+        await session.execute(
+            select(PhysicalDevice)
+            .where(PhysicalDevice.id == physical_device_id)
+        )
+    ).scalar_one_or_none()
+
+    if result is None:
+        return False
+
+    result.last_heartbeat_at = datetime.now(tz=timezone.utc)
+    result.health_state = health_state
+    result.runtime_version = runtime_version[:64] if runtime_version else ""
+    result.player_version = player_version[:128] if player_version else ""
+    return True
+
+
 async def get_latest_manifest_metadata(
     session: AsyncSession,
     physical_device_id: str,

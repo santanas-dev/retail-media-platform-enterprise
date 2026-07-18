@@ -214,6 +214,19 @@ class PhysicalDevice(Base):
         comment="Current state CACHE. See device_status_history for authoritative transitions.",
     )
     last_seen_at = Column(DateTime(timezone=True), nullable=True)
+    last_heartbeat_at = Column(DateTime(timezone=True), nullable=True)
+    health_state = Column(
+        String(32), nullable=False, default="unknown",
+        comment="Device health: unknown/healthy/degraded/unhealthy",
+    )
+    runtime_version = Column(
+        String(64), nullable=False, default="",
+        comment="Player/sidecar runtime version reported by device",
+    )
+    player_version = Column(
+        String(128), nullable=False, default="",
+        comment="Player application version/build reported by device",
+    )
     current_manifest_id = Column(String(36), nullable=True)
     retailer_id = Column(String(36), ForeignKey("retailers.id"), nullable=True)
     cache_size_bytes = Column(Integer, nullable=False, default=0)
