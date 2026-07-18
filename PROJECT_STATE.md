@@ -1,9 +1,10 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (T1 ✅ — behavioural test data builder, CI #29645034680 green)
+**Last updated:** 2026-07-18 (EDGE-003 ✅ — PoP ingestion behavioural proof, CI #29649000788 green)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
+EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof, CI #29649000788 green (6/6 tests).
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -12,7 +13,7 @@ T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | a16737e | ddd4443 | CLEAN-BOOT-001 ✅ — clean boot login smoke |
+| develop | ea5d4b6 | ea5d4b6 | EDGE-003 ✅ — PoP ingestion behavioural proof |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
