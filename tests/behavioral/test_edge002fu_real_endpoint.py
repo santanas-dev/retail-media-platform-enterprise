@@ -310,7 +310,7 @@ class TestEDGE002FUDirectDBRLS:
     """
 
     @pytest.fixture(autouse=True)
-    def _app_connection(self, db_available):
+    async def _app_connection(self, db_available):
         """Create a direct asyncpg connection as the app role (NOBYPASSRLS)."""
         import asyncpg
         import os
@@ -321,47 +321,19 @@ class TestEDGE002FUDirectDBRLS:
         # asyncpg expects plain postgresql://, not postgresql+asyncpg://
         app_db_url = app_db_url.replace("postgresql+asyncpg://", "postgresql://")
 
-        async def _connect():
-            return await asyncpg.connect(app_db_url)
-
-        self._conn = asyncio.run(_connect())
-
+        self._conn = await asyncpg.connect(app_db_url)
         yield
+        await self._conn.close()
 
-        async def _close():
-            await self._conn.close()
-        asyncio.run(_close())
-
-    def _set_device(self, device_id: str):
-        """Set app.rmp_device_id on the app-role session."""
-        async def _run():
-            await self._conn.execute(
-                "SELECT set_config('app.rmp_device_id', $1, true)",
-                device_id,
-            )
-        asyncio.run(_run())
-
-    def _clear_device(self):
-        async def _run():
-            await self._conn.execute(
-                "SELECT set_config('app.rmp_device_id', '', true)",
-            )
-        asyncio.run(_run())
-
-    def _fetch_device_ids(self) -> list:
-        """Return all physical_device IDs visible to the current session."""
-        async def _run():
-            rows = await self._conn.fetch(
-                "SELECT id FROM physical_devices"
-            )
-            return [r[0] for r in rows]
-        return asyncio.run(_run())
-
-    def test_bootstrap_sees_only_device_a(self):
+    @pytest.mark.asyncio
+    async def test_bootstrap_sees_only_device_a(self):
         """app.rmp_device_id = A → sees device A row, NOT device B."""
-        self._set_device(DEVICE_A_ID)
+        await self._conn.execute(
+            "SELECT set_config('app.rmp_device_id', $1, true)", DEVICE_A_ID,
+        )
         try:
-            ids = self._fetch_device_ids()
+            rows = await self._conn.fetch("SELECT id FROM physical_devices")
+            ids = [r[0] for r in rows]
             assert DEVICE_A_ID in ids, \
                 f"Device A ({DEVICE_A_ID}) not visible with bootstrap"
             assert DEVICE_B_ID not in ids, \
@@ -369,23 +341,33 @@ class TestEDGE002FUDirectDBRLS:
             assert len(ids) == 1, \
                 f"Expected exactly 1 device, got {len(ids)}: {ids}"
         finally:
-            self._clear_device()
+            await self._conn.execute(
+                "SELECT set_config('app.rmp_device_id', '', true)",
+            )
 
-    def test_no_bootstrap_sees_zero_devices(self):
+    @pytest.mark.asyncio
+    async def test_no_bootstrap_sees_zero_devices(self):
         """Without app.rmp_device_id, app role sees ZERO physical_devices
         (no scope, no bootstrap → RLS denies all)."""
-        ids = self._fetch_device_ids()
+        rows = await self._conn.fetch("SELECT id FROM physical_devices")
+        ids = [r[0] for r in rows]
         assert ids == [], \
             f"Expected empty list (RLS deny all), got: {ids}"
 
-    def test_bootstrap_b_sees_device_b_not_a(self):
+    @pytest.mark.asyncio
+    async def test_bootstrap_b_sees_device_b_not_a(self):
         """app.rmp_device_id = B → sees device B, not device A."""
-        self._set_device(DEVICE_B_ID)
+        await self._conn.execute(
+            "SELECT set_config('app.rmp_device_id', $1, true)", DEVICE_B_ID,
+        )
         try:
-            ids = self._fetch_device_ids()
+            rows = await self._conn.fetch("SELECT id FROM physical_devices")
+            ids = [r[0] for r in rows]
             assert DEVICE_B_ID in ids, \
                 f"Device B ({DEVICE_B_ID}) not visible with bootstrap"
             assert DEVICE_A_ID not in ids, \
                 f"Device A ({DEVICE_A_ID}) leaked via device B bootstrap"
         finally:
-            self._clear_device()
+            await self._conn.execute(
+                "SELECT set_config('app.rmp_device_id', '', true)",
+            )
