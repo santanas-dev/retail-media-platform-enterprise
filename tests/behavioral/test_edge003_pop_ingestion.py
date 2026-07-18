@@ -67,6 +67,10 @@ class TestEDGE003PopIngestion:
     def setup(self, db_available, pop_setup):
         sys.path.insert(0, os.path.join(
             os.path.dirname(__file__), "..", "..", "apps", "control-api"))
+        # If another test (e.g., K1 from device-gateway) imported "main" first,
+        # Python caches it in sys.modules and our import would return the wrong
+        # module (without the pop router) → 404 on /api/v1/pop/batch.
+        sys.modules.pop("main", None)
         import main as app_mod
         self.client = TestClient(app_mod.app)
         self.b = pop_setup["builder"]
