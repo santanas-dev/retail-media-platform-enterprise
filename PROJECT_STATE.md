@@ -123,8 +123,22 @@ RM1 ✅ **RESOLVED** — roadmap cells updated for K1/K2/emergency/signature.
 1. **K1** ✅ — emergency override → manifest.
 2. **K2** ✅ — manifest signature verification before player execution.
 3. **RM1** ✅ — roadmap/docs/release process hygiene.
-4. **R1, T1** — release point v0.8 + behavioural test data builder.
-5. **EDGE-003** — PoP ingestion endpoint (после process hygiene, если product owner не переопределит).
+4. **CLEAN-BOOT-001** — P1: clean docker boot → login smoke. Блокирует R1.
+5. **R1, T1** — release point v0.8 + behavioural test data builder.
+6. **EDGE-003** — PoP ingestion endpoint (после process hygiene).
+
+## CLEAN-BOOT-001 — Clean Docker Boot Login Smoke (P1 before R1)
+
+**Status:** 🚧 В работе (2026-07-18)
+
+**Verdict:** CI зелёный, но чистый `docker compose up` по runbook не даёт рабочий логин.
+
+**Обнаруженные дефекты:**
+- D-BOOT-1: Dockerfile.service `runpy.run_module` с именами вида `apps.control-api.main` — проверить импорт.
+- D-BOOT-2: db-setup не передаёт `SEED_DEV_CREDENTIALS`; seed credentials отключены.
+- D-BOOT-3: db-setup вызывает `grant-app-role.py`, но файл не скопирован в образ.
+
+**Done =:** clean boot smoke проходит на свежих volumes; login 200 + campaigns 200.
 
 ## K2 — Manifest Signature Verification Before Player Execution ✅ RESOLVED (2026-07-18)
 

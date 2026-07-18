@@ -149,20 +149,19 @@ def _build_credentials_sql() -> tuple[str, str, str]:
 -- DEV ONLY — seeded when ENVIRONMENT=dev or SEED_DEV_CREDENTIALS=true.
 -- In production these must be overridden via env-provided password hashes
 -- or an external secrets manager.  See docs/runbook/clean-install-login.md.
-
--- Break-glass admin credential
+;
+;
 INSERT INTO local_credentials (id, user_id, credential_type, password_hash,
     password_hash_algorithm, must_change_password, status)
 VALUES ('{SEED_BG_CREDENTIAL_ID}', '{SEED_BG_USER_ID}', 'local_break_glass',
     '{bg_hash}', 'bcrypt', true, 'active')
-ON CONFLICT (user_id) DO NOTHING;
+ON CONFLICT (user_id) DO NOTHING;  -- Break-glass admin credential
 
--- Test advertiser credential (product path — local_advertiser)
 INSERT INTO local_credentials (id, user_id, credential_type, password_hash,
     password_hash_algorithm, must_change_password, status)
 VALUES ('{SEED_ADV_CREDENTIAL_ID}', '{SEED_ADV_USER_ID}', 'local_advertiser',
     '{adv_hash}', 'bcrypt', true, 'active')
-ON CONFLICT (user_id) DO NOTHING;
+ON CONFLICT (user_id) DO NOTHING;  -- Test advertiser credential (product path)
 """
     return sql, bg_hash, adv_hash
 
