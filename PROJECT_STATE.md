@@ -19,7 +19,7 @@ UI-TRUTH-BOOTSTRAP ✅ **RESOLVED** — user-journeys.md canonicalised + Done Ga
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 4534cfc | (this — see next commit) | UI-TRUTH-001B — roadmap-consistency guard |
+| develop | 4534cfc | 5760b32 | UI-TRUTH-001B — roadmap-consistency guard |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
