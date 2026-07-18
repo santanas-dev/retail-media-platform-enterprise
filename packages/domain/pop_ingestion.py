@@ -157,7 +157,17 @@ async def ingest_pop_event(
     if event.playback_result != "success":
         return {"status": "rejected", "reason": "non_success_playback"}
 
-    # 6. Stale event check
+    # 6. Resolve device retailer_id early — needed for RLS on pop_events_raw
+    #    (both accepted and quarantined paths require it for NOBYPASSRLS).
+    device_row = await repository.get_device_retailer_id_and_status(
+        session, event.device_id,
+    )
+    device_retailer_id = device_row[0] if device_row else None
+
+    if device_retailer_id is None:
+        return {"status": "rejected", "reason": "device_not_found"}
+
+    # 7. Stale event check
     stale_cutoff = now - timedelta(days=STALE_EVENT_DAYS)
     if event.rendered_at < stale_cutoff:
         return {"status": "rejected", "reason": "stale_event"}
@@ -192,6 +202,7 @@ async def ingest_pop_event(
                 quarantine_reason="unknown_manifest",
                 expires_at=expires_at,
                 batch_id=batch_id,
+                retailer_id=device_retailer_id,
             )
 
         dup = await _write_pop_event(
@@ -232,6 +243,7 @@ async def ingest_pop_event(
                 quarantine_reason="clock_drift",
                 expires_at=expires_at,
                 batch_id=batch_id,
+                retailer_id=device_retailer_id,
             )
 
         dup = await _write_pop_event(
