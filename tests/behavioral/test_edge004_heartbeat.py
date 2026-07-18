@@ -183,13 +183,13 @@ class TestEDGE004HeartbeatEndpoint:
 
     def test_heartbeat_updates_last_heartbeat_at_in_db(self):
         """After heartbeat, last_heartbeat_at is set (not NULL)."""
-        # First ensure no prior heartbeat
         import asyncpg
 
         async def _check():
             url = os.environ.get("DATABASE_URL", "").strip()
             if not url:
                 pytest.skip("DATABASE_URL not set")
+            url = url.replace("postgresql+asyncpg://", "postgresql://")
             conn = await asyncpg.connect(url)
             try:
                 # Check before
@@ -282,6 +282,7 @@ class TestEDGE004HeartbeatEndpoint:
             url = os.environ.get("DATABASE_URL", "").strip()
             if not url:
                 pytest.skip("DATABASE_URL not set")
+            url = url.replace("postgresql+asyncpg://", "postgresql://")
             conn = await asyncpg.connect(url)
             try:
                 row = await conn.fetchrow(
