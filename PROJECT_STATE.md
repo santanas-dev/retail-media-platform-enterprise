@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (CLEAN-BOOT-001 ✅ — clean docker boot → login smoke)
+**Last updated:** 2026-07-18 (R1 ✅ — release baseline to main, CI #29642225070 green)
 
-CLEAN-BOOT-001 ✅ **RESOLVED** — clean docker boot → login smoke (8/8 checks).
+R1 ✅ **RELEASED** — baseline to main: K1/K2/RM1/CLEAN-BOOT-001, CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime.
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
@@ -12,7 +12,7 @@ CLEAN-BOOT-001 ✅ **RESOLVED** — clean docker boot → login smoke (8/8 check
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
 | develop | a16737e | ddd4443 | CLEAN-BOOT-001 ✅ — clean boot login smoke |
-| main    | cab9014     | —               | C1 merged (v0.8) |
+| main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
@@ -124,8 +124,16 @@ CLEAN-BOOT-001 ✅ **RESOLVED** — clean docker boot → login smoke (8/8 check
 2. **K2** ✅ — manifest signature verification before player execution.
 3. **RM1** ✅ — roadmap/docs/release process hygiene.
 4. **CLEAN-BOOT-001** ✅ — P1: clean docker boot → login smoke. **RESOLVED.**
-5. **R1, T1** — release point v0.8 + behavioural test data builder.
-6. **EDGE-003** — PoP ingestion endpoint (после process hygiene).
+5. **R1** ✅ — release baseline to main, CI #29642225070 green, tag v0.8.0-r1-edge-safety-runtime.
+6. **T1** — behavioural test data builder (следующий).
+7. **EDGE-003** — PoP ingestion endpoint (после T1).
+
+## R1 — Release Baseline to Main ✅ RELEASED (2026-07-18)
+
+- **Verdict:** develop (b439dcf) merged to main → 3d201d6. CI #29642225070 green (34/34).
+- **Contents:** K1 (emergency override), K2 (manifest signature), RM1 (roadmap sync), CLEAN-BOOT-001 (clean boot smoke).
+- **Tag:** v0.8.0-r1-edge-safety-runtime.
+- **Next:** T1 — behavioural test data builder.
 
 ## CLEAN-BOOT-001 — Clean Docker Boot Login Smoke ✅ RESOLVED (2026-07-18)
 
@@ -207,7 +215,7 @@ CLEAN-BOOT-001 ✅ **RESOLVED** — clean docker boot → login smoke (8/8 check
 | **K1** ✅ | Emergency override не доходит до manifest — backend-состояние меняется, но device manifest возвращает `emergency.active=false` | Behavioural test: admin активирует emergency → следующий device manifest имеет `emergency.active=true` под NOBYPASSRLS | CI #29636889061 |
 | **K2** ✅ | Manifest signature verification before player execution не доказана — server signing существует, но runtime/player verification placeholder/deferred | Tampered manifest rejected before apply/play | CI #29638045838 |
 | **RM1** ✅ | Roadmap stale vs PROJECT_STATE — roadmap-ячейки не синхронизированы с фактическим статусом в PROJECT_STATE | Roadmap cells updated on both sheets, no structure changes | SHA 7bcc570 |
-| **R1** | Release point v0.8 — зафиксировать baseline для внешнего аудита | HUMAN/Hermes release process, not code |
+| **R1** ✅ | Release point v0.8 — зафиксировать baseline для внешнего аудита | merge develop→main, CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime |
 | **T1** | Behavioral test data builder — тесты создают фикстуры вручную, нет переиспользуемого builder-паттерна | Новый behavioural test использует builder, существующие behavioural tests green |
 
 ### P1 — important / should-fix
