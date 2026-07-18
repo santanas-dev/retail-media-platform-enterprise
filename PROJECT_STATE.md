@@ -11,7 +11,7 @@ K1 ✅ **RESOLVED** — CI #29636889061 ✅. Behavioural proof: 4/4 passed.
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 2f43951     | 78b0cdc         | EDGE-002-FU v4 — production-safe RLS bootstrap, CI ✅ #29635004193 |
+| develop | 8b9fef2 (code) + 71b5c4b (migration) | bb30a5b | K1 — Emergency Override → Device Manifest, CI ✅ #29636889061 |
 | main    | cab9014     | —               | C1 merged (v0.8) |
 
 > **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
@@ -120,10 +120,28 @@ K1 ✅ **RESOLVED** — CI #29636889061 ✅. Behavioural proof: 4/4 passed.
 **EDGE-002 ✅ RESOLVED (v4 production-safe)** — app.rmp_device_id bootstrap, no owner lookup, CI #29635004193 ✅.
 
 Приоритет после внешнего аудита 2026-07-18 (P0 safety first):
-1. **K1** — emergency override → manifest.
+1. **K1** ✅ — emergency override → manifest.
 2. **K2** — manifest signature verification before player execution.
 3. **RM1, R1, T1** — roadmap/docs/release process hygiene.
 4. **EDGE-003** — PoP ingestion endpoint (после K1/K2, если product owner не переопределит).
+
+## K1 — Emergency Override → Device Manifest ✅ RESOLVED (2026-07-18)
+
+- **Verdict: real emergency override теперь попадает в device manifest, не placeholder.**
+- **Fix:** `get_latest_manifest_metadata()` запрашивает `emergency_overrides` (глобальная таблица, без RLS). `get_latest_manifest_for_device()` использует `repository_row["emergency_active"]` вместо хардкода `emergency.active=False`.
+- **ETag/cache:** `content_hash` включает `emergency_active` — активация emergency меняет ETag, 304 не отдаёт stale `active=false`.
+- **Security:** `emergency_overrides` — глобальная таблица без `retailer_id`, без RLS. App-роль читает напрямую. Запись только через admin endpoint (A6/S-091), не затронута. NO owner/bypass в manifest request path.
+- **Migration:** 024 — создание таблицы `emergency_overrides` (id, reason, activated_by, activated_at, deactivated_at, is_active, индексы).
+- **Behavioural proof (4 tests, NOBYPASSRLS):**
+  - `test_emergency_active_appears_in_manifest` — активация emergency → manifest `emergency.active=true`
+  - `test_emergency_deactivate_clears_manifest` — деактивация → `active=false`
+  - `test_no_active_emergency_returns_inactive` — нет активного override → `active=false`
+  - `test_emergency_cache_bust` — ETag меняется после активации, curl с `If-None-Match` возвращает 200 (не 304)
+- **Unit tests:** 1297 passed (без регрессий).
+- **Behavioural ADR-008:** 324 passed, 12 skipped.
+- **CI:** #29636889061 ✅ (34/34 green).
+- **Payload SHA:** `8b9fef2` (code) + `71b5c4b` (migration).
+- **Deferred/not done:** player-side enforcement, K2 signature verification, store/device-level emergency.
 
 ## Verified Audit Backlog — 2026-07-18
 
@@ -300,7 +318,8 @@ K1 ✅ **RESOLVED** — CI #29636889061 ✅. Behavioural proof: 4/4 passed.
 - **Manifest schema v1:** `packages/contracts/manifest_v1.schema.json` — retailer_id + emergency in `required`
 - **Tenant isolation:** retailer_id from device record (not client). RLS proven under NOBYPASSRLS
 - **Signing:** HMAC-SHA256 when MANIFEST_SIGNING_KEY configured
-- **Deferred:** real emergency backend propagation (placeholder: emergency.active=False), full manifest generation campaign-aware (uses pre-generated DeliveryManifest), Redis (optional/fail-open)
+- **Deferred:** full manifest generation campaign-aware (uses pre-generated DeliveryManifest), Redis (optional/fail-open)
+- **Resolved by K1:** emergency backend propagation — no longer a placeholder; manifest returns real emergency state from `emergency_overrides` table
 
 ### EDGE-002-FU v2 (weak proof) — 5 tests, CI green but behavioural insufficient
 - `test_device_a_200_manifest` — allowed both 200 AND 404 (weak)
