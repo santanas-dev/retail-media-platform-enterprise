@@ -324,7 +324,7 @@ class TestEDGE002FUDirectDBRLS:
             conn = await asyncpg.connect(self._app_db_url())
             try:
                 await conn.execute(
-                    "SELECT set_config('app.rmp_device_id', $1, true)",
+                    "SELECT set_config('app.rmp_device_id', $1, false)",
                     DEVICE_A_ID,
                 )
                 rows = await conn.fetch("SELECT id FROM physical_devices")
@@ -363,7 +363,7 @@ class TestEDGE002FUDirectDBRLS:
             conn = await asyncpg.connect(self._app_db_url())
             try:
                 await conn.execute(
-                    "SELECT set_config('app.rmp_device_id', $1, true)",
+                    "SELECT set_config('app.rmp_device_id', $1, false)",
                     DEVICE_B_ID,
                 )
                 rows = await conn.fetch("SELECT id FROM physical_devices")
