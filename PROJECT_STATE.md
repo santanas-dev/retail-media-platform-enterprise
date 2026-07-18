@@ -128,14 +128,14 @@ EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof, CI #2964
 4. **CLEAN-BOOT-001** ✅ — P1: clean docker boot → login smoke. **RESOLVED.**
 5. **R1** ✅ — release baseline to main, CI #29642225070 green, tag v0.8.0-r1-edge-safety-runtime.
 6. **T1** ✅ — behavioural test data builder. BehBuilder + K1 converted. CI #29645034680 green (324 passed).
-7. **EDGE-003** — PoP ingestion endpoint (следующий).
+7. **EDGE-003** ✅ — PoP ingestion endpoint behavioural proof. CI #29649000788 green (6/6 tests).
 
 ## R1 — Release Baseline to Main ✅ RELEASED (2026-07-18)
 
 - **Verdict:** develop (b439dcf) merged to main → 3d201d6. CI #29642225070 green (34/34).
 - **Contents:** K1 (emergency override), K2 (manifest signature), RM1 (roadmap sync), CLEAN-BOOT-001 (clean boot smoke).
 - **Tag:** v0.8.0-r1-edge-safety-runtime → 3d201d6 (annotated, merge commit on main).
-- **Next:** EDGE-003 — PoP ingestion endpoint.
+- **Next:** heartbeat / PLAYER-IMPORT (на выбор пользователя).
 
 ## T1 — Behavioural Test Data Builder ✅ RESOLVED (2026-07-18)
 
@@ -196,7 +196,7 @@ EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof, CI #2964
 - **Existing tests:** 41/41 simulator + 38/38 manifest/device-gateway — 0 регрессий.
 - **CI:** #29638045838 ✅ (34/34 green).
 - **Payload SHA:** `4a35179`.
-- **Deferred/not done:** player-side enforcement на реальном KSO, EDGE-003 PoP, heartbeat.
+- **Deferred/not done:** player-side enforcement на реальном KSO, heartbeat.
 
 ## K1 — Emergency Override → Device Manifest ✅ RESOLVED (2026-07-18)
 
