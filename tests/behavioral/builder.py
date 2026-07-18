@@ -267,10 +267,11 @@ class BehBuilder:
         surface_id: str,
     ) -> None:
         """Link manifest → display_surface via delivery_manifest_surfaces."""
+        jid = self._uid("dms")
         self._exec(f"""
-        INSERT INTO delivery_manifest_surfaces (manifest_id, display_surface_id)
-        VALUES ('{manifest_id}', '{surface_id}')
-        ON CONFLICT DO NOTHING;
+        INSERT INTO delivery_manifest_surfaces (id, manifest_id, display_surface_id)
+        VALUES ('{jid}', '{manifest_id}', '{surface_id}')
+        ON CONFLICT (id) DO NOTHING;
         """)
 
     def manifest_asset(
@@ -279,11 +280,12 @@ class BehBuilder:
         asset_id: str,
     ) -> None:
         """Link manifest → creative_asset via delivery_manifest_assets."""
+        jid = self._uid("dma")
         self._exec(f"""
-        INSERT INTO delivery_manifest_assets (manifest_id, creative_asset_id,
+        INSERT INTO delivery_manifest_assets (id, manifest_id, creative_asset_id,
             sha256_checksum)
-        VALUES ('{manifest_id}', '{asset_id}', 'sha256:deadbeef0000000000000000')
-        ON CONFLICT DO NOTHING;
+        VALUES ('{jid}', '{manifest_id}', '{asset_id}', 'sha256:deadbeef0000000000000000')
+        ON CONFLICT (id) DO NOTHING;
         """)
 
     def emergency_override(
