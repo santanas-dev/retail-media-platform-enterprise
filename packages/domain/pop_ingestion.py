@@ -290,6 +290,7 @@ async def ingest_pop_event(
             event_recorded_at=event.event_recorded_at,
             duration_ms=event.duration_ms,
             batch_id=batch_id,
+            retailer_id=manifest.retailer_id,
         )
 
     dup = await _write_pop_event(

@@ -2609,6 +2609,7 @@ async def record_pop_raw_event(
     quarantine_reason: str | None = None,
     expires_at=None,
     batch_id: str | None = None,
+    retailer_id: str | None = None,
 ) -> str:
     """Insert a raw PoP event into pop_events_raw.
 
@@ -2639,6 +2640,7 @@ async def record_pop_raw_event(
         quarantine_reason=quarantine_reason,
         expires_at=expires_at,
         batch_id=batch_id,
+        retailer_id=retailer_id,
     )
     session.add(event)
     return row_id
@@ -2691,6 +2693,7 @@ async def accept_pop_event(
     event_recorded_at,
     duration_ms: int,
     batch_id: str | None = None,
+    retailer_id: str | None = None,
 ) -> str:
     """Record an accepted (billing-grade) PoP event.
 
@@ -2715,6 +2718,7 @@ async def accept_pop_event(
         playback_result="success",
         status="accepted",
         batch_id=batch_id,
+        retailer_id=retailer_id,
     )
 
 
@@ -2735,6 +2739,7 @@ async def quarantine_pop_event(
     quarantine_reason: str,
     expires_at,
     batch_id: str | None = None,
+    retailer_id: str | None = None,
 ) -> str:
     """Record a quarantined PoP event with campaign_verified=False.
 
@@ -2761,6 +2766,7 @@ async def quarantine_pop_event(
         quarantine_reason=quarantine_reason,
         expires_at=expires_at,
         batch_id=batch_id,
+        retailer_id=retailer_id,
     )
 
 

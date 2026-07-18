@@ -1023,6 +1023,7 @@ class DeliveryManifest(Base):
     delivered_at = Column(DateTime(timezone=True), nullable=True)
     last_error = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    retailer_id = Column(String(36), ForeignKey("retailers.id"), nullable=True)
 
 
 class DeliveryManifestSurface(Base):
