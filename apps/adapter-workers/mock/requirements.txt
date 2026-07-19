@@ -1,0 +1,2 @@
+# Mock adapter — stdlib only (no external deps).
+# Required by Dockerfile.service COPY+install pattern.

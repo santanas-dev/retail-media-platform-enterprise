@@ -48,10 +48,10 @@ def test_uismoke__user__assign_roles(smoke_page):
     # Step 2: navigate to «Пользователи»
     navigate_to_users(page)
 
-    # Step 3: wait for user table, click «Роли» on the operator user
+    # Step 3: wait for user table, click «Роли» on the advertiser_test user
     page.wait_for_selector('[data-testid="user-roles-open"]', state="visible", timeout=10000)
 
-    # Find which row has "operator" username and click its «Роли» button
+    # Find which row has "advertiser_test" username and click its «Роли» button
     rows = page.locator("table tbody tr")
     row_count = rows.count()
     assert row_count >= 2, f"Expected at least 2 users, got {row_count}"
@@ -59,13 +59,13 @@ def test_uismoke__user__assign_roles(smoke_page):
     target_row_idx = -1
     for i in range(row_count):
         row_text = rows.nth(i).inner_text()
-        if "operator" in row_text.lower():
+        if "advertiser_test" in row_text:
             target_row_idx = i
             break
 
-    assert target_row_idx >= 0, "Could not find 'operator' user in the table"
+    assert target_row_idx >= 0, "Could not find 'advertiser_test' user in the table"
 
-    # Click «Роли» on the operator user's row
+    # Click «Роли» on the advertiser_test user's row
     roles_btn = rows.nth(target_row_idx).locator('[data-testid="user-roles-open"]')
     roles_btn.click()
 

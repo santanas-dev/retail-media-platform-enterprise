@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-19 (G2-FIX-FU2 — smoke hardened + PROJECT_STATE hygiene)
+**Last updated:** 2026-07-19 (G2-SMOKE-PROOF — honest green UI-smoke run)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -15,6 +15,7 @@ G1-FIX ✅ **RESOLVED** — campaign.create reachable + placement_basis (d4f91e4
 G1-FIX-FU ✅ **RESOLVED** — placement_basis validation + RBAC button visibility (0b9198d).
 G2-FIX ✅ **RESOLVED** — user.assign_roles reachable, backend+frontend+unit tests green, CI #29661909182 (35/35).
 G2-FIX-FU2 ✅ **RESOLVED** — smoke hardened (deterministic role, specific assert), PROJECT_STATE PS-001 hygiene, honest smoke-proof.
+G2-SMOKE-PROOF ✅ **RESOLVED** — honest green UI-smoke run, 3 infra bugs fixed in the process.
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 **Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`

@@ -226,7 +226,7 @@ services:
       context: ../..
       dockerfile: infra/compose/Dockerfile.service
       args:
-        SERVICE_NAME: mock-adapter
+        SERVICE_NAME: adapter-workers/mock
         SERVICE_MODULE: apps.adapter-workers.mock.main
         SERVICE_PORT: "8100"
     environment:
