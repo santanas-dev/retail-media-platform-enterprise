@@ -188,6 +188,27 @@ Minimum checks by area:
 If dependencies or infrastructure are unavailable, say exactly what was not run
 and provide the closest static or targeted verification.
 
+## NAS / Mirror Truth
+
+- **GitHub `origin/develop` is the sole git-source-of-truth.** NAS/ASUSTOR at
+  `\\192.168.110.118\project\retail-media-platform-enterprise` is a mirror —
+  it may be stale.
+- **Agent must NOT claim "NAS synced" without mirror-check proof.** Writing
+  "NAS synced" as a fact requires either: (a) a successful `mirror-check.sh`
+  run from an environment with both GitHub and NAS access, or (b) operator/santa2
+  confirmation recorded in PROJECT_STATE.
+- **SSH-unavailable is NOT proof.** If GitHub is unreachable via SSH (host key
+  failure, "Not allowed at this time"), the honest status is **cannot verify
+  from here** — not "stale" and not "synced."
+- **Mirror-check pending is valid.** After a Hermes push, the expected state is
+  "mirror-check pending — operator/santa2 will verify." Do not block DONE on
+  mirror sync — GitHub + CI green is sufficient for task completion. Mirror
+  status is tracked separately in PROJECT_STATE Repository Checkpoint.
+- **Mirror-check script:** `docs/runbook/mirror-check.sh` uses HTTPS (not SSH)
+  by default. Accepts `--expected-origin-sha` / `EXPECTED_ORIGIN_DEVELOP_SHA`.
+  Returns: `verified` | `stale` | `cannot-verify-from-here`. Never exits non-zero
+  for "cannot verify" — only for real script errors.
+
 ## Что значит готово
 
 Бизнес-функция считается **готовой** только при выполнении всех условий ниже.

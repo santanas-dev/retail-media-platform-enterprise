@@ -17,8 +17,8 @@ G2-FIX ✅ **RESOLVED** — user.assign_roles reachable, backend+frontend+unit t
 G2-FIX-FU2 ✅ **RESOLVED** — smoke hardened (deterministic role, specific assert), PROJECT_STATE PS-001 hygiene, honest smoke-proof.
 G2-SMOKE-PROOF ✅ **RESOLVED** — honest green UI-smoke run, 3 infra bugs fixed in the process.
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
-**Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
-**Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
+**Git origin (source of truth):** `github.com:santanas-dev/retail-media-platform-enterprise`
+**Mirror (ASUSTOR, synced from origin):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 
 ## Repository Checkpoint
 
@@ -26,8 +26,9 @@ G2-SMOKE-PROOF ✅ **RESOLVED** — honest green UI-smoke run, 3 infra bugs fixe
 |---------|-------------|----------------|------|
 | develop | 29c285b | a40e398 | G2-SMOKE-PROOF — honest green UI-smoke + 3 infra fixes |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
+| NAS mirror (ASUSTOR) | verified | a40e398 (via operator/santa2) | SOURCE-TRUTH-001 — operator sync confirmed |
 
-> **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
+> **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Mirror status is checked by operator/santa2, not by Hermes agent.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
 > checkpoints; it must not pretend to self-reference its own commit SHA. The Payload SHA
 > is the last substantive commit whose result was verified (code, tests, CI). The State/Docs
@@ -681,4 +682,4 @@ PLAYER-IMPORT остаётся deferred, не next.
 - `main` = stable releases, `develop` = active integration
 - Protected: `.env`, Docker/deploy scripts, destructive migrations
 - RLS on all tenant-scoped tables, NOBYPASSRLS enforced
-- Only Hermes pushes to GitHub; ASUSTOR = local canon
+- Only Hermes pushes to GitHub; NAS = mirror synced from origin, verified by operator/santa2
