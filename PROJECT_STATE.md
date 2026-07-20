@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-20 (ROADMAP-GUARD-002 — 4-колоночный guard, tamper tests)
+**Last updated:** 2026-07-20 (G3-FIX — advertiser.create_org backend+UI+smoke)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).

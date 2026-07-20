@@ -265,6 +265,13 @@ class MeResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class AdvertiserOrganizationCreate(BaseModel):
+    """Create a new advertiser organization (admin)."""
+    code: str = Field(..., min_length=1, max_length=64)
+    legal_name: str = Field(..., min_length=1, max_length=255)
+    display_name: str = Field(..., min_length=1, max_length=255)
+
+
 class AdvertiserOrganizationOut(BaseModel):
     """Public advertiser organization — no internal fields."""
     model_config = ConfigDict(from_attributes=True)

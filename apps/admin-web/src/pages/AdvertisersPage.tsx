@@ -8,6 +8,7 @@ import {
   listContractsByOrg,
   listContactsByOrg,
   listMemberships,
+  createAdvertiserOrganization,
 } from "../api/campaigns";
 import { ApiError } from "../api/client";
 import type {
@@ -191,6 +192,33 @@ export default function AdvertisersPage() {
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("Обзор");
   const [search, setSearch] = useState("");
+  // Create modal
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({ code: "", legal_name: "", display_name: "" });
+  const [createError, setCreateError] = useState("");
+
+  async function handleCreate() {
+    setCreateError("");
+    try {
+      const org = await createAdvertiserOrganization(createForm);
+      setCreateOpen(false);
+      setCreateForm({ code: "", legal_name: "", display_name: "" });
+      // Reload list
+      const [orgs, brands, contracts] = await Promise.all([
+        listAdvertisers(), listBrands(), listContracts(),
+      ]);
+      const brandMap = new Map<string, number>();
+      for (const b of brands) brandMap.set(b.advertiser_organization_id, (brandMap.get(b.advertiser_organization_id) ?? 0) + 1);
+      const contractMap = new Map<string, number>();
+      for (const c of contracts) contractMap.set(c.advertiser_organization_id, (contractMap.get(c.advertiser_organization_id) ?? 0) + 1);
+      const rows: OrgRow[] = orgs.map((o) => ({ ...o, brandCount: brandMap.get(o.id) ?? 0, contractCount: contractMap.get(o.id) ?? 0, contactCount: 0 }));
+      setPageState({ stage: "ready", orgs: rows });
+      setSelectedOrgId(org.id);
+      setActiveTab("Обзор");
+    } catch (e: unknown) {
+      setCreateError(e instanceof ApiError ? e.message : "Ошибка создания организации");
+    }
+  }
 
   // ── Load org list + counts on mount ──
 
@@ -312,6 +340,14 @@ export default function AdvertisersPage() {
     <div>
       <h2 style={S.header}>Рекламодатели</h2>
 
+      <button
+        data-testid="advertiser-create-open"
+        onClick={() => setCreateOpen(true)}
+        style={{ marginBottom: "1rem", padding: "0.5rem 1rem", cursor: "pointer" }}
+      >
+        + Создать организацию
+      </button>
+
       {/* Search */}
       <input
         style={S.search}
@@ -391,6 +427,36 @@ export default function AdvertisersPage() {
             ) : detailState.stage === "ready" ? (
               <RenderTab tab={activeTab} data={detailState.data} />
             ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* Create modal */}
+      {createOpen && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.4)", display: "flex",
+          alignItems: "center", justifyContent: "center", zIndex: 1000,
+        }} onClick={(e) => { if (e.target === e.currentTarget) setCreateOpen(false); }}>
+          <div style={{ background: "#fff", borderRadius: 8, padding: "1.5rem", minWidth: 400, maxWidth: 500 }}>
+            <h3 style={{ margin: "0 0 1rem" }}>Создать организацию</h3>
+            {createError && <div style={{ color: "#dc2626", marginBottom: "0.75rem", fontSize: "0.875rem" }}>{createError}</div>}
+            <div style={{ marginBottom: "0.75rem" }}>
+              <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "0.25rem", color: "#64748b" }}>Код</label>
+              <input data-testid="advertiser-create-code" style={{ width: "100%", padding: "0.5rem", border: "1px solid #e2e8f0", borderRadius: 4 }} value={createForm.code} onChange={(e) => setCreateForm({ ...createForm, code: e.target.value })} />
+            </div>
+            <div style={{ marginBottom: "0.75rem" }}>
+              <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "0.25rem", color: "#64748b" }}>Юридическое название</label>
+              <input data-testid="advertiser-create-legal-name" style={{ width: "100%", padding: "0.5rem", border: "1px solid #e2e8f0", borderRadius: 4 }} value={createForm.legal_name} onChange={(e) => setCreateForm({ ...createForm, legal_name: e.target.value })} />
+            </div>
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "0.25rem", color: "#64748b" }}>Отображаемое название</label>
+              <input data-testid="advertiser-create-display-name" style={{ width: "100%", padding: "0.5rem", border: "1px solid #e2e8f0", borderRadius: 4 }} value={createForm.display_name} onChange={(e) => setCreateForm({ ...createForm, display_name: e.target.value })} />
+            </div>
+            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+              <button onClick={() => setCreateOpen(false)} style={{ padding: "0.5rem 1rem", cursor: "pointer" }}>Отмена</button>
+              <button data-testid="advertiser-create-save" onClick={handleCreate} style={{ padding: "0.5rem 1rem", cursor: "pointer", background: "#2563eb", color: "#fff", border: "none", borderRadius: 4 }}>Сохранить</button>
+            </div>
           </div>
         </div>
       )}

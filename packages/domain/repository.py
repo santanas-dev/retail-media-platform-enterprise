@@ -194,6 +194,18 @@ async def get_advertiser_organization(
     return result.scalar_one_or_none()
 
 
+async def create_advertiser_organization(
+    session: AsyncSession, *, code: str, legal_name: str, display_name: str
+) -> AdvertiserOrganization:
+    """Create a new advertiser organization."""
+    org = AdvertiserOrganization(
+        code=code, legal_name=legal_name, display_name=display_name,
+    )
+    session.add(org)
+    await session.flush()
+    return org
+
+
 async def list_advertiser_brands(
     session: AsyncSession,
 ) -> list[AdvertiserBrand]:

@@ -178,7 +178,7 @@ features:
     priority: P0
     roles: [system_admin, campaign_manager]
     status: blocked
-    gap: "G3: AdvertisersPage — list/detail только; нет UI для создания организации рекламодателя."
+    gap: "G3-FIX: UI создан, smoke написан. Ожидает зелёного UI-smoke прогона."
 
   - id: advertiser.application_review
     frontend: admin-web
