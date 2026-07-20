@@ -246,6 +246,14 @@ and provide the closest static or targeted verification.
    только при `UI_SMOKE_RUN=1` и не собираются обычным pytest. Они —
    инструмент аудита, а не CI-gate.
 
+7. **Roadmap-синхронизация обязательна.** Если задача довела journey до
+   зелёного UI-smoke, та же задача обязана поднять в бизнес-вкладке roadmap
+   (`docs/product/roadmap-s020-2026-07-10.xlsx`, лист «Бизнес-функции
+   Roadmap») колонки «UI» + «Юзер-стори» и пересчитать колонку «Итог».
+   Итог=«✅ Готово/Юзабельно» только при Бэкенд ✅ + UI ✅ + Юзер-стори ✅.
+   Без зелёного UI-smoke по journey id — запрещён. Частичные фичи
+   маркируются «🟠 Частично» с указанием, какая часть не reachable.
+
 ## Reporting
 
 Final reports must be short but concrete:
