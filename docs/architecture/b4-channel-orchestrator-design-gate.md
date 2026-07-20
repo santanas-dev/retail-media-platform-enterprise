@@ -13,7 +13,7 @@ See docs/architecture/README.md for full source-of-truth ordering.
 
 **Date:** 2026-06-29
 **HEAD:** `fd7002f`
-**Status:** DESIGN GATE — no code written
+**Status:** DEFERRED — per §24 owner decision (PRAGMATISM, ADR-019). Channel Orchestrator deferred until second real channel. KSO player built directly on existing EDGE-001..004 contracts with thin adapter seam.
 
 ---
 
