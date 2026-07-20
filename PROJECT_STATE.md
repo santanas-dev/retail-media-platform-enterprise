@@ -2,7 +2,9 @@
 
 **Last updated:** 2026-07-20 (NAS-SYNC-OWNER-001 — Hermes-owned mirror sync; santa2 relay deprecated)
 
-**NAS-SYNC-OWNER-001** ✅ — NAS mirror caught up to 0fdc727. Hermes owns sync: cron c0687f5ced4d (nas-mirror-sync.sh, every 3 min). santa2 relay DEPRECATED. C1 blocked: operator must remove santa2-nas-sync key from NAS authorized_keys.
+**NAS-SYNC-OWNER-001** — Hermes-owned mirror sync replaces santa2 relay.
+- Sync/canon: ✅ NAS caught up 4215c23→2b352f2, cron c0687f5ced4d (nas-mirror-sync.sh, every 3 min), AGENTS.md/runbook/PROJECT_STATE updated.
+- Security cleanup (C1): 🟡 pending operator proof — remove santa2-nas-sync key from NAS `/home/admin/.ssh/authorized_keys`. Operator command: `sed -i '/santa2-nas-sync/d' /home/admin/.ssh/authorized_keys`. Hermes has no SSH access to NAS — cannot execute.
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -25,8 +27,8 @@ G3-FIX-FU-STATE-SYNC ✅ **RESOLVED** — PROJECT_STATE hygiene (02e2383).
 **CONSOLIDATE-CANON-001B** — pre-pilot-journey-plan.md imported to repo. `for-agents/` copy now deprecated staging, not authoritative. Next: CONSOLIDATE-CANON-001C.
 **CONSOLIDATE-CANON-001C** ✅ — AGENTS.md Sources of Truth consolidated into single 5-tier index. for-agents/ explicitly DEPRECATED.
 **CONSOLIDATE-CANON-001C-FU** ✅ — Duplicate ## NAS / Mirror Truth and ## Что значит готово sections removed. All rules absorbed into single Sources of Truth. Priority clarified: user-journeys.md = spec authority, feature-registry.yaml = status authority (registry > roadmap on status conflicts).
-**CONSOLIDATE-CANON-001D** ✅ — NAS mirror sync runbook rewritten. santa2 relay is the canonical mechanism (HTTPS fetch + local NAS mount write, every 3 min). NAS self-pull cron explicitly deprecated. Hermes is not the owner of mirror freshness.
-**CONSOLIDATE-CANON-001E** ✅ — Runbook NAS mount setup added: cifs-utils install, /etc/nas-cred, fstab with _netdev, core.fileMode false for git-over-CIFS, Warnings section. Hermes does NOT execute mount/credentials/cron — operator/santa2 owns it.
+**CONSOLIDATE-CANON-001D** ✅ — NAS mirror sync runbook rewritten. santa2 relay was the canonical mechanism (HTTPS fetch + local NAS mount write, every 3 min). NAS self-pull cron explicitly deprecated. **→ Superseded by NAS-SYNC-OWNER-001: Hermes now owns mirror sync freshness.**
+**CONSOLIDATE-CANON-001E** ✅ — Runbook NAS mount setup added: cifs-utils install, /etc/nas-cred, fstab with _netdev, core.fileMode false for git-over-CIFS, Warnings section. **→ Superseded by NAS-SYNC-OWNER-001: Hermes now executes sync via cron; operator retains mount/credentials setup only.**
 **STATE-HYGIENE-001** ✅ — PROJECT_STATE + registry summary brought to current GitHub truth d4a4e6a. Repository Checkpoint fixed, G1/G2/G3 closed as RESOLVED, G4 open as next candidate. Registry summary: blocked 33→32, P0 19→20, P1 20→19.
 **G4-FIX** — adsettings.configure reachable + green smoke. PUT /auth/ad-settings save endpoint (users.manage, audit, validation). ADSettingsPage edit form + RBAC. 5 frontend tests + 5 backend save tests. UI-smoke green.
 **G4-FIX-FU** — Durable persistence: ad_settings DB table (migration 027), ADSettings model, repository save/get. Roadmap row added. Backend tests 15/15. Next: from pre-pilot journey plan.
@@ -56,7 +58,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ### SOURCE-TRUTH-001-FU — Mirror-check exit code reconciliation ✅ RESOLVED
 - **Blocker 1 (AGENTS vs mirror-check.sh):** cannot-verify-from-here → exit 0 (neutral), stale → exit 1, script error → exit 3. AGENTS.md, mirror-check.sh, nas-mirror-sync.md согласованы.
-- **Blocker 2 (PROJECT_STATE stale claim):** NAS mirror `verified | a40e398` заменено на `pending | expected 598747c`. Без operator/santa2 proof не пишем verified.
+- **Blocker 2 (PROJECT_STATE stale claim):** NAS mirror `verified | a40e398` заменено на `pending | expected 598747c`. Без operator/santa2 proof не пишем verified. **→ Superseded by NAS-SYNC-OWNER-001: Hermes now verifies sync directly; operator/santa2 no longer gatekeeper.**
 - Commit: 859f35f, CI: green.
 
 ### ROADMAP-DONE-GATE-001 — 4-колоночный бизнес-лист, G1/G2 честно готовы ✅ RESOLVED
@@ -765,4 +767,4 @@ PLAYER-IMPORT остаётся deferred, не next.
 - `main` = stable releases, `develop` = active integration
 - Protected: `.env`, Docker/deploy scripts, destructive migrations
 - RLS on all tenant-scoped tables, NOBYPASSRLS enforced
-- Only Hermes pushes to GitHub; NAS = mirror synced from origin, verified by operator/santa2
+- Only Hermes pushes to GitHub; NAS = mirror synced from origin via Hermes cron c0687f5ced4d every 3 min
