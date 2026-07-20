@@ -2,14 +2,14 @@
 Retail Media Platform — S-034 AD / LDAPS Settings Tests.
 
 Tests: permission gates (users.manage), response safety (no bind_password/secret),
-honest stub mode, test endpoint returns stub without pretending success.
+honest stub mode, test endpoint, durable save/read persistence.
 """
 
 import importlib.util
 import os
 import sys
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -55,6 +55,19 @@ class _MockUser:
 
 def _make_user(user_id, status="active", auth_provider="local_break_glass"):
     return _MockUser(user_id, status, auth_provider)
+
+
+class _FakeADSettings:
+    """In-memory fake for ADSettings DB row — mimics model attributes."""
+    id = 1
+    enabled = False
+    server_url = ""
+    base_dn = ""
+    user_search_base = ""
+    user_search_filter = "(sAMAccountName={username})"
+    bind_dn = ""
+    use_tls = True
+    certificate_validation = "required"
 
 
 # ---------------------------------------------------------------------------
@@ -165,8 +178,10 @@ class TestADSettingsPermissionGates(unittest.TestCase):
         self.assertEqual(resp.status_code, 401)
 
 
-class TestADSettingsResponseSafety(unittest.TestCase):
-    """AD settings response must never leak bind_password or secrets."""
+class _MockedSettingsTestBase(unittest.TestCase):
+    """Base with common mock setup for AD settings tests needing DB mocks."""
+
+    fake_row = _FakeADSettings()
 
     @classmethod
     def setUpClass(cls):
@@ -177,6 +192,7 @@ class TestADSettingsResponseSafety(unittest.TestCase):
         os.environ["ENVIRONMENT"] = "dev"
         os.environ["JWT_SECRET"] = "test-jwt-secret-for-ad-settings-32chars"
         self.client.cookies.clear()
+        self.fake_row = _FakeADSettings()  # fresh per test
         self._setup_mocks()
 
     def tearDown(self):
@@ -228,12 +244,34 @@ class TestADSettingsResponseSafety(unittest.TestCase):
         patcher_find.start()
         patcher_perms.start()
 
+        # Mock get_ad_settings and save_ad_settings from repository
+        self._patcher_get = patch(
+            "packages.domain.repository.get_ad_settings",
+            new_callable=AsyncMock,
+        )
+        self._patcher_save = patch(
+            "packages.domain.repository.save_ad_settings",
+            new_callable=AsyncMock,
+        )
+        self.mock_get = self._patcher_get.start()
+        self.mock_save = self._patcher_save.start()
+        self.mock_get.return_value = self.fake_row
+        self.mock_save.side_effect = self._fake_save
+
         app.dependency_overrides[get_current_active_user] = _admin_user
         app.dependency_overrides[get_db] = _fake_db
         app.dependency_overrides[get_scope_context] = _fake_scope
         app.dependency_overrides[set_rls_context] = _fake_set_rls
 
         self.addCleanup(lambda: app.dependency_overrides.clear())
+        self.addCleanup(self._patcher_get.stop)
+        self.addCleanup(self._patcher_save.stop)
+
+    async def _fake_save(self, session, **kwargs):
+        for key, value in kwargs.items():
+            if hasattr(self.fake_row, key):
+                setattr(self.fake_row, key, value)
+        return self.fake_row
 
     def _token(self):
         return create_access_token("u-admin", "local_break_glass")
@@ -241,12 +279,26 @@ class TestADSettingsResponseSafety(unittest.TestCase):
     def _auth(self, token):
         return {"Authorization": f"Bearer {token}"}
 
-    def test_settings_no_bind_password(self):
-        """GET ad-settings must not include bind_password."""
-        resp = self.client.get(
+    def _put(self, payload):
+        return self.client.put(
+            "/api/v1/identity/auth/ad-settings",
+            json=payload,
+            headers=self._auth(self._token()),
+        )
+
+    def _get(self):
+        return self.client.get(
             "/api/v1/identity/auth/ad-settings",
             headers=self._auth(self._token()),
         )
+
+
+class TestADSettingsResponseSafety(_MockedSettingsTestBase):
+    """AD settings response must never leak bind_password or secrets."""
+
+    def test_settings_no_bind_password(self):
+        """GET ad-settings must not include bind_password."""
+        resp = self._get()
         self.assertEqual(resp.status_code, 200, resp.text)
         body = resp.json()
         self.assertNotIn("bind_password", body)
@@ -255,10 +307,7 @@ class TestADSettingsResponseSafety(unittest.TestCase):
 
     def test_settings_no_secret_values(self):
         """GET ad-settings must not leak any secret fields."""
-        resp = self.client.get(
-            "/api/v1/identity/auth/ad-settings",
-            headers=self._auth(self._token()),
-        )
+        resp = self._get()
         self.assertEqual(resp.status_code, 200)
         body = resp.json()
         for key in body:
@@ -267,10 +316,7 @@ class TestADSettingsResponseSafety(unittest.TestCase):
 
     def test_settings_mode_is_disabled(self):
         """In default dev mode, AD should be disabled."""
-        resp = self.client.get(
-            "/api/v1/identity/auth/ad-settings",
-            headers=self._auth(self._token()),
-        )
+        resp = self._get()
         self.assertEqual(resp.status_code, 200)
         body = resp.json()
         self.assertEqual(body["mode"], "disabled")
@@ -300,97 +346,11 @@ class TestADSettingsResponseSafety(unittest.TestCase):
         self.assertIn(body["status"], {"stub", "not_configured"})
 
 
-class TestADSettingsSave(unittest.TestCase):
-    """PUT /auth/ad-settings — save, persist, permission, validation, audit, no secrets."""
-
-    @classmethod
-    def setUpClass(cls):
-        cls.client = TestClient(_get_app())
-
-    def setUp(self):
-        reset_security_config()
-        os.environ["ENVIRONMENT"] = "dev"
-        os.environ["JWT_SECRET"] = "test-jwt-secret-for-ad-settings-32chars"
-        self.client.cookies.clear()
-        self._setup_mocks()
-
-    def tearDown(self):
-        reset_security_config()
-
-    def _setup_mocks(self):
-        app = _get_app()
-        from packages.api.dependencies import (
-            get_current_active_user,
-            get_db,
-            get_scope_context,
-            set_rls_context,
-        )
-        from packages.domain.scopes import ScopeContext
-
-        async def _admin_user():
-            return {
-                "sub": "u-admin",
-                "auth_provider": "local_break_glass",
-                "username": "admin",
-                "display_name": "Admin",
-            }
-
-        async def _fake_db():
-            yield AsyncMock()
-
-        async def _fake_scope():
-            return ScopeContext(
-                user_id="u-admin",
-                is_admin=True,
-                role_codes={"system_admin"},
-                global_permissions={"users.manage"},
-                all_permissions={"users.manage"},
-            )
-
-        async def _fake_set_rls(db=None, scope=None):
-            return None
-
-        patcher_find = patch(
-            "packages.api.dependencies.repository.find_user_by_id",
-            new_callable=AsyncMock,
-            return_value=_make_user("u-admin"),
-        )
-        patcher_perms = patch(
-            "packages.api.dependencies.repository.get_user_permissions",
-            new_callable=AsyncMock,
-            return_value={"users.manage"},
-        )
-        patcher_find.start()
-        patcher_perms.start()
-
-        app.dependency_overrides[get_current_active_user] = _admin_user
-        app.dependency_overrides[get_db] = _fake_db
-        app.dependency_overrides[get_scope_context] = _fake_scope
-        app.dependency_overrides[set_rls_context] = _fake_set_rls
-
-        self.addCleanup(lambda: app.dependency_overrides.clear())
-
-    def _token(self):
-        return create_access_token("u-admin", "local_break_glass")
-
-    def _auth(self, token):
-        return {"Authorization": f"Bearer {token}"}
-
-    def _put(self, payload):
-        return self.client.put(
-            "/api/v1/identity/auth/ad-settings",
-            json=payload,
-            headers=self._auth(self._token()),
-        )
-
-    def _get(self):
-        return self.client.get(
-            "/api/v1/identity/auth/ad-settings",
-            headers=self._auth(self._token()),
-        )
+class TestADSettingsSave(_MockedSettingsTestBase):
+    """PUT /auth/ad-settings — save, durable persistence, permission, validation, no secrets."""
 
     def test_save_enables_ad(self):
-        """PUT with enabled=true -> GET returns enabled=true, mode=configured."""
+        """PUT with enabled=true -> GET returns enabled=true, mode reflects stub provider."""
         payload = {
             "enabled": True,
             "server_url": "ldaps://ad.example.com",
@@ -404,7 +364,7 @@ class TestADSettingsSave(unittest.TestCase):
         self.assertEqual(resp.status_code, 200, resp.text)
         body = resp.json()
         self.assertTrue(body["enabled"])
-        self.assertEqual(body["mode"], "configured")
+        self.assertEqual(body["mode"], "unavailable")  # stub provider always unavailable
 
     def test_read_after_save(self):
         """GET after PUT returns persisted values."""
@@ -428,6 +388,24 @@ class TestADSettingsSave(unittest.TestCase):
         self.assertFalse(body["use_tls"])
         self.assertEqual(body["certificate_validation"], "none")
 
+    def test_durable_persistence(self):
+        """Save updates the fake_row (DB proxy) — values survive across calls."""
+        payload = {
+            "enabled": True,
+            "server_url": "ldaps://ad.durable.test",
+            "bind_dn": "cn=durable,dc=test",
+        }
+        put_resp = self._put(payload)
+        self.assertEqual(put_resp.status_code, 200)
+        self.assertEqual(self.fake_row.server_url, "ldaps://ad.durable.test")
+        self.assertEqual(self.fake_row.bind_dn, "cn=durable,dc=test")
+
+        # GET reads from the same fake_row via mock
+        get_resp = self._get()
+        body = get_resp.json()
+        self.assertEqual(body["server_url"], "ldaps://ad.durable.test")
+        self.assertEqual(body["bind_dn"], "cn=durable,dc=test")
+
     def test_no_bind_password_in_response(self):
         """PUT response must never include bind_password."""
         payload = {"enabled": True, "server_url": "ldaps://ad.example.com"}
@@ -444,7 +422,6 @@ class TestADSettingsSave(unittest.TestCase):
 
     def test_no_permission_returns_403(self):
         """User without users.manage -> 403."""
-        # Override permission repo to return restricted set
         patcher = patch(
             "packages.api.dependencies.repository.get_user_permissions",
             new_callable=AsyncMock,

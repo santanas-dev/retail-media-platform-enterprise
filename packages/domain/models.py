@@ -1168,15 +1168,30 @@ class PopIngestionBatch(Base):
     received_at = Column(
         DateTime(timezone=True), nullable=False, default=_utcnow, index=True,
     )
-    event_count = Column(Integer, nullable=False, default=0)
-    accepted_count = Column(Integer, nullable=False, default=0)
-    rejected_count = Column(Integer, nullable=False, default=0)
-    quarantined_count = Column(Integer, nullable=False, default=0)
 
 
-# ---------------------------------------------------------------------------
-# Creative Upload Sessions (S-017)
-# ---------------------------------------------------------------------------
+class ADSettings(Base):
+    """AD/LDAPS settings — singleton row (S-034, G4-FIX durable persistence).
+
+    Bind password is NEVER stored here — it remains env-only (AD_BIND_PASSWORD).
+    """
+
+    __tablename__ = "ad_settings"
+
+    id = Column(Integer, primary_key=True, default=1)
+    enabled = Column(Boolean, nullable=False, default=False)
+    server_url = Column(Text, nullable=False, default="")
+    base_dn = Column(Text, nullable=False, default="")
+    user_search_base = Column(Text, nullable=False, default="")
+    user_search_filter = Column(Text, nullable=False, default="(sAMAccountName={username})")
+    bind_dn = Column(Text, nullable=False, default="")
+    use_tls = Column(Boolean, nullable=False, default=True)
+    certificate_validation = Column(
+        String(16), nullable=False, default="required",
+    )
+    updated_at = Column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow,
+    )
 
 
 class CreativeUploadSession(Base):
@@ -1364,4 +1379,5 @@ REQUIRED_TABLES = frozenset({
     "advertiser_invites",
     "campaign_briefs",
     "device_onboarding_codes",
+    "ad_settings",
 })

@@ -5692,3 +5692,36 @@ async def bind_code_to_device(
     code.physical_device_id = physical_device.id
     code.used_at = datetime.now(timezone.utc)
     session.add(code)
+
+
+async def get_ad_settings(session: AsyncSession):
+    """Return the singleton AD settings row, creating default if absent."""
+    from packages.domain.models import ADSettings
+
+    result = await session.execute(select(ADSettings).where(ADSettings.id == 1))
+    row = result.scalar_one_or_none()
+    if row is None:
+        row = ADSettings(id=1)
+        session.add(row)
+        await session.flush()
+    return row
+
+
+async def save_ad_settings(session: AsyncSession, **kwargs):
+    """Upsert AD settings singleton row. Only provided fields are updated."""
+    from datetime import datetime, timezone
+    from packages.domain.models import ADSettings
+
+    result = await session.execute(select(ADSettings).where(ADSettings.id == 1))
+    row = result.scalar_one_or_none()
+    if row is None:
+        row = ADSettings(id=1)
+        session.add(row)
+
+    for key, value in kwargs.items():
+        if hasattr(row, key):
+            setattr(row, key, value)
+
+    row.updated_at = datetime.now(timezone.utc)
+    await session.flush()
+    return row

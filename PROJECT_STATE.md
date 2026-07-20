@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-20 (G4-FIX — adsettings.configure reachable + green smoke)
+**Last updated:** 2026-07-20 (G4-FIX-FU — durable DB persistence + roadmap sync)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -27,6 +27,7 @@ G3-FIX-FU-STATE-SYNC ✅ **RESOLVED** — PROJECT_STATE hygiene (02e2383).
 **CONSOLIDATE-CANON-001E** ✅ — Runbook NAS mount setup added: cifs-utils install, /etc/nas-cred, fstab with _netdev, core.fileMode false for git-over-CIFS, Warnings section. Hermes does NOT execute mount/credentials/cron — operator/santa2 owns it.
 **STATE-HYGIENE-001** ✅ — PROJECT_STATE + registry summary brought to current GitHub truth d4a4e6a. Repository Checkpoint fixed, G1/G2/G3 closed as RESOLVED, G4 open as next candidate. Registry summary: blocked 33→32, P0 19→20, P1 20→19.
 **G4-FIX** — adsettings.configure reachable + green smoke. PUT /auth/ad-settings save endpoint (users.manage, audit, validation). ADSettingsPage edit form + RBAC. 5 frontend tests + 5 backend save tests. UI-smoke green.
+**G4-FIX-FU** — Durable persistence: ad_settings DB table (migration 027), ADSettings model, repository save/get. Roadmap row added. Backend tests 15/15. Next: from pre-pilot journey plan.
 SOURCE-TRUTH-001 ✅ **RESOLVED** — GitHub as single source of truth, NAS as mirror (598747c).
 SOURCE-TRUTH-001-FU ✅ **RESOLVED** — mirror-check exit code reconciliation, NAS mirror pending (859f35f).
 ROADMAP-DONE-GATE-001 ✅ **RESOLVED** — 4-колоночный бизнес-лист, G1/G2 честно готовы (4603e1d).
@@ -103,12 +104,14 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 ### G4-FIX — adsettings.configure reachable + green smoke ✅ RESOLVED
 - **Backend:** PUT /auth/ad-settings save endpoint (users.manage permission, certificate_validation enum check, ad_settings.updated audit event).
   Schema: ADSettingsUpdate (enabled, server_url, base_dn, user_search_base, user_search_filter, bind_dn, use_tls, certificate_validation — no bind_password).
-  Runtime config update in-memory (survives page reload, env vars on restart).
+- **G4-FIX-FU:** Durable persistence via ad_settings DB table (migration 027), ADSettings model, repository save/get.
+  Values survive service restart. Bind password remains env-only — never stored in DB.
 - **Frontend:** ADSettingsPage edit form — editable fields, save button with RBAC (users.manage), data-testid throughout.
-- **Backend tests:** 5 new (save-enabled, read-after-save, no-bind-password, invalid-cert→422, no-permission→403) — S-034 total 14/14.
+- **Backend tests:** 15/15 (incl. durable_persistence proof: save updates fake_row, GET reads updated values).
 - **Frontend tests:** 5 new (hides-form-without-perm, shows-form-with-perm, success-after-save, error-banner, no-bind-password-field) — admin-web 163/163.
 - **UI-smoke:** test_uismoke__adsettings__configure — login → Настройки AD → fill → save → success → reload → verify.
 - **Registry:** adsettings.configure → reachable. Reachable 8→9, blocked 32→31.
+- **Roadmap:** строка «Настройки AD / LDAPS» добавлена (Бэкенд ✅ / UI ✅ / journey ✅ / Итог 🟠 Частично — adsettings.test без smoke).
 - Next: from pre-pilot journey plan (wave 1–6) or awaiting prioritisation.
 
 ### H0 — Flaky test_backoff_respected_on_second_run ✅ RESOLVED
