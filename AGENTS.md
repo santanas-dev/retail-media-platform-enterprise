@@ -21,17 +21,56 @@ Stabilization comes before new functionality.
 
 ### Tier 2 — Продукт & Journeys (что строим)
 
-| Файл | Назначение | При конфликте |
-|------|-----------|---------------|
-| `docs/product/user-journeys.md` | Спецификация journeys: id, роли, путь, приёмка | Побеждает roadmap и feature-registry |
+| Файл | Назначение | Приоритет |
+|------|-----------|-----------|
+| `docs/product/user-journeys.md` | **Спецификация** journey: id, роли, путь, Given/When/Then | Авторитет по спецификации (id, формат, приёмка) |
 | `docs/product/pre-pilot-journey-plan.md` | Порядок закрытия journeys по волнам 1–6 | Побеждает ad-hoc приоритизацию |
-| `docs/product/feature-registry.yaml` | Статус каждого journey (reachable/blocked), smoke, frontend | Уступает user-journeys.md |
+| `docs/product/feature-registry.yaml` | **Статус** journey (reachable/blocked), smoke, frontend | Авторитет по статусу. При конфликте статуса registry главнее roadmap |
 | `docs/product/roadmap-s020-2026-07-10.xlsx` | Бизнес-карта (4 колонки): Бэкенд/UI/Юзер-стори/Итог | Производная от registry + smoke; не переопределяет их |
 
-**Правило Done Gate:** бизнес-функция не «Готово», если нет:
-1. Journey в `user-journeys.md` с id `<domain>.<action>`;
-2. Записи в `feature-registry.yaml` со `status: reachable`;
-3. Зелёного `test_uismoke__<domain>__<action>`.
+### Done Gate (встроен в Sources of Truth)
+
+Бизнес-функция считается **готовой** только при выполнении всех условий ниже.
+Бэкенд + API proof недостаточно — пользователь обязан достичь функции через
+реальный UI кликами.
+
+1. **Journey обязателен.** Бизнес-функцию нельзя пометить «Готово», если для
+   неё нет journey в `docs/product/user-journeys.md`. Journey содержит: id
+   (в формате `<domain>.<action>`), роль, стартовую страницу, пошаговые
+   клики до целевого экрана, ожидаемый результат, стабильные
+   `data-testid`-селекторы.
+
+2. **UI-smoke обязателен.** Бизнес-функцию нельзя пометить «Готово», если
+   для её journey id нет зелёного UI-smoke-теста. Имя теста:
+   `test_uismoke__<domain>__<action>` (точки → двойное подчёркивание).
+
+3. **Только реальные клики.** `page.goto()` в UI-smoke разрешён **только**
+   на `/login` или на публичную entry-страницу, указанную в journey как
+   стартовая. Весь дальнейший путь — **реальные клики** по UI
+   (кнопки, ссылки, табы). Никаких `page.goto("/campaigns/new")`,
+   `localStorage.setItem(...)`, прямых API-вызовов.
+
+4. **Feature-registry синхронизирован.** Каждая новая бизнес-фича должна
+   обновлять **три** источника синхронно по одному journey id:
+   - `docs/product/user-journeys.md` — путь,
+   - `docs/product/feature-registry.yaml` — запись в реестре,
+   - `tests/ui-smoke/test_uismoke__<domain>__<action>.py` — зелёный тест.
+
+5. **Частичная готовность — честный статус.** Если бэкенд готов, но
+   journey/smoke отсутствует, статус: **«бэкенд готов, UI нет»** или
+   **«частично»**. Слово «Готово» без выполненного UI-smoke — запрещено.
+
+6. **UI-smoke не блокирует CI.** Тесты в `tests/ui-smoke/` запускаются
+   только при `UI_SMOKE_RUN=1` и не собираются обычным pytest. Они —
+   инструмент аудита, а не CI-gate.
+
+7. **Roadmap-синхронизация обязательна.** Если задача довела journey до
+   зелёного UI-smoke, та же задача обязана поднять в бизнес-вкладке roadmap
+   (`docs/product/roadmap-s020-2026-07-10.xlsx`, лист «Бизнес-функции
+   Roadmap») колонки «UI» + «Юзер-стори» и пересчитать колонку «Итог».
+   Итог=«✅ Готово/Юзабельно» только при Бэкенд ✅ + UI ✅ + Юзер-стори ✅.
+   Без зелёного UI-smoke по journey id — запрещён. Частичные фичи
+   маркируются «🟠 Частично» с указанием, какая часть не reachable.
 
 ### Tier 3 — Задачи & Статус (что делаем сейчас)
 
@@ -53,11 +92,24 @@ Stabilization comes before new functionality.
 ### Tier 5 — Производные (НЕ авторские источники)
 
 - **NAS mirror** (`\\192.168.110.118\project\…`) — зеркало GitHub, может быть stale.
-  Зеркало проверяется оператором/santa2 через `mirror-check.sh`. Агенты НЕ пишут
-  «NAS synced» без proof.
+  - **GitHub `origin/develop` — единственная git-истина.** NAS — зеркало, не авторский источник.
+  - **Агенты НЕ пишут «NAS synced» без mirror-check proof.** Требуется либо:
+    (a) успешный `mirror-check.sh` из окружения с доступом к GitHub и NAS, либо
+    (b) подтверждение оператора/santa2, записанное в PROJECT_STATE.
+  - **SSH-unavailable — НЕ proof.** Если GitHub недоступен через SSH, честный статус:
+    **cannot verify from here** — не «stale» и не «synced».
+  - **Mirror-check pending — допустимо.** После пуша ожидаемое состояние:
+    «mirror-check pending — operator/santa2 will verify». Зеркало не блокирует DONE:
+    GitHub + CI green достаточно. Статус зеркала отслеживается в PROJECT_STATE
+    Repository Checkpoint.
+  - **Mirror-check script:** `docs/runbook/mirror-check.sh` (HTTPS). Принимает
+    `--expected-origin-sha` / `EXPECTED_ORIGIN_DEVELOP_SHA`. Возвращает:
+    `verified` | `stale` | `cannot-verify-from-here`. Exit 0 для verified и
+    cannot-verify (нейтральные). Exit 1 для stale (расхождение — NAS требует pull).
+    Exit 3 для ошибок скрипта.
 - **`for-agents/`** на NAS — **DEPRECATED staging.** Все файлы оттуда перенесены
   в `docs/product/` репозитория. `for-agents/` не является авторитетным источником;
-  agent-ы читают только git-репо.
+  агенты читают только git-репо.
 
 ### ADR Precedence
 
@@ -197,72 +249,6 @@ Minimum checks by area:
 
 If dependencies or infrastructure are unavailable, say exactly what was not run
 and provide the closest static or targeted verification.
-
-## NAS / Mirror Truth
-
-- **GitHub `origin/develop` is the sole git-source-of-truth.** NAS/ASUSTOR at
-  `\\192.168.110.118\project\retail-media-platform-enterprise` is a mirror —
-  it may be stale.
-- **Agent must NOT claim "NAS synced" without mirror-check proof.** Writing
-  "NAS synced" as a fact requires either: (a) a successful `mirror-check.sh`
-  run from an environment with both GitHub and NAS access, or (b) operator/santa2
-  confirmation recorded in PROJECT_STATE.
-- **SSH-unavailable is NOT proof.** If GitHub is unreachable via SSH (host key
-  failure, "Not allowed at this time"), the honest status is **cannot verify
-  from here** — not "stale" and not "synced."
-- **Mirror-check pending is valid.** After a Hermes push, the expected state is
-  "mirror-check pending — operator/santa2 will verify." Do not block DONE on
-  mirror sync — GitHub + CI green is sufficient for task completion. Mirror
-  status is tracked separately in PROJECT_STATE Repository Checkpoint.
-- **Mirror-check script:** `docs/runbook/mirror-check.sh` uses HTTPS (not SSH)
-  by default. Accepts `--expected-origin-sha` / `EXPECTED_ORIGIN_DEVELOP_SHA`.
-  Returns: `verified` | `stale` | `cannot-verify-from-here`. Exit 0 for verified
-  and cannot-verify (neutral statuses). Exit 1 for stale (real divergence — NAS
-  needs pull). Exit 3 for script errors (bad args, missing deps).
-
-## Что значит готово
-
-Бизнес-функция считается **готовой** только при выполнении всех условий ниже.
-Бэкенд + API proof недостаточно — пользователь обязан достичь функции через
-реальный UI кликами.
-
-1. **Journey обязателен.** Бизнес-функцию нельзя пометить «Готово», если для
-   неё нет journey в `docs/product/user-journeys.md`. Journey содержит: id
-   (в формате `<domain>.<action>`), роль, стартовую страницу, пошаговые
-   клики до целевого экрана, ожидаемый результат, стабильные
-   `data-testid`-селекторы.
-
-2. **UI-smoke обязателен.** Бизнес-функцию нельзя пометить «Готово», если
-   для её journey id нет зелёного UI-smoke-теста. Имя теста:
-   `test_uismoke__<domain>__<action>` (точки → двойное подчёркивание).
-
-3. **Только реальные клики.** `page.goto()` в UI-smoke разрешён **только**
-   на `/login` или на публичную entry-страницу, указанную в journey как
-   стартовая. Весь дальнейший путь — **реальные клики** по UI
-   (кнопки, ссылки, табы). Никаких `page.goto("/campaigns/new")`,
-   `localStorage.setItem(...)`, прямых API-вызовов.
-
-4. **Feature-registry синхронизирован.** Каждая новая бизнес-фича должна
-   обновлять **три** источника синхронно по одному journey id:
-   - `docs/product/user-journeys.md` — путь,
-   - `docs/product/feature-registry.yaml` — запись в реестре,
-   - `tests/ui-smoke/test_uismoke__<domain>__<action>.py` — зелёный тест.
-
-5. **Частичная готовность — честный статус.** Если бэкенд готов, но
-   journey/smoke отсутствует, статус: **«бэкенд готов, UI нет»** или
-   **«частично»**. Слово «Готово» без выполненного UI-smoke — запрещено.
-
-6. **UI-smoke не блокирует CI.** Тесты в `tests/ui-smoke/` запускаются
-   только при `UI_SMOKE_RUN=1` и не собираются обычным pytest. Они —
-   инструмент аудита, а не CI-gate.
-
-7. **Roadmap-синхронизация обязательна.** Если задача довела journey до
-   зелёного UI-smoke, та же задача обязана поднять в бизнес-вкладке roadmap
-   (`docs/product/roadmap-s020-2026-07-10.xlsx`, лист «Бизнес-функции
-   Roadmap») колонки «UI» + «Юзер-стори» и пересчитать колонку «Итог».
-   Итог=«✅ Готово/Юзабельно» только при Бэкенд ✅ + UI ✅ + Юзер-стори ✅.
-   Без зелёного UI-smoke по journey id — запрещён. Частичные фичи
-   маркируются «🟠 Частично» с указанием, какая часть не reachable.
 
 ## Reporting
 
