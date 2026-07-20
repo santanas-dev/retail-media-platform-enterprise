@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-20 (G3-FIX — advertiser.create_org backend+UI+smoke)
+**Last updated:** 2026-07-20 (G3-FIX — advertiser.create_org reachable, smoke green)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -16,6 +16,7 @@ G1-FIX-FU ✅ **RESOLVED** — placement_basis validation + RBAC button visibili
 G2-FIX ✅ **RESOLVED** — user.assign_roles reachable, backend+frontend+unit tests green, CI #29661909182 (35/35).
 G2-FIX-FU2 ✅ **RESOLVED** — smoke hardened (deterministic role, specific assert), PROJECT_STATE PS-001 hygiene, honest smoke-proof.
 G2-SMOKE-PROOF ✅ **RESOLVED** — honest green UI-smoke run, 3 infra bugs fixed in the process.
+G3-FIX ✅ **RESOLVED** — advertiser.create_org reachable. Backend POST /advertiser-organizations (advertisers.manage), admin-web модальная форма (data-testid), UI-smoke зелёный, roadmap строка «Управление рекламодателями» добавлена.
 SOURCE-TRUTH-001 ✅ **RESOLVED** — GitHub as single source of truth, NAS as mirror (598747c).
 SOURCE-TRUTH-001-FU ✅ **RESOLVED** — mirror-check exit code reconciliation, NAS mirror pending (859f35f).
 ROADMAP-DONE-GATE-001 ✅ **RESOLVED** — 4-колоночный бизнес-лист, G1/G2 честно готовы (4603e1d).
@@ -62,13 +63,24 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 - Tamper tests (3/3): understate G1 ✅, overclaim blocked ✅, clean ✅.
 - maintenance-rules v2.0: 11 колонок, Итог производный.
 - Commit: f04b481, CI: green.
-- Next: G3-FIX — advertiser.create_org UI + green smoke.
+- Next: G4-FIX — adsettings.configure UI + green smoke.
 
 ### ROADMAP-DONE-GATE-001-FU — Stale-тексты убраны, cross-reference superseded ✅ RESOLVED
 - R4 (RBAC): ограничения больше не говорят «user.assign_roles blocked» — заменено на ✅ G2 / ❌ user.create_advertiser.
 - R7 (Campaigns): ограничения больше не говорят «campaign.create blocked» — заменено на ✅ G1 / ❌ campaign.edit/submit/activate.
 - PROJECT_STATE: 3 stale-ссылки (findings, reachable:5) — перечёркнуты с пометкой RESOLVED.
 - Commit: dc9a910, CI #29725417235 green.
+
+### G3-FIX — advertiser.create_org UI + green smoke ✅ RESOLVED
+- Backend: POST /api/v1/identity/advertiser-organizations (advertisers.manage permission, audit event advertiser_organization.created).
+- Schema: AdvertiserOrganizationCreate (code, legal_name, display_name). Repository: create_advertiser_organization().
+- Frontend: admin-web AdvertisersPage — кнопка «+ Создать организацию», модальная форма с data-testid (advertiser-create-open/code/legal-name/display-name/save).
+- UI-smoke: test_uismoke__advertiser__create_org — login → advertisers → create → fill → save → verify (зелёный).
+- Bug fix: retailer_id default в модели был обрезан (00000000-4000-a000 → 00000000-0000-4000-a000).
+- Registry: advertiser.create_org → reachable.
+- Roadmap: строка «Управление рекламодателями» добавлена (🟠 Частично, create_org ✅).
+- Guard: 0 findings, tamper 3/3.
+- Next: G4-FIX — adsettings.configure.
 
 ### H0 — Flaky test_backoff_respected_on_second_run ✅ RESOLVED
 - **Verdict: confirmed timing flake, not real backoff regression.**

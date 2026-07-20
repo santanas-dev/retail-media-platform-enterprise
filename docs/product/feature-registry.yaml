@@ -177,8 +177,7 @@ features:
     smoke: test_uismoke__advertiser__create_org
     priority: P0
     roles: [system_admin, campaign_manager]
-    status: blocked
-    gap: "G3-FIX: UI создан, smoke написан. Ожидает зелёного UI-smoke прогона."
+    status: reachable
 
   - id: advertiser.application_review
     frontend: admin-web
