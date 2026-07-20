@@ -1168,6 +1168,10 @@ class PopIngestionBatch(Base):
     received_at = Column(
         DateTime(timezone=True), nullable=False, default=_utcnow, index=True,
     )
+    event_count = Column(Integer, nullable=False, default=0)
+    accepted_count = Column(Integer, nullable=False, default=0)
+    rejected_count = Column(Integer, nullable=False, default=0)
+    quarantined_count = Column(Integer, nullable=False, default=0)
 
 
 class ADSettings(Base):
