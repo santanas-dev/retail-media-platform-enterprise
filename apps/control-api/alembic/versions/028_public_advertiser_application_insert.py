@@ -6,6 +6,8 @@ This migration replaces the ins policy with a permissive one.
 SELECT/UPDATE/DELETE remain RLS-protected.
 """
 
+from alembic import op
+
 revision = "028"
 down_revision = "027"
 branch_labels = None
