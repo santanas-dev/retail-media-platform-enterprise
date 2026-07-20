@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-20 (G4-FIX-FU — durable DB persistence + roadmap sync)
+**Last updated:** 2026-07-20 (G4-FIX-FU2 — state/roadmap hygiene; G4 series closed)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -40,9 +40,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | d4a4e6a | d4a4e6a | CONSOLIDATE-CANON-001E — runbook NAS mount setup, CI #29743576013 ✅ (35/35) |
+| develop | 6144148 | 6144148 | G4-FIX-FU2 — state/roadmap hygiene; G4 series closed, CI #29754972299 ✅ (35/35) |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
-| NAS mirror (ASUSTOR) | pending | expected d4a4e6a | operator/santa2 verification pending |
+| NAS mirror (ASUSTOR) | pending | expected 6144148 | operator/santa2 verification pending |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Mirror status is checked by operator/santa2, not by Hermes agent.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
@@ -207,7 +207,10 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**G4-FIX** — adsettings.configure reachable + green smoke. PUT /auth/ad-settings save, ADSettingsPage edit form + RBAC, smoke green. Next: from pre-pilot journey plan (wave 1–6) or awaiting prioritisation.
+**G4-SERIES CLOSED** — adsettings.configure reachable, durable DB persistence (migration 027), green smoke, CI green.
+Next: from pre-pilot journey plan (wave 1–6) or awaiting prioritisation.
+
+Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
 
 Priorities completed (post-audit 2026-07-18):
 1. **K1** ✅ — emergency override → manifest.
