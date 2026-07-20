@@ -85,39 +85,39 @@ export default function PublicApplicationForm() {
       <div style={S.form}>
         <div>
           <div style={S.label}>Компания *</div>
-          <input style={S.input} value={form.company_name} onChange={(e) => update("company_name", e.target.value)} placeholder="ООО Название" />
+          <input style={S.input} value={form.company_name} onChange={(e) => update("company_name", e.target.value)} placeholder="ООО Название" data-testid="advertiser-apply-company-name" />
           {errors.company_name && <div style={S.fieldError}>{errors.company_name}</div>}
         </div>
         <div>
           <div style={S.label}>Контактное лицо *</div>
-          <input style={S.input} value={form.contact_name} onChange={(e) => update("contact_name", e.target.value)} placeholder="Иван Иванов" />
+          <input style={S.input} value={form.contact_name} onChange={(e) => update("contact_name", e.target.value)} placeholder="Иван Иванов" data-testid="advertiser-apply-contact-name" />
           {errors.contact_name && <div style={S.fieldError}>{errors.contact_name}</div>}
         </div>
         <div>
           <div style={S.label}>Email *</div>
-          <input style={S.input} type="email" value={form.email} onChange={(e) => update("email", e.target.value)} placeholder="company@example.com" />
+          <input style={S.input} type="email" value={form.email} onChange={(e) => update("email", e.target.value)} placeholder="company@example.com" data-testid="advertiser-apply-email" />
           {errors.email && <div style={S.fieldError}>{errors.email}</div>}
         </div>
         <div>
           <div style={S.label}>Телефон</div>
-          <input style={S.input} value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="+7..." />
+          <input style={S.input} value={form.phone} onChange={(e) => update("phone", e.target.value)} placeholder="+7..." data-testid="advertiser-apply-phone" />
         </div>
         <div>
           <div style={S.label}>Сайт</div>
-          <input style={S.input} value={form.website} onChange={(e) => update("website", e.target.value)} placeholder="https://..." />
+          <input style={S.input} value={form.website} onChange={(e) => update("website", e.target.value)} placeholder="https://..." data-testid="advertiser-apply-website" />
         </div>
         <div>
           <div style={S.label}>Комментарий</div>
-          <textarea style={S.textarea} value={form.comment} onChange={(e) => update("comment", e.target.value)} placeholder="Дополнительная информация" />
+          <textarea style={S.textarea} value={form.comment} onChange={(e) => update("comment", e.target.value)} placeholder="Дополнительная информация" data-testid="advertiser-apply-comment" />
         </div>
         <div style={S.checkbox}>
-          <input type="checkbox" checked={form.consent} onChange={(e) => update("consent", e.target.checked)} id="consent" />
+          <input type="checkbox" checked={form.consent} onChange={(e) => update("consent", e.target.checked)} id="consent" data-testid="advertiser-apply-consent" />
           <label htmlFor="consent">
             Я согласен на обработку персональных данных и принимаю условия *
           </label>
         </div>
         {errors.consent && <div style={S.fieldError}>{errors.consent}</div>}
-        <button style={form.company_name && form.contact_name && form.email && form.consent ? S.btn : S.btnDisabled} onClick={handleSubmit} disabled={!form.company_name || !form.contact_name || !form.email || !form.consent}>
+        <button style={form.company_name && form.contact_name && form.email && form.consent ? S.btn : S.btnDisabled} onClick={handleSubmit} disabled={!form.company_name || !form.contact_name || !form.email || !form.consent} data-testid="advertiser-apply-submit">
           Отправить заявку
         </button>
       </div>

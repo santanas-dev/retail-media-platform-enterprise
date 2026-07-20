@@ -1,6 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-20 (NAS-SYNC-OWNER-001 — Hermes-owned mirror sync; santa2 relay deprecated)
+**Last updated:** 2026-07-20 (JOURNEY-001 — advertiser.apply reachable + green smoke)
+
+**JOURNEY-001** — advertiser.apply reachable. Public form /become-advertiser → submit → 201/new. UI-smoke green. Registry: reachable 9→10, blocked 31→30.
 
 **NAS-SYNC-OWNER-001** — Hermes-owned mirror sync replaces santa2 relay.
 - Sync/canon: ✅ NAS caught up 4215c23→2b352f2, cron c0687f5ced4d (nas-mirror-sync.sh, every 3 min), AGENTS.md/runbook/PROJECT_STATE updated.
@@ -213,7 +215,8 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 **G4-SERIES CLOSED** — adsettings.configure reachable, durable DB persistence (migration 027), green smoke, CI green.
 **NAS-SYNC-OWNER-001** ✅ — Hermes owns mirror sync; NAS caught up from 4215c23 to 0fdc727.
-Next: **advertiser.apply** из wave 1 pre-pilot journey plan.
+**JOURNEY-001** — advertiser.apply reachable + green smoke.
+Next: **advertiser.application_review** из wave 1 pre-pilot journey plan.
 
 Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
 

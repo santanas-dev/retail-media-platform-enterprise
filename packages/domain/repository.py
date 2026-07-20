@@ -84,7 +84,7 @@ async def list_audit_events(
 async def create_audit_event(
     session: AsyncSession,
     *,
-    actor_user_id: str,
+    actor_user_id: str | None,
     action: str,
     target_type: str,
     target_id: str | None = None,
