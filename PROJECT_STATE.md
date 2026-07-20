@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-20 (STATE-HYGIENE-001 — PROJECT_STATE + registry summary to current GitHub truth d4a4e6a)
+**Last updated:** 2026-07-20 (G4-FIX — adsettings.configure reachable + green smoke)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -25,7 +25,8 @@ G3-FIX-FU-STATE-SYNC ✅ **RESOLVED** — PROJECT_STATE hygiene (02e2383).
 **CONSOLIDATE-CANON-001C-FU** ✅ — Duplicate ## NAS / Mirror Truth and ## Что значит готово sections removed. All rules absorbed into single Sources of Truth. Priority clarified: user-journeys.md = spec authority, feature-registry.yaml = status authority (registry > roadmap on status conflicts).
 **CONSOLIDATE-CANON-001D** ✅ — NAS mirror sync runbook rewritten. santa2 relay is the canonical mechanism (HTTPS fetch + local NAS mount write, every 3 min). NAS self-pull cron explicitly deprecated. Hermes is not the owner of mirror freshness.
 **CONSOLIDATE-CANON-001E** ✅ — Runbook NAS mount setup added: cifs-utils install, /etc/nas-cred, fstab with _netdev, core.fileMode false for git-over-CIFS, Warnings section. Hermes does NOT execute mount/credentials/cron — operator/santa2 owns it.
-**STATE-HYGIENE-001** ✅ — PROJECT_STATE + registry summary brought to current GitHub truth d4a4e6a. Repository Checkpoint fixed, G1/G2/G3 closed as RESOLVED, G4 open as next candidate. Registry summary: blocked 33→32, P0 19→20, P1 20→19. Next: G4-FIX (advertiser.configure) or awaiting prioritisation.
+**STATE-HYGIENE-001** ✅ — PROJECT_STATE + registry summary brought to current GitHub truth d4a4e6a. Repository Checkpoint fixed, G1/G2/G3 closed as RESOLVED, G4 open as next candidate. Registry summary: blocked 33→32, P0 19→20, P1 20→19.
+**G4-FIX** — adsettings.configure reachable + green smoke. PUT /auth/ad-settings save endpoint (users.manage, audit, validation). ADSettingsPage edit form + RBAC. 5 frontend tests + 5 backend save tests. UI-smoke green.
 SOURCE-TRUTH-001 ✅ **RESOLVED** — GitHub as single source of truth, NAS as mirror (598747c).
 SOURCE-TRUTH-001-FU ✅ **RESOLVED** — mirror-check exit code reconciliation, NAS mirror pending (859f35f).
 ROADMAP-DONE-GATE-001 ✅ **RESOLVED** — 4-колоночный бизнес-лист, G1/G2 честно готовы (4603e1d).
@@ -98,6 +99,17 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 - Known gap: duplicate code currently returns 500 (IntegrityError unhandled) — not fixed in G3, documented in test.
 - Registry: reachable 7→8. PROJECT_STATE: stale f04b481→5c01feb, G3 awaiting→RESOLVED.
 - Commit: 1beec6d, CI: 35/35 green.
+
+### G4-FIX — adsettings.configure reachable + green smoke ✅ RESOLVED
+- **Backend:** PUT /auth/ad-settings save endpoint (users.manage permission, certificate_validation enum check, ad_settings.updated audit event).
+  Schema: ADSettingsUpdate (enabled, server_url, base_dn, user_search_base, user_search_filter, bind_dn, use_tls, certificate_validation — no bind_password).
+  Runtime config update in-memory (survives page reload, env vars on restart).
+- **Frontend:** ADSettingsPage edit form — editable fields, save button with RBAC (users.manage), data-testid throughout.
+- **Backend tests:** 5 new (save-enabled, read-after-save, no-bind-password, invalid-cert→422, no-permission→403) — S-034 total 14/14.
+- **Frontend tests:** 5 new (hides-form-without-perm, shows-form-with-perm, success-after-save, error-banner, no-bind-password-field) — admin-web 163/163.
+- **UI-smoke:** test_uismoke__adsettings__configure — login → Настройки AD → fill → save → success → reload → verify.
+- **Registry:** adsettings.configure → reachable. Reachable 8→9, blocked 32→31.
+- Next: from pre-pilot journey plan (wave 1–6) or awaiting prioritisation.
 
 ### H0 — Flaky test_backoff_respected_on_second_run ✅ RESOLVED
 - **Verdict: confirmed timing flake, not real backoff regression.**
@@ -192,7 +204,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**G4-FIX** — adsettings.configure UI + green smoke. ADSettingsPage currently GET/POST test only; no save/persist endpoint. Next P0 gap to close after G1/G2/G3 resolved.
+**G4-FIX** — adsettings.configure reachable + green smoke. PUT /auth/ad-settings save, ADSettingsPage edit form + RBAC, smoke green. Next: from pre-pilot journey plan (wave 1–6) or awaiting prioritisation.
 
 Priorities completed (post-audit 2026-07-18):
 1. **K1** ✅ — emergency override → manifest.
@@ -714,7 +726,7 @@ Priorities completed (post-audit 2026-07-18):
 | G1 | CampaignListPage: no «Создать кампанию» button → /campaigns/new unreachable | ✅ RESOLVED — G1-FIX (d4f91e4), green smoke |
 | G2 | UsersPage: no role/permission assignment UI | ✅ RESOLVED — G2-FIX, green smoke |
 | G3 | AdvertisersPage: no UI for creating advertiser org | ✅ RESOLVED — G3-FIX (068e4f7), green smoke |
-| G4 | ADSettingsPage: GET/POST test only; no save/persist | 🟡 open — next candidate (G4-FIX) |
+| G4 | ADSettingsPage: GET/POST test only; no save/persist | ✅ RESOLVED — G4-FIX, PUT save endpoint, green smoke |
 
 ### Next after UI-TRUTH-BOOTSTRAP
 

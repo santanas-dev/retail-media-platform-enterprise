@@ -11,7 +11,7 @@ from packages.api.dependencies import (
     set_rls_context,
 )
 from packages.domain.scopes import ScopeContext
-from packages.domain.schemas import ADSettingsOut, ADTestResultOut
+from packages.domain.schemas import ADSettingsOut, ADSettingsUpdate, ADTestResultOut
 
 router = APIRouter()
 
@@ -104,3 +104,83 @@ async def test_ad_connection(
         message="AD connection test passed — server reachable.",
         tested_at=now,
     )
+
+
+@router.put("/auth/ad-settings", response_model=ADSettingsOut)
+async def update_ad_settings(
+    body: ADSettingsUpdate,
+    db=Depends(get_db),
+    scope: ScopeContext = Depends(get_scope_context),
+    _rls=Depends(set_rls_context),
+    _claims: dict = Depends(require_permission("users.manage")),
+):
+    """Update AD/LDAPS settings in runtime config. Bind password is NEVER accepted — env-only."""
+    from packages.security.config import get_security_config
+    from packages.domain.repository import create_audit_event
+
+    cfg = get_security_config()
+
+    # Validate certificate_validation
+    if body.certificate_validation not in ("required", "optional", "none"):
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=422,
+            detail="certificate_validation must be one of: required, optional, none",
+        )
+
+    # Apply to runtime config (in-memory — survives page reload, not restart)
+    cfg.ad_enabled = body.enabled
+    cfg.ad_server_url = body.server_url
+    cfg.ad_base_dn = body.base_dn
+    cfg.ad_user_search_base = body.user_search_base
+    cfg.ad_user_search_filter = body.user_search_filter
+    cfg.ad_bind_dn = body.bind_dn
+    cfg.ad_use_tls = body.use_tls
+    cfg.ad_certificate_validation = body.certificate_validation
+
+    # Audit — no secrets in details
+    await create_audit_event(
+        db,
+        actor_user_id=scope.user_id,
+        action="ad_settings.updated",
+        target_type="ad_settings",
+        details={
+            "enabled": body.enabled,
+            "server_url": body.server_url,
+            "base_dn": body.base_dn,
+            "user_search_base": body.user_search_base,
+            "bind_dn": body.bind_dn,
+            "use_tls": body.use_tls,
+            "certificate_validation": body.certificate_validation,
+        },
+    )
+
+    # Return updated settings (same shape as GET)
+    return ADSettingsOut(
+        enabled=cfg.ad_enabled,
+        mode=_derive_mode(cfg),
+        server_url=cfg.ad_server_url if cfg.ad_enabled else "",
+        base_dn=cfg.ad_base_dn,
+        user_search_base=cfg.ad_user_search_base,
+        user_search_filter=cfg.ad_user_search_filter,
+        bind_dn=cfg.ad_bind_dn,
+        use_tls=cfg.ad_use_tls,
+        certificate_validation=cfg.ad_certificate_validation,
+        message=_derive_message(cfg),
+    )
+
+
+def _derive_mode(cfg) -> str:
+    if not cfg.ad_enabled:
+        return "disabled"
+    if not cfg.ad_server_url:
+        return "misconfigured"
+    return "configured"
+
+
+def _derive_message(cfg) -> str:
+    if not cfg.ad_enabled:
+        return "AD integration is disabled. Employee AD login is not available."
+    if not cfg.ad_server_url:
+        return "AD integration is enabled but AD_SERVER_URL is not set."
+    return "AD integration is configured."

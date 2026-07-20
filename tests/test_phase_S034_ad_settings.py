@@ -298,3 +298,165 @@ class TestADSettingsResponseSafety(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         body = resp.json()
         self.assertIn(body["status"], {"stub", "not_configured"})
+
+
+class TestADSettingsSave(unittest.TestCase):
+    """PUT /auth/ad-settings — save, persist, permission, validation, audit, no secrets."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.client = TestClient(_get_app())
+
+    def setUp(self):
+        reset_security_config()
+        os.environ["ENVIRONMENT"] = "dev"
+        os.environ["JWT_SECRET"] = "test-jwt-secret-for-ad-settings-32chars"
+        self.client.cookies.clear()
+        self._setup_mocks()
+
+    def tearDown(self):
+        reset_security_config()
+
+    def _setup_mocks(self):
+        app = _get_app()
+        from packages.api.dependencies import (
+            get_current_active_user,
+            get_db,
+            get_scope_context,
+            set_rls_context,
+        )
+        from packages.domain.scopes import ScopeContext
+
+        async def _admin_user():
+            return {
+                "sub": "u-admin",
+                "auth_provider": "local_break_glass",
+                "username": "admin",
+                "display_name": "Admin",
+            }
+
+        async def _fake_db():
+            yield AsyncMock()
+
+        async def _fake_scope():
+            return ScopeContext(
+                user_id="u-admin",
+                is_admin=True,
+                role_codes={"system_admin"},
+                global_permissions={"users.manage"},
+                all_permissions={"users.manage"},
+            )
+
+        async def _fake_set_rls(db=None, scope=None):
+            return None
+
+        patcher_find = patch(
+            "packages.api.dependencies.repository.find_user_by_id",
+            new_callable=AsyncMock,
+            return_value=_make_user("u-admin"),
+        )
+        patcher_perms = patch(
+            "packages.api.dependencies.repository.get_user_permissions",
+            new_callable=AsyncMock,
+            return_value={"users.manage"},
+        )
+        patcher_find.start()
+        patcher_perms.start()
+
+        app.dependency_overrides[get_current_active_user] = _admin_user
+        app.dependency_overrides[get_db] = _fake_db
+        app.dependency_overrides[get_scope_context] = _fake_scope
+        app.dependency_overrides[set_rls_context] = _fake_set_rls
+
+        self.addCleanup(lambda: app.dependency_overrides.clear())
+
+    def _token(self):
+        return create_access_token("u-admin", "local_break_glass")
+
+    def _auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def _put(self, payload):
+        return self.client.put(
+            "/api/v1/identity/auth/ad-settings",
+            json=payload,
+            headers=self._auth(self._token()),
+        )
+
+    def _get(self):
+        return self.client.get(
+            "/api/v1/identity/auth/ad-settings",
+            headers=self._auth(self._token()),
+        )
+
+    def test_save_enables_ad(self):
+        """PUT with enabled=true -> GET returns enabled=true, mode=configured."""
+        payload = {
+            "enabled": True,
+            "server_url": "ldaps://ad.example.com",
+            "base_dn": "dc=example,dc=com",
+            "user_search_base": "ou=users,dc=example,dc=com",
+            "bind_dn": "cn=bind,dc=example,dc=com",
+            "use_tls": True,
+            "certificate_validation": "required",
+        }
+        resp = self._put(payload)
+        self.assertEqual(resp.status_code, 200, resp.text)
+        body = resp.json()
+        self.assertTrue(body["enabled"])
+        self.assertEqual(body["mode"], "configured")
+
+    def test_read_after_save(self):
+        """GET after PUT returns persisted values."""
+        payload = {
+            "enabled": True,
+            "server_url": "ldaps://ad.test.local",
+            "base_dn": "dc=test,dc=local",
+            "bind_dn": "cn=reader,dc=test,dc=local",
+            "use_tls": False,
+            "certificate_validation": "none",
+        }
+        put_resp = self._put(payload)
+        self.assertEqual(put_resp.status_code, 200)
+
+        get_resp = self._get()
+        self.assertEqual(get_resp.status_code, 200)
+        body = get_resp.json()
+        self.assertEqual(body["server_url"], "ldaps://ad.test.local")
+        self.assertEqual(body["base_dn"], "dc=test,dc=local")
+        self.assertEqual(body["bind_dn"], "cn=reader,dc=test,dc=local")
+        self.assertFalse(body["use_tls"])
+        self.assertEqual(body["certificate_validation"], "none")
+
+    def test_no_bind_password_in_response(self):
+        """PUT response must never include bind_password."""
+        payload = {"enabled": True, "server_url": "ldaps://ad.example.com"}
+        resp = self._put(payload)
+        body = resp.json()
+        self.assertNotIn("bind_password", body)
+        self.assertNotIn("ad_bind_password", body)
+
+    def test_invalid_certificate_validation(self):
+        """Invalid cert_validation -> 422."""
+        payload = {"certificate_validation": "invalid_value"}
+        resp = self._put(payload)
+        self.assertEqual(resp.status_code, 422)
+
+    def test_no_permission_returns_403(self):
+        """User without users.manage -> 403."""
+        # Override permission repo to return restricted set
+        patcher = patch(
+            "packages.api.dependencies.repository.get_user_permissions",
+            new_callable=AsyncMock,
+            return_value={"users.read"},
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+        token = create_access_token("u-readonly", "local_advertiser")
+        resp = self.client.put(
+            "/api/v1/identity/auth/ad-settings",
+            json={"enabled": True, "server_url": "ldaps://ad.example.com"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        self.assertEqual(resp.status_code, 403)

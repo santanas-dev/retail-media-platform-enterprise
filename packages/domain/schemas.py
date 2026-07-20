@@ -981,6 +981,19 @@ class ADTestResultOut(BaseModel):
     error_code: str | None = None
 
 
+class ADSettingsUpdate(BaseModel):
+    """Editable AD settings — bind_password excluded (env-only)."""
+
+    enabled: bool = False
+    server_url: str = ""
+    base_dn: str = ""
+    user_search_base: str = ""
+    user_search_filter: str = "(sAMAccountName={username})"
+    bind_dn: str = ""
+    use_tls: bool = True
+    certificate_validation: str = "required"
+
+
 # ---------------------------------------------------------------------------
 # S-070 — Fleet / Device Health
 # ---------------------------------------------------------------------------

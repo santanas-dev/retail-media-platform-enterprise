@@ -358,8 +358,7 @@ features:
     smoke: test_uismoke__adsettings__configure
     priority: P1
     roles: [system_admin]
-    status: blocked
-    gap: "G4: ADSettingsPage — GET/POST test только; нет save/persist."
+    status: reachable
 
   - id: audit.view
     frontend: admin-web
@@ -574,8 +573,8 @@ features:
   # ═══════════════════════════════════════════════════════════════
   #   total: 40
   # by status:
-  #   reachable: 8  (campaign.create, user.assign_roles, advertiser.create_org, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability)
-  #   blocked:   32 (28 UI-no-smoke + 4 service-deferred)
+  #   reachable: 9  (campaign.create, user.assign_roles, advertiser.create_org, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability, adsettings.configure)
+  #   blocked:   31 (28 UI-no-smoke + 3 service-deferred)
   # by frontend:
   #   admin-web:      26
   #   advertiser-web:  5
