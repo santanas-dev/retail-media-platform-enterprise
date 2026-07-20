@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
+import { useAuth } from "../auth/AuthContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Layout from "../components/Layout";
 import AdvertisersPage from "../pages/AdvertisersPage";
@@ -95,15 +96,17 @@ function mockFetchResponses(overrides: Record<string, any> = {}) {
 }
 
 // Override AuthContext to skip actual auth flow
+const defaultPermissions = ["advertisers.manage", "organization.read", "advertisers.read", "advertisers.contacts.read"];
+
 vi.mock("../auth/AuthContext", async () => {
   const actual = await vi.importActual("../auth/AuthContext") as any;
   return {
     ...actual,
-    useAuth: () => ({
-      user: { id: "u-1", username: "admin", display_name: "Admin" },
+    useAuth: vi.fn(() => ({
+      user: { id: "u-1", username: "admin", display_name: "Admin", sub: "u-1", auth_provider: "local", permissions: defaultPermissions },
       loading: false,
       logout: vi.fn(),
-    }),
+    })),
   };
 });
 
@@ -112,6 +115,12 @@ vi.mock("../auth/AuthContext", async () => {
 describe("AdvertisersPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    // Reset useAuth to default permissions
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "u-1", username: "admin", display_name: "Admin", sub: "u-1", auth_provider: "local", permissions: defaultPermissions },
+      loading: false,
+      logout: vi.fn(),
+    } as any);
     mockFetchResponses();
   });
 
@@ -206,5 +215,84 @@ describe("AdvertisersPage", () => {
     // No raw UUIDs, password fields, tokens
     const text = document.body.textContent ?? "";
     expect(text).not.toMatch(/password_hash|passwordHash|refresh_token|access_token/);
+  });
+
+  // ── G3-FIX-FU: RBAC + create flow ──
+
+  it("hides create button without advertisers.manage permission", async () => {
+    // Override useAuth to return no advertisers.manage
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "u-1", username: "admin", display_name: "Admin", sub: "u-1", auth_provider: "local", permissions: ["organization.read", "advertisers.read"] },
+      loading: false,
+      logout: vi.fn(),
+    } as any);
+
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText("Рекламодатели")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("advertiser-create-open")).not.toBeInTheDocument();
+  });
+
+  it("shows create button with advertisers.manage permission", async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText("Рекламодатели")).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("advertiser-create-open")).toBeInTheDocument();
+  });
+
+  it("create modal saves via POST API and closes", async () => {
+    let postBody: any = null;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input: any, init?: any) => {
+      const url = typeof input === "string" ? input : input.url;
+      if (url.includes("/me")) {
+        return new Response(JSON.stringify({ id: "u-1", username: "admin", display_name: "Admin", sub: "u-1", auth_provider: "local", permissions: defaultPermissions }), { status: 200 });
+      }
+      if (url.includes("/refresh")) {
+        return new Response(JSON.stringify({ access_token: "tok", token_type: "bearer" }), { status: 200 });
+      }
+      // Capture POST body
+      if (url.includes("/advertiser-organizations") && init?.method === "POST") {
+        postBody = JSON.parse(init.body);
+        return new Response(JSON.stringify({ id: "org-new", code: "NEW01", legal_name: "ООО Новый", display_name: "Новый", status: "active" }), { status: 201 });
+      }
+      // Return list with the new org after POST
+      if (url.endsWith("/advertiser-organizations")) {
+        const orgs = [
+          { id: "org-1", code: "ORG01", legal_name: "ООО Альфа", display_name: "Альфа", status: "active" },
+          { id: "org-2", code: "ORG02", legal_name: "ООО Бета", display_name: "Бета", status: "draft" },
+        ];
+        if (postBody) orgs.push({ id: "org-new", code: "NEW01", legal_name: "ООО Новый", display_name: "Новый", status: "active" });
+        return new Response(JSON.stringify(orgs), { status: 200 });
+      }
+      if (url.includes("/advertiser-brands") || url.includes("/advertiser-contracts")) {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId("advertiser-create-open")).toBeInTheDocument();
+    });
+
+    // Click create button → fill → save
+    await userEvent.click(screen.getByTestId("advertiser-create-open"));
+    await userEvent.type(screen.getByTestId("advertiser-create-code"), "NEW01");
+    await userEvent.type(screen.getByTestId("advertiser-create-legal-name"), "ООО Новый");
+    await userEvent.type(screen.getByTestId("advertiser-create-display-name"), "Новый");
+    await userEvent.click(screen.getByTestId("advertiser-create-save"));
+
+    // Modal closes after save
+    await waitFor(() => {
+      expect(screen.queryByTestId("advertiser-create-code")).not.toBeInTheDocument();
+    });
+
+    // POST was called with correct body
+    expect(postBody).not.toBeNull();
+    expect(postBody.code).toBe("NEW01");
+    expect(postBody.legal_name).toBe("ООО Новый");
+    expect(postBody.display_name).toBe("Новый");
   });
 });

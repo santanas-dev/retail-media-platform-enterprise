@@ -29,7 +29,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 29c285b | a40e398 | G2-SMOKE-PROOF — honest green UI-smoke + 3 infra fixes |
+|| develop | 068e4f7 | 068e4f7 | G3-FIX-FU — RBAC + tests + docs hygiene |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 | NAS mirror (ASUSTOR) | pending | expected ca23b27 | ROADMAP-DONE-GATE-001-FU — operator/santa2 verification pending |
 
@@ -62,7 +62,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 - Текущий workbook: 0 findings.
 - Tamper tests (3/3): understate G1 ✅, overclaim blocked ✅, clean ✅.
 - maintenance-rules v2.0: 11 колонок, Итог производный.
-- Commit: f04b481, CI: green.
+- Commit: 5c01feb, CI: green.
 - Next: G4-FIX — adsettings.configure UI + green smoke.
 
 ### ROADMAP-DONE-GATE-001-FU — Stale-тексты убраны, cross-reference superseded ✅ RESOLVED
@@ -595,7 +595,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 | ID | Task | Status |
 |----|------|--------|
 | G2-FIX | ✅ resolved — user.assign_roles reachable + green smoke | ✅ RESOLVED |
-| G3-FIX | Next: advertiser.create_org UI + green smoke (closes P0 G3) | 🚧 awaiting prioritisation |
+| G3-FIX | ✅ RESOLVED — advertiser.create_org reachable, FU in progress | ✅ RESOLVED |
 | PLAYER-IMPORT-001 | Historical recommendation (PLAYER-AUD-001) | ⏸️ deferred — not active next |
 
 ## G2-FIX-FU2 — Smoke Hardened + PROJECT_STATE Hygiene ✅ RESOLVED

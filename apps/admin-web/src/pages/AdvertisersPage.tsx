@@ -11,6 +11,7 @@ import {
   createAdvertiserOrganization,
 } from "../api/campaigns";
 import { ApiError } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 import type {
   AdvertiserOrganizationOut,
   AdvertiserOrganizationDetailOut,
@@ -187,6 +188,8 @@ type Tab = (typeof TABS)[number];
 // ── Component ──
 
 export default function AdvertisersPage() {
+  const { user } = useAuth();
+  const canCreate = user?.permissions?.includes("advertisers.manage") ?? false;
   const [pageState, setPageState] = useState<PageState>({ stage: "loading" });
   const [detailState, setDetailState] = useState<DetailState>({ stage: "idle" });
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
@@ -340,6 +343,7 @@ export default function AdvertisersPage() {
     <div>
       <h2 style={S.header}>Рекламодатели</h2>
 
+      {canCreate && (
       <button
         data-testid="advertiser-create-open"
         onClick={() => setCreateOpen(true)}
@@ -347,6 +351,7 @@ export default function AdvertisersPage() {
       >
         + Создать организацию
       </button>
+      )}
 
       {/* Search */}
       <input

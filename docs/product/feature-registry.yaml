@@ -574,7 +574,7 @@ features:
   # ═══════════════════════════════════════════════════════════════
   #   total: 40
   # by status:
-  #   reachable: 7  (campaign.create, user.assign_roles, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability)
+  #   reachable: 8  (campaign.create, user.assign_roles, advertiser.create_org, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability)
   #   blocked:   33 (28 UI-no-smoke + 5 service-deferred)
   # by frontend:
   #   admin-web:      26
