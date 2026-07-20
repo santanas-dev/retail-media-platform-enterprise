@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-20 (CONSOLIDATE-CANON-001D — NAS mirror sync runbook rewritten: santa2 relay, not self-pull)
+**Last updated:** 2026-07-20 (CONSOLIDATE-CANON-001D-FU — PROJECT_STATE NAS mirror checkpoint hygiene)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -38,7 +38,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 |---------|-------------|----------------|------|
 | develop | 1beec6d | 1beec6d | G3-FIX-FU — RBAC + tests + docs hygiene |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
-| NAS mirror (ASUSTOR) | pending | expected 1beec6d | G3-FIX-FU — operator/santa2 verification pending |
+| NAS mirror (ASUSTOR) | pending | expected 4215c23 | CONSOLIDATE-CANON-001D — santa2 relay runbook; operator/santa2 verification pending |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Mirror status is checked by operator/santa2, not by Hermes agent.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
