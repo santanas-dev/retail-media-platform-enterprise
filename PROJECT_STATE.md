@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-20 (CONSOLIDATE-CANON-001E — runbook NAS mount setup: CIFS, credentials, git-over-CIFS hygiene)
+**Last updated:** 2026-07-20 (STATE-HYGIENE-001 — PROJECT_STATE + registry summary to current GitHub truth d4a4e6a)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -24,7 +24,8 @@ G3-FIX-FU-STATE-SYNC ✅ **RESOLVED** — PROJECT_STATE hygiene (02e2383).
 **CONSOLIDATE-CANON-001C** ✅ — AGENTS.md Sources of Truth consolidated into single 5-tier index. for-agents/ explicitly DEPRECATED.
 **CONSOLIDATE-CANON-001C-FU** ✅ — Duplicate ## NAS / Mirror Truth and ## Что значит готово sections removed. All rules absorbed into single Sources of Truth. Priority clarified: user-journeys.md = spec authority, feature-registry.yaml = status authority (registry > roadmap on status conflicts).
 **CONSOLIDATE-CANON-001D** ✅ — NAS mirror sync runbook rewritten. santa2 relay is the canonical mechanism (HTTPS fetch + local NAS mount write, every 3 min). NAS self-pull cron explicitly deprecated. Hermes is not the owner of mirror freshness.
-**CONSOLIDATE-CANON-001E** ✅ — Runbook NAS mount setup added: cifs-utils install, /etc/nas-cred, fstab with _netdev, core.fileMode false for git-over-CIFS, Warnings section. Hermes does NOT execute mount/credentials/cron — operator/santa2 owns it. Next: G4-FIX (advertiser.configure) or awaiting prioritisation.
+**CONSOLIDATE-CANON-001E** ✅ — Runbook NAS mount setup added: cifs-utils install, /etc/nas-cred, fstab with _netdev, core.fileMode false for git-over-CIFS, Warnings section. Hermes does NOT execute mount/credentials/cron — operator/santa2 owns it.
+**STATE-HYGIENE-001** ✅ — PROJECT_STATE + registry summary brought to current GitHub truth d4a4e6a. Repository Checkpoint fixed, G1/G2/G3 closed as RESOLVED, G4 open as next candidate. Registry summary: blocked 33→32, P0 19→20, P1 20→19. Next: G4-FIX (advertiser.configure) or awaiting prioritisation.
 SOURCE-TRUTH-001 ✅ **RESOLVED** — GitHub as single source of truth, NAS as mirror (598747c).
 SOURCE-TRUTH-001-FU ✅ **RESOLVED** — mirror-check exit code reconciliation, NAS mirror pending (859f35f).
 ROADMAP-DONE-GATE-001 ✅ **RESOLVED** — 4-колоночный бизнес-лист, G1/G2 честно готовы (4603e1d).
@@ -37,9 +38,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 1beec6d | 1beec6d | G3-FIX-FU — RBAC + tests + docs hygiene |
+| develop | d4a4e6a | d4a4e6a | CONSOLIDATE-CANON-001E — runbook NAS mount setup, CI #29743576013 ✅ (35/35) |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
-| NAS mirror (ASUSTOR) | pending | expected 4215c23 | CONSOLIDATE-CANON-001D — santa2 relay runbook; operator/santa2 verification pending |
+| NAS mirror (ASUSTOR) | pending | expected d4a4e6a | operator/santa2 verification pending |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Mirror status is checked by operator/santa2, not by Hermes agent.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
@@ -191,11 +192,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**EDGE-001 ✅ RESOLVED** — CI #29589031870 ✅.
-**PLAYER-AUD-001 ✅ COMPLETED** — audit report.
-**EDGE-002 ✅ RESOLVED (v4 production-safe)** — app.rmp_device_id bootstrap, no owner lookup, CI #29635004193 ✅.
+**G4-FIX** — adsettings.configure UI + green smoke. ADSettingsPage currently GET/POST test only; no save/persist endpoint. Next P0 gap to close after G1/G2/G3 resolved.
 
-Приоритет после внешнего аудита 2026-07-18 (P0 safety first):
+Priorities completed (post-audit 2026-07-18):
 1. **K1** ✅ — emergency override → manifest.
 2. **K2** ✅ — manifest signature verification before player execution.
 3. **RM1** ✅ — roadmap/docs/release process hygiene.
@@ -610,9 +609,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | ID | Task | Status |
 |----|------|--------|
-| G2-FIX | ✅ resolved — user.assign_roles reachable + green smoke | ✅ RESOLVED |
-| G3-FIX | ✅ RESOLVED — advertiser.create_org reachable (see section above) | ✅ RESOLVED |
 | PLAYER-IMPORT-001 | Historical recommendation (PLAYER-AUD-001) | ⏸️ deferred — not active next |
+| M1 | Default retailer masks missing scope | ⚪ not started |
+| P1s | PROJECT_STATE self-SHA/checkpoint churn | ⚪ not started |
 
 ## G2-FIX-FU2 — Smoke Hardened + PROJECT_STATE Hygiene ✅ RESOLVED
 
@@ -684,17 +683,17 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
   - 26 admin-web, 5 advertiser-web, 1 public, 8 service
   - P0: 19 · P1: 20 · P2: 1
 - **Status breakdown:**
-  - **reachable: 7** — 5 service (manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability) + 2 UI (campaign.create/G1, user.assign_roles/G2) — all backed by green proof
-  - **blocked: 33** — 28 UI-no-smoke + 5 service-deferred
-  - > ⚠️ **Superseded by ROADMAP-DONE-GATE-001 (2026-07-20):** original REGISTRY-EXPAND recorded reachable:5 (service-only). G1 (campaign.create) and G2 (user.assign_roles) now have green UI-smoke and are reachable.
+  - **reachable: 8** — 5 service (manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability) + 3 UI (campaign.create/G1, user.assign_roles/G2, advertiser.create_org/G3) — all backed by green proof
+  - **blocked: 32** — 28 UI-no-smoke + 4 service-deferred
+  - > G3 (advertiser.create_org) now has green UI-smoke and is reachable as of G3-FIX.
 - **Zero false reachable:** ни одной UI-записи без зелёного smoke.
 - **G1–G4 явно зафиксированы:** campaign.create→G1, user.assign_roles→G2, advertiser.create_org→G3, adsettings.configure→G4.
 - **campaign.create** smoke приведён к `test_uismoke__campaign__create` (двойное подчёркивание, соглашение AGENTS.md).
 - **Next:** UI-TRUTH-001B — roadmap-consistency guard.
 
-## UI-TRUTH-001 — Feature Truth Registry & Smoke Proof 🚧 in progress
+## UI-TRUTH-001 — Feature Truth Registry & Smoke Proof ✅ RESOLVED
 
-**New Done Gate for business functions:**
+**Done Gate for business functions implemented:**
 - Was: backend tests + API proof = feature done.
 - Now: backend + **reachable UI** + green UI-smoke = feature done.
 - UI-smoke runs against clean-boot stack, uses only real UI clicks (no direct goto, no API, no localStorage).
@@ -708,14 +707,14 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 - **CI (ordinary):** #29656035552 ✅ green — ui-smoke excluded via `pytest_ignore_collect` when `UI_SMOKE_RUN` not set.
 - **CI (smoke):** not in CI pipeline — manual audit only. When invoked, expected-red on G1.
 
-### Confirmed Gaps (G1–G4)
+### G1–G4 Status
 
 | Gap | Description | Status |
 |-----|-------------|--------|
-| G1 | CampaignListPage: no «Создать кампанию» button → /campaigns/new unreachable by real user | ✅ confirmed by UI-smoke |
-| G2 | UsersPage: creates only local_advertiser; no role/permission assignment UI | 🟡 confirmed (audit) |
-| G3 | AdvertisersPage: list/detail only; no UI for creating advertiser org | 🟡 confirmed (audit) |
-| G4 | ADSettingsPage: GET / POST test only; no save/persist | 🟡 confirmed (audit) |
+| G1 | CampaignListPage: no «Создать кампанию» button → /campaigns/new unreachable | ✅ RESOLVED — G1-FIX (d4f91e4), green smoke |
+| G2 | UsersPage: no role/permission assignment UI | ✅ RESOLVED — G2-FIX, green smoke |
+| G3 | AdvertisersPage: no UI for creating advertiser org | ✅ RESOLVED — G3-FIX (068e4f7), green smoke |
+| G4 | ADSettingsPage: GET/POST test only; no save/persist | 🟡 open — next candidate (G4-FIX) |
 
 ### Next after UI-TRUTH-BOOTSTRAP
 

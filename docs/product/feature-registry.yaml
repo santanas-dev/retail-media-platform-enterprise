@@ -575,13 +575,13 @@ features:
   #   total: 40
   # by status:
   #   reachable: 8  (campaign.create, user.assign_roles, advertiser.create_org, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability)
-  #   blocked:   33 (28 UI-no-smoke + 5 service-deferred)
+  #   blocked:   32 (28 UI-no-smoke + 4 service-deferred)
   # by frontend:
   #   admin-web:      26
   #   advertiser-web:  5
   #   public:          1
   #   service:         8
   # by priority:
-  #   P0: 19
-  #   P1: 20
+  #   P0: 20
+  #   P1: 19
   #   P2:  1
