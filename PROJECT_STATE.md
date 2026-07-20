@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-20 (CONSOLIDATE-CANON-001B — pre-pilot-journey-plan.md imported)
+**Last updated:** 2026-07-20 (CONSOLIDATE-CANON-001C — unified Sources of Truth index)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -21,6 +21,7 @@ G3-FIX-FU ✅ **RESOLVED** — RBAC gate + frontend/backend tests + docs hygiene
 G3-FIX-FU-STATE-SYNC ✅ **RESOLVED** — PROJECT_STATE hygiene (02e2383).
 **CONSOLIDATE-CANON-001A** — §24 PRAGMATISM owner decision ported. ADR-019 created, design gate deferred. Next: CONSOLIDATE-CANON-001B.
 **CONSOLIDATE-CANON-001B** — pre-pilot-journey-plan.md imported to repo. `for-agents/` copy now deprecated staging, not authoritative. Next: CONSOLIDATE-CANON-001C.
+**CONSOLIDATE-CANON-001C** ✅ — AGENTS.md Sources of Truth consolidated into single 5-tier index. for-agents/ explicitly DEPRECATED. Next: CONSOLIDATE-CANON-001D.
 SOURCE-TRUTH-001 ✅ **RESOLVED** — GitHub as single source of truth, NAS as mirror (598747c).
 SOURCE-TRUTH-001-FU ✅ **RESOLVED** — mirror-check exit code reconciliation, NAS mirror pending (859f35f).
 ROADMAP-DONE-GATE-001 ✅ **RESOLVED** — 4-колоночный бизнес-лист, G1/G2 честно готовы (4603e1d).
