@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-20 (ROADMAP-DONE-GATE-001 — 4-колоночный бизнес-лист, G1/G2 честно готовы)
+**Last updated:** 2026-07-20 (ROADMAP-DONE-GATE-001-FU — stale-тексты убраны, cross-reference superseded)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -18,6 +18,7 @@ G2-FIX-FU2 ✅ **RESOLVED** — smoke hardened (deterministic role, specific ass
 G2-SMOKE-PROOF ✅ **RESOLVED** — honest green UI-smoke run, 3 infra bugs fixed in the process.
 SOURCE-TRUTH-001 ✅ **RESOLVED** — GitHub as single source of truth, NAS as mirror (598747c).
 SOURCE-TRUTH-001-FU ✅ **RESOLVED** — mirror-check exit code reconciliation, NAS mirror pending (859f35f).
+ROADMAP-DONE-GATE-001 ✅ **RESOLVED** — 4-колоночный бизнес-лист, G1/G2 честно готовы (4603e1d).
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Git origin (source of truth):** `github.com:santanas-dev/retail-media-platform-enterprise`
 **Mirror (ASUSTOR, synced from origin):** `\\192.168.110.118\project\retail-media-platform-enterprise`
@@ -28,7 +29,7 @@ SOURCE-TRUTH-001-FU ✅ **RESOLVED** — mirror-check exit code reconciliation, 
 |---------|-------------|----------------|------|
 | develop | 29c285b | a40e398 | G2-SMOKE-PROOF — honest green UI-smoke + 3 infra fixes |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
-| NAS mirror (ASUSTOR) | pending | expected 598747c | SOURCE-TRUTH-001-FU — operator/santa2 verification pending |
+| NAS mirror (ASUSTOR) | pending | expected ca23b27 | ROADMAP-DONE-GATE-001-FU — operator/santa2 verification pending |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Mirror status is checked by operator/santa2, not by Hermes agent.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
@@ -52,6 +53,12 @@ SOURCE-TRUTH-001-FU ✅ **RESOLVED** — mirror-check exit code reconciliation, 
 - AGENTS.md: правило roadmap-синхронизации (п.7 Done Gate).
 - Commit: a2dccd9, CI: green.
 - Next: ROADMAP-GUARD-002.
+
+### ROADMAP-DONE-GATE-001-FU — Stale-тексты убраны, cross-reference superseded ✅ RESOLVED
+- R4 (RBAC): ограничения больше не говорят «user.assign_roles blocked» — заменено на ✅ G2 / ❌ user.create_advertiser.
+- R7 (Campaigns): ограничения больше не говорят «campaign.create blocked» — заменено на ✅ G1 / ❌ campaign.edit/submit/activate.
+- PROJECT_STATE: 3 stale-ссылки (findings, reachable:5) — перечёркнуты с пометкой RESOLVED.
+- Commit: dc9a910, CI #29725417235 green.
 
 ### H0 — Flaky test_backoff_respected_on_second_run ✅ RESOLVED
 - **Verdict: confirmed timing flake, not real backoff regression.**
@@ -618,11 +625,11 @@ SOURCE-TRUTH-001-FU ✅ **RESOLVED** — mirror-check exit code reconciliation, 
   - `--strict`: exit 1 при нарушениях (будущий CI gate)
 - **Audit runner:** `scripts/roadmap-consistency-audit.sh`
 - **CI job:** `roadmap-consistency-audit` — non-blocking (`continue-on-error: true`)
-- **Current findings (2026-07-18): 7**
-  1. «Вход сотрудников» 🟡 Готово → campaign.create/self.login blocked
-  2. «Роли и права» ✅ Готово → user.assign_roles blocked (G2)
+- **Current findings (2026-07-20): 5 (2 resolved by G1/G2 + ROADMAP-DONE-GATE-001)**
+  1. «Вход сотрудников» 🟡 Готово → self.login blocked
+  2. ~~«Роли и права» ✅ Готово → user.assign_roles blocked (G2)~~ → ✅ RESOLVED: G2 green smoke, ROADMAP-DONE-GATE-001.
   3. «Личный кабинет» ✅ Готово → self.* blocked
-  4. «Создание кампаний» 🟡 Готово → campaign.create blocked (G1)
+  4. ~~«Создание кампаний» 🟡 Готово → campaign.create blocked (G1)~~ → ✅ RESOLVED: G1 green smoke, ROADMAP-DONE-GATE-001.
   5. «Согласование» 🟡 Готово → campaign.approve/reject blocked
   6. «Загрузка креативов» 🟡 Готово → creative.* blocked
   7. «Инвентарь» ✅ Готово → inventory.* blocked
@@ -639,8 +646,9 @@ SOURCE-TRUTH-001-FU ✅ **RESOLVED** — mirror-check exit code reconciliation, 
   - 26 admin-web, 5 advertiser-web, 1 public, 8 service
   - P0: 19 · P1: 20 · P2: 1
 - **Status breakdown:**
-  - **reachable: 5** — all service (manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability) — backed by green behavioral CI
-  - **blocked: 35** — 30 UI-no-smoke + 5 service-deferred
+  - **reachable: 7** — 5 service (manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability) + 2 UI (campaign.create/G1, user.assign_roles/G2) — all backed by green proof
+  - **blocked: 33** — 28 UI-no-smoke + 5 service-deferred
+  - > ⚠️ **Superseded by ROADMAP-DONE-GATE-001 (2026-07-20):** original REGISTRY-EXPAND recorded reachable:5 (service-only). G1 (campaign.create) and G2 (user.assign_roles) now have green UI-smoke and are reachable.
 - **Zero false reachable:** ни одной UI-записи без зелёного smoke.
 - **G1–G4 явно зафиксированы:** campaign.create→G1, user.assign_roles→G2, advertiser.create_org→G3, adsettings.configure→G4.
 - **campaign.create** smoke приведён к `test_uismoke__campaign__create` (двойное подчёркивание, соглашение AGENTS.md).
