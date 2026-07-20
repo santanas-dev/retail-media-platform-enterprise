@@ -40,9 +40,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 6144148 | 6144148 | G4-FIX-FU2 — state/roadmap hygiene; G4 series closed, CI #29754972299 ✅ (35/35) |
+| develop | 6144148 | ce54518 | G4-FIX-FU2 — state/roadmap hygiene; G4 series closed, CI #29764363887 ✅ (35/35) |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
-| NAS mirror (ASUSTOR) | pending | expected 6144148 | operator/santa2 verification pending |
+| NAS mirror (ASUSTOR) | pending | expected ce54518 | operator/santa2 verification pending |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Mirror status is checked by operator/santa2, not by Hermes agent.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
