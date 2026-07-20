@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """
-Roadmap-Consistency Check — UI-TRUTH-001B.
+Roadmap-Consistency Guard — ROADMAP-GUARD-002.
 
 Reads feature-registry.yaml, scans tests/ui-smoke/ for existing smoke tests,
-and reads roadmap.xlsx (Бизнес-функции) to detect violations of the rule:
-«Бизнес-функция может быть "Готово" только если все её journey имеют
-registry status: reachable и зелёный UI-smoke».
+and reads roadmap.xlsx (Бизнес-функции Roadmap) with its 4-column structure
+(Бэкенд, UI, Юзер-стори (journey), Итог) to detect violations.
+
+Two directions:
+  A — Reachable features must not be understated in roadmap.
+      If registry says reachable + smoke exists, roadmap must reflect it.
+  B — Roadmap "Итог = Готово/Юзабельно" must be honest.
+      Backend✅ + UI✅ + Story✅ = mandatory. No overclaim.
 
 Modes:
   --audit   (default) Find violations, print findings, exit 0 (non-blocking).
-  --strict  Exit 1 if any violation found (for future CI gate).
+  --strict  Exit 1 if any violation found (blocking CI gate).
 
 Usage:
   python3 scripts/roadmap-consistency-check.py          # audit mode
@@ -31,10 +36,16 @@ REGISTRY_PATH = REPO_ROOT / "docs" / "product" / "feature-registry.yaml"
 ROADMAP_PATH = REPO_ROOT / "docs" / "product" / "roadmap-s020-2026-07-10.xlsx"
 UI_SMOKE_DIR = REPO_ROOT / "tests" / "ui-smoke"
 
-# ---- Validation helpers --------------------------------------------------
+# Column names in the 4-column business sheet (ROADMAP-DONE-GATE-001)
+COL_BACKEND = "Бэкенд"
+COL_UI = "UI"
+COL_STORY = "Юзер-стори (journey)"
+COL_RESULT = "Итог"
+COL_FUNC = "Бизнес-функция"
+
+# ---- Helpers ---------------------------------------------------------------
 
 def load_registry():
-    """Load feature-registry.yaml, return list of feature dicts."""
     with open(REGISTRY_PATH) as f:
         data = yaml.safe_load(f)
     return data.get("features", [])
@@ -60,188 +71,251 @@ def scan_smoke_functions():
 
 
 def load_roadmap_business():
-    """Read Бизнес-функции Roadmap sheet.
-    Returns list of {col_name: cell_value} dicts."""
-    wb = openpyxl.load_workbook(ROADMAP_PATH)
+    """Read Бизнес-функции Roadmap sheet. Returns list of row dicts."""
+    wb = openpyxl.load_workbook(ROADMAP_PATH, data_only=True)
     ws = wb["Бизнес-функции Roadmap"]
     headers = [str(c.value or "") for c in ws[1]]
     rows = []
     for row in ws.iter_rows(min_row=2, max_row=ws.max_row, values_only=True):
-        if row[1] is None or str(row[1]).strip() == "":
-            continue  # skip section headers / empty rows
+        func = row[1]  # col B = Бизнес-функция
+        if func is None or str(func).strip() == "":
+            continue
         d = {}
         for i, h in enumerate(headers):
-            d[h] = str(row[i]) if row[i] is not None else ""
+            d[h] = str(row[i]).strip() if row[i] is not None else ""
         rows.append(d)
     wb.close()
     return rows
 
 
-# ---- Registry validation -------------------------------------------------
+# ---- Registry validation (unchanged from UI-TRUTH-001B) --------------------
 
-REQUIRED_FIELDS = ["id", "frontend", "name", "route", "path", "smoke", "priority", "roles", "status"]
+REQUIRED_FIELDS = ["id", "frontend", "name", "route", "path", "smoke",
+                   "priority", "roles", "status"]
 VALID_STATUSES = {"reachable", "blocked"}
-VALID_FRONTENDS = {"admin-web", "advertiser-web", "public", "service"}
 
 
 def validate_registry(features, smoke_funcs):
-    """Validate registry structure and consistency with smoke tests.
-    Returns list of finding strings."""
     findings = []
     seen_ids = set()
-
     for f in features:
         fid = f.get("id", "<missing>")
-
-        # Duplicate check
         if fid in seen_ids:
             findings.append(f"REGISTRY: duplicate id '{fid}'")
         seen_ids.add(fid)
-
-        # Required fields
         for field in REQUIRED_FIELDS:
             if field not in f:
-                findings.append(f"REGISTRY: '{fid}' missing required field '{field}'")
-
-        # Valid status
+                findings.append(f"REGISTRY: '{fid}' missing field '{field}'")
         status = f.get("status", "")
         if status not in VALID_STATUSES:
-            findings.append(f"REGISTRY: '{fid}' has invalid status '{status}'")
-
-        # UI reachable must have smoke
+            findings.append(f"REGISTRY: '{fid}' invalid status '{status}'")
         frontend = f.get("frontend", "")
         smoke = f.get("smoke", "")
         if frontend != "service" and status == "reachable":
             if not smoke or smoke not in smoke_funcs:
                 findings.append(
-                    f"REGISTRY-SMOKE: '{fid}' status=reachable (UI) but smoke '{smoke}' "
-                    f"not found in tests/ui-smoke/"
+                    f"REGISTRY-SMOKE: '{fid}' status=reachable (UI) "
+                    f"but smoke '{smoke}' not found in tests/ui-smoke/"
+                )
+    return findings
+
+
+# ---- Roadmap → Registry consistency (4-column structure) -------------------
+
+SERVICE_KEYWORDS = {
+    "манифест", "manifest", "proof-of-play", "pop", "отчёт",
+    "emergency", "резервн", "мониторинг", "observability",
+    "kill-switch", "каналы", "устройств", "ксо", "android", "esl",
+    "led", "price checker", "clickhouse", "billing", "экспорт",
+    "dr /", "часовые пояс", "sla", "недопоказ", "операционн",
+    "staged rollout", "feature flag", "data governance",
+    "нагрузочн", "channel orchestrator", "siem", "интеграция с укм",
+    "sales lift", "attribution", "self-service",
+    "competitive", "store/audience", "financial docs",
+    "programmatic", "dynamic creative", "mobile field",
+    "independent dooh",
+}
+
+UI_SERVICE_MAP = {
+    # Business function name → {feature_ids, combined: bool}
+    "Вход сотрудников / рекламодателей": {
+        "ids": ["self.login"],
+    },
+    "Роли и права (RBAC)": {
+        "ids": ["user.assign_roles"],
+    },
+    "Личный кабинет рекламодателя": {
+        "ids": ["self.login", "self.campaign_view", "self.report_view",
+                "self.apply_or_brief", "self.campaign_create"],
+    },
+    "Создание и редактирование кампаний": {
+        "ids": ["campaign.create", "campaign.edit", "campaign.submit",
+                "campaign.activate", "campaign.pause", "campaign.complete"],
+    },
+    "Согласование кампаний (Approval)": {
+        "ids": ["campaign.approve", "campaign.reject"],
+    },
+    "Загрузка креативов (медиафайлы)": {
+        "ids": ["creative.upload", "creative.moderate_approve", "creative.moderate_reject"],
+    },
+    "Инвентарь": {
+        "ids": ["inventory.simulate", "inventory.rule_create"],
+    },
+    "Управление рекламодателями": {
+        "ids": ["advertiser.create_org", "advertiser.view",
+                "advertiser.application_review", "advertiser.invite", "advertiser.apply"],
+    },
+}
+
+
+def is_service_row(func_name):
+    """Return True if this business row is a pure service/backend function."""
+    name_lower = func_name.lower()
+    return any(kw in name_lower for kw in SERVICE_KEYWORDS)
+
+
+def parse_story_cell(story_raw):
+    """Parse 'Юзер-стори (journey)' cell into {journey_id: status_char}.
+    Examples: '✅ campaign.create / ⚪️ campaign.edit' →
+              {'campaign.create': '✅', 'campaign.edit': '⚪️'}
+              '✅ user.assign_roles' → {'user.assign_roles': '✅'}
+    """
+    result = {}
+    if not story_raw or story_raw in ("—", "n/a", ""):
+        return result
+    # Split on / then extract ✅/⚪️/❌ + journey_id
+    parts = re.split(r'\s*/\s*', story_raw)
+    for part in parts:
+        part = part.strip()
+        m = re.match(r'([✅⚪️❌🟠])\s*([\w.]+)', part)
+        if m:
+            result[m.group(2)] = m.group(1)
+    return result
+
+
+def check_roadmap_vs_registry(roadmap_rows, features, smoke_funcs):
+    findings = []
+
+    # Build lookup
+    feature_map = {f["id"]: f for f in features}
+    reachable_ids = {f["id"] for f in features if f.get("status") == "reachable"}
+
+    for row in roadmap_rows:
+        func_name = row.get(COL_FUNC, "").strip()
+        backend = row.get(COL_BACKEND, "").strip()
+        ui = row.get(COL_UI, "").strip()
+        story_raw = row.get(COL_STORY, "").strip()
+        result = row.get(COL_RESULT, "").strip()
+
+        if not func_name:
+            continue
+
+        # Skip service rows — they don't have UI smoke
+        if is_service_row(func_name):
+            continue
+
+        # Skip rows not in UI_SERVICE_MAP (can't map to registry)
+        map_entry = UI_SERVICE_MAP.get(func_name)
+        if not map_entry:
+            continue
+
+        expected_ids = map_entry.get("ids", [])
+        if not expected_ids:
+            continue
+
+        story_map = parse_story_cell(story_raw)
+
+        # ── Direction A: Reachable features must not be understated ──
+        for fid in expected_ids:
+            feat = feature_map.get(fid)
+            if not feat:
+                continue
+            if feat.get("status") != "reachable":
+                continue
+            if feat.get("frontend", "") == "service":
+                continue
+
+            smoke_name = feat.get("smoke", "")
+            if not smoke_name or smoke_name not in smoke_funcs:
+                continue  # registry validation catches this separately
+
+            # Now: this feature is reachable + has green smoke.
+            # Roadmap row must reflect it.
+            story_status = story_map.get(fid)
+            if not story_status or story_status != "✅":
+                findings.append(
+                    f"ROADMAP-UNDERSTATE: '{func_name}' — registry feature "
+                    f"'{fid}' is reachable (green smoke), but story cell "
+                    f"does not show ✅ (got: '{story_status or 'missing'}')"
+                )
+
+            # UI column should have ✅ (or mixed for combined rows)
+            if "✅" not in ui:
+                findings.append(
+                    f"ROADMAP-UNDERSTATE: '{func_name}' — registry feature "
+                    f"'{fid}' is reachable, but UI column='{ui}' "
+                    f"(expected ✅ or mixed ✅/⚪️ for combined rows)"
+                )
+
+        # ── Direction B: Итог = Готово must be honest ──
+        is_gotovo = result.startswith("✅ Готово") or result.startswith("✅ Готово/Юзабельно")
+        if not is_gotovo:
+            continue
+
+        # Backend must be ✅
+        if "✅" not in backend:
+            findings.append(
+                f"ROADMAP-OVERCLAIM: '{func_name}' — Итог='{result}' "
+                f"but Бэкенд='{backend}' (must be ✅)"
+            )
+
+        # UI must be ✅
+        if "✅" not in ui:
+            findings.append(
+                f"ROADMAP-OVERCLAIM: '{func_name}' — Итог='{result}' "
+                f"but UI='{ui}' (must be ✅)"
+            )
+
+        # Every expected journey must be ✅ in story
+        for fid in expected_ids:
+            feat = feature_map.get(fid)
+            if not feat:
+                continue
+            if feat.get("frontend", "") == "service":
+                continue
+
+            story_status = story_map.get(fid)
+            if story_status != "✅":
+                findings.append(
+                    f"ROADMAP-OVERCLAIM: '{func_name}' — Итог='{result}' "
+                    f"but journey '{fid}' has story status "
+                    f"'{story_status or 'missing'}' (must be ✅)"
+                )
+
+            # Each ✅ journey must be reachable in registry
+            if story_status == "✅" and fid not in reachable_ids:
+                findings.append(
+                    f"ROADMAP-OVERCLAIM: '{func_name}' — Итог='{result}' "
+                    f"but journey '{fid}' marked ✅ in story while "
+                    f"registry status={feat.get('status', '?')}"
+                )
+
+            # Each ✅ UI journey must have smoke
+            smoke_name = feat.get("smoke", "")
+            if story_status == "✅" and smoke_name and smoke_name not in smoke_funcs:
+                findings.append(
+                    f"ROADMAP-OVERCLAIM: '{func_name}' — Итог='{result}' "
+                    f"but journey '{fid}' marked ✅ in story while "
+                    f"smoke '{smoke_name}' not found"
                 )
 
     return findings
 
 
-# ---- Roadmap vs Registry consistency -------------------------------------
-
-# Business function names from roadmap that map to feature-registry domains.
-# This is a heuristic mapping — exact mapping requires domain knowledge.
-# Functions with no UI (manifest, PoP, observability, backup) are service
-# and don't need UI-smoke.
-
-SERVICE_FUNCTIONS = {
-    "Формирование плейлистов (manifest)",
-    "Получение manifest устройством",
-    "Proof-of-Play (подтверждение показов)",
-    "Отчёты по показам",
-    "Emergency-управление",
-    "Резервное копирование и DR",
-    "Мониторинг и observability",
-}
-
-UI_FUNCTIONS = {
-    "Вход сотрудников / рекламодателей",
-    "Роли и права (RBAC)",
-    "Личный кабинет рекламодателя",
-    "Создание и редактирование кампаний",
-    "Согласование кампаний (Approval)",
-    "Загрузка креативов (медиафайлы)",
-    "Инвентарь",
-    "Управление рекламодателями",
-}
-
-
-def check_roadmap_vs_registry(roadmap_rows, features, smoke_funcs):
-    """Check business roadmap 'Готово' claims against registry reality.
-    Returns list of finding strings."""
-    findings = []
-
-    # Build quick lookup: which features are actually reachable?
-    reachable_ids = set()
-    blocked_ids = set()
-    for f in features:
-        if f.get("status") == "reachable":
-            reachable_ids.add(f["id"])
-        else:
-            blocked_ids.add(f["id"])
-
-    for row in roadmap_rows:
-        func_name = row.get("Бизнес-функция", "").strip()
-        status_raw = row.get("Статус", "").strip()
-
-        if not func_name:
-            continue
-
-        # Check if roadmap claims "Готово"
-        is_gotovo = (
-            status_raw.startswith("✅ Готово")
-            or status_raw.startswith("🟡 Готово")
-        )
-        if not is_gotovo:
-            continue
-
-        # For service functions, check registry has reachable entries in that domain
-        if func_name in SERVICE_FUNCTIONS:
-            # These don't need UI-smoke — check service reachability
-            # We accept these: all have green behavioral tests
-            continue
-
-        # For UI functions: every P0/P1 feature in the domain should be reachable
-        # But we don't have a domain→feature mapping. Heuristic: if roadmap says
-        # "Готово" for a UI function, check if ANY of the 30 UI features are
-        # reachable (they aren't — all blocked, so flag it).
-        #
-        # More precise: flag the function as overclaim unless at least one
-        # relevant registry feature is reachable.
-        relevant = _find_relevant_features(func_name, features)
-        if not relevant:
-            findings.append(
-                f"ROADMAP: '{func_name}' claims '{status_raw}' but no matching "
-                f"feature-registry entries found"
-            )
-            continue
-
-        all_blocked = all(f.get("status") != "reachable" for f in relevant)
-        if all_blocked:
-            smoke_refs = [f["id"] for f in relevant if f.get("status") != "reachable"]
-            findings.append(
-                f"ROADMAP: '{func_name}' claims '{status_raw}' but ALL relevant "
-                f"features are blocked (no green smoke): {smoke_refs[:5]}"
-            )
-
-    return findings
-
-
-def _find_relevant_features(func_name, features):
-    """Heuristic: find registry features relevant to a business function name."""
-    name_lower = func_name.lower()
-    relevant = []
-    keywords_map = {
-        "вход": ["self.login", "campaign.create"],  # login related
-        "роли": ["user.assign_roles", "user.create_advertiser"],
-        "кабинет": ["self.login", "self.campaign_view", "self.report_view"],
-        "создание": ["campaign.create", "campaign.edit"],
-        "кампаний": ["campaign.create", "campaign.edit", "campaign.submit", "campaign.activate"],
-        "согласование": ["campaign.approve", "campaign.reject"],
-        "креатив": ["creative.upload", "creative.moderate_approve", "creative.moderate_reject"],
-        "загрузка": ["creative.upload"],
-        "инвентар": ["inventory.simulate", "inventory.rule_create"],
-        "availabilit": ["inventory.simulate", "inventory.rule_create"],
-        "рекламодател": ["advertiser.create_org", "advertiser.view", "advertiser.application_review"],
-    }
-    matched_ids = set()
-    for kw, ids in keywords_map.items():
-        if kw in name_lower:
-            matched_ids.update(ids)
-
-    if matched_ids:
-        relevant = [f for f in features if f.get("id") in matched_ids]
-    return relevant
-
-
-# ---- Main -----------------------------------------------------------------
+# ---- Main ------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Roadmap-consistency guard")
+    parser = argparse.ArgumentParser(description="Roadmap-consistency guard (4-col)")
     parser.add_argument("--strict", action="store_true",
                         help="Exit 1 on any violation (blocking CI gate)")
     args = parser.parse_args()
@@ -273,13 +347,13 @@ def main():
     registry_findings = validate_registry(features, smoke_funcs)
     all_findings.extend(registry_findings)
 
-    # 2. Roadmap vs registry consistency
+    # 2. Roadmap vs registry (4-column)
     if not roadmap_error:
         roadmap_findings = check_roadmap_vs_registry(roadmap_rows, features, smoke_funcs)
         all_findings.extend(roadmap_findings)
 
     # Report
-    print(f"=== Roadmap-Consistency Guard (UI-TRUTH-001B) ===")
+    print("=== Roadmap-Consistency Guard (ROADMAP-GUARD-002, 4-column) ===")
     print(f"  Registry: {len(features)} features")
     print(f"  Smoke tests found: {len(smoke_funcs)} functions")
     print(f"  Roadmap rows (business): {len(roadmap_rows)}")
@@ -293,30 +367,34 @@ def main():
         print()
         print(f"SUMMARY: {len(all_findings)} violation(s) found.")
     else:
-        print("SUMMARY: 0 violations — registry ↔ roadmap ↔ smoke consistent.")
+        print("SUMMARY: 0 violations — roadmap ↔ registry ↔ smoke consistent.")
 
-    # Verify specific checks for behavioral proof
+    # Behavioral proof
     print()
     print("--- Behavioral Proof ---")
-    # campaign.create smoke found?
-    cc_smoke = "test_uismoke__campaign__create"
-    if cc_smoke in smoke_funcs:
-        print(f"  [OK] campaign.create smoke exists: {smoke_funcs[cc_smoke]}")
-    else:
-        print(f"  [MISSING] campaign.create smoke '{cc_smoke}' not found")
-
-    # UI reachable without smoke? (should be 0 in registry validation)
-    ui_reachable_issues = [f for f in registry_findings if "REGISTRY-SMOKE" in f]
-    if ui_reachable_issues:
-        print(f"  [VIOLATIONS] UI reachable without smoke: {len(ui_reachable_issues)}")
-    else:
-        print(f"  [OK] No UI features with reachable status lacking smoke")
+    reachable_ids = {f["id"] for f in features if f.get("status") == "reachable"}
+    ui_reachable = [fid for fid in reachable_ids
+                    if feature_map_safe(features, fid, "frontend") != "service"]
+    print(f"  Reachable UI features: {len(ui_reachable)} — {ui_reachable}")
+    for fid in ui_reachable:
+        feat = feature_map_safe(features, fid, None)
+        smoke = feat.get("smoke", "") if feat else ""
+        in_smoke = smoke in smoke_funcs
+        print(f"    {fid}: smoke={smoke} {'✅ found' if in_smoke else '❌ MISSING'}")
+    print(f"  Reachable service features: "
+          f"{len(reachable_ids) - len(ui_reachable)}")
 
     exit_code = 0
     if args.strict and all_findings:
         exit_code = 1
-
     sys.exit(exit_code)
+
+
+def feature_map_safe(features, fid, key):
+    for f in features:
+        if f.get("id") == fid:
+            return f.get(key) if key else f
+    return None
 
 
 if __name__ == "__main__":
