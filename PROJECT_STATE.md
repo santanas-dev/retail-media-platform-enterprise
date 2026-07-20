@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-20 (G3-FIX — advertiser.create_org reachable, smoke green)
+**Last updated:** 2026-07-20 (G3-FIX-FU — RBAC + tests + docs hygiene)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -29,9 +29,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-|| develop | 068e4f7 | 068e4f7 | G3-FIX-FU — RBAC + tests + docs hygiene |
+| develop | 1beec6d | 1beec6d | G3-FIX-FU — RBAC + tests + docs hygiene |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
-| NAS mirror (ASUSTOR) | pending | expected ca23b27 | ROADMAP-DONE-GATE-001-FU — operator/santa2 verification pending |
+| NAS mirror (ASUSTOR) | pending | expected 1beec6d | G3-FIX-FU — operator/santa2 verification pending |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Mirror status is checked by operator/santa2, not by Hermes agent.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
@@ -81,6 +81,14 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 - Roadmap: строка «Управление рекламодателями» добавлена (🟠 Частично, create_org ✅).
 - Guard: 0 findings, tamper 3/3.
 - Next: G4-FIX — adsettings.configure.
+
+### G3-FIX-FU — RBAC + tests + docs hygiene ✅ RESOLVED
+- FU: RBAC button gated by advertisers.manage permission in AdvertisersPage.
+- Frontend tests: 3 added (hide button without perm, show with perm, create POST flow) — 10/10.
+- Backend tests: 7 added (201, 403, 422×3, audit event, duplicate→500) — 7/7.
+- Known gap: duplicate code currently returns 500 (IntegrityError unhandled) — not fixed in G3, documented in test.
+- Registry: reachable 7→8. PROJECT_STATE: stale f04b481→5c01feb, G3 awaiting→RESOLVED.
+- Commit: 1beec6d, CI: 35/35 green.
 
 ### H0 — Flaky test_backoff_respected_on_second_run ✅ RESOLVED
 - **Verdict: confirmed timing flake, not real backoff regression.**
@@ -595,7 +603,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 | ID | Task | Status |
 |----|------|--------|
 | G2-FIX | ✅ resolved — user.assign_roles reachable + green smoke | ✅ RESOLVED |
-| G3-FIX | ✅ RESOLVED — advertiser.create_org reachable, FU in progress | ✅ RESOLVED |
+| G3-FIX | ✅ RESOLVED — advertiser.create_org reachable (see section above) | ✅ RESOLVED |
 | PLAYER-IMPORT-001 | Historical recommendation (PLAYER-AUD-001) | ⏸️ deferred — not active next |
 
 ## G2-FIX-FU2 — Smoke Hardened + PROJECT_STATE Hygiene ✅ RESOLVED
