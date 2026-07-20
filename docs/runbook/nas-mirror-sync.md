@@ -4,29 +4,26 @@
 NAS/ASUSTOR at `\\192.168.110.118\project\retail-media-platform-enterprise`
 is a mirror — it may be stale.
 
-## Architecture: santa2 Relay
-
-NAS **never** pulls GitHub directly. The relay pattern:
+## Architecture: Hermes-Owned Mirror Sync
 
 ```
 GitHub (origin/develop)
     ↑ HTTPS (git fetch)
- santa2 (operator machine)
-    ↓ local filesystem (NAS mounted at /mnt/nas/…)
-NAS/ASUSTOR mirror
-    ↑ mirror-check.sh verifies
+ Hermes host (cobalt) — cron every 3 min
+    ↓ CIFS mount at /mnt/asustor-project/
+NAS/ASUSTOR mirror (passive CIFS write)
 ```
 
-1. **santa2** fetches `origin/develop` from GitHub via **HTTPS** (no SSH, no deploy key on NAS).
-2. **santa2** resets the NAS clone to `origin/develop` — writes through the local NAS mount.
-3. **mirror-check.sh** runs post-sync to confirm NAS HEAD matches GitHub origin.
-4. Cycle: **every 3 minutes** (santa2 cron or systemd timer).
-5. NAS itself has **no GitHub trust** — no SSH key, no deploy key, no HTTPS token stored on NAS.
+1. **Hermes host** fetches `origin/develop` from GitHub via HTTPS.
+2. **Hermes host** resets the NAS clone to `origin/develop` — writes through the local CIFS mount.
+3. Cycle: **every 3 minutes** (Hermes cron job `c0687f5ced4d`, script `nas-mirror-sync.sh`).
+4. NAS itself has **no GitHub trust** — no SSH key, no deploy key, no HTTPS token stored on NAS.
+5. **santa2 relay is DEPRECATED** — replaced by Hermes-owned sync as of NAS-SYNC-OWNER-001.
 
 ## Operator: NAS Mount Setup
 
-**Hermes agents MUST NOT execute this setup.** This is a one-time operator/santa2 task.
-Hermes only documents the procedure; the operator owns credentials, mount, and cron.
+**One-time operator task.** Hermes only documents the procedure; operator owns credentials and mount.
+Once mounted, Hermes cron handles ongoing sync.
 
 ### 1. Install CIFS tooling
 
@@ -48,17 +45,17 @@ sudo chmod 600 /etc/nas-cred
 ### 3. Mount NAS share
 
 ```bash
-sudo mkdir -p /mnt/nas
-sudo mount -t cifs //192.168.110.118/project /mnt/nas \
+sudo mkdir -p /mnt/asustor-project
+sudo mount -t cifs //192.168.110.118/project /mnt/asustor-project \
   -o credentials=/etc/nas-cred,uid=$(id -u),gid=$(id -g),iocharset=utf8,file_mode=0664,dir_mode=0775
 ```
 
 ### 4. Persist across reboots (/etc/fstab)
 
-Add this line to `/etc/fstab` (replace `<santa2_uid>` and `<santa2_gid>` with output of `id -u` / `id -g`):
+Add this line to `/etc/fstab` (replace `<uid>` and `<gid>` with output of `id -u` / `id -g`):
 
 ```
-//192.168.110.118/project /mnt/nas cifs credentials=/etc/nas-cred,uid=<santa2_uid>,gid=<santa2_gid>,iocharset=utf8,file_mode=0664,dir_mode=0775,_netdev,nofail 0 0
+//192.168.110.118/project /mnt/asustor-project cifs credentials=/etc/nas-cred,uid=<uid>,gid=<gid>,iocharset=utf8,file_mode=0664,dir_mode=0775,_netdev,nofail 0 0
 ```
 
 `_netdev` ensures mount waits for network; `nofail` prevents boot hang if NAS is unreachable.
@@ -69,7 +66,7 @@ CIFS may produce spurious mode-change noise (executable bits). Disable file-mode
 in the NAS clone:
 
 ```bash
-cd /mnt/nas/retail-media-platform-enterprise
+cd /mnt/asustor-project/retail-media-platform-enterprise
 git config core.fileMode false
 ```
 
@@ -78,85 +75,102 @@ This is a local repo config — it does not affect the GitHub origin.
 ### 6. Verify mount
 
 ```bash
-ls /mnt/nas/retail-media-platform-enterprise/.git
-git -C /mnt/nas/retail-media-platform-enterprise remote -v
+ls /mnt/asustor-project/retail-media-platform-enterprise/.git
+git -C /mnt/asustor-project/retail-media-platform-enterprise remote -v
 ```
 
 Expected: `origin  https://github.com/santanas-dev/retail-media-platform-enterprise.git (fetch)`
 
-## santa2 Relay Cron
+## Hermes Cron: NAS Mirror Sync
 
-On santa2 (Linux machine with NAS mounted at `/mnt/nas/`):
+**Owner:** Hermes agent. **Schedule:** every 3 minutes. **Job ID:** `c0687f5ced4d`.
+
+Script: `~/.hermes/scripts/nas-mirror-sync.sh`
+Log: `~/.hermes/cron/nas-mirror-sync.log`
+
+What it does each tick:
+1. `git fetch origin develop`
+2. `git reset --hard origin/develop`
+3. Log result: synced/up-to-date/stale with before/after SHAs
+
+To verify the cron is running:
 
 ```bash
-# Crontab on santa2 (every 3 minutes):
-*/3 * * * * cd /mnt/nas/retail-media-platform-enterprise && git fetch origin develop && git reset --hard origin/develop && ./docs/runbook/mirror-check.sh --discover-origin --nas-path /mnt/nas/retail-media-platform-enterprise
-```
+tail -20 ~/.hermes/cron/nas-mirror-sync.log
 
-**Hermes agents MUST NOT configure this cron, SSH keys, or GitHub tokens.**
-This is a one-time operator/santa2 task.
+# Manual run:
+bash ~/.hermes/scripts/nas-mirror-sync.sh
+```
 
 ## Operator Verification Procedure
 
-Run from **santa2** (or any machine with both GitHub HTTPS and NAS access):
+Run from Hermes host (cobalt, local mount at `/mnt/asustor-project/`):
 
 ```bash
-# Discover current origin SHA and compare against NAS mirror:
-./docs/runbook/mirror-check.sh --discover-origin --nas-path /mnt/nas/retail-media-platform-enterprise
-
-# Or with known SHA:
-EXPECTED_ORIGIN_DEVELOP_SHA=<sha> ./docs/runbook/mirror-check.sh --nas-path /mnt/nas/retail-media-platform-enterprise
+# Compare NAS HEAD vs GitHub origin:
+ORIGIN=$(git ls-remote origin refs/heads/develop | awk '{print $1}')
+NAS=$(git -C /mnt/asustor-project/retail-media-platform-enterprise rev-parse HEAD)
+echo "Origin: $ORIGIN"
+echo "NAS:    $NAS"
+[ "$ORIGIN" = "$NAS" ] && echo "✅ SYNCED" || echo "❌ STALE"
 ```
 
-### Result: verified (exit 0)
+### Result: verified
 
 NAS matches GitHub origin. Update PROJECT_STATE:
 
 ```
-| NAS mirror (ASUSTOR) | verified | <sha> (via operator/santa2) | <date> |
+| NAS mirror (ASUSTOR) | verified | <sha> | Hermes cron, verified <timestamp> |
 ```
 
-### Result: stale (exit 1)
+### Result: stale
 
-NAS is behind. santa2 relay should catch this automatically on next cycle.
-For immediate fix on santa2:
+NAS is behind. Hermes cron should catch this automatically on next cycle.
+For immediate fix:
 
 ```bash
-cd /mnt/nas/retail-media-platform-enterprise
+cd /mnt/asustor-project/retail-media-platform-enterprise
 git fetch origin
 git reset --hard origin/develop
-git log --oneline -3   # verify
 ```
 
-Then re-run mirror-check and update PROJECT_STATE.
+Then re-verify and update PROJECT_STATE.
 
-### Result: cannot-verify-from-here (exit 0)
+### Result: mount unavailable
 
-Network, GitHub, or NAS unreachable. Honest status — do not falsify.
+If `/mnt/asustor-project/` is not mounted, Hermes cron log will show errors.
+Operator must remount per step 3 above.
+
+## Operator: Remove Deprecated santa2 Key
+
+santa2 relay is DEPRECATED. Remove its SSH authorized key from the NAS:
+
+```bash
+# Run ON THE NAS (admin@192.168.110.118):
+sed -i '/santa2-nas-sync/d' /home/admin/.ssh/authorized_keys
+grep "santa2-nas-sync" /home/admin/.ssh/authorized_keys && echo "KEY STILL PRESENT" || echo "KEY REMOVED"
+```
 
 ## Hermes Agent Rules
 
 From `AGENTS.md`:
 
-- Agent must NOT claim "NAS synced" without mirror-check proof.
-- Hermes is **not the owner** of mirror freshness — santa2 relay is.
-- After Hermes push, the honest state is: **mirror-check pending — santa2 relay will sync**.
-- If mirror-check cannot run from agent's environment → `cannot-verify-from-here` / `pending`.
-  Never `verified` and never `stale` without actual proof.
+- **Hermes owns mirror sync freshness.** The cron job `c0687f5ced4d` syncs every 3 minutes.
+- Agent must NOT claim "NAS synced" without actual verification: NAS HEAD == origin/develop.
+- After Hermes push, NAS should catch up within 3 minutes via cron — verify before claiming.
+- If NAS mount is unavailable, state: `pending | mount unavailable` — not `verified`.
 - GitHub + CI green is sufficient for task DONE — mirror sync is tracked separately
   in PROJECT_STATE Repository Checkpoint.
 
 ## Warnings
 
 - **git over CIFS is less reliable than local disk.** Possible issues: lock contention,
-  permission drift, latency spikes. The operator must monitor cron logs and mirror-check
-  output for anomalies.
-- **NAS does NOT pull GitHub directly.** The trust boundary is: GitHub → santa2 (HTTPS) →
+  permission drift, latency spikes. Monitor `nas-mirror-sync.log` for anomalies.
+- **NAS does NOT pull GitHub directly.** The trust boundary is: GitHub → Hermes host (HTTPS) →
   NAS (passive CIFS write). No deploy key, SSH key, GitHub token, or `known_hosts` entry
   for GitHub lives on the NAS device.
-- **Hermes does NOT execute mount, credentials, or cron setup.** These are one-time
-  operator/santa2 tasks. Hermes documents the procedure; the operator owns the execution
-  and ongoing monitoring.
+- **Hermes does NOT execute mount or credential setup.** These are one-time operator tasks.
+  Hermes owns ongoing sync via cron; operator owns the CIFS mount.
 
 ## Why Not NAS Self-Pull?
 
@@ -165,8 +179,8 @@ considered in CONSOLIDATE-CANON-001A. It was rejected because:
 
 1. NAS has no GitHub trust (no SSH key, no deploy key) — and should not.
 2. Storing GitHub credentials on a network-attached storage device is a security regression.
-3. santa2 relay keeps the trust boundary clean: santa2 is the only machine with
+3. Hermes relay keeps the trust boundary clean: Hermes host is the only machine with
    GitHub access; NAS receives updates passively through the mount.
 
 The NAS self-pull pattern is **not a future target** — it is explicitly deprecated.
-santa2 relay is the canonical sync mechanism.
+Hermes-owned mirror sync is the canonical sync mechanism as of NAS-SYNC-OWNER-001.

@@ -1,6 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-20 (G4-FIX-FU2 — state/roadmap hygiene; G4 series closed)
+**Last updated:** 2026-07-20 (NAS-SYNC-OWNER-001 — Hermes-owned mirror sync; santa2 relay deprecated)
+
+**NAS-SYNC-OWNER-001** ✅ — NAS mirror caught up to 0fdc727. Hermes owns sync: cron c0687f5ced4d (nas-mirror-sync.sh, every 3 min). santa2 relay DEPRECATED. C1 blocked: operator must remove santa2-nas-sync key from NAS authorized_keys.
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -42,9 +44,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 |---------|-------------|----------------|------|
 | develop | 6144148 | ce54518 | G4-FIX-FU2 — state/roadmap hygiene; G4 series closed, CI #29764363887 ✅ (35/35) |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
-| NAS mirror (ASUSTOR) | pending | expected ce54518 | operator/santa2 verification pending |
+| NAS mirror (ASUSTOR) | verified | 0fdc727 | Hermes cron, verified 2026-07-20 — catch-up from 4215c23 to 0fdc727 |
 
-> **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Mirror status is checked by operator/santa2, not by Hermes agent.
+> **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
 > checkpoints; it must not pretend to self-reference its own commit SHA. The Payload SHA
 > is the last substantive commit whose result was verified (code, tests, CI). The State/Docs
@@ -208,7 +210,8 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 ## Next Active Workstream
 
 **G4-SERIES CLOSED** — adsettings.configure reachable, durable DB persistence (migration 027), green smoke, CI green.
-Next: from pre-pilot journey plan (wave 1–6) or awaiting prioritisation.
+**NAS-SYNC-OWNER-001** ✅ — Hermes owns mirror sync; NAS caught up from 4215c23 to 0fdc727.
+Next: **advertiser.apply** из wave 1 pre-pilot journey plan.
 
 Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
 

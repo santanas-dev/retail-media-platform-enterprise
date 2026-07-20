@@ -91,22 +91,18 @@ Stabilization comes before new functionality.
 
 ### Tier 5 — Производные (НЕ авторские источники)
 
-- **NAS mirror** (`\\192.168.110.118\project\…`) — зеркало GitHub, может быть stale.
+- **NAS mirror** (`\\192.168.110.118\project\…`, локальный mount `/mnt/asustor-project/`) — зеркало GitHub, может быть stale.
   - **GitHub `origin/develop` — единственная git-истина.** NAS — зеркало, не авторский источник.
-  - **Агенты НЕ пишут «NAS synced» без mirror-check proof.** Требуется либо:
-    (a) успешный `mirror-check.sh` из окружения с доступом к GitHub и NAS, либо
-    (b) подтверждение оператора/santa2, записанное в PROJECT_STATE.
-  - **SSH-unavailable — НЕ proof.** Если GitHub недоступен через SSH, честный статус:
-    **cannot verify from here** — не «stale» и не «synced».
+  - **Hermes owns mirror sync freshness.** Cron job `c0687f5ced4d` (script `nas-mirror-sync.sh`) синхронизирует NAS каждые 3 минуты через CIFS mount.
+  - **Агенты НЕ пишут «NAS synced/verified» без проверки:** NAS HEAD == origin/develop.
+    Проверять: `git -C /mnt/asustor-project/retail-media-platform-enterprise rev-parse HEAD` против `git ls-remote origin refs/heads/develop`.
+  - **santa2 relay DEPRECATED** — заменён на Hermes-owned sync (NAS-SYNC-OWNER-001).
   - **Mirror-check pending — допустимо.** После пуша ожидаемое состояние:
-    «mirror-check pending — operator/santa2 will verify». Зеркало не блокирует DONE:
+    «mirror pending — Hermes cron syncs every 3 min». Зеркало не блокирует DONE:
     GitHub + CI green достаточно. Статус зеркала отслеживается в PROJECT_STATE
     Repository Checkpoint.
-  - **Mirror-check script:** `docs/runbook/mirror-check.sh` (HTTPS). Принимает
-    `--expected-origin-sha` / `EXPECTED_ORIGIN_DEVELOP_SHA`. Возвращает:
-    `verified` | `stale` | `cannot-verify-from-here`. Exit 0 для verified и
-    cannot-verify (нейтральные). Exit 1 для stale (расхождение — NAS требует pull).
-    Exit 3 для ошибок скрипта.
+  - **Mount unavailable — честный статус.** Если `/mnt/asustor-project/` не примонтирован,
+    статус: `pending | mount unavailable`. Не `verified`. Оператор отвечает за mount; Hermes за sync.
 - **`for-agents/`** на NAS — **DEPRECATED staging.** Все файлы оттуда перенесены
   в `docs/product/` репозитория. `for-agents/` не является авторитетным источником;
   агенты читают только git-репо.
