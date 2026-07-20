@@ -21,8 +21,8 @@
 #
 # Exit codes:
 #   0 — verified (NAS matches expected origin SHA)
-#   1 — stale (NAS behind; pull needed)
-#   2 — cannot-verify-from-here (network/GitHub/NAS unreachable)
+#   0 — cannot-verify-from-here (network/GitHub/NAS unreachable — neutral, not a failure)
+#   1 — stale (NAS behind or diverged; pull needed)
 #   3 — script error (bad args, missing deps)
 
 set -euo pipefail
@@ -48,9 +48,8 @@ Environment:
   EXPECTED_ORIGIN_DEVELOP_SHA  Same as --expected-origin-sha
 
 Exit codes:
-  0 = verified (NAS matches origin)
-  1 = stale (NAS behind, pull needed)
-  2 = cannot-verify-from-here (network/GitHub/NAS unreachable)
+  0 = verified or cannot-verify-from-here (neutral)
+  1 = stale (NAS behind/diverged, pull needed)
   3 = script error
 EOF
   exit 3
@@ -74,7 +73,7 @@ if $DISCOVER_ORIGIN; then
   if [[ -z "$ORIGIN_REF" ]]; then
     echo "STATUS: cannot-verify-from-here"
     echo "REASON: GitHub HTTPS unreachable (git ls-remote failed on $GITHUB_HTTPS_URL)"
-    exit 2
+    exit 0
   fi
   ORIGIN_SHA="${ORIGIN_REF:0:7}"
   echo ":: GitHub origin/develop: $ORIGIN_SHA (full: $ORIGIN_REF)"
@@ -93,7 +92,7 @@ if [[ -z "$EXPECTED_SHA" ]]; then
   echo "STATUS: cannot-verify-from-here"
   echo "REASON: no --expected-origin-sha or EXPECTED_ORIGIN_DEVELOP_SHA provided"
   echo "HINT: run with --discover-origin to fetch from GitHub, or provide the SHA directly"
-  exit 2
+  exit 0
 fi
 
 # Check NAS path
@@ -101,14 +100,14 @@ if [[ ! -d "$NAS_PATH/.git" ]]; then
   echo "STATUS: cannot-verify-from-here"
   echo "REASON: NAS mirror path not accessible: $NAS_PATH"
   echo "HINT: mount NAS first, or run from santa2 where NAS is mounted"
-  exit 2
+  exit 0
 fi
 
 # Get NAS HEAD
 NAS_HEAD=$(git -C "$NAS_PATH" rev-parse --short HEAD 2>/dev/null) || {
   echo "STATUS: cannot-verify-from-here"
   echo "REASON: cannot read git HEAD from NAS mirror at $NAS_PATH"
-  exit 2
+  exit 0
 }
 
 # Compare

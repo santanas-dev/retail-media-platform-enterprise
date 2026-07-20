@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-19 (G2-SMOKE-PROOF — honest green UI-smoke run)
+**Last updated:** 2026-07-19 (SOURCE-TRUTH-001-FU — mirror-check exit codes reconciled, NAS mirror pending)
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -16,6 +16,7 @@ G1-FIX-FU ✅ **RESOLVED** — placement_basis validation + RBAC button visibili
 G2-FIX ✅ **RESOLVED** — user.assign_roles reachable, backend+frontend+unit tests green, CI #29661909182 (35/35).
 G2-FIX-FU2 ✅ **RESOLVED** — smoke hardened (deterministic role, specific assert), PROJECT_STATE PS-001 hygiene, honest smoke-proof.
 G2-SMOKE-PROOF ✅ **RESOLVED** — honest green UI-smoke run, 3 infra bugs fixed in the process.
+SOURCE-TRUTH-001 ✅ **RESOLVED** — GitHub as single source of truth, NAS as mirror (598747c).
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
 **Git origin (source of truth):** `github.com:santanas-dev/retail-media-platform-enterprise`
 **Mirror (ASUSTOR, synced from origin):** `\\192.168.110.118\project\retail-media-platform-enterprise`
@@ -26,7 +27,7 @@ G2-SMOKE-PROOF ✅ **RESOLVED** — honest green UI-smoke run, 3 infra bugs fixe
 |---------|-------------|----------------|------|
 | develop | 29c285b | a40e398 | G2-SMOKE-PROOF — honest green UI-smoke + 3 infra fixes |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
-| NAS mirror (ASUSTOR) | verified | a40e398 (via operator/santa2) | SOURCE-TRUTH-001 — operator sync confirmed |
+| NAS mirror (ASUSTOR) | pending | expected 598747c | SOURCE-TRUTH-001-FU — operator/santa2 verification pending |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Mirror status is checked by operator/santa2, not by Hermes agent.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
@@ -35,6 +36,11 @@ G2-SMOKE-PROOF ✅ **RESOLVED** — honest green UI-smoke run, 3 infra bugs fixe
 > SHA is the commit that updated PROJECT_STATE/documentation after verification, if distinct.
 
 ## Active Workstreams
+
+### SOURCE-TRUTH-001-FU — Mirror-check exit code reconciliation ✅ RESOLVED
+- **Blocker 1 (AGENTS vs mirror-check.sh):** cannot-verify-from-here → exit 0 (neutral), stale → exit 1, script error → exit 3. AGENTS.md, mirror-check.sh, nas-mirror-sync.md согласованы.
+- **Blocker 2 (PROJECT_STATE stale claim):** NAS mirror `verified | a40e398` заменено на `pending | expected 598747c`. Без operator/santa2 proof не пишем verified.
+- Commit: 7af2fc0, CI: green.
 
 ### H0 — Flaky test_backoff_respected_on_second_run ✅ RESOLVED
 - **Verdict: confirmed timing flake, not real backoff regression.**

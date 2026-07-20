@@ -44,7 +44,7 @@ git log --oneline -3   # verify
 
 Then re-run mirror-check and update PROJECT_STATE.
 
-### Result: cannot-verify-from-here (exit 2)
+### Result: cannot-verify-from-here (exit 0)
 Network, GitHub, or NAS unreachable. Honest status — do not falsify.
 
 ## NAS Self-Pull Cron (Future)

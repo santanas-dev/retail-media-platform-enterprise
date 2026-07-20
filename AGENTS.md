@@ -206,8 +206,9 @@ and provide the closest static or targeted verification.
   status is tracked separately in PROJECT_STATE Repository Checkpoint.
 - **Mirror-check script:** `docs/runbook/mirror-check.sh` uses HTTPS (not SSH)
   by default. Accepts `--expected-origin-sha` / `EXPECTED_ORIGIN_DEVELOP_SHA`.
-  Returns: `verified` | `stale` | `cannot-verify-from-here`. Never exits non-zero
-  for "cannot verify" — only for real script errors.
+  Returns: `verified` | `stale` | `cannot-verify-from-here`. Exit 0 for verified
+  and cannot-verify (neutral statuses). Exit 1 for stale (real divergence — NAS
+  needs pull). Exit 3 for script errors (bad args, missing deps).
 
 ## Что значит готово
 
