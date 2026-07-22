@@ -18,8 +18,8 @@ import secrets
 
 from conftest import login_as_break_glass_admin
 
-# Seed advertiser organization — must exist in seed (Рекламный Альянс)
-TARGET_ORG_ID = "00000000-0000-4000-a000-000000000002"
+# Seed advertiser organization — must exist in seed (ООО «Рекламный Альянс», ADV-001)
+TARGET_ORG_ID = "00000000-0000-0000-0000-000000000200"
 
 # Dynamic username to avoid uniqueness conflicts across runs
 SMOKE_USERNAME = f"smoke_adv_{secrets.token_hex(4)}"
