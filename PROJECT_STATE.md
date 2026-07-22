@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-22 (JOURNEY-008-FU — state/roadmap hygiene after campaign.edit)
+**Last updated:** 2026-07-22 (JOURNEY-009-FU2 — creative.upload completion proof)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -24,6 +24,8 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **JOURNEY-008-FU** ✅ — state/roadmap hygiene after campaign.edit. PROJECT_STATE: Next→creative.upload, NAS develop→d2dddc8. Roadmap R8 Итог: campaign.submit/activate без smoke. R5 Next: creative.upload.
 **NAS-MIRROR-002** ✅ — restore clean NAS mirror after JOURNEY-008-FU. 22 files deleted by CIFS lock; manual reset --hard origin/develop → f93ea13. Cron script hardened with stderr capture + dirty-tree diagnostics. Runbook updated with dirty mirror recovery section.
 **JOURNEY-009** ✅ — creative.upload reachable + green UI-smoke (12.59s). Backend existed (presigned URL → MinIO upload flow). Admin-web: 7 data-testid, advertiser_organization_id fix, test fixture. Registry 17→18 reachable, 23→22 blocked. CI #29949477027.
+**JOURNEY-009-FU** ✅ — presigned URL signature fix (public Minio client + region). Storage pattern documented. CI #29952174466.
+**JOURNEY-009-FU2** ✅ — creative.upload completion proof. UI fix: React controlled select (defaultValue + ref) for Playwright. Visible upload done state ("✅ Готов" + filename). Data-testid creative-status-{code}. Smoke test: asserts Готов status, persisted after reload (2.82s). Vitest 174/174. CI #29953272276.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
 EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof (admin bypass), CI #29649000788 green (6/6).
 EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOBYPASSRLS), CI #29652235623 green (5/5).
@@ -61,9 +63,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | e4b90b2 | cd87f8b | JOURNEY-009 creative.upload ✅, CI #29949477027 |
+| develop | 09e059d | 09e059d | JOURNEY-009-FU2 creative.upload completion proof ✅, CI #29953272276 |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
-| NAS mirror (ASUSTOR) | verified | develop=cd87f8b, main=b5dd3b3, tag v0.9.0-prepilot-wave1 → b5dd3b3 | Hermes cron sync confirmed (develop + main + tags) |
+| NAS mirror (ASUSTOR) | pending | develop=5c81c75, main=b5dd3b3, tag v0.9.0-prepilot-wave1 → b5dd3b3 | cron sync every 3 min, will catch up to 09e059d |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
