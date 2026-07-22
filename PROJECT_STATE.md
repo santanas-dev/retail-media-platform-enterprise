@@ -7,7 +7,7 @@
 **CI-GATE-001** ✅ — test_tampered_token_rejected stabilised.
 **JOURNEY-003** ✅ — advertiser.invite reachable. CI #29907059713 green (35/35).
 **JOURNEY-004** ✅ — self.login reachable. CI #29909590097 green (35/35), Behavioral success.
-**JOURNEY-005** ✅ — user.create_advertiser reachable. CI pending (pre-push).
+**JOURNEY-005** ✅ — user.create_advertiser reachable. CI #29915158941 green (35/35), Behavioral success.
 
 **NAS-SYNC-OWNER-001** — Hermes-owned mirror sync replaces santa2 relay.
 - Sync/canon: ✅ NAS caught up 4215c23→2b352f2, cron c0687f5ced4d (nas-mirror-sync.sh, every 3 min), AGENTS.md/runbook/PROJECT_STATE updated.
