@@ -14,8 +14,8 @@ GitHub (origin/develop)
 NAS/ASUSTOR mirror (passive CIFS write)
 ```
 
-1. **Hermes host** fetches `origin/develop` from GitHub via HTTPS.
-2. **Hermes host** resets the NAS clone to `origin/develop` — writes through the local CIFS mount.
+1. **Hermes host** fetches `origin/develop`, `origin/main`, and all tags from GitHub via HTTPS.
+2. **Hermes host** resets the NAS clone to `origin/develop`, updates `main` branch pointer, and syncs tags — writes through the local CIFS mount.
 3. Cycle: **every 3 minutes** (Hermes cron job `c0687f5ced4d`, script `nas-mirror-sync.sh`).
 4. NAS itself has **no GitHub trust** — no SSH key, no deploy key, no HTTPS token stored on NAS.
 5. **santa2 relay is DEPRECATED** — replaced by Hermes-owned sync as of NAS-SYNC-OWNER-001.
@@ -89,9 +89,10 @@ Script: `~/.hermes/scripts/nas-mirror-sync.sh`
 Log: `~/.hermes/cron/nas-mirror-sync.log`
 
 What it does each tick:
-1. `git fetch origin develop`
-2. `git reset --hard origin/develop`
-3. Log result: synced/up-to-date/stale with before/after SHAs
+1. `git fetch origin develop main --tags`
+2. `git reset --hard origin/develop` (working tree on develop)
+3. `git branch -f main origin/main` (update main branch pointer)
+4. Log result: synced/up-to-date/stale with develop+main SHAs
 
 To verify the cron is running:
 
@@ -107,12 +108,15 @@ bash ~/.hermes/scripts/nas-mirror-sync.sh
 Run from Hermes host (cobalt, local mount at `/mnt/asustor-project/`):
 
 ```bash
-# Compare NAS HEAD vs GitHub origin:
-ORIGIN=$(git ls-remote origin refs/heads/develop | awk '{print $1}')
-NAS=$(git -C /mnt/asustor-project/retail-media-platform-enterprise rev-parse HEAD)
-echo "Origin: $ORIGIN"
-echo "NAS:    $NAS"
-[ "$ORIGIN" = "$NAS" ] && echo "✅ SYNCED" || echo "❌ STALE"
+# Compare NAS HEAD vs GitHub origin (all refs):
+ORIGIN_DEV=$(git ls-remote origin refs/heads/develop | awk '{print $1}')
+NAS_DEV=$(git -C /mnt/asustor-project/retail-media-platform-enterprise rev-parse develop)
+ORIGIN_MAIN=$(git ls-remote origin refs/heads/main | awk '{print $1}')
+NAS_MAIN=$(git -C /mnt/asustor-project/retail-media-platform-enterprise rev-parse main)
+echo "develop: origin=$ORIGIN_DEV NAS=$NAS_DEV"
+echo "main:    origin=$ORIGIN_MAIN NAS=$NAS_MAIN"
+[ "$ORIGIN_DEV" = "$NAS_DEV" ] && [ "$ORIGIN_MAIN" = "$NAS_MAIN" ] \
+  && echo "✅ SYNCED" || echo "❌ STALE"
 ```
 
 ### Result: verified
@@ -156,7 +160,7 @@ grep "santa2-nas-sync" /home/admin/.ssh/authorized_keys && echo "KEY STILL PRESE
 From `AGENTS.md`:
 
 - **Hermes owns mirror sync freshness.** The cron job `c0687f5ced4d` syncs every 3 minutes.
-- Agent must NOT claim "NAS synced" without actual verification: NAS HEAD == origin/develop.
+- Agent must NOT claim "NAS synced" without actual verification: NAS develop == origin/develop, NAS main == origin/main, and release tags present.
 - After Hermes push, NAS should catch up within 3 minutes via cron — verify before claiming.
 - If NAS mount is unavailable, state: `pending | mount unavailable` — not `verified`.
 - GitHub + CI green is sufficient for task DONE — mirror sync is tracked separately

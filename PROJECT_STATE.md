@@ -57,7 +57,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 |---------|-------------|----------------|------|
 | develop | 7a6444f | a03c192 | JOURNEY-006 advertiser.view + WAVE1 closure, CI #29934268801 ✅ |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
-| NAS mirror (ASUSTOR) | verified | a03c192 | Hermes cron sync confirmed after WAVE1 closure |
+| NAS mirror (ASUSTOR) | verified | develop=dfb248c, main=b5dd3b3, tag v0.9.0-prepilot-wave1 → b5dd3b3 | Hermes cron sync confirmed (develop + main + tags) |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
