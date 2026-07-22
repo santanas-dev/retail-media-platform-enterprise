@@ -78,6 +78,7 @@ export default function AcceptInvitePage() {
           </div>
           <Link
             to="/login"
+            data-testid="accept-invite-go-to-login"
             style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}
           >
             Перейти к входу
@@ -103,6 +104,7 @@ export default function AcceptInvitePage() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Минимум 8 символов"
             autoFocus
+            data-testid="accept-invite-password"
           />
           <div style={S.hint}>Пароль будет использоваться для входа в портал рекламодателя</div>
         </div>
@@ -110,6 +112,7 @@ export default function AcceptInvitePage() {
         <button
           type="submit"
           disabled={submitting}
+          data-testid="accept-invite-submit"
           style={submitting ? S.btnDisabled : S.btn}
         >
           {submitting ? "Активация..." : "Активировать доступ"}

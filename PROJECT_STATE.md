@@ -1,11 +1,12 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-22 (JOURNEY-003 — advertiser.invite reachable + green smoke)
+**Last updated:** 2026-07-22 (JOURNEY-004 — self.login reachable + green smoke)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
-**JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35), Behavioral not skipped.
+**JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
 **CI-GATE-001** ✅ — test_tampered_token_rejected stabilised.
-**JOURNEY-003** ✅ — advertiser.invite reachable. CI #29907059713 green (35/35), Behavioral success.
+**JOURNEY-003** ✅ — advertiser.invite reachable. CI #29907059713 green (35/35).
+**JOURNEY-004** — self.login reachable. Advertiser accept invite → login → dashboard with org.
 
 **NAS-SYNC-OWNER-001** — Hermes-owned mirror sync replaces santa2 relay.
 - Sync/canon: ✅ NAS caught up 4215c23→2b352f2, cron c0687f5ced4d (nas-mirror-sync.sh, every 3 min), AGENTS.md/runbook/PROJECT_STATE updated.
@@ -216,8 +217,8 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**JOURNEY-001** ✅ advertiser.apply / **JOURNEY-002** ✅ advertiser.application_review / **CI-GATE-001** ✅ / **JOURNEY-003** ✅ advertiser.invite.
-Next: **self.login** из wave 1 pre-pilot journey plan.
+**JOURNEY-001** ✅ advertiser.apply / **JOURNEY-002** ✅ advertiser.application_review / **CI-GATE-001** ✅ / **JOURNEY-003** ✅ advertiser.invite / **JOURNEY-004** — self.login reachable.
+Next: **user.create_advertiser** из wave 1 pre-pilot journey plan.
 
 Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
 
