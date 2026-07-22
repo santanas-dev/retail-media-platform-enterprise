@@ -200,7 +200,7 @@ export default function UsersPage() {
         message: resp.message,
         one_time_password: resp.one_time_password,
       });
-      setCreateOpen(false);
+      // Don't close on success — user needs to copy one-time password
       loadUsers();
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "Ошибка создания";
@@ -416,6 +416,7 @@ export default function UsersPage() {
           <h3>Создать локального рекламодателя</h3>
           <label style={labelStyle}>Имя пользователя</label>
           <input
+            data-testid="user-create-advertiser-username"
             style={inputStyle}
             value={createForm.username}
             onChange={(e) =>
@@ -425,6 +426,7 @@ export default function UsersPage() {
           />
           <label style={labelStyle}>Отображаемое имя</label>
           <input
+            data-testid="user-create-advertiser-display-name"
             style={inputStyle}
             value={createForm.display_name}
             onChange={(e) =>
@@ -434,6 +436,7 @@ export default function UsersPage() {
           />
           <label style={labelStyle}>ID организации рекламодателя</label>
           <input
+            data-testid="user-create-advertiser-org-id"
             style={inputStyle}
             value={createForm.advertiser_organization_id}
             onChange={(e) =>
@@ -489,6 +492,7 @@ export default function UsersPage() {
           </label>
           <button
             type="button"
+            data-testid="user-create-advertiser-submit"
             onClick={handleCreate}
             style={{ ...btnStyle, marginTop: "0.5rem", padding: "0.375rem 1rem" }}
           >
@@ -496,6 +500,7 @@ export default function UsersPage() {
           </button>
           {createResult && (
             <div
+              data-testid="user-create-advertiser-result"
               style={{
                 marginTop: "0.75rem",
                 padding: "0.5rem",

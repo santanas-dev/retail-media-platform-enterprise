@@ -150,8 +150,8 @@ features:
     smoke: test_uismoke__user__create_advertiser
     priority: P0
     roles: [system_admin]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
+    gap: ""
 
   - id: user.assign_roles
     frontend: admin-web
@@ -576,8 +576,8 @@ features:
   # ═══════════════════════════════════════════════════════════════
   #   total: 40
   # by status:
-  #   reachable: 13 (campaign.create, user.assign_roles, advertiser.create_org, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability, adsettings.configure, advertiser.apply, advertiser.application_review, advertiser.invite, self.login)
-  #   blocked:   27 (24 UI-no-smoke + 3 service-deferred)
+  #   reachable: 14 (campaign.create, user.create_advertiser, user.assign_roles, advertiser.create_org, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability, adsettings.configure, advertiser.apply, advertiser.application_review, advertiser.invite, self.login)
+  #   blocked:   26 (23 UI-no-smoke + 3 service-deferred)
   # by frontend:
   #   admin-web:      26
   #   advertiser-web:  5

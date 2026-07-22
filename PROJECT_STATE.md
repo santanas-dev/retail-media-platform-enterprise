@@ -1,12 +1,13 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-22 (JOURNEY-004 — self.login reachable + green smoke)
+**Last updated:** 2026-07-22 (JOURNEY-005 — user.create_advertiser reachable + green smoke)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
 **CI-GATE-001** ✅ — test_tampered_token_rejected stabilised.
 **JOURNEY-003** ✅ — advertiser.invite reachable. CI #29907059713 green (35/35).
 **JOURNEY-004** ✅ — self.login reachable. CI #29909590097 green (35/35), Behavioral success.
+**JOURNEY-005** ✅ — user.create_advertiser reachable. CI pending (pre-push).
 
 **NAS-SYNC-OWNER-001** — Hermes-owned mirror sync replaces santa2 relay.
 - Sync/canon: ✅ NAS caught up 4215c23→2b352f2, cron c0687f5ced4d (nas-mirror-sync.sh, every 3 min), AGENTS.md/runbook/PROJECT_STATE updated.
@@ -50,7 +51,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 664a882 | 42c3e17 | JOURNEY-004 self.login reachable, CI #29909590097 ✅ |
+| develop | 664a882 | <this commit> | JOURNEY-005 user.create_advertiser reachable, CI pending |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 | NAS mirror (ASUSTOR) | verified | 42c3e17 | Hermes cron, synced after JOURNEY-004-FU push |
 
@@ -175,6 +176,19 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 - CI: #29529434884 — 34/34 green. Admin-web: 132/132 (127 + 5).
 - **Follow-up (SHA 38aa844):** added loading state, error state, by-surface table tests. Now 8 S-090 tests, 135/135 admin-web green.
 
+### JOURNEY-005 — user.create_advertiser reachable ✅ RESOLVED
+- **Verdict:** backend endpoint existed (`POST /users/local-advertiser`), users.manage permission, admin-web form already built. This journey closed the smoke gap + data-testid coverage.
+- **What was done:**
+  - `UsersPage.tsx`: added data-testid on all create form fields (username, display_name, org_id, submit, result). Fixed auto-close-on-success bug — form now stays open so user can copy the one-time password.
+  - `test_uismoke__user__create_advertiser.py`: honest UI-smoke — login → Пользователи → Создать → fill → submit → verify one-time password visible.
+  - `users-page-create-advertiser.test.tsx`: 5 vitest tests — hidden-without-perm, visible-with-perm, opens-form, success-result, error-state.
+  - **Frontend tests:** admin-web 166→171 (5 new).
+  - **Registry:** user.create_advertiser → reachable. Reachable 13→14, blocked 27→26.
+  - **Roadmap:** R4 (Роли и права) updated — user.create_advertiser ✅ in UI + Юзер-стори columns.
+  - **Guard:** roadmap-consistency-check → 0 findings.
+- **Backend:** no code changes — endpoint existed and worked.
+- **Next:** advertiser.view из wave 1.
+
 ## Open Issues
 
 | Priority | Count | Details |
@@ -217,8 +231,8 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**JOURNEY-001** ✅ advertiser.apply / **JOURNEY-002** ✅ advertiser.application_review / **CI-GATE-001** ✅ / **JOURNEY-003** ✅ advertiser.invite / **JOURNEY-004** ✅ self.login.
-Next: **user.create_advertiser** из wave 1 pre-pilot journey plan.
+**JOURNEY-001** ✅ advertiser.apply / **JOURNEY-002** ✅ advertiser.application_review / **CI-GATE-001** ✅ / **JOURNEY-003** ✅ advertiser.invite / **JOURNEY-004** ✅ self.login / **JOURNEY-005** ✅ user.create_advertiser.
+Next: **advertiser.view** из wave 1 pre-pilot journey plan.
 
 Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
 
