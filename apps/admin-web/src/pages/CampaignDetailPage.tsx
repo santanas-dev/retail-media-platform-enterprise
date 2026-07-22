@@ -201,6 +201,7 @@ export default function CampaignDetailPage() {
   >("idle");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const attachSelectRef = useRef<HTMLSelectElement>(null);
 
   // Approval
   const [approvalSubmitting, setApprovalSubmitting] = useState(false);
@@ -1198,10 +1199,12 @@ export default function CampaignDetailPage() {
               </button>
             ) : (
               <form onSubmit={async (e) => { e.preventDefault();
-                if (!attachAssetId) { setAttachError("Выберите креатив"); return; }
+                // Read from DOM ref for Playwright compatibility (select_option bypasses React onChange)
+                const selectedId = attachSelectRef.current?.value || attachAssetId;
+                if (!selectedId) { setAttachError("Выберите креатив"); return; }
                 setAttachSubmitting(true); setAttachError(null);
                 try {
-                  await attachCreative(campaign.id, { creative_asset_id: attachAssetId, sort_order: creatives.length });
+                  await attachCreative(campaign.id, { creative_asset_id: selectedId, sort_order: creatives.length });
                   await refreshCreatives();
                   setAttachAssetId(""); setShowAttach(false);
                 } catch (err: unknown) { setAttachError(formatApiError(err)); }
@@ -1211,7 +1214,7 @@ export default function CampaignDetailPage() {
                   <div>
                     <label style={css.miniLabel}>Креатив</label>
                     {unattached.length > 0 ? (
-                      <select value={attachAssetId} onChange={(e) => setAttachAssetId(e.target.value)}
+                      <select ref={attachSelectRef} defaultValue={attachAssetId || ""} onChange={(e) => setAttachAssetId(e.target.value)}
                         style={{ ...css.miniSelect, minWidth: 260 }} data-testid="creative-attach-select">
                         <option value="">— выберите —</option>
                         {unattached.map((a) => (
@@ -1381,6 +1384,12 @@ export default function CampaignDetailPage() {
                 e.target.value = "";
               }}
             />
+            {uploadStage === "done" && uploadFile && (
+              <div data-testid="creative-upload-done" style={{ padding: "0.5rem 0.75rem", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 4, marginBottom: "0.5rem", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span style={{ fontWeight: 600, color: "#166534" }}>✅ Готов</span>
+                <span style={{ color: "#52525b" }}>{uploadFile.name}</span>
+              </div>
+            )}
             {uploadStage !== "idle" && uploadStage !== "done" && (
               <div style={{ padding: "0.5rem 0.75rem", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 4, marginBottom: "0.5rem", fontSize: "0.8rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
@@ -1436,7 +1445,7 @@ export default function CampaignDetailPage() {
                   <td style={css.miniTd}>
                     {cc.asset?.duration_ms != null ? `${(cc.asset.duration_ms / 1000).toFixed(1)}с` : "—"}
                   </td>
-                  <td style={css.miniTd}>
+                  <td style={css.miniTd} data-testid={`creative-status-${cc.asset?.code ?? i}`}>
                     {cc.asset
                       ? isDeliverable(cc.asset)
                         ? statusLabel(cc.asset.status)
