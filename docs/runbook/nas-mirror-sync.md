@@ -90,9 +90,10 @@ Log: `~/.hermes/cron/nas-mirror-sync.log`
 
 What it does each tick:
 1. `git fetch origin develop main --tags`
-2. `git reset --hard origin/develop` (working tree on develop)
-3. `git branch -f main origin/main` (update main branch pointer)
-4. Log result: synced/up-to-date/stale with develop+main SHAs
+2. Capture working tree dirtiness for diagnostics (first 5 dirty files)
+3. `git reset --hard origin/develop` (working tree on develop) — stderr captured to log on failure
+4. `git branch -f main origin/main` (update main branch pointer)
+5. Log result: synced/up-to-date/stale with develop+main SHAs
 
 To verify the cron is running:
 
@@ -139,6 +140,34 @@ git reset --hard origin/develop
 ```
 
 Then re-verify and update PROJECT_STATE.
+
+### Result: dirty working tree (deleted/modified files)
+
+NAS working tree has uncommitted changes (e.g. deleted files, modified binaries).
+This blocks `git reset --hard` if CIFS locks interfere. The cron script now logs
+the dirtiness state before attempting reset for diagnostics.
+
+Recovery procedure:
+
+```bash
+cd /mnt/asustor-project/retail-media-platform-enterprise
+# Verify origin is reachable
+git fetch origin develop main --tags
+# Force-reset to origin (discards ALL local changes — mirror is derived)
+git reset --hard origin/develop
+git branch -f main origin/main
+# Verify clean
+git status --short --branch
+```
+
+If `reset --hard` fails with permission errors:
+1. Check CIFS mount is writable: `touch /mnt/asustor-project/.../.test_write && rm $_`
+2. If mount is read-only, remount per step 3 above.
+3. If individual files are locked (CIFS `oplocks`), wait 30s and retry.
+
+Root cause: CIFS over a network can transiently deny write access to files
+held by another client (Codex, Windows Explorer, Samba oplocks). The cron script
+treats this as a hard failure and logs the exact stderr for diagnosis.
 
 ### Result: mount unavailable
 
