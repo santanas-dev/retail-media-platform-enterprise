@@ -21,6 +21,8 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **WAVE2-PLAN-REFRESH** ✅ — pre-pilot journey plan актуализирован после R2. Wave 1: 8/8 🟢 closed. Wave 2: self.apply_or_brief → campaign.edit → creative.upload → inventory.simulate → self.campaign_create (deferred). Registry: 16 reachable, 24 blocked.
 **JOURNEY-007** ✅ — self.apply_or_brief reachable + green UI-smoke (1.37s). Backend existed (BP-004 CampaignBrief). Advertiser-web BriefListPage/BriefCreatePage data-testid + 6 vitest tests. Registry 15→16 reachable.
 **JOURNEY-008** ✅ — campaign.edit reachable + green UI-smoke (2.33s). Backend existed (CampaignFlight/CampaignPlacement CRUD). Admin-web data-testid on tabs, flight form, placement form. Registry 16→17 reachable.
+**JOURNEY-008-FU** ✅ — state/roadmap hygiene after campaign.edit. PROJECT_STATE: Next→creative.upload, NAS develop→d2dddc8. Roadmap R8 Итог: campaign.submit/activate без smoke. R5 Next: creative.upload.
+**NAS-MIRROR-002** ✅ — restore clean NAS mirror after JOURNEY-008-FU. 22 files deleted by CIFS lock; manual reset --hard origin/develop → f93ea13. Cron script hardened with stderr capture + dirty-tree diagnostics. Runbook updated with dirty mirror recovery section.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
 EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof (admin bypass), CI #29649000788 green (6/6).
 EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOBYPASSRLS), CI #29652235623 green (5/5).
@@ -58,9 +60,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 9790904 | d2dddc8 | JOURNEY-008 campaign.edit ✅, CI #29946012506 |
+| develop | 9790904 | 2500696 | JOURNEY-008 campaign.edit ✅, CI #29946012506; NAS-MIRROR-002 ✅ |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
-| NAS mirror (ASUSTOR) | verified | develop=d2dddc8, main=b5dd3b3, tag v0.9.0-prepilot-wave1 → b5dd3b3 | Hermes cron sync confirmed (develop + main + tags) |
+| NAS mirror (ASUSTOR) | verified | develop=2500696, main=b5dd3b3, tag v0.9.0-prepilot-wave1 → b5dd3b3 | Hermes cron sync confirmed (develop + main + tags) |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
