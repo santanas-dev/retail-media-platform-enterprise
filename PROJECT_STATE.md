@@ -53,9 +53,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | ab39af2 | ab39af2 | CLEAN-BOOT-002 db-setup image sharing fix, CI #29933227055 ✅ |
+| develop | ab39af2 | 6032752 | CLEAN-BOOT-002 db-setup image sharing fix, CI #29933227055 ✅ |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
-| NAS mirror (ASUSTOR) | pending | 8211596 | Hermes cron, syncing after JOURNEY-005-FU push |
+| NAS mirror (ASUSTOR) | verified | 6032752 | Hermes cron, synced after CLEAN-BOOT-002 |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
