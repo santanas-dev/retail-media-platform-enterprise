@@ -51,9 +51,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 664a882 | <this commit> | JOURNEY-005 user.create_advertiser reachable, CI pending |
+| develop | d9f7988 | e3a9e8d | JOURNEY-005 user.create_advertiser reachable, CI #29915158941 ✅ |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
-| NAS mirror (ASUSTOR) | verified | 42c3e17 | Hermes cron, synced after JOURNEY-004-FU push |
+| NAS mirror (ASUSTOR) | pending | d9f7988 | Hermes cron, syncing after JOURNEY-005 push |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
@@ -186,6 +186,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
   - **Registry:** user.create_advertiser → reachable. Reachable 13→14, blocked 27→26.
   - **Roadmap:** R4 (Роли и права) updated — user.create_advertiser ✅ in UI + Юзер-стори columns.
   - **Guard:** roadmap-consistency-check → 0 findings.
+  - **CI:** #29915158941 — 35/35 green (Python Unit, Import Boundaries, admin-web 171/171, advertiser-web, Behavioral ADR-008).
 - **Backend:** no code changes — endpoint existed and worked.
 - **Next:** advertiser.view из wave 1.
 
