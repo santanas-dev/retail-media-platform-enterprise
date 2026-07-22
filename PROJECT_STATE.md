@@ -1,9 +1,10 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-22 (JOURNEY-002 — advertiser.application_review reachable + green smoke)
+**Last updated:** 2026-07-22 (CI-GATE-001 ✅ — test_tampered_token_rejected stabilised, CI #29902709909 green 35/35)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
-**JOURNEY-002** — advertiser.application_review reachable. Admin /advertiser-applications → reviewing. UI-smoke green.
+**JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35), Behavioral not skipped.
+**CI-GATE-001** ✅ — test_tampered_token_rejected stabilised. Root cause: PyJWT ≥2.14 on Python 3.12 — token[:-2]+'xx' produces valid base64url. Fix: mid-character flip.
 
 **NAS-SYNC-OWNER-001** — Hermes-owned mirror sync replaces santa2 relay.
 - Sync/canon: ✅ NAS caught up 4215c23→2b352f2, cron c0687f5ced4d (nas-mirror-sync.sh, every 3 min), AGENTS.md/runbook/PROJECT_STATE updated.
@@ -47,7 +48,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | c45aeb2 | a04a5cd | JOURNEY-002 advertiser.application_review reachable, CI pending |
+| develop | a04a5cd | 724faf8 | JOURNEY-002 reachable + CI-GATE-001 stabilised, CI #29902709909 green (35/35) |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 | NAS mirror (ASUSTOR) | verified | 53b3ad5 | Hermes cron, NAS caught up after JOURNEY-001-FU push |
 
@@ -214,7 +215,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**G4-SERIES CLOSED** / **JOURNEY-001** ✅ advertiser.apply / **JOURNEY-002** — advertiser.application_review reachable.
+**JOURNEY-001** ✅ advertiser.apply / **JOURNEY-002** ✅ advertiser.application_review / **CI-GATE-001** ✅ test_tampered_token_rejected stabilised.
 Next: **advertiser.invite** из wave 1 pre-pilot journey plan.
 
 Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
