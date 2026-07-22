@@ -8,12 +8,14 @@ from packages.api.dependencies import (
     get_db,
     require_scoped_permission,
     set_rls_context,
+    get_current_active_user,
 )
 from packages.domain import repository
 from packages.domain.schemas import (
     AdvertiserBrandOut,
     AdvertiserContactOut,
     AdvertiserContractOut,
+    AdvertiserOrganizationCreate,
     AdvertiserOrganizationDetailOut,
     AdvertiserOrganizationOut,
     AdvertiserUserMembershipOut,
@@ -35,6 +37,29 @@ async def list_advertiser_organizations(
 ):
     items = await repository.list_advertiser_organizations(db)
     return [AdvertiserOrganizationOut.model_validate(o) for o in items]
+
+
+@router.post("/advertiser-organizations", response_model=AdvertiserOrganizationOut, status_code=201)
+async def create_advertiser_organization(
+    body: AdvertiserOrganizationCreate,
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+    current_user: dict = Depends(get_current_active_user),
+):
+    """Create a new advertiser organization (admin-only)."""
+    from packages.domain.repository import create_audit_event
+    org = await repository.create_advertiser_organization(
+        db, code=body.code, legal_name=body.legal_name, display_name=body.display_name,
+    )
+    await create_audit_event(
+        db,
+        actor_user_id=current_user["sub"],
+        action="advertiser_organization.created",
+        target_type="advertiser_organization",
+        target_id=org.id,
+    )
+    return AdvertiserOrganizationOut.model_validate(org)
 
 
 # ---------------------------------------------------------------------------

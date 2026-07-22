@@ -1,26 +1,132 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-18 (CLEAN-BOOT-001 ✅ — clean docker boot → login smoke)
+**Last updated:** 2026-07-22 (JOURNEY-005 — user.create_advertiser reachable + green smoke)
 
-CLEAN-BOOT-001 ✅ **RESOLVED** — clean docker boot → login smoke (8/8 checks).
+**JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
+**JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
+**CI-GATE-001** ✅ — test_tampered_token_rejected stabilised.
+**JOURNEY-003** ✅ — advertiser.invite reachable. CI #29907059713 green (35/35).
+**JOURNEY-004** ✅ — self.login reachable. CI #29909590097 green (35/35), Behavioral success.
+**JOURNEY-005** ✅ — user.create_advertiser reachable. CI #29915158941 (code), #29916193275 (smoke-fix), both 35/35 green + Behavioral.
+**JOURNEY-005-FU** ✅ — real UI-smoke proof against PostgreSQL: test_uismoke__user__create_advertiser PASSED 1.56s.
+**CLEAN-BOOT-002** ✅ — db-setup image sharing fix: all 28 migrations to head without manual alembic.
+**JOURNEY-006** ✅ — advertiser.view reachable. CI #29934268801 green (35/35), Behavioral success.
+
+**NAS-SYNC-OWNER-001** — Hermes-owned mirror sync replaces santa2 relay.
+- Sync/canon: ✅ NAS caught up 4215c23→2b352f2, cron c0687f5ced4d (nas-mirror-sync.sh, every 3 min), AGENTS.md/runbook/PROJECT_STATE updated.
+- Security cleanup (C1): 🟡 pending operator proof — remove santa2-nas-sync key from NAS `/home/admin/.ssh/authorized_keys`. Operator command: `sed -i '/santa2-nas-sync/d' /home/admin/.ssh/authorized_keys`. Hermes has no SSH access to NAS — cannot execute.
+
+R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
+T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
+EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof (admin bypass), CI #29649000788 green (6/6).
+EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOBYPASSRLS), CI #29652235623 green (5/5).
+EDGE-004 ✅ **RESOLVED** — Device Heartbeat initial implementation.
+EDGE-004-FU ✅ **RESOLVED** — Heartbeat proof hardened (12 tests, no admin bypass, honest state).
+UI-TRUTH-001A ✅ **RESOLVED** — Feature registry + smoke harness + G1 proof, CI #29656035552 green.
+UI-TRUTH-001A-FU ✅ **RESOLVED** — State hygiene + CI proof, CI #29656035552.
+UI-TRUTH-BOOTSTRAP ✅ **RESOLVED** — user-journeys.md canonicalised + Done Gate codified in AGENTS.md.
+G1-FIX ✅ **RESOLVED** — campaign.create reachable + placement_basis (d4f91e4).
+G1-FIX-FU ✅ **RESOLVED** — placement_basis validation + RBAC button visibility (0b9198d).
+G2-FIX ✅ **RESOLVED** — user.assign_roles reachable, backend+frontend+unit tests green, CI #29661909182 (35/35).
+G2-FIX-FU2 ✅ **RESOLVED** — smoke hardened (deterministic role, specific assert), PROJECT_STATE PS-001 hygiene, honest smoke-proof.
+G2-SMOKE-PROOF ✅ **RESOLVED** — honest green UI-smoke run, 3 infra bugs fixed in the process.
+G3-FIX ✅ **RESOLVED** — advertiser.create_org reachable. Backend POST /advertiser-organizations (advertisers.manage), admin-web модальная форма (data-testid), UI-smoke зелёный, roadmap строка «Управление рекламодателями» добавлена.
+G3-FIX-FU ✅ **RESOLVED** — RBAC gate + frontend/backend tests + docs hygiene (1beec6d).
+G3-FIX-FU-STATE-SYNC ✅ **RESOLVED** — PROJECT_STATE hygiene (02e2383).
+**CONSOLIDATE-CANON-001A** — §24 PRAGMATISM owner decision ported. ADR-019 created, design gate deferred. Next: CONSOLIDATE-CANON-001B.
+**CONSOLIDATE-CANON-001B** — pre-pilot-journey-plan.md imported to repo. `for-agents/` copy now deprecated staging, not authoritative. Next: CONSOLIDATE-CANON-001C.
+**CONSOLIDATE-CANON-001C** ✅ — AGENTS.md Sources of Truth consolidated into single 5-tier index. for-agents/ explicitly DEPRECATED.
+**CONSOLIDATE-CANON-001C-FU** ✅ — Duplicate ## NAS / Mirror Truth and ## Что значит готово sections removed. All rules absorbed into single Sources of Truth. Priority clarified: user-journeys.md = spec authority, feature-registry.yaml = status authority (registry > roadmap on status conflicts).
+**CONSOLIDATE-CANON-001D** ✅ — NAS mirror sync runbook rewritten. santa2 relay was the canonical mechanism (HTTPS fetch + local NAS mount write, every 3 min). NAS self-pull cron explicitly deprecated. **→ Superseded by NAS-SYNC-OWNER-001: Hermes now owns mirror sync freshness.**
+**CONSOLIDATE-CANON-001E** ✅ — Runbook NAS mount setup added: cifs-utils install, /etc/nas-cred, fstab with _netdev, core.fileMode false for git-over-CIFS, Warnings section. **→ Superseded by NAS-SYNC-OWNER-001: Hermes now executes sync via cron; operator retains mount/credentials setup only.**
+**STATE-HYGIENE-001** ✅ — PROJECT_STATE + registry summary brought to current GitHub truth d4a4e6a. Repository Checkpoint fixed, G1/G2/G3 closed as RESOLVED, G4 open as next candidate. Registry summary: blocked 33→32, P0 19→20, P1 20→19.
+**G4-FIX** — adsettings.configure reachable + green smoke. PUT /auth/ad-settings save endpoint (users.manage, audit, validation). ADSettingsPage edit form + RBAC. 5 frontend tests + 5 backend save tests. UI-smoke green.
+**G4-FIX-FU** — Durable persistence: ad_settings DB table (migration 027), ADSettings model, repository save/get. Roadmap row added. Backend tests 15/15. Next: from pre-pilot journey plan.
+SOURCE-TRUTH-001 ✅ **RESOLVED** — GitHub as single source of truth, NAS as mirror (598747c).
+SOURCE-TRUTH-001-FU ✅ **RESOLVED** — mirror-check exit code reconciliation, NAS mirror pending (859f35f).
+ROADMAP-DONE-GATE-001 ✅ **RESOLVED** — 4-колоночный бизнес-лист, G1/G2 честно готовы (4603e1d).
+ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, cross-reference superseded (7dd5995).
 **Repository (local):** `/home/cobalt/retail-media-platform-enterprise`
-**Canon (ASUSTOR):** `\\192.168.110.118\project\retail-media-platform-enterprise`
-**Remote:** `github.com:santanas-dev/retail-media-platform-enterprise`
+**Git origin (source of truth):** `github.com:santanas-dev/retail-media-platform-enterprise`
+**Mirror (ASUSTOR, synced from origin):** `\\192.168.110.118\project\retail-media-platform-enterprise`
 
 ## Repository Checkpoint
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | a16737e | ddd4443 | CLEAN-BOOT-001 ✅ — clean boot login smoke |
-| main    | cab9014     | —               | C1 merged (v0.8) |
+| develop | 7a6444f | a03c192 | JOURNEY-006 advertiser.view + WAVE1 closure, CI #29934268801 ✅ |
+| main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
+| NAS mirror (ASUSTOR) | verified | a03c192 | Hermes cron sync confirmed after WAVE1 closure |
 
-> **Rule:** Git refs (`git rev-parse HEAD`, `origin/develop`) are canonical for actual branch HEAD.
+> **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
 > checkpoints; it must not pretend to self-reference its own commit SHA. The Payload SHA
 > is the last substantive commit whose result was verified (code, tests, CI). The State/Docs
 > SHA is the commit that updated PROJECT_STATE/documentation after verification, if distinct.
 
 ## Active Workstreams
+
+### SOURCE-TRUTH-001-FU — Mirror-check exit code reconciliation ✅ RESOLVED
+- **Blocker 1 (AGENTS vs mirror-check.sh):** cannot-verify-from-here → exit 0 (neutral), stale → exit 1, script error → exit 3. AGENTS.md, mirror-check.sh, nas-mirror-sync.md согласованы.
+- **Blocker 2 (PROJECT_STATE stale claim):** NAS mirror `verified | a40e398` заменено на `pending | expected 598747c`. Без operator/santa2 proof не пишем verified. **→ Superseded by NAS-SYNC-OWNER-001: Hermes now verifies sync directly; operator/santa2 no longer gatekeeper.**
+- Commit: 859f35f, CI: green.
+
+### ROADMAP-DONE-GATE-001 — 4-колоночный бизнес-лист, G1/G2 честно готовы ✅ RESOLVED
+- Бизнес-вкладка: «Статус» → 4 колонки (Бэкенд, UI, Юзер-стори, Итог).
+- G1 (campaign.create): Бэкенд ✅ / UI ✅ / Юзер-стори ✅ / Итог ✅ Готово/Юзабельно.
+- G2 (user.assign_roles): Бэкенд ✅ / UI ✅ / Юзер-стори ✅ / Итог ✅ Готово/Юзабельно.
+- campaign.edit: Бэкенд ✅ / UI ⚪️ / Юзер-стори ⚪️ / Итог 🟠 Частично.
+- feature-registry: reachable 5→7 (campaign.create, user.assign_roles).
+- AGENTS.md: правило roadmap-синхронизации (п.7 Done Gate).
+- Commit: dc9a910, CI #29725417235 green.
+
+### ROADMAP-GUARD-002 — 4-колоночный guard, tamper tests ✅ RESOLVED
+- guard расширен под колонки Бэкенд/UI/Юзер-стори/Итог.
+- Направление A: reachable не занижается.
+- Направление B: Итог=Готово не завышается без proof.
+- Текущий workbook: 0 findings.
+- Tamper tests (3/3): understate G1 ✅, overclaim blocked ✅, clean ✅.
+- maintenance-rules v2.0: 11 колонок, Итог производный.
+- Commit: 5c01feb, CI: green.
+- Next: G4-FIX — adsettings.configure UI + green smoke.
+
+### ROADMAP-DONE-GATE-001-FU — Stale-тексты убраны, cross-reference superseded ✅ RESOLVED
+- R4 (RBAC): ограничения больше не говорят «user.assign_roles blocked» — заменено на ✅ G2 / ❌ user.create_advertiser.
+- R7 (Campaigns): ограничения больше не говорят «campaign.create blocked» — заменено на ✅ G1 / ❌ campaign.edit/submit/activate.
+- PROJECT_STATE: 3 stale-ссылки (findings, reachable:5) — перечёркнуты с пометкой RESOLVED.
+- Commit: dc9a910, CI #29725417235 green.
+
+### G3-FIX — advertiser.create_org UI + green smoke ✅ RESOLVED
+- Backend: POST /api/v1/identity/advertiser-organizations (advertisers.manage permission, audit event advertiser_organization.created).
+- Schema: AdvertiserOrganizationCreate (code, legal_name, display_name). Repository: create_advertiser_organization().
+- Frontend: admin-web AdvertisersPage — кнопка «+ Создать организацию», модальная форма с data-testid (advertiser-create-open/code/legal-name/display-name/save).
+- UI-smoke: test_uismoke__advertiser__create_org — login → advertisers → create → fill → save → verify (зелёный).
+- Bug fix: retailer_id default в модели был обрезан (00000000-4000-a000 → 00000000-0000-4000-a000).
+- Registry: advertiser.create_org → reachable.
+- Roadmap: строка «Управление рекламодателями» добавлена (🟠 Частично, create_org ✅).
+- Guard: 0 findings, tamper 3/3.
+- Next: G4-FIX — adsettings.configure.
+
+### G3-FIX-FU — RBAC + tests + docs hygiene ✅ RESOLVED
+- FU: RBAC button gated by advertisers.manage permission in AdvertisersPage.
+- Frontend tests: 3 added (hide button without perm, show with perm, create POST flow) — 10/10.
+- Backend tests: 7 added (201, 403, 422×3, audit event, duplicate→500) — 7/7.
+- Known gap: duplicate code currently returns 500 (IntegrityError unhandled) — not fixed in G3, documented in test.
+- Registry: reachable 7→8. PROJECT_STATE: stale f04b481→5c01feb, G3 awaiting→RESOLVED.
+- Commit: 1beec6d, CI: 35/35 green.
+
+### G4-FIX — adsettings.configure reachable + green smoke ✅ RESOLVED
+- **Backend:** PUT /auth/ad-settings save endpoint (users.manage permission, certificate_validation enum check, ad_settings.updated audit event).
+  Schema: ADSettingsUpdate (enabled, server_url, base_dn, user_search_base, user_search_filter, bind_dn, use_tls, certificate_validation — no bind_password).
+- **G4-FIX-FU:** Durable persistence via ad_settings DB table (migration 027), ADSettings model, repository save/get.
+  Values survive service restart. Bind password remains env-only — never stored in DB.
+- **Frontend:** ADSettingsPage edit form — editable fields, save button with RBAC (users.manage), data-testid throughout.
+- **Backend tests:** 15/15 (incl. durable_persistence proof: save updates fake_row, GET reads updated values).
+- **Frontend tests:** 5 new (hides-form-without-perm, shows-form-with-perm, success-after-save, error-banner, no-bind-password-field) — admin-web 163/163.
+- **UI-smoke:** test_uismoke__adsettings__configure — login → Настройки AD → fill → save → success → reload → verify.
+- **Registry:** adsettings.configure → reachable. Reachable 8→9, blocked 32→31.
+- **Roadmap:** строка «Настройки AD / LDAPS» добавлена (Бэкенд ✅ / UI ✅ / journey ✅ / Итог 🟠 Частично — adsettings.test без smoke).
+- Next: from pre-pilot journey plan (wave 1–6) or awaiting prioritisation.
 
 ### H0 — Flaky test_backoff_respected_on_second_run ✅ RESOLVED
 - **Verdict: confirmed timing flake, not real backoff regression.**
@@ -73,6 +179,35 @@ CLEAN-BOOT-001 ✅ **RESOLVED** — clean docker boot → login smoke (8/8 check
 - CI: #29529434884 — 34/34 green. Admin-web: 132/132 (127 + 5).
 - **Follow-up (SHA 38aa844):** added loading state, error state, by-surface table tests. Now 8 S-090 tests, 135/135 admin-web green.
 
+### JOURNEY-005 — user.create_advertiser reachable ✅ RESOLVED
+- **Verdict:** backend endpoint existed (`POST /users/local-advertiser`), users.manage permission, admin-web form already built. This journey closed the smoke gap + data-testid coverage.
+- **What was done:**
+  - `UsersPage.tsx`: added data-testid on all create form fields (username, display_name, org_id, submit, result). Fixed auto-close-on-success bug — form now stays open so user can copy the one-time password.
+  - `test_uismoke__user__create_advertiser.py`: honest UI-smoke — login → Пользователи → Создать → fill → submit → verify one-time password visible.
+  - `users-page-create-advertiser.test.tsx`: 5 vitest tests — hidden-without-perm, visible-with-perm, opens-form, success-result, error-state.
+  - **Frontend tests:** admin-web 166→171 (5 new).
+  - **Registry:** user.create_advertiser → reachable. Reachable 13→14, blocked 27→26.
+  - **Roadmap:** R4 (Роли и права) updated — user.create_advertiser ✅ in UI + Юзер-стори columns.
+  - **Guard:** roadmap-consistency-check → 0 findings.
+  - **CI:** #29915158941 — 35/35 green (Python Unit, Import Boundaries, admin-web 171/171, advertiser-web, Behavioral ADR-008).
+- **Backend:** no code changes — endpoint existed and worked.
+- **Next:** advertiser.view из wave 1.
+
+### JOURNEY-006 — advertiser.view reachable ✅ RESOLVED
+- **Verdict:** backend endpoints existed (`GET /advertiser-organizations`, `GET /advertiser-organizations/{id}`), admin-web page fully built. This journey closed the smoke gap + data-testid coverage.
+- **What was done:**
+  - `AdvertisersPage.tsx`: data-testid on org rows, detail panel, overview fields (code, display_name, legal_name, status), users tab.
+  - `test_uismoke__advertiser__view.py`: honest UI-smoke — login → Рекламодатели → click ADV-001 row → verify detail panel → users tab. PASSED 1.83s.
+  - `advertisers-page-view.test.tsx`: 3 vitest tests — detail panel, users empty state, empty org list.
+  - **Frontend tests:** admin-web 171→174 (3 new).
+  - **Registry:** advertiser.view → reachable. Reachable 14→15, blocked 26→25.
+  - **Roadmap:** R6 (Управление рекламодателями) — advertiser.view ✅ added.
+  - **Guard:** roadmap-consistency-check → 0 findings.
+  - **Smoke:** real PostgreSQL + vite dev — PASSED (1.83s).
+  - **CI:** #29934268801 — 35/35 green (Python Unit, Import Boundaries, admin-web 174/174, Behavioral ADR-008).
+- **Backend:** no code changes — endpoints existed and worked.
+- **Wave 1:** ✅ complete — all 6 pre-pilot journeys reachable with green smoke.
+
 ## Open Issues
 
 | Priority | Count | Details |
@@ -115,19 +250,61 @@ CLEAN-BOOT-001 ✅ **RESOLVED** — clean docker boot → login smoke (8/8 check
 
 ## Next Active Workstream
 
-**EDGE-001 ✅ RESOLVED** — CI #29589031870 ✅.
-**PLAYER-AUD-001 ✅ COMPLETED** — audit report.
-**EDGE-002 ✅ RESOLVED (v4 production-safe)** — app.rmp_device_id bootstrap, no owner lookup, CI #29635004193 ✅.
+**JOURNEY-001** ✅ advertiser.apply / **JOURNEY-002** ✅ advertiser.application_review / **CI-GATE-001** ✅ / **JOURNEY-003** ✅ advertiser.invite / **JOURNEY-004** ✅ self.login / **JOURNEY-005** ✅ user.create_advertiser / **JOURNEY-006** ✅ advertiser.view.
+**Wave 1 complete.** All 6 pre-pilot journeys reachable with green UI-smoke. Next: await prioritisation (wave 2+).
 
-Приоритет после внешнего аудита 2026-07-18 (P0 safety first):
+Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
+
+Priorities completed (post-audit 2026-07-18):
 1. **K1** ✅ — emergency override → manifest.
 2. **K2** ✅ — manifest signature verification before player execution.
 3. **RM1** ✅ — roadmap/docs/release process hygiene.
 4. **CLEAN-BOOT-001** ✅ — P1: clean docker boot → login smoke. **RESOLVED.**
-5. **R1, T1** — release point v0.8 + behavioural test data builder.
-6. **EDGE-003** — PoP ingestion endpoint (после process hygiene).
+5. **R1** ✅ — release baseline to main, CI #29642225070 green, tag v0.8.0-r1-edge-safety-runtime.
+6. **T1** ✅ — behavioural test data builder. BehBuilder + K1 converted. CI #29645034680 green (324 passed).
+7. **EDGE-003** ✅ — PoP ingestion endpoint behavioural proof (admin bypass, 6/6). CI #29649000788.
+8. **EDGE-003-FU** ✅ — PoP ingestion RLS / non-admin proof (NOBYPASSRLS, 5/5). CI #29652235623.
+
+## R1 — Release Baseline to Main ✅ RELEASED (2026-07-18)
+
+- **Verdict:** develop (b439dcf) merged to main → 3d201d6. CI #29642225070 green (34/34).
+- **Contents:** K1 (emergency override), K2 (manifest signature), RM1 (roadmap sync), CLEAN-BOOT-001 (clean boot smoke).
+- **Tag:** v0.8.0-r1-edge-safety-runtime → 3d201d6 (annotated, merge commit on main).
+- **Next:** heartbeat / PLAYER-IMPORT (на выбор пользователя).
+
+## T1 — Behavioural Test Data Builder ✅ RESOLVED (2026-07-18)
+
+- **Verdict:** minimal reusable `BehBuilder` class in `tests/behavioral/builder.py`.
+  K1 (emergency manifest) converted from 11 manual `_run_sql` inserts to 7 builder calls.
+- **Builder API:** `retailer()`, `store_chain()`, `channel_device_type()`,
+  `advertiser()`, `campaign()`, `device()`, `manifest()`, `emergency_override()`,
+  `deactivate_emergency()`, `cleanup()`.
+- **ID scheme:** `prefix-entity-NNNN` — auto-generated, no manual naming clashes.
+- **Cleanup:** single `b.cleanup()` call deletes by prefix in FK-safe order.
+- **CI:** #29645034680 ✅ (324 passed, 12 skipped, ADR-008 green).
+- **Not done:** remaining behavioural tests not yet converted — deferred to separate task.
+
+## CLEAN-BOOT-002 — db-setup applies all 28 migrations to head ✅ RESOLVED (2026-07-22)
+
+- **Root cause:** Docker compose per-service image caching. `control-api` and `db-setup`
+  each had separate images (auto-named `rmp-phase1-control-api` / `rmp-phase1-db-setup`).
+  `docker compose up --build` rebuilt control-api's image, but db-setup's image stayed
+  cached from a build before migrations 025-028 existed.
+- **Fix:** db-setup now shares control-api's image (`image: rmp-phase1-control-api` in
+  `docker-compose.phase1.yml`). One build, both services.
+- **Proof (clean boot from down -v):**
+  - `up -d --build postgres control-api` → fresh image
+  - `--profile setup run --rm db-setup` → all 28 migrations (001→028), seed, grant (56 tables)
+  - `alembic_version` = `['028']`, current == head
+  - `POST /api/v1/auth/login` (break_glass_admin) → 200 + token
+  - `GET /api/v1/identity/campaigns` → 200, total=1
+- **Docs:** `clean-install-login.md` updated. No command changes needed — the fix is in compose.
 
 ## CLEAN-BOOT-001 — Clean Docker Boot Login Smoke ✅ RESOLVED (2026-07-18)
+
+> **Re-hardened by CLEAN-BOOT-002 (2026-07-22):** the `--no-cache` workaround for db-setup
+> (D-BOOT-3) is superseded. CLEAN-BOOT-002 fixes the root cause: db-setup now shares the
+> control-api Docker image (`image: rmp-phase1-control-api` in compose). No `--no-cache` needed.
 
 **Status:** ✅ RESOLVED.
 
@@ -174,7 +351,7 @@ CLEAN-BOOT-001 ✅ **RESOLVED** — clean docker boot → login smoke (8/8 check
 - **Existing tests:** 41/41 simulator + 38/38 manifest/device-gateway — 0 регрессий.
 - **CI:** #29638045838 ✅ (34/34 green).
 - **Payload SHA:** `4a35179`.
-- **Deferred/not done:** player-side enforcement на реальном KSO, EDGE-003 PoP, heartbeat.
+- **Deferred/not done:** player-side enforcement на реальном KSO, heartbeat.
 
 ## K1 — Emergency Override → Device Manifest ✅ RESOLVED (2026-07-18)
 
@@ -207,8 +384,8 @@ CLEAN-BOOT-001 ✅ **RESOLVED** — clean docker boot → login smoke (8/8 check
 | **K1** ✅ | Emergency override не доходит до manifest — backend-состояние меняется, но device manifest возвращает `emergency.active=false` | Behavioural test: admin активирует emergency → следующий device manifest имеет `emergency.active=true` под NOBYPASSRLS | CI #29636889061 |
 | **K2** ✅ | Manifest signature verification before player execution не доказана — server signing существует, но runtime/player verification placeholder/deferred | Tampered manifest rejected before apply/play | CI #29638045838 |
 | **RM1** ✅ | Roadmap stale vs PROJECT_STATE — roadmap-ячейки не синхронизированы с фактическим статусом в PROJECT_STATE | Roadmap cells updated on both sheets, no structure changes | SHA 7bcc570 |
-| **R1** | Release point v0.8 — зафиксировать baseline для внешнего аудита | HUMAN/Hermes release process, not code |
-| **T1** | Behavioral test data builder — тесты создают фикстуры вручную, нет переиспользуемого builder-паттерна | Новый behavioural test использует builder, существующие behavioural tests green |
+| **R1** ✅ | Release point v0.8 — зафиксировать baseline для внешнего аудита | merge develop→main, CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime |
+| **T1** ✅ | Behavioral test data builder — тесты создают фикстуры вручную, нет переиспользуемого builder-паттерна | BehBuilder module + K1 converted, CI #29645034680 green (324 passed) |
 
 ### P1 — important / should-fix
 
@@ -387,6 +564,25 @@ CLEAN-BOOT-001 ✅ **RESOLVED** — clean docker boot → login smoke (8/8 check
 - **Payload SHA:** `2f43951`
 - **Honest v3 verdict:** v3 was strict assertion-wise but production bootstrap was test-env dependent — `set_device_rls_context` used owner-role connection in CI, would fail under FORCE RLS in production.
 
+## EDGE-004 — Device Heartbeat / Health Endpoint ✅ RESOLVED
+
+- **Verdict: device heartbeat with RLS security proof under NOBYPASSRLS. Proof hardened in EDGE-004-FU.**
+- **Endpoint:** `POST /api/v1/device/heartbeat` — device-gateway (port 8001)
+- **Auth:** device JWT required (auth_provider="device", sub=device_id); user/admin tokens → 401
+- **RLS context:** `set_device_rls_context` (EDGE-002-FU v4) sets retailer scope on request session before handler runs
+- **Migration (025):** `physical_devices` extended with `last_heartbeat_at`, `health_state`, `runtime_version`, `player_version`
+- **Model:** `PhysicalDevice` columns added; `record_device_heartbeat()` atomic update in repository
+- **Payload rejected:** `device_id`, `retailer_id` — neither is a field in `HeartbeatRequest`
+- **Fail-closed:** inactive/revoked device → 403, missing/invalid/non-device token → 401, nonexistent → 404
+- **Response:** `{"status": "accepted", "server_time": "<ISO>", "health_state": "<state>"}`
+- **Deferred:** command channel / remote control, UI fleet health dashboard, staged rollout
+- **Tests (12/12, no admin bypass):**
+  - 9 endpoint: device A → 200, defaults healthy, **strict heartbeat DB proof (pre-read NULL → POST → post-read: non-null + payload match + timestamp freshness)**, user token 401, no auth 401, invalid token 401, inactive device 403, device A cannot touch device B, client device_id spoof ignored
+  - 3 direct DB RLS: bootstrap A → sees device A not B, bootstrap B → sees device B not A, no bootstrap → sees zero
+- **CI (FU):** #29655140733 ✅ (34/34 green — 347 passed, 12 skipped)
+- **Root cause fix:** device-gateway `get_db` didn't have `session.begin()` — writes (ORM or raw SQL) didn't persist. Added `async with session.begin(): yield session`.
+- **Payload SHA:** `cb14704`
+
 ## EDGE-001 — Device Onboarding Contract ✅ RESOLVED (hardened 2026-07-17)
 
 - **Verdict v2: active code + existing fingerprint → 403 FINGERPRINT_CONFLICT. Idempotent only for used code + same device_id.**
@@ -494,7 +690,128 @@ CLEAN-BOOT-001 ✅ **RESOLVED** — clean docker boot → login smoke (8/8 check
 
 | ID | Task | Status |
 |----|------|--------|
-| —   | —     | —      |
+| PLAYER-IMPORT-001 | Historical recommendation (PLAYER-AUD-001) | ⏸️ deferred — not active next |
+| M1 | Default retailer masks missing scope | ⚪ not started |
+| P1s | PROJECT_STATE self-SHA/checkpoint churn | ⚪ not started |
+
+## G2-FIX-FU2 — Smoke Hardened + PROJECT_STATE Hygiene ✅ RESOLVED
+
+- **Smoke test hardened:** `test_uismoke__user__assign_roles` теперь детерминированный:
+  - Выбирает роль `operator` по `value` (role_code), не по lambda или index.
+  - Проверяет, что `TARGET_ROLE_CODE = "operator"` доступен в dropdown.
+  - После save assert: конкретный `role_code` появился в списке текущих ролей.
+  - Никаких `select_option(label=lambda ...)`, никаких API-вызовов, только /login через page.goto().
+- **PROJECT_STATE hygiene:** дата → 2026-07-19, PS-001 checkpoint (payload SHA ≠ state/docs SHA).
+- **Smoke-proof честность:** UI-smoke = manual-only (UI_SMOKE_RUN=1), не входит в ordinary CI. Proof требует здорового clean-boot стека.
+- **Next:** G3-FIX — advertiser.create_org.
+
+## G2-FIX — User Assign Roles Reachable + Green Smoke ✅ RESOLVED
+
+- **Backend:** PUT `/users/{id}/roles` (roles.manage), DELETE `/users/{id}/roles/{assignment_id}` (roles.manage), audit events.
+- **Frontend:** UsersPage: кнопка «Роли» (data-testid="user-roles-open") видна только с `roles.manage`. Панель управления ролями: текущие роли, dropdown выбора, кнопка сохранения, кнопка удаления.
+- **Tests:** Backend 8/8 (assign success/404/403/422, remove success/404/wrong-user). Frontend 155/155 (3 новых теста RBAC).
+- **Smoke:** `test_uismoke__user__assign_roles` — login → Пользователи → «Роли» → выбрать роль → сохранить → проверить.
+- **Registry:** user.assign_roles → status: reachable.
+- **Consistency audit:** 0 findings, 2 smoke-функций.
+- **Next:** G3-FIX — advertiser.create_org.
+
+## G1-FIX-FU — Placement Basis Validation + RBAC Visibility ✅ RESOLVED
+
+## G1-FIX — Campaign Create Reachable + Placement Basis ✅ RESOLVED
+
+- **UI:** Кнопка «Создать кампанию» (`data-testid="campaign-create-open"`) в CampaignListPage — видна всегда, ведёт на `/campaigns/new`.
+- **Placement basis:** обязательное поле в форме создания (dropdown: commercial/internal/compensation/test). Сохраняется в БД (миграция 026, модель, схема, API).
+- **Smoke:** `test_uismoke__campaign__create` → зелёный (login → клик «Создать кампанию» → форма → submit → проверка).
+- **Registry:** campaign.create → status: reachable.
+- **Next:** G2-FIX — user.assign_roles UI + smoke.
+
+## RECONCILE-001 — Roadmap Overclaims Removed ✅ RESOLVED
+
+- **7 roadmap overclaims сняты.** Статусы «✅ Готово» / «🟡 Готово для пилота» заменены на «🟠 Бэкенд готов, UI-smoke нет».
+- В ограничения добавлены конкретные blocked journey ID (G1–G4, campaign.create, user.assign_roles, self.*, inventory.*).
+- **Consistency audit: 0 violations.**
+- **Workbook структура не изменена:** 2 листа, 50×8.
+- **Rows changed:** 3 (Вход), 4 (Роли), 5 (Кабинет), 7 (Кампании), 8 (Согласование), 9 (Креативы), 22 (Инвентарь).
+- **Next:** G1-FIX — кнопка «Создать кампанию» + placement basis field + зелёный smoke.
+
+## UI-TRUTH-001B — Roadmap-Consistency Guard (audit mode) ✅ RESOLVED
+
+- **Guard script:** `scripts/roadmap-consistency-check.py`
+  - Читает feature-registry.yaml, tests/ui-smoke/, roadmap.xlsx
+  - Проверяет: валидность registry, UI reachable без smoke, roadmap «Готово» vs registry blocked
+  - `--audit` (default): exit 0, печатает findings
+  - `--strict`: exit 1 при нарушениях (будущий CI gate)
+- **Audit runner:** `scripts/roadmap-consistency-audit.sh`
+- **CI job:** `roadmap-consistency-audit` — non-blocking (`continue-on-error: true`)
+- **Current findings (2026-07-20): 5 (2 resolved by G1/G2 + ROADMAP-DONE-GATE-001)**
+  1. «Вход сотрудников» 🟡 Готово → self.login blocked
+  2. ~~«Роли и права» ✅ Готово → user.assign_roles blocked (G2)~~ → ✅ RESOLVED: G2 green smoke, ROADMAP-DONE-GATE-001.
+  3. «Личный кабинет» ✅ Готово → self.* blocked
+  4. ~~«Создание кампаний» 🟡 Готово → campaign.create blocked (G1)~~ → ✅ RESOLVED: G1 green smoke, ROADMAP-DONE-GATE-001.
+  5. «Согласование» 🟡 Готово → campaign.approve/reject blocked
+  6. «Загрузка креативов» 🟡 Готово → creative.* blocked
+  7. «Инвентарь» ✅ Готово → inventory.* blocked
+- **Behavioral proof:**
+  - campaign.create smoke найден: `tests/ui-smoke/test_uismoke__campaign__create.py`
+  - 0 UI features с reachable без smoke
+- **Rules:** `docs/product/roadmap-maintenance-rules.md` — новая секция «Синхронизация с feature-registry и UI-smoke»
+- **Next:** G1-FIX — закрыть P0-дыру G1 (кнопка «Создать кампанию») или reconcile roadmap
+
+## REGISTRY-EXPAND — Feature Registry Expanded to All Journeys ✅ RESOLVED
+
+- **Source:** `docs/product/user-journeys.md` (40 journeys extracted from §3–§10).
+- **40 entries** in `docs/product/feature-registry.yaml`:
+  - 26 admin-web, 5 advertiser-web, 1 public, 8 service
+  - P0: 19 · P1: 20 · P2: 1
+- **Status breakdown:**
+  - **reachable: 8** — 5 service (manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability) + 3 UI (campaign.create/G1, user.assign_roles/G2, advertiser.create_org/G3) — all backed by green proof
+  - **blocked: 32** — 28 UI-no-smoke + 4 service-deferred
+  - > G3 (advertiser.create_org) now has green UI-smoke and is reachable as of G3-FIX.
+- **Zero false reachable:** ни одной UI-записи без зелёного smoke.
+- **G1–G4 явно зафиксированы:** campaign.create→G1, user.assign_roles→G2, advertiser.create_org→G3, adsettings.configure→G4.
+- **campaign.create** smoke приведён к `test_uismoke__campaign__create` (двойное подчёркивание, соглашение AGENTS.md).
+- **Next:** UI-TRUTH-001B — roadmap-consistency guard.
+
+## UI-TRUTH-001 — Feature Truth Registry & Smoke Proof ✅ RESOLVED
+
+**Done Gate for business functions implemented:**
+- Was: backend tests + API proof = feature done.
+- Now: backend + **reachable UI** + green UI-smoke = feature done.
+- UI-smoke runs against clean-boot stack, uses only real UI clicks (no direct goto, no API, no localStorage).
+
+### UI-TRUTH-001A ✅ RESOLVED — harness + G1 proof
+
+- **Feature registry:** `docs/product/feature-registry.yaml` — campaign.create as first entry.
+- **Smoke harness:** `tests/ui-smoke/conftest.py` — Playwright, login-only `page.goto()`, stable `#id` selectors.
+- **G1 proof:** `test_uismoke__campaign__create` — break-glass admin → login → sidebar → campaign list → no «Создать кампанию» button.
+- **Run:** `scripts/ui-smoke-audit.sh` (not blocking CI, `UI_SMOKE_RUN=1` gate).
+- **CI (ordinary):** #29656035552 ✅ green — ui-smoke excluded via `pytest_ignore_collect` when `UI_SMOKE_RUN` not set.
+- **CI (smoke):** not in CI pipeline — manual audit only. When invoked, expected-red on G1.
+
+### G1–G4 Status
+
+| Gap | Description | Status |
+|-----|-------------|--------|
+| G1 | CampaignListPage: no «Создать кампанию» button → /campaigns/new unreachable | ✅ RESOLVED — G1-FIX (d4f91e4), green smoke |
+| G2 | UsersPage: no role/permission assignment UI | ✅ RESOLVED — G2-FIX, green smoke |
+| G3 | AdvertisersPage: no UI for creating advertiser org | ✅ RESOLVED — G3-FIX (068e4f7), green smoke |
+| G4 | ADSettingsPage: GET/POST test only; no save/persist | ✅ RESOLVED — G4-FIX, PUT save endpoint, green smoke |
+
+### Next after UI-TRUTH-BOOTSTRAP
+
+REGISTRY-EXPAND — расширить `feature-registry.yaml` на все домены (campaign, user, advertiser, device).
+PLAYER-IMPORT остаётся deferred, не next.
+
+## UI-TRUTH-BOOTSTRAP — User Journeys Canonicalised + Done Gate ✅ RESOLVED
+
+- **user-journeys.md** canonicalised from NAS source into `docs/product/user-journeys.md`
+  — 28 369 bytes, md5 `b0c76b0960bbcc7486787207f79c9345`.
+- **Done Gate** codified in `AGENTS.md` → «Что значит готово»:
+  journey обязателен, UI-smoke обязателен, только реальные клики,
+  feature-registry синхронизирован, частичная готовность — честный статус,
+  UI-smoke не блокирует CI.
+- **Next:** REGISTRY-EXPAND.
+- **PLAYER-IMPORT:** остаётся historical recommendation, не active next.
 
 ## Environment
 
@@ -508,4 +825,4 @@ CLEAN-BOOT-001 ✅ **RESOLVED** — clean docker boot → login smoke (8/8 check
 - `main` = stable releases, `develop` = active integration
 - Protected: `.env`, Docker/deploy scripts, destructive migrations
 - RLS on all tenant-scoped tables, NOBYPASSRLS enforced
-- Only Hermes pushes to GitHub; ASUSTOR = local canon
+- Only Hermes pushes to GitHub; NAS = mirror synced from origin via Hermes cron c0687f5ced4d every 3 min

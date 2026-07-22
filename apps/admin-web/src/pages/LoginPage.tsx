@@ -49,7 +49,8 @@ export default function LoginPage() {
         fontFamily: "var(--rmp-font-family)",
       }}
     >
-      <main
+      <form
+        onSubmit={handleSubmit}
         style={{
           background: "var(--rmp-bg-surface)",
           padding: "var(--rmp-space-8)",
@@ -172,7 +173,7 @@ export default function LoginPage() {
         >
           {loading ? "Вход..." : "Войти"}
         </button>
-      </main>
+      </form>
     </div>
   );
 }

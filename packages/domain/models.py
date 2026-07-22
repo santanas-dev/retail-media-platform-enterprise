@@ -214,6 +214,19 @@ class PhysicalDevice(Base):
         comment="Current state CACHE. See device_status_history for authoritative transitions.",
     )
     last_seen_at = Column(DateTime(timezone=True), nullable=True)
+    last_heartbeat_at = Column(DateTime(timezone=True), nullable=True)
+    health_state = Column(
+        String(32), nullable=False, default="unknown",
+        comment="Device health: unknown/healthy/degraded/unhealthy",
+    )
+    runtime_version = Column(
+        String(64), nullable=False, default="",
+        comment="Player/sidecar runtime version reported by device",
+    )
+    player_version = Column(
+        String(128), nullable=False, default="",
+        comment="Player application version/build reported by device",
+    )
     current_manifest_id = Column(String(36), nullable=True)
     retailer_id = Column(String(36), ForeignKey("retailers.id"), nullable=True)
     cache_size_bytes = Column(Integer, nullable=False, default=0)
@@ -572,7 +585,7 @@ class AdvertiserOrganization(Base):
     __tablename__ = "advertiser_organizations"
 
     id = Column(String(36), primary_key=True, default=_new_uuid)
-    retailer_id = Column(String(36), ForeignKey("retailers.id"), nullable=False, index=True, default="00000000-4000-a000-000000000001")
+    retailer_id = Column(String(36), ForeignKey("retailers.id"), nullable=False, index=True, default="00000000-0000-4000-a000-000000000001")
     code = Column(String(64), nullable=False, unique=True, index=True)
     legal_name = Column(String(255), nullable=False)
     display_name = Column(String(255), nullable=False)
@@ -700,6 +713,7 @@ class Campaign(Base):
     start_at = Column(DateTime(timezone=True), nullable=True)
     end_at = Column(DateTime(timezone=True), nullable=True)
     timezone = Column(String(64), nullable=False, default="Europe/Moscow")
+    placement_basis = Column(String(32), nullable=False, default="commercial")
     created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
@@ -1023,6 +1037,10 @@ class DeliveryManifest(Base):
     delivered_at = Column(DateTime(timezone=True), nullable=True)
     last_error = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    retailer_id = Column(
+        String(36), ForeignKey("retailers.id"),
+        nullable=False, default="00000000-0000-4000-a000-000000000001",
+    )
 
 
 class DeliveryManifestSurface(Base):
@@ -1127,6 +1145,10 @@ class PopEventRaw(Base):
         DateTime(timezone=True), nullable=False, default=_utcnow, index=True,
     )
     batch_id = Column(String(36), nullable=True, index=True)
+    retailer_id = Column(
+        String(36), ForeignKey("retailers.id"),
+        nullable=False, default="00000000-0000-4000-a000-000000000001",
+    )
 
 
 class PopDedupIndex(Base):
@@ -1152,9 +1174,28 @@ class PopIngestionBatch(Base):
     quarantined_count = Column(Integer, nullable=False, default=0)
 
 
-# ---------------------------------------------------------------------------
-# Creative Upload Sessions (S-017)
-# ---------------------------------------------------------------------------
+class ADSettings(Base):
+    """AD/LDAPS settings — singleton row (S-034, G4-FIX durable persistence).
+
+    Bind password is NEVER stored here — it remains env-only (AD_BIND_PASSWORD).
+    """
+
+    __tablename__ = "ad_settings"
+
+    id = Column(Integer, primary_key=True, default=1)
+    enabled = Column(Boolean, nullable=False, default=False)
+    server_url = Column(Text, nullable=False, default="")
+    base_dn = Column(Text, nullable=False, default="")
+    user_search_base = Column(Text, nullable=False, default="")
+    user_search_filter = Column(Text, nullable=False, default="(sAMAccountName={username})")
+    bind_dn = Column(Text, nullable=False, default="")
+    use_tls = Column(Boolean, nullable=False, default=True)
+    certificate_validation = Column(
+        String(16), nullable=False, default="required",
+    )
+    updated_at = Column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow,
+    )
 
 
 class CreativeUploadSession(Base):
@@ -1342,4 +1383,5 @@ REQUIRED_TABLES = frozenset({
     "advertiser_invites",
     "campaign_briefs",
     "device_onboarding_codes",
+    "ad_settings",
 })

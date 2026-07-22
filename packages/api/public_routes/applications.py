@@ -53,7 +53,7 @@ async def submit_application(
     # Audit event
     await repository.create_audit_event(
         db,
-        actor_user_id="public",
+        actor_user_id=None,  # public submission — no authenticated user
         action="advertiser_application.created",
         target_type="advertiser_application",
         target_id=application.id,

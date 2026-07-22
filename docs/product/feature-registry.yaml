@@ -1,0 +1,589 @@
+# Retail Media Platform — Feature Registry
+# UI-TRUTH-001 / UI-TRUTH-BOOTSTRAP / REGISTRY-EXPAND: Ground truth for what
+# end-users can actually do through the UI.
+#
+# Convention:
+#   id:       stable feature identifier (domain.action), from user-journeys.md
+#   frontend: admin-web | advertiser-web | public | service
+#   name:     human-readable (Russian, user-facing name)
+#   route:    entry route (only /login or a public landing page; n/a for service)
+#   path:     expected click path from entry route to feature completion (n/a for service)
+#   smoke:    test function name: test_uismoke__<domain>__<action> for UI; service/behavioral test name for service
+#   priority: P0 (pilot) | P1 (stable release) | P2 (later)
+#   roles:    list of role codes allowed to use this feature (from user-journeys.md §3)
+#   status:   reachable | blocked — reachable ONLY if green smoke exists (UI) or green behavioral proof (service)
+#   gap:      why blocked (only when status=blocked); reference G1–G4 where applicable
+#
+# OWNER: product (human). Agents must not mark a feature reachable without green proof.
+
+features:
+
+  # ═══════════════════════════════════════════════════════════════
+  # P0 — admin-web (campaign + creative + user + advertiser core)
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: campaign.create
+    frontend: admin-web
+    name: Создание кампании
+    route: /login
+    path:
+      - login (campaign_manager или break-glass admin)
+      - Кампании (sidebar)
+      - Создать кампанию (data-testid="campaign-create-open")
+      - заполнить форму: название, рекламодатель, контракт, бренд, основание размещения
+      - Сохранить → редирект на карточку кампании (draft)
+    smoke: test_uismoke__campaign__create
+    priority: P0
+    roles: [system_admin, campaign_manager]
+    status: reachable
+    gap: ""
+
+  - id: campaign.edit
+    frontend: admin-web
+    name: Редактирование кампании (рейсы/размещения)
+    route: /login
+    path:
+      - login (campaign_manager)
+      - Кампании → карточка кампании
+      - добавить рейс / размещение
+      - сохранить
+    smoke: test_uismoke__campaign__edit
+    priority: P0
+    roles: [system_admin, campaign_manager]
+    status: blocked
+    gap: "UI-smoke отсутствует. Бэкенд + страница карточки есть, но smoke-тест не написан."
+
+  - id: creative.upload
+    frontend: admin-web
+    name: Загрузка креатива
+    route: /login
+    path:
+      - login (campaign_manager)
+      - Кампании → карточка кампании
+      - Загрузить креатив
+      - выбрать файл → привязать к кампании
+    smoke: test_uismoke__creative__upload
+    priority: P0
+    roles: [system_admin, campaign_manager]
+    status: blocked
+    gap: "UI-smoke отсутствует."
+
+  - id: campaign.submit
+    frontend: admin-web
+    name: Отправить кампанию на согласование
+    route: /login
+    path:
+      - login (campaign_manager)
+      - Кампании → карточка кампании (draft)
+      - Отправить на согласование
+    smoke: test_uismoke__campaign__submit
+    priority: P0
+    roles: [system_admin, campaign_manager]
+    status: blocked
+    gap: "UI-smoke отсутствует. Бэкенд + кнопка есть, частично проходимо."
+
+  - id: campaign.approve
+    frontend: admin-web
+    name: Одобрить кампанию
+    route: /login
+    path:
+      - login (approver)
+      - Согласование → карточка кампании
+      - Одобрить
+    smoke: test_uismoke__campaign__approve
+    priority: P0
+    roles: [system_admin, approver]
+    status: blocked
+    gap: "UI-smoke отсутствует."
+
+  - id: campaign.reject
+    frontend: admin-web
+    name: Отклонить кампанию с причиной
+    route: /login
+    path:
+      - login (approver)
+      - Согласование → карточка кампании
+      - Отклонить → ввести причину
+    smoke: test_uismoke__campaign__reject
+    priority: P0
+    roles: [system_admin, approver]
+    status: blocked
+    gap: "UI-smoke отсутствует."
+
+  - id: creative.moderate_approve
+    frontend: admin-web
+    name: Одобрить креатив (модерация)
+    route: /login
+    path:
+      - login (moderator)
+      - Модерация → элемент креатива
+      - Одобрить
+    smoke: test_uismoke__creative__moderate_approve
+    priority: P0
+    roles: [system_admin, moderator]
+    status: blocked
+    gap: "UI-smoke отсутствует."
+
+  - id: creative.moderate_reject
+    frontend: admin-web
+    name: Отклонить креатив с причиной (модерация)
+    route: /login
+    path:
+      - login (moderator)
+      - Модерация → элемент креатива
+      - Отклонить → ввести причину
+    smoke: test_uismoke__creative__moderate_reject
+    priority: P0
+    roles: [system_admin, moderator]
+    status: blocked
+    gap: "UI-smoke отсутствует."
+
+  - id: user.create_advertiser
+    frontend: admin-web
+    name: Завести локального рекламодателя
+    route: /login
+    path:
+      - login (system_admin)
+      - Пользователи → Создать
+      - заполнить данные + организация
+      - сохранить
+    smoke: test_uismoke__user__create_advertiser
+    priority: P0
+    roles: [system_admin]
+    status: reachable
+    gap: ""
+
+  - id: user.assign_roles
+    frontend: admin-web
+    name: Назначить роли/права пользователю
+    route: /login
+    path:
+      - login (system_admin)
+      - Пользователи → пользователь → Роли
+      - отметить роль → сохранить
+    smoke: test_uismoke__user__assign_roles
+    priority: P0
+    roles: [system_admin]
+    status: reachable
+
+  - id: advertiser.create_org
+    frontend: admin-web
+    name: Создать организацию рекламодателя (managed)
+    route: /login
+    path:
+      - login (system_admin или campaign_manager)
+      - Рекламодатели → Создать рекламодателя
+      - заполнить реквизиты → сохранить
+    smoke: test_uismoke__advertiser__create_org
+    priority: P0
+    roles: [system_admin, campaign_manager]
+    status: reachable
+
+  - id: advertiser.application_review
+    frontend: admin-web
+    name: Рассмотреть заявку рекламодателя
+    route: /login
+    path:
+      - login (system_admin или campaign_manager)
+      - Заявки рекламодателей → заявка
+      - Одобрить / Отклонить
+    smoke: test_uismoke__advertiser__application_review
+    priority: P0
+    roles: [system_admin, campaign_manager]
+    status: reachable
+    gap: ""
+
+  - id: emergency.activate
+    frontend: admin-web
+    name: Экстренно остановить показ
+    route: /login
+    path:
+      - login (security_admin или ops_operator)
+      - Аварийный режим → Активировать
+      - подтвердить
+    smoke: test_uismoke__emergency__activate
+    priority: P0
+    roles: [system_admin, security_admin, ops_operator]
+    status: blocked
+    gap: "UI-smoke отсутствует. Активация в UI есть; фактическое исполнение на устройстве — после плеера (K1)."
+
+  - id: emergency.deactivate
+    frontend: admin-web
+    name: Снять аварийный режим
+    route: /login
+    path:
+      - login (security_admin или ops_operator)
+      - Аварийный режим → Деактивировать
+    smoke: test_uismoke__emergency__deactivate
+    priority: P0
+    roles: [system_admin, security_admin, ops_operator]
+    status: blocked
+    gap: "UI-smoke отсутствует. Деактивация в UI есть; фактическое исполнение на устройстве — после плеера (K1)."
+
+  # ═══════════════════════════════════════════════════════════════
+  # P1 — admin-web (operations, inventory, settings, audit)
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: campaign.activate
+    frontend: admin-web
+    name: Запустить одобренную кампанию
+    route: /login
+    path:
+      - login (campaign_manager)
+      - Кампании → карточка (approved)
+      - Запустить
+    smoke: test_uismoke__campaign__activate
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: blocked
+    gap: "UI-smoke отсутствует."
+
+  - id: campaign.pause
+    frontend: admin-web
+    name: Приостановить активную кампанию
+    route: /login
+    path:
+      - login (campaign_manager или security_admin)
+      - Кампании → карточка (active)
+      - Пауза
+    smoke: test_uismoke__campaign__pause
+    priority: P1
+    roles: [system_admin, campaign_manager, security_admin, ops_operator]
+    status: blocked
+    gap: "UI-smoke отсутствует."
+
+  - id: inventory.simulate
+    frontend: admin-web
+    name: Прогноз показов (симуляция инвентаря)
+    route: /login
+    path:
+      - login (campaign_manager)
+      - Инвентарь → параметры
+      - Симуляция
+    smoke: test_uismoke__inventory__simulate
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: blocked
+    gap: "UI-smoke отсутствует."
+
+  - id: inventory.rule_create
+    frontend: admin-web
+    name: Создать правило инвентаря
+    route: /login
+    path:
+      - login (campaign_manager)
+      - Инвентарь → Создать правило
+      - заполнить → сохранить
+    smoke: test_uismoke__inventory__rule_create
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: blocked
+    gap: "UI-smoke отсутствует."
+
+  - id: advertiser.view
+    frontend: admin-web
+    name: Смотреть карточку рекламодателя
+    route: /login
+    path:
+      - login (campaign_manager)
+      - Рекламодатели → организация
+    smoke: test_uismoke__advertiser__view
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: reachable
+    gap: ""
+
+  - id: advertiser.invite
+    frontend: admin-web
+    name: Пригласить рекламодателя
+    route: /login
+    path:
+      - login (system_admin или campaign_manager)
+      - Заявки → одобренная заявка → Создать приглашение
+      - Увидеть токен приглашения
+    smoke: test_uismoke__advertiser__invite
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: reachable
+    gap: ""
+
+  - id: user.reset_password
+    frontend: admin-web
+    name: Сбросить пароль пользователю
+    route: /login
+    path:
+      - login (system_admin)
+      - Пользователи → пользователь
+      - Сбросить пароль
+    smoke: test_uismoke__user__reset_password
+    priority: P1
+    roles: [system_admin]
+    status: blocked
+    gap: "UI-smoke отсутствует."
+
+  - id: user.deactivate
+    frontend: admin-web
+    name: Заблокировать пользователя
+    route: /login
+    path:
+      - login (system_admin)
+      - Пользователи → пользователь
+      - Деактивировать
+    smoke: test_uismoke__user__deactivate
+    priority: P1
+    roles: [system_admin]
+    status: blocked
+    gap: "UI-smoke отсутствует."
+
+  - id: adsettings.test
+    frontend: admin-web
+    name: Проверить подключение AD
+    route: /login
+    path:
+      - login (system_admin или security_admin)
+      - Настройки AD → Проверить подключение
+    smoke: test_uismoke__adsettings__test
+    priority: P1
+    roles: [system_admin, security_admin]
+    status: blocked
+    gap: "UI-smoke отсутствует."
+
+  - id: adsettings.configure
+    frontend: admin-web
+    name: Сохранить настройки AD
+    route: /login
+    path:
+      - login (system_admin)
+      - Настройки AD → заполнить поля
+      - Сохранить
+    smoke: test_uismoke__adsettings__configure
+    priority: P1
+    roles: [system_admin]
+    status: reachable
+
+  - id: audit.view
+    frontend: admin-web
+    name: Смотреть журнал аудита
+    route: /login
+    path:
+      - login (system_admin или security_admin)
+      - Журнал аудита → фильтры
+    smoke: test_uismoke__audit__view
+    priority: P1
+    roles: [system_admin, security_admin]
+    status: blocked
+    gap: "UI-smoke отсутствует."
+
+  - id: device.health_view
+    frontend: admin-web
+    name: Видеть состояние парка устройств
+    route: /login
+    path:
+      - login (ops_operator)
+      - Устройства
+    smoke: test_uismoke__device__health_view
+    priority: P1
+    roles: [system_admin, ops_operator]
+    status: blocked
+    gap: "UI-smoke отсутствует."
+
+  # ═══════════════════════════════════════════════════════════════
+  # P0/P1 — advertiser-web (⚠️ фронтенд не проходил аудит)
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: self.login
+    frontend: advertiser-web
+    name: Войти в кабинет рекламодателя
+    route: /login (advertiser-web) + /accept-invite/{token}
+    path:
+      - открыть ссылку приглашения /accept-invite/{token}
+      - ввести пароль → активировать доступ
+      - перейти на /login
+      - ввести email (логин) и пароль
+      - submit → кабинет с организацией
+    smoke: test_uismoke__self__login
+    priority: P0
+    roles: [advertiser]
+    status: reachable
+    gap: ""
+
+  - id: self.campaign_view
+    frontend: advertiser-web
+    name: Смотреть свои кампании (кабинет рекламодателя)
+    route: /login
+    path:
+      - login (advertiser)
+      - Кабинет → Кампании
+    smoke: test_uismoke__self__campaign_view
+    priority: P0
+    roles: [advertiser]
+    status: blocked
+    gap: "UI-smoke отсутствует. Фронтенд advertiser-web не проходил аудит."
+
+  - id: self.report_view
+    frontend: advertiser-web
+    name: Смотреть отчёт план/факт (PoP) — кабинет рекламодателя
+    route: /login
+    path:
+      - login (advertiser)
+      - Кабинет → Отчёты
+    smoke: test_uismoke__self__report_view
+    priority: P1
+    roles: [advertiser]
+    status: blocked
+    gap: "UI-smoke отсутствует. Фронтенд advertiser-web не проходил аудит."
+
+  - id: self.apply_or_brief
+    frontend: advertiser-web
+    name: Подать заявку/бриф (кабинет рекламодателя)
+    route: /login
+    path:
+      - login (advertiser)
+      - Кабинет → Заявка/Бриф
+      - заполнить → отправить
+    smoke: test_uismoke__self__apply_or_brief
+    priority: P1
+    roles: [advertiser]
+    status: blocked
+    gap: "UI-smoke отсутствует. Фронтенд advertiser-web не проходил аудит."
+
+  - id: self.campaign_create
+    frontend: advertiser-web
+    name: Самому завести кампанию (self-service, P2)
+    route: /login
+    path:
+      - login (advertiser)
+      - Кабинет → Создать
+      - заполнить форму → отправить
+    smoke: test_uismoke__self__campaign_create
+    priority: P2
+    roles: [advertiser]
+    status: blocked
+    gap: "UI-smoke отсутствует. P2 — self-service фаза, не пилот."
+
+  # ═══════════════════════════════════════════════════════════════
+  # P1 — public (без логина)
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: advertiser.apply
+    frontend: public
+    name: Подать заявку на подключение (публичная форма)
+    route: /become-advertiser
+    path:
+      - открыть публичную страницу заявки
+      - заполнить форму
+      - Отправить
+    smoke: test_uismoke__advertiser__apply
+    priority: P1
+    roles: [public_lead]
+    status: reachable
+    gap: ""
+
+  # ═══════════════════════════════════════════════════════════════
+  # Service (backend-only — no UI journey, proven by behavioral tests)
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: manifest.deliver
+    frontend: service
+    name: Доставка манифеста на устройство
+    route: n/a
+    path: n/a
+    smoke: "EDGE-002 behavioral (13 тестов): test_edge002_*.py"
+    priority: P0
+    roles: [service]
+    status: reachable
+    gap: ""
+
+  - id: pop.ingest
+    frontend: service
+    name: Приём PoP-событий от устройств
+    route: n/a
+    path: n/a
+    smoke: "EDGE-003 behavioral (11 тестов): test_edge003_*.py"
+    priority: P0
+    roles: [service]
+    status: reachable
+    gap: ""
+
+  - id: device.onboard
+    frontend: service
+    name: Онбординг устройства (device-code → JWT)
+    route: n/a
+    path: n/a
+    smoke: "EDGE-001 behavioral (13 тестов): test_edge001_*.py"
+    priority: P0
+    roles: [service]
+    status: reachable
+    gap: ""
+
+  - id: device.heartbeat
+    frontend: service
+    name: Heartbeat устройств (health/статус)
+    route: n/a
+    path: n/a
+    smoke: "EDGE-004 behavioral (12 тестов): test_edge004_*.py"
+    priority: P0
+    roles: [service]
+    status: reachable
+    gap: ""
+
+  - id: playlist.build
+    frontend: service
+    name: Построение плейлиста из манифеста
+    route: n/a
+    path: n/a
+    smoke: n/a
+    priority: P1
+    roles: [service]
+    status: blocked
+    gap: "Плеер не перенесён в enterprise. Код есть в старом репо (PLAYER-AUD-001), адаптация — после manifest/onboard/ingest."
+
+  - id: backup.restore
+    frontend: service
+    name: Резервное копирование и восстановление
+    route: n/a
+    path: n/a
+    smoke: n/a
+    priority: P1
+    roles: [service]
+    status: blocked
+    gap: "Бэкап-скрипты есть; автоматизированный restore-тест не реализован."
+
+  - id: observability
+    frontend: service
+    name: Мониторинг и метрики (Prometheus/Grafana)
+    route: n/a
+    path: n/a
+    smoke: "S-047: /metrics endpoint, Prometheus alert rules (8 rules)"
+    priority: P1
+    roles: [service]
+    status: reachable
+    gap: "AlertManager routing deferred, но метрики и алерты существуют."
+
+  - id: campaign.complete
+    frontend: service
+    name: Автоматическое завершение кампании по концу рейса
+    route: n/a
+    path: n/a
+    smoke: n/a
+    priority: P1
+    roles: [service]
+    status: blocked
+    gap: "Системный переход active→completed. Логика не реализована — deferred."
+
+  # ═══════════════════════════════════════════════════════════════
+  # Summary counts (auto-generated — do not edit manually)
+  # ═══════════════════════════════════════════════════════════════
+  #   total: 40
+  # by status:
+  #   reachable: 15 (campaign.create, user.create_advertiser, user.assign_roles, advertiser.create_org, advertiser.view, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability, adsettings.configure, advertiser.apply, advertiser.application_review, advertiser.invite, self.login)
+  #   blocked:   25 (22 UI-no-smoke + 3 service-deferred)
+  # by frontend:
+  #   admin-web:      26
+  #   advertiser-web:  5
+  #   public:          1
+  #   service:         8
+  # by priority:
+  #   P0: 20
+  #   P1: 19
+  #   P2:  1

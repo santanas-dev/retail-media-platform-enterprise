@@ -155,7 +155,7 @@ export default function AdvertiserApplicationsPage() {
       )}
 
       {apps.length > 0 && (
-        <table style={S.table}>
+        <table style={S.table} data-testid="advertiser-applications-table">
           <thead>
             <tr>
               <th style={S.th}>Компания</th>
@@ -168,7 +168,7 @@ export default function AdvertiserApplicationsPage() {
           </thead>
           <tbody>
             {apps.map((a) => (
-              <tr key={a.id} style={{ cursor: "pointer" }} onClick={() => setSelected(selected?.id === a.id ? null : a)}>
+              <tr key={a.id} style={{ cursor: "pointer" }} onClick={() => setSelected(selected?.id === a.id ? null : a)} data-testid={`app-row-${a.id}`}>
                 <td style={S.td}>{a.company_name}</td>
                 <td style={S.td}>{a.contact_name}</td>
                 <td style={S.td}>{a.email}</td>
@@ -200,7 +200,7 @@ export default function AdvertiserApplicationsPage() {
           {selected.status === "new" && (
             <div>
               <div style={S.actions}>
-                <button style={S.btn("#f59e0b")} onClick={() => handleReview("reviewing", selected.id)}>Начать рассмотрение</button>
+                <button style={S.btn("#f59e0b")} onClick={() => handleReview("reviewing", selected.id)} data-testid="advertiser-review-start">Начать рассмотрение</button>
               </div>
             </div>
           )}
@@ -210,7 +210,7 @@ export default function AdvertiserApplicationsPage() {
               <div style={S.label}>Причина решения</div>
               <textarea style={S.textarea} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Причина одобрения или отклонения" />
               <div style={S.actions}>
-                <button style={S.btn("#16a34a")} onClick={() => handleReview("approve", selected.id)}>Одобрить</button>
+                <button style={S.btn("#16a34a")} onClick={() => handleReview("approve", selected.id)} data-testid="advertiser-approve-btn">Одобрить</button>
                 <button style={S.btn("#dc2626")} onClick={() => handleReview("reject", selected.id)}>Отклонить</button>
               </div>
             </div>
@@ -223,7 +223,7 @@ export default function AdvertiserApplicationsPage() {
                 <div style={S.value}>Загрузка...</div>
               ) : invite ? (
                 <div>
-                  <div style={S.value}>
+                  <div style={S.value} data-testid="advertiser-invite-status">
                     <span style={S.badge(INVITE_STATUS_COLORS[invite.status] || "#94a3b8")}>
                       {INVITE_STATUS_LABELS[invite.status] || invite.status}
                     </span>
@@ -232,11 +232,11 @@ export default function AdvertiserApplicationsPage() {
                   </div>
                   <div style={S.tokenBox}>
                     <div style={S.label}>Код приглашения (dev/pilot — реальная отправка email будет позже)</div>
-                    <div style={S.tokenCode}>{invite.token}</div>
+                    <div style={S.tokenCode} data-testid="advertiser-invite-token">{invite.token}</div>
                     <div style={S.note}>⚠️ В режиме разработки токен показывается в интерфейсе. Скопируйте код и передайте контактному лицу. В production токен будет отправляться по email.</div>
                   </div>
                   <div style={S.actions}>
-                    <button style={S.btn("#8b5cf6")} onClick={() => handleCreateInvite(selected.id)}>
+                    <button style={S.btn("#8b5cf6")} onClick={() => handleCreateInvite(selected.id)} data-testid="advertiser-invite-create">
                       {invite.status === "expired" || invite.status === "accepted" ? "Создать новое приглашение" : "Переслать приглашение"}
                     </button>
                   </div>
@@ -245,7 +245,7 @@ export default function AdvertiserApplicationsPage() {
                 <div>
                   <div style={S.value}>Не отправлено</div>
                   <div style={S.actions}>
-                    <button style={S.btn("#8b5cf6")} onClick={() => handleCreateInvite(selected.id)}>Создать приглашение</button>
+                    <button style={S.btn("#8b5cf6")} onClick={() => handleCreateInvite(selected.id)} data-testid="advertiser-invite-create">Создать приглашение</button>
                   </div>
                 </div>
               )}

@@ -7,7 +7,7 @@ Phase 3.0: Read-only query functions for identity/RBAC tables.
 from datetime import datetime
 import uuid
 
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -84,7 +84,7 @@ async def list_audit_events(
 async def create_audit_event(
     session: AsyncSession,
     *,
-    actor_user_id: str,
+    actor_user_id: str | None,
     action: str,
     target_type: str,
     target_id: str | None = None,
@@ -192,6 +192,18 @@ async def get_advertiser_organization(
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def create_advertiser_organization(
+    session: AsyncSession, *, code: str, legal_name: str, display_name: str
+) -> AdvertiserOrganization:
+    """Create a new advertiser organization."""
+    org = AdvertiserOrganization(
+        code=code, legal_name=legal_name, display_name=display_name,
+    )
+    session.add(org)
+    await session.flush()
+    return org
 
 
 async def list_advertiser_brands(
@@ -1079,6 +1091,7 @@ async def create_campaign(
     budget_limit_amount=None,
     budget_limit_currency: str = "RUB",
     priority: int = 0,
+    placement_basis: str = "commercial",
     scope_advertiser_ids: frozenset[str] | None = None,
 ) -> str:
     """Create a new campaign in draft status. Returns campaign id.
@@ -1108,23 +1121,24 @@ async def create_campaign(
     now = datetime.now(tz.utc)
 
     campaign = Campaign(
-        id=campaign_id,
-        advertiser_organization_id=advertiser_organization_id,
-        advertiser_brand_id=advertiser_brand_id,
-        advertiser_contract_id=advertiser_contract_id,
-        code=code,
-        name=name,
-        description=description,
-        status="draft",
-        priority=priority,
-        budget_limit_amount=budget_limit_amount,
-        budget_limit_currency=budget_limit_currency,
-        start_at=start_at,
-        end_at=end_at,
-        timezone=timezone,
-        created_by=created_by,
-        created_at=now,
-        updated_at=now,
+    id=campaign_id,
+    advertiser_organization_id=advertiser_organization_id,
+    advertiser_brand_id=advertiser_brand_id,
+    advertiser_contract_id=advertiser_contract_id,
+    code=code,
+    name=name,
+    description=description,
+    status="draft",
+    priority=priority,
+    budget_limit_amount=budget_limit_amount,
+    budget_limit_currency=budget_limit_currency,
+    start_at=start_at,
+    end_at=end_at,
+    timezone=timezone,
+    placement_basis=placement_basis,
+    created_by=created_by,
+    created_at=now,
+    updated_at=now,
     )
     session.add(campaign)
 
@@ -2362,6 +2376,47 @@ async def get_physical_device_for_manifest_delivery(
     return device.status if device else None
 
 
+async def record_device_heartbeat(
+    session: AsyncSession,
+    physical_device_id: str,
+    *,
+    health_state: str = "healthy",
+    runtime_version: str = "",
+    player_version: str = "",
+) -> bool:
+    """Record a device heartbeat: update last_heartbeat_at, health_state, and versions.
+
+    Returns True if the device exists and was updated; False if not found.
+    Uses raw SQL UPDATE — device-gateway get_db has no session.begin(),
+    so ORM attribute assignment + flush() is not reliable.
+    """
+    from datetime import datetime, timezone
+    from sqlalchemy import text
+
+    now = datetime.now(tz=timezone.utc)
+    rt = runtime_version[:64] if runtime_version else ""
+    pv = player_version[:128] if player_version else ""
+
+    result = await session.execute(
+        text(
+            """UPDATE physical_devices
+               SET last_heartbeat_at = :now,
+                   health_state = :health_state,
+                   runtime_version = :runtime_version,
+                   player_version = :player_version
+               WHERE id = :device_id"""
+        ),
+        {
+            "now": now,
+            "health_state": health_state,
+            "runtime_version": rt,
+            "player_version": pv,
+            "device_id": physical_device_id,
+        },
+    )
+    return result.rowcount > 0
+
+
 async def get_latest_manifest_metadata(
     session: AsyncSession,
     physical_device_id: str,
@@ -2609,6 +2664,7 @@ async def record_pop_raw_event(
     quarantine_reason: str | None = None,
     expires_at=None,
     batch_id: str | None = None,
+    retailer_id: str | None = None,
 ) -> str:
     """Insert a raw PoP event into pop_events_raw.
 
@@ -2639,6 +2695,7 @@ async def record_pop_raw_event(
         quarantine_reason=quarantine_reason,
         expires_at=expires_at,
         batch_id=batch_id,
+        retailer_id=retailer_id,
     )
     session.add(event)
     return row_id
@@ -2691,6 +2748,7 @@ async def accept_pop_event(
     event_recorded_at,
     duration_ms: int,
     batch_id: str | None = None,
+    retailer_id: str | None = None,
 ) -> str:
     """Record an accepted (billing-grade) PoP event.
 
@@ -2715,6 +2773,7 @@ async def accept_pop_event(
         playback_result="success",
         status="accepted",
         batch_id=batch_id,
+        retailer_id=retailer_id,
     )
 
 
@@ -2735,6 +2794,7 @@ async def quarantine_pop_event(
     quarantine_reason: str,
     expires_at,
     batch_id: str | None = None,
+    retailer_id: str | None = None,
 ) -> str:
     """Record a quarantined PoP event with campaign_verified=False.
 
@@ -2761,6 +2821,7 @@ async def quarantine_pop_event(
         quarantine_reason=quarantine_reason,
         expires_at=expires_at,
         batch_id=batch_id,
+        retailer_id=retailer_id,
     )
 
 
@@ -3293,6 +3354,57 @@ async def set_user_status(
         .values(status=status, updated_at=datetime.now(timezone.utc))
     )
     return result.rowcount > 0
+
+
+async def assign_user_role(
+    session: AsyncSession,
+    *,
+    user_id: str,
+    role_id: str,
+    scope_type: str | None = None,
+    scope_id: str | None = None,
+) -> UserRole:
+    """Assign a role to a user, with optional scope. Returns the UserRole row."""
+    import uuid as _uuid
+    from datetime import timezone as _tz
+
+    now = datetime.now(_tz.utc)
+    user_role = UserRole(
+        id=str(_uuid.uuid4()),
+        user_id=user_id,
+        role_id=role_id,
+        scope_type=scope_type,
+        scope_id=scope_id,
+        created_at=now,
+    )
+    session.add(user_role)
+    return user_role
+
+
+async def get_user_role_assignment(
+    session: AsyncSession, assignment_id: str
+) -> UserRole | None:
+    """Get a UserRole row by its id."""
+    stmt = select(UserRole).where(UserRole.id == assignment_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def remove_user_role(session: AsyncSession, assignment_id: str) -> bool:
+    """Delete a UserRole assignment by id. Returns True if deleted."""
+    result = await session.execute(
+        delete(UserRole).where(UserRole.id == assignment_id)
+    )
+    return result.rowcount > 0
+
+
+async def find_role_by_code(
+    session: AsyncSession, role_code: str
+) -> Role | None:
+    """Find a role by its code."""
+    stmt = select(Role).where(Role.code == role_code)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
 
 
 async def update_local_credential_password(
@@ -5580,3 +5692,36 @@ async def bind_code_to_device(
     code.physical_device_id = physical_device.id
     code.used_at = datetime.now(timezone.utc)
     session.add(code)
+
+
+async def get_ad_settings(session: AsyncSession):
+    """Return the singleton AD settings row, creating default if absent."""
+    from packages.domain.models import ADSettings
+
+    result = await session.execute(select(ADSettings).where(ADSettings.id == 1))
+    row = result.scalar_one_or_none()
+    if row is None:
+        row = ADSettings(id=1)
+        session.add(row)
+        await session.flush()
+    return row
+
+
+async def save_ad_settings(session: AsyncSession, **kwargs):
+    """Upsert AD settings singleton row. Only provided fields are updated."""
+    from datetime import datetime, timezone
+    from packages.domain.models import ADSettings
+
+    result = await session.execute(select(ADSettings).where(ADSettings.id == 1))
+    row = result.scalar_one_or_none()
+    if row is None:
+        row = ADSettings(id=1)
+        session.add(row)
+
+    for key, value in kwargs.items():
+        if hasattr(row, key):
+            setattr(row, key, value)
+
+    row.updated_at = datetime.now(timezone.utc)
+    await session.flush()
+    return row

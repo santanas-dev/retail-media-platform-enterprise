@@ -8,57 +8,104 @@ features.
 
 Stabilization comes before new functionality.
 
-## Source Of Truth
+## Sources of Truth (единый индекс)
 
-Before any architecture, planning, or implementation work, read:
+Единственный авторитетный перечень. При конфликте — верхний уровень побеждает нижний.
+Никакой файл вне этого индекса не является каноном без явного упоминания здесь.
 
-1. `docs/00-source-of-truth/README.md`
-2. `docs/00-source-of-truth/TZ_Retail_Media_Platform_v2_5_Final_Hermes.extracted.md`
-3. `docs/00-source-of-truth/rmp_rewrite_starting_decisions.md`
-4. `docs/00-source-of-truth/rmp_enterprise_architecture_review.md`
-5. `docs/architecture/adr/ADR-001..ADR-015` — architecture decision records (current)
-6. `docs/architecture/erd/erd-v2-5.md` — current ERD
-7. `docs/architecture/api/api-groups-v1.md` — current API contracts
-8. `docs/architecture/README.md` — index + superseded doc list
+### Tier 1 — Git & Code (непререкаемо)
 
-**ADR-011 (transactional outbox) must be read before implementing any
-event producer, outbox relay worker, or NATS publishing code.**  Every
-domain event from an OLTP transaction requires the outbox pattern.
+- **GitHub `origin/develop`** — единственная git-истина. Все SHA, CI, и состояние кода
+  верифицируются через `git ls-remote origin refs/heads/develop` и GitHub Actions.
+- `git log`, `git status`, `gh run list` — первичные инструменты для Git/CI truth.
 
-**ADR-012 (async I/O) must be read before implementing any external
-I/O integration (LDAP, S3/MinIO, file uploads, external APIs, report
-generation).**  No sync SDK calls in async handlers.  Use native async,
-`run_in_threadpool`, background workers, or streaming as appropriate.
+### Tier 2 — Продукт & Journeys (что строим)
 
-**ADR-013 (edge runtime safety) must be read before implementing
-device-gateway, player, sidecar, PoP ingestion, manifest delivery,
-kill-switch, or any device-facing runtime code.**
+| Файл | Назначение | Приоритет |
+|------|-----------|-----------|
+| `docs/product/user-journeys.md` | **Спецификация** journey: id, роли, путь, Given/When/Then | Авторитет по спецификации (id, формат, приёмка) |
+| `docs/product/pre-pilot-journey-plan.md` | Порядок закрытия journeys по волнам 1–6 | Побеждает ad-hoc приоритизацию |
+| `docs/product/feature-registry.yaml` | **Статус** journey (reachable/blocked), smoke, frontend | Авторитет по статусу. При конфликте статуса registry главнее roadmap |
+| `docs/product/roadmap-s020-2026-07-10.xlsx` | Бизнес-карта (4 колонки): Бэкенд/UI/Юзер-стори/Итог | Производная от registry + smoke; не переопределяет их |
 
-**ADR-014 (layering) must be read before creating new packages,
-modules, or imports.**  If import direction is unclear, stop and
-review the layer hierarchy — do not guess.
+### Done Gate (встроен в Sources of Truth)
 
-**ADR-015 (campaign domain) must be read before implementing any
-campaign, creative, placement, scheduling, approval, or PoP reporting
-code.**  This ADR locks the entity graph, status lifecycle, placement
-model (surfaces, not devices), outbox integration, and behavioral
-test requirements for the entire campaign domain.
+Бизнес-функция считается **готовой** только при выполнении всех условий ниже.
+Бэкенд + API proof недостаточно — пользователь обязан достичь функции через
+реальный UI кликами.
 
-**ADR-016 (delivery/manifest) must be read before implementing any
-manifest generation, delivery pipeline, or device manifest endpoint
-code.**  This ADR locks eligibility, target resolution, manifest
-schemas, versioning, outbox events, and the phase split (4.2b→4.2e).
+1. **Journey обязателен.** Бизнес-функцию нельзя пометить «Готово», если для
+   неё нет journey в `docs/product/user-journeys.md`. Journey содержит: id
+   (в формате `<domain>.<action>`), роль, стартовую страницу, пошаговые
+   клики до целевого экрана, ожидаемый результат, стабильные
+   `data-testid`-селекторы.
 
-**ADR-017 (PoP/reporting) must be read before implementing any PoP
-ingestion endpoint, PoP storage tables, reporting API, or analytics
-code.**  This ADR locks PoP source (runtime only), ingestion validation
-(quarantine, dedup, clock drift), storage (PostgreSQL, ClickHouse
-deferred), billing-grade reporting rules, outbox integration, and
-behavioral proof requirements for Phase 4.3b→4.3e.
+2. **UI-smoke обязателен.** Бизнес-функцию нельзя пометить «Готово», если
+   для её journey id нет зелёного UI-smoke-теста. Имя теста:
+   `test_uismoke__<domain>__<action>` (точки → двойное подчёркивание).
 
-The source-of-truth folder overrides older generated phase reports unless a
-newer approved ADR explicitly changes a decision. The original `.docx` in that
-folder is traceability-only; agents should use the markdown extraction.
+3. **Только реальные клики.** `page.goto()` в UI-smoke разрешён **только**
+   на `/login` или на публичную entry-страницу, указанную в journey как
+   стартовая. Весь дальнейший путь — **реальные клики** по UI
+   (кнопки, ссылки, табы). Никаких `page.goto("/campaigns/new")`,
+   `localStorage.setItem(...)`, прямых API-вызовов.
+
+4. **Feature-registry синхронизирован.** Каждая новая бизнес-фича должна
+   обновлять **три** источника синхронно по одному journey id:
+   - `docs/product/user-journeys.md` — путь,
+   - `docs/product/feature-registry.yaml` — запись в реестре,
+   - `tests/ui-smoke/test_uismoke__<domain>__<action>.py` — зелёный тест.
+
+5. **Частичная готовность — честный статус.** Если бэкенд готов, но
+   journey/smoke отсутствует, статус: **«бэкенд готов, UI нет»** или
+   **«частично»**. Слово «Готово» без выполненного UI-smoke — запрещено.
+
+6. **UI-smoke не блокирует CI.** Тесты в `tests/ui-smoke/` запускаются
+   только при `UI_SMOKE_RUN=1` и не собираются обычным pytest. Они —
+   инструмент аудита, а не CI-gate.
+
+7. **Roadmap-синхронизация обязательна.** Если задача довела journey до
+   зелёного UI-smoke, та же задача обязана поднять в бизнес-вкладке roadmap
+   (`docs/product/roadmap-s020-2026-07-10.xlsx`, лист «Бизнес-функции
+   Roadmap») колонки «UI» + «Юзер-стори» и пересчитать колонку «Итог».
+   Итог=«✅ Готово/Юзабельно» только при Бэкенд ✅ + UI ✅ + Юзер-стори ✅.
+   Без зелёного UI-smoke по journey id — запрещён. Частичные фичи
+   маркируются «🟠 Частично» с указанием, какая часть не reachable.
+
+### Tier 3 — Задачи & Статус (что делаем сейчас)
+
+- **`PROJECT_STATE.md`** — канонический статус всех workstreams: активные, resolved,
+  pending, deferred. Repository Checkpoint (Payload SHA / State SHA). Единственный
+  источник для «что сейчас в работе» и «какой SHA актуален».
+- **`AGENTS.md`** (этот файл) — правила работы агентов, границы, definitions of done.
+
+### Tier 4 — Архитектура (как устроено)
+
+- **`docs/architecture/adr/ADR-001..ADR-019`** — architecture decision records.
+  ADR переопределяет design gates, correction plans, и phase reports.
+- `docs/architecture/erd/erd-v2-5.md` — текущая ERD.
+- `docs/architecture/api/api-groups-v1.md` — текущие API-контракты.
+- `docs/architecture/README.md` — индекс + список superseded документов.
+- `docs/00-source-of-truth/` — извлечение ТЗ (read-only, traceability). Оригинал
+  `.docx` — только для истории; агенты используют `.extracted.md`.
+
+### Tier 5 — Производные (НЕ авторские источники)
+
+- **NAS mirror** (`\\192.168.110.118\project\…`, локальный mount `/mnt/asustor-project/`) — зеркало GitHub, может быть stale.
+  - **GitHub `origin/develop` — единственная git-истина.** NAS — зеркало, не авторский источник.
+  - **Hermes owns mirror sync freshness.** Cron job `c0687f5ced4d` (script `nas-mirror-sync.sh`) синхронизирует NAS каждые 3 минуты через CIFS mount.
+  - **Агенты НЕ пишут «NAS synced/verified» без проверки:** NAS HEAD == origin/develop.
+    Проверять: `git -C /mnt/asustor-project/retail-media-platform-enterprise rev-parse HEAD` против `git ls-remote origin refs/heads/develop`.
+  - **santa2 relay DEPRECATED** — заменён на Hermes-owned sync (NAS-SYNC-OWNER-001).
+  - **Mirror-check pending — допустимо.** После пуша ожидаемое состояние:
+    «mirror pending — Hermes cron syncs every 3 min». Зеркало не блокирует DONE:
+    GitHub + CI green достаточно. Статус зеркала отслеживается в PROJECT_STATE
+    Repository Checkpoint.
+  - **Mount unavailable — честный статус.** Если `/mnt/asustor-project/` не примонтирован,
+    статус: `pending | mount unavailable`. Не `verified`. Оператор отвечает за mount; Hermes за sync.
+- **`for-agents/`** на NAS — **DEPRECATED staging.** Все файлы оттуда перенесены
+  в `docs/product/` репозитория. `for-agents/` не является авторитетным источником;
+  агенты читают только git-репо.
 
 ### ADR Precedence
 
@@ -79,6 +126,17 @@ Superseded documents in `docs/architecture/` carry a banner:
 **Do not implement from a file marked SUPERSEDED** when it conflicts with an ADR.
 Source-inspection tests are not behavioral proof — static checks on old code
 do not validate runtime RBAC/RLS behavior.
+
+**ADR quick-reference (обязательное чтение по домену):**
+
+- ADR-011 — transactional outbox (events, NATS, relay worker)
+- ADR-012 — async I/O (no sync SDK in handlers)
+- ADR-013 — edge runtime safety (device-gateway, player, PoP, manifest, kill-switch)
+- ADR-014 — layering (import direction: apps → api → auth → domain)
+- ADR-015 — campaign domain (entity graph, status lifecycle, placements)
+- ADR-016 — delivery/manifest (eligibility, target resolution, schemas)
+- ADR-017 — PoP/reporting (ingestion, validation, billing-grade rules)
+- ADR-019 — Channel Orchestrator deferred (PRAGMATISM, до второго канала)
 
 Fix critical platform risks first:
 

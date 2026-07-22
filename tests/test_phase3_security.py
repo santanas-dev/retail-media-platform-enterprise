@@ -438,9 +438,17 @@ class TestJWTHelpers(unittest.TestCase):
             cfg.jwt_clock_skew_seconds = old_skew
 
     def test_tampered_token_rejected(self):
-        """Modified token raises InvalidTokenError."""
+        """Modified token raises InvalidTokenError.
+
+        Tampering method: flip a character in the middle of the JWT string.
+        This corrupts the signature bytes regardless of base64url padding
+        behaviour and is robust across PyJWT versions (token[:-2]+'xx'
+        produces valid base64url under PyJWT ≥2.14 on Python ≥3.12).
+        """
         token = sec_jwt.create_access_token("u-1", "local_advertiser")
-        tampered = token[:-2] + "xx"
+        mid = len(token) // 2
+        flipped = "Z" if token[mid] != "Z" else "Y"
+        tampered = token[:mid] + flipped + token[mid + 1 :]
         with self.assertRaises(pyjwt.InvalidTokenError):
             sec_jwt.verify_access_token(tampered)
 

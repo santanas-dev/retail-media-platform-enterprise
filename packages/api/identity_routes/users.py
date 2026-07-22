@@ -14,6 +14,8 @@ from packages.api.dependencies import (
 from packages.domain import repository
 from packages.domain.scopes import ScopeContext
 from packages.domain.schemas import (
+    AssignRoleRequest,
+    AssignRoleResponse,
     AuditEventOut,
     CreateLocalAdvertiserRequest,
     CreateLocalAdvertiserResponse,
@@ -371,6 +373,119 @@ async def list_roles(
 ):
     items = await repository.list_roles(db)
     return [RoleOut.model_validate(r) for r in items]
+
+
+# ---------------------------------------------------------------------------
+# User Role assignments
+# ---------------------------------------------------------------------------
+
+
+@router.put(
+    "/users/{user_id}/roles",
+    response_model=AssignRoleResponse,
+    status_code=201,
+)
+async def assign_role(
+    user_id: str,
+    body: AssignRoleRequest,
+    db=Depends(get_db),
+    scope: ScopeContext = Depends(get_scope_context),
+    _rls=Depends(set_rls_context),
+    _claims: dict = Depends(require_permission("roles.manage")),
+):
+    user = await repository.get_user_detail(db, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    role = await repository.find_role_by_code(db, body.role_code)
+    if role is None:
+        raise HTTPException(status_code=404, detail=f"Role '{body.role_code}' not found")
+
+    # Validate scope consistency
+    if (body.scope_type is None) != (body.scope_id is None):
+        raise HTTPException(
+            status_code=422,
+            detail="scope_type and scope_id must be both set or both null",
+        )
+
+    if body.scope_type == "advertiser" and body.scope_id:
+        org = await repository.get_advertiser_organization(db, body.scope_id)
+        if org is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Advertiser organization '{body.scope_id}' not found",
+            )
+
+    user_role = await repository.assign_user_role(
+        db,
+        user_id=user_id,
+        role_id=role.id,
+        scope_type=body.scope_type,
+        scope_id=body.scope_id,
+    )
+
+    from packages.domain.repository import create_audit_event
+    await create_audit_event(
+        db,
+        actor_user_id=scope.user_id,
+        action="user.role_assigned",
+        target_type="user",
+        target_id=user_id,
+        details={
+            "role_code": body.role_code,
+            "scope_type": body.scope_type,
+            "scope_id": body.scope_id,
+        },
+    )
+
+    await db.commit()
+
+    return AssignRoleResponse(
+        id=user_role.id,
+        user_id=user_id,
+        role_id=role.id,
+        role_code=role.code,
+        role_name=role.name,
+        scope_type=body.scope_type,
+        scope_id=body.scope_id,
+        message="Role assigned.",
+    )
+
+
+@router.delete("/users/{user_id}/roles/{assignment_id}", status_code=204)
+async def remove_role(
+    user_id: str,
+    assignment_id: str,
+    db=Depends(get_db),
+    scope: ScopeContext = Depends(get_scope_context),
+    _rls=Depends(set_rls_context),
+    _claims: dict = Depends(require_permission("roles.manage")),
+):
+    assignment = await repository.get_user_role_assignment(db, assignment_id)
+    if assignment is None:
+        raise HTTPException(status_code=404, detail="Role assignment not found")
+
+    if assignment.user_id != user_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Role assignment does not belong to this user",
+        )
+
+    from packages.domain.repository import create_audit_event
+    await create_audit_event(
+        db,
+        actor_user_id=scope.user_id,
+        action="user.role_removed",
+        target_type="user",
+        target_id=user_id,
+        details={
+            "role_id": assignment.role_id,
+            "assignment_id": assignment_id,
+        },
+    )
+
+    await repository.remove_user_role(db, assignment_id)
+    await db.commit()
 
 
 # ---------------------------------------------------------------------------

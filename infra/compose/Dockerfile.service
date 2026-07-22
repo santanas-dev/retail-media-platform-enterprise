@@ -9,6 +9,9 @@
 
 FROM python:3.12-slim
 
+# curl required for Docker healthcheck (all services use curl -f /health/live)
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
 ARG SERVICE_NAME
 ARG SERVICE_MODULE
 ARG SERVICE_PORT

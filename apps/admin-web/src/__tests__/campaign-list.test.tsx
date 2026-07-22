@@ -53,6 +53,7 @@ const SEED_CAMPAIGNS = [
     start_at: "2026-04-01T00:00:00Z",
     end_at: "2026-05-31T00:00:00Z",
     timezone: "Europe/Moscow",
+    placement_basis: "commercial",
     created_by: "u1",
     created_at: "2026-03-15T10:00:00Z",
     updated_at: "2026-03-20T14:00:00Z",
@@ -72,6 +73,7 @@ const SEED_CAMPAIGNS = [
     start_at: "2026-06-01T00:00:00Z",
     end_at: null,
     timezone: "Europe/Moscow",
+    placement_basis: "commercial",
     created_by: "u1",
     created_at: "2026-05-01T08:00:00Z",
     updated_at: "2026-06-10T09:00:00Z",
@@ -145,6 +147,7 @@ function mockAuthenticatedSession() {
           auth_provider: "ad",
           username: "admin",
           display_name: "Admin",
+          permissions: ["campaigns.manage", "campaigns.read"],
         }),
         { status: 200 },
       ),
@@ -387,5 +390,83 @@ describe("CampaignListPage", () => {
       const headings = screen.getAllByText("Весенняя акция");
       expect(headings.length).toBeGreaterThan(0);
     });
+  });
+
+  it("hides create button when user only has campaigns.read", async () => {
+    // Setup with read-only permissions
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(
+          JSON.stringify({ access_token: "valid-token", token_type: "Bearer", expires_in: 1800 }),
+          { status: 200 },
+        );
+      }
+      if (url.endsWith("/me")) {
+        return new Response(
+          JSON.stringify({ sub: "u1", auth_provider: "ad", username: "reader", display_name: "Reader",
+            permissions: ["campaigns.read"] }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/campaign-flights") || url.includes("/advertiser-organizations") || url.includes("/advertiser-brands")) {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+      return new Response(JSON.stringify({items: SEED_CAMPAIGNS, total: SEED_CAMPAIGNS.length, limit: 50, offset: 0}), { status: 200 });
+    });
+
+    const router = createRouter("/campaigns");
+    render(
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Весенняя акция")).toBeTruthy();
+    });
+
+    // Button must NOT be visible
+    expect(screen.queryByTestId("campaign-create-open")).toBeNull();
+  });
+
+  it("shows create button when user has campaigns.manage", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(
+          JSON.stringify({ access_token: "valid-token", token_type: "Bearer", expires_in: 1800 }),
+          { status: 200 },
+        );
+      }
+      if (url.endsWith("/me")) {
+        return new Response(
+          JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin",
+            permissions: ["campaigns.manage", "campaigns.read"] }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/campaigns") && !url.includes("flights") && !url.includes("placements") && !url.includes("creatives")) {
+        return new Response(JSON.stringify({items: SEED_CAMPAIGNS, total: SEED_CAMPAIGNS.length, limit: 50, offset: 0}), { status: 200 });
+      }
+      if (url.includes("campaign-flights")) return new Response(JSON.stringify(SEED_FLIGHTS), { status: 200 });
+      if (url.includes("advertiser-organizations")) return new Response(JSON.stringify(SEED_ORGS), { status: 200 });
+      if (url.includes("advertiser-brands")) return new Response(JSON.stringify(SEED_BRANDS), { status: 200 });
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+
+    const router = createRouter("/campaigns");
+    render(
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Весенняя акция")).toBeTruthy();
+    });
+
+    // Button must be visible
+    expect(screen.getByTestId("campaign-create-open")).toBeTruthy();
   });
 });

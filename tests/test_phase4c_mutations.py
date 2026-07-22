@@ -139,6 +139,31 @@ class TestCampaignMutationValidation(unittest.TestCase):
         )
         self.assertEqual(req.code, "CAMP-TEST")
         self.assertEqual(req.timezone, "Europe/Moscow")
+        self.assertEqual(req.placement_basis, "commercial")
+
+    def test_create_request_rejects_invalid_placement_basis(self):
+        from packages.domain.schemas import CampaignCreateRequest
+        from pydantic import ValidationError
+        with self.assertRaises(ValidationError):
+            CampaignCreateRequest(
+                advertiser_organization_id="00000000-0000-0000-0000-000000000200",
+                advertiser_contract_id="00000000-0000-0000-0000-000000000212",
+                code="CAMP-TEST",
+                name="Test",
+                placement_basis="invalid-value",
+            )
+
+    def test_create_request_accepts_all_placement_basis_values(self):
+        from packages.domain.schemas import CampaignCreateRequest
+        for val in ["commercial", "internal", "compensation", "test"]:
+            req = CampaignCreateRequest(
+                advertiser_organization_id="00000000-0000-0000-0000-000000000200",
+                advertiser_contract_id="00000000-0000-0000-0000-000000000212",
+                code="CAMP-TEST",
+                name="Test",
+                placement_basis=val,
+            )
+            self.assertEqual(req.placement_basis, val)
 
     def test_update_request_excludes_unset(self):
         from packages.domain.schemas import CampaignUpdateRequest

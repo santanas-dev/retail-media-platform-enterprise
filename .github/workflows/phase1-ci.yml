@@ -13,8 +13,9 @@ on:
       - "packages/**"
       - "infra/compose/**"
       - "tests/**"
-      - "scripts/ci/**"
+      - "scripts/**"
       - ".github/workflows/phase1-ci.yml"
+      - "docs/**"
   pull_request:
     paths:
       - "apps/control-api/**"
@@ -337,3 +338,17 @@ jobs:
         run: pip install pytest
       - name: Run production config gate tests
         run: python -m pytest tests/test_production_config_gate.py -v --tb=short
+
+  roadmap-consistency-audit:
+    name: Roadmap Consistency Audit — UI-TRUTH-001B (non-blocking)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps
+        run: pip install openpyxl pyyaml
+      - name: Run consistency check (audit mode)
+        run: python3 scripts/roadmap-consistency-check.py

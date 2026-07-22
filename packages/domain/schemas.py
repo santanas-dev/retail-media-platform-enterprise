@@ -155,6 +155,25 @@ class CreateLocalAdvertiserResponse(BaseModel):
     message: str = "User created successfully."
 
 
+class AssignRoleRequest(BaseModel):
+    """Assign a role to a user, with optional advertiser scope."""
+    role_code: str = Field(..., min_length=1, max_length=128)
+    scope_type: Literal["advertiser"] | None = None
+    scope_id: str | None = Field(default=None, min_length=1, max_length=36)
+
+
+class AssignRoleResponse(BaseModel):
+    """Response after assigning a role to a user."""
+    id: str
+    user_id: str
+    role_id: str
+    role_code: str
+    role_name: str
+    scope_type: str | None = None
+    scope_id: str | None = None
+    message: str = "Role assigned."
+
+
 class ResetPasswordRequest(BaseModel):
     """Admin-initiated password reset for a local user."""
     new_temporary_password: str | None = Field(default=None, min_length=8, max_length=128)
@@ -244,6 +263,13 @@ class MeResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Phase 3.5b — Advertiser organization (RLS pilot)
 # ---------------------------------------------------------------------------
+
+
+class AdvertiserOrganizationCreate(BaseModel):
+    """Create a new advertiser organization (admin)."""
+    code: str = Field(..., min_length=1, max_length=64)
+    legal_name: str = Field(..., min_length=1, max_length=255)
+    display_name: str = Field(..., min_length=1, max_length=255)
 
 
 class AdvertiserOrganizationOut(BaseModel):
@@ -358,6 +384,7 @@ class CampaignOut(BaseModel):
     start_at: datetime | None = None
     end_at: datetime | None = None
     timezone: str = "Europe/Moscow"
+    placement_basis: Literal["commercial", "internal", "compensation", "test"] = "commercial"
     created_by: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -470,6 +497,7 @@ class CampaignCreateRequest(BaseModel):
     budget_limit_amount: float | None = None
     budget_limit_currency: str = "RUB"
     priority: int = 0
+    placement_basis: Literal["commercial", "internal", "compensation", "test"] = "commercial"
 
 
 class CampaignUpdateRequest(BaseModel):
@@ -951,6 +979,19 @@ class ADTestResultOut(BaseModel):
     message: str
     tested_at: datetime | None = None
     error_code: str | None = None
+
+
+class ADSettingsUpdate(BaseModel):
+    """Editable AD settings — bind_password excluded (env-only)."""
+
+    enabled: bool = False
+    server_url: str = ""
+    base_dn: str = ""
+    user_search_base: str = ""
+    user_search_filter: str = "(sAMAccountName={username})"
+    bind_dn: str = ""
+    use_tls: bool = True
+    certificate_validation: str = "required"
 
 
 # ---------------------------------------------------------------------------

@@ -130,6 +130,14 @@ export function listAdvertisers(): Promise<AdvertiserOrganizationOut[]> {
   return api.get<AdvertiserOrganizationOut[]>("/advertiser-organizations");
 }
 
+export function createAdvertiserOrganization(body: {
+  code: string;
+  legal_name: string;
+  display_name: string;
+}): Promise<AdvertiserOrganizationOut> {
+  return api.post<AdvertiserOrganizationOut>("/advertiser-organizations", body);
+}
+
 export function listBrands(): Promise<AdvertiserBrandOut[]> {
   return api.get<AdvertiserBrandOut[]>("/advertiser-brands");
 }

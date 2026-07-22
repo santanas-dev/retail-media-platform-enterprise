@@ -8,8 +8,10 @@ import {
   listContractsByOrg,
   listContactsByOrg,
   listMemberships,
+  createAdvertiserOrganization,
 } from "../api/campaigns";
 import { ApiError } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 import type {
   AdvertiserOrganizationOut,
   AdvertiserOrganizationDetailOut,
@@ -186,11 +188,40 @@ type Tab = (typeof TABS)[number];
 // ── Component ──
 
 export default function AdvertisersPage() {
+  const { user } = useAuth();
+  const canCreate = user?.permissions?.includes("advertisers.manage") ?? false;
   const [pageState, setPageState] = useState<PageState>({ stage: "loading" });
   const [detailState, setDetailState] = useState<DetailState>({ stage: "idle" });
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("Обзор");
   const [search, setSearch] = useState("");
+  // Create modal
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({ code: "", legal_name: "", display_name: "" });
+  const [createError, setCreateError] = useState("");
+
+  async function handleCreate() {
+    setCreateError("");
+    try {
+      const org = await createAdvertiserOrganization(createForm);
+      setCreateOpen(false);
+      setCreateForm({ code: "", legal_name: "", display_name: "" });
+      // Reload list
+      const [orgs, brands, contracts] = await Promise.all([
+        listAdvertisers(), listBrands(), listContracts(),
+      ]);
+      const brandMap = new Map<string, number>();
+      for (const b of brands) brandMap.set(b.advertiser_organization_id, (brandMap.get(b.advertiser_organization_id) ?? 0) + 1);
+      const contractMap = new Map<string, number>();
+      for (const c of contracts) contractMap.set(c.advertiser_organization_id, (contractMap.get(c.advertiser_organization_id) ?? 0) + 1);
+      const rows: OrgRow[] = orgs.map((o) => ({ ...o, brandCount: brandMap.get(o.id) ?? 0, contractCount: contractMap.get(o.id) ?? 0, contactCount: 0 }));
+      setPageState({ stage: "ready", orgs: rows });
+      setSelectedOrgId(org.id);
+      setActiveTab("Обзор");
+    } catch (e: unknown) {
+      setCreateError(e instanceof ApiError ? e.message : "Ошибка создания организации");
+    }
+  }
 
   // ── Load org list + counts on mount ──
 
@@ -312,6 +343,16 @@ export default function AdvertisersPage() {
     <div>
       <h2 style={S.header}>Рекламодатели</h2>
 
+      {canCreate && (
+      <button
+        data-testid="advertiser-create-open"
+        onClick={() => setCreateOpen(true)}
+        style={{ marginBottom: "1rem", padding: "0.5rem 1rem", cursor: "pointer" }}
+      >
+        + Создать организацию
+      </button>
+      )}
+
       {/* Search */}
       <input
         style={S.search}
@@ -342,6 +383,7 @@ export default function AdvertisersPage() {
             {filteredOrgs.map((org) => (
               <tr
                 key={org.id}
+                data-testid="advertiser-org-row"
                 style={{
                   ...S.row,
                   background: selectedOrgId === org.id ? "#eff6ff" : undefined,
@@ -367,7 +409,7 @@ export default function AdvertisersPage() {
 
       {/* Detail panel */}
       {selectedOrgId && (
-        <div style={S.detailPanel}>
+        <div style={S.detailPanel} data-testid="advertiser-detail-panel">
           <div style={S.tabs}>
             {TABS.map((t) => (
               <div key={t} style={S.tab(activeTab === t)} onClick={() => setActiveTab(t)}>
@@ -391,6 +433,36 @@ export default function AdvertisersPage() {
             ) : detailState.stage === "ready" ? (
               <RenderTab tab={activeTab} data={detailState.data} />
             ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* Create modal */}
+      {createOpen && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.4)", display: "flex",
+          alignItems: "center", justifyContent: "center", zIndex: 1000,
+        }} onClick={(e) => { if (e.target === e.currentTarget) setCreateOpen(false); }}>
+          <div style={{ background: "#fff", borderRadius: 8, padding: "1.5rem", minWidth: 400, maxWidth: 500 }}>
+            <h3 style={{ margin: "0 0 1rem" }}>Создать организацию</h3>
+            {createError && <div style={{ color: "#dc2626", marginBottom: "0.75rem", fontSize: "0.875rem" }}>{createError}</div>}
+            <div style={{ marginBottom: "0.75rem" }}>
+              <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "0.25rem", color: "#64748b" }}>Код</label>
+              <input data-testid="advertiser-create-code" style={{ width: "100%", padding: "0.5rem", border: "1px solid #e2e8f0", borderRadius: 4 }} value={createForm.code} onChange={(e) => setCreateForm({ ...createForm, code: e.target.value })} />
+            </div>
+            <div style={{ marginBottom: "0.75rem" }}>
+              <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "0.25rem", color: "#64748b" }}>Юридическое название</label>
+              <input data-testid="advertiser-create-legal-name" style={{ width: "100%", padding: "0.5rem", border: "1px solid #e2e8f0", borderRadius: 4 }} value={createForm.legal_name} onChange={(e) => setCreateForm({ ...createForm, legal_name: e.target.value })} />
+            </div>
+            <div style={{ marginBottom: "1rem" }}>
+              <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "0.25rem", color: "#64748b" }}>Отображаемое название</label>
+              <input data-testid="advertiser-create-display-name" style={{ width: "100%", padding: "0.5rem", border: "1px solid #e2e8f0", borderRadius: 4 }} value={createForm.display_name} onChange={(e) => setCreateForm({ ...createForm, display_name: e.target.value })} />
+            </div>
+            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+              <button onClick={() => setCreateOpen(false)} style={{ padding: "0.5rem 1rem", cursor: "pointer" }}>Отмена</button>
+              <button data-testid="advertiser-create-save" onClick={handleCreate} style={{ padding: "0.5rem 1rem", cursor: "pointer", background: "#2563eb", color: "#fff", border: "none", borderRadius: 4 }}>Сохранить</button>
+            </div>
           </div>
         </div>
       )}
@@ -420,19 +492,19 @@ function OverviewTab({ org }: { org: AdvertiserOrganizationDetailOut }) {
     <div>
       <div style={S.fieldGroup}>
         <div style={S.fieldLabel}>Код</div>
-        <div style={S.fieldValue}>{org.code}</div>
+        <div style={S.fieldValue} data-testid="advertiser-detail-code">{org.code}</div>
       </div>
       <div style={S.fieldGroup}>
         <div style={S.fieldLabel}>Название</div>
-        <div style={S.fieldValue}>{org.display_name}</div>
+        <div style={S.fieldValue} data-testid="advertiser-detail-display-name">{org.display_name}</div>
       </div>
       <div style={S.fieldGroup}>
         <div style={S.fieldLabel}>Юридическое название</div>
-        <div style={S.fieldValue}>{org.legal_name}</div>
+        <div style={S.fieldValue} data-testid="advertiser-detail-legal-name">{org.legal_name}</div>
       </div>
       <div style={S.fieldGroup}>
         <div style={S.fieldLabel}>Статус</div>
-        <div style={S.fieldValue}>
+        <div style={S.fieldValue} data-testid="advertiser-detail-status">
           <span style={S.badge(statusColor(org.status))}>{statusLabel(org.status)}</span>
         </div>
       </div>
@@ -551,8 +623,9 @@ function ContactsTab({ contacts }: { contacts: AdvertiserContactOut[] }) {
 }
 
 function UsersTab({ users }: { users: AdvertiserUserMembershipOut[] }) {
-  if (users.length === 0) return <div style={S.empty}>Нет привязанных пользователей</div>;
+  if (users.length === 0) return <div style={S.empty} data-testid="advertiser-detail-users-empty">Нет привязанных пользователей</div>;
   return (
+    <div data-testid="advertiser-detail-users">
     <table style={S.table}>
       <thead>
         <tr>
@@ -583,5 +656,6 @@ function UsersTab({ users }: { users: AdvertiserUserMembershipOut[] }) {
         ))}
       </tbody>
     </table>
+    </div>
   );
 }

@@ -9,7 +9,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, Request, HTTPException
 
-from packages.api.dependencies import get_db, get_device_id_from_token
+from packages.api.dependencies import get_db, get_device_id_from_token, set_device_rls_context
 from packages.domain import pop_ingestion
 from packages.domain.schemas import (
     POP_MAX_BATCH_SIZE,
@@ -28,6 +28,7 @@ async def ingest_batch(
     body: PopBatchRequest,
     device_id: str = Depends(get_device_id_from_token),
     db = Depends(get_db),
+    _rls_ctx: None = Depends(set_device_rls_context),
 ) -> PopBatchResponse:
     """Ingest a batch of PoP events from a device.
 

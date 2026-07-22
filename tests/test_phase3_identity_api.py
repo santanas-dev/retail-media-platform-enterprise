@@ -1142,5 +1142,301 @@ class TestCreativeModerationAudit(AuthzMixin, unittest.TestCase):
         mock_approve.assert_not_called()
 
 
+# ──────────────────────────────────────────────────────────────────────
+# G2-FIX — User Role Management
+# ──────────────────────────────────────────────────────────────────────
+
+
+class _MockRoleAssignment:
+    def __init__(self, id="ur-1", user_id="u-1", role_id="r-1",
+                 scope_type=None, scope_id=None, role=None):
+        self.id = id
+        self.user_id = user_id
+        self.role_id = role_id
+        self.scope_type = scope_type
+        self.scope_id = scope_id
+        self.role = role or _make_role(id="r-1", code="system_admin", name="System Admin")
+
+
+def _setup_role_mgmt_mocks(test_case, perms=None, user_id="u-1"):
+    """Setup authz mocks + additional role management mocks."""
+    mock_find, mock_perms = _setup_authz_mocks(test_case, perms=perms,
+                                                user=_MockActiveUser(user_id))
+    # Also mock scope/rls for role endpoints
+    app = _get_app()
+    from packages.api.dependencies import get_scope_context, set_rls_context
+    from packages.domain.scopes import ScopeContext
+
+    async def _fake_scope():
+        return ScopeContext(
+            user_id=user_id,
+            is_admin=True,
+            role_codes={"system_admin"},
+            global_permissions=perms or set(),
+            all_permissions=perms or set(),
+        )
+
+    async def _fake_set_rls(db=None, scope=None):
+        return None
+
+    app.dependency_overrides[get_scope_context] = _fake_scope
+    app.dependency_overrides[set_rls_context] = _fake_set_rls
+    test_case.addCleanup(lambda: app.dependency_overrides.clear())
+    return mock_find, mock_perms
+
+
+class TestUserRoleManagement(unittest.TestCase):
+
+    def setUp(self):
+        reset_security_config()
+
+    # ── PUT /users/{id}/roles ──
+
+    @patch("packages.domain.repository.get_user_detail", new_callable=AsyncMock)
+    @patch("packages.domain.repository.find_role_by_code", new_callable=AsyncMock)
+    @patch("packages.domain.repository.assign_user_role", new_callable=AsyncMock)
+    @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
+    def test_assign_role_success(self, mock_audit, mock_assign, mock_find_role, mock_get_user):
+        """Assign role returns 201 + writes audit event."""
+        _setup_role_mgmt_mocks(self, perms={"users.read", "roles.manage"})
+        mock_get_user.return_value = _make_user()
+        mock_find_role.return_value = _make_role(id="r-2", code="operator", name="Operator")
+        mock_assign.return_value = _MockRoleAssignment(user_id="u-1", role_id="r-2")
+
+        resp = TestClient(_get_app()).put(
+            "/api/v1/identity/users/u-1/roles",
+            json={"role_code": "operator"},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.json()["role_code"], "operator")
+        mock_audit.assert_called_once()
+        self.assertEqual(mock_audit.call_args.kwargs["action"], "user.role_assigned")
+
+    @patch("packages.domain.repository.get_user_detail", new_callable=AsyncMock)
+    def test_assign_role_user_not_found(self, mock_get_user):
+        """Assign role to nonexistent user → 404."""
+        _setup_role_mgmt_mocks(self, perms={"users.read", "roles.manage"})
+        mock_get_user.return_value = None
+
+        resp = TestClient(_get_app()).put(
+            "/api/v1/identity/users/u-999/roles",
+            json={"role_code": "operator"},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 404)
+
+    @patch("packages.domain.repository.get_user_detail", new_callable=AsyncMock)
+    @patch("packages.domain.repository.find_role_by_code", new_callable=AsyncMock)
+    def test_assign_role_not_found(self, mock_find_role, mock_get_user):
+        """Assign nonexistent role → 404."""
+        _setup_role_mgmt_mocks(self, perms={"users.read", "roles.manage"})
+        mock_get_user.return_value = _make_user()
+        mock_find_role.return_value = None
+
+        resp = TestClient(_get_app()).put(
+            "/api/v1/identity/users/u-1/roles",
+            json={"role_code": "nonexistent"},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 404)
+
+    @patch("packages.domain.repository.get_user_detail", new_callable=AsyncMock)
+    def test_assign_role_no_permission(self, mock_get_user):
+        """User without roles.manage → 403."""
+        _setup_role_mgmt_mocks(self, perms={"users.read"})
+        mock_get_user.return_value = _make_user()
+
+        resp = TestClient(_get_app()).put(
+            "/api/v1/identity/users/u-1/roles",
+            json={"role_code": "operator"},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    @patch("packages.domain.repository.get_user_detail", new_callable=AsyncMock)
+    @patch("packages.domain.repository.find_role_by_code", new_callable=AsyncMock)
+    def test_assign_role_invalid_scope(self, mock_find_role, mock_get_user):
+        """Mismatched scope_type/scope_id → 422."""
+        _setup_role_mgmt_mocks(self, perms={"users.read", "roles.manage"})
+        mock_get_user.return_value = _make_user()
+        mock_find_role.return_value = _make_role(id="r-2", code="operator", name="Operator")
+
+        resp = TestClient(_get_app()).put(
+            "/api/v1/identity/users/u-1/roles",
+            json={"role_code": "operator", "scope_type": "advertiser"},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 422)
+
+    # ── DELETE /users/{id}/roles/{assignment_id} ──
+
+    @patch("packages.domain.repository.get_user_role_assignment", new_callable=AsyncMock)
+    @patch("packages.domain.repository.remove_user_role", new_callable=AsyncMock)
+    @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
+    def test_remove_role_success(self, mock_audit, mock_remove, mock_get_assignment):
+        """Remove role returns 204 + writes audit event."""
+        _setup_role_mgmt_mocks(self, perms={"users.read", "roles.manage"})
+        mock_get_assignment.return_value = _MockRoleAssignment(
+            id="ur-1", user_id="u-1", role_id="r-1")
+        mock_remove.return_value = True
+
+        resp = TestClient(_get_app()).delete(
+            "/api/v1/identity/users/u-1/roles/ur-1",
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 204)
+        mock_audit.assert_called_once()
+        self.assertEqual(mock_audit.call_args.kwargs["action"], "user.role_removed")
+
+    @patch("packages.domain.repository.get_user_role_assignment", new_callable=AsyncMock)
+    def test_remove_role_assignment_not_found(self, mock_get_assignment):
+        """Remove nonexistent role assignment → 404."""
+        _setup_role_mgmt_mocks(self, perms={"users.read", "roles.manage"})
+        mock_get_assignment.return_value = None
+
+        resp = TestClient(_get_app()).delete(
+            "/api/v1/identity/users/u-1/roles/ur-999",
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 404)
+
+    @patch("packages.domain.repository.get_user_role_assignment", new_callable=AsyncMock)
+    def test_remove_role_wrong_user(self, mock_get_assignment):
+        """Remove assignment that belongs to another user → 404."""
+        _setup_role_mgmt_mocks(self, perms={"users.read", "roles.manage"})
+        mock_get_assignment.return_value = _MockRoleAssignment(
+            id="ur-1", user_id="u-2", role_id="r-1")  # different user
+
+        resp = TestClient(_get_app()).delete(
+            "/api/v1/identity/users/u-1/roles/ur-1",
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 404)
+
+
+# ---------------------------------------------------------------------------
+# G3-FIX-FU — Advertiser Organization Create (POST)
+# ---------------------------------------------------------------------------
+
+
+class TestAdvertiserOrganizationCreate(AuthzMixin, unittest.TestCase):
+    """POST /api/v1/identity/advertiser-organizations"""
+
+    def _post(self, url, json_data=None, **kwargs):
+        headers = kwargs.pop("headers", {})
+        headers.update(_auth(_token()))
+        return TestClient(_get_app()).post(url, json=json_data, headers=headers, **kwargs)
+
+    def _mock_create(self, return_org=None, side_effect=None):
+        """Set up mocks for create_advertiser_organization + create_audit_event."""
+        patcher_create = patch(
+            "packages.api.identity_routes.advertisers.repository.create_advertiser_organization",
+            new_callable=AsyncMock,
+        )
+        patcher_audit = patch(
+            "packages.domain.repository.create_audit_event",
+            new_callable=AsyncMock,
+        )
+        mock_create = patcher_create.start()
+        mock_audit = patcher_audit.start()
+        self.addCleanup(patcher_create.stop)
+        self.addCleanup(patcher_audit.stop)
+        if return_org is not None:
+            mock_create.return_value = return_org
+        if side_effect is not None:
+            mock_create.side_effect = side_effect
+        return mock_create, mock_audit
+
+    def test_creates_organization_returns_201(self):
+        self._setup_authz(perms={"advertisers.manage", "organization.read"})
+        from packages.domain.models import AdvertiserOrganization
+        org = AdvertiserOrganization(
+            id="org-new", code="NEW01", legal_name="ООО Новый",
+            display_name="Новый", status="active",
+        )
+        self._mock_create(return_org=org)
+        resp = self._post("/api/v1/identity/advertiser-organizations", json_data={
+            "code": "NEW01",
+            "legal_name": "ООО Новый",
+            "display_name": "Новый",
+        })
+        self.assertEqual(resp.status_code, 201)
+        data = resp.json()
+        self.assertEqual(data["code"], "NEW01")
+        self.assertEqual(data["display_name"], "Новый")
+
+    def test_returns_403_without_manage_permission(self):
+        self._setup_authz(perms={"organization.read", "advertisers.read"})
+        resp = self._post("/api/v1/identity/advertiser-organizations", json_data={
+            "code": "NEW01",
+            "legal_name": "ООО Новый",
+            "display_name": "Новый",
+        })
+        self.assertEqual(resp.status_code, 403)
+
+    def test_requires_code_field(self):
+        self._setup_authz(perms={"advertisers.manage", "organization.read"})
+        resp = self._post("/api/v1/identity/advertiser-organizations", json_data={
+            "legal_name": "ООО Новый",
+            "display_name": "Новый",
+        })
+        self.assertEqual(resp.status_code, 422)
+
+    def test_requires_legal_name_field(self):
+        self._setup_authz(perms={"advertisers.manage", "organization.read"})
+        resp = self._post("/api/v1/identity/advertiser-organizations", json_data={
+            "code": "NEW01",
+            "display_name": "Новый",
+        })
+        self.assertEqual(resp.status_code, 422)
+
+    def test_requires_display_name_field(self):
+        self._setup_authz(perms={"advertisers.manage", "organization.read"})
+        resp = self._post("/api/v1/identity/advertiser-organizations", json_data={
+            "code": "NEW01",
+            "legal_name": "ООО Новый",
+        })
+        self.assertEqual(resp.status_code, 422)
+
+    def test_audit_event_created(self):
+        self._setup_authz(perms={"advertisers.manage", "organization.read"})
+        from packages.domain.models import AdvertiserOrganization
+        org = AdvertiserOrganization(
+            id="org-new", code="NEW01", legal_name="ООО Новый",
+            display_name="Новый", status="active",
+        )
+        mock_create, mock_audit = self._mock_create(return_org=org)
+
+        resp = self._post("/api/v1/identity/advertiser-organizations", json_data={
+            "code": "NEW01",
+            "legal_name": "ООО Новый",
+            "display_name": "Новый",
+        })
+        self.assertEqual(resp.status_code, 201)
+        mock_audit.assert_called_once()
+        call_kwargs = mock_audit.call_args[1]
+        self.assertEqual(call_kwargs.get("action"), "advertiser_organization.created")
+        self.assertEqual(call_kwargs.get("target_type"), "advertiser_organization")
+        self.assertEqual(call_kwargs.get("target_id"), "org-new")
+
+    def test_duplicate_code_returns_500(self):
+        self._setup_authz(perms={"advertisers.manage", "organization.read"})
+        from sqlalchemy.exc import IntegrityError
+        self._mock_create(side_effect=IntegrityError(
+            "duplicate key value violates unique constraint",
+            params={},
+            orig=Exception(),
+        ))
+        # IntegrityError is unhandled → FastAPI returns 500
+        # Honest: not yet a 409, documented as known gap
+        with self.assertRaises(Exception):
+            self._post("/api/v1/identity/advertiser-organizations", json_data={
+                "code": "EXISTING",
+                "legal_name": "Дубль",
+                "display_name": "Дубль",
+            })
+
+
 if __name__ == "__main__":
     unittest.main()

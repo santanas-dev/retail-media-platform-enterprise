@@ -31,6 +31,7 @@ export interface CampaignOut {
   start_at: string | null;
   end_at: string | null;
   timezone: string;
+  placement_basis: string;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -321,9 +322,10 @@ export interface CampaignCreateRequest {
   budget_limit_amount: number | null;
   budget_limit_currency: string;
   priority: number;
+  placement_basis: string;
 }
 
-// ── Flight Mutation ──
+// ── Campaign Update Request ──
 
 export interface CampaignFlightCreateRequest {
   name: string | null;
@@ -767,4 +769,31 @@ export interface InventorySimulationResponse {
   placements: InventorySimulationPlacementResult[];
   blocking_count: number;
   warning_count: number;
+}
+
+// ── User Role Management ──
+
+export interface RoleOut {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  is_system: boolean;
+}
+
+export interface AssignRoleRequest {
+  role_code: string;
+  scope_type?: string | null;
+  scope_id?: string | null;
+}
+
+export interface AssignRoleResponse {
+  id: string;
+  user_id: string;
+  role_id: string;
+  role_code: string;
+  role_name: string;
+  scope_type: string | null;
+  scope_id: string | null;
+  message: string;
 }
