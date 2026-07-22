@@ -10,6 +10,7 @@
 **JOURNEY-005** ✅ — user.create_advertiser reachable. CI #29915158941 (code), #29916193275 (smoke-fix), both 35/35 green + Behavioral.
 **JOURNEY-005-FU** ✅ — real UI-smoke proof against PostgreSQL: test_uismoke__user__create_advertiser PASSED 1.56s.
 **CLEAN-BOOT-002** ✅ — db-setup image sharing fix: all 28 migrations to head without manual alembic.
+**JOURNEY-006** ✅ — advertiser.view reachable. CI #29934268801 green (35/35), Behavioral success.
 
 **NAS-SYNC-OWNER-001** — Hermes-owned mirror sync replaces santa2 relay.
 - Sync/canon: ✅ NAS caught up 4215c23→2b352f2, cron c0687f5ced4d (nas-mirror-sync.sh, every 3 min), AGENTS.md/runbook/PROJECT_STATE updated.
@@ -53,7 +54,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | ab39af2 | 6032752 | CLEAN-BOOT-002 db-setup image sharing fix, CI #29933227055 ✅ |
+| develop | 7a6444f | <placeholder> | JOURNEY-006 advertiser.view reachable, CI #29934268801 ✅ |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 | NAS mirror (ASUSTOR) | verified | 6032752 | Hermes cron, synced after CLEAN-BOOT-002 |
 
@@ -192,6 +193,21 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 - **Backend:** no code changes — endpoint existed and worked.
 - **Next:** advertiser.view из wave 1.
 
+### JOURNEY-006 — advertiser.view reachable ✅ RESOLVED
+- **Verdict:** backend endpoints existed (`GET /advertiser-organizations`, `GET /advertiser-organizations/{id}`), admin-web page fully built. This journey closed the smoke gap + data-testid coverage.
+- **What was done:**
+  - `AdvertisersPage.tsx`: data-testid on org rows, detail panel, overview fields (code, display_name, legal_name, status), users tab.
+  - `test_uismoke__advertiser__view.py`: honest UI-smoke — login → Рекламодатели → click ADV-001 row → verify detail panel → users tab. PASSED 1.83s.
+  - `advertisers-page-view.test.tsx`: 3 vitest tests — detail panel, users empty state, empty org list.
+  - **Frontend tests:** admin-web 171→174 (3 new).
+  - **Registry:** advertiser.view → reachable. Reachable 14→15, blocked 26→25.
+  - **Roadmap:** R6 (Управление рекламодателями) — advertiser.view ✅ added.
+  - **Guard:** roadmap-consistency-check → 0 findings.
+  - **Smoke:** real PostgreSQL + vite dev — PASSED (1.83s).
+  - **CI:** #29934268801 — 35/35 green (Python Unit, Import Boundaries, admin-web 174/174, Behavioral ADR-008).
+- **Backend:** no code changes — endpoints existed and worked.
+- **Wave 1:** ✅ complete — all 6 pre-pilot journeys reachable with green smoke.
+
 ## Open Issues
 
 | Priority | Count | Details |
@@ -234,8 +250,8 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**JOURNEY-001** ✅ advertiser.apply / **JOURNEY-002** ✅ advertiser.application_review / **CI-GATE-001** ✅ / **JOURNEY-003** ✅ advertiser.invite / **JOURNEY-004** ✅ self.login / **JOURNEY-005** ✅ user.create_advertiser.
-Next: **advertiser.view** из wave 1 pre-pilot journey plan.
+**JOURNEY-001** ✅ advertiser.apply / **JOURNEY-002** ✅ advertiser.application_review / **CI-GATE-001** ✅ / **JOURNEY-003** ✅ advertiser.invite / **JOURNEY-004** ✅ self.login / **JOURNEY-005** ✅ user.create_advertiser / **JOURNEY-006** ✅ advertiser.view.
+**Wave 1 complete.** All 6 pre-pilot journeys reachable with green UI-smoke. Next: await prioritisation (wave 2+).
 
 Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
 
