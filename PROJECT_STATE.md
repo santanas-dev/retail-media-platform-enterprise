@@ -53,7 +53,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | d9f7988 | 8211596 | JOURNEY-005 user.create_advertiser reachable, CI #29915158941 + #29916193275 ✅ |
+| develop | ab39af2 | ab39af2 | CLEAN-BOOT-002 db-setup image sharing fix, CI #29933227055 ✅ |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 | NAS mirror (ASUSTOR) | pending | 8211596 | Hermes cron, syncing after JOURNEY-005-FU push |
 
