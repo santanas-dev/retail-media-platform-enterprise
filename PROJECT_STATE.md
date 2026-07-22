@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-20 (JOURNEY-001 — advertiser.apply reachable + green smoke)
+**Last updated:** 2026-07-20 (JOURNEY-001-FU — checkpoint hygiene + migration 028 downgrade fix)
 
-**JOURNEY-001** — advertiser.apply reachable. Public form /become-advertiser → submit → 201/new. UI-smoke green. Registry: reachable 9→10, blocked 31→30.
+**JOURNEY-001** ✅ — advertiser.apply reachable. Public form /become-advertiser → submit → 201/new. UI-smoke green. CI #29776465950 ✅. Registry: reachable 9→10. Migration 028 downgrade fixed (current_setting pattern).
 
 **NAS-SYNC-OWNER-001** — Hermes-owned mirror sync replaces santa2 relay.
 - Sync/canon: ✅ NAS caught up 4215c23→2b352f2, cron c0687f5ced4d (nas-mirror-sync.sh, every 3 min), AGENTS.md/runbook/PROJECT_STATE updated.
@@ -46,9 +46,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 6144148 | ce54518 | G4-FIX-FU2 — state/roadmap hygiene; G4 series closed, CI #29764363887 ✅ (35/35) |
+| develop | c45aeb2 | <FU> | JOURNEY-001 advertiser.apply reachable + e3ef30e migration fix, CI #29776465950 ✅ |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
-| NAS mirror (ASUSTOR) | verified | 0fdc727 | Hermes cron, verified 2026-07-20 — catch-up from 4215c23 to 0fdc727 |
+| NAS mirror (ASUSTOR) | verified | e3ef30e | Hermes cron, NAS caught up after JOURNEY-001 push |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state

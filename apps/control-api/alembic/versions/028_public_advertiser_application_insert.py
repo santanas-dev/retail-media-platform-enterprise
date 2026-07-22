@@ -24,18 +24,30 @@ def upgrade():
 
 
 def downgrade():
+    # Restore the TWO_LEVEL insert policy from migration 020 (APP_ORG_TWO_LEVEL variant).
+    # Uses current_setting() — bare app.rmp_* references are NOT valid SQL.
+    _IS_ADMIN = (
+        "COALESCE(NULLIF(current_setting('app.rmp_is_admin', true), ''), "
+        "'false')::bool = true"
+    )
+    _SCOPE_RETAILER = (
+        "COALESCE(string_to_array("
+        "NULLIF(current_setting('app.rmp_scope_retailer_ids', true), ''), "
+        "','), '{}'::text[])"
+    )
+    _SCOPE_ADVERTISER = (
+        "COALESCE(string_to_array("
+        "NULLIF(current_setting('app.rmp_scope_advertiser_ids', true), ''), "
+        "','), '{}'::text[])"
+    )
+    TWO_LEVEL = (
+        f"({_IS_ADMIN} OR (retailer_id = ANY({_SCOPE_RETAILER})"
+        f" AND organization_id = ANY({_SCOPE_ADVERTISER})))"
+    )
+
     op.execute("DROP POLICY IF EXISTS advertiser_applications_rls_ins ON advertiser_applications")
-    op.execute("""
+    op.execute(f"""
         CREATE POLICY advertiser_applications_rls_ins ON advertiser_applications
             FOR INSERT
-            WITH CHECK (
-                app.rmp_is_admin
-                OR (
-                    app.rmp_scope_retailer_ids IS NOT NULL
-                    AND organization_id IN (
-                        SELECT ao.id FROM advertiser_organizations ao
-                        WHERE ao.retailer_id = ANY(app.rmp_scope_retailer_ids)
-                    )
-                )
-            );
+            WITH CHECK ({TWO_LEVEL});
     """)
