@@ -155,7 +155,7 @@ export default function AdvertiserApplicationsPage() {
       )}
 
       {apps.length > 0 && (
-        <table style={S.table}>
+        <table style={S.table} data-testid="advertiser-applications-table">
           <thead>
             <tr>
               <th style={S.th}>Компания</th>
@@ -168,7 +168,7 @@ export default function AdvertiserApplicationsPage() {
           </thead>
           <tbody>
             {apps.map((a) => (
-              <tr key={a.id} style={{ cursor: "pointer" }} onClick={() => setSelected(selected?.id === a.id ? null : a)}>
+              <tr key={a.id} style={{ cursor: "pointer" }} onClick={() => setSelected(selected?.id === a.id ? null : a)} data-testid={`app-row-${a.id}`}>
                 <td style={S.td}>{a.company_name}</td>
                 <td style={S.td}>{a.contact_name}</td>
                 <td style={S.td}>{a.email}</td>
@@ -200,7 +200,7 @@ export default function AdvertiserApplicationsPage() {
           {selected.status === "new" && (
             <div>
               <div style={S.actions}>
-                <button style={S.btn("#f59e0b")} onClick={() => handleReview("reviewing", selected.id)}>Начать рассмотрение</button>
+                <button style={S.btn("#f59e0b")} onClick={() => handleReview("reviewing", selected.id)} data-testid="advertiser-review-start">Начать рассмотрение</button>
               </div>
             </div>
           )}
