@@ -1140,6 +1140,7 @@ export default function CampaignDetailPage() {
           code: assetCode.trim(),
           name: assetName.trim(),
           media_type: assetMediaType,
+          advertiser_organization_id: data?.org?.id || undefined,
           sha256_checksum: assetChecksum.trim() || undefined,
           file_size_bytes: assetSize ? parseInt(assetSize, 10) : null,
           resolution_w: assetW ? parseInt(assetW, 10) : null,
@@ -1192,7 +1193,7 @@ export default function CampaignDetailPage() {
         {isDraft && (
           <div style={{ marginBottom: "0.75rem" }}>
             {!showAttach ? (
-              <button type="button" style={css.addBtn} onClick={() => { setShowAttach(true); setAttachError(null); }}>
+              <button type="button" style={css.addBtn} onClick={() => { setShowAttach(true); setAttachError(null); }} data-testid="creative-attach-btn">
                 + Прикрепить существующий креатив
               </button>
             ) : (
@@ -1211,7 +1212,7 @@ export default function CampaignDetailPage() {
                     <label style={css.miniLabel}>Креатив</label>
                     {unattached.length > 0 ? (
                       <select value={attachAssetId} onChange={(e) => setAttachAssetId(e.target.value)}
-                        style={{ ...css.miniSelect, minWidth: 260 }}>
+                        style={{ ...css.miniSelect, minWidth: 260 }} data-testid="creative-attach-select">
                         <option value="">— выберите —</option>
                         {unattached.map((a) => (
                           <option key={a.id} value={a.id}>
@@ -1238,7 +1239,7 @@ export default function CampaignDetailPage() {
                   })()}
                   {unattached.length > 0 && (
                     <div style={{ display: "flex", gap: "0.25rem", alignItems: "flex-end" }}>
-                      <button type="submit" style={css.primaryBtn} disabled={attachSubmitting}>
+                      <button type="submit" style={css.primaryBtn} disabled={attachSubmitting} data-testid="creative-attach-submit">
                         {attachSubmitting ? "..." : "Прикрепить"}
                       </button>
                       <button type="button" style={css.cancelBtn} onClick={() => { setShowAttach(false); setAttachError(null); setAttachAssetId(""); }}>
@@ -1257,7 +1258,7 @@ export default function CampaignDetailPage() {
         {isDraft && (
           <div style={{ marginBottom: "0.75rem" }}>
             {!showAssetAdd ? (
-              <button type="button" style={css.addBtn} onClick={() => { setShowAssetAdd(true); setAssetError(null); }}>
+              <button type="button" style={css.addBtn} onClick={() => { setShowAssetAdd(true); setAssetError(null); }} data-testid="creative-add-library-btn">
                 + Добавить креатив в библиотеку
               </button>
             ) : (
@@ -1265,11 +1266,11 @@ export default function CampaignDetailPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", marginBottom: "0.5rem" }}>
                   <div>
                     <label htmlFor="ca-code" style={css.miniLabel}>Код *</label>
-                    <input id="ca-code" type="text" value={assetCode} onChange={(e) => setAssetCode(e.target.value)} style={css.miniInput} maxLength={64} required />
+                    <input id="ca-code" type="text" value={assetCode} onChange={(e) => setAssetCode(e.target.value)} style={css.miniInput} maxLength={64} required data-testid="creative-code" />
                   </div>
                   <div>
                     <label htmlFor="ca-name" style={css.miniLabel}>Название *</label>
-                    <input id="ca-name" type="text" value={assetName} onChange={(e) => setAssetName(e.target.value)} style={css.miniInput} maxLength={255} required />
+                    <input id="ca-name" type="text" value={assetName} onChange={(e) => setAssetName(e.target.value)} style={css.miniInput} maxLength={255} required data-testid="creative-name" />
                   </div>
                   <div>
                     <label htmlFor="ca-type" style={css.miniLabel}>Тип медиа</label>
@@ -1309,7 +1310,7 @@ export default function CampaignDetailPage() {
                 {/* S-017: File upload is now active — use the "Загрузить файл" button on each asset */}
 
                 <div style={{ display: "flex", gap: "0.25rem" }}>
-                  <button type="submit" style={css.primaryBtn} disabled={assetSubmitting}>
+                  <button type="submit" style={css.primaryBtn} disabled={assetSubmitting} data-testid="creative-add-submit">
                     {assetSubmitting ? "..." : "Добавить в библиотеку"}
                   </button>
                   <button type="button" style={css.cancelBtn} onClick={resetAssetForm}>Отмена</button>
@@ -1364,6 +1365,7 @@ export default function CampaignDetailPage() {
               type="file"
               accept=".png,.jpg,.jpeg,.webp,.gif,.mp4"
               style={{ display: "none" }}
+              data-testid="creative-file-input"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (!f) return;

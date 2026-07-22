@@ -23,6 +23,7 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **JOURNEY-008** ✅ — campaign.edit reachable + green UI-smoke (2.33s). Backend existed (CampaignFlight/CampaignPlacement CRUD). Admin-web data-testid on tabs, flight form, placement form. Registry 16→17 reachable.
 **JOURNEY-008-FU** ✅ — state/roadmap hygiene after campaign.edit. PROJECT_STATE: Next→creative.upload, NAS develop→d2dddc8. Roadmap R8 Итог: campaign.submit/activate без smoke. R5 Next: creative.upload.
 **NAS-MIRROR-002** ✅ — restore clean NAS mirror after JOURNEY-008-FU. 22 files deleted by CIFS lock; manual reset --hard origin/develop → f93ea13. Cron script hardened with stderr capture + dirty-tree diagnostics. Runbook updated with dirty mirror recovery section.
+**JOURNEY-009** ✅ — creative.upload reachable + green UI-smoke (12.59s). Backend existed (presigned URL → MinIO upload flow). Admin-web: 7 data-testid, advertiser_organization_id fix, test fixture. Registry 17→18 reachable, 23→22 blocked. CI #TBD.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
 EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof (admin bypass), CI #29649000788 green (6/6).
 EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOBYPASSRLS), CI #29652235623 green (5/5).
@@ -60,9 +61,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 9790904 | 2500696 | JOURNEY-008 campaign.edit ✅, CI #29946012506; NAS-MIRROR-002 ✅ |
+| develop | 9790904 | 03d8a7b | JOURNEY-008 campaign.edit ✅, CI #29946012506; NAS-MIRROR-002 ✅ |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
-| NAS mirror (ASUSTOR) | verified | develop=2500696, main=b5dd3b3, tag v0.9.0-prepilot-wave1 → b5dd3b3 | Hermes cron sync confirmed (develop + main + tags) |
+| NAS mirror (ASUSTOR) | verified | develop=03d8a7b, main=b5dd3b3, tag v0.9.0-prepilot-wave1 → b5dd3b3 | Hermes cron sync confirmed (develop + main + tags) |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
@@ -256,8 +257,8 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**JOURNEY-009** — creative.upload (Wave 2, managed-first).
-Wave 2: self.apply_or_brief ✅ → campaign.edit ✅ → creative.upload ← сейчас → inventory.simulate → self.campaign_create (deferred).
+**JOURNEY-010** — inventory.simulate (Wave 2, managed-first).
+Wave 2: self.apply_or_brief ✅ → campaign.edit ✅ → creative.upload ✅ → inventory.simulate ← сейчас → self.campaign_create (deferred).
 
 Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
 
