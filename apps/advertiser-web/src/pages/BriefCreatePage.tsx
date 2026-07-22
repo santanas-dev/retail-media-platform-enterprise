@@ -78,6 +78,7 @@ export default function BriefCreatePage() {
             placeholder="Например: Продвижение молочной продукции"
             maxLength={255}
             disabled={saving}
+            data-testid="brief-create-title"
           />
         </label>
 
@@ -90,6 +91,7 @@ export default function BriefCreatePage() {
             placeholder="Что вы хотите достичь размещением?"
             rows={2}
             disabled={saving}
+            data-testid="brief-create-objective"
           />
         </label>
 
@@ -101,6 +103,7 @@ export default function BriefCreatePage() {
             onChange={(e) => update("product_category", e.target.value)}
             placeholder="Например: Молочная продукция"
             disabled={saving}
+            data-testid="brief-create-category"
           />
         </label>
 
@@ -113,6 +116,7 @@ export default function BriefCreatePage() {
               value={form.target_period_from}
               onChange={(e) => update("target_period_from", e.target.value)}
               disabled={saving}
+              data-testid="brief-create-period-from"
             />
           </label>
           <label className={s.field}>
@@ -123,6 +127,7 @@ export default function BriefCreatePage() {
               value={form.target_period_to}
               onChange={(e) => update("target_period_to", e.target.value)}
               disabled={saving}
+              data-testid="brief-create-period-to"
             />
           </label>
         </div>
@@ -137,6 +142,7 @@ export default function BriefCreatePage() {
             placeholder="Ожидаемый бюджет"
             min={0}
             disabled={saving}
+            data-testid="brief-create-budget"
           />
         </label>
 
@@ -149,6 +155,7 @@ export default function BriefCreatePage() {
             placeholder="Опишите, где вы хотели бы разместиться"
             rows={2}
             disabled={saving}
+            data-testid="brief-create-channels"
           />
         </label>
 
@@ -161,6 +168,7 @@ export default function BriefCreatePage() {
             placeholder="Дополнительная информация"
             rows={3}
             disabled={saving}
+            data-testid="brief-create-comment"
           />
         </label>
 
@@ -169,6 +177,7 @@ export default function BriefCreatePage() {
             type="submit"
             className={s.btnDraft}
             disabled={saving}
+            data-testid="brief-create-draft"
           >
             {saving ? "Сохранение..." : "Сохранить черновик"}
           </button>
@@ -177,6 +186,7 @@ export default function BriefCreatePage() {
             className={s.btnSubmit}
             disabled={saving}
             onClick={(e) => handleSubmit(e, "submit")}
+            data-testid="brief-create-submit"
           >
             {saving ? "Отправка..." : "Отправить на рассмотрение"}
           </button>

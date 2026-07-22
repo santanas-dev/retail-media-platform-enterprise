@@ -49,7 +49,7 @@ export default function BriefListPage() {
           <p className={s.muted}>
             Создайте первую заявку, чтобы отправить её на рассмотрение.
           </p>
-          <Link to="/briefs/new" className={s.createBtn}>
+          <Link to="/briefs/new" className={s.createBtn} data-testid="brief-list-create-btn">
             Создать заявку
           </Link>
         </div>
@@ -61,7 +61,7 @@ export default function BriefListPage() {
     <div className={s.wrapper}>
       <div className={s.header}>
         <h1 className={s.title}>Мои заявки</h1>
-        <Link to="/briefs/new" className={s.createBtn}>
+        <Link to="/briefs/new" className={s.createBtn} data-testid="brief-list-create-btn">
           + Новая заявка
         </Link>
       </div>

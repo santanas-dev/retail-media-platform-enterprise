@@ -7,7 +7,7 @@ const NAV_ITEMS = [
   { to: "/dashboard", label: "Кабинет" },
   { to: "/campaigns", label: "Кампании" },
   { to: "/creatives", label: "Креативы" },
-  { to: "/briefs", label: "Заявки" },
+  { to: "/briefs", label: "Заявки", testid: "nav-briefs" },
   { to: "/documents", label: "Документы", disabled: true },
   { to: "/support", label: "Поддержка", disabled: true },
   { to: "/profile", label: "Профиль" },
@@ -69,6 +69,7 @@ export default function Layout() {
                   `${s.navLink}${isActive ? ` ${s.navLinkActive}` : ""}`
                 }
                 onClick={closeMenu}
+                {...("testid" in item ? { "data-testid": (item as any).testid } : {})}
               >
                 {item.label}
               </NavLink>
