@@ -299,12 +299,13 @@ features:
     route: /login
     path:
       - login (system_admin или campaign_manager)
-      - Заявки → Создать приглашение
+      - Заявки → одобренная заявка → Создать приглашение
+      - Увидеть токен приглашения
     smoke: test_uismoke__advertiser__invite
     priority: P1
     roles: [system_admin, campaign_manager]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
+    gap: ""
 
   - id: user.reset_password
     frontend: admin-web
@@ -573,8 +574,8 @@ features:
   # ═══════════════════════════════════════════════════════════════
   #   total: 40
   # by status:
-  #   reachable: 11 (campaign.create, user.assign_roles, advertiser.create_org, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability, adsettings.configure, advertiser.apply, advertiser.application_review)
-  #   blocked:   29 (26 UI-no-smoke + 3 service-deferred)
+  #   reachable: 12 (campaign.create, user.assign_roles, advertiser.create_org, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability, adsettings.configure, advertiser.apply, advertiser.application_review, advertiser.invite)
+  #   blocked:   28 (25 UI-no-smoke + 3 service-deferred)
   # by frontend:
   #   admin-web:      26
   #   advertiser-web:  5
