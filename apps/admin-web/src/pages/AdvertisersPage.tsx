@@ -383,6 +383,7 @@ export default function AdvertisersPage() {
             {filteredOrgs.map((org) => (
               <tr
                 key={org.id}
+                data-testid="advertiser-org-row"
                 style={{
                   ...S.row,
                   background: selectedOrgId === org.id ? "#eff6ff" : undefined,
@@ -408,7 +409,7 @@ export default function AdvertisersPage() {
 
       {/* Detail panel */}
       {selectedOrgId && (
-        <div style={S.detailPanel}>
+        <div style={S.detailPanel} data-testid="advertiser-detail-panel">
           <div style={S.tabs}>
             {TABS.map((t) => (
               <div key={t} style={S.tab(activeTab === t)} onClick={() => setActiveTab(t)}>
@@ -491,19 +492,19 @@ function OverviewTab({ org }: { org: AdvertiserOrganizationDetailOut }) {
     <div>
       <div style={S.fieldGroup}>
         <div style={S.fieldLabel}>Код</div>
-        <div style={S.fieldValue}>{org.code}</div>
+        <div style={S.fieldValue} data-testid="advertiser-detail-code">{org.code}</div>
       </div>
       <div style={S.fieldGroup}>
         <div style={S.fieldLabel}>Название</div>
-        <div style={S.fieldValue}>{org.display_name}</div>
+        <div style={S.fieldValue} data-testid="advertiser-detail-display-name">{org.display_name}</div>
       </div>
       <div style={S.fieldGroup}>
         <div style={S.fieldLabel}>Юридическое название</div>
-        <div style={S.fieldValue}>{org.legal_name}</div>
+        <div style={S.fieldValue} data-testid="advertiser-detail-legal-name">{org.legal_name}</div>
       </div>
       <div style={S.fieldGroup}>
         <div style={S.fieldLabel}>Статус</div>
-        <div style={S.fieldValue}>
+        <div style={S.fieldValue} data-testid="advertiser-detail-status">
           <span style={S.badge(statusColor(org.status))}>{statusLabel(org.status)}</span>
         </div>
       </div>
@@ -622,8 +623,9 @@ function ContactsTab({ contacts }: { contacts: AdvertiserContactOut[] }) {
 }
 
 function UsersTab({ users }: { users: AdvertiserUserMembershipOut[] }) {
-  if (users.length === 0) return <div style={S.empty}>Нет привязанных пользователей</div>;
+  if (users.length === 0) return <div style={S.empty} data-testid="advertiser-detail-users-empty">Нет привязанных пользователей</div>;
   return (
+    <div data-testid="advertiser-detail-users">
     <table style={S.table}>
       <thead>
         <tr>
@@ -654,5 +656,6 @@ function UsersTab({ users }: { users: AdvertiserUserMembershipOut[] }) {
         ))}
       </tbody>
     </table>
+    </div>
   );
 }
