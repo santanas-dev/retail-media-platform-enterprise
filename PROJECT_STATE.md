@@ -46,7 +46,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | c45aeb2 | <FU> | JOURNEY-001 advertiser.apply reachable + e3ef30e migration fix, CI #29776465950 ✅ |
+| develop | c45aeb2 | 8bda18f | JOURNEY-001 advertiser.apply reachable + e3ef30e migration fix, CI #29776465950 ✅ |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 | NAS mirror (ASUSTOR) | verified | e3ef30e | Hermes cron, NAS caught up after JOURNEY-001 push |
 
