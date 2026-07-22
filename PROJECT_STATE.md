@@ -47,7 +47,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | c45aeb2 | <FU> | JOURNEY-002 advertiser.application_review reachable, CI pending |
+| develop | c45aeb2 | a04a5cd | JOURNEY-002 advertiser.application_review reachable, CI pending |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
 | NAS mirror (ASUSTOR) | verified | 53b3ad5 | Hermes cron, NAS caught up after JOURNEY-001-FU push |
 
