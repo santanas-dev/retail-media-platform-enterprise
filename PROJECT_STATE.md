@@ -56,7 +56,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 48e23c4 | 48e23c4 | R2-FU — NAS mirror sync expanded to develop+main+tags |
+| develop | e6497da | 1453f85 | WAVE2-PLAN-REFRESH — Next: JOURNEY-007 self.apply_or_brief |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
 | NAS mirror (ASUSTOR) | verified | develop=48e23c4, main=b5dd3b3, tag v0.9.0-prepilot-wave1 → b5dd3b3 | Hermes cron sync confirmed (develop + main + tags) |
 
