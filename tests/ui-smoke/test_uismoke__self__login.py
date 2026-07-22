@@ -1,11 +1,15 @@
 """
 UI-smoke: self.login — advertiser accepts invite, logs into advertiser-web.
-Self-contained full flow across admin-web (:3000) and advertiser-web (:3001).
+Self-contained full flow across admin-web and advertiser-web.
+
+URL configuration:
+  UI_SMOKE_BASE_URL       — admin-web base URL (default http://localhost:3000)
+  UI_SMOKE_ADVERTISER_URL — advertiser-web base URL (default: admin URL port + 1)
 
 Phases:
-  1. admin-web :3000  — public submit application
-  2. admin-web :3000  — admin login, review → approve, create invite
-  3. advertiser-web :3001 — accept invite, login, verify dashboard
+  1. admin-web  — public submit application
+  2. admin-web  — admin login, review → approve, create invite
+  3. advertiser-web — accept invite, login, verify dashboard
 """
 import os
 import re
@@ -19,8 +23,11 @@ if not os.environ.get("UI_SMOKE_RUN"):
 from playwright.sync_api import Page, expect
 
 ADMIN_URL = os.environ.get("UI_SMOKE_BASE_URL", "http://localhost:3000")
-# Derive advertiser-web URL from admin-web URL: replace :3000 with :3001
-ADVERTISER_URL = re.sub(r":(\d+)$", lambda m: f":{int(m.group(1)) + 1}", ADMIN_URL)
+# Explicit override or derive from admin URL (port + 1 for local/dev)
+ADVERTISER_URL = os.environ.get(
+    "UI_SMOKE_ADVERTISER_URL",
+    re.sub(r":(\d+)$", lambda m: f":{int(m.group(1)) + 1}", ADMIN_URL),
+)
 LOGIN_URL = f"{ADMIN_URL}/login"
 PUBLIC_URL = f"{ADMIN_URL}/become-advertiser"
 ADV_LOGIN_URL = f"{ADVERTISER_URL}/login"
