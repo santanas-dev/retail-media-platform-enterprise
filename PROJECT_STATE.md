@@ -7,7 +7,8 @@
 **CI-GATE-001** ✅ — test_tampered_token_rejected stabilised.
 **JOURNEY-003** ✅ — advertiser.invite reachable. CI #29907059713 green (35/35).
 **JOURNEY-004** ✅ — self.login reachable. CI #29909590097 green (35/35), Behavioral success.
-**JOURNEY-005** ✅ — user.create_advertiser reachable. CI #29915158941 green (35/35), Behavioral success.
+**JOURNEY-005** ✅ — user.create_advertiser reachable. CI #29915158941 (code), #29916193275 (smoke-fix), both 35/35 green + Behavioral.
+**JOURNEY-005-FU** ✅ — real UI-smoke proof against PostgreSQL: test_uismoke__user__create_advertiser PASSED 1.56s.
 
 **NAS-SYNC-OWNER-001** — Hermes-owned mirror sync replaces santa2 relay.
 - Sync/canon: ✅ NAS caught up 4215c23→2b352f2, cron c0687f5ced4d (nas-mirror-sync.sh, every 3 min), AGENTS.md/runbook/PROJECT_STATE updated.
@@ -51,9 +52,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | d9f7988 | e3a9e8d | JOURNEY-005 user.create_advertiser reachable, CI #29915158941 ✅ |
+| develop | d9f7988 | 8211596 | JOURNEY-005 user.create_advertiser reachable, CI #29915158941 + #29916193275 ✅ |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
-| NAS mirror (ASUSTOR) | pending | d9f7988 | Hermes cron, syncing after JOURNEY-005 push |
+| NAS mirror (ASUSTOR) | pending | 8211596 | Hermes cron, syncing after JOURNEY-005-FU push |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
