@@ -57,7 +57,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 76c1950 | 3087bab | WAVE2-PLAN-REFRESH → JOURNEY-007 self.apply_or_brief |
+| develop | 6cd0004 | 6cd0004 | JOURNEY-007 self.apply_or_brief ✅, CI #29945025020 |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
 | NAS mirror (ASUSTOR) | verified | develop=3087bab, main=b5dd3b3, tag v0.9.0-prepilot-wave1 → b5dd3b3 | Hermes cron sync confirmed (develop + main + tags) |
 
