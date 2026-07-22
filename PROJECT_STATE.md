@@ -18,6 +18,7 @@
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
 R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green (35/35, Behavioral ADR-008), tag v0.9.0-prepilot-wave1 → b5dd3b3.
+**WAVE2-PLAN-REFRESH** ✅ — pre-pilot journey plan актуализирован после R2. Wave 1: 8/8 🟢 closed. Wave 2: self.apply_or_brief → campaign.edit → creative.upload → inventory.simulate → self.campaign_create (deferred). Registry: 15 reachable, 25 blocked.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
 EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof (admin bypass), CI #29649000788 green (6/6).
 EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOBYPASSRLS), CI #29652235623 green (5/5).
@@ -251,9 +252,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**JOURNEY-001** ✅ advertiser.apply / **JOURNEY-002** ✅ advertiser.application_review / **CI-GATE-001** ✅ / **JOURNEY-003** ✅ advertiser.invite / **JOURNEY-004** ✅ self.login / **JOURNEY-005** ✅ user.create_advertiser / **JOURNEY-006** ✅ advertiser.view.
-**Wave 1 complete + released.** R2 baseline to main (b5dd3b3), tag v0.9.0-prepilot-wave1, CI #29937353570 green.
-**Next: WAVE2-PLAN-REFRESH.**
+**JOURNEY-007** — self.apply_or_brief (Wave 2, managed-first).
+Wave 1 complete + released: R2 baseline to main (b5dd3b3), tag v0.9.0-prepilot-wave1, CI #29937353570 green.
+Wave 2 plan refreshed in `docs/product/pre-pilot-journey-plan.md`: 15 reachable, 25 blocked. Order: self.apply_or_brief → campaign.edit → creative.upload → inventory.simulate → self.campaign_create (deferred).
 
 Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
 
