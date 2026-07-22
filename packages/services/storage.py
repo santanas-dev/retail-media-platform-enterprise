@@ -37,6 +37,18 @@ class StorageService:
             secure=False,  # pilot: HTTP; production: HTTPS
         )
         self._public_endpoint = cfg.minio_public_endpoint
+        # Second client for presigned URL generation only.
+        # Connected to the PUBLIC endpoint so the presigned URL signature
+        # matches what the browser uses. Region set explicitly so the SDK
+        # does not make a _get_region() network call (which would fail
+        # from inside Docker if the public endpoint is 'localhost').
+        self._public = Minio(
+            cfg.minio_public_endpoint or cfg.minio_internal_endpoint,
+            access_key=cfg.minio_access_key,
+            secret_key=cfg.minio_secret_key,
+            secure=False,
+            region="us-east-1",  # MinIO single-node default
+        )
 
     # ------------------------------------------------------------------
     # Bucket
@@ -103,17 +115,16 @@ class StorageService:
         Returns (url, expires_at).  URL uses the public endpoint so the
         browser can reach MinIO directly.  TTL from config.
         """
-        url = self._internal.presigned_put_object(
+        url = self._public.presigned_put_object(
             self._bucket,
             storage_key,
             expires=timedelta(seconds=self._ttl),
         )
-        url = self._rewrite_to_public(url)
         expires_at = _now() + timedelta(seconds=self._ttl)
         return url, expires_at
 
     # ------------------------------------------------------------------
-    # Object existence / size
+    # Object helpers
     # ------------------------------------------------------------------
 
     def object_exists(self, storage_key: str) -> bool:
