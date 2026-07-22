@@ -5,7 +5,7 @@
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35), Behavioral not skipped.
 **CI-GATE-001** ✅ — test_tampered_token_rejected stabilised.
-**JOURNEY-003** — advertiser.invite reachable. Admin create invite for approved app, UI-smoke green.
+**JOURNEY-003** ✅ — advertiser.invite reachable. CI #29907059713 green (35/35), Behavioral success.
 
 **NAS-SYNC-OWNER-001** — Hermes-owned mirror sync replaces santa2 relay.
 - Sync/canon: ✅ NAS caught up 4215c23→2b352f2, cron c0687f5ced4d (nas-mirror-sync.sh, every 3 min), AGENTS.md/runbook/PROJECT_STATE updated.
@@ -49,9 +49,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | a04a5cd + 724faf8 (CI-GATE-001) | 907d7cb | JOURNEY-002 + CI-GATE-001 green, CI #29902709909 |
+| develop | 04e0ff5 | 8cf1da5 | JOURNEY-003 advertiser.invite reachable, CI #29907059713 ✅ |
 | main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
-| NAS mirror (ASUSTOR) | verified | 907d7cb | Hermes cron, confirmed synced before JOURNEY-003 |
+| NAS mirror (ASUSTOR) | verified | 8cf1da5 | Hermes cron, synced after JOURNEY-003-FU push |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
@@ -216,7 +216,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**JOURNEY-001** ✅ advertiser.apply / **JOURNEY-002** ✅ advertiser.application_review / **CI-GATE-001** ✅ / **JOURNEY-003** — advertiser.invite reachable.
+**JOURNEY-001** ✅ advertiser.apply / **JOURNEY-002** ✅ advertiser.application_review / **CI-GATE-001** ✅ / **JOURNEY-003** ✅ advertiser.invite.
 Next: **self.login** из wave 1 pre-pilot journey plan.
 
 Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
