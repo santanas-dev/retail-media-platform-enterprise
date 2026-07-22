@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-22 (JOURNEY-005 — user.create_advertiser reachable + green smoke)
+**Last updated:** 2026-07-22 (JOURNEY-008-FU — state/roadmap hygiene after campaign.edit)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -58,9 +58,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 9790904 | 9790904 | JOURNEY-008 campaign.edit ✅, CI #29946012506 |
+| develop | 9790904 | d2dddc8 | JOURNEY-008 campaign.edit ✅, CI #29946012506 |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
-| NAS mirror (ASUSTOR) | verified | develop=da37ec3, main=b5dd3b3, tag v0.9.0-prepilot-wave1 → b5dd3b3 | Hermes cron sync confirmed (develop + main + tags) |
+| NAS mirror (ASUSTOR) | verified | develop=d2dddc8, main=b5dd3b3, tag v0.9.0-prepilot-wave1 → b5dd3b3 | Hermes cron sync confirmed (develop + main + tags) |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
@@ -79,7 +79,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 - Бизнес-вкладка: «Статус» → 4 колонки (Бэкенд, UI, Юзер-стори, Итог).
 - G1 (campaign.create): Бэкенд ✅ / UI ✅ / Юзер-стори ✅ / Итог ✅ Готово/Юзабельно.
 - G2 (user.assign_roles): Бэкенд ✅ / UI ✅ / Юзер-стори ✅ / Итог ✅ Готово/Юзабельно.
-- campaign.edit: Бэкенд ✅ / UI ⚪️ / Юзер-стори ⚪️ / Итог 🟠 Частично.
+- campaign.edit: Бэкенд ✅ / UI ✅ (JOURNEY-008) / Юзер-стори ✅ (JOURNEY-008) / Итог 🟠 Частично **(↑ superseded — campaign.edit reachable as of JOURNEY-008)**
 - feature-registry: reachable 5→7 (campaign.create, user.assign_roles).
 - AGENTS.md: правило roadmap-синхронизации (п.7 Done Gate).
 - Commit: dc9a910, CI #29725417235 green.
@@ -254,8 +254,8 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**JOURNEY-008** — campaign.edit (Wave 2, managed-first).
-Wave 2: self.apply_or_brief ✅ → campaign.edit ← сейчас → creative.upload → inventory.simulate → self.campaign_create (deferred).
+**JOURNEY-009** — creative.upload (Wave 2, managed-first).
+Wave 2: self.apply_or_brief ✅ → campaign.edit ✅ → creative.upload ← сейчас → inventory.simulate → self.campaign_create (deferred).
 
 Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
 
