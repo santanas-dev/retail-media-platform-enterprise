@@ -250,6 +250,7 @@ services:
   #   docker compose -f infra/compose/docker-compose.phase1.yml \
   #     --profile setup run --rm db-setup
   db-setup:
+    image: rmp-phase1-control-api  # share image with control-api — avoids per-service cache staleness
     build:
       context: ../..
       dockerfile: infra/compose/Dockerfile.service

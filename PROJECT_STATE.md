@@ -9,6 +9,7 @@
 **JOURNEY-004** ✅ — self.login reachable. CI #29909590097 green (35/35), Behavioral success.
 **JOURNEY-005** ✅ — user.create_advertiser reachable. CI #29915158941 (code), #29916193275 (smoke-fix), both 35/35 green + Behavioral.
 **JOURNEY-005-FU** ✅ — real UI-smoke proof against PostgreSQL: test_uismoke__user__create_advertiser PASSED 1.56s.
+**CLEAN-BOOT-002** ✅ — db-setup image sharing fix: all 28 migrations to head without manual alembic.
 
 **NAS-SYNC-OWNER-001** — Hermes-owned mirror sync replaces santa2 relay.
 - Sync/canon: ✅ NAS caught up 4215c23→2b352f2, cron c0687f5ced4d (nas-mirror-sync.sh, every 3 min), AGENTS.md/runbook/PROJECT_STATE updated.
@@ -267,7 +268,27 @@ Priorities completed (post-audit 2026-07-18):
 - **CI:** #29645034680 ✅ (324 passed, 12 skipped, ADR-008 green).
 - **Not done:** remaining behavioural tests not yet converted — deferred to separate task.
 
+## CLEAN-BOOT-002 — db-setup applies all 28 migrations to head ✅ RESOLVED (2026-07-22)
+
+- **Root cause:** Docker compose per-service image caching. `control-api` and `db-setup`
+  each had separate images (auto-named `rmp-phase1-control-api` / `rmp-phase1-db-setup`).
+  `docker compose up --build` rebuilt control-api's image, but db-setup's image stayed
+  cached from a build before migrations 025-028 existed.
+- **Fix:** db-setup now shares control-api's image (`image: rmp-phase1-control-api` in
+  `docker-compose.phase1.yml`). One build, both services.
+- **Proof (clean boot from down -v):**
+  - `up -d --build postgres control-api` → fresh image
+  - `--profile setup run --rm db-setup` → all 28 migrations (001→028), seed, grant (56 tables)
+  - `alembic_version` = `['028']`, current == head
+  - `POST /api/v1/auth/login` (break_glass_admin) → 200 + token
+  - `GET /api/v1/identity/campaigns` → 200, total=1
+- **Docs:** `clean-install-login.md` updated. No command changes needed — the fix is in compose.
+
 ## CLEAN-BOOT-001 — Clean Docker Boot Login Smoke ✅ RESOLVED (2026-07-18)
+
+> **Re-hardened by CLEAN-BOOT-002 (2026-07-22):** the `--no-cache` workaround for db-setup
+> (D-BOOT-3) is superseded. CLEAN-BOOT-002 fixes the root cause: db-setup now shares the
+> control-api Docker image (`image: rmp-phase1-control-api` in compose). No `--no-cache` needed.
 
 **Status:** ✅ RESOLVED.
 

@@ -1,6 +1,11 @@
 # Clean-Install Login — Dual Auth Readiness (S-016)
 
-**Last updated:** 2026-07-18 (CLEAN-BOOT-001 — verified working clean boot)
+**Last updated:** 2026-07-22 (CLEAN-BOOT-002 — db-setup image sharing fix, all 28 migrations to head)
+
+> **CLEAN-BOOT-002 (2026-07-22):** db-setup now shares the control-api Docker image
+> (`image: rmp-phase1-control-api`). Previously db-setup had its own cached image
+> that didn't include migrations 025-028. The fix: `docker-compose.phase1.yml`
+> db-setup service now references the shared image. No commands changed.
 
 ## Quick Start — Dev Environment
 
