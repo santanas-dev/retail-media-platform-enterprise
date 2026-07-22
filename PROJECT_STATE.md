@@ -17,6 +17,7 @@
 - Security cleanup (C1): 🟡 pending operator proof — remove santa2-nas-sync key from NAS `/home/admin/.ssh/authorized_keys`. Operator command: `sed -i '/santa2-nas-sync/d' /home/admin/.ssh/authorized_keys`. Hermes has no SSH access to NAS — cannot execute.
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
+R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green (35/35, Behavioral ADR-008), tag v0.9.0-prepilot-wave1 → b5dd3b3.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
 EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof (admin bypass), CI #29649000788 green (6/6).
 EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOBYPASSRLS), CI #29652235623 green (5/5).
@@ -55,7 +56,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
 | develop | 7a6444f | a03c192 | JOURNEY-006 advertiser.view + WAVE1 closure, CI #29934268801 ✅ |
-| main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
+| main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
 | NAS mirror (ASUSTOR) | verified | a03c192 | Hermes cron sync confirmed after WAVE1 closure |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
@@ -251,7 +252,8 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 ## Next Active Workstream
 
 **JOURNEY-001** ✅ advertiser.apply / **JOURNEY-002** ✅ advertiser.application_review / **CI-GATE-001** ✅ / **JOURNEY-003** ✅ advertiser.invite / **JOURNEY-004** ✅ self.login / **JOURNEY-005** ✅ user.create_advertiser / **JOURNEY-006** ✅ advertiser.view.
-**Wave 1 complete.** All 6 pre-pilot journeys reachable with green UI-smoke. Next: await prioritisation (wave 2+).
+**Wave 1 complete + released.** R2 baseline to main (b5dd3b3), tag v0.9.0-prepilot-wave1, CI #29937353570 green.
+**Next: WAVE2-PLAN-REFRESH.**
 
 Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
 
