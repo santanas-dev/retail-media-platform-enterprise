@@ -796,7 +796,7 @@ export default function CampaignDetailPage() {
         {isDraft && (
           <div style={{ marginBottom: "0.75rem" }}>
             {!showFlightAdd ? (
-              <button type="button" style={css.addBtn} onClick={() => setShowFlightAdd(true)}>
+              <button type="button" style={css.addBtn} onClick={() => setShowFlightAdd(true)} data-testid="flight-add-btn">
                 + Добавить флайт
               </button>
             ) : (
@@ -808,18 +808,18 @@ export default function CampaignDetailPage() {
                   </div>
                   <div>
                     <label htmlFor="f-start" style={css.miniLabel}>Начало *</label>
-                    <input id="f-start" type="date" value={flightStart} onChange={(e) => setFlightStart(e.target.value)} style={css.miniInput} />
+                    <input id="f-start" type="date" value={flightStart} onChange={(e) => setFlightStart(e.target.value)} style={css.miniInput} data-testid="flight-start" />
                   </div>
                   <div>
                     <label htmlFor="f-end" style={css.miniLabel}>Конец *</label>
-                    <input id="f-end" type="date" value={flightEnd} onChange={(e) => setFlightEnd(e.target.value)} style={css.miniInput} />
+                    <input id="f-end" type="date" value={flightEnd} onChange={(e) => setFlightEnd(e.target.value)} style={css.miniInput} data-testid="flight-end" />
                   </div>
                   <div>
                     <label htmlFor="f-prio" style={css.miniLabel}>Приоритет</label>
                     <input id="f-prio" type="number" value={flightPriority} onChange={(e) => setFlightPriority(e.target.value)} min={0} max={99} style={{ ...css.miniInput, width: 70 }} />
                   </div>
                   <div style={{ display: "flex", alignItems: "flex-end", gap: "0.25rem" }}>
-                    <button type="submit" style={css.primaryBtn} disabled={flightSubmitting}>
+                    <button type="submit" style={css.primaryBtn} disabled={flightSubmitting} data-testid="flight-submit">
                       {flightSubmitting ? "..." : "Добавить"}
                     </button>
                     <button type="button" style={css.cancelBtn} onClick={resetFlightForm}>Отмена</button>
@@ -981,7 +981,7 @@ export default function CampaignDetailPage() {
         {isDraft && (
           <div style={{ marginBottom: "0.75rem" }}>
             {!showPlacementAdd ? (
-              <button type="button" style={css.addBtn} onClick={() => setShowPlacementAdd(true)}>
+              <button type="button" style={css.addBtn} onClick={() => setShowPlacementAdd(true)} data-testid="placement-add-btn">
                 + Добавить плейсмент
               </button>
             ) : (
@@ -991,7 +991,7 @@ export default function CampaignDetailPage() {
                     <>
                       <div>
                         <label style={css.miniLabel}>Поверхность</label>
-                        <select value={placementSurface} onChange={(e) => setPlacementSurface(e.target.value)} style={{ ...css.miniSelect, minWidth: 200 }}>
+                        <select value={placementSurface} onChange={(e) => setPlacementSurface(e.target.value)} style={{ ...css.miniSelect, minWidth: 200 }} data-testid="placement-surface">
                           <option value="">— не выбрана —</option>
                           {refSurfaces.map((s) => (
                             <option key={s.id} value={s.id}>{s.code} — {storeLabel(s.store_id)} ({s.resolution_w}×{s.resolution_h})</option>
@@ -1029,7 +1029,7 @@ export default function CampaignDetailPage() {
                     <input type="number" value={placementMaxImp} onChange={(e) => setPlacementMaxImp(e.target.value)} min={0} style={{ ...css.miniInput, width: 90 }} />
                   </div>
                   <div style={{ display: "flex", alignItems: "flex-end", gap: "0.25rem" }}>
-                    <button type="submit" style={css.primaryBtn} disabled={placementSubmitting}>
+                    <button type="submit" style={css.primaryBtn} disabled={placementSubmitting} data-testid="placement-submit">
                       {placementSubmitting ? "..." : "Добавить"}
                     </button>
                     <button type="button" style={css.cancelBtn} onClick={resetPlacementForm}>Отмена</button>
@@ -1800,7 +1800,7 @@ export default function CampaignDetailPage() {
       </h2>
       <div style={css.tabBar}>
         {tabs.map((t) => (
-          <button key={t} type="button" style={{ ...css.tab, ...(activeTab === t ? css.tabActive : {}) }} onClick={() => setActiveTab(t)}>
+          <button key={t} type="button" style={{ ...css.tab, ...(activeTab === t ? css.tabActive : {}) }} onClick={() => setActiveTab(t)} data-testid={`tab-${t}`}>
             {tabNames[t]}
             {t === "flights" && flights.length > 0 && <span style={css.tabCount}>{flights.length}</span>}
             {t === "placements" && placements.length > 0 && <span style={css.tabCount}>{placements.length}</span>}
