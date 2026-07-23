@@ -1,7 +1,7 @@
 """
 UI-smoke: creative.upload — CAMPAIGN-UX-001A human-path.
 Primary path: Выбрать файл → авто-метаданные → подтвердить → upload → Готов.
-Jamie: creative.upload (managed-first)
+Journey: creative.upload (managed-first)
 Role: campaign_manager
 Happy-path: 5 шагов — 1) Креативы → 2) Выбрать файл → 3) метаданные авто-заполнены → 4) Загрузить → 5) статус Готов + reload persistence
 """

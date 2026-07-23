@@ -617,6 +617,69 @@ describe("CampaignDetailPage — S-009e", () => {
       // With no primary upload open, secondary label is visible
       expect(screen.getByText(/Другие способы добавить креатив/)).toBeTruthy();
     });
+
+    it("creative asset create request includes advertiser_organization_id", async () => {
+      mockAuthenticatedSession();
+      let capturedBody: Record<string, unknown> | null = null;
+      mockAllFetches({
+        "/creative-assets": (url, init) => {
+          // Only intercept POST to create endpoint (not upload-intent)
+          if (init?.method === "POST" && url.endsWith("/creative-assets") && init.body) {
+            capturedBody = JSON.parse(init.body as string);
+            return Promise.resolve(new Response(JSON.stringify({
+              id: "ca-new", advertiser_organization_id: "org-1",
+              code: "UP-TEST", name: "Test", media_type: "image",
+              sha256_checksum: "", file_size_bytes: 0,
+              status: "metadata_only", moderation_status: "pending_review",
+              created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
+            }), { status: 201 }));
+          }
+          return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        },
+        "/campaign-creatives": (url, init) => {
+          if (init?.method === "POST") {
+            return Promise.resolve(new Response(JSON.stringify({
+              id: "cc-new", campaign_id: "c1", creative_asset_id: "ca-new", sort_order: 0,
+              asset: { id: "ca-new", code: "UP-TEST", name: "Test", media_type: "image",
+                sha256_checksum: "a".repeat(64), file_size_bytes: 100,
+                status: "ready", moderation_status: "approved",
+                created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" },
+              created_at: "2026-01-01T00:00:00Z",
+            }), { status: 201 }));
+          }
+          return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        },
+      });
+
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+      await user.click(screen.getByText("Креативы"));
+
+      // Simulate file selection via the hidden primary input
+      const file = new File(["dummy"], "test.png", { type: "image/png" });
+      const fileInput = document.querySelector('[data-testid="creative-upload-primary-file-input"]') as HTMLInputElement;
+      expect(fileInput).toBeTruthy();
+      await user.upload(fileInput, file);
+
+      // Form should appear with auto-filled values
+      await waitFor(() => {
+        expect(screen.getByTestId("creative-upload-primary-code")).toBeTruthy();
+      });
+
+      // Submit the form
+      await user.click(screen.getByTestId("creative-upload-metadata-submit"));
+
+      // Verify the POST body includes advertiser_organization_id
+      await waitFor(() => {
+        expect(capturedBody).not.toBeNull();
+      });
+      expect(capturedBody).toHaveProperty("advertiser_organization_id", "org-1");
+      expect(capturedBody).toHaveProperty("code");
+      expect(capturedBody).toHaveProperty("name");
+      expect(capturedBody).toHaveProperty("media_type");
+    });
   });
 
   // ── S-017: Upload UI ──

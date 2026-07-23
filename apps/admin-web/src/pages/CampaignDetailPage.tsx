@@ -406,12 +406,22 @@ export default function CampaignDetailPage() {
     }
     setPrimarySubmitting(true);
     setPrimaryError(null);
+
+    // Guard: org id must be available for creative asset creation
+    const orgId = data?.org?.id;
+    if (!orgId) {
+      setPrimaryError("Не удалось определить организацию рекламодателя. Обновите страницу и попробуйте снова.");
+      setPrimarySubmitting(false);
+      return;
+    }
+
     try {
       // 1. Create creative asset
       const assetReq: CreativeAssetCreateRequest = {
         code: primaryCode,
         name: primaryName,
         media_type: primaryMediaType,
+        advertiser_organization_id: orgId,
       };
       const asset = await createCreativeAsset(assetReq);
       // 2. Attach to campaign
