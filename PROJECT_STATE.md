@@ -76,7 +76,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 89d5ecf | 89d5ecf | DONE-GATE-002 — human walkthrough + happy-path added to Done Gate |
+| develop | d4523c1 | f1dfcc3 | CAMPAIGN-UX-001A — creative.upload human-path: primary upload UI + vitest + smoke green |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
 | NAS mirror (ASUSTOR) | pending | mount unavailable | Hermes cron sync pending |
 
