@@ -42,7 +42,7 @@ echo "=== [2/3] Inventory Reset ==="
 docker compose -f "$COMPOSE_FILE" exec -T postgres \
   psql -U "$PG_USER" -d "$PG_DB" -q -c "
     DELETE FROM inventory_bookings;
-    UPDATE inventory_slots SET status = 'available', reserved_capacity = 0;
+    UPDATE inventory_slots SET status = 'available', reserved_capacity = 0, booked_capacity = 0;
   " >/dev/null 2>&1
 
 # Verify

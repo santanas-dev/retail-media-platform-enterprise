@@ -79,22 +79,14 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     page.click('[data-testid="placement-submit"]')
     page.wait_for_load_state("networkidle")
 
-    # ── STEP 4: Approve creative ──
-    page.locator('aside nav a[href="/creatives/moderation"]').click(force=True)
+    # ── STEP 4: Submit (CREATIVE_AUTO_APPROVE_UPLOADS=true — creative already approved) ──
+    # Submit button is on the Overview tab
+    page.click('button:has-text("Обзор")')
     page.wait_for_load_state("networkidle")
-    page.wait_for_selector('[data-testid^="moderation-row-"]', timeout=15000)
-    row = page.locator(f'[data-testid="moderation-row-{creative_code}"]')
-    expect(row).to_be_visible(timeout=5000)
-    page.locator(f'[data-testid="moderation-approve-{creative_code}"]').click()
-    page.wait_for_load_state("networkidle")
-    print(f"[{time.time()-t0:.1f}s] Approved")
-
-    # ── STEP 5: Go back to campaign (browser back) ──
-    page.go_back()
-    page.wait_for_load_state("networkidle")
+    print(f"[{time.time()-t0:.1f}s] Submitting...")
 
     submit_btn = page.locator('[data-testid="campaign-submit-btn"]')
-    expect(submit_btn).to_be_enabled(timeout=5000)
+    expect(submit_btn).to_be_enabled(timeout=10000)
     submit_btn.click()
     try:
         page.wait_for_selector('[data-testid="campaign-submit-error"]', timeout=5000)
