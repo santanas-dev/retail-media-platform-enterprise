@@ -1,6 +1,6 @@
 """
-UI-smoke: campaign.submit — creatives tab FIRST (upload works on fresh tab).
-Then flights → placements → moderation → submit.
+UI-smoke: campaign.submit — CAMPAIGN-UX-001B readiness checklist progression.
+Happy-path: Overview checklist → missing steps → flight → placement → creative ready → submit.
 """
 import os, pytest
 
@@ -38,53 +38,77 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     page.wait_for_url(lambda url: url != BASE_URL + "/campaigns/new", timeout=15000)
     page.wait_for_load_state("networkidle")
 
-    # ── STEP 1: Creatives tab FIRST (BEFORE flights/placements) ──
-    creative_code = f"SUB-CR-{os.urandom(2).hex()}"
-    page.click('[data-testid="tab-creatives"]')
-    page.wait_for_load_state("networkidle")
+    # ── CAMPAIGN-UX-001B: Step 0 — Verify checklist on Overview ──
+    checklist = page.locator('[data-testid="campaign-readiness-checklist"]')
+    expect(checklist).to_be_visible(timeout=5000)
+    # All three items should show missing
+    assert page.locator('[data-testid="readiness-flight-status"]').inner_text() == "—"
+    assert page.locator('[data-testid="readiness-placement-status"]').inner_text() == "—"
+    assert page.locator('[data-testid="readiness-creative-status"]').inner_text() == "—"
+    # Submit status shows what's missing
+    submit_status = page.locator('[data-testid="readiness-submit-status"]').inner_text()
+    assert "Осталось" in submit_status
+    assert "рейс" in submit_status
+    print(f"[{time.time()-t0:.1f}s] Checklist missing ✓")
 
-    # Create in library
-    page.click('[data-testid="creative-add-library-btn"]')
-    page.fill('[data-testid="creative-code"]', creative_code)
-    page.fill('[data-testid="creative-name"]', "Submit CR")
-    page.click('[data-testid="creative-add-submit"]')
+    # ── Use checklist action: flight ──
+    page.locator('[data-testid="readiness-flight-action"]').click()
     page.wait_for_load_state("networkidle")
-
-    # Attach
-    page.click('[data-testid="creative-attach-btn"]')
-    opt = page.locator('[data-testid="creative-attach-select"] option').filter(has_text=creative_code)
-    page.locator('[data-testid="creative-attach-select"]').select_option(value=opt.get_attribute("value"))
-    page.click('[data-testid="creative-attach-submit"]')
-    page.wait_for_load_state("networkidle")
-
-    # Upload — WORKS when the tab was never navigated away from
-    page.locator('[data-testid="creative-file-input"]').set_input_files(FIXTURE)
-    expect(page.locator('[data-testid="creative-upload-done"]')).to_be_visible(timeout=20000)
-    print(f"[{time.time()-t0:.1f}s] Creative uploaded")
-
-    # ── STEP 2: Flights ──
-    page.click('[data-testid="tab-flights"]')
-    page.wait_for_load_state("networkidle")
+    # Should now be on flights tab
+    expect(page.locator('[data-testid="flight-add-btn"]')).to_be_visible(timeout=5000)
     page.click('[data-testid="flight-add-btn"]')
     page.fill('[data-testid="flight-start"]', "2026-08-01")
     page.fill('[data-testid="flight-end"]', "2026-08-31")
     page.click('[data-testid="flight-submit"]')
     page.wait_for_load_state("networkidle")
 
-    # ── STEP 3: Placements ──
-    page.click('[data-testid="tab-placements"]')
+    # Return to Overview
+    page.click('button:has-text("Обзор")')
     page.wait_for_load_state("networkidle")
+    assert page.locator('[data-testid="readiness-flight-status"]').inner_text() == "✅"
+    print(f"[{time.time()-t0:.1f}s] Flight ✓")
+
+    # ── Use checklist action: placement ──
+    page.locator('[data-testid="readiness-placement-action"]').click()
+    page.wait_for_load_state("networkidle")
+    expect(page.locator('[data-testid="placement-add-btn"]')).to_be_visible(timeout=5000)
     page.click('[data-testid="placement-add-btn"]')
     page.locator('[data-testid="placement-surface"]').select_option(index=1)
     page.click('[data-testid="placement-submit"]')
     page.wait_for_load_state("networkidle")
 
-    # ── STEP 4: Submit (CREATIVE_AUTO_APPROVE_UPLOADS=true — creative already approved) ──
-    # Submit button is on the Overview tab
     page.click('button:has-text("Обзор")')
     page.wait_for_load_state("networkidle")
-    print(f"[{time.time()-t0:.1f}s] Submitting...")
+    assert page.locator('[data-testid="readiness-placement-status"]').inner_text() == "✅"
+    print(f"[{time.time()-t0:.1f}s] Placement ✓")
 
+    # ── Use checklist action: creative ──
+    creative_code = f"SUB-CR-{os.urandom(2).hex()}"
+    page.locator('[data-testid="readiness-creative-action"]').click()
+    page.wait_for_load_state("networkidle")
+    expect(page.locator('[data-testid="tab-creatives"]')).to_be_visible(timeout=5000)
+
+    # Use primary upload path
+    page.locator('[data-testid="creative-upload-select-file"]').click()
+    page.locator('[data-testid="creative-upload-primary-file-input"]').set_input_files(FIXTURE)
+    expect(page.locator('[data-testid="creative-upload-primary-code"]')).to_be_visible(timeout=5000)
+    page.locator('[data-testid="creative-upload-primary-code"]').fill("")
+    page.locator('[data-testid="creative-upload-primary-code"]').fill(creative_code)
+    page.locator('[data-testid="creative-upload-metadata-submit"]').click()
+    expect(page.locator('[data-testid="creative-upload-done"]')).to_be_visible(timeout=30000)
+
+    # Return to Overview
+    page.click('button:has-text("Обзор")')
+    page.wait_for_load_state("networkidle")
+    assert page.locator('[data-testid="readiness-creative-status"]').inner_text() == "✅"
+    print(f"[{time.time()-t0:.1f}s] Creative ✓")
+
+    # ── All three ready → submit possible ──
+    submit_status = page.locator('[data-testid="readiness-submit-status"]').inner_text()
+    assert "Можно отправить" in submit_status
+    print(f"[{time.time()-t0:.1f}s] Ready to submit ✓")
+
+    # ── Submit — button enabled ──
     submit_btn = page.locator('[data-testid="campaign-submit-btn"]')
     expect(submit_btn).to_be_enabled(timeout=10000)
     submit_btn.click()

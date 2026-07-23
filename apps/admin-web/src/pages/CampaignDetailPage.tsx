@@ -588,6 +588,13 @@ export default function CampaignDetailPage() {
 
   function renderOverview() {
     const canApprove = flights.length > 0 && placements.length > 0 && creatives.length > 0;
+    // CAMPAIGN-UX-001B: Readiness checklist
+    const deliverableCount = creatives.filter((c) => c.asset && c.asset.sha256_checksum && c.asset.sha256_checksum.length === 64).length;
+    const allReady = flights.length > 0 && placements.length > 0 && deliverableCount > 0;
+    const missingItems: string[] = [];
+    if (flights.length === 0) missingItems.push("рейс");
+    if (placements.length === 0) missingItems.push("размещение");
+    if (deliverableCount === 0) missingItems.push("креатив с файлом");
 
     async function handleSimulate() {
       setSimulationError(null);
@@ -630,6 +637,28 @@ export default function CampaignDetailPage() {
       <div style={css.section}>
         {/* ── Draft: submit for approval ── */}
         {isDraft && (
+          <>
+          <div data-testid="campaign-readiness-checklist" style={{ marginBottom: "1rem", padding: "0.75rem", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+            <div style={{ fontWeight: 600, fontSize: "0.85rem", marginBottom: "0.5rem", color: "#334155" }}>Готовность к отправке</div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0", fontSize: "0.8rem" }}>
+              <span data-testid="readiness-flight-status" style={{ fontWeight: 500, color: flights.length > 0 ? "#16a34a" : "#94a3b8", minWidth: "1.2rem" }}>{flights.length > 0 ? "✅" : "—"}</span>
+              <span style={{ flex: 1, color: flights.length > 0 ? "#166534" : "#64748b" }}>Рейс (flight){flights.length > 0 ? ` — ${flights.length} шт.` : ""}</span>
+              {flights.length === 0 && <button type="button" data-testid="readiness-flight-action" onClick={() => setActiveTab("flights")} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Добавить рейс →</button>}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0", fontSize: "0.8rem" }}>
+              <span data-testid="readiness-placement-status" style={{ fontWeight: 500, color: placements.length > 0 ? "#16a34a" : "#94a3b8", minWidth: "1.2rem" }}>{placements.length > 0 ? "✅" : "—"}</span>
+              <span style={{ flex: 1, color: placements.length > 0 ? "#166534" : "#64748b" }}>Размещение (placement){placements.length > 0 ? ` — ${placements.length} шт.` : ""}</span>
+              {placements.length === 0 && <button type="button" data-testid="readiness-placement-action" onClick={() => setActiveTab("placements")} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Добавить размещение →</button>}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0", fontSize: "0.8rem" }}>
+              <span data-testid="readiness-creative-status" style={{ fontWeight: 500, color: deliverableCount > 0 ? "#16a34a" : "#94a3b8", minWidth: "1.2rem" }}>{deliverableCount > 0 ? "✅" : "—"}</span>
+              <span style={{ flex: 1, color: deliverableCount > 0 ? "#166534" : "#64748b" }}>Креатив с файлом{deliverableCount > 0 ? ` — ${deliverableCount} шт.` : ""}</span>
+              {deliverableCount === 0 && <button type="button" data-testid="readiness-creative-action" onClick={() => setActiveTab("creatives")} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Загрузить креатив →</button>}
+            </div>
+            <div data-testid="readiness-submit-status" style={{ marginTop: "0.5rem", padding: "0.5rem", borderRadius: 4, fontSize: "0.8rem", background: allReady ? "#f0fdf4" : "#fff7ed", color: allReady ? "#166534" : "#9a3412", border: allReady ? "1px solid #86efac" : "1px solid #fdba74" }}>
+              {allReady ? "✅ Можно отправить на согласование — все условия выполнены." : `Осталось: ${missingItems.join(", ")}.`}
+            </div>
+          </div>
           <div data-testid="campaign-submit-hint" style={{ marginBottom: "1rem", padding: "0.75rem", background: "#f0f9ff", borderRadius: 6, border: "1px solid #bae6fd" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
               <div style={{ flex: 1, fontSize: "0.825rem", color: "#0c4a6e" }}>
@@ -661,6 +690,7 @@ export default function CampaignDetailPage() {
               <div data-testid="campaign-submit-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
             )}
           </div>
+          </>
         )}
 
         {/* ── S-089 Simulation results ── */}

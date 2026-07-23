@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-23 (CAMPAIGN-UX-001A-FU3 — operator walkthrough closure)
+**Last updated:** 2026-07-23 (CAMPAIGN-UX-001B — Overview readiness checklist + submit smoke)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -37,6 +37,7 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **JOURNEY-015** ✅ — emergency.activate + emergency.deactivate reachable + green UI-smoke. Backend existed (GET/POST emergency/status|activate|deactivate, emergency.read|manage perms, audit+outbox+K1 manifest). Bugfix: deactivate_emergency_override missing session.add(existing) — UPDATE silently dropped. Admin-web: EmergencyPage.tsx +11 data-testid. Vitest: 19/19. Smoke: activate 1.8s, deactivate 1.3s. Honest wording: no device-stop claims, player-side enforcement deferred note. Registry 26→28 reachable, 14→12 blocked.
 **DONE-GATE-002** ✅ — human walkthrough + happy-path added to Done Gate (AGENTS.md пункты 8–9) + шаблон Happy-path в user-journeys.md §1. Docs-only.
 **CAMPAIGN-UX-001A** ✅ — creative.upload human-path: явная загрузка файла с ПК. Implementation ready (FU2: org-id guard + vitest payload assertion). Operator walkthrough: OK — DEV human walkthrough passed without instructions.
+**CAMPAIGN-UX-001B** — Overview readiness checklist: flight/placement/creative status + actions + submit readiness. Implementation ready, operator walkthrough pending.
 
 **JOURNEY-014** ✅ — campaign.activate + campaign.pause reachable + green UI-smoke.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
