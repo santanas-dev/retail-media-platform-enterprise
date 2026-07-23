@@ -1611,6 +1611,102 @@ async def reject_campaign(
     return old_status, "rejected"
 
 
+async def activate_campaign(
+    session: AsyncSession,
+    campaign_id: str,
+    *,
+    changed_by: str,
+    scope_advertiser_ids: frozenset[str] | None = None,
+) -> tuple[str | None, str | None]:
+    """Activate an approved campaign. Returns (old_status, new_status).
+
+    Transition: approved → active.
+    Creates status history entry.
+    """
+    import uuid
+    from datetime import datetime, timezone as tz
+    from packages.domain.models import Campaign, CampaignStatusHistory
+
+    result = await session.execute(
+        select(Campaign)
+        .where(Campaign.id == campaign_id)
+        .with_for_update()
+    )
+    campaign = result.scalar_one_or_none()
+    if campaign is None:
+        return None, None
+    if campaign.status != "approved":
+        return None, None
+
+    _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    now = datetime.now(tz.utc)
+    old_status = campaign.status
+    campaign.status = "active"
+    campaign.updated_at = now
+
+    history = CampaignStatusHistory(
+        id=str(uuid.uuid4()),
+        campaign_id=campaign_id,
+        old_status=old_status,
+        new_status="active",
+        changed_by=changed_by,
+        changed_at=now,
+        reason="Campaign activated",
+    )
+    session.add(history)
+
+    return old_status, "active"
+
+
+async def pause_campaign(
+    session: AsyncSession,
+    campaign_id: str,
+    *,
+    changed_by: str,
+    scope_advertiser_ids: frozenset[str] | None = None,
+) -> tuple[str | None, str | None]:
+    """Pause an active campaign. Returns (old_status, new_status).
+
+    Transition: active → paused.
+    Creates status history entry.
+    """
+    import uuid
+    from datetime import datetime, timezone as tz
+    from packages.domain.models import Campaign, CampaignStatusHistory
+
+    result = await session.execute(
+        select(Campaign)
+        .where(Campaign.id == campaign_id)
+        .with_for_update()
+    )
+    campaign = result.scalar_one_or_none()
+    if campaign is None:
+        return None, None
+    if campaign.status != "active":
+        return None, None
+
+    _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    now = datetime.now(tz.utc)
+    old_status = campaign.status
+    campaign.status = "paused"
+    campaign.updated_at = now
+
+    history = CampaignStatusHistory(
+        id=str(uuid.uuid4()),
+        campaign_id=campaign_id,
+        old_status=old_status,
+        new_status="paused",
+        changed_by=changed_by,
+        changed_at=now,
+        reason="Campaign paused",
+    )
+    session.add(history)
+
+    return old_status, "paused"
+
+
 # ---------------------------------------------------------------------------
 # Campaign Flight / Placement / Creative  (Pilot B1)
 # ---------------------------------------------------------------------------

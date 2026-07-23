@@ -361,8 +361,8 @@ describe("CampaignDetailPage — S-009e", () => {
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
 
     await waitFor(() => {
-      // Should show read-only message
-      expect(screen.getByText(/Изменения доступны только в статусе/)).toBeTruthy();
+      // Active campaign shows the lifecycle banner, not generic read-only
+      expect(screen.getByText(/Кампания активна/)).toBeTruthy();
     });
 
     // Navigate to flights tab
@@ -761,6 +761,147 @@ describe("CampaignDetailPage — S-009e", () => {
       expect(screen.queryByText("Согласовать")).toBeNull();
       expect(screen.queryByText("Отклонить")).toBeNull();
     });
+  });
+
+  // ── Wave 4: Campaign Lifecycle — activate / pause ──
+
+  it("shows activate button for approved campaign", async () => {
+    mockAuthenticatedSession();
+    const approvedCampaign = { ...DRAFT_CAMPAIGN, status: "approved" };
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [approvedCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
+    }, ["campaigns.manage"]);
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByText("Кампания согласована и готова к запуску.")).toBeTruthy();
+      expect(screen.getByText("Активировать")).toBeTruthy();
+    });
+  });
+
+  it("activate success refreshes campaign status", async () => {
+    mockAuthenticatedSession();
+    const approvedCampaign = { ...DRAFT_CAMPAIGN, status: "approved" };
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [approvedCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
+      "/activate": () =>
+        Promise.resolve(new Response(JSON.stringify({
+          message: "Campaign activated", campaign_id: "c1", old_status: "approved", new_status: "active",
+        }), { status: 200 })),
+    }, ["campaigns.manage"]);
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Активировать")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Активировать"));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Кампания согласована и готова к запуску.")).toBeNull();
+    });
+  });
+
+  it("shows pause button for active campaign", async () => {
+    mockAuthenticatedSession();
+    const activeCampaign = { ...DRAFT_CAMPAIGN, status: "active" };
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [activeCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
+    }, ["campaigns.manage"]);
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByText("Кампания активна — показы идут.")).toBeTruthy();
+      expect(screen.getByText("Приостановить")).toBeTruthy();
+    });
+  });
+
+  it("pause success refreshes campaign status", async () => {
+    mockAuthenticatedSession();
+    const activeCampaign = { ...DRAFT_CAMPAIGN, status: "active" };
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [activeCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
+      "/pause": () =>
+        Promise.resolve(new Response(JSON.stringify({
+          message: "Campaign paused", campaign_id: "c1", old_status: "active", new_status: "paused",
+        }), { status: 200 })),
+    }, ["campaigns.manage"]);
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Приостановить")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Приостановить"));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Кампания активна — показы идут.")).toBeNull();
+    });
+  });
+
+  it("non-manager cannot see activate button on approved", async () => {
+    mockAuthenticatedSession();
+    const approvedCampaign = { ...DRAFT_CAMPAIGN, status: "approved" };
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [approvedCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
+    }); // no campaigns.manage → default /me has no permissions
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Кампания согласована/)).toBeTruthy();
+      expect(screen.getByText(/У вас нет прав на управление кампанией/)).toBeTruthy();
+      expect(screen.queryByText("Активировать")).toBeNull();
+    });
+  });
+
+  it("activate error shows lifecycle error", async () => {
+    mockAuthenticatedSession();
+    const approvedCampaign = { ...DRAFT_CAMPAIGN, status: "approved" };
+    // Direct mock on fetch to return 409 for activate
+    const originalFetch = window.fetch;
+    window.fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.endsWith("/me")) {
+        return Promise.resolve(new Response(JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin", permissions: ["campaigns.manage"] }), { status: 200 }));
+      }
+      if (url.includes("/identity/campaigns?") && (!init || init.method !== "POST")) {
+        return Promise.resolve(new Response(JSON.stringify({items: [approvedCampaign], total: 1, limit: 50, offset: 0}), { status: 200 }));
+      }
+      if (url.includes("/activate") && init?.method === "POST") {
+        return Promise.resolve(new Response(JSON.stringify({ detail: "Campaign not found or not in approved status" }), { status: 409 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Активировать")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Активировать"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("campaign-lifecycle-error")).toBeTruthy();
+    });
+  });
+
+  it("rejected campaign does not show activate/pause buttons", async () => {
+    mockAuthenticatedSession();
+    const rejectedCampaign = { ...DRAFT_CAMPAIGN, status: "rejected" };
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [rejectedCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
+    }, ["campaigns.manage"]);
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    expect(screen.queryByText("Активировать")).toBeNull();
+    expect(screen.queryByText("Приостановить")).toBeNull();
+    expect(screen.queryByText("Кампания согласована")).toBeNull();
   });
 
   // ── S-009g: PoP Reporting ──

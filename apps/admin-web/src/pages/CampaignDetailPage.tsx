@@ -17,6 +17,8 @@ import {
   requestApproval,
   approveCampaign,
   rejectCampaign,
+  activateCampaign,
+  pauseCampaign,
   attachCreative,
   createCreativeAsset,
   getCampaignPopSummary,
@@ -129,6 +131,7 @@ export default function CampaignDetailPage() {
   const { user } = useAuth();
 
   const hasApprovePerm = user?.permissions?.includes("campaigns.approve") ?? false;
+  const hasManagePerm = user?.permissions?.includes("campaigns.manage") ?? false;
 
   // Core data
   const [data, setData] = useState<DetailData | null>(null);
@@ -513,6 +516,9 @@ export default function CampaignDetailPage() {
   const { campaign, org, brand, contract, approvals } = data;
   const isDraft = campaign.status === "draft";
   const isPendingApproval = campaign.status === "pending_approval";
+  const isApproved = campaign.status === "approved";
+  const isActive = campaign.status === "active";
+  const isPaused = campaign.status === "paused";
 
   // ── Tab content ──
 
@@ -733,7 +739,90 @@ export default function CampaignDetailPage() {
           </div>
         )}
 
-        {!isDraft && !isPendingApproval && (
+        {/* ── Approved: activate ── */}
+        {isApproved && (
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasManagePerm ? "#f0fdf4" : "#f8fafc", borderRadius: 6, border: hasManagePerm ? "1px solid #bbf7d0" : "1px solid #e2e8f0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, fontSize: "0.825rem", color: hasManagePerm ? "#166534" : "#64748b" }}>
+                Кампания согласована и готова к запуску.
+                {!hasManagePerm && " У вас нет прав на управление кампанией."}
+              </div>
+              {hasManagePerm && (
+                <button
+                  type="button"
+                  data-testid="campaign-activate-btn"
+                  style={{ ...css.primaryBtn, background: "#059669" }}
+                  disabled={approvalSubmitting}
+                  onClick={async () => {
+                    setApprovalError(null);
+                    setApprovalSubmitting(true);
+                    try {
+                      const res = await activateCampaign(campaign.id);
+                      await refreshCampaign();
+                      if (data) setData({ ...data, campaign: { ...data.campaign, status: res.new_status } });
+                    } catch (e: unknown) {
+                      setApprovalError(formatApiError(e));
+                    } finally {
+                      setApprovalSubmitting(false);
+                    }
+                  }}
+                >
+                  {approvalSubmitting ? "..." : "Активировать"}
+                </button>
+              )}
+            </div>
+            {approvalError && (
+              <div data-testid="campaign-lifecycle-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
+            )}
+          </div>
+        )}
+
+        {/* ── Active: pause ── */}
+        {isActive && (
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasManagePerm ? "#f0fdf4" : "#f8fafc", borderRadius: 6, border: hasManagePerm ? "1px solid #bbf7d0" : "1px solid #e2e8f0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, fontSize: "0.825rem", color: hasManagePerm ? "#166534" : "#64748b" }}>
+                Кампания активна — показы идут.
+                {!hasManagePerm && " У вас нет прав на управление кампанией."}
+              </div>
+              {hasManagePerm && (
+                <button
+                  type="button"
+                  data-testid="campaign-pause-btn"
+                  style={{ ...css.primaryBtn, background: "#9333ea" }}
+                  disabled={approvalSubmitting}
+                  onClick={async () => {
+                    setApprovalError(null);
+                    setApprovalSubmitting(true);
+                    try {
+                      const res = await pauseCampaign(campaign.id);
+                      await refreshCampaign();
+                      if (data) setData({ ...data, campaign: { ...data.campaign, status: res.new_status } });
+                    } catch (e: unknown) {
+                      setApprovalError(formatApiError(e));
+                    } finally {
+                      setApprovalSubmitting(false);
+                    }
+                  }}
+                >
+                  {approvalSubmitting ? "..." : "Приостановить"}
+                </button>
+              )}
+            </div>
+            {approvalError && (
+              <div data-testid="campaign-lifecycle-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
+            )}
+          </div>
+        )}
+
+        {/* ── Paused: status info ── */}
+        {isPaused && (
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#faf5ff", borderRadius: 6, border: "1px solid #e9d5ff", fontSize: "0.825rem", color: "#6b21a8" }}>
+            Кампания приостановлена. Показы остановлены.
+          </div>
+        )}
+
+        {!isDraft && !isPendingApproval && !isApproved && !isActive && !isPaused && (
           <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: "0.825rem", color: "#64748b" }}>
             Изменения доступны только в статусе «Черновик». Текущий статус: {statusLabel(campaign.status)}.
           </div>
