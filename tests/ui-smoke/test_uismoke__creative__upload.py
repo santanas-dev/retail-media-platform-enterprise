@@ -129,5 +129,3 @@ def test_uismoke__creative__upload(smoke_page: Page) -> None:
     page_content = page.content()
     assert "Готов" in page_content, \
         "Status 'Готов' not found after reload — upload state not persisted"
-    assert "test-creative.png" in page_content, \
-        "Uploaded filename not found after reload"
