@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-23 (JOURNEY-014-FU2 — campaign.activate/pause reachable, registry 24→26)
+**Last updated:** 2026-07-23 (JOURNEY-015 — emergency.activate/deactivate reachable + green smoke, CI #30019416306 ✅)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -74,9 +74,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 0fe868b | 0fe868b | JOURNEY-014-FU2 — campaign.activate/pause reachable, CI #30017333284 |
+| develop | 774a085 | e54f663 | JOURNEY-015 — emergency.activate/deactivate reachable, CI #30019416306 ✅ |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
-| NAS mirror (ASUSTOR) | pending | develop=0fe868b | Hermes cron sync pending |
+| NAS mirror (ASUSTOR) | pending | mount unavailable | Hermes cron sync pending |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
@@ -270,7 +270,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**emergency.activate/deactivate** — Wave 4. Campaign lifecycle feature set complete (create → edit → upload → submit → approve → activate → pause). Next: platform-wide emergency controls per pre-pilot-journey-plan.md.
+**Wave 4 closed.** JOURNEY-014 (campaign.activate/pause) + JOURNEY-015 (emergency.activate/deactivate) — все journey Wave 4 reachable + green smoke. Campaign lifecycle feature set complete. Next: per pre-pilot-journey-plan.md.
 
 Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
 
