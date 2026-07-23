@@ -67,7 +67,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 6f2d40e | (this commit) | JOURNEY-013 campaign.approve/reject reachable ✅, CI #30001234743 |
+| develop | 6f2d40e | 6f2d40e | JOURNEY-013 campaign.approve/reject reachable ✅, CI #30001234743 |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
 | NAS mirror (ASUSTOR) | verified | develop=6f2d40e | Hermes cron sync confirmed |
 
