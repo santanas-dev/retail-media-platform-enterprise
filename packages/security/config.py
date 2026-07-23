@@ -147,7 +147,9 @@ class SecurityConfig:
         if max_size_env:
             self.creative_max_file_size_bytes = int(max_size_env)
         auto_approve_env = os.environ.get("CREATIVE_AUTO_APPROVE_UPLOADS", "")
-        if auto_approve_env.lower() in ("false", "0", "no"):
+        if auto_approve_env.lower() in ("true", "1", "yes"):
+            self.creative_auto_approve_uploads = True
+        elif auto_approve_env.lower() in ("false", "0", "no"):
             self.creative_auto_approve_uploads = False
         ttl_env = os.environ.get("CREATIVE_UPLOAD_URL_TTL_SECONDS", "")
         if ttl_env:
