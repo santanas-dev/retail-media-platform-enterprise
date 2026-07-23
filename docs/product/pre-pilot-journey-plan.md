@@ -1,8 +1,8 @@
 # Программа до-пилотных бизнес-журнеев (КСО, ручной проход)
 
 > **Канон для Codex/Hermes.** Источник истины по статусам — `docs/product/feature-registry.yaml` + зелёный UI-smoke; эта программа задаёт ПОРЯДОК закрытия.
-> Обновлено 2026-07-22 после R2 (Wave 1 baseline to main, tag v0.9.0-prepilot-wave1).
-> Текущие counts: 15 reachable, 25 blocked (из feature-registry.yaml).
+> Обновлено 2026-07-23 после JOURNEY-013 (Wave 3 closure). Wave 1–3: ✅ COMPLETE.
+> Текущие counts: 24 reachable, 16 blocked (из feature-registry.yaml).
 
 ## Цель и принцип
 
@@ -31,22 +31,22 @@ R2 выпущен: main b5dd3b3, tag v0.9.0-prepilot-wave1, CI #29937353570.
 - 🟢 `user.create_advertiser` — завести локального рекламодателя (JOURNEY-005)
 - 🟢 `advertiser.view` — карточка рекламодателя (JOURNEY-006)
 
-## Волна 2 — Бриф и настройка рекламы (managed-first)
+## Волна 2 — Бриф и настройка рекламы (managed-first) ✅ COMPLETE
 
 - 🟢 `campaign.create` — создание кампании (G1)
-- 🔴 `self.apply_or_brief` — бриф из кабинета рекламодателя (**JOURNEY-007, первый в Wave 2**)
-- 🔴 ⚙ `campaign.edit` — рейсы/размещение как объект (где/когда/частота/приоритет)
-- 🔴 `creative.upload` — загрузка креатива
-- 🔴 ⚙ `inventory.simulate` — прогноз показов / симуляция перед публикацией
+- 🟢 `self.apply_or_brief` — бриф из кабинета рекламодателя (JOURNEY-007)
+- 🟢 `campaign.edit` — рейсы/размещение как объект (JOURNEY-008)
+- 🟢 `creative.upload` — загрузка креатива (JOURNEY-009)
+- 🟢 `inventory.simulate` — прогноз показов / симуляция перед публикацией (JOURNEY-010)
 - 🔴 `self.campaign_create` — рекламодатель сам заводит кампанию (отложено: self-service — после managed-core)
 
-## Волна 3 — Модерация и согласование
+## Волна 3 — Модерация и согласование ✅ COMPLETE
 
-- 🔴 `creative.moderate_approve` — одобрить креатив
-- 🔴 `creative.moderate_reject` — отклонить креатив с причиной
-- 🔴 `campaign.submit` — отправить кампанию на согласование
-- 🔴 `campaign.approve` — одобрить кампанию
-- 🔴 `campaign.reject` — отклонить кампанию с причиной
+- 🟢 `creative.moderate_approve` — одобрить креатив (JOURNEY-011)
+- 🟢 `creative.moderate_reject` — отклонить креатив с причиной (JOURNEY-011)
+- 🟢 `campaign.submit` — отправить кампанию на согласование (JOURNEY-012)
+- 🟢 `campaign.approve` — одобрить кампанию (JOURNEY-013)
+- 🟢 `campaign.reject` — отклонить кампанию с причиной (JOURNEY-013)
 
 ## Волна 4 — Публикация и управление показом
 
@@ -79,4 +79,4 @@ R2 выпущен: main b5dd3b3, tag v0.9.0-prepilot-wave1, CI #29937353570.
 - Done = поведение: достижимый UI (реальные клики, `goto` только `/login`) + зелёный `test_uismoke__<domain>__<action>`.
 - В ДК поднять 3 колонки (Бэкенд/UI/Юзер-стори) и пересчитать Итог; guard ROADMAP-GUARD-002 обязан оставаться зелёным.
 - Одна задача Hermes за раз. ⚙-журнеи требуют реального бэкенда — не «просто кнопки».
-- Прогресс мерить по этой программе: закрытых журнеев из 25 (Wave 1: 8/8 закрыто, +7 service/edge reachable).
+- Прогресс мерить по этой программе: закрытых журнеев 24 из 40 (Wave 1–3: 19/19 closed, +5 service reachable).
