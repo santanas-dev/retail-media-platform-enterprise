@@ -559,7 +559,7 @@ export default function CampaignDetailPage() {
       <div style={css.section}>
         {/* ── Draft: submit for approval ── */}
         {isDraft && (
-          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#f0f9ff", borderRadius: 6, border: "1px solid #bae6fd" }}>
+          <div data-testid="campaign-submit-hint" style={{ marginBottom: "1rem", padding: "0.75rem", background: "#f0f9ff", borderRadius: 6, border: "1px solid #bae6fd" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
               <div style={{ flex: 1, fontSize: "0.825rem", color: "#0c4a6e" }}>
                 Кампания в черновике.
@@ -575,6 +575,7 @@ export default function CampaignDetailPage() {
               )}
               <button
                 type="button"
+                data-testid="campaign-submit-btn"
                 style={{
                   ...css.primaryBtn,
                   ...((!canApprove || approvalSubmitting) ? { background: "#9ca3af", cursor: "default" } : {}),
@@ -586,7 +587,7 @@ export default function CampaignDetailPage() {
               </button>
             </div>
             {approvalError && (
-              <div style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
+              <div data-testid="campaign-submit-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
             )}
           </div>
         )}
@@ -727,7 +728,7 @@ export default function CampaignDetailPage() {
         <div style={css.fieldGrid}>
           <F label="Код" value={campaign.code} />
           <F label="Название" value={campaign.name} />
-          <F label="Статус" value={<Badge s={campaign.status} />} />
+          <F label="Статус" value={<span data-testid="campaign-status-badge"><Badge s={campaign.status} /></span>} />
           <F label="Приоритет" value={String(campaign.priority)} />
           <F label="Бюджет" value={fmtAmount(campaign.budget_limit_amount, campaign.budget_limit_currency)} />
           <F label="Период" value={`${fmtDate(campaign.start_at)} – ${fmtDate(campaign.end_at)}`} />

@@ -79,8 +79,7 @@ features:
     smoke: test_uismoke__campaign__submit
     priority: P0
     roles: [system_admin, campaign_manager]
-    status: blocked
-    gap: "UI-smoke отсутствует. Бэкенд + кнопка есть, частично проходимо."
+    status: reachable
 
   - id: campaign.approve
     frontend: admin-web
