@@ -201,8 +201,8 @@ features:
     smoke: test_uismoke__emergency__activate
     priority: P0
     roles: [system_admin, security_admin, ops_operator]
-    status: blocked
-    gap: "UI-smoke отсутствует. Активация в UI есть; фактическое исполнение на устройстве — после плеера (K1)."
+    status: reachable
+    gap: "Platform/backend emergency state + audit/outbox. Player-side enforcement deferred (KSO runtime)."
 
   - id: emergency.deactivate
     frontend: admin-web
@@ -214,8 +214,8 @@ features:
     smoke: test_uismoke__emergency__deactivate
     priority: P0
     roles: [system_admin, security_admin, ops_operator]
-    status: blocked
-    gap: "UI-smoke отсутствует. Деактивация в UI есть; фактическое исполнение на устройстве — после плеера (K1)."
+    status: reachable
+    gap: "Platform/backend deactivation + audit/outbox. Player-side enforcement deferred (KSO runtime)."
 
   # ═══════════════════════════════════════════════════════════════
   # P1 — admin-web (operations, inventory, settings, audit)
@@ -573,8 +573,8 @@ features:
   # ═══════════════════════════════════════════════════════════════
   #   total: 40
   # by status:
-  #   reachable: 26 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, advertiser.create_org, advertiser.view, inventory.simulate, advertiser.invite, adsettings.configure, self.login, self.apply_or_brief, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability)
-  #   blocked:   14 (10 UI-no-smoke + 4 service-deferred)
+  #   reachable: 28 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, advertiser.create_org, advertiser.view, inventory.simulate, advertiser.invite, adsettings.configure, self.login, self.apply_or_brief, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability)
+  #   blocked:   12 (8 UI-no-smoke + 4 service-deferred)
   # by frontend:
   #   admin-web:      26
   #   advertiser-web:  5
