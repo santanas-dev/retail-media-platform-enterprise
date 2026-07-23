@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-23 (SMOKE-INFRA-001 — reproducible smoke stack, 3 root causes fixed, all 3 lifecycle smokes green)
+**Last updated:** 2026-07-23 (JOURNEY-014-FU2 — campaign.activate/pause reachable, registry 24→26)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -34,7 +34,7 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **WAVE3-CLOSURE-001** ✅ — Wave 3 canon closure. pre-pilot-journey-plan.md: Wave 2+3 marked COMPLETE, counts 15/25→24/16. feature-registry.yaml: summary 21/19→24/16. roadmap.xlsx: rows 8/9/10 — campaign.submit, campaign.approve/reject, creative.moderate_approve/reject all updated to ✅ Готово/Юзабельно. Next: campaign.activate/pause (Wave 4).
 **SMOKE-INFRA-001** ✅ — reproducible smoke stack established. Three root causes fixed: (1) MinIO CORS configured for browser presigned-URL PUTs, (2) CREATIVE_AUTO_APPROVE_UPLOADS boolean-env-var parser fixed (config.py checked only false/0/no, missed true/1/yes), (3) inventory booked_capacity=100 from seed not reset — added booked_capacity=0 to prepare-ui-smoke-stack.sh. Fix: scripts/smoke/prepare-ui-smoke-stack.sh + tests/ui-smoke/test_uismoke__campaign__submit.py (moderation step removed — auto-approve now works). Proof: submit (8.0s), activate (13.9s), pause (8.9s) all green on real PostgreSQL+MinIO stack. CI #30010897397. Commit a16e029.
 
-**JOURNEY-014** 🟡 — campaign.activate + campaign.pause implemented but NOT reachable. Backend: new activate_campaign/pause_campaign repository fns (approved→active, active→paused), POST /campaigns/{id}/activate|pause endpoints, campaigns.manage permission, audit+outbox. Admin-web: CampaignDetailPage.tsx +3 data-testid (activate-btn, pause-btn, lifecycle-error), hasManagePerm gate, status-specific banners. Vitest: 195/195 (+7 new tests). Smoke tests written but NOT proven — MinIO presigned URL prevents real-dev run (JOURNEY-014-FU). Registry: activate/pause → blocked (24/16). Roadmap row 8: 🟠 Частично.
+**JOURNEY-014** ✅ — campaign.activate + campaign.pause reachable + green UI-smoke. Backend: activate_campaign/pause_campaign repo fns + endpoints + audit+outbox. Admin-web: CampaignDetailPage.tsx +3 data-testid + hasManagePerm gate. Vitest: 195/195. JOURNEY-014-FU2 closed: both smokes green (activate 13.0s, pause 8.1s) after SMOKE-INFRA-001 unblocked MinIO CORS + auto-approve + inventory reset. Registry 24→26 reachable, roadmap row 8 → ✅ Готово/Юзабельно. CI #TBD.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
 EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof (admin bypass), CI #29649000788 green (6/6).
 EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOBYPASSRLS), CI #29652235623 green (5/5).
@@ -268,8 +268,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**JOURNEY-014-FU2 — prove campaign.activate/pause smoke and restore reachable.**
-SMOKE-INFRA-001 cleared all blockers: MinIO CORS, auto-approve, inventory booked_capacity reset. Activate and pause smoke tests already pass (13.9s, 8.9s). Next: run activate/pause smoke with CI-level proof, restore registry reachable, update roadmap row 8 → ✅.
+**emergency.activate/deactivate** — Wave 4. Campaign lifecycle feature set complete (create → edit → upload → submit → approve → activate → pause). Next: platform-wide emergency controls per pre-pilot-journey-plan.md.
 
 Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
 
