@@ -26,6 +26,7 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **JOURNEY-009** ✅ — creative.upload reachable + green UI-smoke (12.59s). Backend existed (presigned URL → MinIO upload flow). Admin-web: 7 data-testid, advertiser_organization_id fix, test fixture. Registry 17→18 reachable, 23→22 blocked. CI #29949477027.
 **JOURNEY-009-FU** ✅ — presigned URL signature fix (public Minio client + region). Storage pattern documented. CI #29952174466.
 **JOURNEY-009-FU2** ✅ — creative.upload completion proof. UI fix: React controlled select (defaultValue + ref) for Playwright. Visible upload done state ("✅ Готов" + filename). Data-testid creative-status-{code}. Smoke test: asserts Готов status, persisted after reload (2.82s). Vitest 174/174. CI #29953272276.
+**JOURNEY-010** ✅ — inventory.simulate reachable + green UI-smoke (3.12s). Backend existed (POST /inventory/simulate, S-089). Admin-web: 11 data-testid, 4 vitest (button, success, conflicts, error). Smoke: verdict, blocking/warning, placement rows, slot_fill/total_requested/total_available. Registry 18→19 reachable, 22→21 blocked.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
 EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof (admin bypass), CI #29649000788 green (6/6).
 EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOBYPASSRLS), CI #29652235623 green (5/5).

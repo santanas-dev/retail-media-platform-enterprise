@@ -263,8 +263,8 @@ features:
     smoke: test_uismoke__inventory__simulate
     priority: P1
     roles: [system_admin, campaign_manager]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
+    gap: ""
 
   - id: inventory.rule_create
     frontend: admin-web
