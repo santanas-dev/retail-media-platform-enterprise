@@ -76,7 +76,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | c5a8b10 | c5a8b10 | CAMPAIGN-UX-001A — creative.upload human-path ✅ operator walkthrough OK |
+| develop | c5a8b10 | bf4c4ed | CAMPAIGN-UX-001A — creative.upload human-path ✅ operator walkthrough OK |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
 | NAS mirror (ASUSTOR) | verified | 5edcc2e | Hermes cron sync — synced with origin/develop |
 
