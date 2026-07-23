@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-23 (CAMPAIGN-UX-001B-FU2 — checkpoint honesty)
+**Last updated:** 2026-07-23 (CAMPAIGN-UX-001B-FU3 — NAS mirror wording honesty)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -79,7 +79,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 |---------|-------------|----------------|------|
 | develop | d9d6bc3 | ce8a94c | CAMPAIGN-UX-001B — Overview readiness checklist + smoke green |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
-| NAS mirror (ASUSTOR) | verified | 381e0b1 | Hermes cron sync — synced with origin/develop |
+| NAS mirror (ASUSTOR) | verified | 313d5c1 | Hermes cron sync — synced with origin/develop |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
