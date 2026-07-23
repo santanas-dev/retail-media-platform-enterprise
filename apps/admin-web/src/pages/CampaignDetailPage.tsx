@@ -210,6 +210,7 @@ export default function CampaignDetailPage() {
   // Reject dialog
   const [showReject, setShowReject] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [lastRejectionReason, setLastRejectionReason] = useState<string | null>(null);
 
   // PoP reporting
   const [popSummary, setPopSummary] = useState<CampaignPopSummaryOut | null>(null);
@@ -637,6 +638,7 @@ export default function CampaignDetailPage() {
                 <>
                   <button
                     type="button"
+                    data-testid="campaign-approve-btn"
                     style={{ ...css.primaryBtn, background: "#059669" }}
                     disabled={approvalSubmitting}
                     onClick={async () => {
@@ -657,6 +659,7 @@ export default function CampaignDetailPage() {
                   </button>
                   <button
                     type="button"
+                    data-testid="campaign-reject-btn"
                     style={{ ...css.cancelBtn, borderColor: "#dc2626", color: "#dc2626" }}
                     disabled={approvalSubmitting}
                     onClick={() => { setShowReject(true); setRejectReason(""); setApprovalError(null); }}
@@ -667,7 +670,7 @@ export default function CampaignDetailPage() {
               )}
             </div>
             {approvalError && (
-              <div style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
+              <div data-testid="campaign-approval-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
             )}
             {/* Reject reason dialog */}
             {hasApprovePerm && showReject && (
@@ -676,6 +679,7 @@ export default function CampaignDetailPage() {
                   Причина отклонения *
                 </label>
                 <textarea
+                  data-testid="campaign-reject-reason"
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   style={{ width: "100%", minHeight: 60, padding: "0.4rem", border: "1px solid #d1d5db", borderRadius: 3, fontSize: "0.825rem", boxSizing: "border-box" }}
@@ -686,6 +690,7 @@ export default function CampaignDetailPage() {
                 <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
                   <button
                     type="button"
+                    data-testid="campaign-reject-confirm"
                     style={{ ...css.primaryBtn, background: "#dc2626" }}
                     disabled={!rejectReason.trim() || approvalSubmitting}
                     onClick={async () => {
@@ -694,6 +699,7 @@ export default function CampaignDetailPage() {
                       setApprovalSubmitting(true);
                       try {
                         const res = await rejectCampaign(campaign.id, { reason: rejectReason.trim() });
+                        setLastRejectionReason(rejectReason.trim());
                         await refreshCampaign();
                         if (data) setData({ ...data, campaign: { ...data.campaign, status: res.new_status } });
                         setShowReject(false);
@@ -716,6 +722,14 @@ export default function CampaignDetailPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── Rejected: show reason ── */}
+        {lastRejectionReason && (
+          <div data-testid="campaign-rejection-reason-display" style={{ marginBottom: "1rem", padding: "0.75rem", background: "#fef2f2", borderRadius: 6, border: "1px solid #fecaca" }}>
+            <div style={{ fontSize: "0.8rem", fontWeight: 500, color: "#991b1b", marginBottom: "0.25rem" }}>Причина отклонения:</div>
+            <div style={{ fontSize: "0.825rem", color: "#7f1d1d" }}>{lastRejectionReason}</div>
           </div>
         )}
 

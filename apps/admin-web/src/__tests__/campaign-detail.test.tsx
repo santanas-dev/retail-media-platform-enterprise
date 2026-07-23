@@ -674,6 +674,41 @@ describe("CampaignDetailPage — S-009e", () => {
     });
   });
 
+  it("reject success displays rejection reason", async () => {
+    mockAuthenticatedSession();
+    let campaignStatus = "pending_approval";
+    const pendingCampaign = { ...DRAFT_CAMPAIGN, status: "pending_approval" };
+    const reasonText = "Не соответствует требованиям";
+    mockAllFetches({
+      "/campaigns": () => {
+        const c = { ...pendingCampaign, status: campaignStatus };
+        return Promise.resolve(new Response(JSON.stringify({items: [c], total: 1, limit: 50, offset: 0}), { status: 200 }));
+      },
+      "/reject": () => {
+        campaignStatus = "rejected";
+        return Promise.resolve(new Response(JSON.stringify({
+          message: "Campaign rejected", campaign_id: "c1", old_status: "pending_approval", new_status: "rejected",
+        }), { status: 200 }));
+      },
+    }, ["campaigns.approve"]);
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Отклонить")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Отклонить"));
+    await waitFor(() => { expect(screen.getByText("Подтвердить отклонение")).toBeTruthy(); });
+    const textarea = screen.getByPlaceholderText("Укажите причину отклонения");
+    await userEvent.setup().type(textarea, reasonText);
+    await userEvent.setup().click(screen.getByText("Подтвердить отклонение"));
+
+    // Verify rejection reason is displayed
+    await waitFor(() => {
+      expect(screen.getByTestId("campaign-rejection-reason-display")).toBeTruthy();
+      expect(screen.getByText(reasonText)).toBeTruthy();
+    });
+  });
+
   it("shows error on approve 403", async () => {
     mockAuthenticatedSession();
     const pendingCampaign = { ...DRAFT_CAMPAIGN, status: "pending_approval" };

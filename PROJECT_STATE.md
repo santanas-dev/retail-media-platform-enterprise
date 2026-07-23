@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-23 (JOURNEY-012 — campaign.submit reachable + green UI-smoke 🟢)
+**Last updated:** 2026-07-23 (JOURNEY-013 — campaign.approve + campaign.reject reachable 🟢)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -29,6 +29,7 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **JOURNEY-010** ✅ — inventory.simulate reachable + green UI-smoke (3.12s). Backend existed (POST /inventory/simulate, S-089). Admin-web: 11 data-testid, 4 vitest (button, success, conflicts, error). Smoke: verdict, blocking/warning, placement rows, slot_fill/total_requested/total_available. Registry 18→19 reachable, 22→21 blocked.
 **JOURNEY-011** ✅ — creative.moderate_approve + creative.moderate_reject reachable. Backend existed (S-036: approve/reject endpoints, moderation queue, audit events, perm creatives.moderate). Admin-web: CreativeModerationPage.tsx +14 data-testid anchors, 9 vitest tests (render, queue, empty, approve, reject open/cancel/confirm/with reason, error, 403). Smoke: approve 2.62s, reject 2.70s — both verify correct status + persist after reload. Registry 19→21 reachable, 21→19 blocked.
 **JOURNEY-012** ✅ — campaign.submit reachable + green UI-smoke (8.27s). Backend existed (POST /campaigns/{id}/request-approval with full validation: flights≥1, placements≥1, creatives deliverable). Admin-web: CampaignDetailPage.tsx +3 data-testid (submit-btn, status-badge, submit-error). Smoke: creatives-first strategy — create library → attach → upload → flights → placements → moderate approve → go_back() → submit → verify pending_approval status + reload persistence. Debug root cause: inventory overbooking on SURF-001 (all 720 slots sold_out from prior test residue) caused misleading API error («Metadata-only creatives»); smoke passed after manual dev inventory reset. Separate follow-up may improve error discrimination / test data isolation. Registry 21→22 reachable, 19→18 blocked. Next: campaign.approve/reject (Wave 3).
+**JOURNEY-013** ✅ — campaign.approve + campaign.reject reachable + green UI-smoke (approve 13.3s, reject 13.4s). Backend existed (POST approve/reject, `pending_approval→approved|rejected`, `campaigns.approve` perm, S-079 inventory commit/release, audit+outbox). Admin-web: CampaignDetailPage.tsx +5 data-testid (approve-btn, reject-btn, reject-reason, reject-confirm, approval-error) + rejection reason display. Vitest: 48/48 (6 approval tests incl. new reason display). Smoke: full creatives-first pipeline → submit → approve → verify «Согласована» + reload; reject with reason → verify «Отклонена» + reason display + reload. Registry 22→24 reachable, 18→16 blocked. Next: campaign.activate/pause (Wave 4).
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
 EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof (admin bypass), CI #29649000788 green (6/6).
 EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOBYPASSRLS), CI #29652235623 green (5/5).

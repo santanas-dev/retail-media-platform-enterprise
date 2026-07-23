@@ -92,8 +92,7 @@ features:
     smoke: test_uismoke__campaign__approve
     priority: P0
     roles: [system_admin, approver]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
 
   - id: campaign.reject
     frontend: admin-web
@@ -106,8 +105,7 @@ features:
     smoke: test_uismoke__campaign__reject
     priority: P0
     roles: [system_admin, approver]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
 
   - id: creative.moderate_approve
     frontend: admin-web
