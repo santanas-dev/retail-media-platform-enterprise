@@ -3652,7 +3652,8 @@ async def deactivate_emergency_override(
     existing.deactivated_by = deactivated_by
     existing.deactivated_at = datetime.now(timezone.utc)
     existing.deactivated_reason = reason
-
+    session.add(existing)  # ensure tracked for commit
+    return existing
 
 # ---------------------------------------------------------------------------
 # BP-001 — Advertiser Applications
