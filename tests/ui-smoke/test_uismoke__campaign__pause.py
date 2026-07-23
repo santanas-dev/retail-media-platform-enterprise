@@ -1,6 +1,6 @@
 """
 UI-smoke: campaign.pause — pause an active campaign.
-Pattern: full pipeline → approve → activate → pause → verify "Приостановлена" + reload persist.
+Pattern: full pipeline → moderate → submit → approve → activate → pause → verify.
 """
 import os, pytest
 
@@ -59,80 +59,73 @@ def test_uismoke__campaign__pause(smoke_page: Page) -> None:
     # ── Flights ──
     page.click('[data-testid="tab-flights"]')
     page.wait_for_load_state("networkidle")
-    from datetime import datetime
-    today = datetime.utcnow()
-    start = today.strftime("%Y-%m-%d")
-    end = today.replace(year=today.year + 1).strftime("%Y-%m-%d")
-    page.fill("#f-start-date", start)
-    page.fill("#f-end-date", end)
-    page.fill("#f-budget", "100000")
     page.click('[data-testid="flight-add-btn"]')
+    page.fill('[data-testid="flight-start"]', "2026-12-01")
+    page.fill('[data-testid="flight-end"]', "2026-12-31")
+    page.click('[data-testid="flight-submit"]')
     page.wait_for_load_state("networkidle")
     print(f"[{time.time()-t0:.1f}s] Flight added")
 
     # ── Placements ──
     page.click('[data-testid="tab-placements"]')
     page.wait_for_load_state("networkidle")
-    surf_opt = page.locator("#p-surface option").first
-    surf_val = surf_opt.get_attribute("value")
-    page.select_option("#p-surface", value=surf_val)
-    page.fill("#p-max-impressions", "10000")
-    page.fill("#p-cpm", "10")
     page.click('[data-testid="placement-add-btn"]')
+    page.locator('[data-testid="placement-surface"]').select_option(index=1)
+    page.click('[data-testid="placement-submit"]')
     page.wait_for_load_state("networkidle")
     print(f"[{time.time()-t0:.1f}s] Placement added")
 
     # ── Moderate creative ──
-    page.click('[data-testid="sidebar-approvals"]')
-    page.wait_for_url("**/approvals", timeout=10000)
+    page.locator('aside nav a[href="/creatives/moderation"]').click(force=True)
     page.wait_for_load_state("networkidle")
-    page.click('[data-testid="approval-tab-creatives"]')
-    page.wait_for_load_state("networkidle")
-    page.click('[data-testid="creative-approve-btn"]')
+    page.wait_for_selector('[data-testid^="moderation-row-"]', timeout=15000)
+    row = page.locator(f'[data-testid="moderation-row-{creative_code}"]')
+    expect(row).to_be_visible(timeout=5000)
+    page.locator(f'[data-testid="moderation-approve-{creative_code}"]').click()
     page.wait_for_load_state("networkidle")
     print(f"[{time.time()-t0:.1f}s] Creative approved")
 
-    # ── Navigate back to campaign ──
-    page.click('[data-testid="sidebar-campaigns"]')
-    page.wait_for_url("**/campaigns", timeout=10000)
+    # ── Go back + submit ──
+    page.go_back()
     page.wait_for_load_state("networkidle")
-    page.locator(f'tr:has-text("{campaign_code}")').click()
+    page.wait_for_timeout(1000)
+    submit_btn = page.locator('[data-testid="campaign-submit-btn"]')
+    expect(submit_btn).to_be_enabled(timeout=10000)
+    submit_btn.click()
+    try:
+        page.wait_for_selector('[data-testid="campaign-submit-error"]', timeout=5000)
+        err = page.locator('[data-testid="campaign-submit-error"]').inner_text()
+        raise AssertionError(f"Submit failed: {err}")
+    except Exception as e:
+        if "Submit failed" in str(e):
+            raise
     page.wait_for_load_state("networkidle")
-
-    # ── Submit ──
-    expect(page.locator('[data-testid="campaign-submit-btn"]')).to_be_visible(timeout=10000)
-    page.click('[data-testid="campaign-submit-btn"]')
-    page.wait_for_load_state("networkidle")
+    status_badge = page.locator('[data-testid="campaign-status-badge"]')
+    expect(status_badge).to_be_visible(timeout=10000)
+    assert "На согласовании" in status_badge.inner_text()
     print(f"[{time.time()-t0:.1f}s] Submitted")
 
     # ── Approve ──
-    page.click('[data-testid="sidebar-approvals"]')
-    page.wait_for_url("**/approvals", timeout=10000)
+    approve_btn = page.locator('[data-testid="campaign-approve-btn"]')
+    expect(approve_btn).to_be_visible(timeout=5000)
+    approve_btn.click()
     page.wait_for_load_state("networkidle")
-    page.locator(f'tr:has-text("{campaign_code}")').first.click()
-    page.wait_for_load_state("networkidle")
-    expect(page.locator('[data-testid="campaign-approve-btn"]')).to_be_visible(timeout=10000)
-    page.click('[data-testid="campaign-approve-btn"]')
-    page.wait_for_load_state("networkidle")
+    expect(page.locator('[data-testid="campaign-status-badge"]')).to_contain_text("Согласована", timeout=10000)
     print(f"[{time.time()-t0:.1f}s] Approved")
 
-    # ── Navigate back → Activate ──
-    page.click('[data-testid="sidebar-campaigns"]')
-    page.wait_for_url("**/campaigns", timeout=10000)
+    # ── Activate ──
+    activate_btn = page.locator('[data-testid="campaign-activate-btn"]')
+    expect(activate_btn).to_be_visible(timeout=5000)
+    activate_btn.click()
     page.wait_for_load_state("networkidle")
-    page.locator(f'tr:has-text("{campaign_code}")').click()
-    page.wait_for_load_state("networkidle")
-
-    expect(page.locator('[data-testid="campaign-activate-btn"]')).to_be_visible(timeout=10000)
-    page.click('[data-testid="campaign-activate-btn"]')
-    page.wait_for_load_state("networkidle")
+    expect(page.locator('[data-testid="campaign-status-badge"]')).to_contain_text("Активна", timeout=10000)
     print(f"[{time.time()-t0:.1f}s] Activated")
 
     # ── Pause ──
-    expect(page.locator('[data-testid="campaign-pause-btn"]')).to_be_visible(timeout=10000)
-    page.click('[data-testid="campaign-pause-btn"]')
+    pause_btn = page.locator('[data-testid="campaign-pause-btn"]')
+    expect(pause_btn).to_be_visible(timeout=5000)
+    pause_btn.click()
     page.wait_for_load_state("networkidle")
-    print(f"[{time.time()-t0:.1f}s] Paused")
 
     # ── Verify status "Приостановлена" ──
     badge = page.locator('[data-testid="campaign-status-badge"]')
