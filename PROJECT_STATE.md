@@ -34,7 +34,7 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **WAVE3-CLOSURE-001** ✅ — Wave 3 canon closure. pre-pilot-journey-plan.md: Wave 2+3 marked COMPLETE, counts 15/25→24/16. feature-registry.yaml: summary 21/19→24/16. roadmap.xlsx: rows 8/9/10 — campaign.submit, campaign.approve/reject, creative.moderate_approve/reject all updated to ✅ Готово/Юзабельно. Next: campaign.activate/pause (Wave 4).
 **SMOKE-INFRA-001** ✅ — reproducible smoke stack established. Three root causes fixed: (1) MinIO CORS configured for browser presigned-URL PUTs, (2) CREATIVE_AUTO_APPROVE_UPLOADS boolean-env-var parser fixed (config.py checked only false/0/no, missed true/1/yes), (3) inventory booked_capacity=100 from seed not reset — added booked_capacity=0 to prepare-ui-smoke-stack.sh. Fix: scripts/smoke/prepare-ui-smoke-stack.sh + tests/ui-smoke/test_uismoke__campaign__submit.py (moderation step removed — auto-approve now works). Proof: submit (8.0s), activate (13.9s), pause (8.9s) all green on real PostgreSQL+MinIO stack. CI #30010897397. Commit a16e029.
 
-**JOURNEY-014** ✅ — campaign.activate + campaign.pause reachable + green UI-smoke. Backend: activate_campaign/pause_campaign repo fns + endpoints + audit+outbox. Admin-web: CampaignDetailPage.tsx +3 data-testid + hasManagePerm gate. Vitest: 195/195. JOURNEY-014-FU2 closed: both smokes green (activate 13.0s, pause 8.1s) after SMOKE-INFRA-001 unblocked MinIO CORS + auto-approve + inventory reset. Registry 24→26 reachable, roadmap row 8 → ✅ Готово/Юзабельно. CI #TBD.
+**JOURNEY-014** ✅ — campaign.activate + campaign.pause reachable + green UI-smoke. Backend: activate_campaign/pause_campaign repo fns + endpoints + audit+outbox. Admin-web: CampaignDetailPage.tsx +3 data-testid + hasManagePerm gate. Vitest: 195/195. JOURNEY-014-FU2 closed: both smokes green (activate 13.0s, pause 8.1s) after SMOKE-INFRA-001 unblocked MinIO CORS + auto-approve + inventory reset. Registry 24→26 reachable, roadmap row 8 → ✅ Готово/Юзабельно. CI #30017333284.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
 EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof (admin bypass), CI #29649000788 green (6/6).
 EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOBYPASSRLS), CI #29652235623 green (5/5).
@@ -72,9 +72,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | a16e029 | a16e029 | SMOKE-INFRA-001 — reproducible smoke stack, CI #30010897397 |
+| develop | 0fe868b | 0fe868b | JOURNEY-014-FU2 — campaign.activate/pause reachable, CI #30017333284 |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
-| NAS mirror (ASUSTOR) | pending | develop=a16e029 | Hermes cron sync pending |
+| NAS mirror (ASUSTOR) | pending | develop=0fe868b | Hermes cron sync pending |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
