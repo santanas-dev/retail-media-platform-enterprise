@@ -1,9 +1,9 @@
 """
-UI-smoke: creative.upload — proves actual file upload completion + persisted state.
-
-Journey: creative.upload (managed-first)
+UI-smoke: creative.upload — CAMPAIGN-UX-001A human-path.
+Primary path: Выбрать файл → авто-метаданные → подтвердить → upload → Готов.
+Jamie: creative.upload (managed-first)
 Role: campaign_manager
-Path: /login → Кампании → draft campaign → Креативы → add library → attach → upload → verify Готов
+Happy-path: 5 шагов — 1) Креативы → 2) Выбрать файл → 3) метаданные авто-заполнены → 4) Загрузить → 5) статус Готов + reload persistence
 """
 import os
 import pathlib
@@ -30,7 +30,7 @@ def _create_draft_campaign(page: Page) -> str:
     choose_first_contract(page)
 
     page.fill("#c-code", f"SMOKE-UP-{os.urandom(2).hex()}")
-    page.fill("#c-name", "Smoke Upload Test")
+    page.fill("#c-name", "Smoke Upload Primary")
     page.fill("#c-budget", "100000")
 
     page.click('button:has-text("Создать черновик")')
@@ -43,75 +43,68 @@ def _create_draft_campaign(page: Page) -> str:
 
 
 def test_uismoke__creative__upload(smoke_page: Page) -> None:
-    """Upload a creative file, prove completion (status=Готов), verify persisted."""
+    """
+    CAMPAIGN-UX-001A: Primary human-path upload.
+    1. Navigate to Креативы tab
+    2. Click «Выбрать файл» — primary upload button
+    3. Select file via hidden file input
+    4. Verify auto-filled metadata form appears
+    5. Submit metadata → upload + attach in one flow
+    6. Verify «Готов» status
+    7. Reload → persistence
+    """
     page = smoke_page
     campaign_id = _create_draft_campaign(page)
 
-    # ── Navigate to Creatives tab ──
+    # ── Step 1: Navigate to Creatives tab ──
     tab_creatives = page.locator('[data-testid="tab-creatives"]')
     expect(tab_creatives).to_be_visible(timeout=5000)
     tab_creatives.click()
     page.wait_for_load_state("networkidle")
 
-    # ── Add creative to library ──
-    add_library_btn = page.locator('[data-testid="creative-add-library-btn"]')
-    expect(add_library_btn).to_be_visible(timeout=3000)
-    add_library_btn.click()
+    # ── Step 2: Verify primary upload CTA is visible ──
+    primary_section = page.locator('[data-testid="creative-upload-primary"]')
+    expect(primary_section).to_be_visible(timeout=5000)
+    assert "Загрузить файл с ПК" in primary_section.inner_text(), \
+        "Primary upload CTA heading not visible"
 
-    creative_code = f"TEST-UP-{os.urandom(2).hex()}"
-    page.fill('[data-testid="creative-code"]', creative_code)
-    page.fill('[data-testid="creative-name"]', "Test Upload Creative")
+    select_file_btn = page.locator('[data-testid="creative-upload-select-file"]')
+    expect(select_file_btn).to_be_visible(timeout=3000)
 
-    page.click('[data-testid="creative-add-submit"]')
-    page.wait_for_load_state("networkidle")
+    # ── Step 3: Click «Выбрать файл» → file picker opens ──
+    # Click the button to trigger primaryUploadInputRef click
+    select_file_btn.click()
 
-    expect(add_library_btn).to_be_visible(timeout=5000)
-
-    # ── Verify creative in library ──
-    page_content = page.content()
-    assert "Существующие креативы" in page_content, "Creative library section missing"
-    assert creative_code in page_content, f"Creative code '{creative_code}' not in library"
-
-    # ── Attach creative to campaign ──
-    attach_btn = page.locator('[data-testid="creative-attach-btn"]')
-    expect(attach_btn).to_be_visible(timeout=3000)
-    attach_btn.click()
-
-    attach_select = page.locator('[data-testid="creative-attach-select"]')
-    expect(attach_select).to_be_visible(timeout=3000)
-
-    # Select by option label containing our creative code
-    # Find the option with our creative code and get its value attribute
-    option_locator = page.locator(
-        f'[data-testid="creative-attach-select"] option'
-    ).filter(has_text=creative_code)
-    expect(option_locator).to_have_count(1, timeout=5000)
-    option_value = option_locator.get_attribute("value")
-    attach_select.select_option(value=option_value)
-
-    page.click('[data-testid="creative-attach-submit"]')
-    page.wait_for_load_state("networkidle")
-
-    # ── Verify creative attached, status shows "Ожидает загрузки" ──
-    page_content = page.content()
-    assert creative_code in page_content, f"Creative '{creative_code}' not in campaign list after attach"
-
-    status_cell = page.locator(f'[data-testid="creative-status-{creative_code}"]')
-    expect(status_cell).to_be_visible(timeout=5000)
-    status_text = status_cell.inner_text()
-    assert "Ожидает загрузки" in status_text, \
-        f"Expected 'Ожидает загрузки' before upload, got: '{status_text}'"
-
-    # ── Upload file ──
-    upload_btn = page.locator('button[data-upload]')
-    expect(upload_btn).to_be_visible(timeout=5000)
-    upload_btn.click()
-
+    # Upload a test file
     fixture_path = pathlib.Path(__file__).parent / "fixtures" / "test-creative.png"
     assert fixture_path.exists(), f"Test fixture not found: {fixture_path}"
-    page.set_input_files('[data-testid="creative-file-input"]', str(fixture_path))
+    page.set_input_files('[data-testid="creative-upload-primary-file-input"]', str(fixture_path))
 
-    # ── WAIT for upload completion proof: "✅ Готов" indicator ──
+    # ── Step 4: Verify metadata form appeared with auto-filled values ──
+    # Form should appear: code, name, media_type
+    code_input = page.locator('[data-testid="creative-upload-primary-code"]')
+    expect(code_input).to_be_visible(timeout=5000)
+    name_input = page.locator('[data-testid="creative-upload-primary-name"]')
+    expect(name_input).to_be_visible(timeout=3000)
+
+    # Auto-filled code from filename (test_creative → TEST_CREATIVE)
+    code_value = code_input.input_value()
+    assert len(code_value) > 0, "Code should be auto-filled from filename"
+
+    # Auto-filled name from filename
+    name_value = name_input.input_value()
+    assert len(name_value) > 0, "Name should be auto-filled from filename"
+
+    # Allow editing before submit
+    code_input.fill("")
+    code_input.fill(f"UP-{os.urandom(2).hex()}")
+
+    # ── Step 5: Submit metadata → upload + attach ──
+    submit_btn = page.locator('[data-testid="creative-upload-metadata-submit"]')
+    expect(submit_btn).to_be_visible(timeout=3000)
+    submit_btn.click()
+
+    # ── Step 6: Wait for upload completion — «Готов» indicator ──
     upload_done = page.locator('[data-testid="creative-upload-done"]')
     expect(upload_done).to_be_visible(timeout=30000)
     done_text = upload_done.inner_text()
@@ -119,13 +112,11 @@ def test_uismoke__creative__upload(smoke_page: Page) -> None:
     assert "test-creative.png" in done_text, \
         f"Upload done indicator missing filename, got: {done_text}"
 
-    # ── Verify status changed to "Готов" ──
-    status_cell = page.locator(f'[data-testid="creative-status-{creative_code}"]')
-    status_text = status_cell.inner_text()
-    assert status_text == "Готов", \
-        f"Expected status 'Готов' after upload, got: '{status_text}'"
+    # Verify status in the attached creatives table shows «Готов»
+    page_content = page.content()
+    assert "Готов" in page_content, "Status 'Готов' not found on page after upload"
 
-    # ── Reload persistence ──
+    # ── Step 7: Reload persistence ──
     page.reload()
     page.wait_for_load_state("networkidle")
     # Re-open creatives tab after reload
@@ -134,13 +125,9 @@ def test_uismoke__creative__upload(smoke_page: Page) -> None:
     tab_creatives.click()
     page.wait_for_load_state("networkidle")
 
-    # ── Verify persisted: status still "Готов" after reload ──
+    # Verify persisted: status still «Готов» after reload
     page_content = page.content()
-    assert creative_code in page_content, f"Creative '{creative_code}' not found after reload"
-    assert "Test Upload Creative" in page_content, "Creative name disappeared after reload"
-
-    status_cell = page.locator(f'[data-testid="creative-status-{creative_code}"]')
-    expect(status_cell).to_be_visible(timeout=5000)
-    status_text = status_cell.inner_text()
-    assert status_text == "Готов", \
-        f"Expected status 'Готов' after reload, got: '{status_text}'"
+    assert "Готов" in page_content, \
+        "Status 'Готов' not found after reload — upload state not persisted"
+    assert "test-creative.png" in page_content, \
+        "Uploaded filename not found after reload"

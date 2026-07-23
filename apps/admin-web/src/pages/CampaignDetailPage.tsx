@@ -204,6 +204,16 @@ export default function CampaignDetailPage() {
   >("idle");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const primaryUploadInputRef = useRef<HTMLInputElement>(null);
+
+  // CAMPAIGN-UX-001A: Primary upload flow state
+  const [showPrimaryUpload, setShowPrimaryUpload] = useState(false);
+  const [primaryFile, setPrimaryFile] = useState<File | null>(null);
+  const [primaryCode, setPrimaryCode] = useState("");
+  const [primaryName, setPrimaryName] = useState("");
+  const [primaryMediaType, setPrimaryMediaType] = useState("image");
+  const [primarySubmitting, setPrimarySubmitting] = useState(false);
+  const [primaryError, setPrimaryError] = useState<string | null>(null);
   const attachSelectRef = useRef<HTMLSelectElement>(null);
 
   // Approval
@@ -385,6 +395,50 @@ export default function CampaignDetailPage() {
     setUploadProgress(0);
     setUploadStage("idle");
     setUploadError(null);
+  }
+
+  // CAMPAIGN-UX-001A: Primary upload — file pick → metadata → create+attach+upload in one flow
+  async function handlePrimaryUploadSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!primaryFile || !primaryCode || !primaryName) {
+      setPrimaryError("Заполните код, название и выберите файл");
+      return;
+    }
+    setPrimarySubmitting(true);
+    setPrimaryError(null);
+    try {
+      // 1. Create creative asset
+      const assetReq: CreativeAssetCreateRequest = {
+        code: primaryCode,
+        name: primaryName,
+        media_type: primaryMediaType,
+      };
+      const asset = await createCreativeAsset(assetReq);
+      // 2. Attach to campaign
+      await attachCreative(campaign.id, { creative_asset_id: asset.id, sort_order: creatives.length });
+      // 3. Upload file
+      setShowPrimaryUpload(false);
+      await refreshCreatives();
+      await handleUpload(asset.id, primaryFile);
+      // 4. Reset primary upload form
+      setPrimaryFile(null);
+      setPrimaryCode("");
+      setPrimaryName("");
+      setPrimaryMediaType("image");
+    } catch (err: unknown) {
+      setPrimaryError(err instanceof Error ? err.message : "Ошибка при создании креатива");
+    } finally {
+      setPrimarySubmitting(false);
+    }
+  }
+
+  function resetPrimaryUpload() {
+    setPrimaryFile(null);
+    setPrimaryCode("");
+    setPrimaryName("");
+    setPrimaryMediaType("image");
+    setShowPrimaryUpload(false);
+    setPrimaryError(null);
   }
 
 
@@ -1296,6 +1350,73 @@ export default function CampaignDetailPage() {
 
     return (
       <div>
+        {/* ── CAMPAIGN-UX-001A: Primary upload path — visible, single-flow ── */}
+        {isDraft && (
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#f0f9ff", border: "1px solid #7dd3fc", borderRadius: 6 }}>
+            {!showPrimaryUpload ? (
+              <div data-testid="creative-upload-primary">
+                <div style={{ fontWeight: 600, fontSize: "0.85rem", marginBottom: "0.4rem", color: "#0369a1" }}>
+                  Загрузить файл с ПК
+                </div>
+                <p style={{ fontSize: "0.75rem", color: "#475569", margin: "0 0 0.5rem 0" }}>
+                  Выберите файл → заполните метаданные → готово. Креатив будет автоматически прикреплён к кампании.
+                </p>
+                <button
+                  type="button"
+                  data-testid="creative-upload-select-file"
+                  style={{ ...css.primaryBtn, padding: "0.5rem 1rem", fontSize: "0.85rem" }}
+                  onClick={() => primaryUploadInputRef.current?.click()}
+                >
+                  Выбрать файл
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handlePrimaryUploadSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "#0369a1" }}>
+                  Новый креатив из файла
+                </div>
+                {primaryFile && (
+                  <div style={{ padding: "0.4rem 0.6rem", background: "#e0f2fe", borderRadius: 4, fontSize: "0.8rem", color: "#0c4a6e" }}>
+                    📄 {primaryFile.name} ({(primaryFile.size / 1024).toFixed(0)} КБ)
+                  </div>
+                )}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                  <div>
+                    <label htmlFor="pu-code" style={css.miniLabel}>Код *</label>
+                    <input id="pu-code" type="text" value={primaryCode} onChange={(e) => setPrimaryCode(e.target.value)}
+                      style={css.miniInput} maxLength={64} required data-testid="creative-upload-primary-code" />
+                  </div>
+                  <div>
+                    <label htmlFor="pu-name" style={css.miniLabel}>Название *</label>
+                    <input id="pu-name" type="text" value={primaryName} onChange={(e) => setPrimaryName(e.target.value)}
+                      style={css.miniInput} maxLength={255} required data-testid="creative-upload-primary-name" />
+                  </div>
+                  <div>
+                    <label htmlFor="pu-type" style={css.miniLabel}>Тип медиа</label>
+                    <select id="pu-type" value={primaryMediaType} onChange={(e) => setPrimaryMediaType(e.target.value)} style={css.miniSelect}>
+                      {MEDIA_TYPE_LABELS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: "0.25rem" }}>
+                  <button type="submit" style={css.primaryBtn} disabled={primarySubmitting} data-testid="creative-upload-metadata-submit">
+                    {primarySubmitting ? "Загрузка..." : "Загрузить"}
+                  </button>
+                  <button type="button" style={css.cancelBtn} onClick={resetPrimaryUpload}>Отмена</button>
+                </div>
+                {primaryError && <div style={{ color: "#dc2626", fontSize: "0.8rem" }}>{primaryError}</div>}
+              </form>
+            )}
+          </div>
+        )}
+
+        {/* ── Existing paths (secondary) ── */}
+        {isDraft && !showPrimaryUpload && (
+          <div style={{ marginBottom: "0.25rem", fontSize: "0.75rem", color: "#94a3b8", fontWeight: 500 }}>
+            Другие способы добавить креатив ↓
+          </div>
+        )}
+
         {/* ── Attach existing creative ── */}
         {isDraft && (
           <div style={{ marginBottom: "0.75rem" }}>
@@ -1464,32 +1585,60 @@ export default function CampaignDetailPage() {
           </details>
         )}
 
+        {/* ── CAMPAIGN-UX-001A: Hidden file inputs (moved outside conditional for primary path) ── */}
+        {/* Primary upload file input */}
+        <input
+          ref={primaryUploadInputRef}
+          type="file"
+          accept=".png,.jpg,.jpeg,.webp,.gif,.mp4"
+          style={{ display: "none" }}
+          data-testid="creative-upload-primary-file-input"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            setPrimaryFile(f);
+            // Auto-detect media type from extension
+            const ext = f.name.split(".").pop()?.toLowerCase();
+            if (ext === "mp4") setPrimaryMediaType("video");
+            else if (ext === "html" || ext === "htm") setPrimaryMediaType("html");
+            else setPrimaryMediaType("image");
+            // Auto-fill name from filename (without extension)
+            const baseName = f.name.replace(/\.[^.]+$/, "");
+            setPrimaryName(baseName);
+            // Auto-generate code from filename
+            setPrimaryCode(baseName.toUpperCase().replace(/[^A-Z0-9]/g, "_").slice(0, 20) || "UPLOAD");
+            setShowPrimaryUpload(true);
+            e.target.value = "";
+          }}
+        />
+        {/* Legacy upload file input (for existing table button) */}
+        <input
+          ref={uploadInputRef}
+          type="file"
+          accept=".png,.jpg,.jpeg,.webp,.gif,.mp4"
+          style={{ display: "none" }}
+          data-testid="creative-file-input"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            // Find a metadata_only asset to upload to
+            // Use the first metadata_only creative asset
+            const metaCreative = creatives.find(
+              (c) => c.asset && !isDeliverable(c.asset),
+            );
+            if (metaCreative?.asset) {
+              handleUpload(metaCreative.asset.id, f);
+            }
+            // Reset input so same file can be re-selected
+            e.target.value = "";
+          }}
+        />
+
         {creatives.length === 0 ? (
           <p style={css.muted}>У этой кампании пока нет креативов.</p>
         ) : (
           <>
-            {/* S-017: Hidden file input + inline upload progress */}
-            <input
-              ref={uploadInputRef}
-              type="file"
-              accept=".png,.jpg,.jpeg,.webp,.gif,.mp4"
-              style={{ display: "none" }}
-              data-testid="creative-file-input"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (!f) return;
-                // Find a metadata_only asset to upload to
-                // Use the first metadata_only creative asset
-                const metaCreative = creatives.find(
-                  (c) => c.asset && !isDeliverable(c.asset),
-                );
-                if (metaCreative?.asset) {
-                  handleUpload(metaCreative.asset.id, f);
-                }
-                // Reset input so same file can be re-selected
-                e.target.value = "";
-              }}
-            />
+            {/* S-017: Upload progress indicators */}
             {uploadStage === "done" && uploadFile && (
               <div data-testid="creative-upload-done" style={{ padding: "0.5rem 0.75rem", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 4, marginBottom: "0.5rem", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <span style={{ fontWeight: 600, color: "#166534" }}>✅ Готов</span>
