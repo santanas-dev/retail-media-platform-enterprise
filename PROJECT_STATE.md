@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-22 (JOURNEY-009-FU2 — creative.upload completion proof)
+**Last updated:** 2026-07-23 (JOURNEY-010 — inventory.simulate reachable + field-level UI-smoke proof)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
