@@ -121,8 +121,8 @@ features:
     smoke: test_uismoke__creative__moderate_approve
     priority: P0
     roles: [system_admin, moderator]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
+    gap: ""
 
   - id: creative.moderate_reject
     frontend: admin-web
@@ -135,8 +135,8 @@ features:
     smoke: test_uismoke__creative__moderate_reject
     priority: P0
     roles: [system_admin, moderator]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
+    gap: ""
 
   - id: user.create_advertiser
     frontend: admin-web
@@ -576,8 +576,8 @@ features:
   # ═══════════════════════════════════════════════════════════════
   #   total: 40
   # by status:
-  #   reachable: 18 (campaign.create, user.create_advertiser, user.assign_roles, advertiser.create_org, advertiser.view, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability, adsettings.configure, advertiser.apply, advertiser.application_review, advertiser.invite, self.login, self.apply_or_brief, campaign.edit, creative.upload)
-  #   blocked:   22 (19 UI-no-smoke + 3 service-deferred)
+  #   reachable: 21 (campaign.create, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, advertiser.create_org, advertiser.view, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability, adsettings.configure, advertiser.apply, advertiser.application_review, advertiser.invite, self.login, self.apply_or_brief, campaign.edit, creative.upload, inventory.simulate)
+  #   blocked:   19 (16 UI-no-smoke + 3 service-deferred)
   # by frontend:
   #   admin-web:      26
   #   advertiser-web:  5

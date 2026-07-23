@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-23 (JOURNEY-010 — inventory.simulate reachable + field-level UI-smoke proof)
+**Last updated:** 2026-07-23 (JOURNEY-011 — creative.moderate_approve + creative.moderate_reject reachable, green UI-smoke)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -27,6 +27,7 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **JOURNEY-009-FU** ✅ — presigned URL signature fix (public Minio client + region). Storage pattern documented. CI #29952174466.
 **JOURNEY-009-FU2** ✅ — creative.upload completion proof. UI fix: React controlled select (defaultValue + ref) for Playwright. Visible upload done state ("✅ Готов" + filename). Data-testid creative-status-{code}. Smoke test: asserts Готов status, persisted after reload (2.82s). Vitest 174/174. CI #29953272276.
 **JOURNEY-010** ✅ — inventory.simulate reachable + green UI-smoke (3.12s). Backend existed (POST /inventory/simulate, S-089). Admin-web: 11 data-testid, 4 vitest (button, success, conflicts, error). Smoke: verdict, blocking/warning, placement rows, slot_fill/total_requested/total_available. Registry 18→19 reachable, 22→21 blocked.
+**JOURNEY-011** ✅ — creative.moderate_approve + creative.moderate_reject reachable. Backend existed (S-036: approve/reject endpoints, moderation queue, audit events, perm creatives.moderate). Admin-web: CreativeModerationPage.tsx +14 data-testid anchors, 9 vitest tests (render, queue, empty, approve, reject open/cancel/confirm/with reason, error, 403). Smoke: approve 2.62s, reject 2.70s — both verify correct status + persist after reload. Registry 19→21 reachable, 21→19 blocked. Next: campaign.submit (Wave 3).
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
 EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof (admin bypass), CI #29649000788 green (6/6).
 EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOBYPASSRLS), CI #29652235623 green (5/5).
@@ -64,9 +65,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 004b74b | 0ea6db9 | JOURNEY-010 inventory.simulate reachable ✅, CI #29984749440 |
+| develop | 21f9b15 | 21f9b15 | JOURNEY-011 creative moderation reachable ✅, CI pending #29985909715 |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
-| NAS mirror (ASUSTOR) | verified | develop=0ea6db9, main=b5dd3b3, tag v0.9.0-prepilot-wave1 → b5dd3b3 | Hermes cron sync confirmed |
+| NAS mirror (ASUSTOR) | pending | develop catching up to 21f9b15 | Hermes cron sync every 3 min |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
