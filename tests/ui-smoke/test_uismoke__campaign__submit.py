@@ -65,7 +65,11 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     # Return to Overview
     page.click('button:has-text("Обзор")')
     page.wait_for_load_state("networkidle")
-    assert page.locator('[data-testid="readiness-flight-status"]').inner_text() == "✅"
+    # Wait for flight status to update (refreshFlights is async)
+    page.wait_for_function(
+        "document.querySelector('[data-testid=\"readiness-flight-status\"]')?.textContent === '✅'",
+        timeout=10000,
+    )
     print(f"[{time.time()-t0:.1f}s] Flight ✓")
 
     # ── Use checklist action: placement ──
@@ -79,7 +83,10 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
 
     page.click('button:has-text("Обзор")')
     page.wait_for_load_state("networkidle")
-    assert page.locator('[data-testid="readiness-placement-status"]').inner_text() == "✅"
+    page.wait_for_function(
+        "document.querySelector('[data-testid=\"readiness-placement-status\"]')?.textContent === '✅'",
+        timeout=10000,
+    )
     print(f"[{time.time()-t0:.1f}s] Placement ✓")
 
     # ── Use checklist action: creative ──
@@ -100,7 +107,10 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     # Return to Overview
     page.click('button:has-text("Обзор")')
     page.wait_for_load_state("networkidle")
-    assert page.locator('[data-testid="readiness-creative-status"]').inner_text() == "✅"
+    page.wait_for_function(
+        "document.querySelector('[data-testid=\"readiness-creative-status\"]')?.textContent === '✅'",
+        timeout=15000,
+    )
     print(f"[{time.time()-t0:.1f}s] Creative ✓")
 
     # ── All three ready → submit possible ──
