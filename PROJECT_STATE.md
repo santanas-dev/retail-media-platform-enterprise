@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-23 (JOURNEY-015 — emergency.activate/deactivate reachable + green smoke, CI #30019416306 ✅)
+**Last updated:** 2026-07-23 (DONE-GATE-002 — human walkthrough + happy-path added to Done Gate)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -35,6 +35,7 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **SMOKE-INFRA-001** ✅ — reproducible smoke stack established. Three root causes fixed: (1) MinIO CORS configured for browser presigned-URL PUTs, (2) CREATIVE_AUTO_APPROVE_UPLOADS boolean-env-var parser fixed (config.py checked only false/0/no, missed true/1/yes), (3) inventory booked_capacity=100 from seed not reset — added booked_capacity=0 to prepare-ui-smoke-stack.sh. Fix: scripts/smoke/prepare-ui-smoke-stack.sh + tests/ui-smoke/test_uismoke__campaign__submit.py (moderation step removed — auto-approve now works). Proof: submit (8.0s), activate (13.9s), pause (8.9s) all green on real PostgreSQL+MinIO stack. CI #30010897397. Commit a16e029.
 
 **JOURNEY-015** ✅ — emergency.activate + emergency.deactivate reachable + green UI-smoke. Backend existed (GET/POST emergency/status|activate|deactivate, emergency.read|manage perms, audit+outbox+K1 manifest). Bugfix: deactivate_emergency_override missing session.add(existing) — UPDATE silently dropped. Admin-web: EmergencyPage.tsx +11 data-testid. Vitest: 19/19. Smoke: activate 1.8s, deactivate 1.3s. Honest wording: no device-stop claims, player-side enforcement deferred note. Registry 26→28 reachable, 14→12 blocked.
+**DONE-GATE-002** ✅ — human walkthrough + happy-path added to Done Gate (AGENTS.md пункты 8–9) + шаблон Happy-path в user-journeys.md §1. Docs-only.
 
 **JOURNEY-014** ✅ — campaign.activate + campaign.pause reachable + green UI-smoke.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -74,7 +75,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 774a085 | e54f663 | JOURNEY-015 — emergency.activate/deactivate reachable, CI #30019416306 ✅ |
+| develop | 774a085 | e54f663 | DONE-GATE-002 — human walkthrough + happy-path added to Done Gate |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
 | NAS mirror (ASUSTOR) | pending | mount unavailable | Hermes cron sync pending |
 
