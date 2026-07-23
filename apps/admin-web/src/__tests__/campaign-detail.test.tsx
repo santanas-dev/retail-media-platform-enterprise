@@ -1218,3 +1218,88 @@ describe("CampaignDetailPage — S-090 Dashboard", () => {
     });
   });
 });
+
+// ── S-089: Inventory Simulation UI ──
+
+describe("CampaignDetailPage — S-089 Simulation", () => {
+  beforeEach(() => { localStorage.clear(); vi.restoreAllMocks(); });
+  afterEach(() => { localStorage.clear(); });
+
+  const SIM_F = [{ id: "f1", campaign_id: "c1", name: "F1", start_at: "2026-01-01T00:00:00Z", end_at: "2026-02-01T00:00:00Z", priority: 0, created_at: "2026-01-01T00:00:00Z" }];
+  const SIM_P = [{ id: "p1", campaign_id: "c1", display_surface_id: "surf-1", store_id: "st-1", cluster_id: null, branch_id: null, share_of_voice_pct: 100, max_impressions: 1000, impressions_delivered: 0, status: "active", created_at: "2026-01-01T00:00:00Z" }];
+  const SIM_C = [{ id: "cc1", campaign_id: "c1", creative_asset_id: "ca-1", sort_order: 0, duration_override_ms: null, created_at: "2026-01-01T00:00:00Z", asset: { id: "ca-1", code: "CR1", name: "Banner", media_type: "image/jpeg", sha256_checksum: "abc", file_size_bytes: 100, status: "active", moderation_status: "approved", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" } }];
+
+  const SIM_RESULT = {
+    campaign_id: "c1", overall_fit: true,
+    placements: [{ placement_id: "p1", surface_id: "surf-1", surface_code: "SURF-001", fit: true, slot_fill_percent: 50, total_requested: 1000, total_available: 2000, conflicts: [], applied_rules: [] }],
+    blocking_count: 0, warning_count: 0,
+  };
+
+  it("shows simulation button when campaign has flights+placements+creatives", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches({
+      "campaign-flights": () => Promise.resolve(new Response(JSON.stringify(SIM_F), { status: 200 })),
+      "campaign-placements": () => Promise.resolve(new Response(JSON.stringify(SIM_P), { status: 200 })),
+      "campaign-creatives": () => Promise.resolve(new Response(JSON.stringify(SIM_C), { status: 200 })),
+    });
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("🧪 Симуляция")).toBeTruthy(); });
+  });
+
+  it("shows simulation result after click (success)", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches({
+      "campaign-flights": () => Promise.resolve(new Response(JSON.stringify(SIM_F), { status: 200 })),
+      "campaign-placements": () => Promise.resolve(new Response(JSON.stringify(SIM_P), { status: 200 })),
+      "campaign-creatives": () => Promise.resolve(new Response(JSON.stringify(SIM_C), { status: 200 })),
+      "/inventory/simulate": () => Promise.resolve(new Response(JSON.stringify(SIM_RESULT), { status: 200 })),
+    });
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("🧪 Симуляция")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("🧪 Симуляция"));
+    await waitFor(() => {
+      expect(screen.getByText(/Кампания помещается/)).toBeTruthy();
+      expect(screen.getByTestId("simulation-blocking-count").textContent).toBe("0");
+    });
+  });
+
+  it("shows conflicts when fit=false", async () => {
+    mockAuthenticatedSession();
+    const conflictResult = { ...SIM_RESULT, overall_fit: false,
+      placements: [{ placement_id: "p1", surface_id: "surf-1", surface_code: "SURF-001", fit: false, slot_fill_percent: 150, total_requested: 1500, total_available: 1000, conflicts: [{ conflict_type: "capacity_overbook", severity: "blocking", surface_id: "surf-1", message: "Overbooked" }], applied_rules: [] }],
+      blocking_count: 1, warning_count: 0 };
+    mockAllFetches({
+      "campaign-flights": () => Promise.resolve(new Response(JSON.stringify(SIM_F), { status: 200 })),
+      "campaign-placements": () => Promise.resolve(new Response(JSON.stringify(SIM_P), { status: 200 })),
+      "campaign-creatives": () => Promise.resolve(new Response(JSON.stringify(SIM_C), { status: 200 })),
+      "/inventory/simulate": () => Promise.resolve(new Response(JSON.stringify(conflictResult), { status: 200 })),
+    });
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("🧪 Симуляция")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("🧪 Симуляция"));
+    await waitFor(() => {
+      expect(screen.getByText(/не помещается/)).toBeTruthy();
+      expect(screen.getByText("Overbooked")).toBeTruthy();
+    });
+  });
+
+  it("shows error state on simulation failure", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches({
+      "campaign-flights": () => Promise.resolve(new Response(JSON.stringify(SIM_F), { status: 200 })),
+      "campaign-placements": () => Promise.resolve(new Response(JSON.stringify(SIM_P), { status: 200 })),
+      "campaign-creatives": () => Promise.resolve(new Response(JSON.stringify(SIM_C), { status: 200 })),
+      "/inventory/simulate": () => Promise.resolve(new Response(JSON.stringify({ detail: "Server error" }), { status: 500 })),
+    });
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("🧪 Симуляция")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("🧪 Симуляция"));
+    await waitFor(() => {
+      expect(screen.getByText(/Server error/)).toBeTruthy();
+    });
+  });
+});

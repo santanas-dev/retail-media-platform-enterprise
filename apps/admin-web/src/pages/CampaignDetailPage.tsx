@@ -568,7 +568,8 @@ export default function CampaignDetailPage() {
               {/* ── S-089 Simulation ── */}
               {canApprove && (
                 <button type="button" style={{ ...css.secondaryBtn, fontSize: "0.75rem" }}
-                  onClick={handleSimulate} disabled={simulationLoading}>
+                  onClick={handleSimulate} disabled={simulationLoading}
+                  data-testid="simulate-btn">
                   {simulationLoading ? "Симуляция..." : "🧪 Симуляция"}
                 </button>
               )}
@@ -592,20 +593,21 @@ export default function CampaignDetailPage() {
 
         {/* ── S-089 Simulation results ── */}
         {simulationResult && (
-          <div style={{ marginBottom: "1rem", padding: "0.75rem", border: "1px solid var(--rmp-border-strong)", borderRadius: 6, fontSize: "0.8rem" }}>
-            <strong style={{ color: simulationResult.overall_fit ? "var(--rmp-success-600)" : "var(--rmp-danger-600)" }}>
+          <div data-testid="simulation-result" style={{ marginBottom: "1rem", padding: "0.75rem", border: "1px solid var(--rmp-border-strong)", borderRadius: 6, fontSize: "0.8rem" }}>
+            <strong data-testid="simulation-verdict" style={{ color: simulationResult.overall_fit ? "var(--rmp-success-600)" : "var(--rmp-danger-600)" }}>
               {simulationResult.overall_fit ? "✅ Кампания помещается" : "❌ Кампания не помещается"}
             </strong>
             <span style={{ marginLeft: "0.5rem", color: "#64748b" }}>
-              ({simulationResult.blocking_count} блок., {simulationResult.warning_count} пред.)
+              (<span data-testid="simulation-blocking-count">{simulationResult.blocking_count}</span> блок., <span data-testid="simulation-warning-count">{simulationResult.warning_count}</span> пред.)
             </span>
             {simulationResult.placements.map((p, i) => (
-              <div key={i} style={{ marginTop: "0.4rem", padding: "0.35rem", background: p.fit ? "#f0fdf4" : "#fef2f2", borderRadius: 4 }}>
+              <div key={i} data-testid={`simulation-placement-${i}`} style={{ marginTop: "0.4rem", padding: "0.35rem", background: p.fit ? "#f0fdf4" : "#fef2f2", borderRadius: 4 }}>
                 <span style={{ fontWeight: 600 }}>{p.surface_code || p.surface_id}</span>
-                {" "}— fill {p.slot_fill_percent}% ({p.total_requested}/{p.total_available})
+                {" "}— fill <span data-testid={`simulation-slot-fill-${i}`}>{p.slot_fill_percent}</span>%
+                (<span data-testid={`simulation-total-requested-${i}`}>{p.total_requested}</span>/<span data-testid={`simulation-total-available-${i}`}>{p.total_available}</span>)
                 {!p.fit && <span style={{ color: "var(--rmp-danger-600)", marginLeft: "0.5rem" }}>⚠ конфликт</span>}
                 {p.conflicts.length > 0 && (
-                  <ul style={{ margin: "0.15rem 0 0", paddingLeft: "1.2rem", fontSize: "0.75rem" }}>
+                  <ul data-testid={`simulation-conflicts-${i}`} style={{ margin: "0.15rem 0 0", paddingLeft: "1.2rem", fontSize: "0.75rem" }}>
                     {p.conflicts.slice(0, 3).map((c, j) => (
                       <li key={j} style={{ color: c.severity === "blocking" ? "var(--rmp-danger-600)" : "#92400e" }}>
                         {c.message}
@@ -619,7 +621,7 @@ export default function CampaignDetailPage() {
           </div>
         )}
         {simulationError && (
-          <div style={{ color: "#dc2626", fontSize: "0.8rem", marginBottom: "1rem" }}>{simulationError}</div>
+          <div data-testid="simulation-error" style={{ color: "#dc2626", fontSize: "0.8rem", marginBottom: "1rem" }}>{simulationError}</div>
         )}
 
         {/* ── Pending approval: approve / reject or read-only ── */}
