@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-27 (PRODUCT-READINESS-001)
+**Last updated:** 2026-07-27 (PLAYER-001A)
 
-**Next Active Workstream:** PLAYER-001 — real KSO/player import/integration
+**Next Active Workstream:** R3 — stable release v0.10.0-preplayer-business-ready to main, then PLAYER-001B
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -62,6 +62,8 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **OWNER-DECISION-001** ✅ — Decision: PLAYER-001 next. Real KSO/player import/integration. self.report_view remains 🔴 blocked until real PoP/player data path (no artificial report workaround). self.campaign_create remains deferred managed-first/P2. Pre-player managed admin-flow (35/40) is sufficiently clickable to proceed to player integration.
 
 **PRODUCT-READINESS-001** ✅ — Pre-player business readiness audit. Docs-only — no product code. Registry counts corrected: 35 reachable / 5 blocked (was 33/7 — summary comment missed adsettings.test and audit.view). pre-pilot-journey-plan.md: counts updated, pre-player readiness statement added. PROJECT_STATE: stale 33→35 fixed. Verdict: managed admin-flow ready for PLAYER-001; not all business functions complete; PLAYER-001 next because it unlocks PoP/reporting. Roadmap consistency: 0 findings.
+
+**PLAYER-001A** ✅ — Player/KSO import audit + first runnable slice plan. Docs-only — no product code. Enterprise contracts audited: manifest delivery (5 endpoint tests), signing (27 tests), PoP ingestion (11 tests), heartbeat (12 tests), onboarding (21 tests) — all green. RuntimeSimulator (546 lines) provides safety core. Old repo has full KSO player (37 modules, 262 tests) + sidecar (22+ modules, 327 tests). Gap: thin HTTP adapter (~300 lines) to connect RuntimeSimulator to device-gateway endpoints. PLAYER-001B defined: onboard → fetch manifest → verify signature → apply → render 1 slot → heartbeat → PoP batch → verify. Recommendation: R3 release to main first (stable baseline), then PLAYER-001B. Full audit: `docs/architecture/player-001a-import-audit.md`.
 
 **WAVE4-CLOSURE-001** ✅ — Wave 4 canon closure: campaign.activate/pause + emergency.activate/deactivate + UX hardening (CAMPAIGN-UX-001A/B). pre-pilot-journey-plan.md synced (22/23 closed, +5 service, +1 UX). Next: Wave 5.
 **WAVE4-CLOSURE-001-FU** ✅ — fix progress math: UX-hardening removed from 28/40 arithmetic (not a separate registry journey).
@@ -300,9 +302,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**PLAYER-001 — real KSO/player import/integration.**
+**R3 — stable release v0.10.0-preplayer-business-ready to main, then PLAYER-001B.**
 
-Pre-player managed admin-flow completed (35/40 reachable, Waves 1–6). PLAYER-001 next per OWNER-DECISION-001.
+Pre-player managed admin-flow completed (35/40 reachable, Waves 1–6). PLAYER-001A audit complete — zero blockers, all contracts green. R3 release first (stable baseline before risky player work), then PLAYER-001B (first runnable KSO client: onboard → manifest → verify → apply → render → heartbeat → PoP → verify).
 
 Оставшиеся blocked:
 - `self.report_view` 🔴 — разблокируется через player/PoP data path
