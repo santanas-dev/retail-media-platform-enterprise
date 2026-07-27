@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-27 (JOURNEY-022 — user.deactivate reachable + green UI-smoke)
+**Last updated:** 2026-07-27 (JOURNEY-023 — inventory.rule_create reachable + green UI-smoke)
 
-**Next Active Workstream:** Wave 6 — inventory.rule_create (JOURNEY-023 candidate)
+**Next Active Workstream:** Wave 6 closure candidate — all Wave 6 items now 🟢
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -55,6 +55,8 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 
 **JOURNEY-022** ✅ — user.deactivate reachable + green UI-smoke (9.3s). Backend уже существовал (POST /users/{id}/deactivate, users.manage, business rules: self/last-break-glass/last-admin protection, audit events, session revocation). Admin-web UsersPage: deactivate confirmation modal + 7 data-testid (open/confirm/success/error, status, activate). RBAC guard (visible only with users.manage). Vitest: 12/12 (5 новых — RBAC visibility, modal+username, success result, error human-readable). Smoke: create throwaway (sd-{uuid}) → deactivate → статус «Неактивен» → reload persistence → blocked login (stay on /login, error visible) → admin still can login. OTP extracted from DOM. Seed credentials (advertiser_test, break_glass_admin) не мутируются.
 
+**JOURNEY-023** ✅ — inventory.rule_create reachable + green UI-smoke (6.1s). Backend: добавлен `set_rls_context` в GET/POST /inventory/rules (RLS violation fix). Admin-web InventoryPage RulesTab: RBAC guard (inventory.manage), 13 data-testid (create-open, form, type, scope-type, scope-id, priority, active, starts-at, ends-at, value, submit, error, success) + row cells (type, scope, priority, active, period, value). Vitest: 23/23 (5 новых — RBAC hidden, form fields, create+success+row, error human-readable). Smoke: login → Инвентарь → Правила → +Создать → max_sov/35%/priority 17/global/future dates → success + row verification (type/scope/value/priority/active/period) → reload persistence.
+
 **WAVE4-CLOSURE-001** ✅ — Wave 4 canon closure: campaign.activate/pause + emergency.activate/deactivate + UX hardening (CAMPAIGN-UX-001A/B). pre-pilot-journey-plan.md synced (22/23 closed, +5 service, +1 UX). Next: Wave 5.
 **WAVE4-CLOSURE-001-FU** ✅ — fix progress math: UX-hardening removed from 28/40 arithmetic (not a separate registry journey).
 
@@ -96,7 +98,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | fc39f55 | — | JOURNEY-022 — user.deactivate reachable + green smoke |
+| develop | 61197d0 | — | JOURNEY-023 — inventory.rule_create reachable + green smoke |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
 | NAS mirror (ASUSTOR) | verified | 16fc8d7 | Hermes cron sync — synced 2026-07-27 12:10, vers=3.02, credentials inline |
 
