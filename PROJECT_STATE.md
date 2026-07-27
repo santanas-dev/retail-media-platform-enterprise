@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-27 (JOURNEY-017 — device.health_view reachable + green UI-smoke)
+**Last updated:** 2026-07-27 (JOURNEY-018 — audit.view reachable + green UI-smoke)
 
-**Next Active Workstream:** Wave 5 — audit.view (JOURNEY-018 candidate)
+**Next Active Workstream:** Wave 5 — self.report_view (JOURNEY-019 candidate)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -44,6 +44,8 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **UX-FIX-001B** ✅ — human-readable upload errors: formatApiError заменяет сырой err.message в primary/upload error branches; +2 vitest regression теста (проверка отсутствия [object Object]).
 **JOURNEY-016** ✅ — self.campaign_view reachable + green UI-smoke (1.99s). Advertiser-web CampaignListPage + CampaignDetailPage + data-testid + vitest (103 total). Seed advertiser (advertiser_test) видит seed-кампанию (CAMP-2026-001) с названием/статусом/периодом. Reload persistence confirmed. Operator walkthrough: PENDING.
 **JOURNEY-017** ✅ — device.health_view reachable + green UI-smoke (8.68s). Schema DeviceOut + health_state/last_heartbeat_at/runtime_version/player_version. Admin-web DeviceHealthPage: health columns + 10 data-testid + formatApiError. Vitest: 215/215 (9 new). Smoke: break_glass_admin → sidebar Устройства → KSO-001 с health badge «Неизвестно» + heartbeat + runtime/player версии + persistence. Operator walkthrough: PENDING.
+
+**JOURNEY-018** ✅ — audit.view reachable + green UI-smoke (1.3s). Backend уже существовал (GET /audit-events, permission audit.read). Admin-web AuditLogPage: 10 data-testid, колонка Ресурс (type:id), emergency-метки. Vitest: 8/8 (2 новых — data-testid + ordering). Smoke: break_glass_admin → emergency activate/deactivate → Журнал аудита → поиск события → actor/ресурс/время → persistence через re-navigation. Operator walkthrough: PENDING.
 **WAVE4-CLOSURE-001** ✅ — Wave 4 canon closure: campaign.activate/pause + emergency.activate/deactivate + UX hardening (CAMPAIGN-UX-001A/B). pre-pilot-journey-plan.md synced (22/23 closed, +5 service, +1 UX). Next: Wave 5.
 **WAVE4-CLOSURE-001-FU** ✅ — fix progress math: UX-hardening removed from 28/40 arithmetic (not a separate registry journey).
 
@@ -87,7 +89,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 |---------|-------------|----------------|------|
 | develop | 43c7622 | 6ce60d5 | JOURNEY-017 — device.health_view reachable + green smoke |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
-| NAS mirror (ASUSTOR) | pending | mount unavailable | Hermes cron sync — mount not available at check time |
+| NAS mirror (ASUSTOR) | verified | 16fc8d7 | Hermes cron sync — synced 2026-07-27 12:10, vers=3.02, credentials inline |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state

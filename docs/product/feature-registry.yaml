@@ -368,8 +368,7 @@ features:
     smoke: test_uismoke__audit__view
     priority: P1
     roles: [system_admin, security_admin]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
 
   - id: device.health_view
     frontend: admin-web
