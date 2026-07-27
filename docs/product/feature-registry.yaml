@@ -342,8 +342,7 @@ features:
     smoke: test_uismoke__adsettings__test
     priority: P1
     roles: [system_admin, security_admin]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
 
   - id: adsettings.configure
     frontend: admin-web

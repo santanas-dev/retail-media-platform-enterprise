@@ -254,3 +254,184 @@ describe("ADSettingsPage — save form RBAC", () => {
     // The read-only details section mentions AD_BIND_PASSWORD as a note — that's fine
   });
 });
+
+// ── Test Connection Flow ──
+
+describe("ADSettingsPage — test connection flow", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function mockSession(extra?: Record<string, unknown>) {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (url.endsWith("/me")) {
+        return new Response(JSON.stringify({
+          sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin",
+          permissions: ["users.read", "users.manage"], ...extra,
+        }), { status: 200 });
+      }
+      if (url.includes("/auth/ad-settings/test")) {
+        return new Response(JSON.stringify({
+          status: "not_configured",
+          message: "AD integration is not configured.",
+          tested_at: "2026-07-27T12:00:00Z",
+          error_code: "ad_disabled",
+        }), { status: 200 });
+      }
+      if (url.includes("/auth/ad-settings")) {
+        return new Response(JSON.stringify(SEED_SETTINGS), { status: 200 });
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+  }
+
+  it("shows test result after clicking test button", async () => {
+    const user = userEvent.setup();
+    mockSession();
+
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("adsettings-test-btn")).toBeTruthy();
+    });
+
+    await user.click(screen.getByTestId("adsettings-test-btn"));
+
+    // Result should appear — not_configured maps to error testid
+    await waitFor(() => {
+      expect(screen.getByTestId("adsettings-test-error")).toBeTruthy();
+    });
+
+    // Message is human-readable
+    expect(screen.getByText("AD integration is not configured.")).toBeTruthy();
+
+    // No [object Object]
+    const body = document.body.textContent || "";
+    expect(body).not.toContain("[object Object]");
+  });
+
+  it("shows test success for ok status", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (url.endsWith("/me")) {
+        return new Response(JSON.stringify({
+          sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin",
+          permissions: ["users.read", "users.manage"],
+        }), { status: 200 });
+      }
+      if (url.includes("/auth/ad-settings/test")) {
+        return new Response(JSON.stringify({
+          status: "ok",
+          message: "AD connection test passed — server reachable.",
+          tested_at: "2026-07-27T12:00:00Z",
+          error_code: null,
+        }), { status: 200 });
+      }
+      if (url.includes("/auth/ad-settings")) {
+        return new Response(JSON.stringify(SEED_SETTINGS), { status: 200 });
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("adsettings-test-btn")).toBeTruthy();
+    });
+
+    await user.click(screen.getByTestId("adsettings-test-btn"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("adsettings-test-success")).toBeTruthy();
+    });
+
+    expect(screen.getByText("AD connection test passed — server reachable.")).toBeTruthy();
+  });
+
+  it("does not render bind_password in test result", async () => {
+    const user = userEvent.setup();
+    mockSession();
+
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("adsettings-test-btn")).toBeTruthy();
+    });
+
+    await user.click(screen.getByTestId("adsettings-test-btn"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("adsettings-test-error")).toBeTruthy();
+    });
+
+    // Check only the test result element — not the informational footnote in details
+    const resultEl = screen.getByTestId("adsettings-test-error");
+    const resultText = resultEl.textContent || "";
+    expect(resultText).not.toContain("bind_password");
+    expect(resultText).not.toContain("AD_BIND_PASSWORD");
+  });
+
+  it("shows loading state while testing", async () => {
+    const user = userEvent.setup();
+    let resolveTest: (v: Response) => void;
+    const testPromise = new Promise<Response>((r) => { resolveTest = r; });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (url.endsWith("/me")) {
+        return new Response(JSON.stringify({
+          sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin",
+          permissions: ["users.read", "users.manage"],
+        }), { status: 200 });
+      }
+      if (url.includes("/auth/ad-settings/test")) {
+        return testPromise;
+      }
+      if (url.includes("/auth/ad-settings")) {
+        return new Response(JSON.stringify(SEED_SETTINGS), { status: 200 });
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("adsettings-test-btn")).toBeTruthy();
+    });
+
+    await user.click(screen.getByTestId("adsettings-test-btn"));
+
+    // Loading indicator visible
+    await waitFor(() => {
+      expect(screen.getByTestId("adsettings-test-loading")).toBeTruthy();
+    });
+
+    // Resolve the test
+    resolveTest!(new Response(JSON.stringify({
+      status: "ok", message: "OK", tested_at: "2026-07-27T12:00:00Z", error_code: null,
+    }), { status: 200 }));
+
+    // Loading disappears, result appears
+    await waitFor(() => {
+      expect(screen.getByTestId("adsettings-test-success")).toBeTruthy();
+    });
+  });
+});

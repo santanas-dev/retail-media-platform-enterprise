@@ -65,7 +65,7 @@ R2 выпущен: main b5dd3b3, tag v0.9.0-prepilot-wave1, CI #29937353570.
 ## Волна 6 — Админ-доводка
 
 - 🟢 `adsettings.configure` — сохранить настройки AD (G4)
-- 🔴 `adsettings.test` — проверить подключение AD
+- 🟢 `adsettings.test` — проверить подключение AD · JOURNEY-020
 - 🔴 `user.reset_password` — сбросить пароль
 - 🔴 `user.deactivate` — заблокировать пользователя
 - 🔴 `inventory.rule_create` — создать правило инвентаря

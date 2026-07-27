@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-27 (JOURNEY-019-DISCOVERY — self.report_view BLOCKED)
+**Last updated:** 2026-07-27 (JOURNEY-020 — adsettings.test reachable + green UI-smoke)
 
-**Next Active Workstream:** Wave 6 — adsettings.test (JOURNEY-020 candidate)
+**Next Active Workstream:** Wave 6 — user.reset_password (JOURNEY-021 candidate)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -48,6 +48,8 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **JOURNEY-018** ✅ — audit.view reachable + green UI-smoke (1.3s). Backend уже существовал (GET /audit-events, permission audit.read). Admin-web AuditLogPage: 10 data-testid, колонка Ресурс (type:id), emergency-метки. Vitest: 8/8 (2 новых — data-testid + ordering). Smoke: break_glass_admin → emergency activate/deactivate → Журнал аудита → поиск события → actor/ресурс/время → persistence через re-navigation. Operator walkthrough: PENDING.
 
 **JOURNEY-019-DISCOVERY** 🔴 — self.report_view BLOCKED. PoP-reporting endpoints существуют (summary/by-day/by-surface/export) с advertiser scope. Но данных нет (pop_events_raw=0), и путь создания заблокирован: devices.manage permission отсутствует в seed → никто не может создать onboarding code → device onboarding невозможен → PoP ingestion невозможна. Advertiser-web UI отчётов не существует. Blocker: добавить devices.manage в seed, onboarding code flow, manifest generation, PoP batch submission. Player-зависимость: после PLAYER-001 данные появятся естественно через реальный PoP.
+
+**JOURNEY-020** ✅ — adsettings.test reachable + green UI-smoke (1.41s). Backend уже существовал (POST /auth/ad-settings/test, users.manage). Admin-web ADSettingsPage: data-testid на test result (success/error/loading). Vitest: 9/9 (4 новых — test result, ok/success, no secrets, loading). Smoke: break_glass_admin → Настройки AD → Проверить подключение → controlled failure (not_configured в DEV) → persistence. Roadmap: Настройки AD/LDAPS → ✅ Готово/Юзабельно. Operator walkthrough: PENDING.
 
 **WAVE4-CLOSURE-001** ✅ — Wave 4 canon closure: campaign.activate/pause + emergency.activate/deactivate + UX hardening (CAMPAIGN-UX-001A/B). pre-pilot-journey-plan.md synced (22/23 closed, +5 service, +1 UX). Next: Wave 5.
 **WAVE4-CLOSURE-001-FU** ✅ — fix progress math: UX-hardening removed from 28/40 arithmetic (not a separate registry journey).
