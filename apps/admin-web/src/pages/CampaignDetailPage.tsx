@@ -384,7 +384,7 @@ export default function CampaignDetailPage() {
       await refreshCreatives();
     } catch (e: unknown) {
       setUploadStage("error");
-      if (e instanceof Error) setUploadError(e.message);
+      if (e instanceof Error) setUploadError(formatApiError(e));
       else setUploadError("Неизвестная ошибка загрузки");
     }
   }
@@ -436,7 +436,7 @@ export default function CampaignDetailPage() {
       setPrimaryName("");
       setPrimaryMediaType("image");
     } catch (err: unknown) {
-      setPrimaryError(err instanceof Error ? err.message : "Ошибка при создании креатива");
+      setPrimaryError(formatApiError(err));
     } finally {
       setPrimarySubmitting(false);
     }
@@ -1444,7 +1444,7 @@ export default function CampaignDetailPage() {
                   </button>
                   <button type="button" style={css.cancelBtn} onClick={resetPrimaryUpload}>Отмена</button>
                 </div>
-                {primaryError && <div style={{ color: "#dc2626", fontSize: "0.8rem" }}>{primaryError}</div>}
+                {primaryError && <div data-testid="creative-upload-primary-error" style={{ color: "#dc2626", fontSize: "0.8rem" }}>{primaryError}</div>}
               </form>
             )}
           </div>
@@ -1700,7 +1700,7 @@ export default function CampaignDetailPage() {
                   </div>
                 )}
                 {uploadStage === "error" && (
-                  <div style={{ color: "#dc2626", marginTop: "0.35rem" }}>
+                  <div data-testid="creative-upload-error" style={{ color: "#dc2626", marginTop: "0.35rem" }}>
                     Ошибка: {uploadError || "Не удалось загрузить файл"}
                   </div>
                 )}

@@ -680,6 +680,144 @@ describe("CampaignDetailPage — S-009e", () => {
       expect(capturedBody).toHaveProperty("name");
       expect(capturedBody).toHaveProperty("media_type");
     });
+
+    // ── UX-FIX-001B: human-readable upload errors ──
+
+    it("primary upload error shows human-readable text, not [object Object]", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches({
+        "/creative-assets": (url, init) => {
+          if (init?.method === "POST" && url.endsWith("/creative-assets")) {
+            return Promise.resolve(new Response(
+              JSON.stringify({ detail: "Некорректный код креатива: код уже существует" }),
+              { status: 422 },
+            ));
+          }
+          return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        },
+      });
+
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+      await user.click(screen.getByText("Креативы"));
+
+      // Simulate file selection + form fill → submit
+      const file = new File(["dummy"], "test.jpg", { type: "image/jpeg" });
+      const fileInput = document.querySelector('[data-testid="creative-upload-primary-file-input"]') as HTMLInputElement;
+      await user.upload(fileInput, file);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("creative-upload-primary-code")).toBeTruthy();
+      });
+
+      // Fill required fields
+      await user.clear(screen.getByTestId("creative-upload-primary-code"));
+      await user.type(screen.getByTestId("creative-upload-primary-code"), "DUPLICATE-CODE");
+      await user.clear(screen.getByTestId("creative-upload-primary-name"));
+      await user.type(screen.getByTestId("creative-upload-primary-name"), "Test Creative");
+
+      await user.click(screen.getByTestId("creative-upload-metadata-submit"));
+
+      // Wait for error to appear
+      await waitFor(() => {
+        expect(screen.getByTestId("creative-upload-primary-error")).toBeTruthy();
+      });
+
+      const errorEl = screen.getByTestId("creative-upload-primary-error");
+      const errorText = errorEl.textContent || "";
+      // Must NOT be literal [object Object]
+      expect(errorText).not.toContain("[object Object]");
+      // Must contain human-readable error from formatApiError
+      expect(errorText.length).toBeGreaterThan(5);
+      // ApiError 422 should produce "Ошибка данных: ..." prefix
+      expect(errorText).toContain("Ошибка данных");
+    });
+
+    it("upload flow error shows human-readable text, not [object Object]", async () => {
+      // This test verifies the upload error path in handleUpload()
+      // (createUploadIntent or completeUpload failure)
+      mockAuthenticatedSession();
+      mockAllFetches({
+        "/creative-assets": (url, init) => {
+          if (init?.method === "POST" && url.endsWith("/creative-assets")) {
+            return Promise.resolve(new Response(JSON.stringify({
+              id: "ca-new", advertiser_organization_id: "org-1",
+              code: "OK-CODE", name: "OK Creative", media_type: "image",
+              sha256_checksum: "", file_size_bytes: 0,
+              status: "metadata_only", moderation_status: "pending_review",
+              created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
+            }), { status: 201 }));
+          }
+          // Simulate upload-intent failure
+          if (url.includes("upload-intent")) {
+            return Promise.resolve(new Response(
+              JSON.stringify({ detail: "MinIO недоступен, попробуйте позже" }),
+              { status: 503 },
+            ));
+          }
+          return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        },
+        "/campaign-creatives": (url, init) => {
+          if (init?.method === "POST") {
+            return Promise.resolve(new Response(JSON.stringify({
+              id: "cc-new", campaign_id: "c1", creative_asset_id: "ca-new", sort_order: 0,
+              asset: { id: "ca-new", code: "OK-CODE", name: "OK Creative", media_type: "image",
+                sha256_checksum: "a".repeat(64), file_size_bytes: 100,
+                status: "ready", moderation_status: "approved",
+                created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" },
+              created_at: "2026-01-01T00:00:00Z",
+            }), { status: 201 }));
+          }
+          // GET returns the creative so refreshCreatives() sees it
+          return Promise.resolve(new Response(JSON.stringify([{
+            id: "cc-new", campaign_id: "c1", creative_asset_id: "ca-new", sort_order: 0,
+            asset: { id: "ca-new", code: "OK-CODE", name: "OK Creative", media_type: "image",
+              sha256_checksum: "a".repeat(64), file_size_bytes: 100,
+              status: "ready", moderation_status: "approved",
+              created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" },
+            created_at: "2026-01-01T00:00:00Z",
+          }]), { status: 200 }));
+        },
+      });
+
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+      await user.click(screen.getByText("Креативы"));
+
+      // Simulate file selection + submit
+      const file = new File(["dummy"], "test.png", { type: "image/png" });
+      const fileInput = document.querySelector('[data-testid="creative-upload-primary-file-input"]') as HTMLInputElement;
+      await user.upload(fileInput, file);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("creative-upload-primary-code")).toBeTruthy();
+      });
+
+      await user.clear(screen.getByTestId("creative-upload-primary-code"));
+      await user.type(screen.getByTestId("creative-upload-primary-code"), "OK-CODE");
+      await user.clear(screen.getByTestId("creative-upload-primary-name"));
+      await user.type(screen.getByTestId("creative-upload-primary-name"), "OK Creative");
+
+      await user.click(screen.getByTestId("creative-upload-metadata-submit"));
+
+      // The upload flow error is shown via setUploadError, not setPrimaryError
+      // (primaryUpload calls handleUpload which catches upload errors)
+      // Wait for error to appear in the upload error area
+      await waitFor(() => {
+        expect(screen.getByTestId("creative-upload-error")).toBeTruthy();
+      });
+
+      const errorEl = screen.getByTestId("creative-upload-error");
+      const errorText = errorEl.textContent || "";
+      // Must NOT be literal [object Object]
+      expect(errorText).not.toContain("[object Object]");
+      // Must contain human-readable error from formatApiError
+      expect(errorText.length).toBeGreaterThan(5);
+    });
   });
 
   // ── CAMPAIGN-UX-001B: Readiness checklist ──

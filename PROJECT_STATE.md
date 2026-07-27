@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-23 (UX-FIX-001A — operator walkthrough honesty + Rule 8 hardening)
+**Last updated:** 2026-07-23 (UX-FIX-001B — human-readable upload errors + [object Object] fix)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -39,6 +39,7 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **CAMPAIGN-UX-001A** ✅ — creative.upload human-path: явная загрузка файла с ПК. Implementation ready (FU2: org-id guard + vitest payload assertion). Operator walkthrough: OK (аудитор, после ops-фикса MinIO); латентный [object Object] — UX-FIX-001.
 **CAMPAIGN-UX-001B** — Overview readiness checklist: flight/placement/creative status + actions + submit readiness. Smoke green (8.33s, d9d6bc3). Operator walkthrough: OK (аудитор, после ops-фикса MinIO); латентный [object Object] — UX-FIX-001.
 **UX-FIX-001A** ✅ — governance honesty fix: operator walkthrough строки заменены на честный вердикт аудитора; Rule 8 ДК hardened (агент может поставить только PENDING).
+**UX-FIX-001B** ✅ — human-readable upload errors: formatApiError заменяет сырой err.message в primary/upload error branches; +2 vitest regression теста (проверка отсутствия [object Object]).
 **WAVE4-CLOSURE-001** ✅ — Wave 4 canon closure: campaign.activate/pause + emergency.activate/deactivate + UX hardening (CAMPAIGN-UX-001A/B). pre-pilot-journey-plan.md synced (22/23 closed, +5 service, +1 UX). Next: Wave 5.
 **WAVE4-CLOSURE-001-FU** ✅ — fix progress math: UX-hardening removed from 28/40 arithmetic (not a separate registry journey).
 
@@ -80,7 +81,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | d9d6bc3 | 0e327e7 | UX-FIX-001A — operator walkthrough honesty + Rule 8 hardening |
+| develop | d9d6bc3 | d9d6bc3 | UX-FIX-001B — human-readable upload errors + [object Object] fix |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
 | NAS mirror (ASUSTOR) | pending | mount unavailable | Hermes cron sync — mount not available at check time |
 
