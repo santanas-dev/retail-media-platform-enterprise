@@ -80,7 +80,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | d9d6bc3 | d9d6bc3 | UX-FIX-001A — operator walkthrough honesty + Rule 8 hardening |
+| develop | d9d6bc3 | 0e327e7 | UX-FIX-001A — operator walkthrough honesty + Rule 8 hardening |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
 | NAS mirror (ASUSTOR) | pending | mount unavailable | Hermes cron sync — mount not available at check time |
 
