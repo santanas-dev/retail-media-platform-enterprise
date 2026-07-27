@@ -220,7 +220,7 @@ export default function CampaignDetailPage() {
   const assetById = new Map(creativeAssets.map((a) => [a.id, a]));
 
   return (
-    <div>
+    <div data-testid="self-campaign-detail">
       {/* ── Back ── */}
       <button
         type="button"
@@ -241,6 +241,7 @@ export default function CampaignDetailPage() {
           </span>
         </div>
         <span
+          data-testid="self-campaign-detail-status"
           style={{
             ...styles.badge,
             background: statusColor(campaign.status),

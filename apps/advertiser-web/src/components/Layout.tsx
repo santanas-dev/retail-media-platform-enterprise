@@ -5,7 +5,7 @@ import s from "./Layout.module.css";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Кабинет" },
-  { to: "/campaigns", label: "Кампании" },
+  { to: "/campaigns", label: "Кампании", testid: "nav-campaigns" },
   { to: "/creatives", label: "Креативы" },
   { to: "/briefs", label: "Заявки", testid: "nav-briefs" },
   { to: "/documents", label: "Документы", disabled: true },

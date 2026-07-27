@@ -166,4 +166,46 @@ describe("Campaign list — data rendering", () => {
       expect(localStorage.getItem("rmp_access_token")).toBeNull();
     });
   });
+
+  // ── JOURNEY-016: data-testid + human-readable errors ──
+
+  it("campaign rows have data-testid with code, name, and status", async () => {
+    mockGet.mockResolvedValue({items: mockCampaigns, total: 2, limit: 50, offset: 0});
+
+    renderCampaignList();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("self-campaign-list")).toBeInTheDocument();
+      expect(screen.getByTestId("self-campaign-row-CAMP-001")).toBeInTheDocument();
+      expect(screen.getByTestId("self-campaign-name-CAMP-001")).toBeInTheDocument();
+      expect(screen.getByTestId("self-campaign-status-CAMP-001")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("self-campaign-name-CAMP-001").textContent).toBe("Новогодняя акция");
+    expect(screen.getByTestId("self-campaign-status-CAMP-001").textContent).toBeTruthy();
+  });
+
+  it("empty state has correct data-testid", async () => {
+    mockGet.mockResolvedValue({items: [], total: 0, limit: 50, offset: 0});
+
+    renderCampaignList();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("self-campaign-empty")).toBeInTheDocument();
+    });
+  });
+
+  it("error state shows human-readable text, not [object Object]", async () => {
+    mockGet.mockRejectedValue(makeApiError(500));
+
+    renderCampaignList();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("self-campaign-error")).toBeInTheDocument();
+    });
+
+    const errorText = screen.getByTestId("self-campaign-error").textContent || "";
+    expect(errorText).not.toContain("[object Object]");
+    expect(errorText.length).toBeGreaterThan(5);
+  });
 });
