@@ -1063,9 +1063,14 @@ class DeviceOut(BaseModel):
     os_version: str = ""
     ip_address: str = ""
     status: str
+    health_state: str = "unknown"
     last_seen_at: datetime | None = None
+    last_heartbeat_at: datetime | None = None
+    runtime_version: str = ""
+    player_version: str = ""
     current_manifest_id: str | None = None
     cache_size_bytes: int = 0
+    retailer_id: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

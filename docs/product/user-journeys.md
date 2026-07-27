@@ -260,7 +260,7 @@ Channel Orchestrator + адаптерный слой + mock-адаптеры д�
 ### 6.6 Оператор эксплуатации (ops_operator)
 | id | Цель | Путь | Приоритет | Сейчас |
 |---|---|---|---|---|
-| `device.health_view` | Видеть состояние парка | Логин → Устройства | P1 | ✅ |
+| `device.health_view` | Видеть состояние парка | Логин → боковое меню «Устройства» → таблица с KSO-001 → health_state badge («Неизвестно») → heartbeat → runtime/player версии → повторный клик в меню → persistence. Happy-path: 6 шагов — 1) Логин (break_glass_admin) → 2) Устройства в боковом меню → 3) таблица device-health-table → 4) видна строка KSO-001 с health badge → 5) поля heartbeat, runtime, player → 6) повторный заход persist. | P1 | ✅ |
 
 ### 6.7 Публичный лид (public_lead) и обработка заявок
 | id | Цель | Путь | Приоритет | Сейчас |

@@ -1,6 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-23 (JOURNEY-016 — self.campaign_view reachable + green smoke)
+**Last updated:** 2026-07-23 (JOURNEY-017 — device.health_view reachable + green smoke)
+
+**Next Active Workstream:** Wave 5 — audit.view (JOURNEY-018 candidate)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -41,6 +43,7 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **UX-FIX-001A** ✅ — governance honesty fix: operator walkthrough строки заменены на честный вердикт аудитора; Rule 8 ДК hardened (агент может поставить только PENDING).
 **UX-FIX-001B** ✅ — human-readable upload errors: formatApiError заменяет сырой err.message в primary/upload error branches; +2 vitest regression теста (проверка отсутствия [object Object]).
 **JOURNEY-016** ✅ — self.campaign_view reachable + green UI-smoke (1.99s). Advertiser-web CampaignListPage + CampaignDetailPage + data-testid + vitest (103 total). Seed advertiser (advertiser_test) видит seed-кампанию (CAMP-2026-001) с названием/статусом/периодом. Reload persistence confirmed. Operator walkthrough: PENDING.
+**JOURNEY-017** ✅ — device.health_view reachable + green UI-smoke (8.68s). Schema DeviceOut + health_state/last_heartbeat_at/runtime_version/player_version. Admin-web DeviceHealthPage: health columns + 10 data-testid + formatApiError. Vitest: 215/215 (9 new). Smoke: break_glass_admin → sidebar Устройства → KSO-001 с health badge «Неизвестно» + heartbeat + runtime/player версии + persistence. Operator walkthrough: PENDING.
 **WAVE4-CLOSURE-001** ✅ — Wave 4 canon closure: campaign.activate/pause + emergency.activate/deactivate + UX hardening (CAMPAIGN-UX-001A/B). pre-pilot-journey-plan.md synced (22/23 closed, +5 service, +1 UX). Next: Wave 5.
 **WAVE4-CLOSURE-001-FU** ✅ — fix progress math: UX-hardening removed from 28/40 arithmetic (not a separate registry journey).
 

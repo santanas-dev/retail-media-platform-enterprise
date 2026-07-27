@@ -377,12 +377,12 @@ features:
     route: /login
     path:
       - login (ops_operator)
-      - Устройства
+      - sidebar: "Устройства"
+      - таблица device-health-table
+      - строка KSO-001 + health_state badge + heartbeat + версии
+    roles: [system_admin, operator, analyst]
+    status: reachable
     smoke: test_uismoke__device__health_view
-    priority: P1
-    roles: [system_admin, ops_operator]
-    status: blocked
-    gap: "UI-smoke отсутствует."
 
   # ═══════════════════════════════════════════════════════════════
   # P0/P1 — advertiser-web (⚠️ фронтенд не проходил аудит)
@@ -573,8 +573,8 @@ features:
   # ═══════════════════════════════════════════════════════════════
   #   total: 40
   # by status:
-  #   reachable: 29 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, advertiser.create_org, advertiser.view, inventory.simulate, advertiser.invite, adsettings.configure, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability)
-  #   blocked:   11 (7 UI-no-smoke + 4 service-deferred)
+  #   reachable: 30 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, advertiser.create_org, advertiser.view, inventory.simulate, advertiser.invite, adsettings.configure, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, device.health_view, observability)
+  #   blocked:   10 (6 UI-no-smoke + 4 service-deferred)
   # by frontend:
   #   admin-web:      26
   #   advertiser-web:  5
