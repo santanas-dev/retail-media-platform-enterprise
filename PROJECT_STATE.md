@@ -92,7 +92,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | a0324cf | — | JOURNEY-019-DISCOVERY — self.report_view BLOCKED (docs-only) |
+| develop | 3726b85 | — | JOURNEY-020 — adsettings.test reachable + green smoke |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
 | NAS mirror (ASUSTOR) | verified | 16fc8d7 | Hermes cron sync — synced 2026-07-27 12:10, vers=3.02, credentials inline |
 
