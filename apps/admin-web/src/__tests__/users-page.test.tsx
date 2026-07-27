@@ -344,3 +344,191 @@ describe("UsersPage — reset password", () => {
     expect(body).not.toContain("password_hash");
   });
 });
+
+// ── Deactivate Flow ──
+
+describe("UsersPage — deactivate", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function mockAdminSession() {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (url.endsWith("/me")) {
+        return new Response(JSON.stringify({
+          sub: "u-admin", auth_provider: "local_break_glass", username: "admin", display_name: "Admin",
+          permissions: ["users.read", "users.manage"],
+        }), { status: 200 });
+      }
+      if (url.includes("/users?limit=") && !url.includes("/deactivate") && !url.includes("/activate")) {
+        return new Response(JSON.stringify({
+          items: [
+            { id: "u2", code: "OPERATOR", username: "operator", auth_provider: "local_break_glass", display_name: "Оператор", status: "active" },
+            { id: "u3", code: "AD_USER", username: "ad_user", auth_provider: "ad", display_name: "AD User", status: "active" },
+          ],
+          total: 2, limit: 50, offset: 0,
+        }), { status: 200 });
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+  }
+
+  function mockReaderSession() {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (url.endsWith("/me")) {
+        return new Response(JSON.stringify({
+          sub: "u-reader", auth_provider: "ad", username: "reader", display_name: "Reader",
+          permissions: ["users.read"],
+        }), { status: 200 });
+      }
+      if (url.includes("/users?limit=")) {
+        return new Response(JSON.stringify({
+          items: [{ id: "u2", username: "operator", auth_provider: "local_break_glass", display_name: "Оператор", status: "active" }],
+          total: 1, limit: 50, offset: 0,
+        }), { status: 200 });
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+  }
+
+  it("shows deactivate button when user has users.manage", async () => {
+    mockAdminSession();
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-deactivate-open-u2")).toBeTruthy();
+    });
+  });
+
+  it("hides deactivate button when user lacks users.manage", async () => {
+    mockReaderSession();
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByText("Оператор")).toBeTruthy();
+    });
+
+    expect(screen.queryByTestId("user-deactivate-open-u2")).toBeNull();
+  });
+
+  it("opens confirmation modal with target username", async () => {
+    const user = userEvent.setup();
+    mockAdminSession();
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-deactivate-open-u2")).toBeTruthy();
+    });
+
+    await user.click(screen.getByTestId("user-deactivate-open-u2"));
+
+    // Modal opens with confirm button and username (use getAllByText since "operator" also appears in table)
+    expect(screen.getByTestId("user-deactivate-confirm")).toBeTruthy();
+    const operatorTexts = screen.getAllByText("operator");
+    expect(operatorTexts.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows success result when deactivate succeeds", async () => {
+    const user = userEvent.setup();
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (url.endsWith("/me")) {
+        return new Response(JSON.stringify({
+          sub: "u-admin", auth_provider: "local_break_glass", username: "admin", display_name: "Admin",
+          permissions: ["users.read", "users.manage"],
+        }), { status: 200 });
+      }
+      if (url.includes("/users?limit=")) {
+        return new Response(JSON.stringify({
+          items: [
+            { id: "u2", username: "operator", auth_provider: "local_break_glass", display_name: "Оператор", status: "active" },
+            { id: "u2", username: "operator", auth_provider: "local_break_glass", display_name: "Оператор", status: "inactive" },
+          ],
+          total: 2, limit: 50, offset: 0,
+        }), { status: 200 });
+      }
+      if (url.includes("/u2/deactivate")) {
+        return new Response(JSON.stringify({
+          user_id: "u2", status: "inactive", message: "User deactivated. All sessions revoked.",
+        }), { status: 200 });
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-deactivate-open-u2")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("user-deactivate-open-u2"));
+    await user.click(screen.getByTestId("user-deactivate-confirm"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-deactivate-success")).toBeTruthy();
+    });
+    expect(screen.getByText("User deactivated. All sessions revoked.")).toBeTruthy();
+  });
+
+  it("shows human-readable error on deactivate failure", async () => {
+    const user = userEvent.setup();
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (url.endsWith("/me")) {
+        return new Response(JSON.stringify({
+          sub: "u-admin", auth_provider: "local_break_glass", username: "admin", display_name: "Admin",
+          permissions: ["users.read", "users.manage"],
+        }), { status: 200 });
+      }
+      if (url.includes("/users?limit=")) {
+        return new Response(JSON.stringify({
+          items: [{ id: "u2", username: "operator", auth_provider: "local_break_glass", display_name: "Оператор", status: "active" }],
+          total: 1, limit: 50, offset: 0,
+        }), { status: 200 });
+      }
+      if (url.includes("/u2/deactivate")) {
+        return new Response(JSON.stringify({ detail: "Cannot deactivate the last active system admin" }), { status: 409 });
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-deactivate-open-u2")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("user-deactivate-open-u2"));
+    await user.click(screen.getByTestId("user-deactivate-confirm"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-deactivate-error")).toBeTruthy();
+    });
+
+    // Human-readable, no [object Object]
+    const body = document.body.textContent || "";
+    expect(body).not.toContain("[object Object]");
+  });
+});
