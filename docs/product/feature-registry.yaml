@@ -414,8 +414,8 @@ features:
     smoke: test_uismoke__self__campaign_view
     priority: P0
     roles: [advertiser]
-    status: blocked
-    gap: "UI-smoke отсутствует. Фронтенд advertiser-web не проходил аудит."
+    status: reachable
+    gap: ""
 
   - id: self.report_view
     frontend: advertiser-web
@@ -573,8 +573,8 @@ features:
   # ═══════════════════════════════════════════════════════════════
   #   total: 40
   # by status:
-  #   reachable: 28 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, advertiser.create_org, advertiser.view, inventory.simulate, advertiser.invite, adsettings.configure, self.login, self.apply_or_brief, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability)
-  #   blocked:   12 (8 UI-no-smoke + 4 service-deferred)
+  #   reachable: 29 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, advertiser.create_org, advertiser.view, inventory.simulate, advertiser.invite, adsettings.configure, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability)
+  #   blocked:   11 (7 UI-no-smoke + 4 service-deferred)
   # by frontend:
   #   admin-web:      26
   #   advertiser-web:  5
