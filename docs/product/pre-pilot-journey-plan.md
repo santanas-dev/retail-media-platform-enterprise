@@ -60,7 +60,7 @@ R2 выпущен: main b5dd3b3, tag v0.9.0-prepilot-wave1, CI #29937353570.
 - 🟢 `self.campaign_view` — рекламодатель видит свои кампании · JOURNEY-016
 - 🟢 `device.health_view` — состояние парка устройств · JOURNEY-017
 - 🟢 `audit.view` — журнал аудита · JOURNEY-018
-- 🔴 `self.report_view` — отчёт план/факт (PoP) в кабинете · *структура сейчас, данные — после плеера*
+- 🔴 `self.report_view` — отчёт план/факт (PoP) в кабинете · *BLOCKED: devices.manage не в seed, нет onboarding code → нет PoP данных → UI не построен. Данные появятся после PLAYER-001.*
 
 ## Волна 6 — Админ-доводка
 
