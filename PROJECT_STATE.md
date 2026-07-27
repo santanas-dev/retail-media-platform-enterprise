@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-27 (WAVE6-CLOSURE-001)
+**Last updated:** 2026-07-27 (OWNER-DECISION-001)
 
-**Next Active Workstream:** Owner decision — resolve self.report_view blocker vs start PLAYER-001
+**Next Active Workstream:** PLAYER-001 — real KSO/player import/integration
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -57,7 +57,9 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 
 **JOURNEY-023** ✅ — inventory.rule_create reachable + green UI-smoke (6.1s). Backend: добавлен `set_rls_context` в GET/POST /inventory/rules (RLS violation fix). Admin-web InventoryPage RulesTab: RBAC guard (inventory.manage), 13 data-testid (create-open, form, type, scope-type, scope-id, priority, active, starts-at, ends-at, value, submit, error, success) + row cells (type, scope, priority, active, period, value). Vitest: 23/23 (5 новых — RBAC hidden, form fields, create+success+row, error human-readable). Smoke: login → Инвентарь → Правила → +Создать → max_sov/35%/priority 17/global/future dates → success + row verification (type/scope/value/priority/active/period) → reload persistence.
 
-**WAVE6-CLOSURE-001** ✅ — Wave 6 канонически закрыта. Все 4 journeys 🟢 (adsettings.test, user.reset_password, user.deactivate, inventory.rule_create). Registry: 33 reachable / 7 blocked. Pre-player journeys завершены, но self.report_view 🔴 blocked (PoP/player/data path) и self.campaign_create deferred (managed-first, P2). PLAYER-001 не начинается автоматически — waiting owner decision.
+**WAVE6-CLOSURE-001** ✅ — Wave 6 канонически закрыта. Все 4 journeys 🟢 (adsettings.test, user.reset_password, user.deactivate, inventory.rule_create). Registry: 33 reachable / 7 blocked. Pre-player journeys завершены, но self.report_view 🔴 blocked (PoP/player/data path) и self.campaign_create deferred. PLAYER-001 не начинается автоматически — waiting owner decision.
+
+**OWNER-DECISION-001** ✅ — Decision: PLAYER-001 next. Real KSO/player import/integration. self.report_view remains 🔴 blocked until real PoP/player data path (no artificial report workaround). self.campaign_create remains deferred managed-first/P2. Pre-player managed admin-flow (33/40) is sufficiently clickable to proceed to player integration.
 
 **WAVE4-CLOSURE-001** ✅ — Wave 4 canon closure: campaign.activate/pause + emergency.activate/deactivate + UX hardening (CAMPAIGN-UX-001A/B). pre-pilot-journey-plan.md synced (22/23 closed, +5 service, +1 UX). Next: Wave 5.
 **WAVE4-CLOSURE-001-FU** ✅ — fix progress math: UX-hardening removed from 28/40 arithmetic (not a separate registry journey).
@@ -100,7 +102,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 61197d0 | 91d1063 | WAVE6-CLOSURE-001 — Wave 6 canon closed |
+| develop | 61197d0 | 91d1063 | OWNER-DECISION-001 — PLAYER-001 next |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
 | NAS mirror (ASUSTOR) | verified | 16fc8d7 | Hermes cron sync — synced 2026-07-27 12:10, vers=3.02, credentials inline |
 
@@ -296,15 +298,17 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**Owner decision — resolve self.report_view blocker vs start PLAYER-001.**
+**PLAYER-001 — real KSO/player import/integration.**
 
-Wave 1–6 complete (33/40 reachable). Оставшиеся blocked:
-- `self.report_view` 🔴 — PoP/player/data path (JOURNEY-019-DISCOVERY)
+Pre-player managed admin-flow completed (33/40 reachable, Waves 1–6). PLAYER-001 next per OWNER-DECISION-001.
+
+Оставшиеся blocked:
+- `self.report_view` 🔴 — разблокируется через player/PoP data path
 - `self.campaign_create` — deferred managed-first (P2)
 - Service deferred: `playlist.build`, `backup.restore`, `campaign.complete`
 - `user.assign_roles` ❌ G2 — отдельный gap
 
-PLAYER-001 не начинается автоматически. См. `docs/product/pre-pilot-journey-plan.md`.
+См. `docs/product/pre-pilot-journey-plan.md`.
 
 Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
 

@@ -74,17 +74,13 @@ R2 выпущен: main b5dd3b3, tag v0.9.0-prepilot-wave1, CI #29937353570.
 
 ---
 
-## После волны 6 — Owner decision
+## После волны 6 — PLAYER-001 next (OWNER-DECISION-001)
 
-Wave 6 полностью зелёная. Pre-player journeys завершены, но **self.report_view остаётся blocked**:
-- `devices.manage` отсутствует в seed → нет onboarding code
-- Нет onboarding → нет device JWT → нет PoP данных
-- PoP-данных нет (pop_events_raw=0) → UI отчётов невозможен
-- Advertiser-web report UI не построен
+Решение владельца: **PLAYER-001 next.** Реальный КСО-плеер поверх готовых edge-контрактов (onboard/manifest+подпись/PoP/heartbeat), тонкий адаптерный шов, без Channel Orchestrator (§24 прагматика). Показ + реальный PoP → наполняет `self.report_view` и открывает недопоказы/компенсации.
 
-**PLAYER-001 не начинается автоматически.** Решение владельца:
-- Разблокировать self.report_view (seed + onboarding + PoP data path) vs начать PLAYER-001.
-- self.campaign_create — deferred managed-first (P2, не пилот).
+- `self.report_view` остаётся 🔴 blocked — разблокируется через player/PoP data path, не через искусственный report workaround.
+- `self.campaign_create` остаётся deferred managed-first (P2).
+- Pre-player managed admin-flow (33/40) закрыт — достаточно кликабелен для перехода к player integration.
 
 **Оставшиеся blocked:**
 - `self.report_view` 🔴 — blocked by PoP/player/data path (JOURNEY-019-DISCOVERY)
