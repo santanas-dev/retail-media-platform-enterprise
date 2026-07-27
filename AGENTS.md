@@ -79,7 +79,9 @@ Stabilization comes before new functionality.
    шаг, нет спрятанных обязательных многофазных переходов. UI-smoke этого не
    проверяет — он доказывает достижимость для робота. Результат фиксируется
    одной строкой в `PROJECT_STATE.md`: `operator walkthrough: OK` или
-   `operator walkthrough: замечания <перечень>`.
+   `operator walkthrough: замечания <перечень>`. Строку `operator walkthrough`
+   заполняет только человек-оператор/аудитор; агент может поставить только
+   `PENDING` и не закрывает journey/волну этой галочкой сам.
 
 9. **Happy-path глазами пользователя.** Каждый новый или изменяемый UI journey
    в `docs/product/user-journeys.md` и каждый промпт на UI-фичу обязан содержать
