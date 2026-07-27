@@ -79,5 +79,4 @@ R2 выпущен: main b5dd3b3, tag v0.9.0-prepilot-wave1, CI #29937353570.
 - Done = поведение: достижимый UI (реальные клики, `goto` только `/login`) + зелёный `test_uismoke__<domain>__<action>`.
 - В ДК поднять 3 колонки (Бэкенд/UI/Юзер-стори) и пересчитать Итог; guard ROADMAP-GUARD-002 обязан оставаться зелёным.
 - Одна задача Hermes за раз. ⚙-журнеи требуют реального бэкенда — не «просто кнопки».
-- Прогресс мерить по этой программе: закрытых журнеев 28 из 40 (Wave 1–4: 22/23 closed, self.campaign_create deferred; +5 service reachable; +1 UX hardening completed).
-- **UX-hardening (CAMPAIGN-UX-001A/B):** creative.upload human-path (явная загрузка файла с ПК) + Overview readiness checklist (статус рейсов/размещений/креативов перед submit). Не новые журнеи — улучшение существующих reachable-фич. Operator walkthrough OK по обоим.
+- Прогресс мерить по этой программе: закрытых журнеев 28 из 40 (Wave 1–4: 22/23 closed, self.campaign_create deferred; +adsettings.configure reachable; +5 service reachable). UX-hardening (CAMPAIGN-UX-001A/B) completed — не новые журнеи, улучшение существующих reachable-фич.

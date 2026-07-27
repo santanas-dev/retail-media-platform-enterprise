@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-23 (WAVE4-CLOSURE-001 — Wave 4 canon closure + UX hardening)
+**Last updated:** 2026-07-23 (WAVE4-CLOSURE-001-FU — fix progress math in pre-pilot plan)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -39,6 +39,7 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **CAMPAIGN-UX-001A** ✅ — creative.upload human-path: явная загрузка файла с ПК. Implementation ready (FU2: org-id guard + vitest payload assertion). Operator walkthrough: OK — DEV human walkthrough passed without instructions.
 **CAMPAIGN-UX-001B** — Overview readiness checklist: flight/placement/creative status + actions + submit readiness. Smoke green (8.33s, d9d6bc3). Operator walkthrough: OK — DEV human walkthrough passed without instructions.
 **WAVE4-CLOSURE-001** ✅ — Wave 4 canon closure: campaign.activate/pause + emergency.activate/deactivate + UX hardening (CAMPAIGN-UX-001A/B). pre-pilot-journey-plan.md synced (22/23 closed, +5 service, +1 UX). Next: Wave 5.
+**WAVE4-CLOSURE-001-FU** ✅ — fix progress math: UX-hardening removed from 28/40 arithmetic (not a separate registry journey).
 
 **JOURNEY-014** ✅ — campaign.activate + campaign.pause reachable + green UI-smoke.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -78,7 +79,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | d9d6bc3 | fcc7416 | WAVE4-CLOSURE-001 — Wave 4 canon closure + UX hardening |
+| develop | d9d6bc3 | d9d6bc3 | WAVE4-CLOSURE-001-FU — fix progress math in pre-pilot plan |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
 | NAS mirror (ASUSTOR) | pending | mount unavailable | Hermes cron sync — mount not available at check time |
 
