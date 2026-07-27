@@ -62,7 +62,7 @@ R2 выпущен: main b5dd3b3, tag v0.9.0-prepilot-wave1, CI #29937353570.
 - 🟢 `audit.view` — журнал аудита · JOURNEY-018
 - 🔴 `self.report_view` — отчёт план/факт (PoP) в кабинете · *BLOCKED: devices.manage не в seed, нет onboarding code → нет PoP данных → UI не построен. Данные появятся после PLAYER-001.*
 
-## Волна 6 — Админ-доводка
+## Волна 6 — Админ-доводка ✅ COMPLETE
 
 - 🟢 `adsettings.configure` — сохранить настройки AD (G4)
 - 🟢 `adsettings.test` — проверить подключение AD · JOURNEY-020
@@ -70,13 +70,30 @@ R2 выпущен: main b5dd3b3, tag v0.9.0-prepilot-wave1, CI #29937353570.
 - 🟢 `user.deactivate` — заблокировать пользователя · JOURNEY-022
 - 🟢 `inventory.rule_create` — создать правило инвентаря · JOURNEY-023
 
+Закрыто: 4/4 journeys 🟢.
+
 ---
 
-## После волны 6 — PLAYER-001
-Реальный КСО-плеер поверх готовых edge-контрактов (onboard/manifest+подпись/PoP/heartbeat), тонкий адаптерный шов, без Channel Orchestrator (§24 прагматика). Показ + реальный PoP → наполняет `self.report_view` и открывает недопоказы/компенсации.
+## После волны 6 — Owner decision
+
+Wave 6 полностью зелёная. Pre-player journeys завершены, но **self.report_view остаётся blocked**:
+- `devices.manage` отсутствует в seed → нет onboarding code
+- Нет onboarding → нет device JWT → нет PoP данных
+- PoP-данных нет (pop_events_raw=0) → UI отчётов невозможен
+- Advertiser-web report UI не построен
+
+**PLAYER-001 не начинается автоматически.** Решение владельца:
+- Разблокировать self.report_view (seed + onboarding + PoP data path) vs начать PLAYER-001.
+- self.campaign_create — deferred managed-first (P2, не пилот).
+
+**Оставшиеся blocked:**
+- `self.report_view` 🔴 — blocked by PoP/player/data path (JOURNEY-019-DISCOVERY)
+- `self.campaign_create` — deferred managed-first (P2)
+- Service deferred: `playlist.build`, `backup.restore`, `campaign.complete`
+- `user.assign_roles` ❌ G2 — в плане как отдельный gap
 
 ## Правила ведения (для каждого журнея)
 - Done = поведение: достижимый UI (реальные клики, `goto` только `/login`) + зелёный `test_uismoke__<domain>__<action>`.
 - В ДК поднять 3 колонки (Бэкенд/UI/Юзер-стори) и пересчитать Итог; guard ROADMAP-GUARD-002 обязан оставаться зелёным.
 - Одна задача Hermes за раз. ⚙-журнеи требуют реального бэкенда — не «просто кнопки».
-- Прогресс мерить по этой программе: закрытых журнеев 28 из 40 (Wave 1–4: 22/23 closed, self.campaign_create deferred; +adsettings.configure reachable; +5 service reachable). UX-hardening (CAMPAIGN-UX-001A/B) completed — не новые журнеи, улучшение существующих reachable-фич.
+- Прогресс мерить по этой программе: закрытых журнеев 33 из 40 (Wave 1–4: 22/23 closed, self.campaign_create deferred; Wave 5: 3/4 closed, self.report_view blocked; Wave 6: 4/4 ✅ COMPLETE; +5 service reachable). UX-hardening (CAMPAIGN-UX-001A/B) completed — не новые журнеи, улучшение существующих reachable-фич.

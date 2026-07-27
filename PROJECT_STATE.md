@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-27 (JOURNEY-023 — inventory.rule_create reachable + green UI-smoke)
+**Last updated:** 2026-07-27 (WAVE6-CLOSURE-001)
 
-**Next Active Workstream:** Wave 6 closure candidate — all Wave 6 items now 🟢
+**Next Active Workstream:** Owner decision — resolve self.report_view blocker vs start PLAYER-001
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -56,6 +56,8 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **JOURNEY-022** ✅ — user.deactivate reachable + green UI-smoke (9.3s). Backend уже существовал (POST /users/{id}/deactivate, users.manage, business rules: self/last-break-glass/last-admin protection, audit events, session revocation). Admin-web UsersPage: deactivate confirmation modal + 7 data-testid (open/confirm/success/error, status, activate). RBAC guard (visible only with users.manage). Vitest: 12/12 (5 новых — RBAC visibility, modal+username, success result, error human-readable). Smoke: create throwaway (sd-{uuid}) → deactivate → статус «Неактивен» → reload persistence → blocked login (stay on /login, error visible) → admin still can login. OTP extracted from DOM. Seed credentials (advertiser_test, break_glass_admin) не мутируются.
 
 **JOURNEY-023** ✅ — inventory.rule_create reachable + green UI-smoke (6.1s). Backend: добавлен `set_rls_context` в GET/POST /inventory/rules (RLS violation fix). Admin-web InventoryPage RulesTab: RBAC guard (inventory.manage), 13 data-testid (create-open, form, type, scope-type, scope-id, priority, active, starts-at, ends-at, value, submit, error, success) + row cells (type, scope, priority, active, period, value). Vitest: 23/23 (5 новых — RBAC hidden, form fields, create+success+row, error human-readable). Smoke: login → Инвентарь → Правила → +Создать → max_sov/35%/priority 17/global/future dates → success + row verification (type/scope/value/priority/active/period) → reload persistence.
+
+**WAVE6-CLOSURE-001** ✅ — Wave 6 канонически закрыта. Все 4 journeys 🟢 (adsettings.test, user.reset_password, user.deactivate, inventory.rule_create). Registry: 33 reachable / 7 blocked. Pre-player journeys завершены, но self.report_view 🔴 blocked (PoP/player/data path) и self.campaign_create deferred (managed-first, P2). PLAYER-001 не начинается автоматически — waiting owner decision.
 
 **WAVE4-CLOSURE-001** ✅ — Wave 4 canon closure: campaign.activate/pause + emergency.activate/deactivate + UX hardening (CAMPAIGN-UX-001A/B). pre-pilot-journey-plan.md synced (22/23 closed, +5 service, +1 UX). Next: Wave 5.
 **WAVE4-CLOSURE-001-FU** ✅ — fix progress math: UX-hardening removed from 28/40 arithmetic (not a separate registry journey).
@@ -294,7 +296,15 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**Wave 5 — Статус и мониторинг.** First candidate: `self.campaign_view` (рекламодатель видит свои кампании в кабинете). Wave 5 также включает: device.health_view, audit.view, self.report_view. См. `docs/product/pre-pilot-journey-plan.md`.
+**Owner decision — resolve self.report_view blocker vs start PLAYER-001.**
+
+Wave 1–6 complete (33/40 reachable). Оставшиеся blocked:
+- `self.report_view` 🔴 — PoP/player/data path (JOURNEY-019-DISCOVERY)
+- `self.campaign_create` — deferred managed-first (P2)
+- Service deferred: `playlist.build`, `backup.restore`, `campaign.complete`
+- `user.assign_roles` ❌ G2 — отдельный gap
+
+PLAYER-001 не начинается автоматически. См. `docs/product/pre-pilot-journey-plan.md`.
 
 Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
 
