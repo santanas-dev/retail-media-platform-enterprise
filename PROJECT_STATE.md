@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-27 (JOURNEY-020 — adsettings.test reachable + green UI-smoke)
+**Last updated:** 2026-07-27 (JOURNEY-021 — user.reset_password reachable + green UI-smoke)
 
-**Next Active Workstream:** Wave 6 — user.reset_password (JOURNEY-021 candidate)
+**Next Active Workstream:** Wave 6 — user.deactivate (JOURNEY-022 candidate)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -50,6 +50,8 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **JOURNEY-019-DISCOVERY** 🔴 — self.report_view BLOCKED. PoP-reporting endpoints существуют (summary/by-day/by-surface/export) с advertiser scope. Но данных нет (pop_events_raw=0), и путь создания заблокирован: devices.manage permission отсутствует в seed → никто не может создать onboarding code → device onboarding невозможен → PoP ingestion невозможна. Advertiser-web UI отчётов не существует. Blocker: добавить devices.manage в seed, onboarding code flow, manifest generation, PoP batch submission. Player-зависимость: после PLAYER-001 данные появятся естественно через реальный PoP.
 
 **JOURNEY-020** ✅ — adsettings.test reachable + green UI-smoke (1.41s). Backend уже существовал (POST /auth/ad-settings/test, users.manage). Admin-web ADSettingsPage: data-testid на test result (success/error/loading). Vitest: 9/9 (4 новых — test result, ok/success, no secrets, loading). Smoke: break_glass_admin → Настройки AD → Проверить подключение → controlled failure (not_configured в DEV) → persistence. Roadmap: Настройки AD/LDAPS → ✅ Готово/Юзабельно. Operator walkthrough: PENDING.
+
+**JOURNEY-021** ✅ — user.reset_password reachable + green UI-smoke (2.87s). Backend уже существовал (POST /users/{id}/reset-password, users.manage). Admin-web UsersPage: data-testid на reset flow (open/confirm/success/error/otp). Vitest: 7/7 (4 новых — RBAC visibility, modal, API call, error result). Smoke: create throwaway → find row → reset → OTP через network response → persistence. Seed credentials (advertiser_test, break_glass_admin) не мутируются.
 
 **WAVE4-CLOSURE-001** ✅ — Wave 4 canon closure: campaign.activate/pause + emergency.activate/deactivate + UX hardening (CAMPAIGN-UX-001A/B). pre-pilot-journey-plan.md synced (22/23 closed, +5 service, +1 UX). Next: Wave 5.
 **WAVE4-CLOSURE-001-FU** ✅ — fix progress math: UX-hardening removed from 28/40 arithmetic (not a separate registry journey).

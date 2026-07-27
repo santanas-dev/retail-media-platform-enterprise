@@ -588,6 +588,7 @@ export default function UsersPage() {
               type="button"
               onClick={handleReset}
               style={{ ...btnStyle, padding: "0.375rem 1rem" }}
+              data-testid="user-reset-password-confirm"
             >
               Сбросить пароль
             </button>
@@ -601,6 +602,7 @@ export default function UsersPage() {
           </div>
           {resetResult && (
             <div
+              data-testid={resetResult.one_time_password ? "user-reset-password-success" : "user-reset-password-error"}
               style={{
                 marginTop: "0.75rem",
                 padding: "0.5rem",
@@ -615,7 +617,7 @@ export default function UsersPage() {
                 <>
                   <strong>⚠️ Одноразовый пароль (показан только сейчас):</strong>
                   <br />
-                  <code>{resetResult.one_time_password}</code>
+                  <code data-testid="user-reset-password-otp">{resetResult.one_time_password}</code>
                   <br />
                   {resetResult.message}
                 </>
@@ -810,6 +812,7 @@ export default function UsersPage() {
                     type="button"
                     style={btnStyle}
                     onClick={() => openReset(u.id)}
+                    data-testid={`user-reset-password-open-${u.id}`}
                   >
                     Сбросить пароль
                   </button>

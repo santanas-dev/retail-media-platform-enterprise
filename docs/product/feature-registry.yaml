@@ -315,8 +315,7 @@ features:
     smoke: test_uismoke__user__reset_password
     priority: P1
     roles: [system_admin]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
 
   - id: user.deactivate
     frontend: admin-web
