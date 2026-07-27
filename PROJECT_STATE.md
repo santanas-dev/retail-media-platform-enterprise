@@ -78,7 +78,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | d9d6bc3 | d9d6bc3 | WAVE4-CLOSURE-001 — Wave 4 canon closure + UX hardening |
+| develop | d9d6bc3 | fcc7416 | WAVE4-CLOSURE-001 — Wave 4 canon closure + UX hardening |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
 | NAS mirror (ASUSTOR) | pending | mount unavailable | Hermes cron sync — mount not available at check time |
 
