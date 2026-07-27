@@ -383,6 +383,7 @@ features:
     roles: [system_admin, operator, analyst]
     status: reachable
     smoke: test_uismoke__device__health_view
+    priority: P1
 
   # ═══════════════════════════════════════════════════════════════
   # P0/P1 — advertiser-web (⚠️ фронтенд не проходил аудит)

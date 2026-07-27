@@ -31,7 +31,7 @@ def _login(page: Page) -> None:
     page.wait_for_load_state("networkidle")
 
 
-def test_device_health_view(page: Page) -> None:
+def test_uismoke__device__health_view(page: Page) -> None:
     """
     Happy-path: login → navigate to Devices → see KSO-001 row
     → verify health state, heartbeat, versions → reload → still visible.
