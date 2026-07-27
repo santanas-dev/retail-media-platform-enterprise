@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-23 (JOURNEY-017 — device.health_view reachable + green smoke)
+**Last updated:** 2026-07-27 (JOURNEY-017 — device.health_view reachable + green UI-smoke)
 
 **Next Active Workstream:** Wave 5 — audit.view (JOURNEY-018 candidate)
 
@@ -85,7 +85,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | c7486bd | 27197aa | JOURNEY-016 — self.campaign_view reachable + green smoke |
+| develop | 43c7622 | 6ce60d5 | JOURNEY-017 — device.health_view reachable + green smoke |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
 | NAS mirror (ASUSTOR) | pending | mount unavailable | Hermes cron sync — mount not available at check time |
 
