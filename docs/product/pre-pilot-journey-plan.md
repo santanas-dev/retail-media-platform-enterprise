@@ -68,7 +68,7 @@ R2 выпущен: main b5dd3b3, tag v0.9.0-prepilot-wave1, CI #29937353570.
 - 🟢 `adsettings.test` — проверить подключение AD · JOURNEY-020
 - 🟢 `user.reset_password` — сбросить пароль · JOURNEY-021
 - 🟢 `user.deactivate` — заблокировать пользователя · JOURNEY-022
-- 🔴 `inventory.rule_create` — создать правило инвентаря
+- 🟢 `inventory.rule_create` — создать правило инвентаря · JOURNEY-023
 
 ---
 

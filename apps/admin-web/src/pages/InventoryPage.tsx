@@ -21,6 +21,7 @@ import type {
   InventoryRuleOut,
 } from "../api/types";
 import PageHeader from "../components/PageHeader";
+import { useAuth } from "../auth/AuthContext";
 
 function fmtRes(w: number, h: number): string { return `${w}×${h}`; }
 
@@ -780,9 +781,11 @@ function RulesTab() {
   const [fVal2, setFVal2] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
   // Permission check — need inventory.manage for create/edit/activate
-  const canManage = true; // Route guard handles this; inline for quick UI hiding
+  const { user } = useAuth();
+  const canManage = user?.permissions?.includes("inventory.manage") ?? false;
 
   async function loadRules() {
     setLoading(true); setError(null);
@@ -799,7 +802,7 @@ function RulesTab() {
   function resetForm() {
     setFType("blackout"); setFScope("global"); setFScopeId("");
     setFPriority("100"); setFActive(true); setFStart(""); setFEnd("");
-    setFVal1(""); setFVal2(""); setFormError(null);
+    setFVal1(""); setFVal2(""); setFormError(null); setFormSuccess(null);
   }
 
   function openCreate() { setEditId(null); resetForm(); setShowForm(true); }
@@ -832,7 +835,7 @@ function RulesTab() {
   }
 
   async function handleSave(e: React.FormEvent) {
-    e.preventDefault(); setFormError(null); setSaving(true);
+    e.preventDefault(); setFormError(null); setFormSuccess(null); setSaving(true);
     try {
       const body: any = {
         rule_type: fType, scope_type: fScope,
@@ -849,6 +852,7 @@ function RulesTab() {
         await createRule(body);
       }
       setShowForm(false);
+      setFormSuccess(editId ? "Правило обновлено" : "Правило создано");
       await loadRules();
     } catch (e: unknown) {
       setFormError(e instanceof ApiError ? e.message : "Ошибка сохранения");
@@ -878,15 +882,21 @@ function RulesTab() {
           Правила инвентаря
         </h2>
         {canManage && (
-          <button onClick={openCreate}
+          <button onClick={openCreate} data-testid="inventory-rule-create-open"
             style={{ padding: "0.3rem 0.8rem", fontSize: "0.8rem", background: "var(--rmp-gray-800)", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" }}>
             + Создать
           </button>
         )}
       </div>
 
+      {formSuccess && (
+        <div data-testid="inventory-rule-success" style={{ padding: "0.5rem 1rem", background: "#dcfce7", borderRadius: 4, marginBottom: "1rem", fontSize: "0.85rem", color: "#166534" }}>
+          {formSuccess}
+        </div>
+      )}
+
       {rules.length === 0 ? (
-        <p style={{ color: "var(--rmp-text-secondary)" }}>Правил пока нет. Создайте первое правило.</p>
+        <p data-testid="inventory-rules-empty" style={{ color: "var(--rmp-text-secondary)" }}>Правил пока нет. Создайте первое правило.</p>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
@@ -903,19 +913,19 @@ function RulesTab() {
             </thead>
             <tbody>
               {rules.map((r) => (
-                <tr key={r.id} style={{ borderBottom: "1px solid var(--rmp-border-default)" }}>
-                  <td style={td}>{RULE_LABELS[r.rule_type] || r.rule_type}</td>
-                  <td style={td}>{SCOPE_LABELS[r.scope_type] || r.scope_type}{r.scope_id ? ` (${r.scope_id.slice(0, 8)}...)` : ""}</td>
-                  <td style={td}>{r.priority}</td>
-                  <td style={td}>
+                <tr key={r.id} data-testid={`inventory-rule-row-${r.id}`} style={{ borderBottom: "1px solid var(--rmp-border-default)" }}>
+                  <td data-testid={`inventory-rule-row-type-${r.id}`} style={td}>{RULE_LABELS[r.rule_type] || r.rule_type}</td>
+                  <td data-testid={`inventory-rule-row-scope-${r.id}`} style={td}>{SCOPE_LABELS[r.scope_type] || r.scope_type}{r.scope_id ? ` (${r.scope_id.slice(0, 8)}...)` : ""}</td>
+                  <td data-testid={`inventory-rule-row-priority-${r.id}`} style={td}>{r.priority}</td>
+                  <td data-testid={`inventory-rule-row-active-${r.id}`} style={td}>
                     <span style={{ color: r.is_active ? "var(--rmp-success-600)" : "var(--rmp-text-muted)", fontWeight: 600 }}>
                       {r.is_active ? "Да" : "Нет"}
                     </span>
                   </td>
-                  <td style={td}>
+                  <td data-testid={`inventory-rule-row-period-${r.id}`} style={td}>
                     {r.starts_at ? r.starts_at.slice(0, 10) : "—"} – {r.ends_at ? r.ends_at.slice(0, 10) : "—"}
                   </td>
-                  <td style={td}>{fmtRuleValue(r)}</td>
+                  <td data-testid={`inventory-rule-row-value-${r.id}`} style={td}>{fmtRuleValue(r)}</td>
                   <td style={td}>
                     {canManage && (
                       <div style={{ display: "flex", gap: "0.3rem" }}>
@@ -938,32 +948,32 @@ function RulesTab() {
       {/* ── Create/Edit modal ── */}
       {showForm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-          <form onSubmit={handleSave}
+          <form onSubmit={handleSave} data-testid="inventory-rule-form"
             style={{ background: "#fff", borderRadius: 8, padding: "1.5rem", width: 480, maxHeight: "90vh", overflow: "auto" }}>
             <h3 style={{ margin: "0 0 1rem" }}>{editId ? "Редактировать правило" : "Создать правило"}</h3>
 
             <label style={lbl}>Тип правила</label>
-            <select value={fType} onChange={(e) => setFType(e.target.value)} style={sel}>
+            <select value={fType} onChange={(e) => setFType(e.target.value)} style={sel} data-testid="inventory-rule-type">
               {Object.entries(RULE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
 
             <label style={lbl}>Область</label>
-            <select value={fScope} onChange={(e) => setFScope(e.target.value)} style={sel}>
+            <select value={fScope} onChange={(e) => setFScope(e.target.value)} style={sel} data-testid="inventory-rule-scope-type">
               {Object.entries(SCOPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
 
             {fScope !== "global" && (
               <>
                 <label style={lbl}>ID области</label>
-                <input value={fScopeId} onChange={(e) => setFScopeId(e.target.value)} style={inp} placeholder="UUID поверхности/магазина" />
+                <input value={fScopeId} onChange={(e) => setFScopeId(e.target.value)} style={inp} data-testid="inventory-rule-scope-id" placeholder="UUID поверхности/магазина" />
               </>
             )}
 
             <label style={lbl}>Приоритет</label>
-            <input type="number" min="0" value={fPriority} onChange={(e) => setFPriority(e.target.value)} style={inp} />
+            <input type="number" min="0" value={fPriority} onChange={(e) => setFPriority(e.target.value)} style={inp} data-testid="inventory-rule-priority" />
 
             <label style={lbl}>Активно</label>
-            <select value={fActive ? "1" : "0"} onChange={(e) => setFActive(e.target.value === "1")} style={sel}>
+            <select value={fActive ? "1" : "0"} onChange={(e) => setFActive(e.target.value === "1")} style={sel} data-testid="inventory-rule-active">
               <option value="1">Да</option>
               <option value="0">Нет</option>
             </select>
@@ -971,40 +981,40 @@ function RulesTab() {
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <div style={{ flex: 1 }}>
                 <label style={lbl}>Действует с</label>
-                <input type="date" value={fStart} onChange={(e) => setFStart(e.target.value)} style={inp} />
+                <input type="date" value={fStart} onChange={(e) => setFStart(e.target.value)} style={inp} data-testid="inventory-rule-starts-at" />
               </div>
               <div style={{ flex: 1 }}>
                 <label style={lbl}>Действует до</label>
-                <input type="date" value={fEnd} onChange={(e) => setFEnd(e.target.value)} style={inp} />
+                <input type="date" value={fEnd} onChange={(e) => setFEnd(e.target.value)} style={inp} data-testid="inventory-rule-ends-at" />
               </div>
             </div>
 
             {fType === "blackout" && (
               <>
                 <label style={lbl}>Причина</label>
-                <input value={fVal1} onChange={(e) => setFVal1(e.target.value)} style={inp} placeholder="Например: ремонт магазина" />
+                <input value={fVal1} onChange={(e) => setFVal1(e.target.value)} style={inp} data-testid="inventory-rule-value" placeholder="Например: ремонт магазина" />
               </>
             )}
             {fType === "internal_block" && (
               <>
                 <label style={lbl}>Ёмкость (capacity_units)</label>
-                <input type="number" min="1" value={fVal1} onChange={(e) => setFVal1(e.target.value)} style={inp} placeholder="Например: 10" />
+                <input type="number" min="1" value={fVal1} onChange={(e) => setFVal1(e.target.value)} style={inp} data-testid="inventory-rule-value" placeholder="Например: 10" />
               </>
             )}
             {fType === "max_sov" && (
               <>
                 <label style={lbl}>Макс. SOV (%)</label>
-                <input type="number" min="1" max="100" value={fVal1} onChange={(e) => setFVal1(e.target.value)} style={inp} placeholder="Например: 50" />
+                <input type="number" min="1" max="100" value={fVal1} onChange={(e) => setFVal1(e.target.value)} style={inp} data-testid="inventory-rule-value" placeholder="Например: 50" />
               </>
             )}
 
-            {formError && <p style={{ color: "var(--rmp-danger-600)", fontSize: "0.8rem", margin: "0.5rem 0 0" }}>{formError}</p>}
+            {formError && <p data-testid="inventory-rule-error" style={{ color: "var(--rmp-danger-600)", fontSize: "0.8rem", margin: "0.5rem 0 0" }}>{formError}</p>}
 
             <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem", justifyContent: "flex-end" }}>
               <button type="button" onClick={() => setShowForm(false)} style={{ ...btn, background: "var(--rmp-gray-200)", color: "var(--rmp-text-primary)" }}>
                 Отмена
               </button>
-              <button type="submit" disabled={saving} style={{ ...btn, background: "var(--rmp-gray-800)", color: "#fff", opacity: saving ? 0.6 : 1 }}>
+              <button type="submit" disabled={saving} data-testid="inventory-rule-submit" style={{ ...btn, background: "var(--rmp-gray-800)", color: "#fff", opacity: saving ? 0.6 : 1 }}>
                 {saving ? "Сохранение..." : editId ? "Сохранить" : "Создать"}
               </button>
             </div>
