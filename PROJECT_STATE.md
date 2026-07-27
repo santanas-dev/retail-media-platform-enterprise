@@ -100,7 +100,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 61197d0 | — | JOURNEY-023 — inventory.rule_create reachable + green smoke |
+| develop | 61197d0 | 91d1063 | WAVE6-CLOSURE-001 — Wave 6 canon closed |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
 | NAS mirror (ASUSTOR) | verified | 16fc8d7 | Hermes cron sync — synced 2026-07-27 12:10, vers=3.02, credentials inline |
 
