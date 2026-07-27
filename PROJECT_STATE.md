@@ -87,7 +87,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 43c7622 | 6ce60d5 | JOURNEY-017 — device.health_view reachable + green smoke |
+| develop | 7d8b856 | — | JOURNEY-018 — audit.view reachable + green smoke |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
 | NAS mirror (ASUSTOR) | verified | 16fc8d7 | Hermes cron sync — synced 2026-07-27 12:10, vers=3.02, credentials inline |
 
