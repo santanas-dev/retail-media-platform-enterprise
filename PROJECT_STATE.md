@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-23 (CAMPAIGN-UX-001B-FU4 — operator walkthrough closure)
+**Last updated:** 2026-07-23 (WAVE4-CLOSURE-001 — Wave 4 canon closure + UX hardening)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -38,6 +38,7 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **DONE-GATE-002** ✅ — human walkthrough + happy-path added to Done Gate (AGENTS.md пункты 8–9) + шаблон Happy-path в user-journeys.md §1. Docs-only.
 **CAMPAIGN-UX-001A** ✅ — creative.upload human-path: явная загрузка файла с ПК. Implementation ready (FU2: org-id guard + vitest payload assertion). Operator walkthrough: OK — DEV human walkthrough passed without instructions.
 **CAMPAIGN-UX-001B** — Overview readiness checklist: flight/placement/creative status + actions + submit readiness. Smoke green (8.33s, d9d6bc3). Operator walkthrough: OK — DEV human walkthrough passed without instructions.
+**WAVE4-CLOSURE-001** ✅ — Wave 4 canon closure: campaign.activate/pause + emergency.activate/deactivate + UX hardening (CAMPAIGN-UX-001A/B). pre-pilot-journey-plan.md synced (22/23 closed, +5 service, +1 UX). Next: Wave 5.
 
 **JOURNEY-014** ✅ — campaign.activate + campaign.pause reachable + green UI-smoke.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
@@ -77,9 +78,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | d9d6bc3 | ce8a94c | CAMPAIGN-UX-001B — Overview readiness checklist + smoke green |
+| develop | d9d6bc3 | d9d6bc3 | WAVE4-CLOSURE-001 — Wave 4 canon closure + UX hardening |
 | main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
-| NAS mirror (ASUSTOR) | verified | 5cc989e | Hermes cron sync — synced with origin/develop |
+| NAS mirror (ASUSTOR) | pending | mount unavailable | Hermes cron sync — mount not available at check time |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
@@ -273,7 +274,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**Wave 4 closed.** JOURNEY-014 (campaign.activate/pause) + JOURNEY-015 (emergency.activate/deactivate) — все journey Wave 4 reachable + green smoke. Campaign lifecycle feature set complete. Next: per pre-pilot-journey-plan.md.
+**Wave 5 — Статус и мониторинг.** First candidate: `self.campaign_view` (рекламодатель видит свои кампании в кабинете). Wave 5 также включает: device.health_view, audit.view, self.report_view. См. `docs/product/pre-pilot-journey-plan.md`.
 
 Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
 

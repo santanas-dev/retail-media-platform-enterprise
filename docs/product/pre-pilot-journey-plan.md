@@ -1,8 +1,8 @@
 # Программа до-пилотных бизнес-журнеев (КСО, ручной проход)
 
 > **Канон для Codex/Hermes.** Источник истины по статусам — `docs/product/feature-registry.yaml` + зелёный UI-smoke; эта программа задаёт ПОРЯДОК закрытия.
-> Обновлено 2026-07-23 после JOURNEY-013 (Wave 3 closure). Wave 1–3: ✅ COMPLETE.
-> Текущие counts: 24 reachable, 16 blocked (из feature-registry.yaml).
+> Обновлено 2026-07-23 после JOURNEY-015 (Wave 4 closure) + CAMPAIGN-UX-001A/B (UX hardening). Wave 1–4: ✅ COMPLETE.
+> Текущие counts: 28 reachable, 12 blocked (из feature-registry.yaml).
 
 ## Цель и принцип
 
@@ -48,12 +48,12 @@ R2 выпущен: main b5dd3b3, tag v0.9.0-prepilot-wave1, CI #29937353570.
 - 🟢 `campaign.approve` — одобрить кампанию (JOURNEY-013)
 - 🟢 `campaign.reject` — отклонить кампанию с причиной (JOURNEY-013)
 
-## Волна 4 — Публикация и управление показом
+## Волна 4 — Публикация и управление показом ✅ COMPLETE
 
-- 🔴 `campaign.activate` — запустить одобренную кампанию (публикация → manifest)
-- 🔴 `campaign.pause` — приостановить активную кампанию
-- 🔴 `emergency.activate` — экстренно остановить показ
-- 🔴 `emergency.deactivate` — снять аварийный режим
+- 🟢 `campaign.activate` — запустить одобренную кампанию (публикация → manifest) · JOURNEY-014 + FU2
+- 🟢 `campaign.pause` — приостановить активную кампанию · JOURNEY-014 + FU2
+- 🟢 `emergency.activate` — экстренно остановить показ · JOURNEY-015
+- 🟢 `emergency.deactivate` — снять аварийный режим · JOURNEY-015
 
 ## Волна 5 — Статус и мониторинг
 
@@ -79,4 +79,5 @@ R2 выпущен: main b5dd3b3, tag v0.9.0-prepilot-wave1, CI #29937353570.
 - Done = поведение: достижимый UI (реальные клики, `goto` только `/login`) + зелёный `test_uismoke__<domain>__<action>`.
 - В ДК поднять 3 колонки (Бэкенд/UI/Юзер-стори) и пересчитать Итог; guard ROADMAP-GUARD-002 обязан оставаться зелёным.
 - Одна задача Hermes за раз. ⚙-журнеи требуют реального бэкенда — не «просто кнопки».
-- Прогресс мерить по этой программе: закрытых журнеев 24 из 40 (Wave 1–3: 19/19 closed, +5 service reachable).
+- Прогресс мерить по этой программе: закрытых журнеев 28 из 40 (Wave 1–4: 22/23 closed, self.campaign_create deferred; +5 service reachable; +1 UX hardening completed).
+- **UX-hardening (CAMPAIGN-UX-001A/B):** creative.upload human-path (явная загрузка файла с ПК) + Overview readiness checklist (статус рейсов/размещений/креативов перед submit). Не новые журнеи — улучшение существующих reachable-фич. Operator walkthrough OK по обоим.
