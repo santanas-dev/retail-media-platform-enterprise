@@ -6,7 +6,7 @@
 
 **R3 ✅ RELEASED** — v0.10.0-preplayer-business-ready. Main merge: 96b5159, CI #30354973869 (35/35 green), annotated tag → 96b5159. Previous: v0.9.0-prepilot-wave1 (b5dd3b3). Release scope: 35/40 reachable, managed/admin pre-player flow, PRODUCT-READINESS-001, PLAYER-001A, R3-BLOCKER-001, CI-GATE-002. Not included: self.report_view (blocked by PoP path), self.campaign_create (deferred), playlist.build/backup.restore/campaign.complete (service deferred).
 
-**PLAYER-001B-FU ✅** — Full live loop proof closed. Client --once completes against dev stack:
+**PLAYER-001B-FU ✅** — Full live loop proof closed (CI #30368381545, 35/35 green). Client --once completes against dev stack:
 1. ✅ signed manifest fetched (HMAC-SHA256, 64-char sig)
 2. ✅ signature verified  
 3. ✅ heartbeat accepted
