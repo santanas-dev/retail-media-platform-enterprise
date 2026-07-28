@@ -21,8 +21,9 @@ interface UsersPageState {
 
 export default function UsersPage() {
   const { user } = useAuth();
-  const canCreateAdvertiser =
+  const canManageUsers =
     user?.permissions?.includes("users.manage") ?? false;
+  const canCreateAdvertiser = canManageUsers;
   const canManageRoles =
     user?.permissions?.includes("roles.manage") ?? false;
 
@@ -61,6 +62,15 @@ export default function UsersPage() {
   const [resetResult, setResetResult] = useState<{
     message: string;
     one_time_password?: string;
+  } | null>(null);
+
+  // Deactivate
+  const [deactivateOpen, setDeactivateOpen] = useState(false);
+  const [deactivateUserId, setDeactivateUserId] = useState("");
+  const [deactivateUsername, setDeactivateUsername] = useState("");
+  const [deactivateResult, setDeactivateResult] = useState<{
+    message: string;
+    success: boolean;
   } | null>(null);
 
   // Role management
@@ -210,13 +220,26 @@ export default function UsersPage() {
 
   // ── Activate / Deactivate ──
 
-  async function handleDeactivate(userId: string) {
+  function openDeactivate(userId: string, userName: string) {
+    setDeactivateUserId(userId);
+    setDeactivateUsername(userName);
+    setDeactivateOpen(true);
+    setDeactivateResult(null);
+  }
+
+  async function handleDeactivateConfirm() {
+    setDeactivateResult(null);
     try {
-      await api.post(`/users/${userId}/deactivate`);
+      const resp = await api.post<{
+        user_id: string;
+        status: string;
+        message: string;
+      }>(`/users/${deactivateUserId}/deactivate`);
+      setDeactivateResult({ message: resp.message, success: true });
       loadUsers();
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "Ошибка";
-      setState((s) => ({ ...s, actionError: msg }));
+      setDeactivateResult({ message: msg, success: false });
     }
   }
 
@@ -588,6 +611,7 @@ export default function UsersPage() {
               type="button"
               onClick={handleReset}
               style={{ ...btnStyle, padding: "0.375rem 1rem" }}
+              data-testid="user-reset-password-confirm"
             >
               Сбросить пароль
             </button>
@@ -601,6 +625,7 @@ export default function UsersPage() {
           </div>
           {resetResult && (
             <div
+              data-testid={resetResult.one_time_password ? "user-reset-password-success" : "user-reset-password-error"}
               style={{
                 marginTop: "0.75rem",
                 padding: "0.5rem",
@@ -615,7 +640,7 @@ export default function UsersPage() {
                 <>
                   <strong>⚠️ Одноразовый пароль (показан только сейчас):</strong>
                   <br />
-                  <code>{resetResult.one_time_password}</code>
+                  <code data-testid="user-reset-password-otp">{resetResult.one_time_password}</code>
                   <br />
                   {resetResult.message}
                 </>
@@ -755,6 +780,69 @@ export default function UsersPage() {
         </div>
       )}
 
+      {/* ── Deactivate confirmation ── */}
+      {deactivateOpen && (
+        <div
+          style={{
+            background: "#fef2f2",
+            border: "1px solid #fca5a5",
+            borderRadius: 8,
+            padding: "1rem",
+            marginBottom: "1rem",
+            maxWidth: 420,
+          }}
+        >
+          <h3 style={{ color: "#dc2626" }}>Деактивировать пользователя</h3>
+          <p>
+            Вы собираетесь деактивировать пользователя{" "}
+            <strong>{deactivateUsername}</strong>. Все активные сессии будут
+            отозваны, и пользователь не сможет войти в систему.
+          </p>
+          <div style={{ marginTop: "0.5rem" }}>
+            <button
+              type="button"
+              data-testid="user-deactivate-confirm"
+              onClick={handleDeactivateConfirm}
+              style={{
+                ...dangerBtn,
+                padding: "0.375rem 1rem",
+                fontSize: "0.875rem",
+              }}
+            >
+              Деактивировать
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDeactivateOpen(false);
+                setDeactivateResult(null);
+              }}
+              style={{ ...btnStyle, marginLeft: "0.5rem" }}
+            >
+              Отмена
+            </button>
+          </div>
+          {deactivateResult && (
+            <div
+              data-testid={
+                deactivateResult.success
+                  ? "user-deactivate-success"
+                  : "user-deactivate-error"
+              }
+              style={{
+                marginTop: "0.75rem",
+                padding: "0.5rem",
+                background: deactivateResult.success ? "#dcfce7" : "#fee2e2",
+                borderRadius: 4,
+                fontSize: "0.8rem",
+              }}
+            >
+              {deactivateResult.message}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Users table ── */}
       <table style={tableStyle}>
         <thead>
@@ -776,7 +864,7 @@ export default function UsersPage() {
                 </span>
               </td>
               <td style={tdStyle}>{providerLabel(u.auth_provider)}</td>
-              <td style={tdStyle}>{statusBadge(u.status)}</td>
+              <td style={tdStyle} data-testid={`user-status-${u.id}`}>{statusBadge(u.status)}</td>
               <td style={tdStyle}>
                 {canManageRoles && (
                   <button
@@ -788,28 +876,33 @@ export default function UsersPage() {
                     Роли
                   </button>
                 )}
-                {u.status === "active" ? (
-                  <button
-                    type="button"
-                    style={dangerBtn}
-                    onClick={() => handleDeactivate(u.id)}
-                  >
-                    Деактивировать
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    style={btnStyle}
-                    onClick={() => handleActivate(u.id)}
-                  >
-                    Активировать
-                  </button>
+                {canManageUsers && (
+                  u.status === "active" ? (
+                    <button
+                      type="button"
+                      style={dangerBtn}
+                      data-testid={`user-deactivate-open-${u.id}`}
+                      onClick={() => openDeactivate(u.id, u.username)}
+                    >
+                      Деактивировать
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      style={btnStyle}
+                      data-testid={`user-activate-open-${u.id}`}
+                      onClick={() => handleActivate(u.id)}
+                    >
+                      Активировать
+                    </button>
+                  )
                 )}
                 {u.auth_provider.startsWith("local_") && (
                   <button
                     type="button"
                     style={btnStyle}
                     onClick={() => openReset(u.id)}
+                    data-testid={`user-reset-password-open-${u.id}`}
                   >
                     Сбросить пароль
                   </button>

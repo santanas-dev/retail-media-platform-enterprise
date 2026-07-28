@@ -300,8 +300,12 @@ export default function ADSettingsPage() {
         >
           {testing ? "Проверка..." : "Проверить подключение"}
         </button>
+        {testing && <div data-testid="adsettings-test-loading" style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "0.5rem" }}>Проверка подключения...</div>}
         {testResult && (
-          <div style={styles.resultBox(testResult.status)}>
+          <div
+            style={styles.resultBox(testResult.status)}
+            data-testid={testResult.status === "ok" ? "adsettings-test-success" : "adsettings-test-error"}
+          >
             <strong>{testStatusLabel(testResult.status)}</strong>
             <p style={{ margin: "0.25rem 0 0" }}>{testResult.message}</p>
           </div>

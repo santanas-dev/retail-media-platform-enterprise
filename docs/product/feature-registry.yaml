@@ -50,8 +50,8 @@ features:
     smoke: test_uismoke__campaign__edit
     priority: P0
     roles: [system_admin, campaign_manager]
-    status: blocked
-    gap: "UI-smoke отсутствует. Бэкенд + страница карточки есть, но smoke-тест не написан."
+    status: reachable
+    gap: ""
 
   - id: creative.upload
     frontend: admin-web
@@ -65,8 +65,8 @@ features:
     smoke: test_uismoke__creative__upload
     priority: P0
     roles: [system_admin, campaign_manager]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
+    gap: ""
 
   - id: campaign.submit
     frontend: admin-web
@@ -79,8 +79,7 @@ features:
     smoke: test_uismoke__campaign__submit
     priority: P0
     roles: [system_admin, campaign_manager]
-    status: blocked
-    gap: "UI-smoke отсутствует. Бэкенд + кнопка есть, частично проходимо."
+    status: reachable
 
   - id: campaign.approve
     frontend: admin-web
@@ -93,8 +92,7 @@ features:
     smoke: test_uismoke__campaign__approve
     priority: P0
     roles: [system_admin, approver]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
 
   - id: campaign.reject
     frontend: admin-web
@@ -107,8 +105,7 @@ features:
     smoke: test_uismoke__campaign__reject
     priority: P0
     roles: [system_admin, approver]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
 
   - id: creative.moderate_approve
     frontend: admin-web
@@ -121,8 +118,8 @@ features:
     smoke: test_uismoke__creative__moderate_approve
     priority: P0
     roles: [system_admin, moderator]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
+    gap: ""
 
   - id: creative.moderate_reject
     frontend: admin-web
@@ -135,8 +132,8 @@ features:
     smoke: test_uismoke__creative__moderate_reject
     priority: P0
     roles: [system_admin, moderator]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
+    gap: ""
 
   - id: user.create_advertiser
     frontend: admin-web
@@ -204,8 +201,8 @@ features:
     smoke: test_uismoke__emergency__activate
     priority: P0
     roles: [system_admin, security_admin, ops_operator]
-    status: blocked
-    gap: "UI-smoke отсутствует. Активация в UI есть; фактическое исполнение на устройстве — после плеера (K1)."
+    status: reachable
+    gap: "Platform/backend emergency state + audit/outbox. Player-side enforcement deferred (KSO runtime)."
 
   - id: emergency.deactivate
     frontend: admin-web
@@ -217,8 +214,8 @@ features:
     smoke: test_uismoke__emergency__deactivate
     priority: P0
     roles: [system_admin, security_admin, ops_operator]
-    status: blocked
-    gap: "UI-smoke отсутствует. Деактивация в UI есть; фактическое исполнение на устройстве — после плеера (K1)."
+    status: reachable
+    gap: "Platform/backend deactivation + audit/outbox. Player-side enforcement deferred (KSO runtime)."
 
   # ═══════════════════════════════════════════════════════════════
   # P1 — admin-web (operations, inventory, settings, audit)
@@ -235,8 +232,8 @@ features:
     smoke: test_uismoke__campaign__activate
     priority: P1
     roles: [system_admin, campaign_manager]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
+    gap: ""
 
   - id: campaign.pause
     frontend: admin-web
@@ -249,8 +246,8 @@ features:
     smoke: test_uismoke__campaign__pause
     priority: P1
     roles: [system_admin, campaign_manager, security_admin, ops_operator]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
+    gap: ""
 
   - id: inventory.simulate
     frontend: admin-web
@@ -263,8 +260,8 @@ features:
     smoke: test_uismoke__inventory__simulate
     priority: P1
     roles: [system_admin, campaign_manager]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
+    gap: ""
 
   - id: inventory.rule_create
     frontend: admin-web
@@ -277,8 +274,8 @@ features:
     smoke: test_uismoke__inventory__rule_create
     priority: P1
     roles: [system_admin, campaign_manager]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
+    gap: ""
 
   - id: advertiser.view
     frontend: admin-web
@@ -318,8 +315,7 @@ features:
     smoke: test_uismoke__user__reset_password
     priority: P1
     roles: [system_admin]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
 
   - id: user.deactivate
     frontend: admin-web
@@ -332,8 +328,8 @@ features:
     smoke: test_uismoke__user__deactivate
     priority: P1
     roles: [system_admin]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
+    gap: ""
 
   - id: adsettings.test
     frontend: admin-web
@@ -345,8 +341,7 @@ features:
     smoke: test_uismoke__adsettings__test
     priority: P1
     roles: [system_admin, security_admin]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
 
   - id: adsettings.configure
     frontend: admin-web
@@ -371,8 +366,7 @@ features:
     smoke: test_uismoke__audit__view
     priority: P1
     roles: [system_admin, security_admin]
-    status: blocked
-    gap: "UI-smoke отсутствует."
+    status: reachable
 
   - id: device.health_view
     frontend: admin-web
@@ -380,12 +374,13 @@ features:
     route: /login
     path:
       - login (ops_operator)
-      - Устройства
+      - sidebar: "Устройства"
+      - таблица device-health-table
+      - строка KSO-001 + health_state badge + heartbeat + версии
+    roles: [system_admin, operator, analyst]
+    status: reachable
     smoke: test_uismoke__device__health_view
     priority: P1
-    roles: [system_admin, ops_operator]
-    status: blocked
-    gap: "UI-smoke отсутствует."
 
   # ═══════════════════════════════════════════════════════════════
   # P0/P1 — advertiser-web (⚠️ фронтенд не проходил аудит)
@@ -417,8 +412,8 @@ features:
     smoke: test_uismoke__self__campaign_view
     priority: P0
     roles: [advertiser]
-    status: blocked
-    gap: "UI-smoke отсутствует. Фронтенд advertiser-web не проходил аудит."
+    status: reachable
+    gap: ""
 
   - id: self.report_view
     frontend: advertiser-web
@@ -444,8 +439,8 @@ features:
     smoke: test_uismoke__self__apply_or_brief
     priority: P1
     roles: [advertiser]
-    status: blocked
-    gap: "UI-smoke отсутствует. Фронтенд advertiser-web не проходил аудит."
+    status: reachable
+    gap: ""
 
   - id: self.campaign_create
     frontend: advertiser-web
@@ -576,8 +571,8 @@ features:
   # ═══════════════════════════════════════════════════════════════
   #   total: 40
   # by status:
-  #   reachable: 15 (campaign.create, user.create_advertiser, user.assign_roles, advertiser.create_org, advertiser.view, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, observability, adsettings.configure, advertiser.apply, advertiser.application_review, advertiser.invite, self.login)
-  #   blocked:   25 (22 UI-no-smoke + 3 service-deferred)
+  #   reachable: 35 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, advertiser.create_org, advertiser.view, inventory.simulate, advertiser.invite, adsettings.configure, adsettings.test, audit.view, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, device.health_view, observability, user.reset_password, user.deactivate, inventory.rule_create)
+  #   blocked:     5 (self.report_view, self.campaign_create, playlist.build, backup.restore, campaign.complete)
   # by frontend:
   #   admin-web:      26
   #   advertiser-web:  5

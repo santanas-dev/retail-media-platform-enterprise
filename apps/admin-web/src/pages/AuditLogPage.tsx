@@ -109,6 +109,8 @@ export default function AuditLogPage() {
       "campaign.reject": "Отклонение",
       "campaign.publish": "Публикация",
       "creative.moderate": "Модерация креатива",
+      "emergency.activated": "Аварийный режим",
+      "emergency.deactivated": "Отмена аварийного режима",
     };
     return map[action] || action;
   }
@@ -117,41 +119,39 @@ export default function AuditLogPage() {
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} data-testid="audit-page">
       <div style={styles.header}>
         <h1 style={styles.h1}>Журнал аудита</h1>
       </div>
 
-      {loading && <div style={styles.loading}>Загрузка...</div>}
-      {error && <div style={styles.error}>{error}</div>}
+      {loading && <div style={styles.loading} data-testid="audit-loading">Загрузка...</div>}
+      {error && <div style={styles.error} data-testid="audit-error">{error}</div>}
 
       {!loading && !error && data && data.items.length === 0 && (
-        <div style={styles.empty}>Нет записей аудита</div>
+        <div style={styles.empty} data-testid="audit-empty">Нет записей аудита</div>
       )}
 
       {!loading && !error && data && data.items.length > 0 && (
         <>
-          <table style={styles.table}>
+          <table style={styles.table} data-testid="audit-table">
             <thead>
               <tr>
                 <th style={styles.th}>Время</th>
                 <th style={styles.th}>Действие</th>
                 <th style={styles.th}>Исполнитель</th>
-                <th style={styles.th}>Тип объекта</th>
-                <th style={styles.th}>Объект</th>
+                <th style={styles.th}>Ресурс</th>
                 <th style={styles.th}>Детали</th>
               </tr>
             </thead>
             <tbody>
               {data.items.map((event: AuditEventOut) => (
-                <tr key={event.id}>
-                  <td style={styles.td}>{formatTime(event.created_at)}</td>
-                  <td style={styles.td}>
+                <tr key={event.id} data-testid={`audit-row-${event.id}`}>
+                  <td style={styles.td} data-testid={`audit-created-at-${event.id}`}>{formatTime(event.created_at)}</td>
+                  <td style={styles.td} data-testid={`audit-action-${event.id}`}>
                     <span style={styles.actionPill(event.action)}>{actionLabel(event.action)}</span>
                   </td>
-                  <td style={{ ...styles.td, ...styles.mono }}>{event.actor_user_id || "—"}</td>
-                  <td style={styles.td}>{event.target_type}</td>
-                  <td style={{ ...styles.td, ...styles.mono }}>{event.target_id || "—"}</td>
+                  <td style={{ ...styles.td, ...styles.mono }} data-testid={`audit-actor-${event.id}`}>{event.actor_user_id || "—"}</td>
+                  <td style={styles.td} data-testid={`audit-resource-${event.id}`}>{event.target_type}{event.target_id ? `: ${event.target_id}` : ""}</td>
                   <td style={{ ...styles.td, ...styles.details }}>
                     <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: "0.75rem" }}>
                       {renderDetails(event.details_json)}

@@ -221,6 +221,155 @@ describe("InventoryPage — S-081 tabs", () => {
     await waitFor(() => { expect(screen.getByText(/Правил пока нет/)).toBeDefined(); });
     expect(screen.getByText("+ Создать")).toBeDefined();
   });
+
+  it("hides create button without inventory.manage", async () => {
+    renderInventory({ perms: ["inventory.read"] });
+    await waitFor(() => { expect(screen.getByText("Правила")).toBeDefined(); });
+    await userEvent.click(screen.getByText("Правила"));
+    await waitFor(() => { expect(screen.getByText(/Правил пока нет/)).toBeDefined(); });
+    expect(screen.queryByText("+ Создать")).toBeNull();
+  });
+});
+
+describe("InventoryPage — Rules CRUD", () => {
+  const MOCK_RULE = {
+    id: "rule-1", scope_type: "global", scope_id: null, rule_type: "max_sov",
+    priority: 17, value_json: { max_sov_percent: 35 }, is_active: true,
+    starts_at: "2026-12-01T00:00:00Z", ends_at: "2026-12-31T00:00:00Z",
+    created_at: "2026-07-27T00:00:00Z", updated_at: "2026-07-27T00:00:00Z",
+  };
+
+  it("shows create form with required fields", async () => {
+    renderInventory();
+    await waitFor(() => { expect(screen.getByText("Правила")).toBeDefined(); });
+    await userEvent.click(screen.getByText("Правила"));
+    await waitFor(() => { expect(screen.getByText("+ Создать")).toBeDefined(); });
+    await userEvent.click(screen.getByText("+ Создать"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("inventory-rule-form")).toBeDefined();
+      expect(screen.getByTestId("inventory-rule-type")).toBeDefined();
+      expect(screen.getByTestId("inventory-rule-scope-type")).toBeDefined();
+      expect(screen.getByTestId("inventory-rule-priority")).toBeDefined();
+      expect(screen.getByTestId("inventory-rule-active")).toBeDefined();
+      expect(screen.getByTestId("inventory-rule-starts-at")).toBeDefined();
+      expect(screen.getByTestId("inventory-rule-ends-at")).toBeDefined();
+      expect(screen.getByTestId("inventory-rule-value")).toBeDefined();
+      expect(screen.getByTestId("inventory-rule-submit")).toBeDefined();
+    });
+  });
+
+  it("creates rule and shows success + row", async () => {
+    // Use renderInventory with rules pre-populated (empty on load, then rule after create)
+    let rulesCalled = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init?) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 }));
+      }
+      if (url.endsWith("/auth/me")) {
+        return Promise.resolve(new Response(JSON.stringify({
+          sub: "u-admin", auth_provider: "local_break_glass", username: "admin", display_name: "Admin",
+          permissions: ["inventory.read", "inventory.manage"], must_change_password: false,
+        }), { status: 200 }));
+      }
+      if (url.includes("/inventory/stores")) {
+        return Promise.resolve(new Response(JSON.stringify(MOCK_STORES), { status: 200 }));
+      }
+      if (url.includes("/inventory/surfaces")) {
+        return Promise.resolve(new Response(JSON.stringify(MOCK_SURFACES), { status: 200 }));
+      }
+      if (url.includes("/inventory/rules") && init?.method === "POST") {
+        return Promise.resolve(new Response(JSON.stringify(MOCK_RULE), { status: 201 }));
+      }
+      if (url.includes("/inventory/rules")) {
+        rulesCalled++;
+        const data = rulesCalled >= 2 ? [MOCK_RULE] : [];
+        return Promise.resolve(new Response(JSON.stringify(data), { status: 200 }));
+      }
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    });
+
+    const router = createInventoryRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Правила")).toBeDefined(); });
+    await userEvent.click(screen.getByText("Правила"));
+    await waitFor(() => { expect(screen.getByText("+ Создать")).toBeDefined(); });
+    await userEvent.click(screen.getByText("+ Создать"));
+
+    // Select max_sov
+    await userEvent.selectOptions(screen.getByTestId("inventory-rule-type"), "max_sov");
+    // Fill value
+    const valInput = screen.getByTestId("inventory-rule-value");
+    await userEvent.clear(valInput);
+    await userEvent.type(valInput, "35");
+    // Set priority
+    const priInput = screen.getByTestId("inventory-rule-priority");
+    await userEvent.clear(priInput);
+    await userEvent.type(priInput, "17");
+
+    await userEvent.click(screen.getByTestId("inventory-rule-submit"));
+
+    // Success banner
+    await waitFor(() => {
+      expect(screen.getByTestId("inventory-rule-success")).toBeDefined();
+    });
+
+    // Row created
+    await waitFor(() => {
+      const row = screen.getByTestId("inventory-rule-row-rule-1");
+      expect(row).toBeDefined();
+      expect(screen.getByTestId("inventory-rule-row-type-rule-1").textContent).toContain("Макс. доля показов");
+      expect(screen.getByTestId("inventory-rule-row-value-rule-1").textContent).toContain("35%");
+      expect(screen.getByTestId("inventory-rule-row-priority-rule-1").textContent).toContain("17");
+    });
+  });
+
+  it("shows human-readable error on save failure", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init?) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return Promise.resolve(new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 }));
+      }
+      if (url.endsWith("/auth/me")) {
+        return Promise.resolve(new Response(JSON.stringify({
+          sub: "u-admin", auth_provider: "local_break_glass", username: "admin", display_name: "Admin",
+          permissions: ["inventory.read", "inventory.manage"], must_change_password: false,
+        }), { status: 200 }));
+      }
+      if (url.includes("/inventory/stores")) {
+        return Promise.resolve(new Response(JSON.stringify(MOCK_STORES), { status: 200 }));
+      }
+      if (url.includes("/inventory/surfaces")) {
+        return Promise.resolve(new Response(JSON.stringify(MOCK_SURFACES), { status: 200 }));
+      }
+      if (url.includes("/inventory/rules") && init?.method === "POST") {
+        return Promise.resolve(new Response(JSON.stringify({ detail: "Duplicate rule" }), { status: 409 }));
+      }
+      if (url.includes("/inventory/rules")) {
+        return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+      }
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    });
+
+    const router = createInventoryRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Правила")).toBeDefined(); });
+    await userEvent.click(screen.getByText("Правила"));
+    await waitFor(() => { expect(screen.getByText("+ Создать")).toBeDefined(); });
+    await userEvent.click(screen.getByText("+ Создать"));
+
+    await userEvent.click(screen.getByTestId("inventory-rule-submit"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("inventory-rule-error")).toBeDefined();
+    });
+
+    const body = document.body.textContent || "";
+    expect(body).not.toContain("[object Object]");
+  });
 });
 
 describe("InventoryPage — Availability tab", () => {

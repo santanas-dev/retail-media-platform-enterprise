@@ -17,6 +17,8 @@ import {
   requestApproval,
   approveCampaign,
   rejectCampaign,
+  activateCampaign,
+  pauseCampaign,
   attachCreative,
   createCreativeAsset,
   getCampaignPopSummary,
@@ -129,6 +131,7 @@ export default function CampaignDetailPage() {
   const { user } = useAuth();
 
   const hasApprovePerm = user?.permissions?.includes("campaigns.approve") ?? false;
+  const hasManagePerm = user?.permissions?.includes("campaigns.manage") ?? false;
 
   // Core data
   const [data, setData] = useState<DetailData | null>(null);
@@ -201,6 +204,17 @@ export default function CampaignDetailPage() {
   >("idle");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const primaryUploadInputRef = useRef<HTMLInputElement>(null);
+
+  // CAMPAIGN-UX-001A: Primary upload flow state
+  const [showPrimaryUpload, setShowPrimaryUpload] = useState(false);
+  const [primaryFile, setPrimaryFile] = useState<File | null>(null);
+  const [primaryCode, setPrimaryCode] = useState("");
+  const [primaryName, setPrimaryName] = useState("");
+  const [primaryMediaType, setPrimaryMediaType] = useState("image");
+  const [primarySubmitting, setPrimarySubmitting] = useState(false);
+  const [primaryError, setPrimaryError] = useState<string | null>(null);
+  const attachSelectRef = useRef<HTMLSelectElement>(null);
 
   // Approval
   const [approvalSubmitting, setApprovalSubmitting] = useState(false);
@@ -209,6 +223,7 @@ export default function CampaignDetailPage() {
   // Reject dialog
   const [showReject, setShowReject] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [lastRejectionReason, setLastRejectionReason] = useState<string | null>(null);
 
   // PoP reporting
   const [popSummary, setPopSummary] = useState<CampaignPopSummaryOut | null>(null);
@@ -369,7 +384,7 @@ export default function CampaignDetailPage() {
       await refreshCreatives();
     } catch (e: unknown) {
       setUploadStage("error");
-      if (e instanceof Error) setUploadError(e.message);
+      if (e instanceof Error) setUploadError(formatApiError(e));
       else setUploadError("Неизвестная ошибка загрузки");
     }
   }
@@ -380,6 +395,60 @@ export default function CampaignDetailPage() {
     setUploadProgress(0);
     setUploadStage("idle");
     setUploadError(null);
+  }
+
+  // CAMPAIGN-UX-001A: Primary upload — file pick → metadata → create+attach+upload in one flow
+  async function handlePrimaryUploadSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!primaryFile || !primaryCode || !primaryName) {
+      setPrimaryError("Заполните код, название и выберите файл");
+      return;
+    }
+    setPrimarySubmitting(true);
+    setPrimaryError(null);
+
+    // Guard: org id must be available for creative asset creation
+    const orgId = data?.org?.id;
+    if (!orgId) {
+      setPrimaryError("Не удалось определить организацию рекламодателя. Обновите страницу и попробуйте снова.");
+      setPrimarySubmitting(false);
+      return;
+    }
+
+    try {
+      // 1. Create creative asset
+      const assetReq: CreativeAssetCreateRequest = {
+        code: primaryCode,
+        name: primaryName,
+        media_type: primaryMediaType,
+        advertiser_organization_id: orgId,
+      };
+      const asset = await createCreativeAsset(assetReq);
+      // 2. Attach to campaign
+      await attachCreative(campaign.id, { creative_asset_id: asset.id, sort_order: creatives.length });
+      // 3. Upload file
+      setShowPrimaryUpload(false);
+      await refreshCreatives();
+      await handleUpload(asset.id, primaryFile);
+      // 4. Reset primary upload form
+      setPrimaryFile(null);
+      setPrimaryCode("");
+      setPrimaryName("");
+      setPrimaryMediaType("image");
+    } catch (err: unknown) {
+      setPrimaryError(formatApiError(err));
+    } finally {
+      setPrimarySubmitting(false);
+    }
+  }
+
+  function resetPrimaryUpload() {
+    setPrimaryFile(null);
+    setPrimaryCode("");
+    setPrimaryName("");
+    setPrimaryMediaType("image");
+    setShowPrimaryUpload(false);
+    setPrimaryError(null);
   }
 
 
@@ -511,11 +580,21 @@ export default function CampaignDetailPage() {
   const { campaign, org, brand, contract, approvals } = data;
   const isDraft = campaign.status === "draft";
   const isPendingApproval = campaign.status === "pending_approval";
+  const isApproved = campaign.status === "approved";
+  const isActive = campaign.status === "active";
+  const isPaused = campaign.status === "paused";
 
   // ── Tab content ──
 
   function renderOverview() {
     const canApprove = flights.length > 0 && placements.length > 0 && creatives.length > 0;
+    // CAMPAIGN-UX-001B: Readiness checklist
+    const deliverableCount = creatives.filter((c) => c.asset && c.asset.sha256_checksum && c.asset.sha256_checksum.length === 64).length;
+    const allReady = flights.length > 0 && placements.length > 0 && deliverableCount > 0;
+    const missingItems: string[] = [];
+    if (flights.length === 0) missingItems.push("рейс");
+    if (placements.length === 0) missingItems.push("размещение");
+    if (deliverableCount === 0) missingItems.push("креатив с файлом");
 
     async function handleSimulate() {
       setSimulationError(null);
@@ -558,7 +637,29 @@ export default function CampaignDetailPage() {
       <div style={css.section}>
         {/* ── Draft: submit for approval ── */}
         {isDraft && (
-          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#f0f9ff", borderRadius: 6, border: "1px solid #bae6fd" }}>
+          <>
+          <div data-testid="campaign-readiness-checklist" style={{ marginBottom: "1rem", padding: "0.75rem", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+            <div style={{ fontWeight: 600, fontSize: "0.85rem", marginBottom: "0.5rem", color: "#334155" }}>Готовность к отправке</div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0", fontSize: "0.8rem" }}>
+              <span data-testid="readiness-flight-status" style={{ fontWeight: 500, color: flights.length > 0 ? "#16a34a" : "#94a3b8", minWidth: "1.2rem" }}>{flights.length > 0 ? "✅" : "—"}</span>
+              <span style={{ flex: 1, color: flights.length > 0 ? "#166534" : "#64748b" }}>Рейс (flight){flights.length > 0 ? ` — ${flights.length} шт.` : ""}</span>
+              {flights.length === 0 && <button type="button" data-testid="readiness-flight-action" onClick={() => setActiveTab("flights")} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Добавить рейс →</button>}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0", fontSize: "0.8rem" }}>
+              <span data-testid="readiness-placement-status" style={{ fontWeight: 500, color: placements.length > 0 ? "#16a34a" : "#94a3b8", minWidth: "1.2rem" }}>{placements.length > 0 ? "✅" : "—"}</span>
+              <span style={{ flex: 1, color: placements.length > 0 ? "#166534" : "#64748b" }}>Размещение (placement){placements.length > 0 ? ` — ${placements.length} шт.` : ""}</span>
+              {placements.length === 0 && <button type="button" data-testid="readiness-placement-action" onClick={() => setActiveTab("placements")} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Добавить размещение →</button>}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0", fontSize: "0.8rem" }}>
+              <span data-testid="readiness-creative-status" style={{ fontWeight: 500, color: deliverableCount > 0 ? "#16a34a" : "#94a3b8", minWidth: "1.2rem" }}>{deliverableCount > 0 ? "✅" : "—"}</span>
+              <span style={{ flex: 1, color: deliverableCount > 0 ? "#166534" : "#64748b" }}>Креатив с файлом{deliverableCount > 0 ? ` — ${deliverableCount} шт.` : ""}</span>
+              {deliverableCount === 0 && <button type="button" data-testid="readiness-creative-action" onClick={() => setActiveTab("creatives")} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Загрузить креатив →</button>}
+            </div>
+            <div data-testid="readiness-submit-status" style={{ marginTop: "0.5rem", padding: "0.5rem", borderRadius: 4, fontSize: "0.8rem", background: allReady ? "#f0fdf4" : "#fff7ed", color: allReady ? "#166534" : "#9a3412", border: allReady ? "1px solid #86efac" : "1px solid #fdba74" }}>
+              {allReady ? "✅ Можно отправить на согласование — все условия выполнены." : `Осталось: ${missingItems.join(", ")}.`}
+            </div>
+          </div>
+          <div data-testid="campaign-submit-hint" style={{ marginBottom: "1rem", padding: "0.75rem", background: "#f0f9ff", borderRadius: 6, border: "1px solid #bae6fd" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
               <div style={{ flex: 1, fontSize: "0.825rem", color: "#0c4a6e" }}>
                 Кампания в черновике.
@@ -567,12 +668,14 @@ export default function CampaignDetailPage() {
               {/* ── S-089 Simulation ── */}
               {canApprove && (
                 <button type="button" style={{ ...css.secondaryBtn, fontSize: "0.75rem" }}
-                  onClick={handleSimulate} disabled={simulationLoading}>
+                  onClick={handleSimulate} disabled={simulationLoading}
+                  data-testid="simulate-btn">
                   {simulationLoading ? "Симуляция..." : "🧪 Симуляция"}
                 </button>
               )}
               <button
                 type="button"
+                data-testid="campaign-submit-btn"
                 style={{
                   ...css.primaryBtn,
                   ...((!canApprove || approvalSubmitting) ? { background: "#9ca3af", cursor: "default" } : {}),
@@ -584,27 +687,29 @@ export default function CampaignDetailPage() {
               </button>
             </div>
             {approvalError && (
-              <div style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
+              <div data-testid="campaign-submit-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
             )}
           </div>
+          </>
         )}
 
         {/* ── S-089 Simulation results ── */}
         {simulationResult && (
-          <div style={{ marginBottom: "1rem", padding: "0.75rem", border: "1px solid var(--rmp-border-strong)", borderRadius: 6, fontSize: "0.8rem" }}>
-            <strong style={{ color: simulationResult.overall_fit ? "var(--rmp-success-600)" : "var(--rmp-danger-600)" }}>
+          <div data-testid="simulation-result" style={{ marginBottom: "1rem", padding: "0.75rem", border: "1px solid var(--rmp-border-strong)", borderRadius: 6, fontSize: "0.8rem" }}>
+            <strong data-testid="simulation-verdict" style={{ color: simulationResult.overall_fit ? "var(--rmp-success-600)" : "var(--rmp-danger-600)" }}>
               {simulationResult.overall_fit ? "✅ Кампания помещается" : "❌ Кампания не помещается"}
             </strong>
             <span style={{ marginLeft: "0.5rem", color: "#64748b" }}>
-              ({simulationResult.blocking_count} блок., {simulationResult.warning_count} пред.)
+              (<span data-testid="simulation-blocking-count">{simulationResult.blocking_count}</span> блок., <span data-testid="simulation-warning-count">{simulationResult.warning_count}</span> пред.)
             </span>
             {simulationResult.placements.map((p, i) => (
-              <div key={i} style={{ marginTop: "0.4rem", padding: "0.35rem", background: p.fit ? "#f0fdf4" : "#fef2f2", borderRadius: 4 }}>
+              <div key={i} data-testid={`simulation-placement-${i}`} style={{ marginTop: "0.4rem", padding: "0.35rem", background: p.fit ? "#f0fdf4" : "#fef2f2", borderRadius: 4 }}>
                 <span style={{ fontWeight: 600 }}>{p.surface_code || p.surface_id}</span>
-                {" "}— fill {p.slot_fill_percent}% ({p.total_requested}/{p.total_available})
+                {" "}— fill <span data-testid={`simulation-slot-fill-${i}`}>{p.slot_fill_percent}</span>%
+                (<span data-testid={`simulation-total-requested-${i}`}>{p.total_requested}</span>/<span data-testid={`simulation-total-available-${i}`}>{p.total_available}</span>)
                 {!p.fit && <span style={{ color: "var(--rmp-danger-600)", marginLeft: "0.5rem" }}>⚠ конфликт</span>}
                 {p.conflicts.length > 0 && (
-                  <ul style={{ margin: "0.15rem 0 0", paddingLeft: "1.2rem", fontSize: "0.75rem" }}>
+                  <ul data-testid={`simulation-conflicts-${i}`} style={{ margin: "0.15rem 0 0", paddingLeft: "1.2rem", fontSize: "0.75rem" }}>
                     {p.conflicts.slice(0, 3).map((c, j) => (
                       <li key={j} style={{ color: c.severity === "blocking" ? "var(--rmp-danger-600)" : "#92400e" }}>
                         {c.message}
@@ -618,7 +723,7 @@ export default function CampaignDetailPage() {
           </div>
         )}
         {simulationError && (
-          <div style={{ color: "#dc2626", fontSize: "0.8rem", marginBottom: "1rem" }}>{simulationError}</div>
+          <div data-testid="simulation-error" style={{ color: "#dc2626", fontSize: "0.8rem", marginBottom: "1rem" }}>{simulationError}</div>
         )}
 
         {/* ── Pending approval: approve / reject or read-only ── */}
@@ -633,6 +738,7 @@ export default function CampaignDetailPage() {
                 <>
                   <button
                     type="button"
+                    data-testid="campaign-approve-btn"
                     style={{ ...css.primaryBtn, background: "#059669" }}
                     disabled={approvalSubmitting}
                     onClick={async () => {
@@ -653,6 +759,7 @@ export default function CampaignDetailPage() {
                   </button>
                   <button
                     type="button"
+                    data-testid="campaign-reject-btn"
                     style={{ ...css.cancelBtn, borderColor: "#dc2626", color: "#dc2626" }}
                     disabled={approvalSubmitting}
                     onClick={() => { setShowReject(true); setRejectReason(""); setApprovalError(null); }}
@@ -663,7 +770,7 @@ export default function CampaignDetailPage() {
               )}
             </div>
             {approvalError && (
-              <div style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
+              <div data-testid="campaign-approval-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
             )}
             {/* Reject reason dialog */}
             {hasApprovePerm && showReject && (
@@ -672,6 +779,7 @@ export default function CampaignDetailPage() {
                   Причина отклонения *
                 </label>
                 <textarea
+                  data-testid="campaign-reject-reason"
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   style={{ width: "100%", minHeight: 60, padding: "0.4rem", border: "1px solid #d1d5db", borderRadius: 3, fontSize: "0.825rem", boxSizing: "border-box" }}
@@ -682,6 +790,7 @@ export default function CampaignDetailPage() {
                 <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
                   <button
                     type="button"
+                    data-testid="campaign-reject-confirm"
                     style={{ ...css.primaryBtn, background: "#dc2626" }}
                     disabled={!rejectReason.trim() || approvalSubmitting}
                     onClick={async () => {
@@ -690,6 +799,7 @@ export default function CampaignDetailPage() {
                       setApprovalSubmitting(true);
                       try {
                         const res = await rejectCampaign(campaign.id, { reason: rejectReason.trim() });
+                        setLastRejectionReason(rejectReason.trim());
                         await refreshCampaign();
                         if (data) setData({ ...data, campaign: { ...data.campaign, status: res.new_status } });
                         setShowReject(false);
@@ -715,7 +825,98 @@ export default function CampaignDetailPage() {
           </div>
         )}
 
-        {!isDraft && !isPendingApproval && (
+        {/* ── Rejected: show reason ── */}
+        {lastRejectionReason && (
+          <div data-testid="campaign-rejection-reason-display" style={{ marginBottom: "1rem", padding: "0.75rem", background: "#fef2f2", borderRadius: 6, border: "1px solid #fecaca" }}>
+            <div style={{ fontSize: "0.8rem", fontWeight: 500, color: "#991b1b", marginBottom: "0.25rem" }}>Причина отклонения:</div>
+            <div style={{ fontSize: "0.825rem", color: "#7f1d1d" }}>{lastRejectionReason}</div>
+          </div>
+        )}
+
+        {/* ── Approved: activate ── */}
+        {isApproved && (
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasManagePerm ? "#f0fdf4" : "#f8fafc", borderRadius: 6, border: hasManagePerm ? "1px solid #bbf7d0" : "1px solid #e2e8f0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, fontSize: "0.825rem", color: hasManagePerm ? "#166534" : "#64748b" }}>
+                Кампания согласована и готова к запуску.
+                {!hasManagePerm && " У вас нет прав на управление кампанией."}
+              </div>
+              {hasManagePerm && (
+                <button
+                  type="button"
+                  data-testid="campaign-activate-btn"
+                  style={{ ...css.primaryBtn, background: "#059669" }}
+                  disabled={approvalSubmitting}
+                  onClick={async () => {
+                    setApprovalError(null);
+                    setApprovalSubmitting(true);
+                    try {
+                      const res = await activateCampaign(campaign.id);
+                      await refreshCampaign();
+                      if (data) setData({ ...data, campaign: { ...data.campaign, status: res.new_status } });
+                    } catch (e: unknown) {
+                      setApprovalError(formatApiError(e));
+                    } finally {
+                      setApprovalSubmitting(false);
+                    }
+                  }}
+                >
+                  {approvalSubmitting ? "..." : "Активировать"}
+                </button>
+              )}
+            </div>
+            {approvalError && (
+              <div data-testid="campaign-lifecycle-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
+            )}
+          </div>
+        )}
+
+        {/* ── Active: pause ── */}
+        {isActive && (
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasManagePerm ? "#f0fdf4" : "#f8fafc", borderRadius: 6, border: hasManagePerm ? "1px solid #bbf7d0" : "1px solid #e2e8f0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, fontSize: "0.825rem", color: hasManagePerm ? "#166534" : "#64748b" }}>
+                Кампания активна — показы идут.
+                {!hasManagePerm && " У вас нет прав на управление кампанией."}
+              </div>
+              {hasManagePerm && (
+                <button
+                  type="button"
+                  data-testid="campaign-pause-btn"
+                  style={{ ...css.primaryBtn, background: "#9333ea" }}
+                  disabled={approvalSubmitting}
+                  onClick={async () => {
+                    setApprovalError(null);
+                    setApprovalSubmitting(true);
+                    try {
+                      const res = await pauseCampaign(campaign.id);
+                      await refreshCampaign();
+                      if (data) setData({ ...data, campaign: { ...data.campaign, status: res.new_status } });
+                    } catch (e: unknown) {
+                      setApprovalError(formatApiError(e));
+                    } finally {
+                      setApprovalSubmitting(false);
+                    }
+                  }}
+                >
+                  {approvalSubmitting ? "..." : "Приостановить"}
+                </button>
+              )}
+            </div>
+            {approvalError && (
+              <div data-testid="campaign-lifecycle-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
+            )}
+          </div>
+        )}
+
+        {/* ── Paused: status info ── */}
+        {isPaused && (
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#faf5ff", borderRadius: 6, border: "1px solid #e9d5ff", fontSize: "0.825rem", color: "#6b21a8" }}>
+            Кампания приостановлена. Показы остановлены.
+          </div>
+        )}
+
+        {!isDraft && !isPendingApproval && !isApproved && !isActive && !isPaused && (
           <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: "0.825rem", color: "#64748b" }}>
             Изменения доступны только в статусе «Черновик». Текущий статус: {statusLabel(campaign.status)}.
           </div>
@@ -724,7 +925,7 @@ export default function CampaignDetailPage() {
         <div style={css.fieldGrid}>
           <F label="Код" value={campaign.code} />
           <F label="Название" value={campaign.name} />
-          <F label="Статус" value={<Badge s={campaign.status} />} />
+          <F label="Статус" value={<span data-testid="campaign-status-badge"><Badge s={campaign.status} /></span>} />
           <F label="Приоритет" value={String(campaign.priority)} />
           <F label="Бюджет" value={fmtAmount(campaign.budget_limit_amount, campaign.budget_limit_currency)} />
           <F label="Период" value={`${fmtDate(campaign.start_at)} – ${fmtDate(campaign.end_at)}`} />
@@ -796,7 +997,7 @@ export default function CampaignDetailPage() {
         {isDraft && (
           <div style={{ marginBottom: "0.75rem" }}>
             {!showFlightAdd ? (
-              <button type="button" style={css.addBtn} onClick={() => setShowFlightAdd(true)}>
+              <button type="button" style={css.addBtn} onClick={() => setShowFlightAdd(true)} data-testid="flight-add-btn">
                 + Добавить флайт
               </button>
             ) : (
@@ -808,18 +1009,18 @@ export default function CampaignDetailPage() {
                   </div>
                   <div>
                     <label htmlFor="f-start" style={css.miniLabel}>Начало *</label>
-                    <input id="f-start" type="date" value={flightStart} onChange={(e) => setFlightStart(e.target.value)} style={css.miniInput} />
+                    <input id="f-start" type="date" value={flightStart} onChange={(e) => setFlightStart(e.target.value)} style={css.miniInput} data-testid="flight-start" />
                   </div>
                   <div>
                     <label htmlFor="f-end" style={css.miniLabel}>Конец *</label>
-                    <input id="f-end" type="date" value={flightEnd} onChange={(e) => setFlightEnd(e.target.value)} style={css.miniInput} />
+                    <input id="f-end" type="date" value={flightEnd} onChange={(e) => setFlightEnd(e.target.value)} style={css.miniInput} data-testid="flight-end" />
                   </div>
                   <div>
                     <label htmlFor="f-prio" style={css.miniLabel}>Приоритет</label>
                     <input id="f-prio" type="number" value={flightPriority} onChange={(e) => setFlightPriority(e.target.value)} min={0} max={99} style={{ ...css.miniInput, width: 70 }} />
                   </div>
                   <div style={{ display: "flex", alignItems: "flex-end", gap: "0.25rem" }}>
-                    <button type="submit" style={css.primaryBtn} disabled={flightSubmitting}>
+                    <button type="submit" style={css.primaryBtn} disabled={flightSubmitting} data-testid="flight-submit">
                       {flightSubmitting ? "..." : "Добавить"}
                     </button>
                     <button type="button" style={css.cancelBtn} onClick={resetFlightForm}>Отмена</button>
@@ -981,7 +1182,7 @@ export default function CampaignDetailPage() {
         {isDraft && (
           <div style={{ marginBottom: "0.75rem" }}>
             {!showPlacementAdd ? (
-              <button type="button" style={css.addBtn} onClick={() => setShowPlacementAdd(true)}>
+              <button type="button" style={css.addBtn} onClick={() => setShowPlacementAdd(true)} data-testid="placement-add-btn">
                 + Добавить плейсмент
               </button>
             ) : (
@@ -991,7 +1192,7 @@ export default function CampaignDetailPage() {
                     <>
                       <div>
                         <label style={css.miniLabel}>Поверхность</label>
-                        <select value={placementSurface} onChange={(e) => setPlacementSurface(e.target.value)} style={{ ...css.miniSelect, minWidth: 200 }}>
+                        <select value={placementSurface} onChange={(e) => setPlacementSurface(e.target.value)} style={{ ...css.miniSelect, minWidth: 200 }} data-testid="placement-surface">
                           <option value="">— не выбрана —</option>
                           {refSurfaces.map((s) => (
                             <option key={s.id} value={s.id}>{s.code} — {storeLabel(s.store_id)} ({s.resolution_w}×{s.resolution_h})</option>
@@ -1029,7 +1230,7 @@ export default function CampaignDetailPage() {
                     <input type="number" value={placementMaxImp} onChange={(e) => setPlacementMaxImp(e.target.value)} min={0} style={{ ...css.miniInput, width: 90 }} />
                   </div>
                   <div style={{ display: "flex", alignItems: "flex-end", gap: "0.25rem" }}>
-                    <button type="submit" style={css.primaryBtn} disabled={placementSubmitting}>
+                    <button type="submit" style={css.primaryBtn} disabled={placementSubmitting} data-testid="placement-submit">
                       {placementSubmitting ? "..." : "Добавить"}
                     </button>
                     <button type="button" style={css.cancelBtn} onClick={resetPlacementForm}>Отмена</button>
@@ -1140,6 +1341,7 @@ export default function CampaignDetailPage() {
           code: assetCode.trim(),
           name: assetName.trim(),
           media_type: assetMediaType,
+          advertiser_organization_id: data?.org?.id || undefined,
           sha256_checksum: assetChecksum.trim() || undefined,
           file_size_bytes: assetSize ? parseInt(assetSize, 10) : null,
           resolution_w: assetW ? parseInt(assetW, 10) : null,
@@ -1188,19 +1390,88 @@ export default function CampaignDetailPage() {
 
     return (
       <div>
+        {/* ── CAMPAIGN-UX-001A: Primary upload path — visible, single-flow ── */}
+        {isDraft && (
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#f0f9ff", border: "1px solid #7dd3fc", borderRadius: 6 }}>
+            {!showPrimaryUpload ? (
+              <div data-testid="creative-upload-primary">
+                <div style={{ fontWeight: 600, fontSize: "0.85rem", marginBottom: "0.4rem", color: "#0369a1" }}>
+                  Загрузить файл с ПК
+                </div>
+                <p style={{ fontSize: "0.75rem", color: "#475569", margin: "0 0 0.5rem 0" }}>
+                  Выберите файл → заполните метаданные → готово. Креатив будет автоматически прикреплён к кампании.
+                </p>
+                <button
+                  type="button"
+                  data-testid="creative-upload-select-file"
+                  style={{ ...css.primaryBtn, padding: "0.5rem 1rem", fontSize: "0.85rem" }}
+                  onClick={() => primaryUploadInputRef.current?.click()}
+                >
+                  Выбрать файл
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handlePrimaryUploadSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "#0369a1" }}>
+                  Новый креатив из файла
+                </div>
+                {primaryFile && (
+                  <div style={{ padding: "0.4rem 0.6rem", background: "#e0f2fe", borderRadius: 4, fontSize: "0.8rem", color: "#0c4a6e" }}>
+                    📄 {primaryFile.name} ({(primaryFile.size / 1024).toFixed(0)} КБ)
+                  </div>
+                )}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                  <div>
+                    <label htmlFor="pu-code" style={css.miniLabel}>Код *</label>
+                    <input id="pu-code" type="text" value={primaryCode} onChange={(e) => setPrimaryCode(e.target.value)}
+                      style={css.miniInput} maxLength={64} required data-testid="creative-upload-primary-code" />
+                  </div>
+                  <div>
+                    <label htmlFor="pu-name" style={css.miniLabel}>Название *</label>
+                    <input id="pu-name" type="text" value={primaryName} onChange={(e) => setPrimaryName(e.target.value)}
+                      style={css.miniInput} maxLength={255} required data-testid="creative-upload-primary-name" />
+                  </div>
+                  <div>
+                    <label htmlFor="pu-type" style={css.miniLabel}>Тип медиа</label>
+                    <select id="pu-type" value={primaryMediaType} onChange={(e) => setPrimaryMediaType(e.target.value)} style={css.miniSelect}>
+                      {MEDIA_TYPE_LABELS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: "0.25rem" }}>
+                  <button type="submit" style={css.primaryBtn} disabled={primarySubmitting} data-testid="creative-upload-metadata-submit">
+                    {primarySubmitting ? "Загрузка..." : "Загрузить"}
+                  </button>
+                  <button type="button" style={css.cancelBtn} onClick={resetPrimaryUpload}>Отмена</button>
+                </div>
+                {primaryError && <div data-testid="creative-upload-primary-error" style={{ color: "#dc2626", fontSize: "0.8rem" }}>{primaryError}</div>}
+              </form>
+            )}
+          </div>
+        )}
+
+        {/* ── Existing paths (secondary) ── */}
+        {isDraft && !showPrimaryUpload && (
+          <div style={{ marginBottom: "0.25rem", fontSize: "0.75rem", color: "#94a3b8", fontWeight: 500 }}>
+            Другие способы добавить креатив ↓
+          </div>
+        )}
+
         {/* ── Attach existing creative ── */}
         {isDraft && (
           <div style={{ marginBottom: "0.75rem" }}>
             {!showAttach ? (
-              <button type="button" style={css.addBtn} onClick={() => { setShowAttach(true); setAttachError(null); }}>
+              <button type="button" style={css.addBtn} onClick={() => { setShowAttach(true); setAttachError(null); }} data-testid="creative-attach-btn">
                 + Прикрепить существующий креатив
               </button>
             ) : (
               <form onSubmit={async (e) => { e.preventDefault();
-                if (!attachAssetId) { setAttachError("Выберите креатив"); return; }
+                // Read from DOM ref for Playwright compatibility (select_option bypasses React onChange)
+                const selectedId = attachSelectRef.current?.value || attachAssetId;
+                if (!selectedId) { setAttachError("Выберите креатив"); return; }
                 setAttachSubmitting(true); setAttachError(null);
                 try {
-                  await attachCreative(campaign.id, { creative_asset_id: attachAssetId, sort_order: creatives.length });
+                  await attachCreative(campaign.id, { creative_asset_id: selectedId, sort_order: creatives.length });
                   await refreshCreatives();
                   setAttachAssetId(""); setShowAttach(false);
                 } catch (err: unknown) { setAttachError(formatApiError(err)); }
@@ -1210,8 +1481,8 @@ export default function CampaignDetailPage() {
                   <div>
                     <label style={css.miniLabel}>Креатив</label>
                     {unattached.length > 0 ? (
-                      <select value={attachAssetId} onChange={(e) => setAttachAssetId(e.target.value)}
-                        style={{ ...css.miniSelect, minWidth: 260 }}>
+                      <select ref={attachSelectRef} defaultValue={attachAssetId || ""} onChange={(e) => setAttachAssetId(e.target.value)}
+                        style={{ ...css.miniSelect, minWidth: 260 }} data-testid="creative-attach-select">
                         <option value="">— выберите —</option>
                         {unattached.map((a) => (
                           <option key={a.id} value={a.id}>
@@ -1238,7 +1509,7 @@ export default function CampaignDetailPage() {
                   })()}
                   {unattached.length > 0 && (
                     <div style={{ display: "flex", gap: "0.25rem", alignItems: "flex-end" }}>
-                      <button type="submit" style={css.primaryBtn} disabled={attachSubmitting}>
+                      <button type="submit" style={css.primaryBtn} disabled={attachSubmitting} data-testid="creative-attach-submit">
                         {attachSubmitting ? "..." : "Прикрепить"}
                       </button>
                       <button type="button" style={css.cancelBtn} onClick={() => { setShowAttach(false); setAttachError(null); setAttachAssetId(""); }}>
@@ -1257,7 +1528,7 @@ export default function CampaignDetailPage() {
         {isDraft && (
           <div style={{ marginBottom: "0.75rem" }}>
             {!showAssetAdd ? (
-              <button type="button" style={css.addBtn} onClick={() => { setShowAssetAdd(true); setAssetError(null); }}>
+              <button type="button" style={css.addBtn} onClick={() => { setShowAssetAdd(true); setAssetError(null); }} data-testid="creative-add-library-btn">
                 + Добавить креатив в библиотеку
               </button>
             ) : (
@@ -1265,11 +1536,11 @@ export default function CampaignDetailPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", marginBottom: "0.5rem" }}>
                   <div>
                     <label htmlFor="ca-code" style={css.miniLabel}>Код *</label>
-                    <input id="ca-code" type="text" value={assetCode} onChange={(e) => setAssetCode(e.target.value)} style={css.miniInput} maxLength={64} required />
+                    <input id="ca-code" type="text" value={assetCode} onChange={(e) => setAssetCode(e.target.value)} style={css.miniInput} maxLength={64} required data-testid="creative-code" />
                   </div>
                   <div>
                     <label htmlFor="ca-name" style={css.miniLabel}>Название *</label>
-                    <input id="ca-name" type="text" value={assetName} onChange={(e) => setAssetName(e.target.value)} style={css.miniInput} maxLength={255} required />
+                    <input id="ca-name" type="text" value={assetName} onChange={(e) => setAssetName(e.target.value)} style={css.miniInput} maxLength={255} required data-testid="creative-name" />
                   </div>
                   <div>
                     <label htmlFor="ca-type" style={css.miniLabel}>Тип медиа</label>
@@ -1309,7 +1580,7 @@ export default function CampaignDetailPage() {
                 {/* S-017: File upload is now active — use the "Загрузить файл" button on each asset */}
 
                 <div style={{ display: "flex", gap: "0.25rem" }}>
-                  <button type="submit" style={css.primaryBtn} disabled={assetSubmitting}>
+                  <button type="submit" style={css.primaryBtn} disabled={assetSubmitting} data-testid="creative-add-submit">
                     {assetSubmitting ? "..." : "Добавить в библиотеку"}
                   </button>
                   <button type="button" style={css.cancelBtn} onClick={resetAssetForm}>Отмена</button>
@@ -1354,31 +1625,66 @@ export default function CampaignDetailPage() {
           </details>
         )}
 
+        {/* ── CAMPAIGN-UX-001A: Hidden file inputs (moved outside conditional for primary path) ── */}
+        {/* Primary upload file input */}
+        <input
+          ref={primaryUploadInputRef}
+          type="file"
+          accept=".png,.jpg,.jpeg,.webp,.gif,.mp4"
+          style={{ display: "none" }}
+          data-testid="creative-upload-primary-file-input"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            setPrimaryFile(f);
+            // Auto-detect media type from extension
+            const ext = f.name.split(".").pop()?.toLowerCase();
+            if (ext === "mp4") setPrimaryMediaType("video");
+            else if (ext === "html" || ext === "htm") setPrimaryMediaType("html");
+            else setPrimaryMediaType("image");
+            // Auto-fill name from filename (without extension)
+            const baseName = f.name.replace(/\.[^.]+$/, "");
+            setPrimaryName(baseName);
+            // Auto-generate code from filename
+            setPrimaryCode(baseName.toUpperCase().replace(/[^A-Z0-9]/g, "_").slice(0, 20) || "UPLOAD");
+            setShowPrimaryUpload(true);
+            e.target.value = "";
+          }}
+        />
+        {/* Legacy upload file input (for existing table button) */}
+        <input
+          ref={uploadInputRef}
+          type="file"
+          accept=".png,.jpg,.jpeg,.webp,.gif,.mp4"
+          style={{ display: "none" }}
+          data-testid="creative-file-input"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            // Find a metadata_only asset to upload to
+            // Use the first metadata_only creative asset
+            const metaCreative = creatives.find(
+              (c) => c.asset && !isDeliverable(c.asset),
+            );
+            if (metaCreative?.asset) {
+              handleUpload(metaCreative.asset.id, f);
+            }
+            // Reset input so same file can be re-selected
+            e.target.value = "";
+          }}
+        />
+
         {creatives.length === 0 ? (
           <p style={css.muted}>У этой кампании пока нет креативов.</p>
         ) : (
           <>
-            {/* S-017: Hidden file input + inline upload progress */}
-            <input
-              ref={uploadInputRef}
-              type="file"
-              accept=".png,.jpg,.jpeg,.webp,.gif,.mp4"
-              style={{ display: "none" }}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (!f) return;
-                // Find a metadata_only asset to upload to
-                // Use the first metadata_only creative asset
-                const metaCreative = creatives.find(
-                  (c) => c.asset && !isDeliverable(c.asset),
-                );
-                if (metaCreative?.asset) {
-                  handleUpload(metaCreative.asset.id, f);
-                }
-                // Reset input so same file can be re-selected
-                e.target.value = "";
-              }}
-            />
+            {/* S-017: Upload progress indicators */}
+            {uploadStage === "done" && uploadFile && (
+              <div data-testid="creative-upload-done" style={{ padding: "0.5rem 0.75rem", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 4, marginBottom: "0.5rem", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span style={{ fontWeight: 600, color: "#166534" }}>✅ Готов</span>
+                <span style={{ color: "#52525b" }}>{uploadFile.name}</span>
+              </div>
+            )}
             {uploadStage !== "idle" && uploadStage !== "done" && (
               <div style={{ padding: "0.5rem 0.75rem", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 4, marginBottom: "0.5rem", fontSize: "0.8rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
@@ -1394,7 +1700,7 @@ export default function CampaignDetailPage() {
                   </div>
                 )}
                 {uploadStage === "error" && (
-                  <div style={{ color: "#dc2626", marginTop: "0.35rem" }}>
+                  <div data-testid="creative-upload-error" style={{ color: "#dc2626", marginTop: "0.35rem" }}>
                     Ошибка: {uploadError || "Не удалось загрузить файл"}
                   </div>
                 )}
@@ -1434,7 +1740,7 @@ export default function CampaignDetailPage() {
                   <td style={css.miniTd}>
                     {cc.asset?.duration_ms != null ? `${(cc.asset.duration_ms / 1000).toFixed(1)}с` : "—"}
                   </td>
-                  <td style={css.miniTd}>
+                  <td style={css.miniTd} data-testid={`creative-status-${cc.asset?.code ?? i}`}>
                     {cc.asset
                       ? isDeliverable(cc.asset)
                         ? statusLabel(cc.asset.status)
@@ -1800,7 +2106,7 @@ export default function CampaignDetailPage() {
       </h2>
       <div style={css.tabBar}>
         {tabs.map((t) => (
-          <button key={t} type="button" style={{ ...css.tab, ...(activeTab === t ? css.tabActive : {}) }} onClick={() => setActiveTab(t)}>
+          <button key={t} type="button" style={{ ...css.tab, ...(activeTab === t ? css.tabActive : {}) }} onClick={() => setActiveTab(t)} data-testid={`tab-${t}`}>
             {tabNames[t]}
             {t === "flights" && flights.length > 0 && <span style={css.tabCount}>{flights.length}</span>}
             {t === "placements" && placements.length > 0 && <span style={css.tabCount}>{placements.length}</span>}

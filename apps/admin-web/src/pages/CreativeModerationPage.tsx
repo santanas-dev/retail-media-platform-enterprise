@@ -135,10 +135,10 @@ export default function CreativeModerationPage() {
   ];
 
   return (
-    <div>
+    <div data-testid="moderation-page">
       <PageHeader title="Модерация креативов" />
       {actionError && (
-        <div style={{ padding: "var(--rmp-space-2) var(--rmp-space-4)", marginBottom: "var(--rmp-space-2)", background: "var(--rmp-danger-50)", color: "var(--rmp-danger-600)", borderRadius: "var(--rmp-radius-sm)", fontSize: "var(--rmp-font-size-base)" }}>
+        <div data-testid="moderation-action-error" style={{ padding: "var(--rmp-space-2) var(--rmp-space-4)", marginBottom: "var(--rmp-space-2)", background: "var(--rmp-danger-50)", color: "var(--rmp-danger-600)", borderRadius: "var(--rmp-radius-sm)", fontSize: "var(--rmp-font-size-base)" }}>
           {actionError}
         </div>
       )}
@@ -146,6 +146,7 @@ export default function CreativeModerationPage() {
         {FILTERS.map((f) => (
           <button
             key={f.value}
+            data-testid={`moderation-filter-${f.value}`}
             onClick={() => setFilter(f.value)}
             style={{
               padding: "var(--rmp-space-1) var(--rmp-space-3)", borderRadius: "var(--rmp-radius-sm)",
@@ -159,10 +160,10 @@ export default function CreativeModerationPage() {
           </button>
         ))}
       </div>
-      {loading && <p style={{ color: "var(--rmp-text-secondary)" }}>Загрузка...</p>}
-      {error && !loading && <p style={{ color: "var(--rmp-danger-600)" }}>{error}</p>}
+      {loading && <p data-testid="moderation-loading" style={{ color: "var(--rmp-text-secondary)" }}>Загрузка...</p>}
+      {error && !loading && <p data-testid="moderation-error" style={{ color: "var(--rmp-danger-600)" }}>{error}</p>}
       {!loading && !error && items.length === 0 && (
-        <p style={{ color: "var(--rmp-text-secondary)" }}>Очередь пуста</p>
+        <p data-testid="moderation-empty" style={{ color: "var(--rmp-text-secondary)" }}>Очередь пуста</p>
       )}
       {!loading && items.length > 0 && (
         <table className="rmp-table">
@@ -180,7 +181,7 @@ export default function CreativeModerationPage() {
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.id}>
+              <tr key={item.id} data-testid={`moderation-row-${item.code}`}>
                 <td>
                   <div style={{ fontWeight: 600 }}>{item.name}</div>
                   <div style={{ color: "var(--rmp-text-secondary)", fontSize: "var(--rmp-font-size-xs)" }}>{item.code}</div>
@@ -194,9 +195,11 @@ export default function CreativeModerationPage() {
                 </td>
                 <td>{statusLabel(item.status)}</td>
                 <td>
-                  <StatusBadge variant={modVariant(item.moderation_status)}>
-                    {moderationStatusLabel(item.moderation_status)}
-                  </StatusBadge>
+                  <span data-testid={`moderation-status-${item.code}`}>
+                    <StatusBadge variant={modVariant(item.moderation_status)}>
+                      {moderationStatusLabel(item.moderation_status)}
+                    </StatusBadge>
+                  </span>
                   {item.moderation_notes && item.moderation_status === "rejected" && (
                     <div style={{ color: "var(--rmp-text-secondary)", fontSize: "var(--rmp-font-size-xs)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {item.moderation_notes}
@@ -208,19 +211,19 @@ export default function CreativeModerationPage() {
                   {rejectingId === item.id ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       <input
-                        type="text" placeholder="Причина отказа"
+                        type="text" placeholder="Причина отказа" data-testid={`moderation-reject-reason-${item.code}`}
                         value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
                         style={{ padding: "var(--rmp-space-1) var(--rmp-space-2)", fontSize: "var(--rmp-font-size-xs)", border: "1px solid var(--rmp-border-strong)", borderRadius: "var(--rmp-radius-sm)", width: 140 }}
                       />
                       <div style={{ display: "flex", gap: 4 }}>
-                        <button onClick={() => handleReject(item.id)} disabled={!rejectReason.trim()} style={actionBtn("var(--rmp-danger-600)", !rejectReason.trim())}>Отклонить</button>
-                        <button onClick={() => setRejectingId(null)} style={actionBtn("var(--rmp-text-secondary)")}>Отмена</button>
+                        <button data-testid={`moderation-reject-confirm-${item.code}`} onClick={() => handleReject(item.id)} disabled={!rejectReason.trim()} style={actionBtn("var(--rmp-danger-600)", !rejectReason.trim())}>Отклонить</button>
+                        <button data-testid={`moderation-reject-cancel-${item.code}`} onClick={() => setRejectingId(null)} style={actionBtn("var(--rmp-text-secondary)")}>Отмена</button>
                       </div>
                     </div>
                   ) : (
                     <div style={{ display: "flex", gap: 4 }}>
-                      <button onClick={() => handleApprove(item.id)} style={actionBtn("var(--rmp-success-600)")}>Одобрить</button>
-                      <button onClick={() => openReject(item.id)} style={actionBtn("var(--rmp-danger-600)")}>Отклонить</button>
+                      <button data-testid={`moderation-approve-${item.code}`} onClick={() => handleApprove(item.id)} style={actionBtn("var(--rmp-success-600)")}>Одобрить</button>
+                      <button data-testid={`moderation-reject-${item.code}`} onClick={() => openReject(item.id)} style={actionBtn("var(--rmp-danger-600)")}>Отклонить</button>
                     </div>
                   )}
                 </td>

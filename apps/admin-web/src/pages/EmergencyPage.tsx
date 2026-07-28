@@ -104,7 +104,7 @@ export default function EmergencyPage() {
   const isActive = status?.active === true;
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} data-testid="emergency-page">
       <h1 style={styles.h1}>Аварийный режим</h1>
 
       {loading && <div style={styles.loading}>Загрузка...</div>}
@@ -113,15 +113,15 @@ export default function EmergencyPage() {
           Недостаточно прав для доступа к аварийному режиму. Требуется разрешение emergency.read.
         </div>
       )}
-      {error && <div style={styles.error}>{error}</div>}
-      {successMsg && <div style={styles.success}>{successMsg}</div>}
+      {error && <div style={styles.error} data-testid="emergency-error">{error}</div>}
+      {successMsg && <div style={styles.success} data-testid="emergency-success">{successMsg}</div>}
 
       {status && (
         <>
           <div style={styles.card}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.75rem" }}>
               <span>Статус:</span>
-              <span style={isActive ? styles.statusActive : styles.statusInactive}>
+              <span style={isActive ? styles.statusActive : styles.statusInactive} data-testid="emergency-status">
                 {isActive ? "АКТИВЕН" : "НЕ АКТИВЕН"}
               </span>
             </div>
@@ -138,7 +138,7 @@ export default function EmergencyPage() {
           </div>
 
           {isActive && (
-            <div style={styles.warning}>
+            <div style={styles.warning} data-testid="emergency-warning">
               <strong>⚠️ Внимание:</strong> аварийный режим активирован на уровне платформы.
               Состояние сохранено в backend, события аудита и outbox записаны.
               Остановка показа на реальных устройствах произойдёт только после реализации
@@ -153,13 +153,14 @@ export default function EmergencyPage() {
                 style={styles.textarea}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
+                data-testid="emergency-reason-input"
                 placeholder="Опишите причину включения аварийного режима"
                 maxLength={500}
               />
               {confirmMode === "activate" ? (
                 <div style={styles.confirmRow}>
                   <span style={{ color: "#991b1b", fontWeight: 600 }}>Подтвердите активацию:</span>
-                  <button style={styles.btnDanger} disabled={!reason.trim()} onClick={handleActivate}>
+                  <button style={styles.btnDanger} disabled={!reason.trim()} onClick={handleActivate} data-testid="emergency-confirm-activate">
                     Да, активировать
                   </button>
                   <button style={styles.btnSecondary} onClick={() => { setConfirmMode(null); setReason(""); }}>
@@ -171,6 +172,7 @@ export default function EmergencyPage() {
                   style={{ ...styles.btnDanger, marginTop: "0.5rem" }}
                   disabled={!reason.trim()}
                   onClick={() => setConfirmMode("activate")}
+                  data-testid="emergency-activate-btn"
                 >
                   Активировать аварийный режим
                 </button>
@@ -185,13 +187,14 @@ export default function EmergencyPage() {
                 style={styles.textarea}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
+                data-testid="emergency-reason-input"
                 placeholder="Опишите причину отключения аварийного режима"
                 maxLength={500}
               />
               {confirmMode === "deactivate" ? (
                 <div style={styles.confirmRow}>
                   <span style={{ color: "#166534", fontWeight: 600 }}>Подтвердите деактивацию:</span>
-                  <button style={{ ...styles.btnDanger, background: "#16a34a" }} disabled={!reason.trim()} onClick={handleDeactivate}>
+                  <button style={{ ...styles.btnDanger, background: "#16a34a" }} disabled={!reason.trim()} onClick={handleDeactivate} data-testid="emergency-confirm-deactivate">
                     Да, деактивировать
                   </button>
                   <button style={styles.btnSecondary} onClick={() => { setConfirmMode(null); setReason(""); }}>
@@ -203,6 +206,7 @@ export default function EmergencyPage() {
                   style={{ ...styles.btnDanger, background: "#16a34a", marginTop: "0.5rem" }}
                   disabled={!reason.trim()}
                   onClick={() => setConfirmMode("deactivate")}
+                  data-testid="emergency-deactivate-btn"
                 >
                   Деактивировать аварийный режим
                 </button>
@@ -210,7 +214,7 @@ export default function EmergencyPage() {
             </div>
           )}
 
-          <div style={styles.meta}>
+          <div style={styles.meta} data-testid="emergency-scope-note">
             Текущий scope: platform emergency state (backend) + audit/outbox events.
             Player-side enforcement (остановка показа на устройствах) — deferred, требует KSO runtime integration.
           </div>

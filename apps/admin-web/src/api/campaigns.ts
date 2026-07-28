@@ -263,6 +263,24 @@ export function rejectCampaign(
   );
 }
 
+// ── Campaign Lifecycle — activate / pause (Wave 4) ──
+
+export function activateCampaign(
+  campaignId: string,
+): Promise<CampaignApprovalResponse> {
+  return api.post<CampaignApprovalResponse>(
+    `/campaigns/${campaignId}/activate`,
+  );
+}
+
+export function pauseCampaign(
+  campaignId: string,
+): Promise<CampaignApprovalResponse> {
+  return api.post<CampaignApprovalResponse>(
+    `/campaigns/${campaignId}/pause`,
+  );
+}
+
 // ── Approvals & History ──
 
 export function listApprovals(): Promise<CampaignApprovalOut[]> {

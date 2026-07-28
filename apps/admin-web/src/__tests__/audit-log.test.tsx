@@ -127,8 +127,8 @@ describe("audit log page", () => {
     // Actor — actor_user_id and target_id may be same, so getAllByText
     expect(screen.getAllByText("u-admin").length).toBeGreaterThanOrEqual(1);
 
-    // Target
-    expect(screen.getAllByText("user").length).toBe(2);
+    // Resource column via data-testid
+    expect(screen.getByTestId("audit-resource-ev-001").textContent).toBe("user: u-admin");
 
     // Pagination info
     expect(screen.getByText(/Всего: 2/)).toBeTruthy();
@@ -258,5 +258,40 @@ describe("audit log page", () => {
     // Back button should be disabled on first page
     const backBtn = screen.getByText("← Назад");
     expect((backBtn as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("renders data-testid attributes on page and rows", async () => {
+    renderAuditPage([makeEvent(), makeEvent({ id: "ev-002", action: "auth.logout" })]);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("audit-page")).toBeTruthy();
+      expect(screen.getByTestId("audit-table")).toBeTruthy();
+    });
+
+    // Per-row testids
+    expect(screen.getByTestId("audit-row-ev-001")).toBeTruthy();
+    expect(screen.getByTestId("audit-action-ev-001")).toBeTruthy();
+    expect(screen.getByTestId("audit-actor-ev-001")).toBeTruthy();
+    expect(screen.getByTestId("audit-resource-ev-001")).toBeTruthy();
+    expect(screen.getByTestId("audit-created-at-ev-001")).toBeTruthy();
+    expect(screen.getByTestId("audit-row-ev-002")).toBeTruthy();
+  });
+
+  it("renders rows in provided order (backend sorts newest-first)", async () => {
+    // Backend sorts newest-first; frontend renders as-received
+    renderAuditPage([
+      makeEvent({ id: "ev-new", created_at: "2026-07-16T11:00:00Z" }),
+      makeEvent({ id: "ev-old", created_at: "2026-07-16T09:00:00Z" }),
+    ]);
+
+    await waitFor(() => {
+      const headers = screen.getAllByText("Журнал аудита");
+      expect(headers.length).toBeGreaterThanOrEqual(1);
+    });
+
+    // First row should be ev-new (newest first)
+    const rows = screen.getAllByTestId(/audit-row-/);
+    expect(rows[0].getAttribute("data-testid")).toBe("audit-row-ev-new");
+    expect(rows[1].getAttribute("data-testid")).toBe("audit-row-ev-old");
   });
 });

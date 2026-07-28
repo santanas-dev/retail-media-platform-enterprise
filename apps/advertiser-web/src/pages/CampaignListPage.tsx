@@ -46,7 +46,7 @@ export default function CampaignListPage() {
 
   if (loading) {
     return (
-      <div style={styles.centered}>
+      <div style={styles.centered} data-testid="self-campaign-loading">
         <p style={styles.muted}>Загрузка кампаний...</p>
       </div>
     );
@@ -55,7 +55,7 @@ export default function CampaignListPage() {
   if (error) {
     return (
       <div style={styles.centered}>
-        <div style={styles.errorBox}>
+        <div style={styles.errorBox} data-testid="self-campaign-error">
           <p style={{ margin: 0, fontWeight: 600 }}>Ошибка</p>
           <p style={{ margin: "0.25rem 0 0", fontSize: "0.875rem" }}>{error}</p>
         </div>
@@ -83,7 +83,7 @@ export default function CampaignListPage() {
             + Создать кампанию
           </button>
         </div>
-        <div style={styles.emptyBox}>
+        <div style={styles.emptyBox} data-testid="self-campaign-empty">
           <p style={{ margin: 0, fontWeight: 500 }}>Нет кампаний</p>
           <p style={{ margin: "0.25rem 0 0", fontSize: "0.875rem", color: "#94a3b8" }}>
             Нажмите «Создать кампанию», чтобы начать.
@@ -124,7 +124,7 @@ export default function CampaignListPage() {
           + Создать кампанию
         </button>
       </div>
-      <table style={styles.table}>
+      <table style={styles.table} data-testid="self-campaign-list">
         <thead>
           <tr>
             <th style={styles.th}>Название / Код</th>
@@ -138,17 +138,19 @@ export default function CampaignListPage() {
           {campaigns.map((c) => (
             <tr
               key={c.id}
+              data-testid={`self-campaign-row-${c.code}`}
               style={{ ...styles.row, cursor: "pointer" }}
               onClick={() => navigate(`/campaigns/${c.id}`)}
             >
               <td style={styles.td}>
-                <div style={{ fontWeight: 500 }}>{c.name}</div>
+                <div style={{ fontWeight: 500 }} data-testid={`self-campaign-name-${c.code}`}>{c.name}</div>
                 <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
                   {c.code}
                 </div>
               </td>
               <td style={styles.td}>
                 <span
+                  data-testid={`self-campaign-status-${c.code}`}
                   style={{
                     ...styles.badge,
                     background: statusColor(c.status),

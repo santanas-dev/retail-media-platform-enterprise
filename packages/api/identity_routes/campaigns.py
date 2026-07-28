@@ -447,6 +447,123 @@ async def reject_endpoint(
 
 
 # ---------------------------------------------------------------------------
+# Campaign Lifecycle — activate / pause (Wave 4)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/campaigns/{campaign_id}/activate",
+             response_model=CampaignApprovalResponse)
+async def activate_endpoint(
+    campaign_id: str,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    user_id = claims["sub"]
+    try:
+        old_status, new_status = await repository.activate_campaign(
+            db,
+            campaign_id,
+            changed_by=user_id,
+            scope_advertiser_ids=_scope_ids(scope),
+        )
+    except ScopeError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    if old_status is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Campaign not found or not in approved status",
+        )
+    from packages.domain.repository import create_audit_event
+    await create_audit_event(
+        db,
+        actor_user_id=user_id,
+        action="campaign.activated",
+        target_type="campaign",
+        target_id=campaign_id,
+        details={
+            "old_status": old_status,
+            "new_status": new_status,
+        },
+    )
+    await repository.enqueue_outbox_event(
+        db,
+        event_type="campaign.activated",
+        aggregate_type="campaign",
+        aggregate_id=campaign_id,
+        payload={
+            "campaign_id": campaign_id,
+            "old_status": old_status,
+            "new_status": new_status,
+        },
+        headers={"source_service": "control-api"},
+    )
+    return CampaignApprovalResponse(
+        message="Campaign activated",
+        campaign_id=campaign_id,
+        old_status=old_status,
+        new_status=new_status,
+    )
+
+
+@router.post("/campaigns/{campaign_id}/pause",
+             response_model=CampaignApprovalResponse)
+async def pause_endpoint(
+    campaign_id: str,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    user_id = claims["sub"]
+    try:
+        old_status, new_status = await repository.pause_campaign(
+            db,
+            campaign_id,
+            changed_by=user_id,
+            scope_advertiser_ids=_scope_ids(scope),
+        )
+    except ScopeError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    if old_status is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Campaign not found or not in active status",
+        )
+    from packages.domain.repository import create_audit_event
+    await create_audit_event(
+        db,
+        actor_user_id=user_id,
+        action="campaign.paused",
+        target_type="campaign",
+        target_id=campaign_id,
+        details={
+            "old_status": old_status,
+            "new_status": new_status,
+        },
+    )
+    await repository.enqueue_outbox_event(
+        db,
+        event_type="campaign.paused",
+        aggregate_type="campaign",
+        aggregate_id=campaign_id,
+        payload={
+            "campaign_id": campaign_id,
+            "old_status": old_status,
+            "new_status": new_status,
+        },
+        headers={"source_service": "control-api"},
+    )
+    return CampaignApprovalResponse(
+        message="Campaign paused",
+        campaign_id=campaign_id,
+        old_status=old_status,
+        new_status=new_status,
+    )
+
+
+# ---------------------------------------------------------------------------
 # S-038 — Campaign Approval Queue
 # ---------------------------------------------------------------------------
 

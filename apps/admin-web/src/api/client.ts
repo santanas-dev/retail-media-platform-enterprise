@@ -229,9 +229,14 @@ export interface DeviceOut {
   os_version: string;
   ip_address: string;
   status: string;
+  health_state: string;
   last_seen_at: string | null;
+  last_heartbeat_at: string | null;
+  runtime_version: string;
+  player_version: string;
   current_manifest_id: string | null;
   cache_size_bytes: number;
+  retailer_id: string | null;
   created_at: string | null;
   updated_at: string | null;
 }

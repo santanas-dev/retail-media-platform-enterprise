@@ -1,6 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-22 (JOURNEY-005 — user.create_advertiser reachable + green smoke)
+**Last updated:** 2026-07-27 (PLAYER-001A)
+
+**Next Active Workstream:** R3 — stable release v0.10.0-preplayer-business-ready to main, then PLAYER-001B
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -17,6 +19,56 @@
 - Security cleanup (C1): 🟡 pending operator proof — remove santa2-nas-sync key from NAS `/home/admin/.ssh/authorized_keys`. Operator command: `sed -i '/santa2-nas-sync/d' /home/admin/.ssh/authorized_keys`. Hermes has no SSH access to NAS — cannot execute.
 
 R1 ✅ **RELEASED** — baseline to main (3d201d6), CI #29642225070 green (34/34), tag v0.8.0-r1-edge-safety-runtime → 3d201d6.
+R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green (35/35, Behavioral ADR-008), tag v0.9.0-prepilot-wave1 → b5dd3b3.
+**WAVE2-PLAN-REFRESH** ✅ — pre-pilot journey plan актуализирован после R2. Wave 1: 8/8 🟢 closed. Wave 2: self.apply_or_brief → campaign.edit → creative.upload → inventory.simulate → self.campaign_create (deferred). Registry: 16 reachable, 24 blocked.
+**JOURNEY-007** ✅ — self.apply_or_brief reachable + green UI-smoke (1.37s). Backend existed (BP-004 CampaignBrief). Advertiser-web BriefListPage/BriefCreatePage data-testid + 6 vitest tests. Registry 15→16 reachable.
+**JOURNEY-008** ✅ — campaign.edit reachable + green UI-smoke (2.33s). Backend existed (CampaignFlight/CampaignPlacement CRUD). Admin-web data-testid on tabs, flight form, placement form. Registry 16→17 reachable.
+**JOURNEY-008-FU** ✅ — state/roadmap hygiene after campaign.edit. PROJECT_STATE: Next→creative.upload, NAS develop→d2dddc8. Roadmap R8 Итог: campaign.submit/activate без smoke. R5 Next: creative.upload.
+**NAS-MIRROR-002** ✅ — restore clean NAS mirror after JOURNEY-008-FU. 22 files deleted by CIFS lock; manual reset --hard origin/develop → f93ea13. Cron script hardened with stderr capture + dirty-tree diagnostics. Runbook updated with dirty mirror recovery section.
+**JOURNEY-009** ✅ — creative.upload reachable + green UI-smoke (12.59s). Backend existed (presigned URL → MinIO upload flow). Admin-web: 7 data-testid, advertiser_organization_id fix, test fixture. Registry 17→18 reachable, 23→22 blocked. CI #29949477027.
+**JOURNEY-009-FU** ✅ — presigned URL signature fix (public Minio client + region). Storage pattern documented. CI #29952174466.
+**JOURNEY-009-FU2** ✅ — creative.upload completion proof. UI fix: React controlled select (defaultValue + ref) for Playwright. Visible upload done state ("✅ Готов" + filename). Data-testid creative-status-{code}. Smoke test: asserts Готов status, persisted after reload (2.82s). Vitest 174/174. CI #29953272276.
+**JOURNEY-010** ✅ — inventory.simulate reachable + green UI-smoke (3.12s). Backend existed (POST /inventory/simulate, S-089). Admin-web: 11 data-testid, 4 vitest (button, success, conflicts, error). Smoke: verdict, blocking/warning, placement rows, slot_fill/total_requested/total_available. Registry 18→19 reachable, 22→21 blocked.
+**JOURNEY-011** ✅ — creative.moderate_approve + creative.moderate_reject reachable. Backend existed (S-036: approve/reject endpoints, moderation queue, audit events, perm creatives.moderate). Admin-web: CreativeModerationPage.tsx +14 data-testid anchors, 9 vitest tests (render, queue, empty, approve, reject open/cancel/confirm/with reason, error, 403). Smoke: approve 2.62s, reject 2.70s — both verify correct status + persist after reload. Registry 19→21 reachable, 21→19 blocked.
+**JOURNEY-012** ✅ — campaign.submit reachable + green UI-smoke (8.27s). Backend existed (POST /campaigns/{id}/request-approval with full validation: flights≥1, placements≥1, creatives deliverable). Admin-web: CampaignDetailPage.tsx +3 data-testid (submit-btn, status-badge, submit-error). Smoke: creatives-first strategy — create library → attach → upload → flights → placements → moderate approve → go_back() → submit → verify pending_approval status + reload persistence. Debug root cause: inventory overbooking on SURF-001 (all 720 slots sold_out from prior test residue) caused misleading API error («Metadata-only creatives»); smoke passed after manual dev inventory reset. Separate follow-up may improve error discrimination / test data isolation. Registry 21→22 reachable, 19→18 blocked. Next: campaign.approve/reject (Wave 3).
+**JOURNEY-013** ✅ — campaign.approve + campaign.reject reachable + green UI-smoke (approve 13.3s, reject 13.4s). Backend existed (POST approve/reject, `pending_approval→approved|rejected`, `campaigns.approve` perm, S-079 inventory commit/release, audit+outbox). Admin-web: CampaignDetailPage.tsx +5 data-testid (approve-btn, reject-btn, reject-reason, reject-confirm, approval-error) + rejection reason display. Vitest: 48/48 (6 approval tests incl. new reason display). Smoke: full creatives-first pipeline → submit → approve → verify «Согласована» + reload; reject with reason → verify «Отклонена» + reason display + reload. Registry 22→24 reachable, 18→16 blocked. Next: campaign.activate/pause (Wave 4).
+**JOURNEY-013-FU** ✅ — checkpoint hygiene: develop=6f2d40e, NAS verified (79cfb9d, 62d21a3).
+**WAVE3-CLOSURE-001** ✅ — Wave 3 canon closure. pre-pilot-journey-plan.md: Wave 2+3 marked COMPLETE, counts 15/25→24/16. feature-registry.yaml: summary 21/19→24/16. roadmap.xlsx: rows 8/9/10 — campaign.submit, campaign.approve/reject, creative.moderate_approve/reject all updated to ✅ Готово/Юзабельно. Next: campaign.activate/pause (Wave 4).
+**SMOKE-INFRA-001** ✅ — reproducible smoke stack established. Three root causes fixed: (1) MinIO CORS configured for browser presigned-URL PUTs, (2) CREATIVE_AUTO_APPROVE_UPLOADS boolean-env-var parser fixed (config.py checked only false/0/no, missed true/1/yes), (3) inventory booked_capacity=100 from seed not reset — added booked_capacity=0 to prepare-ui-smoke-stack.sh. Fix: scripts/smoke/prepare-ui-smoke-stack.sh + tests/ui-smoke/test_uismoke__campaign__submit.py (moderation step removed — auto-approve now works). Proof: submit (8.0s), activate (13.9s), pause (8.9s) all green on real PostgreSQL+MinIO stack. CI #30010897397. Commit a16e029.
+
+**JOURNEY-015** ✅ — emergency.activate + emergency.deactivate reachable + green UI-smoke. Backend existed (GET/POST emergency/status|activate|deactivate, emergency.read|manage perms, audit+outbox+K1 manifest). Bugfix: deactivate_emergency_override missing session.add(existing) — UPDATE silently dropped. Admin-web: EmergencyPage.tsx +11 data-testid. Vitest: 19/19. Smoke: activate 1.8s, deactivate 1.3s. Honest wording: no device-stop claims, player-side enforcement deferred note. Registry 26→28 reachable, 14→12 blocked.
+**DONE-GATE-002** ✅ — human walkthrough + happy-path added to Done Gate (AGENTS.md пункты 8–9) + шаблон Happy-path в user-journeys.md §1. Docs-only.
+**CAMPAIGN-UX-001A** ✅ — creative.upload human-path: явная загрузка файла с ПК. Implementation ready (FU2: org-id guard + vitest payload assertion). Operator walkthrough: OK (аудитор, после ops-фикса MinIO); латентный [object Object] — UX-FIX-001.
+**CAMPAIGN-UX-001B** — Overview readiness checklist: flight/placement/creative status + actions + submit readiness. Smoke green (8.33s, d9d6bc3). Operator walkthrough: OK (аудитор, после ops-фикса MinIO); латентный [object Object] — UX-FIX-001.
+**UX-FIX-001A** ✅ — governance honesty fix: operator walkthrough строки заменены на честный вердикт аудитора; Rule 8 ДК hardened (агент может поставить только PENDING).
+**UX-FIX-001B** ✅ — human-readable upload errors: formatApiError заменяет сырой err.message в primary/upload error branches; +2 vitest regression теста (проверка отсутствия [object Object]).
+**JOURNEY-016** ✅ — self.campaign_view reachable + green UI-smoke (1.99s). Advertiser-web CampaignListPage + CampaignDetailPage + data-testid + vitest (103 total). Seed advertiser (advertiser_test) видит seed-кампанию (CAMP-2026-001) с названием/статусом/периодом. Reload persistence confirmed. Operator walkthrough: PENDING.
+**JOURNEY-017** ✅ — device.health_view reachable + green UI-smoke (8.68s). Schema DeviceOut + health_state/last_heartbeat_at/runtime_version/player_version. Admin-web DeviceHealthPage: health columns + 10 data-testid + formatApiError. Vitest: 215/215 (9 new). Smoke: break_glass_admin → sidebar Устройства → KSO-001 с health badge «Неизвестно» + heartbeat + runtime/player версии + persistence. Operator walkthrough: PENDING.
+
+**JOURNEY-018** ✅ — audit.view reachable + green UI-smoke (1.3s). Backend уже существовал (GET /audit-events, permission audit.read). Admin-web AuditLogPage: 10 data-testid, колонка Ресурс (type:id), emergency-метки. Vitest: 8/8 (2 новых — data-testid + ordering). Smoke: break_glass_admin → emergency activate/deactivate → Журнал аудита → поиск события → actor/ресурс/время → persistence через re-navigation. Operator walkthrough: PENDING.
+
+**JOURNEY-019-DISCOVERY** 🔴 — self.report_view BLOCKED. PoP-reporting endpoints существуют (summary/by-day/by-surface/export) с advertiser scope. Но данных нет (pop_events_raw=0), и путь создания заблокирован: devices.manage permission отсутствует в seed → никто не может создать onboarding code → device onboarding невозможен → PoP ingestion невозможна. Advertiser-web UI отчётов не существует. Blocker: добавить devices.manage в seed, onboarding code flow, manifest generation, PoP batch submission. Player-зависимость: после PLAYER-001 данные появятся естественно через реальный PoP.
+
+**JOURNEY-020** ✅ — adsettings.test reachable + green UI-smoke (1.41s). Backend уже существовал (POST /auth/ad-settings/test, users.manage). Admin-web ADSettingsPage: data-testid на test result (success/error/loading). Vitest: 9/9 (4 новых — test result, ok/success, no secrets, loading). Smoke: break_glass_admin → Настройки AD → Проверить подключение → controlled failure (not_configured в DEV) → persistence. Roadmap: Настройки AD/LDAPS → ✅ Готово/Юзабельно. Operator walkthrough: PENDING.
+
+**JOURNEY-021** ✅ — user.reset_password reachable + green UI-smoke (2.87s). Backend уже существовал (POST /users/{id}/reset-password, users.manage). Admin-web UsersPage: data-testid на reset flow (open/confirm/success/error/otp). Vitest: 7/7 (4 новых — RBAC visibility, modal, API call, error result). Smoke: create throwaway → find row → reset → OTP через network response → persistence. Seed credentials (advertiser_test, break_glass_admin) не мутируются.
+
+**JOURNEY-022** ✅ — user.deactivate reachable + green UI-smoke (9.3s). Backend уже существовал (POST /users/{id}/deactivate, users.manage, business rules: self/last-break-glass/last-admin protection, audit events, session revocation). Admin-web UsersPage: deactivate confirmation modal + 7 data-testid (open/confirm/success/error, status, activate). RBAC guard (visible only with users.manage). Vitest: 12/12 (5 новых — RBAC visibility, modal+username, success result, error human-readable). Smoke: create throwaway (sd-{uuid}) → deactivate → статус «Неактивен» → reload persistence → blocked login (stay on /login, error visible) → admin still can login. OTP extracted from DOM. Seed credentials (advertiser_test, break_glass_admin) не мутируются.
+
+**JOURNEY-023** ✅ — inventory.rule_create reachable + green UI-smoke (6.1s). Backend: добавлен `set_rls_context` в GET/POST /inventory/rules (RLS violation fix). Admin-web InventoryPage RulesTab: RBAC guard (inventory.manage), 13 data-testid (create-open, form, type, scope-type, scope-id, priority, active, starts-at, ends-at, value, submit, error, success) + row cells (type, scope, priority, active, period, value). Vitest: 23/23 (5 новых — RBAC hidden, form fields, create+success+row, error human-readable). Smoke: login → Инвентарь → Правила → +Создать → max_sov/35%/priority 17/global/future dates → success + row verification (type/scope/value/priority/active/period) → reload persistence.
+
+**WAVE6-CLOSURE-001** ✅ — Wave 6 канонически закрыта. Все 4 journeys 🟢 (adsettings.test, user.reset_password, user.deactivate, inventory.rule_create). Registry: 35 reachable / 5 blocked. Pre-player journeys завершены, но self.report_view 🔴 blocked (PoP/player/data path) и self.campaign_create deferred. PLAYER-001 не начинается автоматически — waiting owner decision.
+
+**OWNER-DECISION-001** ✅ — Decision: PLAYER-001 next. Real KSO/player import/integration. self.report_view remains 🔴 blocked until real PoP/player data path (no artificial report workaround). self.campaign_create remains deferred managed-first/P2. Pre-player managed admin-flow (35/40) is sufficiently clickable to proceed to player integration.
+
+**PRODUCT-READINESS-001** ✅ — Pre-player business readiness audit. Docs-only — no product code. Registry counts corrected: 35 reachable / 5 blocked (was 33/7 — summary comment missed adsettings.test and audit.view). pre-pilot-journey-plan.md: counts updated, pre-player readiness statement added. PROJECT_STATE: stale 33→35 fixed. Verdict: managed admin-flow ready for PLAYER-001; not all business functions complete; PLAYER-001 next because it unlocks PoP/reporting. Roadmap consistency: 0 findings.
+
+**PLAYER-001A** ✅ — Source repo KSO/player import audit + first runnable slice plan. Docs-only — no product code. Old repo (`santanas-dev/retail-media-platform`, commit `41e3398`) fully inventoried: KSO Player 38,804 loc (37 modules), KSO Sidecar Agent 18,558 loc (22+ modules), ~3,910 tests across 109 test files. Key finding: manifest shape, auth model (device_code/secret vs device JWT), PoP payload (device_event_id vs event_id), and heartbeat payload are ALL incompatible with enterprise contracts. Verdict: discard old code as-is. Only import: `retry_backoff.py` (267 loc, pure logic, zero deps). Fresh code estimate: ~580 loc (HTTP adapter + auth + manifest + heartbeat + pop + config). PLAYER-001B defined: onboard→fetch manifest→verify→apply→render→heartbeat→PoP→verify. Recommendation unchanged: R3 release first (v0.10.0-preplayer-business-ready), then PLAYER-001B. Full audit: `docs/architecture/player-001a-source-import-audit.md` (19K).
+
+**WAVE4-CLOSURE-001** ✅ — Wave 4 canon closure: campaign.activate/pause + emergency.activate/deactivate + UX hardening (CAMPAIGN-UX-001A/B). pre-pilot-journey-plan.md synced (22/23 closed, +5 service, +1 UX). Next: Wave 5.
+**WAVE4-CLOSURE-001-FU** ✅ — fix progress math: UX-hardening removed from 28/40 arithmetic (not a separate registry journey).
+
+**JOURNEY-014** ✅ — campaign.activate + campaign.pause reachable + green UI-smoke.
 T1 ✅ **RESOLVED** — BehBuilder module, K1 converted, CI #29645034680 green (324 passed).
 EDGE-003 ✅ **RESOLVED** — PoP ingestion endpoint behavioural proof (admin bypass), CI #29649000788 green (6/6).
 EDGE-003-FU ✅ **RESOLVED** — PoP ingestion RLS / non-admin device proof (NOBYPASSRLS), CI #29652235623 green (5/5).
@@ -54,9 +106,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 7a6444f | a03c192 | JOURNEY-006 advertiser.view + WAVE1 closure, CI #29934268801 ✅ |
-| main    | 3d201d6     | —               | R1 release — K1/K2/RM1/CLEAN-BOOT-001 |
-| NAS mirror (ASUSTOR) | verified | a03c192 | Hermes cron sync confirmed after WAVE1 closure |
+| develop | 61197d0 | 91d1063 | OWNER-DECISION-001 — PLAYER-001 next |
+| main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
+| NAS mirror (ASUSTOR) | verified | 16fc8d7 | Hermes cron sync — synced 2026-07-27 12:10, vers=3.02, credentials inline |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
@@ -75,7 +127,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 - Бизнес-вкладка: «Статус» → 4 колонки (Бэкенд, UI, Юзер-стори, Итог).
 - G1 (campaign.create): Бэкенд ✅ / UI ✅ / Юзер-стори ✅ / Итог ✅ Готово/Юзабельно.
 - G2 (user.assign_roles): Бэкенд ✅ / UI ✅ / Юзер-стори ✅ / Итог ✅ Готово/Юзабельно.
-- campaign.edit: Бэкенд ✅ / UI ⚪️ / Юзер-стори ⚪️ / Итог 🟠 Частично.
+- campaign.edit: Бэкенд ✅ / UI ✅ (JOURNEY-008) / Юзер-стори ✅ (JOURNEY-008) / Итог 🟠 Частично **(↑ superseded — campaign.edit reachable as of JOURNEY-008)**
 - feature-registry: reachable 5→7 (campaign.create, user.assign_roles).
 - AGENTS.md: правило roadmap-синхронизации (п.7 Done Gate).
 - Commit: dc9a910, CI #29725417235 green.
@@ -250,8 +302,17 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**JOURNEY-001** ✅ advertiser.apply / **JOURNEY-002** ✅ advertiser.application_review / **CI-GATE-001** ✅ / **JOURNEY-003** ✅ advertiser.invite / **JOURNEY-004** ✅ self.login / **JOURNEY-005** ✅ user.create_advertiser / **JOURNEY-006** ✅ advertiser.view.
-**Wave 1 complete.** All 6 pre-pilot journeys reachable with green UI-smoke. Next: await prioritisation (wave 2+).
+**R3 — stable release v0.10.0-preplayer-business-ready to main, then PLAYER-001B.**
+
+Pre-player managed admin-flow completed (35/40 reachable, Waves 1–6). PLAYER-001A audit complete — zero blockers, all contracts green. R3 release first (stable baseline before risky player work), then PLAYER-001B (first runnable KSO client: onboard → manifest → verify → apply → render → heartbeat → PoP → verify).
+
+Оставшиеся blocked:
+- `self.report_view` 🔴 — разблокируется через player/PoP data path
+- `self.campaign_create` — deferred managed-first (P2)
+- Service deferred: `playlist.build`, `backup.restore`, `campaign.complete`
+- `user.assign_roles` ❌ G2 — отдельный gap
+
+См. `docs/product/pre-pilot-journey-plan.md`.
 
 Residual note: durable proof (save → fresh read) uses unit/mock-level test infrastructure (TestClient + SessionLocal). A future integration test may independently verify migration + DB read/write end-to-end. Not a blocker at this stage.
 

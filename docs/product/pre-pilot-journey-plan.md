@@ -1,7 +1,8 @@
 # Программа до-пилотных бизнес-журнеев (КСО, ручной проход)
 
 > **Канон для Codex/Hermes.** Источник истины по статусам — `docs/product/feature-registry.yaml` + зелёный UI-smoke; эта программа задаёт ПОРЯДОК закрытия.
-> Составлено 2026-07-20 из реестра develop (32 UI-журнея: 3 reachable, 29 blocked).
+> Обновлено 2026-07-27 после PRODUCT-READINESS-001 (pre-player readiness audit). Wave 1–6: ✅ COMPLETE.
+> Текущие counts: 35 reachable, 5 blocked (из feature-registry.yaml).
 
 ## Цель и принцип
 
@@ -11,62 +12,98 @@
 2. **PLAYER-001 — ПОСЛЕ волны 6.** Плеер не начинаем, пока до-плеерный поток не кликабелен end-to-end.
 3. **Governance заморожена.** Никакой новой меты (флип guard в blocking — потом). Только журнеи.
 4. Порядок волн = порядок ручного прохода пилота. Внутри волны — сверху вниз.
+5. **Managed-first.** Приоритет — admin-web операции (оператор/администратор управляет рекламодателями). Self-service откладывается на более поздние волны, если не переутверждено владельцем.
 
 Легенда: 🟢 reachable+smoke · 🔴 blocked · ⚙ есть реальный бэкенд-пробел (не только проводка UI).
 
 ---
 
-## Волна 1 — Актёры и вход (кем и куда заходить)
-- 🟢 `user.assign_roles` — назначить роли (готово, G2)
-- 🟢 `advertiser.create_org` — создать организацию рекламодателя (готово, G3)
-- 🔴 `self.login` — вход рекламодателя в кабинет
-- 🔴 `advertiser.apply` — публичная заявка на подключение
-- 🔴 `advertiser.application_review` — рассмотреть заявку
-- 🔴 `advertiser.invite` — пригласить рекламодателя
-- 🔴 `user.create_advertiser` — завести локального рекламодателя (админ)
-- 🔴 `advertiser.view` — карточка рекламодателя
+## Волна 1 — Актёры и вход (кем и куда заходить) ✅ COMPLETE
 
-## Волна 2 — Создание рекламы
-- 🟢 `campaign.create` — создание кампании (готово, G1)
-- 🔴 `self.apply_or_brief` — бриф из кабинета рекламодателя
-- 🔴 `self.campaign_create` — рекламодатель сам заводит кампанию
-- 🔴 `creative.upload` — загрузка креатива
-- 🔴 ⚙ `campaign.edit` — рейсы/**размещение как объект** (где/когда/частота/приоритет)
-- 🔴 ⚙ `inventory.simulate` — прогноз показов / симуляция перед публикацией
+R2 выпущен: main b5dd3b3, tag v0.9.0-prepilot-wave1, CI #29937353570.
 
-## Волна 3 — Модерация и согласование
-- 🔴 `creative.moderate_approve` — одобрить креатив
-- 🔴 `creative.moderate_reject` — отклонить креатив с причиной
-- 🔴 `campaign.submit` — отправить кампанию на согласование
-- 🔴 `campaign.approve` — одобрить кампанию
-- 🔴 `campaign.reject` — отклонить кампанию с причиной
+- 🟢 `user.assign_roles` — назначить роли (G2)
+- 🟢 `advertiser.create_org` — создать организацию рекламодателя (G3)
+- 🟢 `self.login` — вход рекламодателя в кабинет (JOURNEY-004)
+- 🟢 `advertiser.apply` — публичная заявка на подключение (JOURNEY-001)
+- 🟢 `advertiser.application_review` — рассмотреть заявку (JOURNEY-002)
+- 🟢 `advertiser.invite` — пригласить рекламодателя (JOURNEY-003)
+- 🟢 `user.create_advertiser` — завести локального рекламодателя (JOURNEY-005)
+- 🟢 `advertiser.view` — карточка рекламодателя (JOURNEY-006)
 
-## Волна 4 — Публикация и управление показом
-- 🔴 `campaign.activate` — запустить одобренную кампанию (публикация → manifest)
-- 🔴 `campaign.pause` — приостановить активную кампанию
-- 🔴 `emergency.activate` — экстренно остановить показ
-- 🔴 `emergency.deactivate` — снять аварийный режим
+## Волна 2 — Бриф и настройка рекламы (managed-first) ✅ COMPLETE
+
+- 🟢 `campaign.create` — создание кампании (G1)
+- 🟢 `self.apply_or_brief` — бриф из кабинета рекламодателя (JOURNEY-007)
+- 🟢 `campaign.edit` — рейсы/размещение как объект (JOURNEY-008)
+- 🟢 `creative.upload` — загрузка креатива (JOURNEY-009)
+- 🟢 `inventory.simulate` — прогноз показов / симуляция перед публикацией (JOURNEY-010)
+- 🔴 `self.campaign_create` — рекламодатель сам заводит кампанию (отложено: self-service — после managed-core)
+
+## Волна 3 — Модерация и согласование ✅ COMPLETE
+
+- 🟢 `creative.moderate_approve` — одобрить креатив (JOURNEY-011)
+- 🟢 `creative.moderate_reject` — отклонить креатив с причиной (JOURNEY-011)
+- 🟢 `campaign.submit` — отправить кампанию на согласование (JOURNEY-012)
+- 🟢 `campaign.approve` — одобрить кампанию (JOURNEY-013)
+- 🟢 `campaign.reject` — отклонить кампанию с причиной (JOURNEY-013)
+
+## Волна 4 — Публикация и управление показом ✅ COMPLETE
+
+- 🟢 `campaign.activate` — запустить одобренную кампанию (публикация → manifest) · JOURNEY-014 + FU2
+- 🟢 `campaign.pause` — приостановить активную кампанию · JOURNEY-014 + FU2
+- 🟢 `emergency.activate` — экстренно остановить показ · JOURNEY-015
+- 🟢 `emergency.deactivate` — снять аварийный режим · JOURNEY-015
 
 ## Волна 5 — Статус и мониторинг
-- 🔴 `self.campaign_view` — рекламодатель видит свои кампании
-- 🔴 `device.health_view` — состояние парка устройств
-- 🔴 `audit.view` — журнал аудита
-- 🔴 `self.report_view` — отчёт план/факт (PoP) в кабинете · *структура сейчас, данные — после плеера*
 
-## Волна 6 — Админ-доводка
-- 🔴 ⚙ `adsettings.configure` — сохранить настройки AD (нужен `PUT /auth/ad-settings`)
-- 🔴 `adsettings.test` — проверить подключение AD
-- 🔴 `user.reset_password` — сбросить пароль
-- 🔴 `user.deactivate` — заблокировать пользователя
-- 🔴 `inventory.rule_create` — создать правило инвентаря
+- 🟢 `self.campaign_view` — рекламодатель видит свои кампании · JOURNEY-016
+- 🟢 `device.health_view` — состояние парка устройств · JOURNEY-017
+- 🟢 `audit.view` — журнал аудита · JOURNEY-018
+- 🔴 `self.report_view` — отчёт план/факт (PoP) в кабинете · *BLOCKED: devices.manage не в seed, нет onboarding code → нет PoP данных → UI не построен. Данные появятся после PLAYER-001.*
+
+## Волна 6 — Админ-доводка ✅ COMPLETE
+
+- 🟢 `adsettings.configure` — сохранить настройки AD (G4)
+- 🟢 `adsettings.test` — проверить подключение AD · JOURNEY-020
+- 🟢 `user.reset_password` — сбросить пароль · JOURNEY-021
+- 🟢 `user.deactivate` — заблокировать пользователя · JOURNEY-022
+- 🟢 `inventory.rule_create` — создать правило инвентаря · JOURNEY-023
+
+Закрыто: 4/4 journeys 🟢.
+
+### Pre-player readiness statement (PRODUCT-READINESS-001)
+
+Pre-player managed admin-flow (35/40) закрыт и достаточно кликабелен для перехода к PLAYER-001 player integration. **Не все бизнес-функции продукта готовы** — это не 40/40:
+
+- ✅ **Admin-web (managed):** все 26 UI-фич reachable с зелёным smoke — создание/редактирование/модерация кампаний, загрузка креативов, инвентарь, пользователи/роли, рекламодатели, AD-настройки, аудит, устройства, emergency.
+- ✅ **Public:** заявка рекламодателя reachable.
+- ✅ **Advertiser-web (self-service):** login, просмотр кампаний, бриф — reachable (3/5).
+- ✅ **Service:** manifest, PoP, device onboard/heartbeat, observability — reachable (5/8).
+- 🔴 **self.report_view:** blocked — UI не построен, PoP-данные отсутствуют. Разблокируется через player/PoP data path.
+- ⏸️ **self.campaign_create:** deferred managed-first (P2).
+- 🔴 **playlist.build, backup.restore, campaign.complete:** service-deferred.
+
+**Решение:** PLAYER-001 next — не потому что «всё готово», а потому что player — следующий логический шаг для разблокировки PoP/reporting. Реальный КСО-плеер → показ → PoP-данные → наполнение self.report_view.
 
 ---
 
-## После волны 6 — PLAYER-001
-Реальный КСО-плеер поверх готовых edge-контрактов (onboard/manifest+подпись/PoP/heartbeat), тонкий адаптерный шов, без Channel Orchestrator (§24 прагматика). Показ + реальный PoP → наполняет `self.report_view` и открывает недопоказы/компенсации.
+## После волны 6 — PLAYER-001 next (OWNER-DECISION-001)
+
+Решение владельца: **PLAYER-001 next.** Реальный КСО-плеер поверх готовых edge-контрактов (onboard/manifest+подпись/PoP/heartbeat), тонкий адаптерный шов, без Channel Orchestrator (§24 прагматика). Показ + реальный PoP → наполняет `self.report_view` и открывает недопоказы/компенсации.
+
+- `self.report_view` остаётся 🔴 blocked — разблокируется через player/PoP data path, не через искусственный report workaround.
+- `self.campaign_create` остаётся deferred managed-first (P2).
+- Pre-player managed admin-flow (35/40) закрыт — достаточно кликабелен для перехода к player integration.
+
+**Оставшиеся blocked:**
+- `self.report_view` 🔴 — blocked by PoP/player/data path (JOURNEY-019-DISCOVERY)
+- `self.campaign_create` — deferred managed-first (P2)
+- Service deferred: `playlist.build`, `backup.restore`, `campaign.complete`
+- `user.assign_roles` ❌ G2 — в плане как отдельный gap
 
 ## Правила ведения (для каждого журнея)
 - Done = поведение: достижимый UI (реальные клики, `goto` только `/login`) + зелёный `test_uismoke__<domain>__<action>`.
 - В ДК поднять 3 колонки (Бэкенд/UI/Юзер-стори) и пересчитать Итог; guard ROADMAP-GUARD-002 обязан оставаться зелёным.
 - Одна задача Hermes за раз. ⚙-журнеи требуют реального бэкенда — не «просто кнопки».
-- Прогресс мерить по этой программе: закрытых журнеев из 29 (+3 уже готовы).
+- Прогресс мерить по этой программе: закрытых журнеев 35 из 40 (Wave 1–4: 22/23 closed, self.campaign_create deferred; Wave 5: 3/4 closed, self.report_view blocked; Wave 6: 4/4 ✅ COMPLETE; +5 service reachable). UX-hardening (CAMPAIGN-UX-001A/B) completed — не новые журнеи, улучшение существующих reachable-фич.

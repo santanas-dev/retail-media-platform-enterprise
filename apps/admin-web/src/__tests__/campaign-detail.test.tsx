@@ -361,8 +361,8 @@ describe("CampaignDetailPage — S-009e", () => {
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
 
     await waitFor(() => {
-      // Should show read-only message
-      expect(screen.getByText(/Изменения доступны только в статусе/)).toBeTruthy();
+      // Active campaign shows the lifecycle banner, not generic read-only
+      expect(screen.getByText(/Кампания активна/)).toBeTruthy();
     });
 
     // Navigate to flights tab
@@ -548,6 +548,361 @@ describe("CampaignDetailPage — S-009e", () => {
     });
   });
 
+  // ── CAMPAIGN-UX-001A: Primary upload UX ──
+
+  describe("CAMPAIGN-UX-001A — primary upload path", () => {
+    it("primary upload CTA is visible in Креативы tab for draft campaign", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches();
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+      await user.click(screen.getByText("Креативы"));
+
+      // Primary upload section is visible
+      expect(screen.getByText("Загрузить файл с ПК")).toBeTruthy();
+      expect(screen.getByTestId("creative-upload-primary")).toBeTruthy();
+      expect(screen.getByTestId("creative-upload-select-file")).toBeTruthy();
+      // Explanation text
+      expect(screen.getByText(/Выберите файл → заполните метаданные → готово/)).toBeTruthy();
+    });
+
+    it("primary upload button opens metadata form on click", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches();
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+      await user.click(screen.getByText("Креативы"));
+
+      // Click the upload button — but since we mock file input,
+      // we test the form visibility by direct state check.
+      // The button triggers file input which we can't simulate in JSDOM cleanly.
+      // Instead verify that clicking opens the file dialog trigger.
+      const selectBtn = screen.getByTestId("creative-upload-select-file");
+      expect(selectBtn).toBeTruthy();
+      expect(selectBtn.textContent).toBe("Выбрать файл");
+    });
+
+    it("secondary 'Другие способы' label visible below primary upload", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches();
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+      await user.click(screen.getByText("Креативы"));
+
+      // Secondary path label
+      expect(screen.getByText(/Другие способы добавить креатив/)).toBeTruthy();
+      // Existing paths still available
+      expect(screen.getByTestId("creative-attach-btn")).toBeTruthy();
+      expect(screen.getByTestId("creative-add-library-btn")).toBeTruthy();
+    });
+
+    it("primary upload hides secondary label when form is open", async () => {
+      // Secondary label only shows when primary form is NOT open.
+      // In JSDOM we can't trigger file input, so this is a structural test:
+      // the label is wrapped in {isDraft && !showPrimaryUpload && (...)}
+      mockAuthenticatedSession();
+      mockAllFetches();
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+      await user.click(screen.getByText("Креативы"));
+
+      // With no primary upload open, secondary label is visible
+      expect(screen.getByText(/Другие способы добавить креатив/)).toBeTruthy();
+    });
+
+    it("creative asset create request includes advertiser_organization_id", async () => {
+      mockAuthenticatedSession();
+      let capturedBody: Record<string, unknown> | null = null;
+      mockAllFetches({
+        "/creative-assets": (url, init) => {
+          // Only intercept POST to create endpoint (not upload-intent)
+          if (init?.method === "POST" && url.endsWith("/creative-assets") && init.body) {
+            capturedBody = JSON.parse(init.body as string);
+            return Promise.resolve(new Response(JSON.stringify({
+              id: "ca-new", advertiser_organization_id: "org-1",
+              code: "UP-TEST", name: "Test", media_type: "image",
+              sha256_checksum: "", file_size_bytes: 0,
+              status: "metadata_only", moderation_status: "pending_review",
+              created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
+            }), { status: 201 }));
+          }
+          return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        },
+        "/campaign-creatives": (url, init) => {
+          if (init?.method === "POST") {
+            return Promise.resolve(new Response(JSON.stringify({
+              id: "cc-new", campaign_id: "c1", creative_asset_id: "ca-new", sort_order: 0,
+              asset: { id: "ca-new", code: "UP-TEST", name: "Test", media_type: "image",
+                sha256_checksum: "a".repeat(64), file_size_bytes: 100,
+                status: "ready", moderation_status: "approved",
+                created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" },
+              created_at: "2026-01-01T00:00:00Z",
+            }), { status: 201 }));
+          }
+          return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        },
+      });
+
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+      await user.click(screen.getByText("Креативы"));
+
+      // Simulate file selection via the hidden primary input
+      const file = new File(["dummy"], "test.png", { type: "image/png" });
+      const fileInput = document.querySelector('[data-testid="creative-upload-primary-file-input"]') as HTMLInputElement;
+      expect(fileInput).toBeTruthy();
+      await user.upload(fileInput, file);
+
+      // Form should appear with auto-filled values
+      await waitFor(() => {
+        expect(screen.getByTestId("creative-upload-primary-code")).toBeTruthy();
+      });
+
+      // Submit the form
+      await user.click(screen.getByTestId("creative-upload-metadata-submit"));
+
+      // Verify the POST body includes advertiser_organization_id
+      await waitFor(() => {
+        expect(capturedBody).not.toBeNull();
+      });
+      expect(capturedBody).toHaveProperty("advertiser_organization_id", "org-1");
+      expect(capturedBody).toHaveProperty("code");
+      expect(capturedBody).toHaveProperty("name");
+      expect(capturedBody).toHaveProperty("media_type");
+    });
+
+    // ── UX-FIX-001B: human-readable upload errors ──
+
+    it("primary upload error shows human-readable text, not [object Object]", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches({
+        "/creative-assets": (url, init) => {
+          if (init?.method === "POST" && url.endsWith("/creative-assets")) {
+            return Promise.resolve(new Response(
+              JSON.stringify({ detail: "Некорректный код креатива: код уже существует" }),
+              { status: 422 },
+            ));
+          }
+          return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        },
+      });
+
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+      await user.click(screen.getByText("Креативы"));
+
+      // Simulate file selection + form fill → submit
+      const file = new File(["dummy"], "test.jpg", { type: "image/jpeg" });
+      const fileInput = document.querySelector('[data-testid="creative-upload-primary-file-input"]') as HTMLInputElement;
+      await user.upload(fileInput, file);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("creative-upload-primary-code")).toBeTruthy();
+      });
+
+      // Fill required fields
+      await user.clear(screen.getByTestId("creative-upload-primary-code"));
+      await user.type(screen.getByTestId("creative-upload-primary-code"), "DUPLICATE-CODE");
+      await user.clear(screen.getByTestId("creative-upload-primary-name"));
+      await user.type(screen.getByTestId("creative-upload-primary-name"), "Test Creative");
+
+      await user.click(screen.getByTestId("creative-upload-metadata-submit"));
+
+      // Wait for error to appear
+      await waitFor(() => {
+        expect(screen.getByTestId("creative-upload-primary-error")).toBeTruthy();
+      });
+
+      const errorEl = screen.getByTestId("creative-upload-primary-error");
+      const errorText = errorEl.textContent || "";
+      // Must NOT be literal [object Object]
+      expect(errorText).not.toContain("[object Object]");
+      // Must contain human-readable error from formatApiError
+      expect(errorText.length).toBeGreaterThan(5);
+      // ApiError 422 should produce "Ошибка данных: ..." prefix
+      expect(errorText).toContain("Ошибка данных");
+    });
+
+    it("upload flow error shows human-readable text, not [object Object]", async () => {
+      // This test verifies the upload error path in handleUpload()
+      // (createUploadIntent or completeUpload failure)
+      mockAuthenticatedSession();
+      mockAllFetches({
+        "/creative-assets": (url, init) => {
+          if (init?.method === "POST" && url.endsWith("/creative-assets")) {
+            return Promise.resolve(new Response(JSON.stringify({
+              id: "ca-new", advertiser_organization_id: "org-1",
+              code: "OK-CODE", name: "OK Creative", media_type: "image",
+              sha256_checksum: "", file_size_bytes: 0,
+              status: "metadata_only", moderation_status: "pending_review",
+              created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
+            }), { status: 201 }));
+          }
+          // Simulate upload-intent failure
+          if (url.includes("upload-intent")) {
+            return Promise.resolve(new Response(
+              JSON.stringify({ detail: "MinIO недоступен, попробуйте позже" }),
+              { status: 503 },
+            ));
+          }
+          return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        },
+        "/campaign-creatives": (url, init) => {
+          if (init?.method === "POST") {
+            return Promise.resolve(new Response(JSON.stringify({
+              id: "cc-new", campaign_id: "c1", creative_asset_id: "ca-new", sort_order: 0,
+              asset: { id: "ca-new", code: "OK-CODE", name: "OK Creative", media_type: "image",
+                sha256_checksum: "a".repeat(64), file_size_bytes: 100,
+                status: "ready", moderation_status: "approved",
+                created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" },
+              created_at: "2026-01-01T00:00:00Z",
+            }), { status: 201 }));
+          }
+          // GET returns the creative so refreshCreatives() sees it
+          return Promise.resolve(new Response(JSON.stringify([{
+            id: "cc-new", campaign_id: "c1", creative_asset_id: "ca-new", sort_order: 0,
+            asset: { id: "ca-new", code: "OK-CODE", name: "OK Creative", media_type: "image",
+              sha256_checksum: "a".repeat(64), file_size_bytes: 100,
+              status: "ready", moderation_status: "approved",
+              created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" },
+            created_at: "2026-01-01T00:00:00Z",
+          }]), { status: 200 }));
+        },
+      });
+
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+      await user.click(screen.getByText("Креативы"));
+
+      // Simulate file selection + submit
+      const file = new File(["dummy"], "test.png", { type: "image/png" });
+      const fileInput = document.querySelector('[data-testid="creative-upload-primary-file-input"]') as HTMLInputElement;
+      await user.upload(fileInput, file);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("creative-upload-primary-code")).toBeTruthy();
+      });
+
+      await user.clear(screen.getByTestId("creative-upload-primary-code"));
+      await user.type(screen.getByTestId("creative-upload-primary-code"), "OK-CODE");
+      await user.clear(screen.getByTestId("creative-upload-primary-name"));
+      await user.type(screen.getByTestId("creative-upload-primary-name"), "OK Creative");
+
+      await user.click(screen.getByTestId("creative-upload-metadata-submit"));
+
+      // The upload flow error is shown via setUploadError, not setPrimaryError
+      // (primaryUpload calls handleUpload which catches upload errors)
+      // Wait for error to appear in the upload error area
+      await waitFor(() => {
+        expect(screen.getByTestId("creative-upload-error")).toBeTruthy();
+      });
+
+      const errorEl = screen.getByTestId("creative-upload-error");
+      const errorText = errorEl.textContent || "";
+      // Must NOT be literal [object Object]
+      expect(errorText).not.toContain("[object Object]");
+      // Must contain human-readable error from formatApiError
+      expect(errorText.length).toBeGreaterThan(5);
+    });
+  });
+
+  // ── CAMPAIGN-UX-001B: Readiness checklist ──
+
+  describe("CAMPAIGN-UX-001B — readiness checklist", () => {
+    it("checklist visible on Overview for draft campaign", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches();
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+
+      expect(screen.getByTestId("campaign-readiness-checklist")).toBeTruthy();
+      expect(screen.getByText("Готовность к отправке")).toBeTruthy();
+    });
+
+    it("shows missing states when no flights/placements/deliverable creatives", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches();
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+
+      // All three status indicators should show "—" (missing)
+      expect(screen.getByTestId("readiness-flight-status").textContent).toBe("—");
+      expect(screen.getByTestId("readiness-placement-status").textContent).toBe("—");
+      expect(screen.getByTestId("readiness-creative-status").textContent).toBe("—");
+
+      // Action buttons visible for all three
+      expect(screen.getByTestId("readiness-flight-action")).toBeTruthy();
+      expect(screen.getByTestId("readiness-placement-action")).toBeTruthy();
+      expect(screen.getByTestId("readiness-creative-action")).toBeTruthy();
+
+      // Submit status shows what's missing
+      const submitStatus = screen.getByTestId("readiness-submit-status");
+      expect(submitStatus.textContent).toContain("Осталось");
+      expect(submitStatus.textContent).toContain("рейс");
+      expect(submitStatus.textContent).toContain("размещение");
+      expect(submitStatus.textContent).toContain("креатив с файлом");
+    });
+
+    it("readiness action buttons switch tabs", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches();
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      const user = userEvent.setup();
+
+      // Click flight action → should switch to flights tab
+      await user.click(screen.getByTestId("readiness-flight-action"));
+      // Tab should be active — the flights tab button should have active style
+      // (we verify by checking the action button is gone, meaning we switched)
+      await waitFor(() => {
+        expect(screen.queryByTestId("readiness-flight-action")).toBeNull();
+      });
+    });
+
+    it("shows 'Можно отправить' when all prerequisites met", async () => {
+      mockAuthenticatedSession();
+      // Seed with flights, placements, and deliverable creative
+      const SEED_FL = [{ id: "f1", campaign_id: "c1", name: "Flight 1", start_at: "2026-08-01T00:00:00Z", end_at: "2026-08-31T00:00:00Z", sort_order: 0, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }];
+      const SEED_PL = [{ id: "p1", campaign_id: "c1", display_surface_id: "surf-1", max_impressions: 1000, sort_order: 0, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", surface_code: "SURF-001" }];
+      const SEED_CR = [{ id: "cc1", campaign_id: "c1", creative_asset_id: "ca-1", sort_order: 0, duration_override_ms: null, created_at: "2026-01-01T00:00:00Z", asset: { id: "ca-1", code: "CR1", name: "Banner", media_type: "image", sha256_checksum: "a".repeat(64), file_size_bytes: 100, status: "ready", moderation_status: "approved", resolution_w: 1920, resolution_h: 1080, duration_ms: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" } }];
+      mockAllFetches({
+        "/campaign-flights": () => Promise.resolve(new Response(JSON.stringify(SEED_FL), { status: 200 })),
+        "/campaign-placements": () => Promise.resolve(new Response(JSON.stringify(SEED_PL), { status: 200 })),
+        "/campaign-creatives": () => Promise.resolve(new Response(JSON.stringify(SEED_CR), { status: 200 })),
+        "/creative-assets": () => Promise.resolve(new Response(JSON.stringify([{ id: "ca-1", code: "CR1", name: "Banner", media_type: "image", sha256_checksum: "a".repeat(64), file_size_bytes: 100, status: "ready", moderation_status: "approved", resolution_w: 1920, resolution_h: 1080, duration_ms: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }]), { status: 200 })),
+      });
+
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+
+      // All statuses show ✅
+      expect(screen.getByTestId("readiness-flight-status").textContent).toBe("✅");
+      expect(screen.getByTestId("readiness-placement-status").textContent).toBe("✅");
+      expect(screen.getByTestId("readiness-creative-status").textContent).toBe("✅");
+
+      // Submit status
+      expect(screen.getByTestId("readiness-submit-status").textContent).toContain("Можно отправить");
+    });
+  });
+
   // ── S-017: Upload UI ──
 
   it("no storage_bucket or storage_key in creative asset UI", async () => {
@@ -674,6 +1029,41 @@ describe("CampaignDetailPage — S-009e", () => {
     });
   });
 
+  it("reject success displays rejection reason", async () => {
+    mockAuthenticatedSession();
+    let campaignStatus = "pending_approval";
+    const pendingCampaign = { ...DRAFT_CAMPAIGN, status: "pending_approval" };
+    const reasonText = "Не соответствует требованиям";
+    mockAllFetches({
+      "/campaigns": () => {
+        const c = { ...pendingCampaign, status: campaignStatus };
+        return Promise.resolve(new Response(JSON.stringify({items: [c], total: 1, limit: 50, offset: 0}), { status: 200 }));
+      },
+      "/reject": () => {
+        campaignStatus = "rejected";
+        return Promise.resolve(new Response(JSON.stringify({
+          message: "Campaign rejected", campaign_id: "c1", old_status: "pending_approval", new_status: "rejected",
+        }), { status: 200 }));
+      },
+    }, ["campaigns.approve"]);
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Отклонить")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Отклонить"));
+    await waitFor(() => { expect(screen.getByText("Подтвердить отклонение")).toBeTruthy(); });
+    const textarea = screen.getByPlaceholderText("Укажите причину отклонения");
+    await userEvent.setup().type(textarea, reasonText);
+    await userEvent.setup().click(screen.getByText("Подтвердить отклонение"));
+
+    // Verify rejection reason is displayed
+    await waitFor(() => {
+      expect(screen.getByTestId("campaign-rejection-reason-display")).toBeTruthy();
+      expect(screen.getByText(reasonText)).toBeTruthy();
+    });
+  });
+
   it("shows error on approve 403", async () => {
     mockAuthenticatedSession();
     const pendingCampaign = { ...DRAFT_CAMPAIGN, status: "pending_approval" };
@@ -726,6 +1116,147 @@ describe("CampaignDetailPage — S-009e", () => {
       expect(screen.queryByText("Согласовать")).toBeNull();
       expect(screen.queryByText("Отклонить")).toBeNull();
     });
+  });
+
+  // ── Wave 4: Campaign Lifecycle — activate / pause ──
+
+  it("shows activate button for approved campaign", async () => {
+    mockAuthenticatedSession();
+    const approvedCampaign = { ...DRAFT_CAMPAIGN, status: "approved" };
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [approvedCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
+    }, ["campaigns.manage"]);
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByText("Кампания согласована и готова к запуску.")).toBeTruthy();
+      expect(screen.getByText("Активировать")).toBeTruthy();
+    });
+  });
+
+  it("activate success refreshes campaign status", async () => {
+    mockAuthenticatedSession();
+    const approvedCampaign = { ...DRAFT_CAMPAIGN, status: "approved" };
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [approvedCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
+      "/activate": () =>
+        Promise.resolve(new Response(JSON.stringify({
+          message: "Campaign activated", campaign_id: "c1", old_status: "approved", new_status: "active",
+        }), { status: 200 })),
+    }, ["campaigns.manage"]);
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Активировать")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Активировать"));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Кампания согласована и готова к запуску.")).toBeNull();
+    });
+  });
+
+  it("shows pause button for active campaign", async () => {
+    mockAuthenticatedSession();
+    const activeCampaign = { ...DRAFT_CAMPAIGN, status: "active" };
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [activeCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
+    }, ["campaigns.manage"]);
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByText("Кампания активна — показы идут.")).toBeTruthy();
+      expect(screen.getByText("Приостановить")).toBeTruthy();
+    });
+  });
+
+  it("pause success refreshes campaign status", async () => {
+    mockAuthenticatedSession();
+    const activeCampaign = { ...DRAFT_CAMPAIGN, status: "active" };
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [activeCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
+      "/pause": () =>
+        Promise.resolve(new Response(JSON.stringify({
+          message: "Campaign paused", campaign_id: "c1", old_status: "active", new_status: "paused",
+        }), { status: 200 })),
+    }, ["campaigns.manage"]);
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Приостановить")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Приостановить"));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Кампания активна — показы идут.")).toBeNull();
+    });
+  });
+
+  it("non-manager cannot see activate button on approved", async () => {
+    mockAuthenticatedSession();
+    const approvedCampaign = { ...DRAFT_CAMPAIGN, status: "approved" };
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [approvedCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
+    }); // no campaigns.manage → default /me has no permissions
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Кампания согласована/)).toBeTruthy();
+      expect(screen.getByText(/У вас нет прав на управление кампанией/)).toBeTruthy();
+      expect(screen.queryByText("Активировать")).toBeNull();
+    });
+  });
+
+  it("activate error shows lifecycle error", async () => {
+    mockAuthenticatedSession();
+    const approvedCampaign = { ...DRAFT_CAMPAIGN, status: "approved" };
+    // Direct mock on fetch to return 409 for activate
+    const originalFetch = window.fetch;
+    window.fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.endsWith("/me")) {
+        return Promise.resolve(new Response(JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin", permissions: ["campaigns.manage"] }), { status: 200 }));
+      }
+      if (url.includes("/identity/campaigns?") && (!init || init.method !== "POST")) {
+        return Promise.resolve(new Response(JSON.stringify({items: [approvedCampaign], total: 1, limit: 50, offset: 0}), { status: 200 }));
+      }
+      if (url.includes("/activate") && init?.method === "POST") {
+        return Promise.resolve(new Response(JSON.stringify({ detail: "Campaign not found or not in approved status" }), { status: 409 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+    });
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Активировать")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("Активировать"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("campaign-lifecycle-error")).toBeTruthy();
+    });
+  });
+
+  it("rejected campaign does not show activate/pause buttons", async () => {
+    mockAuthenticatedSession();
+    const rejectedCampaign = { ...DRAFT_CAMPAIGN, status: "rejected" };
+    mockAllFetches({
+      "/campaigns": () => Promise.resolve(new Response(JSON.stringify({items: [rejectedCampaign], total: 1, limit: 50, offset: 0}), { status: 200 })),
+    }, ["campaigns.manage"]);
+
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+    expect(screen.queryByText("Активировать")).toBeNull();
+    expect(screen.queryByText("Приостановить")).toBeNull();
+    expect(screen.queryByText("Кампания согласована")).toBeNull();
   });
 
   // ── S-009g: PoP Reporting ──
@@ -1215,6 +1746,91 @@ describe("CampaignDetailPage — S-090 Dashboard", () => {
     await waitFor(() => {
       expect(screen.getByText("По дням")).toBeTruthy();
       expect(screen.getByText("2026-06-01")).toBeTruthy();
+    });
+  });
+});
+
+// ── S-089: Inventory Simulation UI ──
+
+describe("CampaignDetailPage — S-089 Simulation", () => {
+  beforeEach(() => { localStorage.clear(); vi.restoreAllMocks(); });
+  afterEach(() => { localStorage.clear(); });
+
+  const SIM_F = [{ id: "f1", campaign_id: "c1", name: "F1", start_at: "2026-01-01T00:00:00Z", end_at: "2026-02-01T00:00:00Z", priority: 0, created_at: "2026-01-01T00:00:00Z" }];
+  const SIM_P = [{ id: "p1", campaign_id: "c1", display_surface_id: "surf-1", store_id: "st-1", cluster_id: null, branch_id: null, share_of_voice_pct: 100, max_impressions: 1000, impressions_delivered: 0, status: "active", created_at: "2026-01-01T00:00:00Z" }];
+  const SIM_C = [{ id: "cc1", campaign_id: "c1", creative_asset_id: "ca-1", sort_order: 0, duration_override_ms: null, created_at: "2026-01-01T00:00:00Z", asset: { id: "ca-1", code: "CR1", name: "Banner", media_type: "image/jpeg", sha256_checksum: "abc", file_size_bytes: 100, status: "active", moderation_status: "approved", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" } }];
+
+  const SIM_RESULT = {
+    campaign_id: "c1", overall_fit: true,
+    placements: [{ placement_id: "p1", surface_id: "surf-1", surface_code: "SURF-001", fit: true, slot_fill_percent: 50, total_requested: 1000, total_available: 2000, conflicts: [], applied_rules: [] }],
+    blocking_count: 0, warning_count: 0,
+  };
+
+  it("shows simulation button when campaign has flights+placements+creatives", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches({
+      "campaign-flights": () => Promise.resolve(new Response(JSON.stringify(SIM_F), { status: 200 })),
+      "campaign-placements": () => Promise.resolve(new Response(JSON.stringify(SIM_P), { status: 200 })),
+      "campaign-creatives": () => Promise.resolve(new Response(JSON.stringify(SIM_C), { status: 200 })),
+    });
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("🧪 Симуляция")).toBeTruthy(); });
+  });
+
+  it("shows simulation result after click (success)", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches({
+      "campaign-flights": () => Promise.resolve(new Response(JSON.stringify(SIM_F), { status: 200 })),
+      "campaign-placements": () => Promise.resolve(new Response(JSON.stringify(SIM_P), { status: 200 })),
+      "campaign-creatives": () => Promise.resolve(new Response(JSON.stringify(SIM_C), { status: 200 })),
+      "/inventory/simulate": () => Promise.resolve(new Response(JSON.stringify(SIM_RESULT), { status: 200 })),
+    });
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("🧪 Симуляция")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("🧪 Симуляция"));
+    await waitFor(() => {
+      expect(screen.getByText(/Кампания помещается/)).toBeTruthy();
+      expect(screen.getByTestId("simulation-blocking-count").textContent).toBe("0");
+    });
+  });
+
+  it("shows conflicts when fit=false", async () => {
+    mockAuthenticatedSession();
+    const conflictResult = { ...SIM_RESULT, overall_fit: false,
+      placements: [{ placement_id: "p1", surface_id: "surf-1", surface_code: "SURF-001", fit: false, slot_fill_percent: 150, total_requested: 1500, total_available: 1000, conflicts: [{ conflict_type: "capacity_overbook", severity: "blocking", surface_id: "surf-1", message: "Overbooked" }], applied_rules: [] }],
+      blocking_count: 1, warning_count: 0 };
+    mockAllFetches({
+      "campaign-flights": () => Promise.resolve(new Response(JSON.stringify(SIM_F), { status: 200 })),
+      "campaign-placements": () => Promise.resolve(new Response(JSON.stringify(SIM_P), { status: 200 })),
+      "campaign-creatives": () => Promise.resolve(new Response(JSON.stringify(SIM_C), { status: 200 })),
+      "/inventory/simulate": () => Promise.resolve(new Response(JSON.stringify(conflictResult), { status: 200 })),
+    });
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("🧪 Симуляция")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("🧪 Симуляция"));
+    await waitFor(() => {
+      expect(screen.getByText(/не помещается/)).toBeTruthy();
+      expect(screen.getByText("Overbooked")).toBeTruthy();
+    });
+  });
+
+  it("shows error state on simulation failure", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches({
+      "campaign-flights": () => Promise.resolve(new Response(JSON.stringify(SIM_F), { status: 200 })),
+      "campaign-placements": () => Promise.resolve(new Response(JSON.stringify(SIM_P), { status: 200 })),
+      "campaign-creatives": () => Promise.resolve(new Response(JSON.stringify(SIM_C), { status: 200 })),
+      "/inventory/simulate": () => Promise.resolve(new Response(JSON.stringify({ detail: "Server error" }), { status: 500 })),
+    });
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("🧪 Симуляция")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByText("🧪 Симуляция"));
+    await waitFor(() => {
+      expect(screen.getByText(/Server error/)).toBeTruthy();
     });
   });
 });

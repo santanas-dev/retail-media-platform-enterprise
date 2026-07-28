@@ -347,6 +347,7 @@ def _validate_value_json(rule_type: str, value: dict) -> None:
 async def list_rules(
     db=Depends(get_db),
     _claims: dict = Depends(require_permission("inventory.read")),
+    _rls=Depends(set_rls_context),
 ):
     """List all inventory rules, ordered by priority desc."""
     items = await repository.list_inventory_rules(db)
@@ -358,6 +359,7 @@ async def create_rule(
     body: InventoryRuleCreate,
     db=Depends(get_db),
     _claims: dict = Depends(require_permission("inventory.manage")),
+    _rls=Depends(set_rls_context),
 ):
     """Create a new inventory rule."""
     _validate_rule(body)
