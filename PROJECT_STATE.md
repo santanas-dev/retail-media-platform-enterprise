@@ -31,6 +31,13 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Next workstream: **KSO-ENV-001** — real Sherman-J/KSO environment audit (OS/version, Chromium/kiosk, autostart, storage, network, codecs, logs, update model).
 - No kiosk/scheduler code is written without real hardware environment data.
 
+**CAMPAIGN-UX-002A ✅** — Filter attach-existing creatives by campaign advertiser org (CI #30370620019, 35/35 green).
+- Frontend: dropdown now shows only same-org creatives. Previously break-glass admin saw all orgs.
+- Backend defense-in-depth: CrossOrgReferenceError → 422 (already existed, confirmed via new unit tests).
+- Not a data leak: RLS holds for normal users, backend rejects cross-org attach.
+- Tests: 70/70 vitest (4 new CAMPAIGN-UX-002A), 1364+ Python (2 new back end).
+- Operator walkthrough: PENDING.
+
 **Previous PLAYER-001B entry (scaffold):**
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
