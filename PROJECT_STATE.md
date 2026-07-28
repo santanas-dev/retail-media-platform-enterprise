@@ -1,8 +1,12 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-28 (PLAYER-001B ✅)
+**Last updated:** 2026-07-28 (KSO-STRATEGY-001)
 
-**Next Active Workstream:** PLAYER-001C — media playback loop / manifest item scheduler
+**Next Active Workstream:** KSO-ENV-001 — real Sherman-J/KSO environment audit
+
+**Repository Checkpoint (PS-001):**
+- Payload SHA: `84fe4c3` (PLAYER-001B-FU — substantive)
+- State/Docs SHA: *this commit* (KSO-STRATEGY-001)
 
 **R3 ✅ RELEASED** — v0.10.0-preplayer-business-ready. Main merge: 96b5159, CI #30354973869 (35/35 green), annotated tag → 96b5159. Previous: v0.9.0-prepilot-wave1 (b5dd3b3). Release scope: 35/40 reachable, managed/admin pre-player flow, PRODUCT-READINESS-001, PLAYER-001A, R3-BLOCKER-001, CI-GATE-002. Not included: self.report_view (blocked by PoP path), self.campaign_create (deferred), playlist.build/backup.restore/campaign.complete (service deferred).
 
@@ -20,7 +24,12 @@ Fixes applied:
 - `tests/player_client/test_player_client.py`: updated config tests for gateway_url/control_url split
 
 Hardware-independent contract client ready. Not a real KSO player — no Chromium, X11, kiosk, media playback.
-Next: PLAYER-001C — media playback loop / manifest item scheduler.
+
+**KSO-STRATEGY-001 ✅** — Stop simulated player work until real KSO environment audit. Owner decision:
+- PLAYER-001B-FU is a hardware-independent platform contract proof — NOT a real KSO player.
+- PLAYER-001C / media scheduler / playback loop deferred until real KSO environment audit.
+- Next workstream: **KSO-ENV-001** — real Sherman-J/KSO environment audit (OS/version, Chromium/kiosk, autostart, storage, network, codecs, logs, update model).
+- No kiosk/scheduler code is written without real hardware environment data.
 
 **Previous PLAYER-001B entry (scaffold):**
 

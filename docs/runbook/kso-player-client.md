@@ -1,6 +1,8 @@
 # KSO Player Client — Runbook
 
-First runnable enterprise KSO client. Minimal device loop against dev stack.
+Hardware-independent enterprise KSO contract client. NOT a production KSO runtime.
+Real KSO player requires KSO-ENV-001 (real Sherman-J/KSO environment audit) before
+any scheduler, kiosk, or media playback work.
 
 ## Setup
 
@@ -57,7 +59,8 @@ When manifest exists:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| PLAYER_GATEWAY_URL | http://localhost:8001 | Device-gateway base URL |
+| PLAYER_GATEWAY_URL | http://localhost:8001 | Device-gateway URL (manifest + heartbeat) |
+| PLAYER_CONTROL_URL | http://localhost:8000 | Control-api URL (PoP batch) |
 | PLAYER_SIGNING_KEY | "" | MANIFEST_SIGNING_KEY for verification |
 | PLAYER_DEVICE_JWT | "" | Pre-configured JWT (skip auth) |
 | PLAYER_DEVICE_CODE | "" | Device code for onboarding |

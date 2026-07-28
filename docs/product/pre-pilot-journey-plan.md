@@ -84,13 +84,13 @@ Pre-player managed admin-flow (35/40) закрыт и достаточно кл�
 - ⏸️ **self.campaign_create:** deferred managed-first (P2).
 - 🔴 **playlist.build, backup.restore, campaign.complete:** service-deferred.
 
-**Решение:** PLAYER-001 next — не потому что «всё готово», а потому что player — следующий логический шаг для разблокировки PoP/reporting. Реальный КСО-плеер → показ → PoP-данные → наполнение self.report_view.
+**Решение:** PLAYER-001B-FU closed as hardware-independent contract proof (signed manifest, heartbeat, PoP accepted). **KSO-ENV-001 next** — real Sherman-J/KSO environment audit before any kiosk or scheduler code. PLAYER-001C/media playback deferred until real hardware environment is known.
 
 ---
 
-## После волны 6 — PLAYER-001 next (OWNER-DECISION-001)
+## После волны 6 — KSO-ENV-001 next (OWNER-DECISION-001)
 
-Решение владельца: **PLAYER-001 next.** Реальный КСО-плеер поверх готовых edge-контрактов (onboard/manifest+подпись/PoP/heartbeat), тонкий адаптерный шов, без Channel Orchestrator (§24 прагматика). Показ + реальный PoP → наполняет `self.report_view` и открывает недопоказы/компенсации.
+Решение владельца: **KSO-ENV-001 first.** Реальный КСО-плеер требует аудита реального Sherman-J/KSO (ОС, Chromium/kiosk, autostart, storage, сеть, codecs, update model). PLAYER-001B-FU доказал, что платформенные контракты работают (manifest+подпись, heartbeat, PoP). PLAYER-001C scheduler отложен до получения реальных данных о среде.
 
 - `self.report_view` остаётся 🔴 blocked — разблокируется через player/PoP data path, не через искусственный report workaround.
 - `self.campaign_create` остаётся deferred managed-first (P2).
