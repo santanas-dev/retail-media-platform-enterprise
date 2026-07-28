@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-27 (PLAYER-001A)
+**Last updated:** 2026-07-28 (R3-BLOCKER-001)
 
-**Next Active Workstream:** R3 — stable release v0.10.0-preplayer-business-ready to main, then PLAYER-001B
+**Next Active Workstream:** R3 — resume release v0.10.0-preplayer-business-ready (CI fix applied, then re-merge main)
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -64,6 +64,8 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 **PRODUCT-READINESS-001** ✅ — Pre-player business readiness audit. Docs-only — no product code. Registry counts corrected: 35 reachable / 5 blocked (was 33/7 — summary comment missed adsettings.test and audit.view). pre-pilot-journey-plan.md: counts updated, pre-player readiness statement added. PROJECT_STATE: stale 33→35 fixed. Verdict: managed admin-flow ready for PLAYER-001; not all business functions complete; PLAYER-001 next because it unlocks PoP/reporting. Roadmap consistency: 0 findings.
 
 **PLAYER-001A** ✅ — Source repo KSO/player import audit + first runnable slice plan. Docs-only — no product code. Old repo (`santanas-dev/retail-media-platform`, commit `41e3398`) fully inventoried: KSO Player 38,804 loc (37 modules), KSO Sidecar Agent 18,558 loc (22+ modules), ~3,910 tests across 109 test files. Key finding: manifest shape, auth model (device_code/secret vs device JWT), PoP payload (device_event_id vs event_id), and heartbeat payload are ALL incompatible with enterprise contracts. Verdict: discard old code as-is. Only import: `retry_backoff.py` (267 loc, pure logic, zero deps). Fresh code estimate: ~580 loc (HTTP adapter + auth + manifest + heartbeat + pop + config). PLAYER-001B defined: onboard→fetch manifest→verify→apply→render→heartbeat→PoP→verify. Recommendation unchanged: R3 release first (v0.10.0-preplayer-business-ready), then PLAYER-001B. Full audit: `docs/architecture/player-001a-source-import-audit.md` (19K).
+
+**R3-BLOCKER-001** ✅ — R3 tag blocked by 3 test failures on main (CI #30347073835). Root cause: `DeviceOut` schema requires `health_state`, `runtime_version`, `player_version` as non-null `str`, but devices without heartbeat have NULL DB columns → Pydantic validation crash. Fix: added `field_validator(mode='before')` in `DeviceOut` coerce None→"" for all three fields. `packages/domain/schemas.py` changed. 8/8 target tests pass (was 3 fails), 102 broader tests green. R3 tag NOT yet created — requires re-merge to main + green CI.
 
 **WAVE4-CLOSURE-001** ✅ — Wave 4 canon closure: campaign.activate/pause + emergency.activate/deactivate + UX hardening (CAMPAIGN-UX-001A/B). pre-pilot-journey-plan.md synced (22/23 closed, +5 service, +1 UX). Next: Wave 5.
 **WAVE4-CLOSURE-001-FU** ✅ — fix progress math: UX-hardening removed from 28/40 arithmetic (not a separate registry journey).
