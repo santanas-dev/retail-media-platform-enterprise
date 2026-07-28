@@ -104,8 +104,10 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install deps
-        run: pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT nats-py jsonschema pyyaml pytest-asyncio greenlet minio ldap3 redis aiosqlite
+        run: pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT nats-py jsonschema pyyaml pytest-asyncio greenlet minio ldap3 redis aiosqlite requests
       - name: Run tests
+        env:
+          PYTHONPATH: apps/kso-player-client
         run: python -m pytest tests/ -v
   import-boundaries:
     name: Import Boundaries — ADR‑014
