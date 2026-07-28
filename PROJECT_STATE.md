@@ -39,7 +39,7 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Tests: 70/70 vitest (4 new CAMPAIGN-UX-002A), 1364+ Python (2 new back end).
 - Operator walkthrough: PENDING.
 
-**PRODUCT-READINESS-PROGRAM-001A ✅** — Единая программа доводки до реального пилота зафиксирована в каноне. Docs-only.
+**PRODUCT-READINESS-PROGRAM-001A ✅** — Единая программа доводки до реального пилота зафиксирована в каноне. Docs-only. CI #30372137813 (34/34 green).
 - Цель: настоящий пилот на 1 КСО с реальным рекламодателем.
 - Эпики: A (юр-реквизиты), B (бренды/договоры/контакты), C (wizard + auto-code), D (пользователи и права UX), E (UX кампании).
 - EPIC-E #3 уже closed as CAMPAIGN-UX-002A; user.deactivate и inventory.rule_create уже closed.
