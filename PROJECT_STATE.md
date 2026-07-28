@@ -1,11 +1,14 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-28 (R3 RELEASED)
+**Last updated:** 2026-07-28 (PLAYER-001B ✅)
 
-**Next Active Workstream:** PLAYER-001B — first runnable enterprise KSO client
+**Next Active Workstream:** PLAYER-001C — media playback loop / manifest item scheduler
+
+**R3 ✅ RELEASED** — v0.10.0-preplayer-business-ready. Main merge: 96b5159, CI #30354973869 (35/35 green), annotated tag → 96b5159. Previous: v0.9.0-prepilot-wave1 (b5dd3b3). Release scope: 35/40 reachable, managed/admin pre-player flow, PRODUCT-READINESS-001, PLAYER-001A, R3-BLOCKER-001, CI-GATE-002. Not included: self.report_view (blocked by PoP path), self.campaign_create (deferred), playlist.build/backup.restore/campaign.complete (service deferred).
+
+**PLAYER-001B ✅** — First runnable enterprise KSO client. 774 loc across 7 modules + 213 loc tests (19/19). Package: apps/kso-player-client/. Modules: retry_backoff (imported from old repo, 267 loc adapted), config, http, auth, manifest, heartbeat, pop, main (CLI --once). Proofs: unit tests green, JWT auth verified against live device-gateway, RLS context pass (404 instead of 403), client handles 404 manifest gracefully. Runbook: docs/runbook/kso-player-client.md. Not yet proven: full loop with heartbeat+PoP accepted (requires published campaign/manifest). Old repo: only retry_backoff imported (267 loc); rest discarded (57K loc incompatible).
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
-**JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
 **CI-GATE-001** ✅ — test_tampered_token_rejected stabilised.
 **JOURNEY-003** ✅ — advertiser.invite reachable. CI #29907059713 green (35/35).
 **JOURNEY-004** ✅ — self.login reachable. CI #29909590097 green (35/35), Behavioral success.
