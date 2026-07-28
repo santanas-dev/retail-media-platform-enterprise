@@ -350,3 +350,99 @@ self.login / self.campaign_view / self.report_view + свои smoke.
 **M6 — Self-service (P2).** advertiser-web: полное самозаведение кампаний рекламодателем.
 
 **Правило по всем вехам:** ни один журней вехи не «Готово» без зелёного deep-smoke.
+
+---
+
+## 6. PRODUCT-READINESS-PROGRAM-001 — программа доводки до реального пилота
+
+**Версия:** 1.0 · 2026-07-28 · владелец: продукт
+
+**Цель:** настоящий пилот на 1 КСО — не seed/script flow, а живой рекламодатель
+проводит кампанию от онбординга до отчёта.
+
+**Фокус:** онбординг реального рекламодателя (юр-реквизиты, бренды, договоры,
+автоматическое присвоение кода, пользователи, UX кампании).
+
+**Статус программы:** каноническая рамка зафиксирована. Реализация эпиков
+начинается только после owner/legal approval соответствующего draft.
+
+### Эпики
+
+| Эпик | Название | Статус |
+|------|----------|--------|
+| EPIC-A | Юридические реквизиты рекламодателя | Draft готов (ADVERTISER-UX-001A0); ожидает owner/legal approval |
+| EPIC-B | Бренды / договоры / контакты | Запланирован |
+| EPIC-C | Wizard + автоматическое присвоение кода | Запланирован |
+| EPIC-D | Пользователи и права — UX | Запланирован |
+| EPIC-E | UX кампании (attach, flight, placement, dashboard) | #3 ✅ closed as CAMPAIGN-UX-002A; остальные запланированы |
+
+> Фактический статус — из `PROJECT_STATE.md` + `feature-registry.yaml`.
+> Брифинг PRODUCT-READINESS-PROGRAM-001 задаёт направление; часть статусов в нём
+> могла устареть относительно текущего `develop`.
+
+---
+
+### 6.1 ADVERTISER-UX-001A0 — Legal requisites draft for owner/legal approval
+
+**Статус:** ⏳ Draft — not approved for migration until owner/legal confirmation.
+
+#### Поля
+
+**Общие (для всех типов):**
+
+| Поле | Тип | Обязательное | Примечание |
+|------|-----|:---:|------------|
+| `legal_entity_type` | enum `legal_entity` \| `individual_entrepreneur` | ✅ | |
+| `legal_form` | enum: ООО / АО / ПАО / ИП / другое | ✅ | |
+| `legal_name` | string | ✅ | Наименование |
+| `inn` | string (10 или 12 цифр) | ✅ | 10 — юрлицо, 12 — ИП |
+| `legal_address` | string | ✅ | Юридический адрес |
+| `settlement_account` | string (20 цифр) | ✅ | Расчётный счёт |
+| `correspondent_account` | string (20 цифр) | ✅ | Корреспондентский счёт |
+| `bik` | string (9 цифр) | ✅ | БИК |
+| `bank_name` | string | ✅ | Наименование банка |
+
+**Только для `legal_entity`:**
+
+| Поле | Тип | Обязательное | Примечание |
+|------|-----|:---:|------------|
+| `kpp` | string (9 цифр) | ✅ (только юрлицо) | |
+| `ogrn` | string (13 цифр) | ✅ (только юрлицо) | |
+
+**Только для `individual_entrepreneur`:**
+
+| Поле | Тип | Обязательное | Примечание |
+|------|-----|:---:|------------|
+| `ogrnip` | string (15 цифр) | ✅ (только ИП) | |
+
+#### Валидация (draft, не утверждена)
+
+- `inn`: 10 цифр для `legal_entity`, 12 цифр для `individual_entrepreneur`
+- `kpp`: 9 цифр, required только для `legal_entity`
+- `ogrn`: 13 цифр, required только для `legal_entity`
+- `ogrnip`: 15 цифр, required только для `individual_entrepreneur`
+- `bik`: 9 цифр
+- `settlement_account`: 20 цифр
+- `correspondent_account`: 20 цифр
+- `legal_name`, `legal_address`, `bank_name`: non-empty
+- Нормализация: удалить пробелы/дефисы из цифровых полей перед валидацией
+- Контрольные суммы (checksum) для ИНН/ОГРН/ОГРНИП/расчётного счёта:
+  **рекомендованы, но не утверждены как блокирующие** до owner/legal confirmation
+
+**Фраза-блокировщик (должна присутствовать):**
+**not approved for migration until owner/legal confirmation**
+
+#### Предлагаемый порядок задач
+
+```
+ADVERTISER-UX-001A1 — Schema + backend (после approval)
+ADVERTISER-UX-001A2 — UI + smoke
+ADVERTISER-UX-001B1 — Brands CRUD
+ADVERTISER-UX-001B2 — Contracts CRUD + PDF upload
+ADVERTISER-UX-001B3 — Contacts CRUD + user link
+ADVERTISER-UX-001C1 — Server-side auto-code generation
+ADVERTISER-UX-001C2 — Advertiser create wizard
+ADVERTISER-UX-001D1 — Users: split internal vs advertiser roles in UI
+ADVERTISER-UX-001D2 — Permission descriptions + UUID invariant
+CAMPAIGN-UX-002B/C/D — Remaining campaign UX polish (flights, placements, dashboard)
+```

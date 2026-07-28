@@ -1,8 +1,9 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-28 (KSO-STRATEGY-001)
+**Last updated:** 2026-07-28 (PRODUCT-READINESS-PROGRAM-001A)
 
-**Next Active Workstream:** KSO-ENV-001 — real Sherman-J/KSO environment audit
+**Next Active Workstream:** KSO-ENV-001 — real Sherman-J/KSO environment audit (technical).
+Product readiness: awaiting owner/legal approval of EPIC-A field matrix before ADVERTISER-UX-001A1.
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `84fe4c3` (PLAYER-001B-FU — substantive)
@@ -37,6 +38,19 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Not a data leak: RLS holds for normal users, backend rejects cross-org attach.
 - Tests: 70/70 vitest (4 new CAMPAIGN-UX-002A), 1364+ Python (2 new back end).
 - Operator walkthrough: PENDING.
+
+**PRODUCT-READINESS-PROGRAM-001A ✅** — Единая программа доводки до реального пилота зафиксирована в каноне. Docs-only.
+- Цель: настоящий пилот на 1 КСО с реальным рекламодателем.
+- Эпики: A (юр-реквизиты), B (бренды/договоры/контакты), C (wizard + auto-code), D (пользователи и права UX), E (UX кампании).
+- EPIC-E #3 уже closed as CAMPAIGN-UX-002A; user.deactivate и inventory.rule_create уже closed.
+- Канон: `docs/product/user-journeys.md` §6.
+
+**ADVERTISER-UX-001A0 ✅** — Legal requisites draft for owner/legal approval. Docs-only.
+- Поля: legal_entity_type, legal_form, legal_name, inn, kpp, ogrn, ogrnip, legal_address, settlement_account, correspondent_account, bik, bank_name.
+- Валидация: длины цифровых полей, non-empty для текстовых. Checksum рекомендованы, не блокирующие.
+- **Not approved for migration until owner/legal confirmation.**
+- Next: ADVERTISER-UX-001A1 (schema/backend) — только после approval.
+- Checkpoint by PS-001.
 
 **Previous PLAYER-001B entry (scaffold):**
 
@@ -147,7 +161,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 61197d0 | 90305cf | CI-GATE-002 — CI stabilised, R3 ready |
+| develop | f54ae91 | f54ae91 | PRODUCT-READINESS-PROGRAM-001A — docs-only |
 | main    | 96b5159     | —               | R3 ✅ RELEASED — v0.10.0-preplayer-business-ready, CI #30354973869 ✅ |
 | NAS mirror (ASUSTOR) | pending | — | Hermes cron sync every 3 min |
 
