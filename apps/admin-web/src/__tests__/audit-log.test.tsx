@@ -289,6 +289,12 @@ describe("audit log page", () => {
       expect(headers.length).toBeGreaterThanOrEqual(1);
     });
 
+    // Wait for rows to actually render before checking order
+    await waitFor(() => {
+      const rows = screen.getAllByTestId(/audit-row-/);
+      expect(rows.length).toBeGreaterThanOrEqual(2);
+    });
+
     // First row should be ev-new (newest first)
     const rows = screen.getAllByTestId(/audit-row-/);
     expect(rows[0].getAttribute("data-testid")).toBe("audit-row-ev-new");

@@ -67,6 +67,8 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 
 **R3-BLOCKER-001** ✅ — R3 tag blocked by 3 test failures on main (CI #30347073835). Root cause: `DeviceOut` schema requires `health_state`, `runtime_version`, `player_version` as non-null `str`, but devices without heartbeat have NULL DB columns → Pydantic validation crash. Fix: added `field_validator(mode='before')` in `DeviceOut` coerce None→"" for all three fields. `packages/domain/schemas.py` changed. 8/8 target tests pass (was 3 fails), 102 broader tests green. R3 tag NOT yet created — requires re-merge to main + green CI.
 
+**CI-GATE-002** ✅ — admin-web audit-log.test.tsx flake stabilised. Root cause: `renders rows in provided order` test waited for page title headers but not for row data-testid elements — race between `waitFor(headers)` and `getAllByTestId(rows)` in CI (slower environment). Reproduced locally: 1/5 runs failed. Fix: added intermediate `waitFor` for `rows.length >= 2` before checking order. Proof: 10/10 consecutive green runs, full admin-web 234/234. Next: resume R3 release.
+
 **WAVE4-CLOSURE-001** ✅ — Wave 4 canon closure: campaign.activate/pause + emergency.activate/deactivate + UX hardening (CAMPAIGN-UX-001A/B). pre-pilot-journey-plan.md synced (22/23 closed, +5 service, +1 UX). Next: Wave 5.
 **WAVE4-CLOSURE-001-FU** ✅ — fix progress math: UX-hardening removed from 28/40 arithmetic (not a separate registry journey).
 
