@@ -6,7 +6,23 @@
 
 **R3 ✅ RELEASED** — v0.10.0-preplayer-business-ready. Main merge: 96b5159, CI #30354973869 (35/35 green), annotated tag → 96b5159. Previous: v0.9.0-prepilot-wave1 (b5dd3b3). Release scope: 35/40 reachable, managed/admin pre-player flow, PRODUCT-READINESS-001, PLAYER-001A, R3-BLOCKER-001, CI-GATE-002. Not included: self.report_view (blocked by PoP path), self.campaign_create (deferred), playlist.build/backup.restore/campaign.complete (service deferred).
 
-**PLAYER-001B ✅** — First runnable enterprise KSO client. 774 loc across 7 modules + 213 loc tests (19/19 green in CI #30357468294, 35/35). Package: apps/kso-player-client/. Modules: retry_backoff (imported from old repo, 267 loc adapted), config, http, auth, manifest, heartbeat, pop, main (CLI --once). Proofs: unit tests green (local + CI), JWT auth verified against live device-gateway, RLS context pass (404 instead of 403), client handles 404 manifest gracefully. Not yet proven: full loop with heartbeat+PoP accepted (requires published campaign/manifest — follow-up PLAYER-001C). Old repo: only retry_backoff imported; rest discarded (57K loc incompatible). CI fix: PYTHONPATH + requests dep.
+**PLAYER-001B-FU ✅** — Full live loop proof closed. Client --once completes against dev stack:
+1. ✅ signed manifest fetched (HMAC-SHA256, 64-char sig)
+2. ✅ signature verified  
+3. ✅ heartbeat accepted
+4. ✅ PoP accepted (1 event, status=accepted in pop_events_raw)
+
+Fixes applied:
+- `docker-compose.phase1.yml`: added MANIFEST_SIGNING_KEY to device-gateway (was missing — signatures were empty)
+- `player_client/config.py` + `main.py`: split gateway_url (manifest/heartbeat on :8001) from control_url (PoP on :8000)
+- `main.py`: resolve surface_id from manifest.display_surfaces, handle null duration_ms
+- `scripts/smoke/setup-manifest-data.py`: idempotent manifest data setup (campaign→approved, device→active, flight window→current, generate manifests via delivery module)
+- `tests/player_client/test_player_client.py`: updated config tests for gateway_url/control_url split
+
+Hardware-independent contract client ready. Not a real KSO player — no Chromium, X11, kiosk, media playback.
+Next: PLAYER-001C — media playback loop / manifest item scheduler.
+
+**Previous PLAYER-001B entry (scaffold):**
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **CI-GATE-001** ✅ — test_tampered_token_rejected stabilised.

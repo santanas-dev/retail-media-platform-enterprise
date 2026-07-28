@@ -5,7 +5,8 @@ Usage:
   python -m apps.kso-player-client.main --once
 
 Environment:
-  PLAYER_GATEWAY_URL   — device-gateway base URL (default: http://localhost:8001)
+  PLAYER_GATEWAY_URL   — device-gateway base URL for manifest/heartbeat (default: http://localhost:8001)
+  PLAYER_CONTROL_URL   — control-api base URL for PoP batch (default: http://localhost:8000)
   PLAYER_SIGNING_KEY   — MANIFEST_SIGNING_KEY for signature verification
   PLAYER_DEVICE_JWT    — pre-configured device JWT (skip auth)
   PLAYER_DEVICE_CODE   — device code for auth
@@ -30,16 +31,19 @@ from player_client.retry_backoff import PlayerHttpError
 
 def run_once(config) -> int:
     max_retries = config.max_retries
-    http = PlayerHttpClient(config.base_url)
+    gateway = PlayerHttpClient(config.gateway_url)
+    control = PlayerHttpClient(config.control_url)
 
     # 1. Auth
     if config.device_jwt:
-        http.token = config.device_jwt
+        gateway.token = config.device_jwt
+        control.token = config.device_jwt
         print(f"[AUTH] using configured JWT")
     else:
         try:
-            token = authenticate(http, max_retries)
-            http.token = token.access_token
+            token = authenticate(gateway, max_retries)
+            gateway.token = token.access_token
+            control.token = token.access_token
             print(f"[AUTH] ok (valid until {token.expires_at:.0f})")
         except (ValueError, PlayerHttpError) as e:
             print(f"[AUTH] FAILED: {e}")
@@ -47,7 +51,7 @@ def run_once(config) -> int:
 
     # 2. Manifest
     try:
-        manifest = fetch_manifest(http, config.signing_key, max_retries)
+        manifest = fetch_manifest(gateway, config.signing_key, max_retries)
         print(f"[MANIFEST] {manifest.manifest_id} (verified={manifest.verified}, emergency={manifest.emergency_active})")
     except (ValueError, PlayerHttpError) as e:
         print(f"[MANIFEST] FAILED: {e}")
@@ -58,27 +62,33 @@ def run_once(config) -> int:
     else:
         # 3. Heartbeat
         try:
-            hb = send_heartbeat(http, max_retries=max_retries)
+            hb = send_heartbeat(gateway, max_retries=max_retries)
             print(f"[HEARTBEAT] accepted={hb.accepted} server_time={hb.server_time}")
         except (ValueError, PlayerHttpError) as e:
             print(f"[HEARTBEAT] FAILED: {e}")
             return 5
 
-        # 4. PoP
+        # 4. PoP — sent to control API (not gateway)
         playlist = manifest.playlist
         if not playlist:
             print("[POP] no playlist items — skipping")
         else:
             slot = playlist[0]
             try:
+                # Resolve surface_id from manifest's display_surfaces
+                surface_id = ""
+                surfaces = manifest.raw.get("display_surfaces", [])
+                if surfaces:
+                    surface_id = surfaces[0].get("surface_id", "")
+
                 pop = send_pop_batch(
-                    http,
+                    control,
                     manifest_id=manifest.manifest_id,
                     device_id=manifest.device_id,
                     campaign_id=slot.get("campaign_id", ""),
-                    surface_id=slot.get("surface_id", ""),
+                    surface_id=surface_id,
                     creative_asset_id=slot.get("creative_asset_id", slot.get("id", "")),
-                    duration_ms=slot.get("duration_ms", 10000),
+                    duration_ms=slot.get("duration_ms") or 10000,
                     max_retries=max_retries,
                 )
                 print(f"[POP] accepted={pop.accepted_count} rejected={pop.rejected_count} quarantined={pop.quarantined_count}")

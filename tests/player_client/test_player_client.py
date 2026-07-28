@@ -28,7 +28,8 @@ class TestConfig:
     def test_defaults(self):
         with patch.dict(os.environ, {"PLAYER_GATEWAY_URL": "http://test:8001"}, clear=True):
             cfg = load_config()
-        assert cfg.base_url == "http://test:8001"
+        assert cfg.gateway_url == "http://test:8001"
+        assert cfg.control_url == "http://localhost:8000"
         assert cfg.signing_key == ""
         assert cfg.max_retries == 3
 

@@ -7,7 +7,8 @@ from dataclasses import dataclass
 
 @dataclass
 class PlayerConfig:
-    base_url: str = ""
+    gateway_url: str = ""
+    control_url: str = ""
     signing_key: str = ""
     device_code: str = ""
     device_secret: str = ""
@@ -17,8 +18,10 @@ class PlayerConfig:
 
 
 def load_config() -> PlayerConfig:
+    gateway_url = os.environ.get("PLAYER_GATEWAY_URL", "http://localhost:8001")
     cfg = PlayerConfig(
-        base_url=os.environ.get("PLAYER_GATEWAY_URL", "http://localhost:8001"),
+        gateway_url=gateway_url,
+        control_url=os.environ.get("PLAYER_CONTROL_URL", "http://localhost:8000"),
         signing_key=os.environ.get("PLAYER_SIGNING_KEY", ""),
         device_code=os.environ.get("PLAYER_DEVICE_CODE", ""),
         device_secret=os.environ.get("PLAYER_DEVICE_SECRET", ""),
@@ -26,7 +29,7 @@ def load_config() -> PlayerConfig:
         retailer_id=os.environ.get("PLAYER_RETAILER_ID", ""),
         max_retries=int(os.environ.get("PLAYER_MAX_RETRIES", "3")),
     )
-    if not cfg.base_url:
+    if not cfg.gateway_url:
         _die("PLAYER_GATEWAY_URL is required")
     return cfg
 
