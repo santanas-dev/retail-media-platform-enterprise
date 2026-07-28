@@ -380,6 +380,131 @@ describe("CampaignDetailPage — S-009e", () => {
     await waitFor(() => { expect(screen.getByText("Login")).toBeTruthy(); });
   });
 
+  // ── CAMPAIGN-UX-002A: org-scoped attach dropdown ──
+
+  describe("CAMPAIGN-UX-002A — org-scoped attach dropdown", () => {
+    const SEED_ASSETS_TWO_ORGS = [
+      { id: "ca-org1", advertiser_organization_id: "org-1", code: "ORG1-1", name: "Banner Org1", media_type: "image/jpeg", sha256_checksum: "a".repeat(64), file_size_bytes: 100, status: "ready", moderation_status: "approved", duration_ms: null, resolution_w: null, resolution_h: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" },
+      { id: "ca-org2", advertiser_organization_id: "org-2", code: "ORG2-1", name: "Banner Org2", media_type: "image/jpeg", sha256_checksum: "b".repeat(64), file_size_bytes: 200, status: "ready", moderation_status: "approved", duration_ms: null, resolution_w: null, resolution_h: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" },
+    ];
+
+    it("attach dropdown shows only same-org creatives", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches({
+        "/creative-assets": () =>
+          Promise.resolve(new Response(JSON.stringify(SEED_ASSETS_TWO_ORGS), { status: 200 })),
+      });
+
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      await userEvent.setup().click(screen.getByText("Креативы"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("creative-attach-btn")).toBeTruthy();
+      });
+
+      // Click "Прикрепить существующий"
+      await userEvent.setup().click(screen.getByTestId("creative-attach-btn"));
+
+      await waitFor(() => {
+        // org-1 creative is visible
+        const select = screen.getByTestId("creative-attach-select");
+        expect(select.textContent).toContain("ORG1-1");
+        // org-2 creative is absent
+        expect(select.textContent).not.toContain("ORG2-1");
+      });
+    });
+
+    it("attach dropdown count reflects org-filtered list", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches({
+        "/creative-assets": () =>
+          Promise.resolve(new Response(JSON.stringify(SEED_ASSETS_TWO_ORGS), { status: 200 })),
+      });
+
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      await userEvent.setup().click(screen.getByText("Креативы"));
+
+      await waitFor(() => {
+        // Counter shows org-filtered count (1), not global count (2)
+        expect(screen.getByText(/Существующие креативы \(1\)/)).toBeTruthy();
+      });
+    });
+
+    it("shows empty-state when org has no creatives", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches({
+        "/creative-assets": () =>
+          Promise.resolve(new Response(JSON.stringify([
+            { id: "ca-org2", advertiser_organization_id: "org-2", code: "ORG2-1", name: "Banner", media_type: "image/jpeg", sha256_checksum: "b".repeat(64), file_size_bytes: 200, status: "ready", moderation_status: "approved", duration_ms: null, resolution_w: null, resolution_h: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" },
+          ]), { status: 200 })),
+      });
+
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      await userEvent.setup().click(screen.getByText("Креативы"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("creative-attach-btn")).toBeTruthy();
+      });
+
+      // Click to open the attach form — empty-state is inside the form
+      await userEvent.setup().click(screen.getByTestId("creative-attach-btn"));
+
+      await waitFor(() => {
+        expect(screen.getByText("Нет доступных креативов для рекламодателя этой кампании.")).toBeTruthy();
+      });
+    });
+
+    it("attach error does not render [object Object]", async () => {
+      mockAuthenticatedSession();
+      mockAllFetches({
+        "/creative-assets": () =>
+          Promise.resolve(new Response(JSON.stringify([SEED_ASSETS_TWO_ORGS[0]]), { status: 200 })),
+        "/campaign-creatives": (url, init) => {
+          if (init?.method === "POST") {
+            return Promise.resolve(new Response(
+              JSON.stringify({ detail: { message: "Creative asset does not belong to the campaign's advertiser organization" } }),
+              { status: 422 },
+            ));
+          }
+          return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+        },
+      });
+
+      const router = createRouter("/campaigns/c1");
+      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+      await userEvent.setup().click(screen.getByText("Креативы"));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("creative-attach-btn")).toBeTruthy();
+      });
+
+      // Click "Прикрепить существующий"
+      await userEvent.setup().click(screen.getByTestId("creative-attach-btn"));
+
+      await waitFor(() => {
+        const select = screen.getByTestId("creative-attach-select");
+        expect(select).toBeTruthy();
+      });
+
+      // Select the org-1 creative and submit
+      const select = screen.getByTestId("creative-attach-select") as HTMLSelectElement;
+      await userEvent.setup().selectOptions(select, "ca-org1");
+      await userEvent.setup().click(screen.getByTestId("creative-attach-submit"));
+
+      await waitFor(() => {
+        const errorText = document.body.textContent || "";
+        expect(errorText).not.toContain("[object Object]");
+      });
+    });
+  });
+
   // ── S-009j: Creative Asset Intake UI ──
 
   describe("S-009j — creative asset intake form", () => {

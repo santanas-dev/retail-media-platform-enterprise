@@ -1384,9 +1384,11 @@ export default function CampaignDetailPage() {
       return a.sha256_checksum != null && a.sha256_checksum.length === 64;
     }
 
-    // Unattached assets (not yet linked to this campaign)
+    // Unattached assets — same advertiser org only, not yet linked to this campaign
     const linkedIds = new Set(creatives.map((x) => x.creative_asset_id));
-    const unattached = allAssets.filter((a) => !linkedIds.has(a.id));
+    const unattached = allAssets.filter(
+      (a) => !linkedIds.has(a.id) && a.advertiser_organization_id === campaign.advertiser_organization_id,
+    );
 
     return (
       <div>
@@ -1492,7 +1494,9 @@ export default function CampaignDetailPage() {
                       </select>
                     ) : (
                       <p style={{ fontSize: "0.75rem", color: "#94a3b8", margin: 0 }}>
-                        {allAssets.length === 0 ? "Нет доступных креативов для выбора." : "Все креативы уже прикреплены."}
+                        {allAssets.filter((a) => a.advertiser_organization_id === campaign.advertiser_organization_id).length === 0
+                          ? "Нет доступных креативов для рекламодателя этой кампании."
+                          : "Все креативы рекламодателя уже прикреплены."}
                       </p>
                     )}
                   </div>
@@ -1594,7 +1598,7 @@ export default function CampaignDetailPage() {
         {allAssets.length > 0 && (
           <details style={{ marginBottom: "0.75rem", fontSize: "0.8rem" }}>
             <summary style={{ cursor: "pointer", color: "#475569", fontWeight: 500 }}>
-              Существующие креативы ({allAssets.length})
+              Существующие креативы ({allAssets.filter((a) => a.advertiser_organization_id === campaign.advertiser_organization_id).length})
             </summary>
             <table style={{ ...css.miniTable, marginTop: "0.5rem" }}>
               <thead>
