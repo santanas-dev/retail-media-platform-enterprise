@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-28 (R3-BLOCKER-001)
+**Last updated:** 2026-07-28 (R3 RELEASED)
 
-**Next Active Workstream:** R3 — resume release v0.10.0-preplayer-business-ready (CI fix applied, then re-merge main)
+**Next Active Workstream:** PLAYER-001B — first runnable enterprise KSO client
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
 **JOURNEY-002** ✅ — advertiser.application_review reachable. CI #29902709909 green (35/35).
@@ -69,6 +69,8 @@ R2 ✅ **RELEASED** — Wave 1 baseline to main (b5dd3b3), CI #29937353570 green
 
 **CI-GATE-002** ✅ — admin-web audit-log.test.tsx flake stabilised. Root cause: `renders rows in provided order` test waited for page title headers but not for row data-testid elements — race between `waitFor(headers)` and `getAllByTestId(rows)` in CI (slower environment). Reproduced locally: 1/5 runs failed. Fix: added intermediate `waitFor` for `rows.length >= 2` before checking order. Proof: 10/10 consecutive green runs, full admin-web 234/234. Next: resume R3 release.
 
+**R3 ✅ RELEASED** — v0.10.0-preplayer-business-ready. Main merge: 96b5159, CI #30354973869 (35/35 green), annotated tag → 96b5159. Previous: v0.9.0-prepilot-wave1 (b5dd3b3). Release scope: 35/40 reachable, managed/admin pre-player flow, PRODUCT-READINESS-001, PLAYER-001A, R3-BLOCKER-001, CI-GATE-002. Not included: self.report_view (blocked by PoP path), self.campaign_create (deferred), playlist.build/backup.restore/campaign.complete (service deferred). Next: PLAYER-001B — first runnable enterprise KSO client.
+
 **WAVE4-CLOSURE-001** ✅ — Wave 4 canon closure: campaign.activate/pause + emergency.activate/deactivate + UX hardening (CAMPAIGN-UX-001A/B). pre-pilot-journey-plan.md synced (22/23 closed, +5 service, +1 UX). Next: Wave 5.
 **WAVE4-CLOSURE-001-FU** ✅ — fix progress math: UX-hardening removed from 28/40 arithmetic (not a separate registry journey).
 
@@ -110,9 +112,9 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 61197d0 | 91d1063 | OWNER-DECISION-001 — PLAYER-001 next |
-| main    | b5dd3b3     | —               | R2 release — Wave 1 prepilot baseline, CI #29937353570 ✅ |
-| NAS mirror (ASUSTOR) | verified | 16fc8d7 | Hermes cron sync — synced 2026-07-27 12:10, vers=3.02, credentials inline |
+| develop | 61197d0 | 90305cf | CI-GATE-002 — CI stabilised, R3 ready |
+| main    | 96b5159     | —               | R3 ✅ RELEASED — v0.10.0-preplayer-business-ready, CI #30354973869 ✅ |
+| NAS mirror (ASUSTOR) | pending | — | Hermes cron sync every 3 min |
 
 > **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
@@ -306,7 +308,16 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 ## Next Active Workstream
 
-**R3 — stable release v0.10.0-preplayer-business-ready to main, then PLAYER-001B.**
+**PLAYER-001B — first runnable enterprise KSO client.**
+
+~580 lines fresh code (+ 267 lines imported retry_backoff.py).
+Scripted flow: onboard → fetch manifest → verify signature → apply
+→ render 1 slot → heartbeat → PoP batch → verify backend receives PoP.
+Uses enterprise contracts (manifest_v1.schema.json, /pop/batch,
+/heartbeat, manifest_signing) + existing RuntimeSimulator + imported
+retry_backoff.py. Old repo KSO code discarded (incompatible contracts).
+
+Full plan: `docs/architecture/player-001a-source-import-audit.md`.
 
 Pre-player managed admin-flow completed (35/40 reachable, Waves 1–6). PLAYER-001A audit complete — zero blockers, all contracts green. R3 release first (stable baseline before risky player work), then PLAYER-001B (first runnable KSO client: onboard → manifest → verify → apply → render → heartbeat → PoP → verify).
 
