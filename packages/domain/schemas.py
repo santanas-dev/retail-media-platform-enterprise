@@ -9,7 +9,7 @@ No secret/password fields exposed.
 from datetime import date as date_type, datetime
 from typing import Any, Generic, Literal, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -1051,7 +1051,13 @@ class DeviceCodeOut(BaseModel):
 
 
 class DeviceOut(BaseModel):
-    """Safe device representation — no secrets/tokens/HMAC keys."""
+    """Safe device representation — no secrets/tokens/HMAC keys.
+
+    Heartbeat fields (health_state, runtime_version, player_version)
+    are nullable in the DB for devices that have never sent a heartbeat.
+    The validator coerces None → default so the API always returns
+    valid strings, even for pre-heartbeat devices.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -1073,6 +1079,15 @@ class DeviceOut(BaseModel):
     retailer_id: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+    @field_validator("health_state", "runtime_version", "player_version", mode="before")
+    @classmethod
+    def _coerce_none_to_default(cls, v: str | None) -> str:
+        """DB columns are nullable — coerce None to the expected string
+        default so devices without a heartbeat don't break schema validation."""
+        if v is None:
+            return ""
+        return v
 
 
 class DeviceSummaryOut(BaseModel):
