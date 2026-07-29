@@ -15,6 +15,7 @@ from packages.domain.schemas import (
     AdvertiserBrandOut,
     AdvertiserContactOut,
     AdvertiserContractOut,
+    AdvertiserLegalRequisitesUpdate,
     AdvertiserOrganizationCreate,
     AdvertiserOrganizationDetailOut,
     AdvertiserOrganizationOut,
@@ -125,6 +126,49 @@ async def get_advertiser_organization_detail(
             status_code=404,
             detail={"code": "NOT_FOUND", "message": "Organization not found"},
         )
+    return AdvertiserOrganizationDetailOut.model_validate(org)
+
+
+@router.put("/advertiser-organizations/{org_id}/legal-requisites", response_model=AdvertiserOrganizationDetailOut)
+async def update_advertiser_organization_legal_requisites(
+    org_id: str,
+    body: AdvertiserLegalRequisitesUpdate,
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+    current_user: dict = Depends(get_current_active_user),
+):
+    """Update legal requisites for an advertiser organization (ADVERTISER-UX-001A1)."""
+    from packages.domain.repository import create_audit_event
+
+    org = await repository.update_advertiser_organization_requisites(
+        db, org_id,
+        legal_entity_type=body.legal_entity_type,
+        legal_form=body.legal_form,
+        legal_form_other=body.legal_form_other,
+        legal_name=body.legal_name,
+        inn=body.inn,
+        legal_address=body.legal_address,
+        settlement_account=body.settlement_account,
+        correspondent_account=body.correspondent_account,
+        bik=body.bik,
+        bank_name=body.bank_name,
+        kpp=body.kpp,
+        ogrn=body.ogrn,
+        ogrnip=body.ogrnip,
+    )
+    if org is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "NOT_FOUND", "message": "Organization not found"},
+        )
+    await create_audit_event(
+        db,
+        actor_user_id=current_user["sub"],
+        action="advertiser_organization.legal_requisites_updated",
+        target_type="advertiser_organization",
+        target_id=org_id,
+    )
     return AdvertiserOrganizationDetailOut.model_validate(org)
 
 

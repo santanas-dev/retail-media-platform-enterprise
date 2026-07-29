@@ -385,6 +385,7 @@ self.login / self.campaign_view / self.report_view + свои smoke.
 ### 6.1 ADVERTISER-UX-001A0 — Legal requisites draft for owner/legal approval
 
 **Статус:** ✅ Approved for ADVERTISER-UX-001A1 migration/backend implementation by owner on 2026-07-28.
+**A1 backend:** ✅ Implemented — migration 029, PUT /advertiser-organizations/{id}/legal-requisites, Pydantic cross-field validation. UI pending (A2).
 
 #### Поля
 

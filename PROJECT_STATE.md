@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-28 (ADVERTISER-UX-001A0-FU)
+**Last updated:** 2026-07-28 (ADVERTISER-UX-001A1)
 
-**Next Active Workstream:** ADVERTISER-UX-001A1 — legal requisites migration + backend schema validation (A1 unblocked after owner approval).
+**Next Active Workstream:** ADVERTISER-UX-001A2 — UI for legal requisites (admin-web)
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `84fe4c3` (PLAYER-001B-FU — substantive)
@@ -53,6 +53,17 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
   2. Full requisites change history/versioning.
   3. Operator/legal verification workflow for requisites.
 - Next: ADVERTISER-UX-001A1 — legal requisites migration + backend schema validation.
+- Checkpoint by PS-001.
+
+**ADVERTISER-UX-001A1 ✅** — Legal requisites migration + backend/schema validation.
+- Migration 029: 12 nullable columns on advertiser_organizations (legal_entity_type, legal_form, legal_form_other, legal_name, inn, legal_address, settlement_account, correspondent_account, bik, bank_name, kpp, ogrn, ogrnip).
+- Schema: AdvertiserLegalRequisites with cross-field validation (lengths, legal_form_other), digit normalization, model_validator.
+- API: PUT /advertiser-organizations/{org_id}/legal-requisites (advertisers.manage, audit event).
+- DetailOut: AdvertiserOrganizationDetailOut exposes all fields (nullable for existing orgs).
+- Tests: 19/19 new (12 schema + 2 DetailOut + 1 checksum-deferred + 3 API IT + 1 normalization_*). 1383/1388 full suite (5 pre-existing production config failures).
+- Deferred debt preserved: checksum validation, requisites history/versioning, operator/legal verification workflow.
+- No UI/admin-web changes (A2 next).
+- Operator walkthrough: not required (backend-only task).
 - Checkpoint by PS-001.
 
 **Previous PLAYER-001B entry (scaffold):**

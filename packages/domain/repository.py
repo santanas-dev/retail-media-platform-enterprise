@@ -206,6 +206,25 @@ async def create_advertiser_organization(
     return org
 
 
+async def update_advertiser_organization_requisites(
+    session: AsyncSession, org_id: str, **fields: str | None
+) -> AdvertiserOrganization | None:
+    """Update legal requisites fields on an advertiser organization.
+
+    Returns the updated org, or None if not found.
+    Only sets provided fields; leaves others unchanged.
+    """
+    org = await get_advertiser_organization(session, org_id)
+    if org is None:
+        return None
+    for key, value in fields.items():
+        if hasattr(org, key):
+            setattr(org, key, value)
+    session.add(org)
+    await session.flush()
+    return org
+
+
 async def list_advertiser_brands(
     session: AsyncSession,
 ) -> list[AdvertiserBrand]:

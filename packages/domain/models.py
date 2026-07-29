@@ -593,6 +593,20 @@ class AdvertiserOrganization(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
 
+    # Legal requisites (ADVERTISER-UX-001A1) — all nullable to preserve existing orgs
+    legal_entity_type = Column(String(32), nullable=True)
+    legal_form = Column(String(32), nullable=True)
+    legal_form_other = Column(String(255), nullable=True)
+    inn = Column(String(32), nullable=True)
+    legal_address = Column(Text, nullable=True)
+    settlement_account = Column(String(32), nullable=True)
+    correspondent_account = Column(String(32), nullable=True)
+    bik = Column(String(16), nullable=True)
+    bank_name = Column(String(255), nullable=True)
+    kpp = Column(String(16), nullable=True)
+    ogrn = Column(String(32), nullable=True)
+    ogrnip = Column(String(32), nullable=True)
+
     memberships = relationship("AdvertiserUserMembership", back_populates="organization")
 
 

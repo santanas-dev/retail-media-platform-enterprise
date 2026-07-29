@@ -9,7 +9,7 @@ No secret/password fields exposed.
 from datetime import date as date_type, datetime
 from typing import Any, Generic, Literal, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -284,6 +284,103 @@ class AdvertiserOrganizationOut(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# ADVERTISER-UX-001A1 — Legal requisites
+# ---------------------------------------------------------------------------
+
+
+def _normalize_digits(value: str | None) -> str | None:
+    """Remove spaces and dashes from a digit string."""
+    if value is None:
+        return None
+    return value.translate(str.maketrans("", "", " -"))
+
+
+class AdvertiserLegalRequisites(BaseModel):
+    """Legal requisites with cross-field validation (A1 approved). Checksum NOT blocking."""
+
+    legal_entity_type: Literal["legal_entity", "individual_entrepreneur"]
+    legal_form: Literal["ooo", "ao", "pao", "ip", "other"]
+    legal_form_other: str | None = None
+    legal_name: str = Field(..., min_length=1)
+    inn: str
+    legal_address: str = Field(..., min_length=1)
+    settlement_account: str
+    correspondent_account: str
+    bik: str
+    bank_name: str = Field(..., min_length=1)
+    kpp: str | None = None
+    ogrn: str | None = None
+    ogrnip: str | None = None
+
+    @field_validator("inn", "settlement_account", "correspondent_account", "bik", "kpp", "ogrn", "ogrnip", mode="before")
+    @classmethod
+    def _normalize(cls, value: str | None) -> str | None:
+        return _normalize_digits(value)
+
+    @field_validator("legal_name", "legal_address", "bank_name", mode="before")
+    @classmethod
+    def _trim(cls, value: str) -> str:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("legal_form_other", mode="before")
+    @classmethod
+    def _trim_other(cls, value: str | None) -> str | None:
+        return value.strip() if isinstance(value, str) and value.strip() else None
+
+    @model_validator(mode="after")
+    def _validate_lengths(self):
+        """Cross-field length validation (checksum is NOT implemented in A1)."""
+        is_le = self.legal_entity_type == "legal_entity"
+        is_ie = self.legal_entity_type == "individual_entrepreneur"
+
+        # INN: 10 for LE, 12 for IE
+        if is_le and self.inn and len(self.inn) != 10:
+            raise ValueError(f"inn must be 10 digits for legal_entity, got {len(self.inn)}")
+        if is_ie and self.inn and len(self.inn) != 12:
+            raise ValueError(f"inn must be 12 digits for individual_entrepreneur, got {len(self.inn)}")
+
+        # KPP: 9 digits, required for LE, forbidden for IE
+        if is_le and self.kpp and len(self.kpp) != 9:
+            raise ValueError(f"kpp must be 9 digits, got {len(self.kpp)}")
+        if is_ie and self.kpp:
+            raise ValueError("kpp is not allowed for individual_entrepreneur")
+
+        # OGRN: 13 digits, required for LE, forbidden for IE
+        if is_le and self.ogrn and len(self.ogrn) != 13:
+            raise ValueError(f"ogrn must be 13 digits, got {len(self.ogrn)}")
+        if is_ie and self.ogrn:
+            raise ValueError("ogrn is not allowed for individual_entrepreneur")
+
+        # OGRNIP: 15 digits, required for IE, forbidden for LE
+        if is_ie and self.ogrnip and len(self.ogrnip) != 15:
+            raise ValueError(f"ogrnip must be 15 digits, got {len(self.ogrnip)}")
+        if is_le and self.ogrnip:
+            raise ValueError("ogrnip is not allowed for legal_entity")
+
+        # BIK: 9 digits
+        if self.bik and len(self.bik) != 9:
+            raise ValueError(f"bik must be 9 digits, got {len(self.bik)}")
+
+        # Settlement account: 20 digits
+        if self.settlement_account and len(self.settlement_account) != 20:
+            raise ValueError(f"settlement_account must be 20 digits, got {len(self.settlement_account)}")
+
+        # Correspondent account: 20 digits
+        if self.correspondent_account and len(self.correspondent_account) != 20:
+            raise ValueError(f"correspondent_account must be 20 digits, got {len(self.correspondent_account)}")
+
+        # legal_form_other required for other
+        if self.legal_form == "other" and not (self.legal_form_other and self.legal_form_other.strip()):
+            raise ValueError("legal_form_other is required when legal_form is 'other'")
+
+        return self
+
+
+class AdvertiserLegalRequisitesUpdate(AdvertiserLegalRequisites):
+    """Update variant — same validation, used in PUT endpoint."""
+
+
+# ---------------------------------------------------------------------------
 # Phase 4.0b — Advertiser domain (brands, contracts, contacts)
 # ---------------------------------------------------------------------------
 
@@ -349,7 +446,7 @@ class AdvertiserUserMembershipOut(BaseModel):
 
 
 class AdvertiserOrganizationDetailOut(BaseModel):
-    """Organization detail — enriched with timestamps + counts."""
+    """Organization detail — enriched with timestamps + counts + legal requisites."""
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -359,6 +456,20 @@ class AdvertiserOrganizationDetailOut(BaseModel):
     status: str
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+    # Legal requisites (ADVERTISER-UX-001A1) — nullable for existing orgs without requisites
+    legal_entity_type: str | None = None
+    legal_form: str | None = None
+    legal_form_other: str | None = None
+    inn: str | None = None
+    legal_address: str | None = None
+    settlement_account: str | None = None
+    correspondent_account: str | None = None
+    bik: str | None = None
+    bank_name: str | None = None
+    kpp: str | None = None
+    ogrn: str | None = None
+    ogrnip: str | None = None
 
 
 # ---------------------------------------------------------------------------
