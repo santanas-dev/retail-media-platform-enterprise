@@ -44,7 +44,7 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - EPIC-E #3 уже closed as CAMPAIGN-UX-002A; user.deactivate и inventory.rule_create уже closed.
 - Канон: `docs/product/user-journeys.md` §6.
 
-**ADVERTISER-UX-001A0-FU ✅** — Owner approved legal requisites field matrix for A1 implementation. Docs-only.
+**ADVERTISER-UX-001A0-FU ✅** — Owner approved legal requisites field matrix for A1 implementation. Docs-only. CI #30483944965 (34/34 green).
 - Поля утверждены: legal_entity_type, legal_form, legal_form_other, legal_name, inn, legal_address, settlement_account, correspondent_account, bik, bank_name + kpp/ogrn (юрлицо) + ogrnip (ИП).
 - Валидация утверждена: длины цифровых полей, non-empty текстовых, legal_form_other при other, нормализация. Checksum NOT blocking in A1.
 - A1 implementation unblocked.
@@ -164,7 +164,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | f54ae91 | f54ae91 | PRODUCT-READINESS-PROGRAM-001A — docs-only |
+| develop | 4cbe734 | 4cbe734 | ADVERTISER-UX-001A0-FU — owner approval, docs-only |
 | main    | 96b5159     | —               | R3 ✅ RELEASED — v0.10.0-preplayer-business-ready, CI #30354973869 ✅ |
 | NAS mirror (ASUSTOR) | pending | — | Hermes cron sync every 3 min |
 
