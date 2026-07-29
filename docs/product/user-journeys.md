@@ -370,7 +370,7 @@ self.login / self.campaign_view / self.report_view + свои smoke.
 
 | Эпик | Название | Статус |
 |------|----------|--------|
-| EPIC-A | Юридические реквизиты рекламодателя | Draft готов (ADVERTISER-UX-001A0); ожидает owner/legal approval |
+| EPIC-A | Юридические реквизиты рекламодателя | ✅ Approved for A1 (ADVERTISER-UX-001A0); A1 implementation unblocked |
 | EPIC-B | Бренды / договоры / контакты | Запланирован |
 | EPIC-C | Wizard + автоматическое присвоение кода | Запланирован |
 | EPIC-D | Пользователи и права — UX | Запланирован |
@@ -384,7 +384,7 @@ self.login / self.campaign_view / self.report_view + свои smoke.
 
 ### 6.1 ADVERTISER-UX-001A0 — Legal requisites draft for owner/legal approval
 
-**Статус:** ⏳ Draft — not approved for migration until owner/legal confirmation.
+**Статус:** ✅ Approved for ADVERTISER-UX-001A1 migration/backend implementation by owner on 2026-07-28.
 
 #### Поля
 
@@ -394,6 +394,7 @@ self.login / self.campaign_view / self.report_view + свои smoke.
 |------|-----|:---:|------------|
 | `legal_entity_type` | enum `legal_entity` \| `individual_entrepreneur` | ✅ | |
 | `legal_form` | enum: ООО / АО / ПАО / ИП / другое | ✅ | |
+| `legal_form_other` | string | только если `legal_form = другое` | Свободный текст |
 | `legal_name` | string | ✅ | Наименование |
 | `inn` | string (10 или 12 цифр) | ✅ | 10 — юрлицо, 12 — ИП |
 | `legal_address` | string | ✅ | Юридический адрес |
@@ -415,7 +416,7 @@ self.login / self.campaign_view / self.report_view + свои smoke.
 |------|-----|:---:|------------|
 | `ogrnip` | string (15 цифр) | ✅ (только ИП) | |
 
-#### Валидация (draft, не утверждена)
+#### Валидация (approved for A1)
 
 - `inn`: 10 цифр для `legal_entity`, 12 цифр для `individual_entrepreneur`
 - `kpp`: 9 цифр, required только для `legal_entity`
@@ -425,12 +426,15 @@ self.login / self.campaign_view / self.report_view + свои smoke.
 - `settlement_account`: 20 цифр
 - `correspondent_account`: 20 цифр
 - `legal_name`, `legal_address`, `bank_name`: non-empty
+- `legal_form_other`: required только когда `legal_form = other`
 - Нормализация: удалить пробелы/дефисы из цифровых полей перед валидацией
-- Контрольные суммы (checksum) для ИНН/ОГРН/ОГРНИП/расчётного счёта:
-  **рекомендованы, но не утверждены как блокирующие** до owner/legal confirmation
+- Контрольные суммы (checksum): **NOT blocking in A1** — deferred debt
 
-**Фраза-блокировщик (должна присутствовать):**
-**not approved for migration until owner/legal confirmation**
+#### Deferred technical/product debt
+
+1. **Checksum validation** — ИНН/ОГРН/ОГРНИП + bank/account key validation.
+2. **Full requisites change history/versioning** — аудит изменений реквизитов.
+3. **Operator/legal verification workflow** — процесс подтверждения реквизитов оператором/юристом после ввода.
 
 #### Предлагаемый порядок задач
 

@@ -1,9 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-28 (PRODUCT-READINESS-PROGRAM-001A)
+**Last updated:** 2026-07-28 (ADVERTISER-UX-001A0-FU)
 
-**Next Active Workstream:** KSO-ENV-001 — real Sherman-J/KSO environment audit (technical).
-Product readiness: awaiting owner/legal approval of EPIC-A field matrix before ADVERTISER-UX-001A1.
+**Next Active Workstream:** ADVERTISER-UX-001A1 — legal requisites migration + backend schema validation (A1 unblocked after owner approval).
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `84fe4c3` (PLAYER-001B-FU — substantive)
@@ -45,11 +44,15 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - EPIC-E #3 уже closed as CAMPAIGN-UX-002A; user.deactivate и inventory.rule_create уже closed.
 - Канон: `docs/product/user-journeys.md` §6.
 
-**ADVERTISER-UX-001A0 ✅** — Legal requisites draft for owner/legal approval. Docs-only.
-- Поля: legal_entity_type, legal_form, legal_name, inn, kpp, ogrn, ogrnip, legal_address, settlement_account, correspondent_account, bik, bank_name.
-- Валидация: длины цифровых полей, non-empty для текстовых. Checksum рекомендованы, не блокирующие.
-- **Not approved for migration until owner/legal confirmation.**
-- Next: ADVERTISER-UX-001A1 (schema/backend) — только после approval.
+**ADVERTISER-UX-001A0-FU ✅** — Owner approved legal requisites field matrix for A1 implementation. Docs-only.
+- Поля утверждены: legal_entity_type, legal_form, legal_form_other, legal_name, inn, legal_address, settlement_account, correspondent_account, bik, bank_name + kpp/ogrn (юрлицо) + ogrnip (ИП).
+- Валидация утверждена: длины цифровых полей, non-empty текстовых, legal_form_other при other, нормализация. Checksum NOT blocking in A1.
+- A1 implementation unblocked.
+- Deferred technical/product debt:
+  1. Checksum validation for INN/OGRN/OGRNIP and bank/account key validation.
+  2. Full requisites change history/versioning.
+  3. Operator/legal verification workflow for requisites.
+- Next: ADVERTISER-UX-001A1 — legal requisites migration + backend schema validation.
 - Checkpoint by PS-001.
 
 **Previous PLAYER-001B entry (scaffold):**
