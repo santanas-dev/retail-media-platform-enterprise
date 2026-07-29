@@ -55,7 +55,7 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Next: ADVERTISER-UX-001A1 — legal requisites migration + backend schema validation.
 - Checkpoint by PS-001.
 
-**ADVERTISER-UX-001A1 ✅** — Legal requisites migration + backend/schema validation.
+**ADVERTISER-UX-001A1 ✅** — Legal requisites migration + backend/schema validation. CI #30490197869 (34/34 green).
 - Migration 029: 12 nullable columns on advertiser_organizations (legal_entity_type, legal_form, legal_form_other, legal_name, inn, legal_address, settlement_account, correspondent_account, bik, bank_name, kpp, ogrn, ogrnip).
 - Schema: AdvertiserLegalRequisites with cross-field validation (lengths, legal_form_other), digit normalization, model_validator.
 - API: PUT /advertiser-organizations/{org_id}/legal-requisites (advertisers.manage, audit event).
@@ -175,7 +175,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 4cbe734 | 4cbe734 | ADVERTISER-UX-001A0-FU — owner approval, docs-only |
+| develop | 48e54e2 | 48e54e2 | ADVERTISER-UX-001A1 — backend + migration + tests |
 | main    | 96b5159     | —               | R3 ✅ RELEASED — v0.10.0-preplayer-business-ready, CI #30354973869 ✅ |
 | NAS mirror (ASUSTOR) | pending | — | Hermes cron sync every 3 min |
 
