@@ -12,6 +12,7 @@ import {
   createAdvertiserContact,
 } from "../api/campaigns";
 import { ApiError } from "../api/client";
+import { formatApiError } from "../api/errors";
 import type { AdvertiserOrganizationOut, AdvertiserLegalRequisitesUpdate } from "../api/types";
 
 // ── Types ──
@@ -224,13 +225,7 @@ export default function AdvertiserWizard({ onClose, onCreated }: AdvertiserWizar
       setSuccess("Реквизиты сохранены");
       goNext();
     } catch (e: unknown) {
-      setError(
-        e instanceof ApiError
-          ? typeof e.body === "object" && e.body !== null && "detail" in e.body
-            ? String(JSON.stringify((e.body as Record<string, unknown>).detail))
-            : e.message
-          : "Ошибка сохранения реквизитов",
-      );
+      setError(formatApiError(e));
     } finally {
       setSaving(false);
     }

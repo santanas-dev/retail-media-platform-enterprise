@@ -65,6 +65,7 @@ import type {
 } from "../api/types";
 import { checkAvailability, suggestAlternatives } from "../api/campaigns";
 import { ApiError, getToken, IDENTITY_BASE_URL } from "../api/client";
+import { formatApiError } from "../api/errors";
 import { useAuth } from "../auth/AuthContext";
 
 // ── Delivered types for use in the component ──
@@ -2146,15 +2147,6 @@ function fmtDuration(ms: number): string {
   return `${(ms / 60_000).toFixed(1)} мин`;
 }
 
-function formatApiError(e: unknown): string {
-  if (e instanceof ApiError) {
-    if (e.status === 422) return `Ошибка данных: ${e.message}`;
-    if (e.status === 403) return "Нет прав на это действие.";
-    if (e.status === 409) return "Конфликт: кампания не в статусе черновика или данные конфликтуют.";
-    return `Ошибка сервера (${e.status}): ${e.message}`;
-  }
-  return e instanceof Error ? e.message : "Неизвестная ошибка";
-}
 
 // ── Styles ──
 

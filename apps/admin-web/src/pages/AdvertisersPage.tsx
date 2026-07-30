@@ -21,6 +21,7 @@ import {
   updateAdvertiserContact,
 } from "../api/campaigns";
 import { ApiError } from "../api/client";
+import { formatApiError } from "../api/errors";
 import { useAuth } from "../auth/AuthContext";
 import type {
   AdvertiserOrganizationOut,
@@ -653,13 +654,7 @@ function LegalRequisitesTab({ org, onSaved }: { org: AdvertiserOrganizationDetai
       setEditing(false);
       onSaved();
     } catch (e: unknown) {
-      setError(
-        e instanceof ApiError
-          ? typeof e.body === "object" && e.body !== null && "detail" in e.body
-            ? String((e.body as Record<string, unknown>).detail)
-            : e.message
-          : "Ошибка сохранения реквизитов",
-      );
+      setError(formatApiError(e));
     } finally {
       setSaving(false);
     }
@@ -831,7 +826,7 @@ function BrandsTab({ brands, orgId, onBrandChange }: { brands: AdvertiserBrandOu
       resetForm();
       onBrandChange();
     } catch (e: unknown) {
-      setError(e instanceof ApiError ? (typeof e.body === "object" && e.body !== null && "detail" in e.body ? String((e.body as Record<string, unknown>).detail) : e.message) : "Ошибка создания бренда");
+      setError(formatApiError(e));
     } finally {
       setSaving(false);
     }
@@ -852,7 +847,7 @@ function BrandsTab({ brands, orgId, onBrandChange }: { brands: AdvertiserBrandOu
       resetForm();
       onBrandChange();
     } catch (e: unknown) {
-      setError(e instanceof ApiError ? (typeof e.body === "object" && e.body !== null && "detail" in e.body ? String((e.body as Record<string, unknown>).detail) : e.message) : "Ошибка обновления бренда");
+      setError(formatApiError(e));
     } finally {
       setSaving(false);
     }
@@ -988,11 +983,7 @@ function ContractsTab({ contracts, orgId, onContractChange }: { contracts: Adver
   }
 
   function extractDetail(err: unknown): string {
-    if (err instanceof ApiError && typeof err.body === "object" && err.body !== null && "detail" in err.body) {
-      return String((err.body as Record<string, unknown>).detail);
-    }
-    if (err instanceof Error) return err.message;
-    return String(err);
+    return formatApiError(err);
   }
 
   async function handleCreate() {
@@ -1341,8 +1332,7 @@ function ContactsTab({ contacts, users, orgId, onContactChange: _onContactChange
       setLocalContacts((prev) => [...prev, created]);
       contactsRef.current = [...contactsRef.current, created];
     } catch (e: unknown) {
-      const msg = e instanceof ApiError ? e.message : (e instanceof Error ? e.message : "Ошибка создания контакта");
-      setError(msg);
+      setError(formatApiError(e));
     }
   }
 
@@ -1362,8 +1352,7 @@ function ContactsTab({ contacts, users, orgId, onContactChange: _onContactChange
       setLocalContacts((prev) => prev.map((c) => c.id === contactId ? updated : c));
       contactsRef.current = contactsRef.current.map((c) => c.id === contactId ? updated : c);
     } catch (e: unknown) {
-      const msg = e instanceof ApiError ? e.message : (e instanceof Error ? e.message : "Ошибка обновления контакта");
-      setError(msg);
+      setError(formatApiError(e));
     }
   }
 

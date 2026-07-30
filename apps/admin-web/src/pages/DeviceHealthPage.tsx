@@ -1,15 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { api, ApiError, type PaginatedDevices, type DeviceOut, type DeviceSummaryOut } from "../api/client";
-
-function formatApiError(e: unknown): string {
-  if (e instanceof ApiError) {
-    if (e.status === 422) return `Ошибка данных: ${e.message}`;
-    if (e.status === 403) return "Нет прав на это действие.";
-    if (e.status === 409) return "Конфликт данных.";
-    return `Ошибка сервера (${e.status}): ${e.message}`;
-  }
-  return e instanceof Error ? e.message : "Неизвестная ошибка";
-}
+import { formatApiError } from "../api/errors";
 
 const PAGE_SIZE = 50;
 

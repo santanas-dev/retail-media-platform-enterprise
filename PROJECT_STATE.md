@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-30 (REGISTRY-TRUTH-001)
+**Last updated:** 2026-07-30 (UX-FIX-002)
 
 **Next Active Workstream:** ADVERTISER-UX-001D1 — users & permissions UX
 
@@ -139,6 +139,19 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Tamper proof: Direction C catches orphan smoke (brand_crud smoke→NONEXISTENT → SMOKE-ORPHAN).
 - Guard --strict: 0 findings.
 - Product code untouched.
+- Checkpoint by PS-001.
+
+**UX-FIX-002 ✅** — Shared human-readable API errors for advertiser forms.
+- Created `api/errors.ts` — single `formatApiError` for all forms.
+- Handles FastAPI 422 arrays (field: message), string detail, object detail.
+- Status-based Russian fallbacks (403→"Нет прав на это действие").
+- Never returns [object Object].
+- Applied to: AdvertisersPage (brand/contract/contact/legal), AdvertiserWizard, CampaignDetailPage, DeviceHealthPage.
+- Removed 3 copy-pasted local formatApiError functions.
+- Fixed client.ts ApiError constructor — no longer stringifies array details.
+- Vitest: 262/262 (new unit test 10/10 for formatApiError).
+- Guard: zero [object Object] in prod rendering paths.
+- Operator walkthrough: PENDING.
 - Checkpoint by PS-001.
 
 **EPIC-L-000 ✅** — Licensing canon intake + seat-hook requirement. Owner gate §08 approved 2026-07-30. CI #30529324395 (35/35 green).

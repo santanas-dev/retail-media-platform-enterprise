@@ -227,7 +227,7 @@ describe("CampaignDetailPage — S-009e", () => {
     await user.click(screen.getByText("Добавить"));
 
     await waitFor(() => {
-      expect(screen.getByText(/Ошибка данных/)).toBeTruthy();
+      expect(screen.getByText("Flight outside contract")).toBeTruthy();
     });
   });
 
@@ -344,7 +344,7 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Ошибка данных/)).toBeTruthy();
+      expect(screen.getByText("Campaign must have at least one flight, one placement, and one creative")).toBeTruthy();
     });
   });
 
@@ -856,8 +856,8 @@ describe("CampaignDetailPage — S-009e", () => {
       expect(errorText).not.toContain("[object Object]");
       // Must contain human-readable error from formatApiError
       expect(errorText.length).toBeGreaterThan(5);
-      // ApiError 422 should produce "Ошибка данных: ..." prefix
-      expect(errorText).toContain("Ошибка данных");
+      // Detail string returned as-is by shared formatApiError
+      expect(errorText).toContain("Некорректный код креатива");
     });
 
     it("upload flow error shows human-readable text, not [object Object]", async () => {
