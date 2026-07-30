@@ -33,6 +33,7 @@ interface LegalForm {
   legal_entity_type: string;
   legal_form: string;
   legal_form_other: string;
+  legal_name: string;
   inn: string;
   kpp: string;
   ogrn: string;
@@ -58,6 +59,7 @@ const EMPTY_LEGAL: LegalForm = {
   legal_entity_type: "legal_entity",
   legal_form: "ooo",
   legal_form_other: "",
+  legal_name: "",
   inn: "",
   kpp: "",
   ogrn: "",
