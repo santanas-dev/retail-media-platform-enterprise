@@ -284,7 +284,7 @@ export default function AdvertisersPage() {
   const [search, setSearch] = useState("");
   // Create modal
   const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState({ code: "", legal_name: "", display_name: "" });
+  const [createForm, setCreateForm] = useState({ legal_name: "", display_name: "" });
   const [createError, setCreateError] = useState("");
 
   async function handleCreate() {
@@ -292,7 +292,7 @@ export default function AdvertisersPage() {
     try {
       const org = await createAdvertiserOrganization(createForm);
       setCreateOpen(false);
-      setCreateForm({ code: "", legal_name: "", display_name: "" });
+      setCreateForm({ legal_name: "", display_name: "" });
       // Reload list
       const [orgs, brands, contracts] = await Promise.all([
         listAdvertisers(), listBrands(), listContracts(),
@@ -481,7 +481,7 @@ export default function AdvertisersPage() {
                   setActiveTab("Обзор");
                 }}
               >
-                <td style={S.td}>{org.code}</td>
+                <td style={S.td} data-testid="advertiser-code-readonly">{org.code}</td>
                 <td style={S.td}>{org.display_name}</td>
                 <td style={S.td}>
                   <span style={S.badge(statusColor(org.status))}>{statusLabel(org.status)}</span>
@@ -535,9 +535,8 @@ export default function AdvertisersPage() {
           <div style={{ background: "#fff", borderRadius: 8, padding: "1.5rem", minWidth: 400, maxWidth: 500 }}>
             <h3 style={{ margin: "0 0 1rem" }}>Создать организацию</h3>
             {createError && <div style={{ color: "#dc2626", marginBottom: "0.75rem", fontSize: "0.875rem" }}>{createError}</div>}
-            <div style={{ marginBottom: "0.75rem" }}>
-              <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "0.25rem", color: "#64748b" }}>Код</label>
-              <input data-testid="advertiser-create-code" style={{ width: "100%", padding: "0.5rem", border: "1px solid #e2e8f0", borderRadius: 4 }} value={createForm.code} onChange={(e) => setCreateForm({ ...createForm, code: e.target.value })} />
+            <div style={{ marginBottom: "0.75rem", padding: "0.5rem", background: "#f0f9ff", borderRadius: 4, fontSize: "0.8125rem", color: "#0369a1" }} data-testid="advertiser-code-auto-note">
+              Код будет создан автоматически при сохранении
             </div>
             <div style={{ marginBottom: "0.75rem" }}>
               <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "0.25rem", color: "#64748b" }}>Юридическое название</label>

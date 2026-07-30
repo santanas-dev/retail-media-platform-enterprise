@@ -59,11 +59,24 @@ async def create_advertiser_organization(
     _rls=Depends(set_rls_context),
     current_user: dict = Depends(get_current_active_user),
 ):
-    """Create a new advertiser organization (admin-only)."""
+    """Create a new advertiser organization (admin-only).
+
+    Code is auto-generated when omitted. Duplicate explicit code → 409.
+    """
     from packages.domain.repository import create_audit_event
-    org = await repository.create_advertiser_organization(
-        db, code=body.code, legal_name=body.legal_name, display_name=body.display_name,
-    )
+    from sqlalchemy.exc import IntegrityError
+
+    try:
+        org = await repository.create_advertiser_organization(
+            db, code=body.code, legal_name=body.legal_name,
+            display_name=body.display_name,
+        )
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail=f"Организация с кодом '{body.code}' уже существует",
+        )
     await create_audit_event(
         db,
         actor_user_id=current_user["sub"],

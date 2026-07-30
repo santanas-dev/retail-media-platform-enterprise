@@ -194,10 +194,68 @@ async def get_advertiser_organization(
     return result.scalar_one_or_none()
 
 
+async def generate_advertiser_org_code(session: AsyncSession) -> str:
+    """Generate a unique, readable advertiser organization code.
+
+    Pattern: ADV-YYYY-NNNN (e.g. ADV-2026-0001).
+    Deterministic server-side; does not depend on client clock.
+    Retries on race-condition collisions (max 5 attempts).
+    """
+    import datetime as dt
+
+    year = dt.date.today().year
+    prefix = f"ADV-{year}-"
+    max_attempts = 5
+
+    # Find the highest existing code for this year (once, outside loop)
+    result = await session.execute(
+        select(AdvertiserOrganization.code)
+        .where(AdvertiserOrganization.code.like(f"{prefix}%"))
+        .order_by(AdvertiserOrganization.code.desc())
+        .limit(1)
+    )
+    last_code = result.scalar_one_or_none()
+    if last_code:
+        try:
+            next_num = int(last_code[len(prefix):]) + 1
+        except (ValueError, IndexError):
+            next_num = 1
+    else:
+        next_num = 1
+
+    for _ in range(max_attempts):
+        candidate = f"{prefix}{next_num:04d}"
+
+        # Verify uniqueness by checking if code exists (belt-and-suspenders)
+        exists_result = await session.execute(
+            select(AdvertiserOrganization.id).where(
+                AdvertiserOrganization.code == candidate
+            ).limit(1)
+        )
+        if exists_result.scalar_one_or_none() is None:
+            return candidate
+
+        # Collision — the candidate already exists; try next number
+        next_num += 1
+
+    raise RuntimeError(
+        f"Failed to generate unique advertiser code after {max_attempts} attempts"
+    )
+
+
 async def create_advertiser_organization(
-    session: AsyncSession, *, code: str, legal_name: str, display_name: str
+    session: AsyncSession, *, code: str | None = None,
+    legal_name: str, display_name: str
 ) -> AdvertiserOrganization:
-    """Create a new advertiser organization."""
+    """Create a new advertiser organization.
+
+    If code is None, a server-generated unique code is used.
+    If an explicit code collides with an existing one, an IntegrityError
+    is raised (HTTP 409/422 expected at the route layer).
+    """
+    if code is None:
+        code = await generate_advertiser_org_code(session)
+
     org = AdvertiserOrganization(
         code=code, legal_name=legal_name, display_name=display_name,
     )

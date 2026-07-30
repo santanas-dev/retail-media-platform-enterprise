@@ -277,21 +277,24 @@ describe("AdvertisersPage", () => {
       expect(screen.getByTestId("advertiser-create-open")).toBeInTheDocument();
     });
 
-    // Click create button → fill → save
+    // Click create button → fill → save (no code — auto-generated)
     await userEvent.click(screen.getByTestId("advertiser-create-open"));
-    await userEvent.type(screen.getByTestId("advertiser-create-code"), "NEW01");
+
+    // Auto-code note visible
+    expect(screen.getByTestId("advertiser-code-auto-note")).toBeInTheDocument();
+
     await userEvent.type(screen.getByTestId("advertiser-create-legal-name"), "ООО Новый");
     await userEvent.type(screen.getByTestId("advertiser-create-display-name"), "Новый");
     await userEvent.click(screen.getByTestId("advertiser-create-save"));
 
-    // Modal closes after save
+    // Modal closes after save (check legal-name input is gone)
     await waitFor(() => {
-      expect(screen.queryByTestId("advertiser-create-code")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("advertiser-create-legal-name")).not.toBeInTheDocument();
     });
 
-    // POST was called with correct body
+    // POST was called with correct body (code omitted — auto-generated)
     expect(postBody).not.toBeNull();
-    expect(postBody.code).toBe("NEW01");
+    expect(postBody.code).toBeUndefined();  // no code sent — server generates
     expect(postBody.legal_name).toBe("ООО Новый");
     expect(postBody.display_name).toBe("Новый");
   });

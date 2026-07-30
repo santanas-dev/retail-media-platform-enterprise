@@ -266,8 +266,11 @@ class MeResponse(BaseModel):
 
 
 class AdvertiserOrganizationCreate(BaseModel):
-    """Create a new advertiser organization (admin)."""
-    code: str = Field(..., min_length=1, max_length=64)
+    """Create a new advertiser organization (admin).
+
+    Code is optional — server generates a unique readable code when omitted.
+    """
+    code: str | None = Field(default=None, min_length=1, max_length=64)
     legal_name: str = Field(..., min_length=1, max_length=255)
     display_name: str = Field(..., min_length=1, max_length=255)
 

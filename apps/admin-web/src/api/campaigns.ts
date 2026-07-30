@@ -142,7 +142,7 @@ export function listAdvertisers(): Promise<AdvertiserOrganizationOut[]> {
 }
 
 export function createAdvertiserOrganization(body: {
-  code: string;
+  code?: string | null;
   legal_name: string;
   display_name: string;
 }): Promise<AdvertiserOrganizationOut> {
