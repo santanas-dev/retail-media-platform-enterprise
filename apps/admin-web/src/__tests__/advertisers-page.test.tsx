@@ -277,19 +277,26 @@ describe("AdvertisersPage", () => {
       expect(screen.getByTestId("advertiser-create-open")).toBeInTheDocument();
     });
 
-    // Click create button → fill → save (no code — auto-generated)
+    // Click create button → wizard opens
     await userEvent.click(screen.getByTestId("advertiser-create-open"));
 
-    // Auto-code note visible
-    expect(screen.getByTestId("advertiser-code-auto-note")).toBeInTheDocument();
+    // Wizard is visible
+    expect(screen.getByTestId("advertiser-wizard")).toBeInTheDocument();
 
-    await userEvent.type(screen.getByTestId("advertiser-create-legal-name"), "ООО Новый");
-    await userEvent.type(screen.getByTestId("advertiser-create-display-name"), "Новый");
-    await userEvent.click(screen.getByTestId("advertiser-create-save"));
+    // Main step: fill fields
+    expect(screen.getByTestId("advertiser-wizard-step-main")).toBeInTheDocument();
+    await userEvent.type(screen.getByTestId("advertiser-wizard-name"), "ООО Новый");
+    // There's also a display_name field
+    const displayInput = screen.getByTestId("advertiser-wizard-display-name");
+    await userEvent.type(displayInput, "Новый");
 
-    // Modal closes after save (check legal-name input is gone)
+    // Click Next → triggers API create
+    await userEvent.click(screen.getByTestId("advertiser-wizard-next"));
+
+    // Wizard should advance to next step (or close on finish)
     await waitFor(() => {
-      expect(screen.queryByTestId("advertiser-create-legal-name")).not.toBeInTheDocument();
+      // After create succeeds, step advances to legal
+      expect(screen.queryByTestId("advertiser-wizard-step-legal-active")).toBeInTheDocument();
     });
 
     // POST was called with correct body (code omitted — auto-generated)
