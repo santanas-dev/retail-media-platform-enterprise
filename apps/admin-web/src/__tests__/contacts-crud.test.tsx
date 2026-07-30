@@ -64,9 +64,10 @@ async function openContactsTab() {
 }
 
 function renderPage() {
+  vi.spyOn(api, "getMe").mockResolvedValue(ADMIN_USER as never);
   render(
-    <MemoryRouter>
-      <AuthProvider initialValue={{ user: ADMIN_USER, status: "authenticated" as const }}>
+    <MemoryRouter initialEntries={["/advertisers"]}>
+      <AuthProvider>
         <AdvertisersPage />
       </AuthProvider>
     </MemoryRouter>,
