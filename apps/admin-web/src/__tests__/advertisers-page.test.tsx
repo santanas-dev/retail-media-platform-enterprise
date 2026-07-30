@@ -305,4 +305,65 @@ describe("AdvertisersPage", () => {
     expect(postBody.legal_name).toBe("ООО Новый");
     expect(postBody.display_name).toBe("Новый");
   });
+
+  it("wizard legal step sends real legal_address, not placeholder", async () => {
+    let postBody: any = null;
+    let legalPutBody: any = null;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input: any, init?: any) => {
+      const url = typeof input === "string" ? input : input.url;
+      if (url.includes("/me")) {
+        return new Response(JSON.stringify({ id: "u-1", username: "admin", display_name: "Admin", sub: "u-1", auth_provider: "local", permissions: defaultPermissions }), { status: 200 });
+      }
+      if (url.includes("/refresh")) {
+        return new Response(JSON.stringify({ access_token: "tok", token_type: "bearer" }), { status: 200 });
+      }
+      if (url.includes("/advertiser-organizations") && init?.method === "POST") {
+        postBody = JSON.parse(init.body);
+        return new Response(JSON.stringify({ id: "org-new", code: "ADV-2026-0001", legal_name: "ООО Новый", display_name: "Новый", status: "active" }), { status: 201 });
+      }
+      if (url.includes("/legal-requisites") && init?.method === "PUT") {
+        legalPutBody = JSON.parse(init.body);
+        return new Response(JSON.stringify({ id: "org-new", code: "ADV-2026-0001", status: "active" }), { status: 200 });
+      }
+      if (url.endsWith("/advertiser-organizations")) {
+        return new Response(JSON.stringify([{ id: "org-new", code: "ADV-2026-0001", legal_name: "ООО Новый", display_name: "Новый", status: "active" }]), { status: 200 });
+      }
+      if (url.includes("/advertiser-brands") || url.includes("/advertiser-contracts")) {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId("advertiser-create-open")).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByTestId("advertiser-create-open"));
+
+    await userEvent.type(screen.getByTestId("advertiser-wizard-name"), "ООО Новый");
+    await userEvent.type(screen.getByTestId("advertiser-wizard-display-name"), "Новый");
+    await userEvent.click(screen.getByTestId("advertiser-wizard-next"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("advertiser-wizard-step-legal-active")).toBeInTheDocument();
+    });
+
+    const addressInput = screen.getByTestId("advertiser-wizard-legal-address");
+    expect(addressInput).toBeInTheDocument();
+
+    await userEvent.type(screen.getByTestId("advertiser-wizard-legal-inn"), "7700000000");
+    await userEvent.type(addressInput, "г. Москва, ул. Тверская, д. 1");
+    await userEvent.type(screen.getByTestId("advertiser-wizard-legal-bank"), "ПАО Сбербанк");
+    await userEvent.type(screen.getByTestId("advertiser-wizard-legal-bik"), "044525225");
+    await userEvent.type(screen.getByTestId("advertiser-wizard-legal-settlement"), "40702810000000000001");
+    await userEvent.click(screen.getByTestId("advertiser-wizard-next"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("advertiser-wizard-step-contact-contract")).toBeInTheDocument();
+    });
+
+    expect(legalPutBody).not.toBeNull();
+    expect(legalPutBody.legal_address).toBe("г. Москва, ул. Тверская, д. 1");
+    expect(legalPutBody.legal_address).not.toBe("—");
+  });
 });

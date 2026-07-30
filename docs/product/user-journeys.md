@@ -477,6 +477,30 @@ reload persistence.
 
 ---
 
+### ADVERTISER-UX-001C2 — Advertiser create wizard
+
+**Статус:** ✅ Реализован. Vitest 10/10, backend 15/15, UI-smoke green (5.83s).
+
+**Journey:** `advertiser.create_org` — break-glass admin создаёт рекламодателя через пошаговый мастер с авто-кодом, юр-реквизитами, контактом и подтверждением.
+
+**Happy-path (11 шагов):**
+1. Логин → 2. Advertisers (sidebar) → 3. «Создать рекламодателя»
+→ 4. Основное: название + отображаемое имя + код авто → «Далее»
+→ 5. Реквизиты: тип, форма, ИНН, **юридический адрес**, банк, БИК, р/с → «Далее»
+→ 6. Контакты: ФИО + email → «Далее»
+→ 7. Подтверждение: саммари (код, организация, ИНН, банк, контакт) → «Открыть карточку»
+→ 8. Детальная карточка открыта → 9. Reload: persistence.
+
+**ADVERTISER-UX-001C2-FU:** Legal address is real operator input — placeholder «—» removed.
+Operator must type legal address. Client-side validation: «Укажите юридический адрес».
+
+**Smoke:** `test_uismoke__advertiser__create_org` — GREEN (5.70s).
+Доказательство: wizard visible → main → legal (real address filled) → contact → confirm → summary includes auto-code → card opens → reload persistence.
+
+**Operator walkthrough:** PENDING.
+
+---
+
 ## EPIC-L — Platform/Device Licensing
 
 **Status:** Canon intake only. No implementation.

@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-30 (ADVERTISER-UX-001B2)
+**Last updated:** 2026-07-30 (ADVERTISER-UX-001C2-FU)
 
-**Next Active Workstream:** ADVERTISER-UX-001B3 — contacts CRUD + user link
+**Next Active Workstream:** ADVERTISER-UX-001D1 — users & permissions UX
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `84fe4c3` (PLAYER-001B-FU — substantive)
@@ -103,6 +103,33 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - UI: ContractsTab with create form, inline edit, filechooser upload, file metadata display, 12+ data-testid.
 - Next: ADVERTISER-UX-001B3 — contacts CRUD + user link.
 - Operator walkthrough: PENDING.
+- Checkpoint by PS-001.
+
+**ADVERTISER-UX-001C1 ✅** — Auto-generated advertiser code + read-only UI. CI #30553360673 (35/35 green).
+- Backend: code generation format ADV-YYYY-NNNN, max-N+1 per year, uniqueness via DB constraint.
+- API: code optional in create schema, IntegrityError collision → 409.
+- UI: input field removed, auto-code note, read-only display in table/detail.
+- Tests: backend 15/15 (schema, pattern, increment, collision, auto-generation, backward compat), vitest 10/10, UI-smoke green.
+- Operator walkthrough: PENDING.
+- Next: ADVERTISER-UX-001C2 — advertiser create wizard.
+- Checkpoint by PS-001.
+
+**ADVERTISER-UX-001C2 ✅** — Advertiser create wizard (4-step onboarding). CI #30555466613 (35/35 green).
+- Replaces single create modal with multi-step wizard: Основное → Реквизиты → Контакты → Подтверждение.
+- Reuses A/B/C backend endpoints, auto-code from C1, legal requisites from A2, contacts from B3.
+- Honest deferrals: contract in detail card, brands in detail tab.
+- Tests: backend 15/15, vitest 10/10, UI-smoke green (5.83s), roadmap guard 0 violations.
+- Operator walkthrough: PENDING.
+- Checkpoint by PS-001.
+
+**ADVERTISER-UX-001C2-FU ✅** — legal_address real input, not placeholder.
+- Removed LEGAL_MIN_ADDRESS="—" fallback. Operator must type real legal address.
+- Added `data-testid="advertiser-wizard-legal-address"`, client-side validation "Укажите юридический адрес".
+- Vitest: new test "wizard legal step sends real legal_address, not placeholder" (11/11 pass).
+- UI-smoke: GREEN (5.70s), fills real address, persists.
+- Guard: rg legal_address.*["']—|addr.*placeholder → no active fake-address paths.
+- Operator walkthrough: PENDING.
+- Next: ADVERTISER-UX-001D1 — users & permissions UX.
 - Checkpoint by PS-001.
 
 **EPIC-L-000 ✅** — Licensing canon intake + seat-hook requirement. Owner gate §08 approved 2026-07-30. CI #30529324395 (35/35 green).

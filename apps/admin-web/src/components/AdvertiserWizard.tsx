@@ -70,7 +70,6 @@ const EMPTY_LEGAL: LegalForm = {
   bik: "",
   bank_name: "",
 };
-const LEGAL_MIN_ADDRESS = "—";  // API requires non-empty legal_address
 const EMPTY_CONTACT: ContactForm = { full_name: "", email: "", phone: "", title: "" };
 
 // ── Inline styles ──
@@ -197,6 +196,7 @@ export default function AdvertiserWizard({ onClose, onCreated }: AdvertiserWizar
   async function handleLegalSubmit() {
     setError("");
     if (!legal.inn.trim()) { setError("Укажите ИНН"); return; }
+    if (!legal.legal_address.trim()) { setError("Укажите юридический адрес"); return; }
     if (!orgId) { setError("Организация не создана"); return; }
     setSaving(true);
     try {
@@ -205,7 +205,7 @@ export default function AdvertiserWizard({ onClose, onCreated }: AdvertiserWizar
         legal_form: legal.legal_form,
         legal_name: legal.legal_name || main.legal_name,
         inn: legal.inn,
-        legal_address: legal.legal_address || LEGAL_MIN_ADDRESS,
+        legal_address: legal.legal_address,
         settlement_account: legal.settlement_account || "",
         correspondent_account: legal.correspondent_account || "",
         bik: legal.bik || "",
@@ -390,9 +390,10 @@ export default function AdvertiserWizard({ onClose, onCreated }: AdvertiserWizar
         <input style={S.input} placeholder="30101810000000000225" value={legal.correspondent_account}
           onChange={(e) => setLegal((f) => ({ ...f, correspondent_account: e.target.value }))} />
 
-        <div style={S.label}>Юридический адрес</div>
+        <div style={S.label}>Юридический адрес *</div>
         <input style={S.input} placeholder="г. Москва, ул. Примерная, д. 1" value={legal.legal_address}
-          onChange={(e) => setLegal((f) => ({ ...f, legal_address: e.target.value }))} />
+          onChange={(e) => setLegal((f) => ({ ...f, legal_address: e.target.value }))}
+          data-testid="advertiser-wizard-legal-address" />
       </div>
     );
   }

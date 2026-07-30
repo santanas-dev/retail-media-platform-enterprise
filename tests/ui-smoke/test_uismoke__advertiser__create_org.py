@@ -71,6 +71,7 @@ def test_uismoke__advertiser__create_org(smoke_page):
 
     # Fill legal step
     page.fill('[data-testid="advertiser-wizard-legal-inn"]', "7700000000")
+    page.fill('[data-testid="advertiser-wizard-legal-address"]', "г. Москва, ул. Тверская, д. 1")
     page.fill('[data-testid="advertiser-wizard-legal-bank"]', "ПАО Сбербанк")
     page.fill('[data-testid="advertiser-wizard-legal-bik"]', "044525225")
     page.fill('[data-testid="advertiser-wizard-legal-settlement"]', "40702810000000000001")
