@@ -234,6 +234,52 @@ async def list_advertiser_brands(
     return list(result.scalars().all())
 
 
+async def create_advertiser_brand(
+    session: AsyncSession,
+    advertiser_organization_id: str,
+    code: str,
+    name: str,
+    description: str | None = None,
+) -> AdvertiserBrand:
+    brand = AdvertiserBrand(
+        advertiser_organization_id=advertiser_organization_id,
+        code=code,
+        name=name,
+        description=description,
+        status="active",
+    )
+    session.add(brand)
+    await session.flush()
+    return brand
+
+
+async def update_advertiser_brand(
+    session: AsyncSession,
+    brand_id: str,
+    advertiser_organization_id: str,
+    code: str | None = None,
+    name: str | None = None,
+    description: str | None = None,
+) -> AdvertiserBrand | None:
+    stmt = select(AdvertiserBrand).where(
+        AdvertiserBrand.id == brand_id,
+        AdvertiserBrand.advertiser_organization_id == advertiser_organization_id,
+    )
+    result = await session.execute(stmt)
+    brand = result.scalar_one_or_none()
+    if not brand:
+        return None
+    if code is not None:
+        brand.code = code
+    if name is not None:
+        brand.name = name
+    if description is not None:
+        brand.description = description
+    session.add(brand)
+    await session.flush()
+    return brand
+
+
 async def list_advertiser_contracts(
     session: AsyncSession,
 ) -> list[AdvertiserContract]:

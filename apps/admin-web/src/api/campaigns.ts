@@ -25,6 +25,8 @@ import type {
   AdvertiserOrganizationOut,
   AdvertiserOrganizationDetailOut,
   AdvertiserBrandOut,
+  AdvertiserBrandCreate,
+  AdvertiserBrandUpdate,
   AdvertiserContractOut,
   AdvertiserContactOut,
   AdvertiserUserMembershipOut,
@@ -141,6 +143,23 @@ export function createAdvertiserOrganization(body: {
 
 export function listBrands(): Promise<AdvertiserBrandOut[]> {
   return api.get<AdvertiserBrandOut[]>("/advertiser-brands");
+}
+
+export function createAdvertiserBrand(
+  body: AdvertiserBrandCreate,
+): Promise<AdvertiserBrandOut> {
+  return api.post<AdvertiserBrandOut>("/advertiser-brands", body);
+}
+
+export function updateAdvertiserBrand(
+  brandId: string,
+  advertiserOrganizationId: string,
+  body: AdvertiserBrandUpdate,
+): Promise<AdvertiserBrandOut> {
+  return api.patch<AdvertiserBrandOut>(
+    `/advertiser-brands/${brandId}?advertiser_organization_id=${advertiserOrganizationId}`,
+    body,
+  );
 }
 
 export function listContracts(): Promise<AdvertiserContractOut[]> {

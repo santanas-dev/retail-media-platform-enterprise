@@ -10,6 +10,8 @@ import {
   listMemberships,
   createAdvertiserOrganization,
   updateAdvertiserLegalRequisites,
+  createAdvertiserBrand,
+  updateAdvertiserBrand,
 } from "../api/campaigns";
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -17,6 +19,8 @@ import type {
   AdvertiserOrganizationOut,
   AdvertiserOrganizationDetailOut,
   AdvertiserBrandOut,
+  AdvertiserBrandCreate,
+  AdvertiserBrandUpdate,
   AdvertiserContractOut,
   AdvertiserContactOut,
   AdvertiserUserMembershipOut,
@@ -434,7 +438,7 @@ export default function AdvertisersPage() {
             ) : detailState.stage === "error" ? (
               <div style={S.error}>{detailState.message}</div>
             ) : detailState.stage === "ready" ? (
-              <RenderTab tab={activeTab} data={detailState.data} onRequisitesSaved={() => setDetailVersion((v) => v + 1)} />
+              <RenderTab tab={activeTab} data={detailState.data} onRequisitesSaved={() => setDetailVersion((v) => v + 1)} onBrandChange={() => setDetailVersion((v) => v + 1)} />
             ) : null}
           </div>
         </div>
@@ -475,14 +479,14 @@ export default function AdvertisersPage() {
 
 // ── Tab Renderers ──
 
-function RenderTab({ tab, data, onRequisitesSaved }: { tab: Tab; data: DetailData; onRequisitesSaved: () => void }) {
+function RenderTab({ tab, data, onRequisitesSaved, onBrandChange }: { tab: Tab; data: DetailData; onRequisitesSaved: () => void; onBrandChange: () => void }) {
   switch (tab) {
     case "Обзор":
       return <OverviewTab org={data.org} />;
     case "Реквизиты":
       return <LegalRequisitesTab org={data.org} onSaved={onRequisitesSaved} />;
     case "Бренды":
-      return <BrandsTab brands={data.brands} />;
+      return <BrandsTab brands={data.brands} orgId={data.org.id} onBrandChange={onBrandChange} />;
     case "Договоры":
       return <ContractsTab contracts={data.contracts} />;
     case "Контакты":
@@ -738,31 +742,166 @@ function LegalRequisitesTab({ org, onSaved }: { org: AdvertiserOrganizationDetai
   );
 }
 
-function BrandsTab({ brands }: { brands: AdvertiserBrandOut[] }) {
-  if (brands.length === 0) return <div style={S.empty}>Нет брендов</div>;
+function BrandsTab({ brands, orgId, onBrandChange }: { brands: AdvertiserBrandOut[]; orgId: string; onBrandChange: () => void }) {
+  const { user } = useAuth();
+  const canEdit = user?.permissions?.includes("advertisers.manage") ?? false;
+
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const [form, setForm] = useState({ code: "", name: "", description: "" });
+
+  function resetForm() {
+    setForm({ code: "", name: "", description: "" });
+    setCreating(false);
+    setEditingId(null);
+    setError("");
+    setSuccess("");
+  }
+
+  async function handleCreate() {
+    setError("");
+    setSuccess("");
+    setSaving(true);
+    try {
+      const body: AdvertiserBrandCreate = {
+        advertiser_organization_id: orgId,
+        code: form.code,
+        name: form.name,
+        description: form.description || null,
+      };
+      await createAdvertiserBrand(body);
+      setSuccess(`Бренд «${form.name}» создан`);
+      resetForm();
+      onBrandChange();
+    } catch (e: unknown) {
+      setError(e instanceof ApiError ? (typeof e.body === "object" && e.body !== null && "detail" in e.body ? String((e.body as Record<string, unknown>).detail) : e.message) : "Ошибка создания бренда");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleUpdate(brandId: string) {
+    setError("");
+    setSuccess("");
+    setSaving(true);
+    try {
+      const body: AdvertiserBrandUpdate = {
+        code: form.code || undefined,
+        name: form.name || undefined,
+        description: form.description || undefined,
+      };
+      const updated = await updateAdvertiserBrand(brandId, orgId, body);
+      setSuccess(`Бренд «${updated.name}» обновлён`);
+      resetForm();
+      onBrandChange();
+    } catch (e: unknown) {
+      setError(e instanceof ApiError ? (typeof e.body === "object" && e.body !== null && "detail" in e.body ? String((e.body as Record<string, unknown>).detail) : e.message) : "Ошибка обновления бренда");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function startEdit(b: AdvertiserBrandOut) {
+    setForm({ code: b.code, name: b.name, description: b.description ?? "" });
+    setEditingId(b.id);
+    setCreating(false);
+    setError("");
+    setSuccess("");
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", padding: "0.35rem 0.5rem", border: "1px solid #e2e8f0",
+    borderRadius: 4, fontSize: "0.875rem", boxSizing: "border-box",
+  };
+
   return (
-    <table style={S.table}>
-      <thead>
-        <tr>
-          <th style={S.th}>Код</th>
-          <th style={S.th}>Название</th>
-          <th style={S.th}>Описание</th>
-          <th style={S.th}>Статус</th>
-        </tr>
-      </thead>
-      <tbody>
-        {brands.map((b) => (
-          <tr key={b.id}>
-            <td style={S.td}>{b.code}</td>
-            <td style={S.td}>{b.name}</td>
-            <td style={S.td}>{b.description ?? "—"}</td>
-            <td style={S.td}>
-              <span style={S.badge(statusColor(b.status))}>{statusLabel(b.status)}</span>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div data-testid="advertiser-brands-section">
+      {error && <div data-testid="advertiser-brand-error" style={{ color: "#dc2626", marginBottom: "0.5rem", fontSize: "0.875rem" }}>{error}</div>}
+      {success && <div data-testid="advertiser-brand-success" style={{ color: "#16a34a", marginBottom: "0.5rem", fontSize: "0.875rem" }}>{success}</div>}
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+        <h4 style={{ margin: 0, fontSize: "0.9rem" }}>Бренды</h4>
+        {canEdit && !creating && (
+          <button data-testid="advertiser-brand-create-open" onClick={() => { setCreating(true); setEditingId(null); setForm({ code: "", name: "", description: "" }); setError(""); setSuccess(""); }}
+            style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem" }}>Добавить бренд</button>
+        )}
+      </div>
+
+      {creating && (
+        <div style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "0.75rem", marginBottom: "0.75rem", background: "#f8fafc" }}>
+          <div style={{ marginBottom: "0.5rem" }}>
+            <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>Код *</div>
+            <input data-testid="advertiser-brand-code" style={inputStyle} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
+          </div>
+          <div style={{ marginBottom: "0.5rem" }}>
+            <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>Название *</div>
+            <input data-testid="advertiser-brand-name" style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div style={{ marginBottom: "0.5rem" }}>
+            <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>Описание</div>
+            <input data-testid="advertiser-brand-description" style={inputStyle} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button onClick={resetForm} style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem" }}>Отмена</button>
+            <button data-testid="advertiser-brand-submit" onClick={handleCreate} disabled={saving}
+              style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: 4 }}>Сохранить</button>
+          </div>
+        </div>
+      )}
+
+      {brands.length === 0 && !creating ? (
+        <div data-testid="advertiser-brand-empty" style={S.empty}>Нет брендов</div>
+      ) : (
+        <table style={S.table}>
+          <thead>
+            <tr>
+              <th style={S.th}>Код</th>
+              <th style={S.th}>Название</th>
+              <th style={S.th}>Описание</th>
+              <th style={S.th}>Статус</th>
+              {canEdit && <th style={{ ...S.th, width: 60 }}></th>}
+            </tr>
+          </thead>
+          <tbody>
+            {brands.map((b) => (
+              editingId === b.id ? (
+                <tr key={b.id} data-testid={`advertiser-brand-row-${b.id}`}>
+                  <td style={S.td}><input data-testid="advertiser-brand-code" style={inputStyle} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></td>
+                  <td style={S.td}><input data-testid="advertiser-brand-name" style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></td>
+                  <td style={S.td}><input data-testid="advertiser-brand-description" style={inputStyle} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></td>
+                  <td style={S.td}><span style={S.badge(statusColor(b.status))}>{statusLabel(b.status)}</span></td>
+                  <td style={S.td}>
+                    <div style={{ display: "flex", gap: "0.25rem" }}>
+                      <button onClick={() => handleUpdate(b.id)} disabled={saving} style={{ padding: "0.2rem 0.4rem", cursor: "pointer", fontSize: "0.75rem" }}>✓</button>
+                      <button onClick={resetForm} style={{ padding: "0.2rem 0.4rem", cursor: "pointer", fontSize: "0.75rem" }}>✕</button>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                <tr key={b.id} data-testid={`advertiser-brand-row-${b.id}`}>
+                  <td style={S.td} data-testid={`advertiser-brand-display-code-${b.id}`}>{b.code}</td>
+                  <td style={S.td} data-testid={`advertiser-brand-display-name-${b.id}`}>{b.name}</td>
+                  <td style={S.td}>{b.description ?? "—"}</td>
+                  <td style={S.td} data-testid={`advertiser-brand-display-status-${b.id}`}>
+                    <span style={S.badge(statusColor(b.status))}>{statusLabel(b.status)}</span>
+                  </td>
+                  {canEdit && (
+                    <td style={S.td}>
+                      <button data-testid={`advertiser-brand-edit-${b.id}`} onClick={() => startEdit(b)}
+                        style={{ padding: "0.2rem 0.4rem", cursor: "pointer", fontSize: "0.75rem" }}>Ред.</button>
+                    </td>
+                  )}
+                </tr>
+              )
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }
 

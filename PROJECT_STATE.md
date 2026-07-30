@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-30 (EPIC-L-000)
+**Last updated:** 2026-07-30 (ADVERTISER-UX-001B1)
 
 **Next Active Workstream:** ADVERTISER-UX-001B1 — brands CRUD
 
@@ -81,6 +81,16 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Deferred debt preserved: checksum, history/versioning, verification workflow.
 - Operator walkthrough: PENDING.
 - Next: ADVERTISER-UX-001B1 — brands CRUD.
+- Checkpoint by PS-001.
+
+**ADVERTISER-UX-001B1 ✅** — Advertiser brand CRUD + green UI-smoke.
+- Backend: schemas (AdvertiserBrandCreate/Update), repository (create/update), 2 new endpoints (POST + PATCH).
+- Permission: advertisers.manage for create/update, RLS-scoped by advertiser_organization_id.
+- Tests: 8/8 new backend tests (schema + repo), 243/243 vitest (3 new).
+- UI-smoke: test_uismoke__advertiser__brand_crud.py — GREEN. Create → display → edit → reload persistence.
+- UI: BrandsTab interactive — create form, inline edit, RBAC-gated buttons, 17 data-testid.
+- Next: ADVERTISER-UX-001B2 — contracts CRUD + PDF upload.
+- Operator walkthrough: PENDING.
 - Checkpoint by PS-001.
 
 **EPIC-L-000 ✅** — Licensing canon intake + seat-hook requirement. Owner gate §08 approved 2026-07-30. CI #30529324395 (35/35 green).

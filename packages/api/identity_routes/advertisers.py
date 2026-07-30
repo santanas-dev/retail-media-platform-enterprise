@@ -12,7 +12,9 @@ from packages.api.dependencies import (
 )
 from packages.domain import repository
 from packages.domain.schemas import (
+    AdvertiserBrandCreate,
     AdvertiserBrandOut,
+    AdvertiserBrandUpdate,
     AdvertiserContactOut,
     AdvertiserContractOut,
     AdvertiserLegalRequisitesUpdate,
@@ -181,6 +183,47 @@ async def list_advertiser_brands_by_org(
 ):
     items = await repository.list_advertiser_brands_by_org(db, advertiser_organization_id)
     return [AdvertiserBrandOut.model_validate(b) for b in items]
+
+
+@router.post("/advertiser-brands", response_model=AdvertiserBrandOut, status_code=201)
+async def create_advertiser_brand(
+    body: AdvertiserBrandCreate,
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Create a new brand for an advertiser organization."""
+    brand = await repository.create_advertiser_brand(
+        db,
+        advertiser_organization_id=body.advertiser_organization_id,
+        code=body.code,
+        name=body.name,
+        description=body.description,
+    )
+    return AdvertiserBrandOut.model_validate(brand)
+
+
+@router.patch("/advertiser-brands/{brand_id}", response_model=AdvertiserBrandOut)
+async def update_advertiser_brand(
+    brand_id: str,
+    body: AdvertiserBrandUpdate,
+    advertiser_organization_id: str = Query(..., description="Scope guard: org ID"),
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Update an existing brand. Brand must belong to the given org."""
+    brand = await repository.update_advertiser_brand(
+        db,
+        brand_id=brand_id,
+        advertiser_organization_id=advertiser_organization_id,
+        code=body.code,
+        name=body.name,
+        description=body.description,
+    )
+    if not brand:
+        raise HTTPException(status_code=404, detail="Brand not found")
+    return AdvertiserBrandOut.model_validate(brand)
 
 
 @router.get("/advertiser-contracts-by-org", response_model=list[AdvertiserContractOut])

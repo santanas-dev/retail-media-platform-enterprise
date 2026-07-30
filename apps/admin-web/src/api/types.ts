@@ -119,6 +119,19 @@ export interface AdvertiserBrandOut {
   status: string;
 }
 
+export interface AdvertiserBrandCreate {
+  advertiser_organization_id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+}
+
+export interface AdvertiserBrandUpdate {
+  code?: string | null;
+  name?: string | null;
+  description?: string | null;
+}
+
 // ── Advertiser Contract ──
 
 export interface AdvertiserContractOut {

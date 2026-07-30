@@ -396,6 +396,21 @@ class AdvertiserBrandOut(BaseModel):
     status: str
 
 
+class AdvertiserBrandCreate(BaseModel):
+    """Create a new brand for an advertiser organization."""
+    advertiser_organization_id: str
+    code: str = Field(max_length=64)
+    name: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+
+
+class AdvertiserBrandUpdate(BaseModel):
+    """Update an existing brand."""
+    code: str | None = Field(default=None, max_length=64)
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+
+
 class AdvertiserContractOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

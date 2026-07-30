@@ -443,7 +443,7 @@ self.login / self.campaign_view / self.report_view + свои smoke.
 ```
 ADVERTISER-UX-001A1 — Schema + backend (после approval)
 ADVERTISER-UX-001A2 — UI + smoke ✅ (FU: display completeness + real smoke proof)
-ADVERTISER-UX-001B1 — Brands CRUD
+ADVERTISER-UX-001B1 — Brands CRUD ✅ (backend + UI + smoke)
 ADVERTISER-UX-001B2 — Contracts CRUD + PDF upload
 ADVERTISER-UX-001B3 — Contacts CRUD + user link
 ADVERTISER-UX-001C1 — Server-side auto-code generation
