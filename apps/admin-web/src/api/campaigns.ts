@@ -28,6 +28,8 @@ import type {
   AdvertiserBrandCreate,
   AdvertiserBrandUpdate,
   AdvertiserContractOut,
+  AdvertiserContractCreate,
+  AdvertiserContractUpdate,
   AdvertiserContactOut,
   AdvertiserUserMembershipOut,
   CampaignApprovalOut,
@@ -55,6 +57,10 @@ import type {
   CampaignInventoryReservationsResponse,
   InventorySimulationResponse,
   AdvertiserLegalRequisitesUpdate,
+  ContractUploadIntentRequest,
+  ContractUploadIntentResponse,
+  ContractUploadCompleteRequest,
+  ContractUploadCompleteResponse,
 } from "./types";
 
 // ── Campaigns ──
@@ -190,6 +196,45 @@ export function listBrandsByOrg(orgId: string): Promise<AdvertiserBrandOut[]> {
 
 export function listContractsByOrg(orgId: string): Promise<AdvertiserContractOut[]> {
   return api.get<AdvertiserContractOut[]>(`/advertiser-contracts-by-org?advertiser_organization_id=${orgId}`);
+}
+
+// ── ADVERTISER-UX-001B2 — Contract CRUD + PDF upload ──
+
+export function createAdvertiserContract(
+  body: AdvertiserContractCreate,
+): Promise<AdvertiserContractOut> {
+  return api.post<AdvertiserContractOut>("/advertiser-contracts", body);
+}
+
+export function updateAdvertiserContract(
+  contractId: string,
+  advertiserOrganizationId: string,
+  body: AdvertiserContractUpdate,
+): Promise<AdvertiserContractOut> {
+  return api.patch<AdvertiserContractOut>(
+    `/advertiser-contracts/${contractId}?advertiser_organization_id=${advertiserOrganizationId}`,
+    body,
+  );
+}
+
+export function createContractUploadIntent(
+  contractId: string,
+  body: ContractUploadIntentRequest,
+): Promise<ContractUploadIntentResponse> {
+  return api.post<ContractUploadIntentResponse>(
+    `/advertiser-contracts/${contractId}/upload-intent`,
+    body,
+  );
+}
+
+export function completeContractUpload(
+  contractId: string,
+  body: ContractUploadCompleteRequest,
+): Promise<ContractUploadCompleteResponse> {
+  return api.post<ContractUploadCompleteResponse>(
+    `/advertiser-contracts/${contractId}/complete-upload`,
+    body,
+  );
 }
 
 export function listContactsByOrg(orgId: string): Promise<AdvertiserContactOut[]> {

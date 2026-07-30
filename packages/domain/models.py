@@ -671,6 +671,14 @@ class AdvertiserContract(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
 
+    # File metadata (ADVERTISER-UX-001B2) — nullable for existing contracts
+    file_storage_key = Column(String(512), nullable=True)
+    file_name = Column(String(255), nullable=True)
+    file_size_bytes = Column(BigInteger, nullable=True)
+    file_sha256 = Column(String(64), nullable=True)
+    file_content_type = Column(String(64), nullable=True)
+    file_uploaded_at = Column(DateTime(timezone=True), nullable=True)
+
 
 class AdvertiserContact(Base):
     __tablename__ = "advertiser_contacts"
@@ -1239,6 +1247,39 @@ class CreativeUploadSession(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
 
 
+class ContractUploadSession(Base):
+    """Upload session for advertiser contract PDF files (ADVERTISER-UX-001B2).
+
+    Mirrors CreativeUploadSession pattern but scoped to contracts,
+    not creative assets. No auto-approval — file is attached directly
+    on complete-upload.
+    """
+
+    __tablename__ = "contract_upload_sessions"
+    __table_args__ = (
+        CheckConstraint("content_length > 0",
+                        name="ck_cotus_content_length_positive"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    contract_id = Column(
+        String(36), ForeignKey("advertiser_contracts.id"), nullable=False, index=True,
+    )
+    advertiser_organization_id = Column(
+        String(36), ForeignKey("advertiser_organizations.id"), nullable=False, index=True,
+    )
+    storage_bucket = Column(String(128), nullable=False)
+    storage_key = Column(String(512), nullable=False)
+    filename = Column(String(255), nullable=False)
+    content_type = Column(String(64), nullable=False)
+    content_length = Column(BigInteger, nullable=False)
+    sha256_checksum = Column(String(64), nullable=True)
+    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+
 # ---------------------------------------------------------------------------
 # Inventory Domain (v0.7 Foundation — S-077)
 # ---------------------------------------------------------------------------
@@ -1390,6 +1431,7 @@ REQUIRED_TABLES = frozenset({
     "pop_dedup_index",
     "pop_ingestion_batches",
     "creative_upload_sessions",
+    "contract_upload_sessions",
     "inventory_slots",
     "inventory_bookings",
     "inventory_rules",

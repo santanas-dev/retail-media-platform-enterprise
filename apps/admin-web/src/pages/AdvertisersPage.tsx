@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   listAdvertisers,
   listBrands,
@@ -12,6 +12,10 @@ import {
   updateAdvertiserLegalRequisites,
   createAdvertiserBrand,
   updateAdvertiserBrand,
+  createAdvertiserContract,
+  updateAdvertiserContract,
+  createContractUploadIntent,
+  completeContractUpload,
 } from "../api/campaigns";
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -21,6 +25,8 @@ import type {
   AdvertiserBrandOut,
   AdvertiserBrandCreate,
   AdvertiserBrandUpdate,
+  AdvertiserContractCreate,
+  AdvertiserContractUpdate,
   AdvertiserContractOut,
   AdvertiserContactOut,
   AdvertiserUserMembershipOut,
@@ -480,6 +486,7 @@ export default function AdvertisersPage() {
 // ── Tab Renderers ──
 
 function RenderTab({ tab, data, onRequisitesSaved, onBrandChange }: { tab: Tab; data: DetailData; onRequisitesSaved: () => void; onBrandChange: () => void }) {
+  const onContractChange = onBrandChange;  // same refetch trigger for contracts
   switch (tab) {
     case "Обзор":
       return <OverviewTab org={data.org} />;
@@ -488,7 +495,7 @@ function RenderTab({ tab, data, onRequisitesSaved, onBrandChange }: { tab: Tab; 
     case "Бренды":
       return <BrandsTab brands={data.brands} orgId={data.org.id} onBrandChange={onBrandChange} />;
     case "Договоры":
-      return <ContractsTab contracts={data.contracts} />;
+      return <ContractsTab contracts={data.contracts} orgId={data.org.id} onContractChange={onContractChange} />;
     case "Контакты":
       return <ContactsTab contacts={data.contacts} />;
     case "Пользователи":
@@ -905,41 +912,318 @@ function BrandsTab({ brands, orgId, onBrandChange }: { brands: AdvertiserBrandOu
   );
 }
 
-function ContractsTab({ contracts }: { contracts: AdvertiserContractOut[] }) {
-  if (contracts.length === 0) return <div style={S.empty}>Нет договоров</div>;
+function ContractsTab({ contracts, orgId, onContractChange }: { contracts: AdvertiserContractOut[]; orgId: string; onContractChange: () => void }) {
+  const { user } = useAuth();
+  const canEdit = user?.permissions?.includes("advertisers.manage") ?? false;
+
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null); // contract id being uploaded
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [pendingFile, setPendingFile] = useState<{ contractId: string; file: File } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingContractRef = useRef<string>("");
+
+  const [form, setForm] = useState({
+    code: "", name: "", contract_number: "",
+    budget_limit_amount: "", budget_limit_currency: "RUB",
+    valid_from: "", valid_until: "",
+  });
+
+  function resetForm() {
+    setForm({ code: "", name: "", contract_number: "", budget_limit_amount: "", budget_limit_currency: "RUB", valid_from: "", valid_until: "" });
+    setCreating(false);
+    setEditingId(null);
+    setError("");
+    setSuccess("");
+    setUploading(null);
+  }
+
+  function extractDetail(err: unknown): string {
+    if (err instanceof ApiError && typeof err.body === "object" && err.body !== null && "detail" in err.body) {
+      return String((err.body as Record<string, unknown>).detail);
+    }
+    if (err instanceof Error) return err.message;
+    return String(err);
+  }
+
+  async function handleCreate() {
+    setError(""); setSuccess(""); setSaving(true);
+    try {
+      const body: AdvertiserContractCreate = {
+        advertiser_organization_id: orgId,
+        code: form.code,
+        name: form.name,
+        contract_number: form.contract_number || undefined,
+        budget_limit_amount: form.budget_limit_amount ? parseFloat(form.budget_limit_amount) : undefined,
+        budget_limit_currency: form.budget_limit_currency,
+        valid_from: form.valid_from ? new Date(form.valid_from).toISOString() : undefined,
+        valid_until: form.valid_until ? new Date(form.valid_until).toISOString() : undefined,
+      };
+      await createAdvertiserContract(body);
+      setSuccess("Договор создан");
+      resetForm();
+      onContractChange();
+    } catch (e: unknown) {
+      setError(extractDetail(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleUpdate(contractId: string) {
+    setError(""); setSuccess(""); setSaving(true);
+    try {
+      const body: AdvertiserContractUpdate = {
+        code: form.code || undefined,
+        name: form.name || undefined,
+        contract_number: form.contract_number || undefined,
+        budget_limit_amount: form.budget_limit_amount ? parseFloat(form.budget_limit_amount) : undefined,
+        budget_limit_currency: form.budget_limit_currency || undefined,
+        valid_from: form.valid_from ? new Date(form.valid_from).toISOString() : undefined,
+        valid_until: form.valid_until ? new Date(form.valid_until).toISOString() : undefined,
+      };
+      const updated = await updateAdvertiserContract(contractId, orgId, body);
+      setSuccess(`Договор «${updated.name}» обновлён`);
+      resetForm();
+      onContractChange();
+    } catch (e: unknown) {
+      setError(extractDetail(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function startEdit(c: AdvertiserContractOut) {
+    setForm({
+      code: c.code,
+      name: c.name,
+      contract_number: c.contract_number ?? "",
+      budget_limit_amount: c.budget_limit_amount != null ? String(c.budget_limit_amount) : "",
+      budget_limit_currency: c.budget_limit_currency,
+      valid_from: c.valid_from ? new Date(c.valid_from).toISOString().slice(0, 10) : "",
+      valid_until: c.valid_until ? new Date(c.valid_until).toISOString().slice(0, 10) : "",
+    });
+    setEditingId(c.id);
+    setCreating(false);
+    setError("");
+    setSuccess("");
+  }
+
+  async function handleFileUpload(contractId: string, contractCode: string, file: File) {
+    setError(""); setSuccess(""); setUploading(contractId);
+    try {
+      // Step 1: upload-intent
+      const intent = await createContractUploadIntent(contractId, {
+        filename: file.name,
+        content_type: file.type || "application/pdf",
+        content_length: file.size,
+      });
+      // Step 2: PUT to MinIO
+      const putResp = await fetch(intent.upload_url, {
+        method: "PUT",
+        headers: intent.headers,
+        body: file,
+      });
+      if (!putResp.ok) {
+        throw new Error(`Upload failed: ${putResp.status} ${putResp.statusText}`);
+      }
+      // Step 3: complete-upload
+      await completeContractUpload(contractId, { upload_id: intent.upload_id });
+      setSuccess(`Файл «${file.name}» загружен для договора «${contractCode}»`);
+      setUploading(null);
+      onContractChange();
+    } catch (e: unknown) {
+      setError(extractDetail(e));
+      setUploading(null);
+    }
+  }
+
+  function handleFileTrigger(contractId: string) {
+    // Click hidden file input — Playwright's filechooser can intercept this
+    const input = document.getElementById(`contract-file-input-${contractId}`);
+    if (input) {
+      (input as HTMLInputElement).click();
+    } else {
+      // Fallback: show file dialog via programmatic input
+      const tmp = document.createElement("input");
+      tmp.type = "file";
+      tmp.accept = ".pdf,application/pdf";
+      tmp.onchange = (ev: Event) => {
+        const target = ev.target as HTMLInputElement;
+        if (target.files?.[0]) {
+          const c = contracts.find((x) => x.id === contractId);
+          handleFileUpload(contractId, c?.code ?? "", target.files[0]);
+        }
+      };
+      tmp.click();
+    }
+  }
+
+  function fmtDate(d: string | null | undefined): string {
+    if (!d) return "—";
+    try { return new Date(d).toLocaleDateString("ru-RU"); } catch { return "—"; }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", padding: "0.35rem 0.5rem", border: "1px solid #e2e8f0",
+    borderRadius: 4, fontSize: "0.875rem", boxSizing: "border-box",
+  };
+  const narrowInput: React.CSSProperties = { ...inputStyle, width: "100%" };
+
   return (
-    <table style={S.table}>
-      <thead>
-        <tr>
-          <th style={S.th}>Код</th>
-          <th style={S.th}>Название</th>
-          <th style={S.th}>№ договора</th>
-          <th style={S.th}>Бюджет</th>
-          <th style={S.th}>Действует с</th>
-          <th style={S.th}>Действует по</th>
-          <th style={S.th}>Статус</th>
-        </tr>
-      </thead>
-      <tbody>
-        {contracts.map((c) => (
-          <tr key={c.id}>
-            <td style={S.td}>{c.code}</td>
-            <td style={S.td}>{c.name}</td>
-            <td style={S.td}>{c.contract_number ?? "—"}</td>
-            <td style={S.td}>
-              {c.budget_limit_amount != null
-                ? `${c.budget_limit_amount.toLocaleString("ru-RU")} ${c.budget_limit_currency}`
-                : "—"}
-            </td>
-            <td style={S.td}>{c.valid_from ? new Date(c.valid_from).toLocaleDateString("ru-RU") : "—"}</td>
-            <td style={S.td}>{c.valid_until ? new Date(c.valid_until).toLocaleDateString("ru-RU") : "—"}</td>
-            <td style={S.td}>
-              <span style={S.badge(statusColor(c.status))}>{statusLabel(c.status)}</span>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div data-testid="advertiser-contracts-section">
+      {error && <div data-testid="advertiser-contract-error" style={{ color: "#dc2626", marginBottom: "0.5rem", fontSize: "0.875rem" }}>{error}</div>}
+      {success && <div data-testid="advertiser-contract-success" style={{ color: "#16a34a", marginBottom: "0.5rem", fontSize: "0.875rem" }}>{success}</div>}
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+        <h4 style={{ margin: 0, fontSize: "0.9rem" }}>Договоры</h4>
+        {canEdit && !creating && (
+          <button data-testid="advertiser-contract-create-open" onClick={() => { setCreating(true); setEditingId(null); setForm({ code: "", name: "", contract_number: "", budget_limit_amount: "", budget_limit_currency: "RUB", valid_from: "", valid_until: "" }); setError(""); setSuccess(""); }}
+            style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem" }}>Добавить договор</button>
+        )}
+      </div>
+
+      {creating && (
+        <div style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "0.75rem", marginBottom: "0.75rem", background: "#f8fafc" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", marginBottom: "0.5rem" }}>
+            <div>
+              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>Код *</div>
+              <input data-testid="advertiser-contract-number" style={inputStyle} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
+            </div>
+            <div>
+              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>Название *</div>
+              <input data-testid="advertiser-contract-title" style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div>
+              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>№ договора</div>
+              <input data-testid="advertiser-contract-contract-number" style={inputStyle} value={form.contract_number} onChange={(e) => setForm({ ...form, contract_number: e.target.value })} />
+            </div>
+            <div>
+              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>Бюджет</div>
+              <input data-testid="advertiser-contract-budget" style={inputStyle} type="number" value={form.budget_limit_amount} onChange={(e) => setForm({ ...form, budget_limit_amount: e.target.value })} />
+            </div>
+            <div>
+              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>Действует с</div>
+              <input data-testid="advertiser-contract-starts-at" style={inputStyle} type="date" value={form.valid_from} onChange={(e) => setForm({ ...form, valid_from: e.target.value })} />
+            </div>
+            <div>
+              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>Действует по</div>
+              <input data-testid="advertiser-contract-ends-at" style={inputStyle} type="date" value={form.valid_until} onChange={(e) => setForm({ ...form, valid_until: e.target.value })} />
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button onClick={resetForm} style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem" }}>Отмена</button>
+            <button data-testid="advertiser-contract-submit" onClick={handleCreate} disabled={saving}
+              style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: 4 }}>Сохранить</button>
+          </div>
+        </div>
+      )}
+
+      {contracts.length === 0 && !creating ? (
+        <div data-testid="advertiser-contract-empty" style={S.empty}>Нет договоров</div>
+      ) : (
+        <table style={S.table}>
+          <thead>
+            <tr>
+              <th style={S.th}>Код</th>
+              <th style={S.th}>Название</th>
+              <th style={S.th}>№ договора</th>
+              <th style={S.th}>Бюджет</th>
+              <th style={S.th}>Действует</th>
+              <th style={S.th}>Статус</th>
+              <th style={S.th}>Файл</th>
+              {canEdit && <th style={{ ...S.th, width: 80 }}></th>}
+            </tr>
+          </thead>
+          <tbody>
+            {contracts.map((c) => (
+              editingId === c.id ? (
+                <tr key={c.id} data-testid={`advertiser-contract-row-${c.id}`}>
+                  <td style={S.td}><input style={inputStyle} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} /></td>
+                  <td style={S.td}><input style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></td>
+                  <td style={S.td}><input style={inputStyle} value={form.contract_number} onChange={(e) => setForm({ ...form, contract_number: e.target.value })} /></td>
+                  <td style={S.td}><input style={narrowInput} type="number" value={form.budget_limit_amount} onChange={(e) => setForm({ ...form, budget_limit_amount: e.target.value })} /></td>
+                  <td style={S.td}><input style={narrowInput} type="date" value={form.valid_from} onChange={(e) => setForm({ ...form, valid_from: e.target.value })} /></td>
+                  <td style={S.td}><span style={S.badge(statusColor(c.status))}>{statusLabel(c.status)}</span></td>
+                  <td style={S.td}>{c.file_name ?? "—"}</td>
+                  <td style={S.td}>
+                    <div style={{ display: "flex", gap: "0.25rem" }}>
+                      <button onClick={() => handleUpdate(c.id)} disabled={saving} style={{ padding: "0.2rem 0.4rem", cursor: "pointer", fontSize: "0.75rem" }}>✓</button>
+                      <button onClick={resetForm} style={{ padding: "0.2rem 0.4rem", cursor: "pointer", fontSize: "0.75rem" }}>✕</button>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                <tr key={c.id} data-testid={`advertiser-contract-row-${c.id}`}>
+                  <td style={S.td} data-testid={`advertiser-contract-display-number-${c.id}`}>{c.code}</td>
+                  <td style={S.td} data-testid={`advertiser-contract-display-title-${c.id}`}>{c.name}</td>
+                  <td style={S.td}>{c.contract_number ?? "—"}</td>
+                  <td style={S.td}>
+                    {c.budget_limit_amount != null
+                      ? `${c.budget_limit_amount.toLocaleString("ru-RU")} ${c.budget_limit_currency}`
+                      : "—"}
+                  </td>
+                  <td style={S.td}>{fmtDate(c.valid_from)} – {fmtDate(c.valid_until)}</td>
+                  <td style={S.td}>
+                    <span style={S.badge(statusColor(c.status))}>{statusLabel(c.status)}</span>
+                  </td>
+                  <td style={S.td} data-testid={`advertiser-contract-display-file-${c.id}`}>
+                    {c.file_name ? (
+                      <span>{c.file_name}{c.file_size_bytes ? ` (${(c.file_size_bytes / 1024).toFixed(1)} KB)` : ""}</span>
+                    ) : pendingFile && pendingFile.contractId === c.id ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem" }}>
+                        <span data-testid="advertiser-contract-selected-file" style={{ fontSize: "0.75rem", color: "#0c4a6e" }}>
+                          📄 {pendingFile.file.name}
+                        </span>
+                        <button data-testid="advertiser-contract-upload-done"
+                          style={{ padding: "0.15rem 0.4rem", cursor: "pointer", fontSize: "0.7rem", background: "#16a34a", color: "#fff", border: "none", borderRadius: 3 }}
+                          onClick={() => {
+                            handleFileUpload(c.id, c.code, pendingFile.file);
+                            setPendingFile(null);
+                          }}
+                        >Загрузить</button>
+                      </span>
+                    ) : canEdit ? (
+                      <button data-testid={`advertiser-contract-upload-${c.id}`}
+                        style={{ padding: "0.2rem 0.4rem", cursor: "pointer", fontSize: "0.75rem", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 3 }}
+                        onClick={() => {
+                          pendingContractRef.current = c.id;
+                          fileInputRef.current?.click();
+                        }}
+                      >📎 Выбрать PDF</button>
+                    ) : "—"}
+                  </td>
+                  {canEdit && (
+                    <td style={S.td}>
+                      <button data-testid={`advertiser-contract-edit-${c.id}`} onClick={() => startEdit(c)}
+                        style={{ padding: "0.2rem 0.4rem", cursor: "pointer", fontSize: "0.75rem" }}>Ред.</button>
+                    </td>
+                  )}
+                </tr>
+              )
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {/* Hidden file input for contract PDF upload — driven by visible button via ref */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,application/pdf"
+        style={{ display: "none" }}
+        data-testid="advertiser-contract-file-input"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          setPendingFile({ contractId: pendingContractRef.current, file: f });
+          e.target.value = "";
+        }}
+      />
+    </div>
   );
 }
 

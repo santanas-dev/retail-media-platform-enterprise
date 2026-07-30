@@ -146,6 +146,60 @@ export interface AdvertiserContractOut {
   valid_until: string | null;
   status: string;
   terms_url: string | null;
+  // ADVERTISER-UX-001B2 — file metadata
+  file_storage_key: string | null;
+  file_name: string | null;
+  file_size_bytes: number | null;
+  file_sha256: string | null;
+  file_content_type: string | null;
+  file_uploaded_at: string | null;
+}
+
+export interface AdvertiserContractCreate {
+  advertiser_organization_id: string;
+  code: string;
+  name: string;
+  contract_number?: string | null;
+  budget_limit_amount?: number | null;
+  budget_limit_currency?: string;
+  valid_from?: string | null;
+  valid_until?: string | null;
+}
+
+export interface AdvertiserContractUpdate {
+  code?: string | null;
+  name?: string | null;
+  contract_number?: string | null;
+  budget_limit_amount?: number | null;
+  budget_limit_currency?: string | null;
+  valid_from?: string | null;
+  valid_until?: string | null;
+}
+
+// ADVERTISER-UX-001B2 — contract PDF upload
+
+export interface ContractUploadIntentRequest {
+  filename: string;
+  content_type: string;
+  content_length: number;
+}
+
+export interface ContractUploadIntentResponse {
+  upload_id: string;
+  upload_url: string;
+  method: string;
+  headers: Record<string, string>;
+  expires_at: string;
+}
+
+export interface ContractUploadCompleteRequest {
+  upload_id: string;
+}
+
+export interface ContractUploadCompleteResponse {
+  contract_id: string;
+  sha256_checksum: string;
+  file_size_bytes: number;
 }
 
 // ── Advertiser Contact ──

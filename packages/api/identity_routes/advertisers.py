@@ -11,17 +11,24 @@ from packages.api.dependencies import (
     get_current_active_user,
 )
 from packages.domain import repository
+from packages.security.config import get_security_config
 from packages.domain.schemas import (
     AdvertiserBrandCreate,
     AdvertiserBrandOut,
     AdvertiserBrandUpdate,
     AdvertiserContactOut,
+    AdvertiserContractCreate,
     AdvertiserContractOut,
+    AdvertiserContractUpdate,
     AdvertiserLegalRequisitesUpdate,
     AdvertiserOrganizationCreate,
     AdvertiserOrganizationDetailOut,
     AdvertiserOrganizationOut,
     AdvertiserUserMembershipOut,
+    ContractUploadIntentRequest,
+    ContractUploadIntentResponse,
+    ContractUploadCompleteRequest,
+    ContractUploadCompleteResponse,
 )
 
 router = APIRouter()
@@ -257,3 +264,173 @@ async def list_advertiser_user_memberships(
 ):
     items = await repository.list_advertiser_user_memberships(db, advertiser_organization_id)
     return [AdvertiserUserMembershipOut(**row) for row in items]
+
+
+# ---------------------------------------------------------------------------
+# ADVERTISER-UX-001B2 — Contract CRUD + PDF Upload
+# ---------------------------------------------------------------------------
+
+
+@router.post("/advertiser-contracts", response_model=AdvertiserContractOut, status_code=201)
+async def create_advertiser_contract(
+    body: AdvertiserContractCreate,
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Create a new advertiser contract."""
+    contract = await repository.create_advertiser_contract(
+        db,
+        advertiser_organization_id=body.advertiser_organization_id,
+        code=body.code,
+        name=body.name,
+        contract_number=body.contract_number,
+        budget_limit_amount=body.budget_limit_amount,
+        budget_limit_currency=body.budget_limit_currency,
+        valid_from=body.valid_from,
+        valid_until=body.valid_until,
+    )
+    return AdvertiserContractOut.model_validate(contract)
+
+
+@router.patch("/advertiser-contracts/{contract_id}", response_model=AdvertiserContractOut)
+async def update_advertiser_contract(
+    contract_id: str,
+    body: AdvertiserContractUpdate,
+    advertiser_organization_id: str = Query(..., description="Scope guard: org ID"),
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Update an existing advertiser contract. Contract must belong to the given org."""
+    contract = await repository.update_advertiser_contract(
+        db,
+        contract_id=contract_id,
+        advertiser_organization_id=advertiser_organization_id,
+        code=body.code,
+        name=body.name,
+        contract_number=body.contract_number,
+        budget_limit_amount=body.budget_limit_amount,
+        budget_limit_currency=body.budget_limit_currency,
+        valid_from=body.valid_from,
+        valid_until=body.valid_until,
+    )
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    return AdvertiserContractOut.model_validate(contract)
+
+
+# ── Contract PDF upload (presigned URL flow, mirrors creative upload pattern) ──
+
+
+@router.post("/advertiser-contracts/{contract_id}/upload-intent",
+             response_model=ContractUploadIntentResponse)
+async def contract_upload_intent(
+    contract_id: str,
+    body: ContractUploadIntentRequest,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Request a presigned upload URL for a contract PDF."""
+    cfg = get_security_config()
+
+    # PDF-only validation
+    if body.content_type != "application/pdf":
+        raise HTTPException(status_code=422, detail="Only PDF files are accepted")
+    if body.content_length > cfg.contract_max_file_size_bytes:
+        raise HTTPException(status_code=422,
+                            detail=f"File too large: {body.content_length} bytes")
+
+    contract = await repository.get_advertiser_contract(db, contract_id)
+    if contract is None:
+        raise HTTPException(status_code=404, detail="Contract not found")
+
+    org_id = str(contract.advertiser_organization_id)
+
+    storage_key = f"{org_id}/{contract_id}/{body.filename}"
+    bucket = cfg.contract_storage_bucket
+
+    from packages.services.storage import get_storage_service
+    storage = get_storage_service()
+    upload_url, expires_at = await storage.async_contract_generate_presigned_put(storage_key)
+
+    session_id = await repository.create_contract_upload_session(
+        db,
+        contract_id=contract_id,
+        advertiser_organization_id=org_id,
+        storage_bucket=bucket,
+        storage_key=storage_key,
+        filename=body.filename,
+        content_type=body.content_type,
+        content_length=body.content_length,
+        created_by=claims["sub"],
+        ttl_seconds=cfg.contract_upload_url_ttl_seconds,
+    )
+
+    return ContractUploadIntentResponse(
+        upload_id=session_id,
+        upload_url=upload_url,
+        method="PUT",
+        headers={"Content-Type": body.content_type},
+        expires_at=expires_at.isoformat(),
+    )
+
+
+@router.post("/advertiser-contracts/{contract_id}/complete-upload",
+             response_model=ContractUploadCompleteResponse)
+async def contract_complete_upload(
+    contract_id: str,
+    body: ContractUploadCompleteRequest,
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Verify and complete a contract PDF upload. Sets file metadata on the contract."""
+    from datetime import datetime, timezone as _tz
+
+    upload = await repository.get_contract_upload_session(db, body.upload_id)
+    if upload is None:
+        raise HTTPException(status_code=404, detail="Upload session not found")
+    if upload["contract_id"] != contract_id:
+        raise HTTPException(status_code=422, detail="Upload session does not match this contract")
+    if upload["completed_at"] is not None:
+        raise HTTPException(status_code=409, detail="Upload already completed")
+
+    if upload["expires_at"] < datetime.now(_tz.utc):
+        raise HTTPException(status_code=410, detail="Upload session expired")
+
+    from packages.services.storage import get_storage_service
+    storage = get_storage_service()
+    if not await storage.async_contract_object_exists(upload["storage_key"]):
+        raise HTTPException(status_code=404, detail="File not found in storage")
+
+    actual_size = await storage.async_contract_get_object_size(upload["storage_key"])
+    if actual_size != upload["content_length"]:
+        raise HTTPException(status_code=422,
+                            detail=f"Size mismatch: expected {upload['content_length']}, got {actual_size}")
+
+    checksum = await storage.async_contract_compute_sha256(upload["storage_key"])
+    if checksum is None:
+        raise HTTPException(status_code=500, detail="Failed to compute checksum")
+
+    contract = await repository.set_contract_file_metadata(
+        db,
+        contract_id=contract_id,
+        storage_key=upload["storage_key"],
+        filename=upload["filename"],
+        content_type=upload["content_type"],
+        file_size_bytes=actual_size,
+        sha256=checksum,
+    )
+    if contract is None:
+        raise HTTPException(status_code=404, detail="Contract not found")
+
+    await repository.mark_contract_upload_complete(db, body.upload_id)
+
+    return ContractUploadCompleteResponse(
+        contract_id=contract_id,
+        sha256_checksum=checksum,
+        file_size_bytes=actual_size,
+    )

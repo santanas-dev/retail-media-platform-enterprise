@@ -24,12 +24,14 @@ def _now() -> datetime:
 
 
 class StorageService:
-    """MinIO client wrapper for creative asset presigned-URL upload."""
+    """MinIO client wrapper for creative asset and contract PDF presigned-URL upload."""
 
     def __init__(self) -> None:
         cfg = get_security_config()
         self._bucket = cfg.creative_storage_bucket
+        self._contract_bucket = cfg.contract_storage_bucket
         self._ttl = cfg.creative_upload_url_ttl_seconds
+        self._contract_ttl = cfg.contract_upload_url_ttl_seconds
         self._internal = Minio(
             cfg.minio_internal_endpoint,
             access_key=cfg.minio_access_key,
@@ -67,6 +69,21 @@ class StorageService:
         except S3Error as exc:
             raise RuntimeError(
                 f"MinIO bucket check failed for '{self._bucket}': {exc}"
+            ) from exc
+
+    def ensure_contract_bucket(self) -> None:
+        """Create the contract storage bucket if it does not exist.
+
+        Idempotent — no-op if bucket already exists.
+        Raises RuntimeError on connectivity/permission failure.
+        """
+        try:
+            found = self._internal.bucket_exists(self._contract_bucket)
+            if not found:
+                self._internal.make_bucket(self._contract_bucket)
+        except S3Error as exc:
+            raise RuntimeError(
+                f"MinIO bucket check failed for '{self._contract_bucket}': {exc}"
             ) from exc
 
     # ------------------------------------------------------------------
@@ -144,6 +161,60 @@ class StorageService:
             return None
 
     # ------------------------------------------------------------------
+    # Contract PDF helpers (ADVERTISER-UX-001B2)
+    # ------------------------------------------------------------------
+
+    def contract_generate_presigned_put(
+        self,
+        storage_key: str,
+    ) -> tuple[str, datetime]:
+        """Generate a presigned PUT URL for contract PDF upload.
+
+        Returns (url, expires_at). Uses the contract bucket.
+        """
+        url = self._public.presigned_put_object(
+            self._contract_bucket,
+            storage_key,
+            expires=timedelta(seconds=self._contract_ttl),
+        )
+        expires_at = _now() + timedelta(seconds=self._contract_ttl)
+        return url, expires_at
+
+    def contract_object_exists(self, storage_key: str) -> bool:
+        """Check whether an object exists in the contract bucket."""
+        try:
+            self._internal.stat_object(self._contract_bucket, storage_key)
+            return True
+        except S3Error:
+            return False
+
+    def contract_get_object_size(self, storage_key: str) -> int | None:
+        """Return object size in bytes from contract bucket, or None if not found."""
+        try:
+            stat = self._internal.stat_object(self._contract_bucket, storage_key)
+            return stat.size
+        except S3Error:
+            return None
+
+    def contract_compute_sha256(self, storage_key: str) -> str | None:
+        """Compute SHA-256 of an object in the contract bucket via streaming read."""
+        try:
+            response = self._internal.get_object(self._contract_bucket, storage_key)
+        except S3Error:
+            return None
+        try:
+            h = hashlib.sha256()
+            while True:
+                chunk = response.read(131_072)
+                if not chunk:
+                    break
+                h.update(chunk)
+            return h.hexdigest()
+        finally:
+            response.close()
+            response.release_conn()
+
+    # ------------------------------------------------------------------
     # Streaming SHA-256
     # ------------------------------------------------------------------
 
@@ -199,6 +270,32 @@ class StorageService:
     async def async_compute_sha256(self, storage_key: str) -> str | None:
         """Threadpool wrapper for compute_sha256."""
         return await asyncio.to_thread(self.compute_sha256, storage_key)
+
+    # Contract async wrappers (ADVERTISER-UX-001B2)
+
+    async def async_ensure_contract_bucket(self) -> None:
+        """Threadpool wrapper for ensure_contract_bucket."""
+        return await asyncio.to_thread(self.ensure_contract_bucket)
+
+    async def async_contract_generate_presigned_put(
+        self, storage_key: str,
+    ) -> tuple[str, datetime]:
+        """Threadpool wrapper for contract_generate_presigned_put."""
+        return await asyncio.to_thread(
+            self.contract_generate_presigned_put, storage_key,
+        )
+
+    async def async_contract_object_exists(self, storage_key: str) -> bool:
+        """Threadpool wrapper for contract_object_exists."""
+        return await asyncio.to_thread(self.contract_object_exists, storage_key)
+
+    async def async_contract_get_object_size(self, storage_key: str) -> int | None:
+        """Threadpool wrapper for contract_get_object_size."""
+        return await asyncio.to_thread(self.contract_get_object_size, storage_key)
+
+    async def async_contract_compute_sha256(self, storage_key: str) -> str | None:
+        """Threadpool wrapper for contract_compute_sha256."""
+        return await asyncio.to_thread(self.contract_compute_sha256, storage_key)
 
 
 # Singleton — created at app startup

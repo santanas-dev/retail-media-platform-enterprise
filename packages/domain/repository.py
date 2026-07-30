@@ -334,6 +334,192 @@ async def list_advertiser_contracts_by_org(
     return list(result.scalars().all())
 
 
+async def create_advertiser_contract(
+    session: AsyncSession,
+    advertiser_organization_id: str,
+    code: str,
+    name: str,
+    contract_number: str | None = None,
+    budget_limit_amount: float | None = None,
+    budget_limit_currency: str = "RUB",
+    valid_from: datetime | None = None,
+    valid_until: datetime | None = None,
+) -> AdvertiserContract:
+    """Create a new advertiser contract (ADVERTISER-UX-001B2)."""
+    from datetime import timezone as _tz
+
+    contract = AdvertiserContract(
+        advertiser_organization_id=advertiser_organization_id,
+        code=code,
+        name=name,
+        contract_number=contract_number,
+        budget_limit_amount=budget_limit_amount,
+        budget_limit_currency=budget_limit_currency,
+        valid_from=valid_from or datetime.now(_tz.utc),
+        valid_until=valid_until,
+        status="draft",
+    )
+    session.add(contract)
+    await session.flush()
+    return contract
+
+
+async def update_advertiser_contract(
+    session: AsyncSession,
+    contract_id: str,
+    advertiser_organization_id: str,
+    code: str | None = None,
+    name: str | None = None,
+    contract_number: str | None = None,
+    budget_limit_amount: float | None = None,
+    budget_limit_currency: str | None = None,
+    valid_from: datetime | None = None,
+    valid_until: datetime | None = None,
+) -> AdvertiserContract | None:
+    """Update an existing advertiser contract (ADVERTISER-UX-001B2)."""
+    stmt = select(AdvertiserContract).where(
+        AdvertiserContract.id == contract_id,
+        AdvertiserContract.advertiser_organization_id == advertiser_organization_id,
+    )
+    result = await session.execute(stmt)
+    contract = result.scalar_one_or_none()
+    if not contract:
+        return None
+    if code is not None:
+        contract.code = code
+    if name is not None:
+        contract.name = name
+    if contract_number is not None:
+        contract.contract_number = contract_number
+    if budget_limit_amount is not None:
+        contract.budget_limit_amount = budget_limit_amount
+    if budget_limit_currency is not None:
+        contract.budget_limit_currency = budget_limit_currency
+    if valid_from is not None:
+        contract.valid_from = valid_from
+    if valid_until is not None:
+        contract.valid_until = valid_until
+    session.add(contract)
+    await session.flush()
+    return contract
+
+
+async def create_contract_upload_session(
+    session: AsyncSession,
+    contract_id: str,
+    advertiser_organization_id: str,
+    storage_bucket: str,
+    storage_key: str,
+    filename: str,
+    content_type: str,
+    content_length: int,
+    created_by: str,
+    ttl_seconds: int,
+) -> str:
+    """Create a contract_upload_sessions row. Returns session id."""
+    from packages.domain.models import ContractUploadSession
+    from datetime import timezone as _tz, timedelta
+    from uuid import uuid4
+
+    sid = str(uuid4())
+    expires_at = datetime.now(_tz.utc) + timedelta(seconds=ttl_seconds)
+    row = ContractUploadSession(
+        id=sid,
+        contract_id=contract_id,
+        advertiser_organization_id=advertiser_organization_id,
+        storage_bucket=storage_bucket,
+        storage_key=storage_key,
+        filename=filename,
+        content_type=content_type,
+        content_length=content_length,
+        expires_at=expires_at,
+        created_by=created_by,
+    )
+    session.add(row)
+    await session.flush()
+    return sid
+
+
+async def get_contract_upload_session(
+    session: AsyncSession,
+    upload_id: str,
+) -> dict | None:
+    """Get contract upload session by id. Returns dict or None."""
+    from packages.domain.models import ContractUploadSession
+    from sqlalchemy import select as sa_select
+
+    result = await session.execute(
+        sa_select(ContractUploadSession).where(
+            ContractUploadSession.id == upload_id,
+        )
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
+        return None
+    return {
+        "id": row.id,
+        "contract_id": row.contract_id,
+        "advertiser_organization_id": row.advertiser_organization_id,
+        "storage_bucket": row.storage_bucket,
+        "storage_key": row.storage_key,
+        "filename": row.filename,
+        "content_type": row.content_type,
+        "content_length": row.content_length,
+        "expires_at": row.expires_at,
+        "completed_at": row.completed_at,
+    }
+
+
+async def mark_contract_upload_complete(
+    session: AsyncSession,
+    upload_id: str,
+) -> bool:
+    """Mark contract upload session as completed. Returns True on success."""
+    from packages.domain.models import ContractUploadSession
+
+    result = await session.execute(
+        select(ContractUploadSession).where(
+            ContractUploadSession.id == upload_id,
+            ContractUploadSession.completed_at.is_(None),
+        )
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
+        return False
+    from datetime import timezone as _tz
+    row.completed_at = datetime.now(_tz.utc)
+    session.add(row)
+    await session.flush()
+    return True
+
+
+async def set_contract_file_metadata(
+    session: AsyncSession,
+    contract_id: str,
+    storage_key: str,
+    filename: str,
+    content_type: str,
+    file_size_bytes: int,
+    sha256: str,
+) -> AdvertiserContract | None:
+    """Set file metadata on an advertiser contract after successful upload."""
+    stmt = select(AdvertiserContract).where(AdvertiserContract.id == contract_id)
+    result = await session.execute(stmt)
+    contract = result.scalar_one_or_none()
+    if contract is None:
+        return None
+    contract.file_storage_key = storage_key
+    contract.file_name = filename
+    contract.file_size_bytes = file_size_bytes
+    contract.file_sha256 = sha256
+    contract.file_content_type = content_type
+    from datetime import timezone as _tz
+    contract.file_uploaded_at = datetime.now(_tz.utc)
+    session.add(contract)
+    await session.flush()
+    return contract
+
+
 async def list_advertiser_contacts_by_org(
     session: AsyncSession, org_id: str,
 ) -> list[AdvertiserContact]:

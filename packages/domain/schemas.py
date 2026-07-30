@@ -426,6 +426,68 @@ class AdvertiserContractOut(BaseModel):
     status: str
     terms_url: str | None = None
 
+    # File metadata (ADVERTISER-UX-001B2)
+    file_storage_key: str | None = None
+    file_name: str | None = None
+    file_size_bytes: int | None = None
+    file_sha256: str | None = None
+    file_content_type: str | None = None
+    file_uploaded_at: datetime | None = None
+
+
+class AdvertiserContractCreate(BaseModel):
+    """Create a new advertiser contract. File is uploaded separately via upload-intent."""
+    advertiser_organization_id: str = Field(..., min_length=1)
+    code: str = Field(..., min_length=1, max_length=64)
+    name: str = Field(..., min_length=1, max_length=255)
+    contract_number: str | None = Field(None, max_length=128)
+    budget_limit_amount: float | None = None
+    budget_limit_currency: str = "RUB"
+    valid_from: datetime | None = None
+    valid_until: datetime | None = None
+
+
+class AdvertiserContractUpdate(BaseModel):
+    """Update an existing advertiser contract. All fields optional."""
+    code: str | None = Field(None, min_length=1, max_length=64)
+    name: str | None = Field(None, min_length=1, max_length=255)
+    contract_number: str | None = Field(None, max_length=128)
+    budget_limit_amount: float | None = None
+    budget_limit_currency: str | None = None
+    valid_from: datetime | None = None
+    valid_until: datetime | None = None
+
+
+# Contract PDF upload (ADVERTISER-UX-001B2)
+
+
+class ContractUploadIntentRequest(BaseModel):
+    """Request a presigned upload URL for a contract PDF."""
+    filename: str = Field(..., min_length=1, max_length=255)
+    content_type: str = Field(..., min_length=1, max_length=64)
+    content_length: int = Field(..., gt=0)
+
+
+class ContractUploadIntentResponse(BaseModel):
+    """Response with presigned PUT URL — browser uploads directly to MinIO."""
+    upload_id: str
+    upload_url: str
+    method: str = "PUT"
+    headers: dict[str, str] = Field(default_factory=dict)
+    expires_at: str
+
+
+class ContractUploadCompleteRequest(BaseModel):
+    """Confirm upload completion by upload session ID."""
+    upload_id: str = Field(..., min_length=1, max_length=36)
+
+
+class ContractUploadCompleteResponse(BaseModel):
+    """Response after server computes SHA-256 from MinIO object."""
+    contract_id: str
+    sha256_checksum: str
+    file_size_bytes: int
+
 
 class AdvertiserContactOut(BaseModel):
     """Public contact — PII-gated by permission check in router.
