@@ -16,6 +16,8 @@ import {
   updateAdvertiserContract,
   createContractUploadIntent,
   completeContractUpload,
+  createAdvertiserContact,
+  updateAdvertiserContact,
 } from "../api/campaigns";
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -29,6 +31,8 @@ import type {
   AdvertiserContractUpdate,
   AdvertiserContractOut,
   AdvertiserContactOut,
+  AdvertiserContactCreate,
+  AdvertiserContactUpdate,
   AdvertiserUserMembershipOut,
   AdvertiserLegalRequisitesUpdate,
 } from "../api/types";
@@ -189,6 +193,77 @@ const S = {
   } as React.CSSProperties,
   fieldValue: {
     fontSize: "0.875rem",
+  } as React.CSSProperties,
+  fieldError: {
+    color: "#dc2626",
+    fontSize: "0.8125rem",
+    marginBottom: "0.5rem",
+  } as React.CSSProperties,
+  fieldSuccess: {
+    color: "#16a34a",
+    fontSize: "0.8125rem",
+    marginBottom: "0.5rem",
+  } as React.CSSProperties,
+  btnPrimarySmall: {
+    padding: "0.25rem 0.75rem",
+    fontSize: "0.8125rem",
+    fontWeight: 500,
+    color: "#fff",
+    background: "#2563eb",
+    border: "none",
+    borderRadius: 4,
+    cursor: "pointer",
+  } as React.CSSProperties,
+  btnSecondarySmall: {
+    padding: "0.25rem 0.75rem",
+    fontSize: "0.8125rem",
+    fontWeight: 500,
+    color: "#475569",
+    background: "#f1f5f9",
+    border: "1px solid #e2e8f0",
+    borderRadius: 4,
+    cursor: "pointer",
+  } as React.CSSProperties,
+  btnEditSmall: {
+    padding: "0.2rem 0.5rem",
+    fontSize: "0.75rem",
+    fontWeight: 500,
+    color: "#2563eb",
+    background: "#eff6ff",
+    border: "1px solid #bfdbfe",
+    borderRadius: 4,
+    cursor: "pointer",
+  } as React.CSSProperties,
+  inputSmall: {
+    padding: "0.2rem 0.4rem",
+    fontSize: "0.8125rem",
+    border: "1px solid #e2e8f0",
+    borderRadius: 4,
+    width: "100%",
+  } as React.CSSProperties,
+  selectSmall: {
+    padding: "0.2rem 0.4rem",
+    fontSize: "0.8125rem",
+    border: "1px solid #e2e8f0",
+    borderRadius: 4,
+  } as React.CSSProperties,
+  input: {
+    padding: "0.4rem 0.6rem",
+    fontSize: "0.875rem",
+    border: "1px solid #e2e8f0",
+    borderRadius: 4,
+    width: "100%",
+    marginBottom: "0.5rem",
+    boxSizing: "border-box" as const,
+  } as React.CSSProperties,
+  select: {
+    padding: "0.4rem 0.6rem",
+    fontSize: "0.875rem",
+    border: "1px solid #e2e8f0",
+    borderRadius: 4,
+    width: "100%",
+    marginBottom: "0.5rem",
+    background: "#fff",
   } as React.CSSProperties,
 };
 
@@ -425,7 +500,7 @@ export default function AdvertisersPage() {
         <div style={S.detailPanel} data-testid="advertiser-detail-panel">
           <div style={S.tabs}>
             {TABS.map((t) => (
-              <div key={t} style={S.tab(activeTab === t)} onClick={() => setActiveTab(t)}>
+              <div key={t} style={S.tab(activeTab === t)} onClick={() => setActiveTab(t)} data-testid={`advertiser-tab-${t.toLowerCase()}`}>
                 {t}
               </div>
             ))}
@@ -487,6 +562,7 @@ export default function AdvertisersPage() {
 
 function RenderTab({ tab, data, onRequisitesSaved, onBrandChange }: { tab: Tab; data: DetailData; onRequisitesSaved: () => void; onBrandChange: () => void }) {
   const onContractChange = onBrandChange;  // same refetch trigger for contracts
+  const onContactChange = onBrandChange;   // same refetch trigger for contacts
   switch (tab) {
     case "Обзор":
       return <OverviewTab org={data.org} />;
@@ -497,7 +573,7 @@ function RenderTab({ tab, data, onRequisitesSaved, onBrandChange }: { tab: Tab; 
     case "Договоры":
       return <ContractsTab contracts={data.contracts} orgId={data.org.id} onContractChange={onContractChange} />;
     case "Контакты":
-      return <ContactsTab contacts={data.contacts} />;
+      return <ContactsTab contacts={data.contacts} users={data.users} orgId={data.org.id} onContactChange={onContactChange} />;
     case "Пользователи":
       return <UsersTab users={data.users} />;
   }
@@ -1227,35 +1303,208 @@ function ContractsTab({ contracts, orgId, onContractChange }: { contracts: Adver
   );
 }
 
-function ContactsTab({ contacts }: { contacts: AdvertiserContactOut[] }) {
-  if (contacts.length === 0) return <div style={S.empty}>Нет контактов</div>;
+function ContactsTab({ contacts, users, orgId, onContactChange: _onContactChange }: { contacts: AdvertiserContactOut[]; users: AdvertiserUserMembershipOut[]; orgId: string; onContactChange: () => void }) {
+  const { user } = useAuth();
+  const canManage = user?.permissions?.includes("advertisers.manage") ?? false;
+  // Local contacts list — avoids unmount on parent refetch (ADVERTISER-UX-001B3)
+  const [localContacts, setLocalContacts] = useState<AdvertiserContactOut[]>(contacts);
+  const contactsRef = useRef(contacts);
+  // Sync from prop only when prop truly changes (not on our own writes)
+  useEffect(() => {
+    if (contacts !== contactsRef.current) {
+      contactsRef.current = contacts;
+      setLocalContacts(contacts);
+    }
+  }, [contacts]);
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [form, setForm] = useState({ full_name: "", email: "", phone: "", title: "", user_id: "" });
+  const [editForm, setEditForm] = useState({ full_name: "", email: "", phone: "", title: "", user_id: "" });
+
+  // only advertiser (local_advertiser) users for link dropdown
+  const advertiserUsers = useMemo(() => users.filter((u) => u.auth_provider === "local_advertiser"), [users]);
+
+  function resetForm() {
+    setForm({ full_name: "", email: "", phone: "", title: "", user_id: "" });
+    setError("");
+    setSuccess("");
+  }
+
+  function startCreate() { resetForm(); setCreating(true); setEditingId(null); }
+  function cancelCreate() { setCreating(false); resetForm(); }
+
+  function startEdit(c: AdvertiserContactOut) {
+    setEditingId(c.id);
+    setCreating(false);
+    setEditForm({
+      full_name: c.full_name,
+      email: c.email,
+      phone: c.phone ?? "",
+      title: c.title ?? "",
+      user_id: c.user_id ?? "",
+    });
+    setError("");
+    setSuccess("");
+  }
+
+  function cancelEdit() { setEditingId(null); resetForm(); }
+
+  async function handleCreate() {
+    setError(""); setSuccess("");
+    if (!form.full_name.trim()) { setError("Укажите имя контакта"); return; }
+    if (!form.email.trim()) { setError("Укажите email"); return; }
+    try {
+      const created = await createAdvertiserContact({
+        advertiser_organization_id: orgId,
+        full_name: form.full_name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim() || null,
+        title: form.title.trim() || null,
+        user_id: form.user_id || null,
+      });
+      setSuccess("Контакт создан");
+      setCreating(false);
+      setForm({ full_name: "", email: "", phone: "", title: "", user_id: "" });
+      // Optimistic local update — avoid unmount via parent refetch
+      setLocalContacts((prev) => [...prev, created]);
+      contactsRef.current = [...contactsRef.current, created];
+    } catch (e: unknown) {
+      const msg = e instanceof ApiError ? e.message : (e instanceof Error ? e.message : "Ошибка создания контакта");
+      setError(msg);
+    }
+  }
+
+  async function handleUpdate(contactId: string) {
+    setError(""); setSuccess("");
+    try {
+      const updated = await updateAdvertiserContact(contactId, orgId, {
+        full_name: editForm.full_name.trim() || undefined,
+        email: editForm.email.trim() || undefined,
+        phone: editForm.phone.trim() || undefined,
+        title: editForm.title.trim() || undefined,
+        user_id: editForm.user_id || null,
+      });
+      setSuccess("Контакт обновлён");
+      setEditingId(null);
+      // Optimistic local update
+      setLocalContacts((prev) => prev.map((c) => c.id === contactId ? updated : c));
+      contactsRef.current = contactsRef.current.map((c) => c.id === contactId ? updated : c);
+    } catch (e: unknown) {
+      const msg = e instanceof ApiError ? e.message : (e instanceof Error ? e.message : "Ошибка обновления контакта");
+      setError(msg);
+    }
+  }
+
+  function getUserLinkInfo(userId: string | null) {
+    if (!userId) return null;
+    return users.find((u) => u.user_id === userId) ?? null;
+  }
+
+  const isEmpty = localContacts.length === 0 && !creating;
+
   return (
-    <table style={S.table}>
-      <thead>
-        <tr>
-          <th style={S.th}>Тип</th>
-          <th style={S.th}>ФИО</th>
-          <th style={S.th}>Email</th>
-          <th style={S.th}>Телефон</th>
-          <th style={S.th}>Основной</th>
-          <th style={S.th}>Статус</th>
-        </tr>
-      </thead>
-      <tbody>
-        {contacts.map((c) => (
-          <tr key={c.id}>
-            <td style={S.td}>{contactTypeLabel(c.contact_type)}</td>
-            <td style={S.td}>{c.full_name}</td>
-            <td style={S.td}>{c.email}</td>
-            <td style={S.td}>{c.phone ?? "—"}</td>
-            <td style={S.td}>{c.is_primary ? "✓" : ""}</td>
-            <td style={S.td}>
-              <span style={S.badge(statusColor(c.status))}>{statusLabel(c.status)}</span>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div data-testid="advertiser-contacts-section">
+      {error && <div style={S.fieldError} data-testid="advertiser-contact-error">{error}</div>}
+      {success && <div style={{ ...S.fieldSuccess }} data-testid="advertiser-contact-success">{success}</div>}
+
+      {/* Create button */}
+      {canManage && !creating && (
+        <div style={{ marginBottom: 12 }}>
+          <button style={S.btnPrimarySmall} onClick={startCreate} data-testid="advertiser-contact-create-open">
+            + Добавить контакт
+          </button>
+        </div>
+      )}
+
+      {/* Create form */}
+      {creating && (
+        <div style={{ marginBottom: 16, padding: 12, background: "#f9fafb", borderRadius: 6 }}>
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>Новый контакт</div>
+          <input style={S.input} placeholder="ФИО" value={form.full_name} onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))} data-testid="advertiser-contact-name" />
+          <input style={S.input} placeholder="Email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} data-testid="advertiser-contact-email" />
+          <input style={S.input} placeholder="Телефон" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} data-testid="advertiser-contact-phone" />
+          <input style={S.input} placeholder="Должность" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} data-testid="advertiser-contact-title" />
+          {advertiserUsers.length > 0 && (
+            <select style={S.select} value={form.user_id} onChange={(e) => setForm((f) => ({ ...f, user_id: e.target.value }))} data-testid="advertiser-contact-user-link">
+              <option value="">Без привязки к учётной записи</option>
+              {advertiserUsers.map((u) => (
+                <option key={u.user_id} value={u.user_id}>{u.username} ({u.display_name})</option>
+              ))}
+            </select>
+          )}
+          <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+            <button style={S.btnPrimarySmall} onClick={handleCreate} data-testid="advertiser-contact-submit">Сохранить</button>
+            <button style={S.btnSecondarySmall} onClick={cancelCreate}>Отмена</button>
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {isEmpty && <div style={S.empty} data-testid="advertiser-contact-empty">Нет контактов</div>}
+
+      {/* Contact list */}
+      {localContacts.length > 0 && (
+        <table style={S.table} data-testid="advertiser-contacts-table">
+          <thead>
+            <tr>
+              <th style={S.th}>ФИО</th>
+              <th style={S.th}>Email</th>
+              <th style={S.th}>Телефон</th>
+              <th style={S.th}>Должность</th>
+              <th style={S.th}>Учётная запись</th>
+              {canManage && <th style={S.th}></th>}
+            </tr>
+          </thead>
+          <tbody>
+            {localContacts.map((c) => {
+              const isEditing = editingId === c.id;
+              const linkedUser = getUserLinkInfo(c.user_id);
+              return (
+                <tr key={c.id} data-testid={`advertiser-contact-row-${c.id}`}>
+                  {isEditing ? (
+                    <>
+                      <td style={S.td}><input style={S.inputSmall} value={editForm.full_name} onChange={(e) => setEditForm((f) => ({ ...f, full_name: e.target.value }))} data-testid="advertiser-contact-edit-name" /></td>
+                      <td style={S.td}><input style={S.inputSmall} value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} data-testid="advertiser-contact-edit-email" /></td>
+                      <td style={S.td}><input style={S.inputSmall} value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))} /></td>
+                      <td style={S.td}><input style={S.inputSmall} value={editForm.title} onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))} /></td>
+                      <td style={S.td}>
+                        {advertiserUsers.length > 0 && (
+                          <select style={S.selectSmall} value={editForm.user_id} onChange={(e) => setEditForm((f) => ({ ...f, user_id: e.target.value }))}>
+                            <option value="">—</option>
+                            {advertiserUsers.map((u) => (<option key={u.user_id} value={u.user_id}>{u.username}</option>))}
+                          </select>
+                        )}
+                      </td>
+                      <td style={S.td}>
+                        <button style={S.btnPrimarySmall} onClick={() => handleUpdate(c.id)}>✓</button>
+                        <button style={{ ...S.btnSecondarySmall, marginLeft: 4 }} onClick={cancelEdit}>✕</button>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td style={S.td} data-testid={`advertiser-contact-display-name-${c.id}`}>{c.full_name}</td>
+                      <td style={S.td} data-testid={`advertiser-contact-display-email-${c.id}`}>{c.email}</td>
+                      <td style={S.td}>{c.phone ?? "—"}</td>
+                      <td style={S.td}>{c.title ?? "—"}</td>
+                      <td style={S.td} data-testid={`advertiser-contact-display-user-${c.id}`}>
+                        {linkedUser ? `${linkedUser.username} (${linkedUser.display_name})` : "—"}
+                      </td>
+                      {canManage && (
+                        <td style={S.td}>
+                          <button style={S.btnEditSmall} onClick={() => startEdit(c)} data-testid={`advertiser-contact-edit-${c.id}`}>Ред.</button>
+                        </td>
+                      )}
+                    </>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }
 

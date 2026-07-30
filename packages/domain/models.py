@@ -693,10 +693,14 @@ class AdvertiserContact(Base):
     advertiser_organization_id = Column(
         String(36), ForeignKey("advertiser_organizations.id"), nullable=False, index=True,
     )
+    user_id = Column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True,
+    )
     contact_type = Column(String(32), nullable=False, default="primary")
     full_name = Column(String(255), nullable=False)
     email = Column(String(255), nullable=False)
     phone = Column(String(32), nullable=True)
+    title = Column(String(255), nullable=True)
     is_primary = Column(Boolean, nullable=False, default=False)
     status = Column(String(32), nullable=False, default="active")
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)

@@ -290,6 +290,19 @@ features:
     status: reachable
     gap: ""
 
+  - id: advertiser.contact_crud
+    frontend: admin-web
+    name: Управление контактами рекламодателя (создание, редактирование, привязка к учётной записи)
+    route: /login
+    path:
+      - login (system_admin или campaign_manager)
+      - Рекламодатели → организация → вкладка Контакты → создать/редактировать
+    smoke: test_uismoke__advertiser__contact_crud
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: reachable
+    gap: ""
+
   - id: advertiser.invite
     frontend: admin-web
     name: Пригласить рекламодателя

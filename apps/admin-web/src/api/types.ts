@@ -207,12 +207,36 @@ export interface ContractUploadCompleteResponse {
 export interface AdvertiserContactOut {
   id: string;
   advertiser_organization_id: string;
+  user_id: string | null;
   contact_type: string;
   full_name: string;
   email: string;
   phone: string | null;
+  title: string | null;
   is_primary: boolean;
   status: string;
+}
+
+export interface AdvertiserContactCreate {
+  advertiser_organization_id: string;
+  full_name: string;
+  email: string;
+  phone?: string | null;
+  title?: string | null;
+  contact_type?: string;
+  is_primary?: boolean;
+  user_id?: string | null;
+}
+
+export interface AdvertiserContactUpdate {
+  full_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  title?: string | null;
+  contact_type?: string | null;
+  is_primary?: boolean | null;
+  status?: string | null;
+  user_id?: string | null;
 }
 
 // ── Advertiser User Membership ──

@@ -531,6 +531,125 @@ async def list_advertiser_contacts_by_org(
     return list(result.scalars().all())
 
 
+async def create_advertiser_contact(
+    session: AsyncSession,
+    advertiser_organization_id: str,
+    full_name: str,
+    email: str,
+    phone: str | None = None,
+    title: str | None = None,
+    contact_type: str = "primary",
+    is_primary: bool = False,
+    user_id: str | None = None,
+) -> AdvertiserContact:
+    """Create a new advertiser contact (ADVERTISER-UX-001B3).
+
+    If user_id is provided, validates the user belongs to the same advertiser org.
+    """
+    if user_id is not None:
+        await _validate_user_same_org(session, user_id, advertiser_organization_id)
+
+    from datetime import timezone as _tz
+    contact = AdvertiserContact(
+        advertiser_organization_id=advertiser_organization_id,
+        full_name=full_name,
+        email=email,
+        phone=phone,
+        title=title,
+        contact_type=contact_type,
+        is_primary=is_primary,
+        user_id=user_id,
+        created_at=datetime.now(_tz.utc),
+        updated_at=datetime.now(_tz.utc),
+    )
+    session.add(contact)
+    await session.flush()
+    return contact
+
+
+async def update_advertiser_contact(
+    session: AsyncSession,
+    contact_id: str,
+    advertiser_organization_id: str,  # scope guard
+    full_name: str | None = None,
+    email: str | None = None,
+    phone: str | None = None,
+    title: str | None = None,
+    contact_type: str | None = None,
+    is_primary: bool | None = None,
+    status: str | None = None,
+    user_id: str | None = None,
+) -> AdvertiserContact | None:
+    """Update an advertiser contact (ADVERTISER-UX-001B3).
+
+    Contact must belong to the given advertiser_organization_id (cross-org guard).
+    If user_id changes, validates the user belongs to the same advertiser org.
+    """
+    stmt = select(AdvertiserContact).where(
+        AdvertiserContact.id == contact_id,
+        AdvertiserContact.advertiser_organization_id == advertiser_organization_id,
+    )
+    result = await session.execute(stmt)
+    contact = result.scalar_one_or_none()
+    if contact is None:
+        return None
+
+    if user_id is not None and user_id != contact.user_id:
+        await _validate_user_same_org(session, user_id, advertiser_organization_id)
+
+    if full_name is not None:
+        contact.full_name = full_name
+    if email is not None:
+        contact.email = email
+    if phone is not None:
+        contact.phone = phone
+    if title is not None:
+        contact.title = title
+    if contact_type is not None:
+        contact.contact_type = contact_type
+    if is_primary is not None:
+        contact.is_primary = is_primary
+    if status is not None:
+        contact.status = status
+    if user_id is not None:
+        contact.user_id = user_id
+
+    await session.flush()
+    return contact
+
+
+async def _validate_user_same_org(
+    session: AsyncSession,
+    user_id: str,
+    advertiser_organization_id: str,
+) -> None:
+    """Raise ValueError if user does not belong to the given advertiser org."""
+    from packages.domain.models import (
+        User, AdvertiserUserMembership, AdvertiserOrganization,
+    )
+
+    stmt = (
+        select(User.id)
+        .join(
+            AdvertiserUserMembership,
+            AdvertiserUserMembership.user_id == User.id,
+        )
+        .join(
+            AdvertiserOrganization,
+            AdvertiserOrganization.id == AdvertiserUserMembership.advertiser_organization_id,
+        )
+        .where(
+            User.id == user_id,
+            AdvertiserOrganization.id == advertiser_organization_id,
+            User.status == "active",
+            AdvertiserUserMembership.status == "active",
+        )
+    )
+    result = await session.execute(stmt)
+    if result.scalar_one_or_none() is None:
+        raise ValueError("User does not belong to this advertiser organization")
+
+
 async def list_advertiser_user_memberships(
     session: AsyncSession, org_id: str,
 ) -> list[dict]:

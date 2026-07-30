@@ -31,6 +31,8 @@ import type {
   AdvertiserContractCreate,
   AdvertiserContractUpdate,
   AdvertiserContactOut,
+  AdvertiserContactCreate,
+  AdvertiserContactUpdate,
   AdvertiserUserMembershipOut,
   CampaignApprovalOut,
   CampaignApprovalResponse,
@@ -239,6 +241,21 @@ export function completeContractUpload(
 
 export function listContactsByOrg(orgId: string): Promise<AdvertiserContactOut[]> {
   return api.get<AdvertiserContactOut[]>(`/advertiser-contacts-by-org?advertiser_organization_id=${orgId}`);
+}
+
+export function createAdvertiserContact(body: AdvertiserContactCreate): Promise<AdvertiserContactOut> {
+  return api.post<AdvertiserContactOut>("/advertiser-contacts", body);
+}
+
+export function updateAdvertiserContact(
+  contactId: string,
+  advertiserOrganizationId: string,
+  body: AdvertiserContactUpdate,
+): Promise<AdvertiserContactOut> {
+  return api.patch<AdvertiserContactOut>(
+    `/advertiser-contacts/${contactId}?advertiser_organization_id=${advertiserOrganizationId}`,
+    body,
+  );
 }
 
 export function listMemberships(orgId: string): Promise<AdvertiserUserMembershipOut[]> {

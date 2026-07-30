@@ -498,12 +498,42 @@ class AdvertiserContactOut(BaseModel):
 
     id: str
     advertiser_organization_id: str
+    user_id: str | None = None
     contact_type: str
     full_name: str
     email: str
     phone: str | None = None
+    title: str | None = None
     is_primary: bool
     status: str
+
+    # ── Linked user display fields (populated from JOIN or post-query) ──
+    linked_user_login: str | None = None
+    linked_user_email: str | None = None
+
+
+class AdvertiserContactCreate(BaseModel):
+    """Schema for creating an advertiser contact (ADVERTISER-UX-001B3)."""
+    advertiser_organization_id: str
+    full_name: str = Field(..., min_length=1)
+    email: str = Field(..., min_length=1)
+    phone: str | None = None
+    title: str | None = None
+    contact_type: str = "primary"
+    is_primary: bool = False
+    user_id: str | None = None  # optional link to existing advertiser user
+
+
+class AdvertiserContactUpdate(BaseModel):
+    """Schema for updating an advertiser contact — all fields optional."""
+    full_name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    title: str | None = None
+    contact_type: str | None = None
+    is_primary: bool | None = None
+    status: str | None = None
+    user_id: str | None = None  # None means no change; "" means unlink
 
 
 class AdvertiserUserMembershipOut(BaseModel):

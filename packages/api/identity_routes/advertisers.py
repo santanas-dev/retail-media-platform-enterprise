@@ -16,7 +16,9 @@ from packages.domain.schemas import (
     AdvertiserBrandCreate,
     AdvertiserBrandOut,
     AdvertiserBrandUpdate,
+    AdvertiserContactCreate,
     AdvertiserContactOut,
+    AdvertiserContactUpdate,
     AdvertiserContractCreate,
     AdvertiserContractOut,
     AdvertiserContractUpdate,
@@ -253,6 +255,85 @@ async def list_advertiser_contacts_by_org(
 ):
     items = await repository.list_advertiser_contacts_by_org(db, advertiser_organization_id)
     return [AdvertiserContactOut.model_validate(c) for c in items]
+
+
+@router.post("/advertiser-contacts", response_model=AdvertiserContactOut, status_code=201)
+async def create_advertiser_contact(
+    body: AdvertiserContactCreate,
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+    current_user: dict = Depends(get_current_active_user),
+):
+    """Create a new advertiser contact (ADVERTISER-UX-001B3)."""
+    from packages.domain.repository import create_audit_event
+
+    try:
+        contact = await repository.create_advertiser_contact(
+            db,
+            advertiser_organization_id=body.advertiser_organization_id,
+            full_name=body.full_name,
+            email=body.email,
+            phone=body.phone,
+            title=body.title,
+            contact_type=body.contact_type,
+            is_primary=body.is_primary,
+            user_id=body.user_id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    await create_audit_event(
+        db,
+        actor_user_id=current_user["sub"],
+        action="advertiser_contact.created",
+        target_type="advertiser_contact",
+        target_id=contact.id,
+    )
+    return AdvertiserContactOut.model_validate(contact)
+
+
+@router.patch("/advertiser-contacts/{contact_id}", response_model=AdvertiserContactOut)
+async def update_advertiser_contact(
+    contact_id: str,
+    body: AdvertiserContactUpdate,
+    advertiser_organization_id: str = Query(..., description="Scope guard: org ID"),
+    db=Depends(get_db),
+    _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+    current_user: dict = Depends(get_current_active_user),
+):
+    """Update an advertiser contact (ADVERTISER-UX-001B3)."""
+    from packages.domain.repository import create_audit_event
+
+    try:
+        contact = await repository.update_advertiser_contact(
+            db,
+            contact_id=contact_id,
+            advertiser_organization_id=advertiser_organization_id,
+            full_name=body.full_name,
+            email=body.email,
+            phone=body.phone,
+            title=body.title,
+            contact_type=body.contact_type,
+            is_primary=body.is_primary,
+            status=body.status,
+            user_id=body.user_id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    await create_audit_event(
+        db,
+        actor_user_id=current_user["sub"],
+        action="advertiser_contact.updated",
+        target_type="advertiser_contact",
+        target_id=contact.id,
+    )
+    return AdvertiserContactOut.model_validate(contact)
 
 
 @router.get("/advertiser-user-memberships", response_model=list[AdvertiserUserMembershipOut])
