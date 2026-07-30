@@ -532,3 +532,247 @@ describe("UsersPage — deactivate", () => {
     expect(body).not.toContain("[object Object]");
   });
 });
+
+// ── D1: User classification tabs ──
+
+const D1_USERS = [
+  { id: "u-ad", code: "ADMIN", username: "admin", display_name: "Администратор", auth_provider: "ad", status: "active" },
+  { id: "u-bg", code: "BG", username: "breakglass", display_name: "BreakGlass", auth_provider: "local_break_glass", status: "active" },
+  { id: "u-adv1", code: "ADV1", username: "advertiser_test", display_name: "Рекламодатель Тест", auth_provider: "local_advertiser", status: "active" },
+  { id: "u-adv2", code: "ADV2", username: "adv_smoke", display_name: "Smoke Adv", auth_provider: "local_advertiser", status: "active" },
+];
+
+function mockD1Session() {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = String(input);
+    if (url.endsWith("/auth/refresh")) {
+      return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+    }
+    if (url.endsWith("/me")) {
+      return new Response(JSON.stringify({
+        sub: "u-ad", auth_provider: "ad", username: "admin", display_name: "Admin",
+        permissions: ["users.read", "users.manage", "roles.manage"],
+      }), { status: 200 });
+    }
+    if (url.includes("/users?limit=")) {
+      return new Response(JSON.stringify({ items: D1_USERS, total: 4, limit: 50, offset: 0 }), { status: 200 });
+    }
+    return new Response(JSON.stringify([]), { status: 200 });
+  });
+}
+
+describe("UsersPage — D1 tab filtering", () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it("renders tab bar with Все/Внутренние/Рекламодатели and user counts", async () => {
+    mockD1Session();
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-tab-bar")).toBeTruthy();
+    });
+
+    expect(screen.getByTestId("users-tab-all")).toBeTruthy();
+    expect(screen.getByTestId("users-tab-internal")).toBeTruthy();
+    expect(screen.getByTestId("users-tab-advertiser")).toBeTruthy();
+
+    // Count labels: 4 total, 2 internal (ad + break_glass), 2 advertiser
+    expect(screen.getByTestId("users-tab-all").textContent).toContain("4");
+    expect(screen.getByTestId("users-tab-internal").textContent).toContain("2");
+    expect(screen.getByTestId("users-tab-advertiser").textContent).toContain("2");
+  });
+
+  it("default Все tab shows all 4 users", async () => {
+    mockD1Session();
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-table-all")).toBeTruthy();
+    });
+
+    // All users visible in one table
+    expect(screen.getByText("Администратор")).toBeTruthy();
+    expect(screen.getByText("BreakGlass")).toBeTruthy();
+    expect(screen.getByText("Рекламодатель Тест")).toBeTruthy();
+    expect(screen.getByText("Smoke Adv")).toBeTruthy();
+  });
+
+  it("Внутренние tab shows only internal users", async () => {
+    const user = userEvent.setup();
+    mockD1Session();
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-tab-internal")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("users-tab-internal"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-table-internal")).toBeTruthy();
+    });
+
+    // Internal users visible
+    expect(screen.getByText("Администратор")).toBeTruthy();
+    expect(screen.getByText("BreakGlass")).toBeTruthy();
+    // Advertiser users NOT visible
+    expect(screen.queryByText("Рекламодатель Тест")).toBeNull();
+    expect(screen.queryByText("Smoke Adv")).toBeNull();
+  });
+
+  it("Рекламодатели tab shows only advertiser users", async () => {
+    const user = userEvent.setup();
+    mockD1Session();
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-tab-advertiser")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("users-tab-advertiser"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-table-advertiser")).toBeTruthy();
+    });
+
+    // Advertiser users visible
+    expect(screen.getByText("Рекламодатель Тест")).toBeTruthy();
+    expect(screen.getByText("Smoke Adv")).toBeTruthy();
+    // Internal users NOT visible
+    expect(screen.queryByText("Администратор")).toBeNull();
+    expect(screen.queryByText("BreakGlass")).toBeNull();
+  });
+
+  it("each user row has data-testid user-row-{username}", async () => {
+    mockD1Session();
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-table-all")).toBeTruthy();
+    });
+
+    for (const u of D1_USERS) {
+      expect(screen.getByTestId(`user-row-${u.username}`)).toBeTruthy();
+    }
+  });
+
+  it("each row shows provider label in data-testid user-provider-{username}", async () => {
+    mockD1Session();
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-provider-admin")).toBeTruthy();
+    });
+
+    // Internal: Active Directory, Локальный (break-glass)
+    expect(screen.getByTestId("user-provider-admin").textContent).toContain("Active Directory");
+    expect(screen.getByTestId("user-provider-breakglass").textContent).toContain("break-glass");
+    // Advertiser: Локальный (рекламодатель)
+    expect(screen.getByTestId("user-provider-advertiser_test").textContent).toContain("рекламодатель");
+  });
+
+  it("empty state shows when internal tab has no users", async () => {
+    const user = userEvent.setup();
+    // Mock with only advertiser users
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (url.endsWith("/me")) {
+        return new Response(JSON.stringify({
+          sub: "u-ad", auth_provider: "ad", username: "admin", display_name: "Admin",
+          permissions: ["users.read", "users.manage"],
+        }), { status: 200 });
+      }
+      if (url.includes("/users?limit=")) {
+        return new Response(JSON.stringify({
+          items: [{ id: "u-adv1", username: "adv_only", display_name: "Adv Only", auth_provider: "local_advertiser", status: "active" }],
+          total: 1, limit: 50, offset: 0,
+        }), { status: 200 });
+      }
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-tab-internal")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("users-tab-internal"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-empty-internal")).toBeTruthy();
+    });
+    expect(screen.getByTestId("users-empty-internal").textContent).toContain("Нет внутренних пользователей");
+  });
+
+  it("empty state shows when advertiser tab has no users", async () => {
+    const user = userEvent.setup();
+    // Mock with only internal users
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (url.endsWith("/me")) {
+        return new Response(JSON.stringify({
+          sub: "u-ad", auth_provider: "ad", username: "admin", display_name: "Admin",
+          permissions: ["users.read", "users.manage"],
+        }), { status: 200 });
+      }
+      if (url.includes("/users?limit=")) {
+        return new Response(JSON.stringify({
+          items: [{ id: "u-ad", username: "admin", display_name: "Admin", auth_provider: "ad", status: "active" }],
+          total: 1, limit: 50, offset: 0,
+        }), { status: 200 });
+      }
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-tab-advertiser")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("users-tab-advertiser"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-empty-advertiser")).toBeTruthy();
+    });
+    expect(screen.getByTestId("users-empty-advertiser").textContent).toContain("Нет пользователей рекламодателей");
+  });
+
+  it("existing action buttons (roles/deactivate/reset) render on internal tab", async () => {
+    const user = userEvent.setup();
+    mockD1Session();
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-tab-internal")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("users-tab-internal"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-table-internal")).toBeTruthy();
+    });
+
+    // Role buttons visible (roles.manage granted)
+    const roleBtns = screen.getAllByTestId("user-roles-open");
+    expect(roleBtns.length).toBeGreaterThanOrEqual(1);
+
+    // Deactivate button for active internal user
+    expect(screen.getByTestId("user-deactivate-open-u-bg")).toBeTruthy();
+
+    // Reset button for local_break_glass user
+    expect(screen.getByTestId("user-reset-password-open-u-bg")).toBeTruthy();
+  });
+});

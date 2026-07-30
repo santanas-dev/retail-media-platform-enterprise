@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-30 (PLAN-COUNT-SYNC-001)
+**Last updated:** 2026-07-30 (ADVERTISER-UX-001D1)
 
-**Next Active Workstream:** ADVERTISER-UX-001D1 — users & permissions UX
+**Next Active Workstream:** ADVERTISER-UX-001D2 — permission descriptions + registry
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `84fe4c3` (PLAYER-001B-FU — substantive)
@@ -152,6 +152,19 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Vitest: 262/262 (new unit test 10/10 for formatApiError).
 - Guard: zero [object Object] in prod rendering paths.
 - Operator walkthrough: PENDING.
+- Checkpoint by PS-001.
+
+**ADVERTISER-UX-001D1 ✅** — Users split internal vs advertiser + UUID invariant.
+- UsersPage: tabs «Все»/«Внутренние»/«Рекламодатели» с фильтрацией по `auth_provider`.
+- Внутренние: ad, local_break_glass. Рекламодатели: local_advertiser + provider label.
+- UUID read-only invariant: форма создания без editable id/uuid, API payload без id/uuid.
+- Data-testid: `users-tab-{all,internal,advertiser}`, `users-table-{all,internal,advertiser}`, `users-{section,empty}-{*}`.
+- Vitest: 273/273 (11 new: 9 tab filtering + 2 UUID invariant).
+- UI-smoke: `test_uismoke__user__split_internal_advertiser.py` PASSED 2.85s.
+- Existing user smokes (create_advertiser, assign_roles, reset_password, deactivate): 4/4 green.
+- Registry: `user.split_internal_advertiser`, 50 total / 40 reachable / 10 blocked.
+- Operator walkthrough: PENDING (D2 + human auditor).
+- Next → ADVERTISER-UX-001D2 — permission descriptions + registry.
 - Checkpoint by PS-001.
 
 **PLAN-COUNT-SYNC-001 ✅** — Pre-pilot plan counts synced to registry.

@@ -373,12 +373,28 @@ self.login / self.campaign_view / self.report_view + свои smoke.
 | EPIC-A | Юридические реквизиты рекламодателя | ✅ Approved for A1 (ADVERTISER-UX-001A0); A1 implementation unblocked |
 | EPIC-B | Бренды / договоры / контакты | Запланирован |
 | EPIC-C | Wizard + автоматическое присвоение кода | Запланирован |
-| EPIC-D | Пользователи и права — UX | Запланирован |
+| EPIC-D | Пользователи и права — UX | D1 ✅ (split internal/advertiser); D2 planned (permission descriptions) |
 | EPIC-E | UX кампании (attach, flight, placement, dashboard) | #3 ✅ closed as CAMPAIGN-UX-002A; остальные запланированы |
 
 > Фактический статус — из `PROJECT_STATE.md` + `feature-registry.yaml`.
 > Брифинг PRODUCT-READINESS-PROGRAM-001 задаёт направление; часть статусов в нём
 > могла устареть относительно текущего `develop`.
+
+---
+
+### 6.0 ADVERTISER-UX-001D1 — Users split internal vs advertiser + UUID invariant
+
+**Статус:** ✅ smoke green, vitest 273/273, CI pending.
+**Next:** ADVERTISER-UX-001D2 — permission descriptions.
+
+**Happy-path (5 шагов):**
+1. Оператор заходит в «Пользователи» → видит три вкладки: Все (N), Внутренние (N), Рекламодатели (N).
+2. Вкладка «Внутренние» — только ad/break-glass пользователи; `advertiser_test` не виден.
+3. Вкладка «Рекламодатели» — только local_advertiser; провайдер «Локальный (рекламодатель)»; `break_glass_admin` не виден.
+4. Кнопка «+ Создать рекламодателя» → форма без поля UUID/id пользователя (только username, display_name, org_id).
+5. Reload → вкладки на месте, таблица грузится.
+
+**Data-testid:** `users-tab-bar`, `users-tab-{all,internal,advertiser}`, `users-table-{all,internal,advertiser}`, `users-{section,empty}-{all,internal,advertiser}`, `user-row-{username}`, `user-provider-{username}`.
 
 ---
 

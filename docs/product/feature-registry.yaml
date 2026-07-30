@@ -163,6 +163,22 @@ features:
     roles: [system_admin]
     status: reachable
 
+  - id: user.split_internal_advertiser
+    frontend: admin-web
+    name: Разделить пользователей на внутренних и рекламодателей
+    route: /login
+    path:
+      - login (system_admin)
+      - Пользователи → вкладки Все/Внутренние/Рекламодатели
+      - Внутренние — только ad/break-glass
+      - Рекламодатели — только local_advertiser + провайдер
+      - UUID read-only invariant
+    smoke: test_uismoke__user__split_internal_advertiser
+    priority: P1
+    roles: [system_admin]
+    status: reachable
+    gap: ""
+
   - id: advertiser.create_org
     frontend: admin-web
     name: Создать организацию рекламодателя (managed)
@@ -680,16 +696,16 @@ features:
   # ═══════════════════════════════════════════════════════════════
   # Summary counts (auto-generated — do not edit manually)
   # ═══════════════════════════════════════════════════════════════
-  #   total: 49
+  #   total: 50
   # by status:
-  #   reachable: 39 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, advertiser.create_org, advertiser.view, advertiser.contact_crud, advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites, inventory.simulate, advertiser.invite, adsettings.configure, adsettings.test, audit.view, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, device.health_view, observability, user.reset_password, user.deactivate, inventory.rule_create)
+  #   reachable: 40 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, user.split_internal_advertiser, advertiser.create_org, advertiser.view, advertiser.contact_crud, advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites, inventory.simulate, advertiser.invite, adsettings.configure, adsettings.test, audit.view, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, device.health_view, observability, user.reset_password, user.deactivate, inventory.rule_create)
   #   blocked:     10 (self.report_view, self.campaign_create, playlist.build, backup.restore, campaign.complete, license.view, license.upload, license.seat_release, license.report, license.enforce)
   # by frontend:
-  #   admin-web:      30
+  #   admin-web:      31
   #   advertiser-web:  5
   #   public:          1
   #   service:         8
   # by priority:
   #   P0: 20
-  #   P1: 23
+  #   P1: 24
   #   P2:  1
