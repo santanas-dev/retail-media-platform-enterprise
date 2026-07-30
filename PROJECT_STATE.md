@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-28 (ADVERTISER-UX-001A1)
+**Last updated:** 2026-07-28 (ADVERTISER-UX-001A2)
 
-**Next Active Workstream:** ADVERTISER-UX-001A2 — UI for legal requisites (admin-web)
+**Next Active Workstream:** ADVERTISER-UX-001B1 — brands CRUD
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `84fe4c3` (PLAYER-001B-FU — substantive)
@@ -64,6 +64,18 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Deferred debt preserved: checksum validation, requisites history/versioning, operator/legal verification workflow.
 - No UI/admin-web changes (A2 next).
 - Operator walkthrough: not required (backend-only task).
+- Checkpoint by PS-001.
+
+**ADVERTISER-UX-001A2 ✅** — Admin-web UI for advertiser legal requisites.
+- API client: AdvertiserLegalRequisitesUpdate type + updateAdvertiserLegalRequisites() method + AdvertiserOrganizationDetailOut updated with 12 nullable fields.
+- UI: new "Реквизиты" tab in AdvertisersPage with read-only display + edit form (LE/IE toggle, kpp/ogrn/ogrnip conditional, legal_form_other, 13 data-testid).
+- RBAC: edit/save gated on advertisers.manage permission.
+- Vitest: 2/2 new (display rendering of empty + filled requisites). Full suite: 240/240 (including new tests).
+- UI-smoke: test_uismoke__advertiser__legal_requisites.py — LE happy-path (fill → save → display → reload persistence).
+- No checksum validation exposed in UI.
+- Deferred debt preserved: checksum, history/versioning, verification workflow.
+- Operator walkthrough: PENDING.
+- Next: ADVERTISER-UX-001B1 — brands CRUD.
 - Checkpoint by PS-001.
 
 **Previous PLAYER-001B entry (scaffold):**

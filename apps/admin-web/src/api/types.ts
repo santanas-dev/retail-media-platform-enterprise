@@ -173,6 +173,37 @@ export interface AdvertiserOrganizationDetailOut {
   status: string;
   created_at: string | null;
   updated_at: string | null;
+  // ADVERTISER-UX-001A1 — legal requisites (nullable for existing orgs)
+  legal_entity_type: string | null;
+  legal_form: string | null;
+  legal_form_other: string | null;
+  inn: string | null;
+  legal_address: string | null;
+  settlement_account: string | null;
+  correspondent_account: string | null;
+  bik: string | null;
+  bank_name: string | null;
+  kpp: string | null;
+  ogrn: string | null;
+  ogrnip: string | null;
+}
+
+// ── ADVERTISER-UX-001A2 — Legal requisites form ──
+
+export interface AdvertiserLegalRequisitesUpdate {
+  legal_entity_type: string;
+  legal_form: string;
+  legal_form_other?: string | null;
+  legal_name: string;
+  inn: string;
+  legal_address: string;
+  settlement_account: string;
+  correspondent_account: string;
+  bik: string;
+  bank_name: string;
+  kpp?: string | null;
+  ogrn?: string | null;
+  ogrnip?: string | null;
 }
 
 // ── Campaign Approval ──

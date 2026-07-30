@@ -52,6 +52,7 @@ import type {
   InventoryRuleUpdate,
   CampaignInventoryReservationsResponse,
   InventorySimulationResponse,
+  AdvertiserLegalRequisitesUpdate,
 } from "./types";
 
 // ── Campaigns ──
@@ -150,6 +151,18 @@ export function listContracts(): Promise<AdvertiserContractOut[]> {
 
 export function getAdvertiserDetail(orgId: string): Promise<AdvertiserOrganizationDetailOut> {
   return api.get<AdvertiserOrganizationDetailOut>(`/advertiser-organizations/${orgId}`);
+}
+
+// ── ADVERTISER-UX-001A2 — Legal requisites ──
+
+export function updateAdvertiserLegalRequisites(
+  orgId: string,
+  body: AdvertiserLegalRequisitesUpdate,
+): Promise<AdvertiserOrganizationDetailOut> {
+  return api.put<AdvertiserOrganizationDetailOut>(
+    `/advertiser-organizations/${orgId}/legal-requisites`,
+    body,
+  );
 }
 
 export function listBrandsByOrg(orgId: string): Promise<AdvertiserBrandOut[]> {

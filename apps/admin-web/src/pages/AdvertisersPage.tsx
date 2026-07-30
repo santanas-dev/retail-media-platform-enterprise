@@ -9,6 +9,7 @@ import {
   listContactsByOrg,
   listMemberships,
   createAdvertiserOrganization,
+  updateAdvertiserLegalRequisites,
 } from "../api/campaigns";
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -19,6 +20,7 @@ import type {
   AdvertiserContractOut,
   AdvertiserContactOut,
   AdvertiserUserMembershipOut,
+  AdvertiserLegalRequisitesUpdate,
 } from "../api/types";
 import {
   statusLabel,
@@ -182,7 +184,7 @@ const S = {
 
 // ── Helpers ──
 
-const TABS = ["Обзор", "Бренды", "Договоры", "Контакты", "Пользователи"] as const;
+const TABS = ["Обзор", "Реквизиты", "Бренды", "Договоры", "Контакты", "Пользователи"] as const;
 type Tab = (typeof TABS)[number];
 
 // ── Component ──
@@ -476,6 +478,8 @@ function RenderTab({ tab, data }: { tab: Tab; data: DetailData }) {
   switch (tab) {
     case "Обзор":
       return <OverviewTab org={data.org} />;
+    case "Реквизиты":
+      return <LegalRequisitesTab org={data.org} />;
     case "Бренды":
       return <BrandsTab brands={data.brands} />;
     case "Договоры":
@@ -518,6 +522,210 @@ function OverviewTab({ org }: { org: AdvertiserOrganizationDetailOut }) {
         <div style={S.fieldGroup}>
           <div style={S.fieldLabel}>Обновлён</div>
           <div style={S.fieldValue}>{new Date(org.updated_at).toLocaleString("ru-RU")}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── ADVERTISER-UX-001A2 — Legal requisites form ──
+
+function LegalRequisitesTab({ org }: { org: AdvertiserOrganizationDetailOut }) {
+  const { user } = useAuth();
+  const canEdit = user?.permissions?.includes("advertisers.manage") ?? false;
+
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const [form, setForm] = useState({
+    legal_entity_type: org.legal_entity_type || "legal_entity",
+    legal_form: org.legal_form || "ooo",
+    legal_form_other: org.legal_form_other || "",
+    legal_name: org.legal_name || "",
+    inn: org.inn || "",
+    legal_address: org.legal_address || "",
+    settlement_account: org.settlement_account || "",
+    correspondent_account: org.correspondent_account || "",
+    bik: org.bik || "",
+    bank_name: org.bank_name || "",
+    kpp: org.kpp || "",
+    ogrn: org.ogrn || "",
+    ogrnip: org.ogrnip || "",
+  });
+
+  const isLE = form.legal_entity_type === "legal_entity";
+
+  function updateField(field: string, value: string) {
+    if (field === "legal_entity_type") {
+      setForm((prev) => ({ ...prev, legal_entity_type: value, kpp: "", ogrn: "", ogrnip: "" }));
+    } else {
+      setForm((prev) => ({ ...prev, [field]: value }));
+    }
+  }
+
+  async function handleSave() {
+    setError("");
+    setSuccess("");
+    setSaving(true);
+    try {
+      const body: AdvertiserLegalRequisitesUpdate = {
+        legal_entity_type: form.legal_entity_type,
+        legal_form: form.legal_form,
+        legal_name: form.legal_name,
+        inn: form.inn,
+        legal_address: form.legal_address,
+        settlement_account: form.settlement_account,
+        correspondent_account: form.correspondent_account,
+        bik: form.bik,
+        bank_name: form.bank_name,
+      };
+      if (form.legal_form === "other" && form.legal_form_other) {
+        body.legal_form_other = form.legal_form_other;
+      }
+      if (isLE) {
+        body.kpp = form.kpp || null;
+        body.ogrn = form.ogrn || null;
+      } else {
+        body.ogrnip = form.ogrnip || null;
+      }
+      await updateAdvertiserLegalRequisites(org.id, body);
+      setSuccess("Реквизиты сохранены");
+      setEditing(false);
+    } catch (e: unknown) {
+      setError(
+        e instanceof ApiError
+          ? typeof e.body === "object" && e.body !== null && "detail" in e.body
+            ? String((e.body as Record<string, unknown>).detail)
+            : e.message
+          : "Ошибка сохранения реквизитов",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", padding: "0.4rem 0.5rem", border: "1px solid #e2e8f0",
+    borderRadius: 4, fontSize: "0.875rem", boxSizing: "border-box",
+  };
+  const labelStyle: React.CSSProperties = {
+    display: "block", fontSize: "0.8rem", marginBottom: "0.2rem",
+    color: "#64748b", fontWeight: 500,
+  };
+  const groupStyle: React.CSSProperties = { marginBottom: "0.75rem" };
+
+  return (
+    <div data-testid="advertiser-legal-section">
+      {!editing && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+            <h4 style={{ margin: 0, fontSize: "0.9rem" }}>
+              {org.inn ? "Юридические реквизиты" : "Юридические реквизиты не заполнены"}
+            </h4>
+            {canEdit && (
+              <button
+                data-testid="advertiser-legal-edit"
+                onClick={() => setEditing(true)}
+                style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem" }}
+              >
+                {org.inn ? "Редактировать" : "Заполнить"}
+              </button>
+            )}
+          </div>
+          {org.inn ? (
+            <div>
+              <div style={groupStyle}><div style={labelStyle}>Тип</div><div style={{ fontSize: "0.875rem" }} data-testid="advertiser-legal-display-entity-type">{org.legal_entity_type === "individual_entrepreneur" ? "ИП" : "Юрлицо"}</div></div>
+              <div style={groupStyle}><div style={labelStyle}>Название</div><div style={{ fontSize: "0.875rem" }} data-testid="advertiser-legal-display-legal-name">{org.legal_name}</div></div>
+              <div style={groupStyle}><div style={labelStyle}>ИНН</div><div style={{ fontSize: "0.875rem" }} data-testid="advertiser-legal-display-inn">{org.inn}</div></div>
+              {org.kpp && <div style={groupStyle}><div style={labelStyle}>КПП</div><div style={{ fontSize: "0.875rem" }} data-testid="advertiser-legal-display-kpp">{org.kpp}</div></div>}
+              {org.ogrn && <div style={groupStyle}><div style={labelStyle}>ОГРН</div><div style={{ fontSize: "0.875rem" }} data-testid="advertiser-legal-display-ogrn">{org.ogrn}</div></div>}
+              {org.ogrnip && <div style={groupStyle}><div style={labelStyle}>ОГРНИП</div><div style={{ fontSize: "0.875rem" }} data-testid="advertiser-legal-display-ogrnip">{org.ogrnip}</div></div>}
+              <div style={groupStyle}><div style={labelStyle}>Банк</div><div style={{ fontSize: "0.875rem" }} data-testid="advertiser-legal-display-bank-name">{org.bank_name}</div></div>
+            </div>
+          ) : (
+            <div style={{ color: "#64748b", fontSize: "0.875rem" }}>
+              {canEdit ? "Нажмите «Заполнить» чтобы добавить реквизиты." : "Нет данных."}
+            </div>
+          )}
+        </div>
+      )}
+
+      {editing && (
+        <div>
+          <h4 style={{ margin: "0 0 1rem", fontSize: "0.9rem" }}>Редактирование реквизитов</h4>
+          {error && <div data-testid="advertiser-legal-error" style={{ color: "#dc2626", marginBottom: "0.75rem", fontSize: "0.875rem" }}>{error}</div>}
+          {success && <div data-testid="advertiser-legal-success" style={{ color: "#16a34a", marginBottom: "0.75rem", fontSize: "0.875rem" }}>{success}</div>}
+
+          <div style={groupStyle}><div style={labelStyle}>Тип *</div>
+            <select data-testid="advertiser-legal-entity-type" style={inputStyle} value={form.legal_entity_type}
+              onChange={(e) => updateField("legal_entity_type", e.target.value)}>
+              <option value="legal_entity">Юрлицо</option>
+              <option value="individual_entrepreneur">ИП</option>
+            </select></div>
+
+          <div style={groupStyle}><div style={labelStyle}>Форма *</div>
+            <select data-testid="advertiser-legal-form" style={inputStyle} value={form.legal_form}
+              onChange={(e) => setForm({ ...form, legal_form: e.target.value })}>
+              <option value="ooo">ООО</option><option value="ao">АО</option><option value="pao">ПАО</option>
+              <option value="ip">ИП</option><option value="other">другое</option>
+            </select></div>
+
+          {form.legal_form === "other" && (
+            <div style={groupStyle}><div style={labelStyle}>Другая форма *</div>
+              <input data-testid="advertiser-legal-form-other" style={inputStyle} value={form.legal_form_other}
+                onChange={(e) => setForm({ ...form, legal_form_other: e.target.value })} placeholder="Укажите форму" />
+            </div>)}
+
+          <div style={groupStyle}><div style={labelStyle}>Название *</div>
+            <input data-testid="advertiser-legal-name" style={inputStyle} value={form.legal_name}
+              onChange={(e) => setForm({ ...form, legal_name: e.target.value })} /></div>
+
+          <div style={groupStyle}><div style={labelStyle}>ИНН * ({isLE ? "10" : "12"} цифр)</div>
+            <input data-testid="advertiser-legal-inn" style={inputStyle} value={form.inn}
+              onChange={(e) => setForm({ ...form, inn: e.target.value })} /></div>
+
+          {isLE && <div style={groupStyle}><div style={labelStyle}>КПП * (9 цифр)</div>
+            <input data-testid="advertiser-legal-kpp" style={inputStyle} value={form.kpp}
+              onChange={(e) => setForm({ ...form, kpp: e.target.value })} /></div>}
+
+          {isLE && <div style={groupStyle}><div style={labelStyle}>ОГРН * (13 цифр)</div>
+            <input data-testid="advertiser-legal-ogrn" style={inputStyle} value={form.ogrn}
+              onChange={(e) => setForm({ ...form, ogrn: e.target.value })} /></div>}
+
+          {!isLE && <div style={groupStyle}><div style={labelStyle}>ОГРНИП * (15 цифр)</div>
+            <input data-testid="advertiser-legal-ogrnip" style={inputStyle} value={form.ogrnip}
+              onChange={(e) => setForm({ ...form, ogrnip: e.target.value })} /></div>}
+
+          <div style={groupStyle}><div style={labelStyle}>Юридический адрес *</div>
+            <input data-testid="advertiser-legal-address" style={inputStyle} value={form.legal_address}
+              onChange={(e) => setForm({ ...form, legal_address: e.target.value })} /></div>
+
+          <div style={groupStyle}><div style={labelStyle}>Расчётный счёт * (20 цифр)</div>
+            <input data-testid="advertiser-legal-settlement-account" style={inputStyle} value={form.settlement_account}
+              onChange={(e) => setForm({ ...form, settlement_account: e.target.value })} /></div>
+
+          <div style={groupStyle}><div style={labelStyle}>Корреспондентский счёт * (20 цифр)</div>
+            <input data-testid="advertiser-legal-correspondent-account" style={inputStyle} value={form.correspondent_account}
+              onChange={(e) => setForm({ ...form, correspondent_account: e.target.value })} /></div>
+
+          <div style={groupStyle}><div style={labelStyle}>БИК * (9 цифр)</div>
+            <input data-testid="advertiser-legal-bik" style={inputStyle} value={form.bik}
+              onChange={(e) => setForm({ ...form, bik: e.target.value })} /></div>
+
+          <div style={groupStyle}><div style={labelStyle}>Банк *</div>
+            <input data-testid="advertiser-legal-bank-name" style={inputStyle} value={form.bank_name}
+              onChange={(e) => setForm({ ...form, bank_name: e.target.value })} /></div>
+
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+            <button onClick={() => { setEditing(false); setError(""); setSuccess(""); }}
+              style={{ padding: "0.5rem 1rem", cursor: "pointer" }}>Отмена</button>
+            <button data-testid="advertiser-legal-submit" onClick={handleSave} disabled={saving}
+              style={{ padding: "0.5rem 1rem", cursor: "pointer", background: "#2563eb", color: "#fff", border: "none", borderRadius: 4, opacity: saving ? 0.6 : 1 }}>
+              {saving ? "Сохранение..." : "Сохранить"}
+            </button>
+          </div>
         </div>
       )}
     </div>
