@@ -567,12 +567,71 @@ features:
     gap: "Системный переход active→completed. Логика не реализована — deferred."
 
   # ═══════════════════════════════════════════════════════════════
+  # EPIC-L — Licensing (blocked, docs-only)
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: license.view
+    frontend: service
+    name: Просмотр активных лицензий
+    route: n/a
+    path: n/a
+    smoke: n/a
+    priority: P1
+    roles: [service]
+    status: blocked
+    gap: "EPIC-L canon intake only. No implementation."
+
+  - id: license.upload
+    frontend: service
+    name: Загрузка/установка лицензионного файла
+    route: n/a
+    path: n/a
+    smoke: n/a
+    priority: P1
+    roles: [service]
+    status: blocked
+    gap: "EPIC-L canon intake only. No implementation."
+
+  - id: license.seat_release
+    frontend: service
+    name: Освобождение лицензионного seat при decommission
+    route: n/a
+    path: n/a
+    smoke: n/a
+    priority: P1
+    roles: [service]
+    status: blocked
+    gap: "EPIC-L canon intake only. No implementation."
+
+  - id: license.report
+    frontend: service
+    name: Отчёт по занятым/свободным seats
+    route: n/a
+    path: n/a
+    smoke: n/a
+    priority: P1
+    roles: [service]
+    status: blocked
+    gap: "EPIC-L canon intake only. No implementation."
+
+  - id: license.enforce
+    frontend: service
+    name: Enforcement лицензии при device enrollment
+    route: n/a
+    path: n/a
+    smoke: n/a
+    priority: P1
+    roles: [service]
+    status: blocked
+    gap: "EPIC-L canon intake only. No implementation."
+
+  # ═══════════════════════════════════════════════════════════════
   # Summary counts (auto-generated — do not edit manually)
   # ═══════════════════════════════════════════════════════════════
-  #   total: 40
+  #   total: 45
   # by status:
   #   reachable: 35 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, advertiser.create_org, advertiser.view, inventory.simulate, advertiser.invite, adsettings.configure, adsettings.test, audit.view, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, device.health_view, observability, user.reset_password, user.deactivate, inventory.rule_create)
-  #   blocked:     5 (self.report_view, self.campaign_create, playlist.build, backup.restore, campaign.complete)
+  #   blocked:     10 (self.report_view, self.campaign_create, playlist.build, backup.restore, campaign.complete, license.view, license.upload, license.seat_release, license.report, license.enforce)
   # by frontend:
   #   admin-web:      26
   #   advertiser-web:  5

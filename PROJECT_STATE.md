@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-30 (ADVERTISER-UX-001A2-FU)
+**Last updated:** 2026-07-30 (EPIC-L-000)
 
 **Next Active Workstream:** ADVERTISER-UX-001B1 — brands CRUD
 
@@ -81,6 +81,17 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Deferred debt preserved: checksum, history/versioning, verification workflow.
 - Operator walkthrough: PENDING.
 - Next: ADVERTISER-UX-001B1 — brands CRUD.
+- Checkpoint by PS-001.
+
+**EPIC-L-000 ✅** — Licensing canon intake + seat-hook requirement. Owner gate §08 approved 2026-07-30.
+- Decisions captured: licensee=operator, soft enforcement (no screen blanking), seat-month unit, contour separation (license vs advertiser billing).
+- Money contours: Контур 1 (operator→vendor, license), Контур 2 (advertiser→operator, billing, deferred v2.6).
+- License payload: 15 approved fields, JWS/JWT ed25519, offline verification.
+- Feature IDs: license.view/upload/seat_release/report/enforce — all blocked (no implementation).
+- Seat-hook: future real device enrollment MUST mint stable identity + reserve seat. Required before real fleet enrollment / KSO deployment.
+- Constraint: A→B advertiser onboarding continues (ADVERTISER-UX-001B1 next). No license code started.
+- LICENSE-001 — seat-hook in enrollment planned before real fleet enrollment / KSO deployment.
+- No migrations, models, API, UI, or player changes.
 - Checkpoint by PS-001.
 
 **Previous PLAYER-001B entry (scaffold):**

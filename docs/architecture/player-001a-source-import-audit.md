@@ -335,4 +335,19 @@ packages/domain/pop_ingestion.py       — PoP validation pipeline
 packages/domain/repository.py          — Manifest assembly, onboarding
 ```
 
-Source inventory complete: `rg -l "manifest_client\|heartbeat_client\|device_auth\|pop_sender\|retry_backoff\|token_state" /home/cobalt/retail-media-platform/apps/` confirmed all files exist and were inspected.
+Source inventory complete: `rg -l "manifest_client\\|heartbeat_client\\|device_auth\\|pop_sender\\|retry_backoff\\|token_state" /home/cobalt/retail-media-platform/apps/` confirmed all files exist and were inspected.
+
+---
+
+## EPIC-L-000 — Licensing Seat-Hook Note
+
+**Added:** 2026-07-30 (EPIC-L canon intake).
+
+Future real device enrollment (KSO/player) MUST include a license seat-hook at the enrollment boundary:
+- Mint stable device identity
+- Reserve a license seat (seat-month model)
+
+Retrofit after deployed fleet is expensive — the hook must exist before real enrollment goes live.
+Counting/enforcement may be deferred, but the identity/seat reservation boundary is required.
+
+See: `docs/architecture/epic-l-licensing.md`, `docs/product/user-journeys.md` §EPIC-L.

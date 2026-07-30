@@ -77,4 +77,16 @@ When manifest exists:
 - Staged rollout
 - Media download
 - Channel Orchestrator
+
+---
+
+## EPIC-L-000 — Licensing Seat-Hook Requirement
+
+**Added:** 2026-07-30.
+
+Future real KSO/device enrollment MUST include a license seat reservation hook.
+The hardware-independent contract client must not be extended to real enrollment
+without this boundary. Retrofit is expensive — plan the hook at enrollment design time.
+
+See: `docs/architecture/epic-l-licensing.md`, `docs/product/user-journeys.md` §EPIC-L.
 - Old repo KSO code import (except retry_backoff.py)

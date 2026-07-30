@@ -452,3 +452,68 @@ ADVERTISER-UX-001D1 — Users: split internal vs advertiser roles in UI
 ADVERTISER-UX-001D2 — Permission descriptions + UUID invariant
 CAMPAIGN-UX-002B/C/D — Remaining campaign UX polish (flights, placements, dashboard)
 ```
+
+---
+
+## EPIC-L — Platform/Device Licensing
+
+**Status:** Canon intake only. No implementation.
+
+**Owner gate §08:** Approved 2026-07-30.
+
+### Core Decisions
+
+| Decision | Value |
+|----------|-------|
+| Licensee | Оператор (отдельная сущность, НЕ рекламодатель) |
+| Enforcement | Мягкий (soft): playing screen не гаснет; блокируется только new enrollment сверх лимита/после expiry; expired/over-cap → alert + status |
+| Unit | seat-month: активное = устройство держит seat; НЕ по показу/PoP; метрика = monthly peak occupied seats |
+| Contour separation | Контур 1 (license) и Контур 2 (advertiser billing) строго разделены. License domain may read device identity/enrollment; must NOT depend on advertiser-commercial billing |
+
+### Money Contours
+
+| # | Контур | Стороны | Статус |
+|---|--------|---------|--------|
+| 1 | Лицензирование платформы/устройств | Оператор/licensee → вендор | EPIC-L |
+| 2 | Коммерческий учёт размещений | Рекламодатель → оператор | v2.6 (deferred) |
+
+**Rule:** Контур 1 и Контур 2 не смешивать в таблицах, сервисах, UI. Общая точка — только device identity / enrollment.
+
+### License Payload — Approved Fields
+
+```
+license_id, licensee{id,name}, tier, issued_at, valid_from,
+valid_until (nullable), max_devices, overage_allowance, grace_days,
+features[], installation_binding, nonce, schema_version,
+kid (in JWS header)
+```
+
+**Format:** signed `.lic` (JWS/JWT, EdDSA/ed25519, offline verification).
+Public key in platform; private key vendor-side only.
+
+### Seat-Hook Requirement
+
+Future real device enrollment MUST mint stable device identity and reserve a license seat.
+Retrofit after deployed fleet is expensive.
+PLAYER/KSO implementation must not create enrollable devices without this hook.
+Counting/enforcement may come later, but identity/seat hook is required at enrollment boundary.
+See: `docs/architecture/epic-l-licensing.md`.
+
+### Feature IDs (blocked)
+
+| ID | Status |
+|----|--------|
+| license.view | blocked |
+| license.upload | blocked |
+| license.seat_release | blocked |
+| license.report | blocked |
+| license.enforce | blocked |
+
+### Non-Goals (explicit)
+
+- No license issuer implementation
+- No license models/migrations/API
+- No UI for licensing
+- No player code changes
+- No advertiser billing
+- No feature statuses reachable
