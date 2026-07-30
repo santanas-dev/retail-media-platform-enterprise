@@ -163,6 +163,8 @@ UI_SERVICE_MAP = {
     },
     "Управление рекламодателями": {
         "ids": ["advertiser.create_org", "advertiser.view",
+                "advertiser.contact_crud", "advertiser.brand_crud",
+                "advertiser.contract_crud", "advertiser.legal_requisites",
                 "advertiser.application_review", "advertiser.invite", "advertiser.apply"],
     },
 }
@@ -312,6 +314,43 @@ def check_roadmap_vs_registry(roadmap_rows, features, smoke_funcs):
     return findings
 
 
+# ---- Direction C: Every UI-smoke must be referenced by exactly one registry feature
+
+def check_smoke_orphans(smoke_funcs, features):
+    """Direction C: Discover all UI-smoke functions and verify each has
+    exactly one registry feature referencing it.
+
+    Returns list of findings:
+      - SMOKE-ORPHAN: smoke function with 0 registry references
+      - SMOKE-DUPLICATE: smoke function referenced by >1 registry features
+    """
+    findings = []
+    # Build reverse map: smoke_func_name → list of feature ids
+    smoke_to_features = {}
+    for f in features:
+        smoke = f.get("smoke", "")
+        if not smoke:
+            continue
+        # Only check test_uismoke__* smokes (skip service/behavioral refs)
+        if not smoke.startswith("test_uismoke__"):
+            continue
+        smoke_to_features.setdefault(smoke, []).append(f["id"])
+
+    for smoke_name, smoke_path in smoke_funcs.items():
+        refs = smoke_to_features.get(smoke_name, [])
+        if len(refs) == 0:
+            findings.append(
+                f"SMOKE-ORPHAN: '{smoke_name}' ({smoke_path}) has "
+                f"no registry feature referencing it"
+            )
+        elif len(refs) > 1:
+            findings.append(
+                f"SMOKE-DUPLICATE: '{smoke_name}' referenced by multiple "
+                f"features: {', '.join(refs)}"
+            )
+    return findings
+
+
 # ---- Main ------------------------------------------------------------------
 
 def main():
@@ -351,6 +390,10 @@ def main():
     if not roadmap_error:
         roadmap_findings = check_roadmap_vs_registry(roadmap_rows, features, smoke_funcs)
         all_findings.extend(roadmap_findings)
+
+    # 3. Direction C: Smoke orphans/duplicates
+    smoke_orphan_findings = check_smoke_orphans(smoke_funcs, features)
+    all_findings.extend(smoke_orphan_findings)
 
     # Report
     print("=== Roadmap-Consistency Guard (ROADMAP-GUARD-002, 4-column) ===")

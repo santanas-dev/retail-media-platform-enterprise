@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-30 (ADVERTISER-UX-001C2-FU)
+**Last updated:** 2026-07-30 (REGISTRY-TRUTH-001)
 
 **Next Active Workstream:** ADVERTISER-UX-001D1 — users & permissions UX
 
@@ -130,6 +130,15 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Guard: rg legal_address.*["']—|addr.*placeholder → no active fake-address paths.
 - Operator walkthrough: PENDING.
 - Next: ADVERTISER-UX-001D1 — users & permissions UX.
+- Checkpoint by PS-001.
+
+**REGISTRY-TRUTH-001 ✅** — Brand/contract smokes accounted + Direction C guard.
+- Registry: added advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites (total 48, reachable 38).
+- Roadmap: «Управление рекламодателями» row updated — UI/Story/Iтог reflect all 9 advertiser journeys.
+- Direction C: every UI-smoke must have exactly one registry reference (SMOKE-ORPHAN / SMOKE-DUPLICATE violations).
+- Tamper proof: Direction C catches orphan smoke (brand_crud smoke→NONEXISTENT → SMOKE-ORPHAN).
+- Guard --strict: 0 findings.
+- Product code untouched.
 - Checkpoint by PS-001.
 
 **EPIC-L-000 ✅** — Licensing canon intake + seat-hook requirement. Owner gate §08 approved 2026-07-30. CI #30529324395 (35/35 green).
