@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-30 (UX-FIX-002)
+**Last updated:** 2026-07-30 (PLAN-COUNT-SYNC-001)
 
 **Next Active Workstream:** ADVERTISER-UX-001D1 — users & permissions UX
 
@@ -152,6 +152,14 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Vitest: 262/262 (new unit test 10/10 for formatApiError).
 - Guard: zero [object Object] in prod rendering paths.
 - Operator walkthrough: PENDING.
+- Checkpoint by PS-001.
+
+**PLAN-COUNT-SYNC-001 ✅** — Pre-pilot plan counts synced to registry.
+- Registry facts: 49 total, 39 reachable, 10 blocked (30 admin-web UI, 5 service, 3 advertiser-web, 1 public).
+- Plan updated: 35/40→39/49, admin-web 26→30, blocked list includes EPIC-L license IDs.
+- Plan explains growth: +5 license blocked (EPIC-L), +4 advertiser onboarding reachable (legal/brand/contract/contact).
+- Removed stale `user.assign_roles ❌ G2` gap claim (assign_roles is reachable since Wave 1).
+- No feature status changes. No roadmap status changes. Guard: 0 findings.
 - Checkpoint by PS-001.
 
 **EPIC-L-000 ✅** — Licensing canon intake + seat-hook requirement. Owner gate §08 approved 2026-07-30. CI #30529324395 (35/35 green).
