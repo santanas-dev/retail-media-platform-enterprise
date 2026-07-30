@@ -83,7 +83,7 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Next: ADVERTISER-UX-001B1 — brands CRUD.
 - Checkpoint by PS-001.
 
-**ADVERTISER-UX-001B1 ✅** — Advertiser brand CRUD + green UI-smoke.
+**ADVERTISER-UX-001B1 ✅** — Advertiser brand CRUD + green UI-smoke. CI #30531027314 (35/35 green).
 - Backend: schemas (AdvertiserBrandCreate/Update), repository (create/update), 2 new endpoints (POST + PATCH).
 - Permission: advertisers.manage for create/update, RLS-scoped by advertiser_organization_id.
 - Tests: 8/8 new backend tests (schema + repo), 243/243 vitest (3 new).
