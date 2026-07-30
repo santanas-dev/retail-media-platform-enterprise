@@ -67,7 +67,7 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Checkpoint by PS-001.
 
 **ADVERTISER-UX-001A2 ✅** — Admin-web UI for advertiser legal requisites. CI #30522516829 (34/34 green).
-**ADVERTISER-UX-001A2-FU ✅** — Display completeness + real smoke proof.
+**ADVERTISER-UX-001A2-FU ✅** — Display completeness + real smoke proof. CI #30525147693 (35/35 green).
 - API client: AdvertiserLegalRequisitesUpdate type + updateAdvertiserLegalRequisites() method + AdvertiserOrganizationDetailOut updated with 12 nullable fields.
 - UI: new "Реквизиты" tab in AdvertisersPage with read-only display + edit form (LE/IE toggle, kpp/ogrn/ogrnip conditional, legal_form_other, 17 data-testid).
 - Display mode now shows ALL fields: legal_name, legal_entity_type, inn, kpp/ogrn/ogrnip, legal_address, settlement_account, correspondent_account, bik, bank_name.
