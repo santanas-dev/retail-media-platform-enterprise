@@ -271,6 +271,7 @@ export default function AdvertisersPage() {
   }, []);
 
   // ── Load detail when org selected ──
+  const [detailVersion, setDetailVersion] = useState(0);
 
   useEffect(() => {
     if (!selectedOrgId) {
@@ -315,7 +316,7 @@ export default function AdvertisersPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedOrgId]);
+  }, [selectedOrgId, detailVersion]);
 
   // ── Filter ──
 
@@ -433,7 +434,7 @@ export default function AdvertisersPage() {
             ) : detailState.stage === "error" ? (
               <div style={S.error}>{detailState.message}</div>
             ) : detailState.stage === "ready" ? (
-              <RenderTab tab={activeTab} data={detailState.data} />
+              <RenderTab tab={activeTab} data={detailState.data} onRequisitesSaved={() => setDetailVersion((v) => v + 1)} />
             ) : null}
           </div>
         </div>
@@ -474,12 +475,12 @@ export default function AdvertisersPage() {
 
 // ── Tab Renderers ──
 
-function RenderTab({ tab, data }: { tab: Tab; data: DetailData }) {
+function RenderTab({ tab, data, onRequisitesSaved }: { tab: Tab; data: DetailData; onRequisitesSaved: () => void }) {
   switch (tab) {
     case "Обзор":
       return <OverviewTab org={data.org} />;
     case "Реквизиты":
-      return <LegalRequisitesTab org={data.org} />;
+      return <LegalRequisitesTab org={data.org} onSaved={onRequisitesSaved} />;
     case "Бренды":
       return <BrandsTab brands={data.brands} />;
     case "Договоры":
@@ -530,7 +531,7 @@ function OverviewTab({ org }: { org: AdvertiserOrganizationDetailOut }) {
 
 // ── ADVERTISER-UX-001A2 — Legal requisites form ──
 
-function LegalRequisitesTab({ org }: { org: AdvertiserOrganizationDetailOut }) {
+function LegalRequisitesTab({ org, onSaved }: { org: AdvertiserOrganizationDetailOut; onSaved: () => void }) {
   const { user } = useAuth();
   const canEdit = user?.permissions?.includes("advertisers.manage") ?? false;
 
@@ -593,6 +594,7 @@ function LegalRequisitesTab({ org }: { org: AdvertiserOrganizationDetailOut }) {
       await updateAdvertiserLegalRequisites(org.id, body);
       setSuccess("Реквизиты сохранены");
       setEditing(false);
+      onSaved();
     } catch (e: unknown) {
       setError(
         e instanceof ApiError
@@ -642,6 +644,10 @@ function LegalRequisitesTab({ org }: { org: AdvertiserOrganizationDetailOut }) {
               {org.kpp && <div style={groupStyle}><div style={labelStyle}>КПП</div><div style={{ fontSize: "0.875rem" }} data-testid="advertiser-legal-display-kpp">{org.kpp}</div></div>}
               {org.ogrn && <div style={groupStyle}><div style={labelStyle}>ОГРН</div><div style={{ fontSize: "0.875rem" }} data-testid="advertiser-legal-display-ogrn">{org.ogrn}</div></div>}
               {org.ogrnip && <div style={groupStyle}><div style={labelStyle}>ОГРНИП</div><div style={{ fontSize: "0.875rem" }} data-testid="advertiser-legal-display-ogrnip">{org.ogrnip}</div></div>}
+              {org.legal_address && <div style={groupStyle}><div style={labelStyle}>Юридический адрес</div><div style={{ fontSize: "0.875rem" }} data-testid="advertiser-legal-display-legal-address">{org.legal_address}</div></div>}
+              {org.settlement_account && <div style={groupStyle}><div style={labelStyle}>Расчётный счёт</div><div style={{ fontSize: "0.875rem" }} data-testid="advertiser-legal-display-settlement-account">{org.settlement_account}</div></div>}
+              {org.correspondent_account && <div style={groupStyle}><div style={labelStyle}>Корр. счёт</div><div style={{ fontSize: "0.875rem" }} data-testid="advertiser-legal-display-correspondent-account">{org.correspondent_account}</div></div>}
+              {org.bik && <div style={groupStyle}><div style={labelStyle}>БИК</div><div style={{ fontSize: "0.875rem" }} data-testid="advertiser-legal-display-bik">{org.bik}</div></div>}
               <div style={groupStyle}><div style={labelStyle}>Банк</div><div style={{ fontSize: "0.875rem" }} data-testid="advertiser-legal-display-bank-name">{org.bank_name}</div></div>
             </div>
           ) : (

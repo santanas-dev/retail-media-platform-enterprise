@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-28 (ADVERTISER-UX-001A2)
+**Last updated:** 2026-07-30 (ADVERTISER-UX-001A2-FU)
 
 **Next Active Workstream:** ADVERTISER-UX-001B1 — brands CRUD
 
@@ -67,11 +67,16 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Checkpoint by PS-001.
 
 **ADVERTISER-UX-001A2 ✅** — Admin-web UI for advertiser legal requisites. CI #30522516829 (34/34 green).
+**ADVERTISER-UX-001A2-FU ✅** — Display completeness + real smoke proof.
 - API client: AdvertiserLegalRequisitesUpdate type + updateAdvertiserLegalRequisites() method + AdvertiserOrganizationDetailOut updated with 12 nullable fields.
-- UI: new "Реквизиты" tab in AdvertisersPage with read-only display + edit form (LE/IE toggle, kpp/ogrn/ogrnip conditional, legal_form_other, 13 data-testid).
+- UI: new "Реквизиты" tab in AdvertisersPage with read-only display + edit form (LE/IE toggle, kpp/ogrn/ogrnip conditional, legal_form_other, 17 data-testid).
+- Display mode now shows ALL fields: legal_name, legal_entity_type, inn, kpp/ogrn/ogrnip, legal_address, settlement_account, correspondent_account, bik, bank_name.
 - RBAC: edit/save gated on advertisers.manage permission.
-- Vitest: 2/2 new (display rendering of empty + filled requisites). Full suite: 240/240 (including new tests).
-- UI-smoke: test_uismoke__advertiser__legal_requisites.py — LE happy-path (fill → save → display → reload persistence).
+- Vitest: 2/2 new (display rendering of empty + filled requisites, 9 field checks). Full suite: 240/240.
+- UI-smoke: test_uismoke__advertiser__legal_requisites.py — GREEN. LE happy-path: login → advertisers → select ADV-001 → Реквизиты → fill 10 fields → save → display all 9 fields → reload → persistence verified.
+- Post-save reload: onSaved callback → detailVersion → useEffect refetch — display shows real persisted data.
+- Smoke command: UI_SMOKE_RUN=1 pytest tests/ui-smoke/test_uismoke__advertiser__legal_requisites.py -v → 1 passed.
+- Control-api container rebuilt (stale image lacked migration 029 + endpoint). Migration 029 applied.
 - No checksum validation exposed in UI.
 - Deferred debt preserved: checksum, history/versioning, verification workflow.
 - Operator walkthrough: PENDING.

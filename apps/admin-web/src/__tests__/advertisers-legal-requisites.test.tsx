@@ -76,7 +76,13 @@ describe("LegalRequisitesTab", () => {
     await openLegalTab();
     await screen.findByText("Юридические реквизиты");
     expect(screen.getByTestId("advertiser-legal-display-inn").textContent).toBe("7707083893");
-    expect(screen.getByTestId("advertiser-legal-display-bank-name").textContent).toBe("Сбербанк");
     expect(screen.getByTestId("advertiser-legal-display-legal-name").textContent).toBe("ООО Ромашка");
+    expect(screen.getByTestId("advertiser-legal-display-kpp").textContent).toBe("770701001");
+    expect(screen.getByTestId("advertiser-legal-display-ogrn").textContent).toBe("1027700132195");
+    expect(screen.getByTestId("advertiser-legal-display-legal-address").textContent).toBe("г. Москва");
+    expect(screen.getByTestId("advertiser-legal-display-settlement-account").textContent).toBe("40702810500000000001");
+    expect(screen.getByTestId("advertiser-legal-display-correspondent-account").textContent).toBe("30101810200000000593");
+    expect(screen.getByTestId("advertiser-legal-display-bik").textContent).toBe("044525593");
+    expect(screen.getByTestId("advertiser-legal-display-bank-name").textContent).toBe("Сбербанк");
   });
 });

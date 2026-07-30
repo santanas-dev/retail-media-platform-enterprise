@@ -60,6 +60,12 @@ def test_uismoke__advertiser__legal_requisites(smoke_page):
     # Verify displayed fields
     assert page.locator('[data-testid="advertiser-legal-display-legal-name"]').text_content() == "ООО Тестовый Рекламодатель"
     assert page.locator('[data-testid="advertiser-legal-display-inn"]').text_content() == "7707083893"
+    assert page.locator('[data-testid="advertiser-legal-display-kpp"]').text_content() == "770701001"
+    assert page.locator('[data-testid="advertiser-legal-display-ogrn"]').text_content() == "1027700132195"
+    assert page.locator('[data-testid="advertiser-legal-display-legal-address"]').text_content() == "г. Москва, ул. Тестовая, д. 1"
+    assert page.locator('[data-testid="advertiser-legal-display-settlement-account"]').text_content() == "40702810500000000001"
+    assert page.locator('[data-testid="advertiser-legal-display-correspondent-account"]').text_content() == "30101810200000000593"
+    assert page.locator('[data-testid="advertiser-legal-display-bik"]').text_content() == "044525593"
     assert page.locator('[data-testid="advertiser-legal-display-bank-name"]').text_content() == "ПАО Сбербанк"
 
     # Reload and verify persistence
@@ -76,3 +82,6 @@ def test_uismoke__advertiser__legal_requisites(smoke_page):
 
     # Verify persistence
     assert page.locator('[data-testid="advertiser-legal-display-inn"]').text_content() == "7707083893"
+    assert page.locator('[data-testid="advertiser-legal-display-legal-name"]').text_content() == "ООО Тестовый Рекламодатель"
+    assert page.locator('[data-testid="advertiser-legal-display-legal-address"]').text_content() == "г. Москва, ул. Тестовая, д. 1"
+    assert page.locator('[data-testid="advertiser-legal-display-bank-name"]').text_content() == "ПАО Сбербанк"
