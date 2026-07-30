@@ -444,7 +444,7 @@ self.login / self.campaign_view / self.report_view + свои smoke.
 ADVERTISER-UX-001A1 — Schema + backend (после approval)
 ADVERTISER-UX-001A2 — UI + smoke ✅ (FU: display completeness + real smoke proof)
 ADVERTISER-UX-001B1 — Brands CRUD ✅ (backend + UI + smoke)
-ADVERTISER-UX-001B2 — Contracts CRUD + PDF upload
+ADVERTISER-UX-001B2 — Contracts CRUD + PDF upload ✅ (backend + UI + smoke)
 ADVERTISER-UX-001B3 — Contacts CRUD + user link
 ADVERTISER-UX-001C1 — Server-side auto-code generation
 ADVERTISER-UX-001C2 — Advertiser create wizard
@@ -452,6 +452,28 @@ ADVERTISER-UX-001D1 — Users: split internal vs advertiser roles in UI
 ADVERTISER-UX-001D2 — Permission descriptions + UUID invariant
 CAMPAIGN-UX-002B/C/D — Remaining campaign UX polish (flights, placements, dashboard)
 ```
+
+### ADVERTISER-UX-001B2 — Contracts CRUD + PDF upload
+
+**Статус:** ✅ Реализован. Backend 12/12, vitest 4/4, UI-smoke green.
+
+**Journey:** `advertiser.contract_pdf_upload` — break-glass admin загружает PDF-договор для рекламодателя.
+
+**Happy-path (9 шагов):**
+1. Логин → 2. Advertisers (sidebar) → 3. Выбрать ADV-001 → 4. Вкладка «Договоры»
+→ 5. «Добавить договор» → 6. «Выбрать PDF» → 7. «Загрузить»
+→ 8. Имя файла в строке договора → 9. Перезагрузка: данные на месте.
+
+**Smoke:** `test_uismoke__advertiser__contract_pdf_upload` — GREEN (1 passed, 1.96s).
+Доказательство: contract metadata created, PDF selected through visible UI,
+upload intent → PUT → complete-upload успешен, строка показывает номер/название/имя PDF,
+reload persistence.
+
+**Backend:** 12 тестов (create/update/upload-intent schema + repo create/update/cross-org).
+**Frontend:** 4 vitest-теста (render, empty state, section data-testid, file name+size).
+**Миграция:** 030 — `advertiser_contracts` file metadata (5 nullable columns) + `contract_upload_sessions`.
+
+**Operator walkthrough:** PENDING.
 
 ---
 

@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-30 (ADVERTISER-UX-001B1)
+**Last updated:** 2026-07-30 (ADVERTISER-UX-001B2)
 
-**Next Active Workstream:** ADVERTISER-UX-001B1 — brands CRUD
+**Next Active Workstream:** ADVERTISER-UX-001B3 — contacts CRUD + user link
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `84fe4c3` (PLAYER-001B-FU — substantive)
@@ -90,6 +90,18 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - UI-smoke: test_uismoke__advertiser__brand_crud.py — GREEN. Create → display → edit → reload persistence.
 - UI: BrandsTab interactive — create form, inline edit, RBAC-gated buttons, 17 data-testid.
 - Next: ADVERTISER-UX-001B2 — contracts CRUD + PDF upload.
+- Operator walkthrough: PENDING.
+- Checkpoint by PS-001.
+
+**ADVERTISER-UX-001B2 ✅** — Contracts CRUD + PDF upload with presigned URL flow. Real UI-smoke green.
+- Backend: schemas (AdvertiserContractCreate/Update/UploadIntent), repository (create/update with cross-org guard), upload-intent + complete-upload endpoints.
+- Upload flow: presigned URL pattern (MinIO PUT → complete-upload → file metadata on contract).
+- Permission: advertisers.manage, RLS-scoped by advertiser_organization_id.
+- Migration: 030 — file_storage_key, file_name, file_size_bytes, file_sha256, file_content_type (5 nullable) + contract_upload_sessions table.
+- Tests: 12/12 backend (schema + repo create/update + upload-intent + cross-org rejection), 4/4 vitest (render, empty state, data-testid, file metadata).
+- UI-smoke: test_uismoke__advertiser__contract_pdf_upload.py — GREEN (1 passed, 1.96s). Contract metadata created, PDF selected through visible UI, upload intent → PUT → complete-upload succeeds, row shows number/title/filename, reload persistence verified.
+- UI: ContractsTab with create form, inline edit, filechooser upload, file metadata display, 12+ data-testid.
+- Next: ADVERTISER-UX-001B3 — contacts CRUD + user link.
 - Operator walkthrough: PENDING.
 - Checkpoint by PS-001.
 
