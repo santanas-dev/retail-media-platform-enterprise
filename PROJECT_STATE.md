@@ -66,7 +66,7 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Operator walkthrough: not required (backend-only task).
 - Checkpoint by PS-001.
 
-**ADVERTISER-UX-001A2 ✅** — Admin-web UI for advertiser legal requisites.
+**ADVERTISER-UX-001A2 ✅** — Admin-web UI for advertiser legal requisites. CI #30522516829 (34/34 green).
 - API client: AdvertiserLegalRequisitesUpdate type + updateAdvertiserLegalRequisites() method + AdvertiserOrganizationDetailOut updated with 12 nullable fields.
 - UI: new "Реквизиты" tab in AdvertisersPage with read-only display + edit form (LE/IE toggle, kpp/ogrn/ogrnip conditional, legal_form_other, 13 data-testid).
 - RBAC: edit/save gated on advertisers.manage permission.
@@ -187,7 +187,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | 48e54e2 | 48e54e2 | ADVERTISER-UX-001A1 — backend + migration + tests |
+| develop | a9fc2a3 | a9fc2a3 | ADVERTISER-UX-001A2 — admin-web UI + smoke |
 | main    | 96b5159     | —               | R3 ✅ RELEASED — v0.10.0-preplayer-business-ready, CI #30354973869 ✅ |
 | NAS mirror (ASUSTOR) | pending | — | Hermes cron sync every 3 min |
 
