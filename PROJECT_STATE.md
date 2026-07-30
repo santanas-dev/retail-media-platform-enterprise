@@ -83,7 +83,7 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Next: ADVERTISER-UX-001B1 — brands CRUD.
 - Checkpoint by PS-001.
 
-**EPIC-L-000 ✅** — Licensing canon intake + seat-hook requirement. Owner gate §08 approved 2026-07-30.
+**EPIC-L-000 ✅** — Licensing canon intake + seat-hook requirement. Owner gate §08 approved 2026-07-30. CI #30529324395 (35/35 green).
 - Decisions captured: licensee=operator, soft enforcement (no screen blanking), seat-month unit, contour separation (license vs advertiser billing).
 - Money contours: Контур 1 (operator→vendor, license), Контур 2 (advertiser→operator, billing, deferred v2.6).
 - License payload: 15 approved fields, JWS/JWT ed25519, offline verification.
