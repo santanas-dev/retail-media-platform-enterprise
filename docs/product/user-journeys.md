@@ -373,7 +373,7 @@ self.login / self.campaign_view / self.report_view + свои smoke.
 | EPIC-A | Юридические реквизиты рекламодателя | ✅ Approved for A1 (ADVERTISER-UX-001A0); A1 implementation unblocked |
 | EPIC-B | Бренды / договоры / контакты | Запланирован |
 | EPIC-C | Wizard + автоматическое присвоение кода | Запланирован |
-| EPIC-D | Пользователи и права — UX | D1 ✅ (split internal/advertiser); D2 planned (permission descriptions) |
+| EPIC-D | Пользователи и права — UX | D1 ✅ (split); D2 ✅ (permission descriptions registry); operator walkthrough PENDING |
 | EPIC-E | UX кампании (attach, flight, placement, dashboard) | #3 ✅ closed as CAMPAIGN-UX-002A; остальные запланированы |
 
 > Фактический статус — из `PROJECT_STATE.md` + `feature-registry.yaml`.
@@ -395,6 +395,23 @@ self.login / self.campaign_view / self.report_view + свои smoke.
 5. Reload → вкладки на месте, таблица грузится.
 
 **Data-testid:** `users-tab-bar`, `users-tab-{all,internal,advertiser}`, `users-table-{all,internal,advertiser}`, `users-{section,empty}-{all,internal,advertiser}`, `user-row-{username}`, `user-provider-{username}`.
+
+---
+
+### 6.0b ADVERTISER-UX-001D2 — Permission descriptions registry
+
+**Статус:** ✅ smoke green, vitest 279/279, CI pending.
+**Next:** CAMPAIGN-UX-002B или по выбору владельца.
+
+**Источник описаний:** `apps/admin-web/src/auth/permissionDescriptions.ts` — frontend-реестр (24 permission). Выбран потому что backend `permissions.description` пуст в seed, а поднимать backend-миграцию ради описаний избыточно для D2.
+
+**Happy-path (4 шага):**
+1. Оператор → «Пользователи» → «Роли» на любом пользователе.
+2. В панели управления ролями — секция «Список прав (24)» с permission code + label + description.
+3. Каждое право: жирный label, моноширинный code, серая description-подстрока.
+4. Неизвестный permission падает безопасно: label = code, description = «Описание права пока не задано».
+
+**Data-testid:** `permission-catalog`, `permission-item-{safeCode}`, `permission-label-{safeCode}`, `permission-code-{safeCode}`, `permission-description-{safeCode}`.
 
 ---
 

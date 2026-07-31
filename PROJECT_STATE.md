@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-30 (ADVERTISER-UX-001D1)
+**Last updated:** 2026-07-31 (ADVERTISER-UX-001D2)
 
-**Next Active Workstream:** ADVERTISER-UX-001D2 — permission descriptions + registry
+**Next Active Workstream:** CAMPAIGN-UX-002B или по выбору владельца
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `84fe4c3` (PLAYER-001B-FU — substantive)
@@ -165,6 +165,19 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Registry: `user.split_internal_advertiser`, 50 total / 40 reachable / 10 blocked.
 - Operator walkthrough: PENDING (D2 + human auditor).
 - Next → ADVERTISER-UX-001D2 — permission descriptions + registry.
+- Checkpoint by PS-001.
+
+**ADVERTISER-UX-001D2 ✅** — Permission descriptions registry + UI.
+- Единый реестр: `apps/admin-web/src/auth/permissionDescriptions.ts` — 24 permission с label + description.
+- Backend не менялся: `permissions.description` пуст в seed, frontend-реестр — осознанный выбор.
+- Role management panel: секция «Список прав (24)» с code + label + description для каждого права.
+- Неизвестный permission: label=code, description=«Описание права пока не задано».
+- Data-testid: `permission-{item,label,code,description}-{safeCode}`, `permission-catalog`.
+- Vitest: 279/279 (+6 D2: catalog render, label+desc, unknown fallback, all 24 non-empty, role code monospace, assign flow intact).
+- UI-smoke: `test_uismoke__user__assign_roles` PASSED 2.26s (D2 permission catalog check добавлен).
+- Registry: без нового feature ID (D2 — часть existing `user.assign_roles` smoke).
+- Operator walkthrough: PENDING.
+- Next → CAMPAIGN-UX-002B или по выбору владельца.
 - Checkpoint by PS-001.
 
 **PLAN-COUNT-SYNC-001 ✅** — Pre-pilot plan counts synced to registry.

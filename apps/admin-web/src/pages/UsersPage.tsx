@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { api, ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { getPermissionDescription, ALL_PERMISSION_CODES } from "../auth/permissionDescriptions";
 import type {
   UserOut,
   UserDetailOut,
@@ -832,7 +833,8 @@ export default function UsersPage() {
                   key={r.id}
                   style={{ marginBottom: "0.25rem", fontSize: "0.85rem" }}
                 >
-                  <strong>{r.role_name}</strong> ({r.role_code})
+                  <strong>{r.role_name}</strong>{" "}
+                  <code style={{ fontSize: "0.8rem", color: "#64748b" }}>({r.role_code})</code>
                   {r.scope_type && (
                     <span style={{ color: "#64748b" }}>
                       {" "}
@@ -856,6 +858,70 @@ export default function UsersPage() {
                   )}
                 </li>
               ))}
+            </ul>
+          </div>
+
+          {/* Permission catalog (D2) */}
+          <div
+            style={{
+              marginBottom: "0.75rem",
+              borderTop: "1px solid #e2e8f0",
+              paddingTop: "0.75rem",
+            }}
+            data-testid="permission-catalog"
+          >
+            <strong style={{ fontSize: "0.85rem" }}>
+              Список прав ({ALL_PERMISSION_CODES.length}):
+            </strong>
+            <ul
+              style={{
+                margin: "0.5rem 0 0 0",
+                paddingLeft: "1.25rem",
+                maxHeight: 300,
+                overflowY: "auto",
+              }}
+            >
+              {ALL_PERMISSION_CODES.map((code) => {
+                const desc = getPermissionDescription(code);
+                const safeCode = code.replace(/\./g, "-");
+                return (
+                  <li
+                    key={code}
+                    data-testid={`permission-item-${safeCode}`}
+                    style={{
+                      marginBottom: "0.5rem",
+                      fontSize: "0.8rem",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    <span
+                      data-testid={`permission-label-${safeCode}`}
+                      style={{ fontWeight: 600 }}
+                    >
+                      {desc.name}
+                    </span>{" "}
+                    <code
+                      data-testid={`permission-code-${safeCode}`}
+                      style={{
+                        fontSize: "0.7rem",
+                        color: "#94a3b8",
+                        background: "#f1f5f9",
+                        padding: "0 4px",
+                        borderRadius: 2,
+                      }}
+                    >
+                      {code}
+                    </code>
+                    <br />
+                    <span
+                      data-testid={`permission-description-${safeCode}`}
+                      style={{ color: "#475569", fontSize: "0.75rem" }}
+                    >
+                      {desc.description}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
