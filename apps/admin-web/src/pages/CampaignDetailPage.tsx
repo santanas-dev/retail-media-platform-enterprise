@@ -148,7 +148,7 @@ export default function CampaignDetailPage() {
   const flightsSectionRef = useRef<HTMLDivElement>(null);
   const placementsSectionRef = useRef<HTMLDivElement>(null);
   const creativesSectionRef = useRef<HTMLDivElement>(null);
-  const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
     setActiveTab("content");
     setTimeout(() => ref.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
