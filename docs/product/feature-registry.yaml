@@ -694,18 +694,99 @@ features:
     gap: "EPIC-L canon intake only. No implementation."
 
   # ═══════════════════════════════════════════════════════════════
+  # COMMERCE-CONTUR2 — Commercial inventory sales engine (blocked)
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: commerce.order_create
+    frontend: admin-web
+    name: Создание коммерческого заказа
+    route: n/a
+    path: n/a
+    smoke: n/a
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: blocked
+    gap: "COMMERCE-CONTUR2-001A0 canon intake only. Owner approval required before A1."
+
+  - id: commerce.tariff_manage
+    frontend: admin-web
+    name: Управление тарифами и прайс-листами
+    route: n/a
+    path: n/a
+    smoke: n/a
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: blocked
+    gap: "COMMERCE-CONTUR2-001A0 canon intake only. Owner approval required before A1."
+
+  - id: commerce.offer_generate
+    frontend: admin-web
+    name: Генерация коммерческого предложения с price snapshot
+    route: n/a
+    path: n/a
+    smoke: n/a
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: blocked
+    gap: "COMMERCE-CONTUR2-001A0 canon intake only. Owner approval required before A1."
+
+  - id: commerce.booking
+    frontend: admin-web
+    name: Бронирование инвентаря через существующие резервации
+    route: n/a
+    path: n/a
+    smoke: n/a
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: blocked
+    gap: "COMMERCE-CONTUR2-001A0 canon intake only. Owner approval required before A1."
+
+  - id: commerce.payment_status
+    frontend: admin-web
+    name: Статус оплаты заказа
+    route: n/a
+    path: n/a
+    smoke: n/a
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: blocked
+    gap: "COMMERCE-CONTUR2-001A0 canon intake only. Owner approval required before A1."
+
+  - id: commerce.order_close
+    frontend: admin-web
+    name: Закрытие заказа + no-retro-reprice
+    route: n/a
+    path: n/a
+    smoke: n/a
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: blocked
+    gap: "COMMERCE-CONTUR2-001A0 canon intake only. Owner approval required before A1."
+
+  - id: commerce.price_list_manage
+    frontend: admin-web
+    name: Управление версиями прайс-листов
+    route: n/a
+    path: n/a
+    smoke: n/a
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: blocked
+    gap: "COMMERCE-CONTUR2-001A0 canon intake only. Owner approval required before A1."
+
+  # ═══════════════════════════════════════════════════════════════
   # Summary counts (auto-generated — do not edit manually)
   # ═══════════════════════════════════════════════════════════════
-  #   total: 50
+  #   total: 57
   # by status:
   #   reachable: 40 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, user.split_internal_advertiser, advertiser.create_org, advertiser.view, advertiser.contact_crud, advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites, inventory.simulate, advertiser.invite, adsettings.configure, adsettings.test, audit.view, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, device.health_view, observability, user.reset_password, user.deactivate, inventory.rule_create)
-  #   blocked:     10 (self.report_view, self.campaign_create, playlist.build, backup.restore, campaign.complete, license.view, license.upload, license.seat_release, license.report, license.enforce)
+  #   blocked:     17 (self.report_view, self.campaign_create, playlist.build, backup.restore, campaign.complete, license.view, license.upload, license.seat_release, license.report, license.enforce, commerce.order_create, commerce.tariff_manage, commerce.offer_generate, commerce.booking, commerce.payment_status, commerce.order_close, commerce.price_list_manage)
   # by frontend:
-  #   admin-web:      31
+  #   admin-web:      38
   #   advertiser-web:  5
   #   public:          1
   #   service:         8
   # by priority:
   #   P0: 20
-  #   P1: 24
+  #   P1: 31
   #   P2:  1

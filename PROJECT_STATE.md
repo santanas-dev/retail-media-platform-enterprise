@@ -262,6 +262,19 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - No migrations, models, API, UI, or player changes.
 - Checkpoint by PS-001.
 
+**COMMERCE-CONTUR2-001A0 ✅** — Commerce contour 2 canon intake + owner decision matrix.
+- Контур 2 = рекламодатель → оператор, продажа рекламного инвентаря.
+- Строгое разделение с EPIC-L / Контур 1 (нет общих таблиц/сервисов/UI).
+- Decision matrix: 6 решений (billing_unit, payment_handling, tariff_versioning, discounts, order_status, payment_status) с рекомендованными MVP-умолчаниями.
+- Draft field matrix: Order, Price List, Tariff, Offer, Booking.
+- Feature IDs: 7 заблокированных (commerce.order_create, commerce.tariff_manage, commerce.offer_generate, commerce.booking, commerce.payment_status, commerce.order_close, commerce.price_list_manage).
+- Registry: 50→57 total, 40 reachable, 17 blocked.
+- No schema started. Owner approval required before A1.
+- not approved for migration until owner approval of COMMERCE-CONTUR2-001 §7 decisions.
+- Next: Await owner approval of COMMERCE-CONTUR2-001 §7 decisions. Затем COMMERCE-CONTUR2-001A1 — schema/RLS/pricing choke-point.
+- Docs-only. No migrations/models/API/UI.
+- Checkpoint by PS-001.
+
 **Previous PLAYER-001B entry (scaffold):**
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.

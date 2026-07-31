@@ -637,3 +637,116 @@ See: `docs/architecture/epic-l-licensing.md`.
 - No player code changes
 - No advertiser billing
 - No feature statuses reachable
+
+---
+
+## COMMERCE-CONTUR2-001 — Commercial Inventory Sales Engine
+
+**Контур 2:** рекламодатель → оператор. Продажа рекламного инвентаря, коммерческий учёт, статус оплаты.
+
+### Границы (строгое разделение)
+
+| Контур | Стороны | Предмет | Статус |
+|--------|---------|---------|--------|
+| Контур 1 / EPIC-L | оператор → вендор | лицензия устройств/платформы | canon intake only |
+| Контур 2 / Commerce | рекламодатель → оператор | продажа рекламного инвентаря | **этот эпик** |
+
+**Запрещено:**
+- Сшивать таблицы/сервисы/UI между контурами.
+- Общая точка с EPIC-L отсутствует.
+- Общая точка с устройствами — только через будущие показы/PoP, не в MVP commerce.
+
+**Not:**
+- Not a payment gateway (no acquiring, no платёжный шлюз).
+- Not EDI/ЭДО.
+- Not license billing.
+
+**Uses existing:**
+- Inventory reservations (S-079)
+- `placement_basis`
+- Advertiser contracts
+- Campaigns/briefs
+
+**Не дублирует inventory.**
+
+---
+
+### Decision Matrix — Owner Decisions Required Before Schema
+
+**not approved for migration until owner approval of COMMERCE-CONTUR2-001 §7 decisions**
+
+| # | Decision | Recommended MVP default | Alternatives deferred |
+|---|----------|------------------------|----------------------|
+| 1 | billing_unit | `surface_day` — рассчитывается до player/PoP, совместим с бронированием инвентаря до показа | CPM, package, slot |
+| 2 | payment_handling | `status_only` — без acquiring, без платёжного шлюза, внешний billing/EDI | full payment gateway |
+| 3 | tariff_versioning | `yes` — версии прайс-листов; завершённые заказы/кампании не пересчитываются задним числом | immutable tariffs |
+| 4 | discounts_in_mvp | `no` — отложено до следующей итерации | % discount, volume discount |
+| 5a | order_status | `draft → offered → booked → confirmed → closed → cancelled` | — |
+| 5b | payment_status | `not_required → unpaid → partial → paid → overdue` | — |
+
+---
+
+### Draft Field Matrix (not implementation — for owner review)
+
+**Order:**
+- `order_id`, `advertiser_organization_id`, `advertiser_contract_id`
+- `campaign_id` (nullable, или link table позже)
+- `placement_basis`
+- `status` (draft/offered/booked/confirmed/closed/cancelled)
+- `payment_status` (not_required/unpaid/partial/paid/overdue)
+- `currency`, `amount_net`, `amount_gross` (optional/deferred)
+- `price_snapshot_json`
+- `valid_until` / `offer_valid_until`
+- `created_at`, `updated_at`, `closed_at`
+
+**Price List:**
+- `price_list_id`, `name`, `currency`
+- `valid_from`, `valid_until` (nullable)
+- `version`, `status` (draft/active/archived)
+
+**Tariff:**
+- `tariff_id`, `price_list_id`, `billing_unit`
+- `scope_type`, `scope_id` (nullable)
+- `unit_price`, `currency`
+- `valid_from`, `valid_until` (inherited or explicit)
+- `status`
+
+**Offer:**
+- `offer_id`, `order_id`
+- `calculated_at`, `amount`, `currency`
+- `price_snapshot_json`, `valid_until`
+- `status`
+
+**Booking:**
+- `order_id` / `offer_id`
+- Links to existing inventory reservations (S-079)
+- No duplicate inventory tables
+
+---
+
+### MVP Task Graph
+
+```
+A0 — canon intake + owner decisions (этот этап) ✅
+ │
+ ├─ A1 — schema/RLS/pricing choke-point
+ ├─ A2 — tariff/price-list admin UI
+ ├─ A3 — order create/card + payment status
+ ├─ A4 — offer generation with price snapshot
+ ├─ A5 — booking via existing reservations
+ └─ A6 — close order + no-retro-reprice proof
+```
+
+Все задачи заблокированы до утверждения владельцем COMMERCE-CONTUR2-001 §7 decisions.
+
+### Feature IDs (blocked)
+
+| ID | Status |
+|----|--------|
+| commerce.order_create | blocked |
+| commerce.tariff_manage | blocked |
+| commerce.offer_generate | blocked |
+| commerce.booking | blocked |
+| commerce.payment_status | blocked |
+| commerce.order_close | blocked |
+| commerce.price_list_manage | blocked |
