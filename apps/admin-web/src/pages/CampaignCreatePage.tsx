@@ -214,7 +214,7 @@ export default function CampaignCreatePage() {
       };
 
       const created = await createCampaign(body);
-      navigate(`/campaigns/${created.id}?start=content`, { replace: true });
+      navigate(`/campaigns/${created.id}`, { replace: true, state: { guided: true } });
     } catch (e: unknown) {
       if (e instanceof ApiError) {
         if (e.status === 422) {

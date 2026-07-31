@@ -1145,7 +1145,53 @@ describe("CampaignDetailPage — S-009e", () => {
     expect(screen.getByTestId("campaign-start-filling-btn")).toBeTruthy();
   });
 
-  it("shows created banner and opens content tab via ?start=content", async () => {
+  it("shows created banner via location.state.guided", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches();
+    const router = createMemoryRouter(
+      [
+        { path: "/login", element: <div>Login</div> },
+        { path: "/", element: (<ProtectedRoute><Layout /></ProtectedRoute>), children: [
+          { path: "campaigns", element: <div>Campaign List</div> },
+          { path: "campaigns/:id", element: <CampaignDetailPage /> },
+        ]},
+      ],
+      { initialEntries: [{ pathname: "/campaigns/c1", state: { guided: true } }] },
+    );
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("← К списку кампаний")).toBeTruthy(); });
+
+    // Banner visible via state
+    expect(screen.getByTestId("campaign-created-next-step")).toBeTruthy();
+    // Content tab is active
+    expect(screen.getByTestId("content-panel")).toBeTruthy();
+  });
+
+  it("dismiss hides created banner", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches();
+    const router = createMemoryRouter(
+      [
+        { path: "/login", element: <div>Login</div> },
+        { path: "/", element: (<ProtectedRoute><Layout /></ProtectedRoute>), children: [
+          { path: "campaigns", element: <div>Campaign List</div> },
+          { path: "campaigns/:id", element: <CampaignDetailPage /> },
+        ]},
+      ],
+      { initialEntries: [{ pathname: "/campaigns/c1", state: { guided: true } }] },
+    );
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByTestId("campaign-created-next-step")).toBeTruthy(); });
+
+    // Click dismiss
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId("campaign-created-dismiss"));
+
+    // Banner gone
+    expect(screen.queryByTestId("campaign-created-next-step")).toBeNull();
+  });
+
+  it("shows created banner and opens content tab via ?start=content (backward compat)", async () => {
     mockAuthenticatedSession();
     mockAllFetches();
     const router = createRouter("/campaigns/c1?start=content");

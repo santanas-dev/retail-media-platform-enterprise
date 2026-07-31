@@ -223,6 +223,16 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Next → KSO-ENV-001 или по выбору владельца.
 - Checkpoint by PS-001.
 
+**UX-POLISH-001A ✅** — Fix CAMPAIGN-UX-002D guided banner regression.
+- Диагноз: `useLocation().search` ненадёжен в BrowserRouter при `replace: true`.
+- Фикс: CampaignCreatePage передаёт `state: { guided: true }` при navigate.
+- CampaignDetailPage читает `location.state?.guided` (приоритет) + `?start=content` (backward compat).
+- Добавлена dismiss-кнопка `campaign-created-dismiss`.
+- Vitest: 290/290 (+2: state.guided тест, dismiss тест).
+- operator walkthrough: PENDING.
+- Next → UX-POLISH-001B — localized validation errors.
+- Checkpoint by PS-001.
+
 **PLAN-COUNT-SYNC-001 ✅** — Pre-pilot plan counts synced to registry.
 - Registry facts: 49 total, 39 reachable, 10 blocked (30 admin-web UI, 5 service, 3 advertiser-web, 1 public).
 - Plan updated: 35/40→39/49, admin-web 26→30, blocked list includes EPIC-L license IDs.

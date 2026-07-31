@@ -132,10 +132,11 @@ export default function CampaignDetailPage() {
   const location = useLocation();
   const { user } = useAuth();
 
-  // CAMPAIGN-UX-002D: guided create-to-fill — detect ?start=content from campaign create
-  const startParam = new URLSearchParams(location.search).get("start");
-  const initialTab: Tab = startParam === "content" ? "content" : "overview";
-  const [showCreatedBanner, setShowCreatedBanner] = useState(startParam === "content");
+  // CAMPAIGN-UX-002D: guided create-to-fill — detect navigation state or ?start=content
+  const guidedFromCreate = (location.state as { guided?: boolean })?.guided === true
+    || new URLSearchParams(location.search).get("start") === "content";
+  const initialTab: Tab = guidedFromCreate ? "content" : "overview";
+  const [showBanner, setShowBanner] = useState(guidedFromCreate);
 
   const hasApprovePerm = user?.permissions?.includes("campaigns.approve") ?? false;
   const hasManagePerm = user?.permissions?.includes("campaigns.manage") ?? false;
@@ -2163,12 +2164,13 @@ export default function CampaignDetailPage() {
         {campaign.name}
         <span style={{ fontSize: "0.7rem", color: "#94a3b8", marginLeft: "0.5rem", fontWeight: 400 }}>{campaign.code}</span>
       </h2>
-      {/* CAMPAIGN-UX-002D: created banner — visible on any tab */}
-      {campaign && campaign.status === "draft" && showCreatedBanner && !(flights.length > 0 && placements.length > 0 && creatives.filter(c => c.asset != null).length > 0) && (
+      {/* CAMPAIGN-UX-002D: created banner — visible on any tab, dismissable */}
+      {campaign && campaign.status === "draft" && showBanner && !(flights.length > 0 && placements.length > 0 && creatives.filter(c => c.asset != null).length > 0) && (
         <div data-testid="campaign-created-next-step" style={{ marginBottom: "1rem", padding: "0.75rem 1rem", background: "#eff6ff", borderRadius: 6, border: "1px solid #93c5fd", display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <span style={{ fontSize: "1rem" }}>📋</span>
           <span style={{ flex: 1, fontSize: "0.85rem", color: "#1e40af" }}>Кампания создана. Добавьте рейс, размещение и креатив, чтобы отправить на согласование.</span>
           <button type="button" onClick={() => scrollToSection(flightsSectionRef)} style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 4, padding: "0.35rem 0.75rem", fontSize: "0.8rem", cursor: "pointer", whiteSpace: "nowrap" }}>Начать наполнение →</button>
+          <button type="button" data-testid="campaign-created-dismiss" onClick={() => setShowBanner(false)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1, padding: "0 0.25rem" }} aria-label="Закрыть">✕</button>
         </div>
       )}
       <div style={css.tabBar}>
