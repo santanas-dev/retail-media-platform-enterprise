@@ -269,10 +269,15 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Draft field matrix: Order, Price List, Tariff, Offer, Booking.
 - Feature IDs: 7 заблокированных (commerce.order_create, commerce.tariff_manage, commerce.offer_generate, commerce.booking, commerce.payment_status, commerce.order_close, commerce.price_list_manage).
 - Registry: 50→57 total, 40 reachable, 17 blocked.
-- No schema started. Owner approval required before A1.
-- not approved for migration until owner approval of COMMERCE-CONTUR2-001 §7 decisions.
-- Next: Await owner approval of COMMERCE-CONTUR2-001 §7 decisions. Затем COMMERCE-CONTUR2-001A1 — schema/RLS/pricing choke-point.
-- Docs-only. No migrations/models/API/UI.
+- No schema started. A1 unblocked by owner on 2026-07-31.
+
+**COMMERCE-CONTUR2-001A0-FU ✅** — Owner approved commerce §7 MVP decisions (2026-07-31).
+- Approved: billing_unit=surface_day, payment_handling=status_only, tariff_versioning=yes, discounts=no.
+- Approved order_status: draft→offered→booked→confirmed→closed→cancelled.
+- Approved payment_status: not_required→unpaid→partial→paid→overdue.
+- A1 schema/RLS/pricing choke-point unblocked.
+- No implementation started. Docs-only.
+- Next → COMMERCE-CONTUR2-001A1 — schema/RLS/pricing choke-point.
 - Checkpoint by PS-001.
 
 **Previous PLAYER-001B entry (scaffold):**

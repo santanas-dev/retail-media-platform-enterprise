@@ -671,18 +671,27 @@ See: `docs/architecture/epic-l-licensing.md`.
 
 ---
 
-### Decision Matrix — Owner Decisions Required Before Schema
+### Decision Matrix — Owner Approved (2026-07-31)
 
-**not approved for migration until owner approval of COMMERCE-CONTUR2-001 §7 decisions**
+**approved for COMMERCE-CONTUR2-001A1 schema/RLS/pricing implementation by owner on 2026-07-31**
 
-| # | Decision | Recommended MVP default | Alternatives deferred |
-|---|----------|------------------------|----------------------|
-| 1 | billing_unit | `surface_day` — рассчитывается до player/PoP, совместим с бронированием инвентаря до показа | CPM, package, slot |
-| 2 | payment_handling | `status_only` — без acquiring, без платёжного шлюза, внешний billing/EDI | full payment gateway |
-| 3 | tariff_versioning | `yes` — версии прайс-листов; завершённые заказы/кампании не пересчитываются задним числом | immutable tariffs |
-| 4 | discounts_in_mvp | `no` — отложено до следующей итерации | % discount, volume discount |
-| 5a | order_status | `draft → offered → booked → confirmed → closed → cancelled` | — |
-| 5b | payment_status | `not_required → unpaid → partial → paid → overdue` | — |
+| # | Decision | Approved value | Status |
+|---|----------|---------------|--------|
+| 1 | billing_unit | `surface_day` — рассчитывается до player/PoP, совместим с бронированием инвентаря до показа | ✅ approved |
+| 2 | payment_handling | `status_only` — без acquiring, без платёжного шлюза, внешний billing/EDI | ✅ approved |
+| 3 | tariff_versioning | `yes` — версии прайс-листов; завершённые заказы/кампании не пересчитываются задним числом | ✅ approved |
+| 4 | discounts_in_mvp | `no` — отложено до следующей итерации | ✅ approved |
+| 5a | order_status | `draft → offered → booked → confirmed → closed → cancelled` | ✅ approved |
+| 5b | payment_status | `not_required → unpaid → partial → paid → overdue` | ✅ approved |
+
+### Non-Goals (explicit)
+
+- No payment gateway (no acquiring, no платёжный шлюз)
+- No EDI/ЭДО
+- No discounts in MVP
+- No retroactive repricing (завершённые заказы не пересчитываются)
+- No Contour 1 / EPIC-L merge
+- No feature statuses reachable until A1 implementation
 
 ---
 
@@ -737,7 +746,7 @@ A0 — canon intake + owner decisions (этот этап) ✅
  └─ A6 — close order + no-retro-reprice proof
 ```
 
-Все задачи заблокированы до утверждения владельцем COMMERCE-CONTUR2-001 §7 decisions.
+A1 unblocked by owner on 2026-07-31. A2–A6 blocked pending A1 completion.
 
 ### Feature IDs (blocked)
 
