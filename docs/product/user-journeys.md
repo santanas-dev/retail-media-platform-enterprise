@@ -429,6 +429,18 @@ self.login / self.campaign_view / self.report_view + свои smoke.
 
 ---
 
+### 6.0d CAMPAIGN-UX-002C — Merge Flights/Placements/Creatives into «Наполнение»
+
+**Статус:** ✅ Vitest 282/282, UI-smoke campaign.edit/submit/upload/inventory/creative green. Три секции в одном табе.
+**Next:** CAMPAIGN-UX-002D — campaign create/fill wizard.
+
+**Happy-path (3 шага):**
+1. Оператор открывает карточку кампании → видит 3 вкладки: Обзор, Наполнение, Дашборд.
+2. Вкладка «Наполнение» содержит три секции на одном экране: Рейсы, Плейсменты, Креативы.
+3. Readiness checklist на Обзоре ведёт в нужную секцию внутри «Наполнения» (скролл-фокус).
+
+**Data-testid:** `tab-content` (таб), `content-panel`, `content-readiness-summary`, `content-flights-section`, `content-placements-section`, `content-creatives-section`.
+
 ### 6.1 ADVERTISER-UX-001A0 — Legal requisites draft for owner/legal approval
 
 **Статус:** ✅ Approved for ADVERTISER-UX-001A1 migration/backend implementation by owner on 2026-07-28.
@@ -497,7 +509,7 @@ ADVERTISER-UX-001C1 — Server-side auto-code generation
 ADVERTISER-UX-001C2 — Advertiser create wizard
 ADVERTISER-UX-001D1 — Users: split internal vs advertiser roles in UI
 ADVERTISER-UX-001D2 — Permission descriptions + UUID invariant
-CAMPAIGN-UX-002B/C/D — Remaining campaign UX polish (flights, placements, dashboard)
+CAMPAIGN-UX-002D — campaign create/fill wizard
 ```
 
 ### ADVERTISER-UX-001B2 — Contracts CRUD + PDF upload

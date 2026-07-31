@@ -57,7 +57,7 @@ def test_uismoke__creative__upload(smoke_page: Page) -> None:
     campaign_id = _create_draft_campaign(page)
 
     # ── Step 1: Navigate to Creatives tab ──
-    tab_creatives = page.locator('[data-testid="tab-creatives"]')
+    tab_creatives = page.locator('[data-testid="tab-content"]')
     expect(tab_creatives).to_be_visible(timeout=5000)
     tab_creatives.click()
     page.wait_for_load_state("networkidle")
@@ -120,7 +120,7 @@ def test_uismoke__creative__upload(smoke_page: Page) -> None:
     page.reload()
     page.wait_for_load_state("networkidle")
     # Re-open creatives tab after reload
-    tab_creatives = page.locator('[data-testid="tab-creatives"]')
+    tab_creatives = page.locator('[data-testid="tab-content"]')
     expect(tab_creatives).to_be_visible(timeout=5000)
     tab_creatives.click()
     page.wait_for_load_state("networkidle")

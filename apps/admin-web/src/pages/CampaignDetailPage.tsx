@@ -75,7 +75,7 @@ type PlacementWithForm = CampaignPlacementOut & { _editing?: boolean };
 type CreativeLink = CampaignCreativeOut & { asset: CreativeAssetOut | null };
 type CreativeLinkWithForm = CreativeLink & { _editing?: boolean };
 
-type Tab = "overview" | "flights" | "placements" | "creatives" | "dashboard";
+type Tab = "overview" | "content" | "dashboard";
 
 interface DetailData {
   campaign: CampaignOut;
@@ -143,6 +143,15 @@ export default function CampaignDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+
+  // Scroll refs for section navigation from readiness checklist
+  const flightsSectionRef = useRef<HTMLDivElement>(null);
+  const placementsSectionRef = useRef<HTMLDivElement>(null);
+  const creativesSectionRef = useRef<HTMLDivElement>(null);
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
+    setActiveTab("content");
+    setTimeout(() => ref.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
 
   // Form toggles
   const [showFlightAdd, setShowFlightAdd] = useState(false);
@@ -528,7 +537,7 @@ export default function CampaignDetailPage() {
 
   // Lazy-load reference data when placements tab is activated
   useEffect(() => {
-    if (activeTab === "placements" && !refLoaded && !refLoading && data) {
+    if (activeTab === "content" && !refLoaded && !refLoading && data) {
       setRefLoading(true);
       setRefError(null);
       Promise.all([
@@ -644,17 +653,17 @@ export default function CampaignDetailPage() {
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0", fontSize: "0.8rem" }}>
               <span data-testid="readiness-flight-status" style={{ fontWeight: 500, color: flights.length > 0 ? "#16a34a" : "#94a3b8", minWidth: "1.2rem" }}>{flights.length > 0 ? "✅" : "—"}</span>
               <span style={{ flex: 1, color: flights.length > 0 ? "#166534" : "#64748b" }}>Рейс (flight){flights.length > 0 ? ` — ${flights.length} шт.` : ""}</span>
-              {flights.length === 0 && <button type="button" data-testid="readiness-flight-action" onClick={() => setActiveTab("flights")} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Добавить рейс →</button>}
+              {flights.length === 0 && <button type="button" data-testid="readiness-flight-action" onClick={() => scrollToSection(flightsSectionRef)} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Добавить рейс →</button>}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0", fontSize: "0.8rem" }}>
               <span data-testid="readiness-placement-status" style={{ fontWeight: 500, color: placements.length > 0 ? "#16a34a" : "#94a3b8", minWidth: "1.2rem" }}>{placements.length > 0 ? "✅" : "—"}</span>
               <span style={{ flex: 1, color: placements.length > 0 ? "#166534" : "#64748b" }}>Размещение (placement){placements.length > 0 ? ` — ${placements.length} шт.` : ""}</span>
-              {placements.length === 0 && <button type="button" data-testid="readiness-placement-action" onClick={() => setActiveTab("placements")} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Добавить размещение →</button>}
+              {placements.length === 0 && <button type="button" data-testid="readiness-placement-action" onClick={() => scrollToSection(placementsSectionRef)} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Добавить размещение →</button>}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0", fontSize: "0.8rem" }}>
               <span data-testid="readiness-creative-status" style={{ fontWeight: 500, color: deliverableCount > 0 ? "#16a34a" : "#94a3b8", minWidth: "1.2rem" }}>{deliverableCount > 0 ? "✅" : "—"}</span>
               <span style={{ flex: 1, color: deliverableCount > 0 ? "#166534" : "#64748b" }}>Креатив с файлом{deliverableCount > 0 ? ` — ${deliverableCount} шт.` : ""}</span>
-              {deliverableCount === 0 && <button type="button" data-testid="readiness-creative-action" onClick={() => setActiveTab("creatives")} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Загрузить креатив →</button>}
+              {deliverableCount === 0 && <button type="button" data-testid="readiness-creative-action" onClick={() => scrollToSection(creativesSectionRef)} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Загрузить креатив →</button>}
             </div>
             <div data-testid="readiness-submit-status" style={{ marginTop: "0.5rem", padding: "0.5rem", borderRadius: 4, fontSize: "0.8rem", background: allReady ? "#f0fdf4" : "#fff7ed", color: allReady ? "#166534" : "#9a3412", border: allReady ? "1px solid #86efac" : "1px solid #fdba74" }}>
               {allReady ? "✅ Можно отправить на согласование — все условия выполнены." : `Осталось: ${missingItems.join(", ")}.`}
@@ -2097,8 +2106,31 @@ export default function CampaignDetailPage() {
 
   // ── Main render ──
 
-  const tabNames: Record<Tab, string> = { overview: "Обзор", flights: "Флайты", placements: "Плейсменты", creatives: "Креативы", dashboard: "Дашборд" };
-  const tabs: Tab[] = ["overview", "flights", "placements", "creatives", "dashboard"];
+  const tabNames: Record<Tab, string> = { overview: "Обзор", content: "Наполнение", dashboard: "Дашборд" };
+  const tabs: Tab[] = ["overview", "content", "dashboard"];
+
+  const contentItemCount = flights.length + placements.length + creatives.length;
+
+  function renderContent() {
+    return (
+      <div data-testid="content-panel">
+        <div data-testid="content-readiness-summary" style={{ marginBottom: "1rem", padding: "0.5rem 0.75rem", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0", display: "flex", gap: "1.5rem", fontSize: "0.8rem", color: "#475569" }}>
+          <span data-testid="content-flights-status">Рейсы: {flights.length > 0 ? "✅" : "—"}</span>
+          <span data-testid="content-placements-status">Плейсменты: {placements.length > 0 ? "✅" : "—"}</span>
+          <span data-testid="content-creatives-status">Креатив с файлом: {creatives.filter(c => c.asset != null).length > 0 ? "✅" : "—"}</span>
+        </div>
+        <div ref={flightsSectionRef} data-testid="content-flights-section">
+          {renderFlights()}
+        </div>
+        <div ref={placementsSectionRef} data-testid="content-placements-section">
+          {renderPlacements()}
+        </div>
+        <div ref={creativesSectionRef} data-testid="content-creatives-section">
+          {renderCreatives()}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -2113,16 +2145,12 @@ export default function CampaignDetailPage() {
         {tabs.map((t) => (
           <button key={t} type="button" style={{ ...css.tab, ...(activeTab === t ? css.tabActive : {}) }} onClick={() => setActiveTab(t)} data-testid={`tab-${t}`}>
             {tabNames[t]}
-            {t === "flights" && flights.length > 0 && <span style={css.tabCount}>{flights.length}</span>}
-            {t === "placements" && placements.length > 0 && <span style={css.tabCount}>{placements.length}</span>}
-            {t === "creatives" && creatives.length > 0 && <span style={css.tabCount}>{creatives.length}</span>}
+            {t === "content" && contentItemCount > 0 && <span style={css.tabCount}>{contentItemCount}</span>}
           </button>
         ))}
       </div>
       {activeTab === "overview" && renderOverview()}
-      {activeTab === "flights" && renderFlights()}
-      {activeTab === "placements" && renderPlacements()}
-      {activeTab === "creatives" && renderCreatives()}
+      {activeTab === "content" && renderContent()}
       {activeTab === "dashboard" && renderDashboard()}
     </div>
   );

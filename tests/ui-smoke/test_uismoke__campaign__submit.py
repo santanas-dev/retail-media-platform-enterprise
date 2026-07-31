@@ -93,7 +93,7 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     creative_code = f"SUB-CR-{os.urandom(2).hex()}"
     page.locator('[data-testid="readiness-creative-action"]').click()
     page.wait_for_load_state("networkidle")
-    expect(page.locator('[data-testid="tab-creatives"]')).to_be_visible(timeout=5000)
+    expect(page.locator('[data-testid="tab-content"]')).to_be_visible(timeout=5000)
 
     # Use primary upload path
     page.locator('[data-testid="creative-upload-select-file"]').click()

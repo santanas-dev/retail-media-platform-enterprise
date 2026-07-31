@@ -44,7 +44,7 @@ def _create_draft_campaign(page: Page) -> str:
 
 def _add_creative_to_library(page: Page, code: str) -> None:
     """Add a metadata-only creative to the library."""
-    tab = page.locator('[data-testid="tab-creatives"]')
+    tab = page.locator('[data-testid="tab-content"]')
     expect(tab).to_be_visible(timeout=5000)
     tab.click()
     page.wait_for_load_state("networkidle")

@@ -127,11 +127,65 @@ describe("CampaignDetailPage — S-009e", () => {
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
-    expect(screen.getByText("Флайты")).toBeTruthy();
+    expect(screen.getByText("Наполнение")).toBeTruthy();
     expect(screen.getByText("Отправить на согласование")).toBeTruthy();
     // Approval button should be disabled (no flights/placements/creatives)
     const btn = screen.getByText("Отправить на согласование");
     expect((btn as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  // ── CAMPAIGN-UX-002C: merged content tab ──
+
+  it("has exactly 3 tabs: Обзор, Наполнение, Дашборд", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches();
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+
+    expect(screen.getByTestId("tab-overview")).toBeTruthy();
+    expect(screen.getByTestId("tab-content")).toBeTruthy();
+    expect(screen.getByTestId("tab-dashboard")).toBeTruthy();
+    // Old tabs are gone
+    expect(screen.queryByTestId("tab-flights")).toBeNull();
+    expect(screen.queryByTestId("tab-placements")).toBeNull();
+    expect(screen.queryByTestId("tab-creatives")).toBeNull();
+    // No duplicate Reporting tab regression (002B)
+    expect(screen.queryByTestId("tab-reporting")).toBeNull();
+  });
+
+  it("content tab renders flights, placements, creatives sections", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches();
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Наполнение"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("content-flights-section")).toBeTruthy();
+      expect(screen.getByTestId("content-placements-section")).toBeTruthy();
+      expect(screen.getByTestId("content-creatives-section")).toBeTruthy();
+      // Readiness summary visible
+      expect(screen.getByTestId("content-readiness-summary")).toBeTruthy();
+    });
+  });
+
+  it("creative primary upload UI is visible in content tab", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches();
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Наполнение"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Загрузить файл с ПК")).toBeTruthy();
+    });
   });
 
   // ── Flights: add form ──
@@ -147,7 +201,7 @@ describe("CampaignDetailPage — S-009e", () => {
 
     // Navigate to flights tab
     const user = userEvent.setup();
-    await user.click(screen.getByText("Флайты"));
+    await user.click(screen.getByText("Наполнение"));
 
     // Click add button
     await waitFor(() => { expect(screen.getByText("+ Добавить флайт")).toBeTruthy(); });
@@ -186,7 +240,7 @@ describe("CampaignDetailPage — S-009e", () => {
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
-    await user.click(screen.getByText("Флайты"));
+    await user.click(screen.getByText("Наполнение"));
     await waitFor(() => { expect(screen.getByText("+ Добавить флайт")).toBeTruthy(); });
     await user.click(screen.getByText("+ Добавить флайт"));
     await waitFor(() => { expect(screen.getByText("Добавить")).toBeTruthy(); });
@@ -217,7 +271,7 @@ describe("CampaignDetailPage — S-009e", () => {
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
-    await user.click(screen.getByText("Флайты"));
+    await user.click(screen.getByText("Наполнение"));
     await waitFor(() => { expect(screen.getByText("+ Добавить флайт")).toBeTruthy(); });
     await user.click(screen.getByText("+ Добавить флайт"));
     await waitFor(() => { expect(screen.getByText("Добавить")).toBeTruthy(); });
@@ -242,7 +296,7 @@ describe("CampaignDetailPage — S-009e", () => {
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
-    await user.click(screen.getByText("Плейсменты"));
+    await user.click(screen.getByText("Наполнение"));
 
     // Wait for ref loading to complete, then open form
     await waitFor(() => {
@@ -267,7 +321,7 @@ describe("CampaignDetailPage — S-009e", () => {
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
-    await user.click(screen.getByText("Креативы"));
+    await user.click(screen.getByText("Наполнение"));
 
     await waitFor(() => {
       // S-009j: business-friendly intake form
@@ -285,7 +339,7 @@ describe("CampaignDetailPage — S-009e", () => {
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
-    await userEvent.setup().click(screen.getByText("Креативы"));
+    await userEvent.setup().click(screen.getByText("Наполнение"));
 
     await waitFor(() => {
       expect(screen.getByText("У этой кампании пока нет креативов.")).toBeTruthy();
@@ -366,7 +420,7 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     // Navigate to flights tab
-    await userEvent.setup().click(screen.getByText("Флайты"));
+    await userEvent.setup().click(screen.getByText("Наполнение"));
     // No add button
     expect(screen.queryByText("+ Добавить флайт")).toBeNull();
   });
@@ -398,7 +452,7 @@ describe("CampaignDetailPage — S-009e", () => {
       const router = createRouter("/campaigns/c1");
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
-      await userEvent.setup().click(screen.getByText("Креативы"));
+      await userEvent.setup().click(screen.getByText("Наполнение"));
 
       await waitFor(() => {
         expect(screen.getByTestId("creative-attach-btn")).toBeTruthy();
@@ -426,7 +480,7 @@ describe("CampaignDetailPage — S-009e", () => {
       const router = createRouter("/campaigns/c1");
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
-      await userEvent.setup().click(screen.getByText("Креативы"));
+      await userEvent.setup().click(screen.getByText("Наполнение"));
 
       await waitFor(() => {
         // Counter shows org-filtered count (1), not global count (2)
@@ -446,7 +500,7 @@ describe("CampaignDetailPage — S-009e", () => {
       const router = createRouter("/campaigns/c1");
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
-      await userEvent.setup().click(screen.getByText("Креативы"));
+      await userEvent.setup().click(screen.getByText("Наполнение"));
 
       await waitFor(() => {
         expect(screen.getByTestId("creative-attach-btn")).toBeTruthy();
@@ -479,7 +533,7 @@ describe("CampaignDetailPage — S-009e", () => {
       const router = createRouter("/campaigns/c1");
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
-      await userEvent.setup().click(screen.getByText("Креативы"));
+      await userEvent.setup().click(screen.getByText("Наполнение"));
 
       await waitFor(() => {
         expect(screen.getByTestId("creative-attach-btn")).toBeTruthy();
@@ -515,7 +569,7 @@ describe("CampaignDetailPage — S-009e", () => {
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
-      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText("Наполнение"));
 
       // Click the intake button to reveal the form
       await user.click(screen.getByText(/Добавить креатив в библиотеку/));
@@ -539,7 +593,7 @@ describe("CampaignDetailPage — S-009e", () => {
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
-      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText("Наполнение"));
       await user.click(screen.getByText(/Добавить креатив в библиотеку/));
 
       // Technical section is collapsed
@@ -557,7 +611,7 @@ describe("CampaignDetailPage — S-009e", () => {
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
-      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText("Наполнение"));
       await user.click(screen.getByText(/Добавить креатив в библиотеку/));
 
       // S-017: upload notice removed — upload is now active
@@ -572,7 +626,7 @@ describe("CampaignDetailPage — S-009e", () => {
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
-      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText("Наполнение"));
       await user.click(screen.getByText(/Добавить креатив в библиотеку/));
 
       // Fill code, leave name empty — clear the required temporarily
@@ -605,7 +659,7 @@ describe("CampaignDetailPage — S-009e", () => {
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
-      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText("Наполнение"));
       await user.click(screen.getByText(/Добавить креатив в библиотеку/));
 
       await user.type(screen.getByLabelText("Код *"), "BANNER-001");
@@ -632,7 +686,7 @@ describe("CampaignDetailPage — S-009e", () => {
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
-      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText("Наполнение"));
       await user.click(screen.getByText(/Добавить креатив в библиотеку/));
 
       await user.type(screen.getByLabelText("Код *"), "BANNER-001");
@@ -663,7 +717,7 @@ describe("CampaignDetailPage — S-009e", () => {
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
-      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText("Наполнение"));
 
       // Open the existing assets list
       await user.click(screen.getByText(/Существующие креативы/));
@@ -683,7 +737,7 @@ describe("CampaignDetailPage — S-009e", () => {
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
-      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText("Наполнение"));
 
       // Primary upload section is visible
       expect(screen.getByText("Загрузить файл с ПК")).toBeTruthy();
@@ -700,7 +754,7 @@ describe("CampaignDetailPage — S-009e", () => {
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
-      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText("Наполнение"));
 
       // Click the upload button — but since we mock file input,
       // we test the form visibility by direct state check.
@@ -718,7 +772,7 @@ describe("CampaignDetailPage — S-009e", () => {
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
-      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText("Наполнение"));
 
       // Secondary path label
       expect(screen.getByText(/Другие способы добавить креатив/)).toBeTruthy();
@@ -737,7 +791,7 @@ describe("CampaignDetailPage — S-009e", () => {
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
-      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText("Наполнение"));
 
       // With no primary upload open, secondary label is visible
       expect(screen.getByText(/Другие способы добавить креатив/)).toBeTruthy();
@@ -780,7 +834,7 @@ describe("CampaignDetailPage — S-009e", () => {
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
-      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText("Наполнение"));
 
       // Simulate file selection via the hidden primary input
       const file = new File(["dummy"], "test.png", { type: "image/png" });
@@ -826,7 +880,7 @@ describe("CampaignDetailPage — S-009e", () => {
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
-      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText("Наполнение"));
 
       // Simulate file selection + form fill → submit
       const file = new File(["dummy"], "test.jpg", { type: "image/jpeg" });
@@ -911,7 +965,7 @@ describe("CampaignDetailPage — S-009e", () => {
       render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
-      await user.click(screen.getByText("Креативы"));
+      await user.click(screen.getByText("Наполнение"));
 
       // Simulate file selection + submit
       const file = new File(["dummy"], "test.png", { type: "image/png" });
@@ -984,7 +1038,7 @@ describe("CampaignDetailPage — S-009e", () => {
       expect(submitStatus.textContent).toContain("креатив с файлом");
     });
 
-    it("readiness action buttons switch tabs", async () => {
+    it("readiness action buttons switch to content tab and focus section", async () => {
       mockAuthenticatedSession();
       mockAllFetches();
       const router = createRouter("/campaigns/c1");
@@ -992,13 +1046,21 @@ describe("CampaignDetailPage — S-009e", () => {
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
 
-      // Click flight action → should switch to flights tab
+      // Click flight action → should switch to Наполнение tab, flights section visible
       await user.click(screen.getByTestId("readiness-flight-action"));
-      // Tab should be active — the flights tab button should have active style
-      // (we verify by checking the action button is gone, meaning we switched)
       await waitFor(() => {
+        // Action button disappears (we left the overview tab)
         expect(screen.queryByTestId("readiness-flight-action")).toBeNull();
       });
+      // Content panel confirms we're on the content tab
+      expect(screen.getByTestId("content-panel")).toBeTruthy();
+      // Flights section is rendered
+      expect(screen.getByTestId("content-flights-section")).toBeTruthy();
+      // Readiness summary shows all three section statuses
+      expect(screen.getByTestId("content-readiness-summary")).toBeTruthy();
+      expect(screen.getByTestId("content-flights-status")).toBeTruthy();
+      expect(screen.getByTestId("content-placements-status")).toBeTruthy();
+      expect(screen.getByTestId("content-creatives-status")).toBeTruthy();
     });
 
     it("shows 'Можно отправить' when all prerequisites met", async () => {
@@ -1049,7 +1111,7 @@ describe("CampaignDetailPage — S-009e", () => {
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
-    await user.click(screen.getByText("Креативы"));
+    await user.click(screen.getByText("Наполнение"));
     await user.click(screen.getByText(/Существующие креативы/));
 
     // The rendered asset data should not contain storage fields
@@ -1557,7 +1619,7 @@ describe("CampaignDetailPage — S-009e", () => {
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
-    await user.click(screen.getByText("Плейсменты"));
+    await user.click(screen.getByText("Наполнение"));
 
     // Wait for ref data to load (loading text disappears)
     await waitFor(() => {
@@ -1587,7 +1649,7 @@ describe("CampaignDetailPage — S-009e", () => {
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
-    await user.click(screen.getByText("Плейсменты"));
+    await user.click(screen.getByText("Наполнение"));
 
     // Wait for ref data to load (loading text disappears)
     await waitFor(() => {
@@ -1612,7 +1674,7 @@ describe("CampaignDetailPage — S-009e", () => {
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
-    await user.click(screen.getByText("Плейсменты"));
+    await user.click(screen.getByText("Наполнение"));
 
     await waitFor(() => {
       expect(screen.getByText("Network error")).toBeTruthy();
@@ -1643,7 +1705,7 @@ describe("CampaignDetailPage — S-009e", () => {
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
-    await user.click(screen.getByText("Плейсменты"));
+    await user.click(screen.getByText("Наполнение"));
 
     // Wait for ref data to load (loading text disappears)
     await waitFor(() => {

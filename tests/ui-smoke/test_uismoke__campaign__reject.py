@@ -40,7 +40,7 @@ def test_uismoke__campaign__reject(smoke_page: Page) -> None:
 
     # ── Creative ──
     creative_code = f"RJ-CR-{os.urandom(2).hex()}"
-    page.click('[data-testid="tab-creatives"]')
+    page.click('[data-testid="tab-content"]')
     page.wait_for_load_state("networkidle")
     page.click('[data-testid="creative-add-library-btn"]')
     page.fill('[data-testid="creative-code"]', creative_code)
@@ -57,7 +57,7 @@ def test_uismoke__campaign__reject(smoke_page: Page) -> None:
     print(f"[{time.time()-t0:.1f}s] Creative uploaded")
 
     # ── Flights ──
-    page.click('[data-testid="tab-flights"]')
+    page.click('[data-testid="tab-content"]')
     page.wait_for_load_state("networkidle")
     page.click('[data-testid="flight-add-btn"]')
     page.fill('[data-testid="flight-start"]', "2026-12-01")
@@ -66,7 +66,7 @@ def test_uismoke__campaign__reject(smoke_page: Page) -> None:
     page.wait_for_load_state("networkidle")
 
     # ── Placements ──
-    page.click('[data-testid="tab-placements"]')
+    page.click('[data-testid="tab-content"]')
     page.wait_for_load_state("networkidle")
     page.click('[data-testid="placement-add-btn"]')
     page.locator('[data-testid="placement-surface"]').select_option(index=1)

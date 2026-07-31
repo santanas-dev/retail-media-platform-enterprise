@@ -182,18 +182,31 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 
 **CAMPAIGN-UX-002B ✅** — Merge duplicate Dashboard/Reporting tabs.
 - CampaignDetailPage: удалена вкладка «Отчётность» (дублировала Дашборд).
-- Тип Tab: убран `"reporting"`. Tab order: Обзор/Флайты/Плейсменты/Креативы/Дашборд (5 tabs).
+- Тип Tab: убран `"reporting"`. После 002C: Обзор/Наполнение/Дашборд (3 tabs).
 - renderDashboard: единый entry point для аналитики кампании.
 - Data-testid: `campaign-dashboard`, `campaign-dashboard-empty-pop`.
 - Текст недопоказа: «Детализация — ниже (по дням / по поверхностям)» вместо ссылки на несуществующую «Отчётность».
 - Vitest: 279/279 (2 старых reporting-теста обновлены на Dashboard).
-- UI-smoke: aria snapshot подтверждает 5 вкладок, «Отчётность» отсутствует.
-- Campaign create/activate/pause smokes: pre-existing failures (creative upload timeout, contract selector) — не вызваны 002B.
+- UI-smoke: aria snapshot подтверждает, «Отчётность» отсутствует.
+- Campaign create/activate/pause smokes: pre-existing failures (creative upload timeout) — не вызваны 002B.
 - self.report_view остаётся blocked до player/PoP.
 - CI: #30615344392 green (35/35). Landed on develop at 9c862d3.
 - rg `tab-reporting`: 0 активных ссылок в коде/smoke.
 - operator walkthrough: PENDING.
-- Next → CAMPAIGN-UX-002C — merge flights/placements/creatives into «Наполнение».
+- Checkpoint by PS-001.
+
+**CAMPAIGN-UX-002C ✅** — Merge Flights/Placements/Creatives into one «Наполнение» tab.
+- CampaignDetailPage: три отдельных таба → один «Наполнение» с тремя секциями.
+- Tab type: `"content"` заменяет `"flights" | "placements" | "creatives"`. Tab order: Обзор/Наполнение/Дашборд (3).
+- renderContent(): flights, placements, creatives на одном скролле.
+- Readiness checklist: кнопки «Добавить рейс/размещение/креатив» → scrollToSection с переходом на content tab.
+- Data-testid: `tab-content` (таб), `content-panel`, `content-readiness-summary`, `content-flights-section`, `content-placements-section`, `content-creatives-section`.
+- Vitest: 282/282 (+3 новых: 3 tabs, sections render, creative upload visible; readiness-тест обновлён на scrollToSection).
+- UI-smoke: campaign.edit (фикс table-селектора), submit, upload, inventory.simulate, creative.moderate — все green.
+- Campaign approve/activate/pause/reject smokes: pre-existing creative-upload failures (не 002C).
+- rg `tab-flights|tab-placements|tab-creatives`: только в vitest-assertions на toBeNull() ✅.
+- operator walkthrough: PENDING.
+- Next → CAMPAIGN-UX-002D — campaign create/fill wizard.
 - Checkpoint by PS-001.
 
 **PLAN-COUNT-SYNC-001 ✅** — Pre-pilot plan counts synced to registry.

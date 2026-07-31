@@ -66,8 +66,8 @@ def test_uismoke__campaign__edit(page: Page):
     # ═══════════════════════════════════════════════════════════
     # Phase 3: Add a flight
     # ═══════════════════════════════════════════════════════════
-    expect(page.get_by_test_id("tab-flights")).to_be_visible(timeout=5000)
-    page.get_by_test_id("tab-flights").click()
+    expect(page.get_by_test_id("tab-content")).to_be_visible(timeout=5000)
+    page.get_by_test_id("tab-content").click()
     page.wait_for_load_state("networkidle")
 
     expect(page.get_by_test_id("flight-add-btn")).to_be_visible(timeout=5000)
@@ -81,15 +81,16 @@ def test_uismoke__campaign__edit(page: Page):
     page.get_by_test_id("flight-submit").click()
     page.wait_for_load_state("networkidle")
 
-    # Flight should appear in table — verify date-year is visible (Russian locale)
-    expect(page.locator("table")).to_be_visible(timeout=5000)
-    table_text = page.locator("table").inner_text()
+    # Flight should appear in table — scope to flights section (002C: merged tab)
+    flights_table = page.locator('[data-testid="content-flights-section"] table')
+    expect(flights_table).to_be_visible(timeout=5000)
+    table_text = flights_table.inner_text()
     assert "2026" in table_text, f"Flight not found in table: {table_text}"
 
     # ═══════════════════════════════════════════════════════════
     # Phase 4: Add a placement
     # ═══════════════════════════════════════════════════════════
-    page.get_by_test_id("tab-placements").click()
+    page.get_by_test_id("tab-content").click()
     page.wait_for_load_state("networkidle")
 
     expect(page.get_by_test_id("placement-add-btn")).to_be_visible(timeout=5000)
@@ -107,5 +108,5 @@ def test_uismoke__campaign__edit(page: Page):
         surface_select.select_option(index=1)
         page.get_by_test_id("placement-submit").click()
         page.wait_for_load_state("networkidle")
-        # Placement should appear in table
-        expect(page.locator("table")).to_be_visible(timeout=5000)
+        # Placement should appear in table — scope to placements section (002C)
+        expect(page.locator('[data-testid="content-placements-section"] table')).to_be_visible(timeout=5000)

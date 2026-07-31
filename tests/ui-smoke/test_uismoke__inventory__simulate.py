@@ -43,7 +43,7 @@ def _create_draft_campaign(page: Page) -> str:
 
 def _add_flight(page: Page, start: str, end: str) -> None:
     """Add a flight via the Flights tab (name/budget optional)."""
-    tab = page.locator('[data-testid="tab-flights"]')
+    tab = page.locator('[data-testid="tab-content"]')
     expect(tab).to_be_visible(timeout=5000)
     tab.click()
     page.wait_for_load_state("networkidle")
@@ -60,7 +60,7 @@ def _add_flight(page: Page, start: str, end: str) -> None:
 
 def _add_placement(page: Page) -> None:
     """Add a placement via the Placements tab — selects first surface."""
-    tab = page.locator('[data-testid="tab-placements"]')
+    tab = page.locator('[data-testid="tab-content"]')
     expect(tab).to_be_visible(timeout=5000)
     tab.click()
     page.wait_for_load_state("networkidle")
@@ -79,7 +79,7 @@ def _add_placement(page: Page) -> None:
 
 def _add_creative_to_library(page: Page, code: str) -> None:
     """Add a creative to the library and attach it to the campaign."""
-    tab = page.locator('[data-testid="tab-creatives"]')
+    tab = page.locator('[data-testid="tab-content"]')
     expect(tab).to_be_visible(timeout=5000)
     tab.click()
     page.wait_for_load_state("networkidle")
