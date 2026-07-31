@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useRef, type FormEvent } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   getCampaign,
   getFlightsByCampaign,
@@ -129,7 +129,13 @@ function fmtAmount(amount: number | null, currency: string): string {
 export default function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+
+  // CAMPAIGN-UX-002D: guided create-to-fill — detect ?start=content from campaign create
+  const startParam = new URLSearchParams(location.search).get("start");
+  const initialTab: Tab = startParam === "content" ? "content" : "overview";
+  const [showCreatedBanner, setShowCreatedBanner] = useState(startParam === "content");
 
   const hasApprovePerm = user?.permissions?.includes("campaigns.approve") ?? false;
   const hasManagePerm = user?.permissions?.includes("campaigns.manage") ?? false;
@@ -142,7 +148,7 @@ export default function CampaignDetailPage() {
   const [allAssets, setAllAssets] = useState<CreativeAssetOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
 
   // Scroll refs for section navigation from readiness checklist
   const flightsSectionRef = useRef<HTMLDivElement>(null);
@@ -700,6 +706,16 @@ export default function CampaignDetailPage() {
               <div data-testid="campaign-submit-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
             )}
           </div>
+          {/* CAMPAIGN-UX-002D: start filling CTA for incomplete draft */}
+          {!canApprove && (
+            <div style={{ marginBottom: "1rem" }}>
+              <button type="button" data-testid="campaign-start-filling-btn"
+                onClick={() => scrollToSection(flightsSectionRef)}
+                style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 4, padding: "0.5rem 1rem", fontSize: "0.85rem", cursor: "pointer", fontWeight: 500 }}>
+                Начать наполнение →
+              </button>
+            </div>
+          )}
           </>
         )}
 
@@ -2112,12 +2128,18 @@ export default function CampaignDetailPage() {
   const contentItemCount = flights.length + placements.length + creatives.length;
 
   function renderContent() {
+    const hasFlight = flights.length > 0;
+    const hasPlacement = placements.length > 0;
+    const hasDeliverable = creatives.filter(c => c.asset != null).length > 0;
+    const nextStep = !hasFlight ? "Добавьте рейс" : !hasPlacement ? "Добавьте размещение" : !hasDeliverable ? "Загрузите креатив" : "Можно отправить на согласование";
+
     return (
       <div data-testid="content-panel">
         <div data-testid="content-readiness-summary" style={{ marginBottom: "1rem", padding: "0.5rem 0.75rem", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0", display: "flex", gap: "1.5rem", fontSize: "0.8rem", color: "#475569" }}>
-          <span data-testid="content-flights-status">Рейсы: {flights.length > 0 ? "✅" : "—"}</span>
-          <span data-testid="content-placements-status">Плейсменты: {placements.length > 0 ? "✅" : "—"}</span>
-          <span data-testid="content-creatives-status">Креатив с файлом: {creatives.filter(c => c.asset != null).length > 0 ? "✅" : "—"}</span>
+          <span data-testid="content-flights-status">Рейсы: {hasFlight ? "✅" : "—"}</span>
+          <span data-testid="content-placements-status">Плейсменты: {hasPlacement ? "✅" : "—"}</span>
+          <span data-testid="content-creatives-status">Креатив с файлом: {hasDeliverable ? "✅" : "—"}</span>
+          <span data-testid="content-next-step" style={{ marginLeft: "auto", fontWeight: 600, color: hasFlight && hasPlacement && hasDeliverable ? "#16a34a" : "#2563eb" }}>→ {nextStep}</span>
         </div>
         <div ref={flightsSectionRef} data-testid="content-flights-section">
           {renderFlights()}
@@ -2141,6 +2163,14 @@ export default function CampaignDetailPage() {
         {campaign.name}
         <span style={{ fontSize: "0.7rem", color: "#94a3b8", marginLeft: "0.5rem", fontWeight: 400 }}>{campaign.code}</span>
       </h2>
+      {/* CAMPAIGN-UX-002D: created banner — visible on any tab */}
+      {campaign && campaign.status === "draft" && showCreatedBanner && !(flights.length > 0 && placements.length > 0 && creatives.filter(c => c.asset != null).length > 0) && (
+        <div data-testid="campaign-created-next-step" style={{ marginBottom: "1rem", padding: "0.75rem 1rem", background: "#eff6ff", borderRadius: 6, border: "1px solid #93c5fd", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <span style={{ fontSize: "1rem" }}>📋</span>
+          <span style={{ flex: 1, fontSize: "0.85rem", color: "#1e40af" }}>Кампания создана. Добавьте рейс, размещение и креатив, чтобы отправить на согласование.</span>
+          <button type="button" onClick={() => scrollToSection(flightsSectionRef)} style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 4, padding: "0.35rem 0.75rem", fontSize: "0.8rem", cursor: "pointer", whiteSpace: "nowrap" }}>Начать наполнение →</button>
+        </div>
+      )}
       <div style={css.tabBar}>
         {tabs.map((t) => (
           <button key={t} type="button" style={{ ...css.tab, ...(activeTab === t ? css.tabActive : {}) }} onClick={() => setActiveTab(t)} data-testid={`tab-${t}`}>

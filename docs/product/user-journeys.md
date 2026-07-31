@@ -441,6 +441,21 @@ self.login / self.campaign_view / self.report_view + свои smoke.
 
 **Data-testid:** `tab-content` (таб), `content-panel`, `content-readiness-summary`, `content-flights-section`, `content-placements-section`, `content-creatives-section`.
 
+---
+
+### 6.0e CAMPAIGN-UX-002D — Guided create-to-fill flow
+
+**Статус:** ✅ Vitest 288/288. Баннер, CTA, content-next-step. Без переписывания wizard.
+**Next:** KSO-ENV-001 или по выбору владельца.
+
+**Happy-path (4 шага):**
+1. Оператор создаёт кампанию → редирект с `?start=content`.
+2. Кампания открывается на вкладке «Наполнение», баннер: «Кампания создана. Добавьте рейс, размещение и креатив».
+3. На Обзоре — кнопка «Начать наполнение» для незаполненного draft.
+4. В «Наполнении» — `content-next-step` показывает конкретное действие (Добавьте рейс → Добавьте размещение → Загрузите креатив → Можно отправить).
+
+**Data-testid:** `campaign-created-next-step`, `campaign-start-filling-btn`, `content-next-step`.
+
 ### 6.1 ADVERTISER-UX-001A0 — Legal requisites draft for owner/legal approval
 
 **Статус:** ✅ Approved for ADVERTISER-UX-001A1 migration/backend implementation by owner on 2026-07-28.
@@ -509,7 +524,7 @@ ADVERTISER-UX-001C1 — Server-side auto-code generation
 ADVERTISER-UX-001C2 — Advertiser create wizard
 ADVERTISER-UX-001D1 — Users: split internal vs advertiser roles in UI
 ADVERTISER-UX-001D2 — Permission descriptions + UUID invariant
-CAMPAIGN-UX-002D — campaign create/fill wizard
+KSO-ENV-001 — KSO player environment setup
 ```
 
 ### ADVERTISER-UX-001B2 — Contracts CRUD + PDF upload

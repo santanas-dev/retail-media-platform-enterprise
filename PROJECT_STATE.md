@@ -209,6 +209,20 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Next → CAMPAIGN-UX-002D — campaign create/fill wizard.
 - Checkpoint by PS-001.
 
+**CAMPAIGN-UX-002D ✅** — Guided create-to-fill flow.
+- CampaignCreatePage: редирект `/campaigns/${id}?start=content`.
+- CampaignDetailPage: `useLocation().search` → initialTab + showCreatedBanner.
+- Баннер `campaign-created-next-step`: виден на любой вкладке, только для draft + неполных.
+- CTA `campaign-start-filling-btn`: на Overview для незаполненного draft.
+- `content-next-step`: детерминированный текст (Добавьте рейс → размещение → креатив → Можно отправить).
+- Без переписывания wizard, без backend-изменений.
+- Vitest: 288/288 (+6 новых: next-step, banner, CTA, ?start=content, no-banner, 3-tab regression).
+- UI-smoke: campaign.create — pre-existing contract selector failure (не 002D).
+- Guard: 0 findings.
+- operator walkthrough: PENDING.
+- Next → KSO-ENV-001 или по выбору владельца.
+- Checkpoint by PS-001.
+
 **PLAN-COUNT-SYNC-001 ✅** — Pre-pilot plan counts synced to registry.
 - Registry facts: 49 total, 39 reachable, 10 blocked (30 admin-web UI, 5 service, 3 advertiser-web, 1 public).
 - Plan updated: 35/40→39/49, admin-web 26→30, blocked list includes EPIC-L license IDs.

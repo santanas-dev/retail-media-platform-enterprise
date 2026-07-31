@@ -1068,7 +1068,8 @@ describe("CampaignDetailPage — S-009e", () => {
       // Seed with flights, placements, and deliverable creative
       const SEED_FL = [{ id: "f1", campaign_id: "c1", name: "Flight 1", start_at: "2026-08-01T00:00:00Z", end_at: "2026-08-31T00:00:00Z", sort_order: 0, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }];
       const SEED_PL = [{ id: "p1", campaign_id: "c1", display_surface_id: "surf-1", max_impressions: 1000, sort_order: 0, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", surface_code: "SURF-001" }];
-      const SEED_CR = [{ id: "cc1", campaign_id: "c1", creative_asset_id: "ca-1", sort_order: 0, duration_override_ms: null, created_at: "2026-01-01T00:00:00Z", asset: { id: "ca-1", code: "CR1", name: "Banner", media_type: "image", sha256_checksum: "a".repeat(64), file_size_bytes: 100, status: "ready", moderation_status: "approved", resolution_w: 1920, resolution_h: 1080, duration_ms: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" } }];
+      const SEED_CR = [{ id: "cc1", campaign_id: "c1", creative_asset_id: "ca-1", sort_order: 0, duration_override_ms: null, created_at: "2026-01-01T00:00:00Z" }];
+    const SEED_CA = [{ id: "ca-1", code: "CR1", name: "Banner", media_type: "image", sha256_checksum: "a".repeat(64), file_size_bytes: 100, status: "ready", moderation_status: "approved", resolution_w: 1920, resolution_h: 1080, duration_ms: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }];
       mockAllFetches({
         "/campaign-flights": () => Promise.resolve(new Response(JSON.stringify(SEED_FL), { status: 200 })),
         "/campaign-placements": () => Promise.resolve(new Response(JSON.stringify(SEED_PL), { status: 200 })),
@@ -1088,6 +1089,98 @@ describe("CampaignDetailPage — S-009e", () => {
       // Submit status
       expect(screen.getByTestId("readiness-submit-status").textContent).toContain("Можно отправить");
     });
+  });
+
+  // ── CAMPAIGN-UX-002D: guided create-to-fill ──
+
+  it("content-next-step shows correct next action", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches();
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Наполнение"));
+
+    // No flights → "Добавьте рейс"
+    await waitFor(() => {
+      expect(screen.getByTestId("content-next-step").textContent).toContain("Добавьте рейс");
+    });
+  });
+
+  it("content-next-step shows 'Можно отправить' when all ready", async () => {
+    mockAuthenticatedSession();
+    // Use full path keys matching the default mockFetchFor URL conventions
+    const SEED_FL = [{ id: "f1", campaign_id: "c1", name: "F1", start_at: "2026-08-01T00:00:00Z", end_at: "2026-08-31T00:00:00Z", sort_order: 0, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }];
+    const SEED_PL = [{ id: "p1", campaign_id: "c1", display_surface_id: "surf-1", max_impressions: 1000, sort_order: 0, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", surface_code: "SURF-001" }];
+    const SEED_CR = [{ id: "cc1", campaign_id: "c1", creative_asset_id: "ca-1", sort_order: 0, duration_override_ms: null, created_at: "2026-01-01T00:00:00Z" }];
+    const SEED_CA = [{ id: "ca-1", code: "CR1", name: "Banner", media_type: "image", sha256_checksum: "a".repeat(64), file_size_bytes: 100, status: "ready", moderation_status: "approved", resolution_w: 1920, resolution_h: 1080, duration_ms: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }];
+    mockAllFetches({
+      "campaign-flights": () => Promise.resolve(new Response(JSON.stringify(SEED_FL), { status: 200 })),
+      "campaign-placements": () => Promise.resolve(new Response(JSON.stringify(SEED_PL), { status: 200 })),
+      "campaign-creatives": () => Promise.resolve(new Response(JSON.stringify(SEED_CR), { status: 200 })),
+      "creative-assets": () => Promise.resolve(new Response(JSON.stringify(SEED_CA), { status: 200 })),
+    });
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Наполнение"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("content-next-step").textContent).toContain("Можно отправить на согласование");
+    });
+  });
+
+  it("campaign-start-filling-btn visible for incomplete draft", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches();
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+
+    // Draft with no flights → start filling button visible
+    expect(screen.getByTestId("campaign-start-filling-btn")).toBeTruthy();
+  });
+
+  it("shows created banner and opens content tab via ?start=content", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches();
+    const router = createRouter("/campaigns/c1?start=content");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("← К списку кампаний")).toBeTruthy(); });
+
+    // Banner visible
+    expect(screen.getByTestId("campaign-created-next-step")).toBeTruthy();
+    // Content tab is active (content panel visible)
+    expect(screen.getByTestId("content-panel")).toBeTruthy();
+  });
+
+  it("no created banner when opening campaign directly (no ?start)", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches();
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+
+    // No banner without ?start
+    expect(screen.queryByTestId("campaign-created-next-step")).toBeNull();
+  });
+
+  it("3 tabs remain: Обзор / Наполнение / Дашборд (no regression)", async () => {
+    mockAuthenticatedSession();
+    mockAllFetches();
+    const router = createRouter("/campaigns/c1");
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
+
+    expect(screen.getByTestId("tab-overview")).toBeTruthy();
+    expect(screen.getByTestId("tab-content")).toBeTruthy();
+    expect(screen.getByTestId("tab-dashboard")).toBeTruthy();
+    expect(screen.queryByTestId("tab-reporting")).toBeNull();
+    expect(screen.queryByTestId("tab-flights")).toBeNull();
   });
 
   // ── S-017: Upload UI ──
