@@ -233,6 +233,16 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Next → UX-POLISH-001B — localized validation errors.
 - Checkpoint by PS-001.
 
+**UX-POLISH-001B ✅** — Localize FastAPI/Pydantic 422 validation errors.
+- Field label map (30+ полей): Код, ИНН, Расчётный счёт, Юр. адрес etc.
+- Type-based Russian translations (не fragile English msg): missing→обязательное поле, string_too_short→минимум N симв., string_pattern_mismatch→неверный формат, value_error→неверное значение, etc. 14 type categories.
+- Unknown type/field: fallback to original msg with field label, no crash, never [object Object].
+- 403/409 status fallbacks preserved.
+- Vitest: 314/314 (+24 localized tests: all types, all field labels, multiple errors, unknown fallbacks).
+- operator walkthrough: PENDING.
+- Next → KSO-ENV-001 или по выбору владельца.
+- Checkpoint by PS-001.
+
 **PLAN-COUNT-SYNC-001 ✅** — Pre-pilot plan counts synced to registry.
 - Registry facts: 49 total, 39 reachable, 10 blocked (30 admin-web UI, 5 service, 3 advertiser-web, 1 public).
 - Plan updated: 35/40→39/49, admin-web 26→30, blocked list includes EPIC-L license IDs.
