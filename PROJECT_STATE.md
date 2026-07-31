@@ -177,7 +177,7 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - UI-smoke: `test_uismoke__user__assign_roles` PASSED 2.26s (D2 permission catalog check добавлен).
 - Registry: без нового feature ID (D2 — часть existing `user.assign_roles` smoke).
 - Operator walkthrough: PENDING.
-- Next → CAMPAIGN-UX-002B или по выбору владельца.
+- Next → CAMPAIGN-UX-002C — merge flights/placements/creatives.
 - Checkpoint by PS-001.
 
 **CAMPAIGN-UX-002B ✅** — Merge duplicate Dashboard/Reporting tabs.
@@ -190,6 +190,9 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - UI-smoke: aria snapshot подтверждает 5 вкладок, «Отчётность» отсутствует.
 - Campaign create/activate/pause smokes: pre-existing failures (creative upload timeout, contract selector) — не вызваны 002B.
 - self.report_view остаётся blocked до player/PoP.
+- CI: #30615344392 green (35/35). Landed on develop at 9c862d3.
+- rg `tab-reporting`: 0 активных ссылок в коде/smoke.
+- operator walkthrough: PENDING.
 - Next → CAMPAIGN-UX-002C — merge flights/placements/creatives into «Наполнение».
 - Checkpoint by PS-001.
 
