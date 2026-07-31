@@ -374,7 +374,7 @@ self.login / self.campaign_view / self.report_view + свои smoke.
 | EPIC-B | Бренды / договоры / контакты | Запланирован |
 | EPIC-C | Wizard + автоматическое присвоение кода | Запланирован |
 | EPIC-D | Пользователи и права — UX | D1 ✅ (split); D2 ✅ (permission descriptions registry); operator walkthrough PENDING |
-| EPIC-E | UX кампании (attach, flight, placement, dashboard) | #3 ✅ closed as CAMPAIGN-UX-002A; остальные запланированы |
+| EPIC-E | UX кампании (attach, flight, placement, dashboard) | #3 ✅ closed as CAMPAIGN-UX-002A; #2B ✅ (merge Dashboard/Reporting tabs); остальные запланированы |
 
 > Фактический статус — из `PROJECT_STATE.md` + `feature-registry.yaml`.
 > Брифинг PRODUCT-READINESS-PROGRAM-001 задаёт направление; часть статусов в нём
@@ -412,6 +412,20 @@ self.login / self.campaign_view / self.report_view + свои smoke.
 4. Неизвестный permission падает безопасно: label = code, description = «Описание права пока не задано».
 
 **Data-testid:** `permission-catalog`, `permission-item-{safeCode}`, `permission-label-{safeCode}`, `permission-code-{safeCode}`, `permission-description-{safeCode}`.
+
+---
+
+### 6.0c CAMPAIGN-UX-002B — Merge duplicate Dashboard/Reporting tabs
+
+**Статус:** ✅ vitest 279/279, UI tabs confirmed (aria snapshot proof), CI pending.
+**Next:** CAMPAIGN-UX-002C — merge flights/placements/creatives into «Наполнение».
+
+**Happy-path (3 шага):**
+1. Оператор открывает карточку кампании → видит 5 вкладок: Обзор, Флайты, Плейсменты, Креативы, Дашборд.
+2. Вкладка «Отчётность» отсутствует (удалена как дубликат Дашборда).
+3. Дашборд содержит: План/Факт, По дням, По поверхностям/географии, Здоровье устройств.
+
+**Data-testid:** `campaign-dashboard`, `campaign-dashboard-empty-pop`.
 
 ---
 

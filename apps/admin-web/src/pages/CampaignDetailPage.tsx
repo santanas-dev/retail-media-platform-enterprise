@@ -75,7 +75,7 @@ type PlacementWithForm = CampaignPlacementOut & { _editing?: boolean };
 type CreativeLink = CampaignCreativeOut & { asset: CreativeAssetOut | null };
 type CreativeLinkWithForm = CreativeLink & { _editing?: boolean };
 
-type Tab = "overview" | "flights" | "placements" | "creatives" | "reporting" | "dashboard";
+type Tab = "overview" | "flights" | "placements" | "creatives" | "dashboard";
 
 interface DetailData {
   campaign: CampaignOut;
@@ -519,9 +519,9 @@ export default function CampaignDetailPage() {
     }
   }, [data]);
 
-  // Lazy-load PoP data when reporting or dashboard tab is activated
+  // Lazy-load PoP data when dashboard tab is activated
   useEffect(() => {
-    if ((activeTab === "reporting" || activeTab === "dashboard") && !popLoaded && !popLoading && data) {
+    if (activeTab === "dashboard" && !popLoaded && !popLoading && data) {
       loadPopData(data.campaign.id);
     }
   }, [activeTab, popLoaded, popLoading, data, loadPopData]);
@@ -1818,7 +1818,7 @@ export default function CampaignDetailPage() {
     }
 
     return (
-      <div>
+      <div data-testid="campaign-dashboard">
 
         {/* ── Loading ── */}
         {popLoading && (
@@ -1856,7 +1856,7 @@ export default function CampaignDetailPage() {
               {hasPlan && hasPoP && deviationPct !== null && deviationPct < -5 && (
                 <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.75rem", background: "#fffbeb", borderRadius: 4, border: "1px solid #fde68a", fontSize: "0.8rem", color: "#92400e" }}>
                   ⚠️ Недопоказ: план {totalPlan.toLocaleString("ru-RU")}, факт {actual.toLocaleString("ru-RU")} ({deviationPct}%).
-                  Причины недопоказа — см. вкладку «Отчётность» (по дням / по поверхностям).
+                  Детализация — ниже (по дням / по поверхностям).
                   Автоматические компенсации — в плане (S-096).
                 </div>
               )}
@@ -1950,7 +1950,7 @@ export default function CampaignDetailPage() {
 
             {/* ── No PoP at all ── */}
             {!hasPoP && popByDay.length === 0 && popBySurface.length === 0 && (
-              <div style={{ ...css.section, padding: "2rem 1rem", textAlign: "center" }}>
+              <div data-testid="campaign-dashboard-empty-pop" style={{ ...css.section, padding: "2rem 1rem", textAlign: "center" }}>
                 <p style={{ fontSize: "0.9rem", color: "#94a3b8", margin: "0 0 0.5rem" }}>
                   Пока нет подтверждённых показов
                 </p>
@@ -2097,8 +2097,8 @@ export default function CampaignDetailPage() {
 
   // ── Main render ──
 
-  const tabNames: Record<Tab, string> = { overview: "Обзор", flights: "Флайты", placements: "Плейсменты", creatives: "Креативы", reporting: "Отчётность", dashboard: "Дашборд" };
-  const tabs: Tab[] = ["overview", "flights", "placements", "creatives", "dashboard", "reporting"];
+  const tabNames: Record<Tab, string> = { overview: "Обзор", flights: "Флайты", placements: "Плейсменты", creatives: "Креативы", dashboard: "Дашборд" };
+  const tabs: Tab[] = ["overview", "flights", "placements", "creatives", "dashboard"];
 
   return (
     <div>
@@ -2123,7 +2123,6 @@ export default function CampaignDetailPage() {
       {activeTab === "flights" && renderFlights()}
       {activeTab === "placements" && renderPlacements()}
       {activeTab === "creatives" && renderCreatives()}
-      {activeTab === "reporting" && renderReporting()}
       {activeTab === "dashboard" && renderDashboard()}
     </div>
   );

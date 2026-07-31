@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-31 (ADVERTISER-UX-001D2)
+**Last updated:** 2026-07-31 (CAMPAIGN-UX-002B)
 
-**Next Active Workstream:** CAMPAIGN-UX-002B или по выбору владельца
+**Next Active Workstream:** CAMPAIGN-UX-002C — merge flights/placements/creatives into Наполнение
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `84fe4c3` (PLAYER-001B-FU — substantive)
@@ -178,6 +178,19 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Registry: без нового feature ID (D2 — часть existing `user.assign_roles` smoke).
 - Operator walkthrough: PENDING.
 - Next → CAMPAIGN-UX-002B или по выбору владельца.
+- Checkpoint by PS-001.
+
+**CAMPAIGN-UX-002B ✅** — Merge duplicate Dashboard/Reporting tabs.
+- CampaignDetailPage: удалена вкладка «Отчётность» (дублировала Дашборд).
+- Тип Tab: убран `"reporting"`. Tab order: Обзор/Флайты/Плейсменты/Креативы/Дашборд (5 tabs).
+- renderDashboard: единый entry point для аналитики кампании.
+- Data-testid: `campaign-dashboard`, `campaign-dashboard-empty-pop`.
+- Текст недопоказа: «Детализация — ниже (по дням / по поверхностям)» вместо ссылки на несуществующую «Отчётность».
+- Vitest: 279/279 (2 старых reporting-теста обновлены на Dashboard).
+- UI-smoke: aria snapshot подтверждает 5 вкладок, «Отчётность» отсутствует.
+- Campaign create/activate/pause smokes: pre-existing failures (creative upload timeout, contract selector) — не вызваны 002B.
+- self.report_view остаётся blocked до player/PoP.
+- Next → CAMPAIGN-UX-002C — merge flights/placements/creatives into «Наполнение».
 - Checkpoint by PS-001.
 
 **PLAN-COUNT-SYNC-001 ✅** — Pre-pilot plan counts synced to registry.

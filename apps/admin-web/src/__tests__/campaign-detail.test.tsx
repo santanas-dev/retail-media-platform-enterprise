@@ -1386,7 +1386,7 @@ describe("CampaignDetailPage — S-009e", () => {
 
   // ── S-009g: PoP Reporting ──
 
-  it("shows empty reporting state when no data", async () => {
+  it("shows empty PoP state on dashboard when no data", async () => {
     mockAuthenticatedSession();
     // PoP endpoints return zero impressions — empty state
     const zeroSummary = {
@@ -1408,14 +1408,15 @@ describe("CampaignDetailPage — S-009e", () => {
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
-    await userEvent.setup().click(screen.getByText("Отчётность"));
+    await userEvent.setup().click(screen.getByText("Дашборд"));
 
     await waitFor(() => {
       expect(screen.getByText("Пока нет подтверждённых показов")).toBeTruthy();
+      expect(screen.getByTestId("campaign-dashboard-empty-pop")).toBeTruthy();
     });
   });
 
-  it("shows reporting summary cards with data", async () => {
+  it("shows dashboard plan/fact and device health with data", async () => {
     mockAuthenticatedSession();
     const summary = {
       campaign_id: "c1",
@@ -1436,11 +1437,12 @@ describe("CampaignDetailPage — S-009e", () => {
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
-    await userEvent.setup().click(screen.getByText("Отчётность"));
+    await userEvent.setup().click(screen.getByText("Дашборд"));
 
     await waitFor(() => {
-      expect(screen.getByText(/12.540/)).toBeTruthy();
-      expect(screen.getByText(/30.*мин/)).toBeTruthy();
+      // Dashboard shows plan/fact and device health
+      expect(screen.getByTestId("campaign-dashboard")).toBeTruthy();
+      // Device health section shows unique devices
       expect(screen.getByText("48")).toBeTruthy();
       expect(screen.getByText("12")).toBeTruthy();
     });
@@ -1463,7 +1465,7 @@ describe("CampaignDetailPage — S-009e", () => {
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
-    await userEvent.setup().click(screen.getByText("Отчётность"));
+    await userEvent.setup().click(screen.getByText("Дашборд"));
 
     await waitFor(() => {
       expect(screen.getByText("По дням")).toBeTruthy();
@@ -1489,10 +1491,10 @@ describe("CampaignDetailPage — S-009e", () => {
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
-    await userEvent.setup().click(screen.getByText("Отчётность"));
+    await userEvent.setup().click(screen.getByText("Дашборд"));
 
     await waitFor(() => {
-      expect(screen.getByText("По поверхностям")).toBeTruthy();
+      expect(screen.getByText(/По поверхностям/)).toBeTruthy();
       expect(screen.getByText("surf-a1")).toBeTruthy();
       expect(screen.getByText("surf-b2")).toBeTruthy();
     });
@@ -1508,7 +1510,7 @@ describe("CampaignDetailPage — S-009e", () => {
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
-    await userEvent.setup().click(screen.getByText("Отчётность"));
+    await userEvent.setup().click(screen.getByText("Дашборд"));
 
     await waitFor(() => {
       expect(screen.getByText("Нет прав на просмотр отчётности.")).toBeTruthy();
@@ -1525,7 +1527,7 @@ describe("CampaignDetailPage — S-009e", () => {
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
-    await userEvent.setup().click(screen.getByText("Отчётность"));
+    await userEvent.setup().click(screen.getByText("Дашборд"));
 
     await waitFor(() => {
       expect(screen.getByText("Кампания не найдена.")).toBeTruthy();
