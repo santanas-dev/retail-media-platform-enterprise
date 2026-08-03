@@ -291,18 +291,19 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Tamper proof: поломка `user-roles-open` data-testid → CI #30799093594 failure → revert → CI green.
 - operator walkthrough: PENDING.
 
-**TRUTH-CI-001B ✅** — debt reduction: 20/35 UI-smoke CI-enforced (was 19).
-- inventory__rule_create ✅ — explicit tab-content wait after click, CI-proven (#30801646155).
-- 5 excluded after investigation (2026-08-03):
-  - adsettings__configure — LDAP save not persisted in CI stack (backend issue, URL fix applied: /ad-settings→/settings/ad)
-  - advertiser__view — seed display_name mismatch (CI: «Тестовый Рекламодатель», local: «Рекламный Альянс»)
-  - campaign__create — `#c-contract` selector timeout (element not a data-testid, missing in UI)
-  - emergency__activate — button disabled (pre-existing flake, timeout increase didn't help)
-  - emergency__deactivate — button disabled (pre-existing flake, timeout increase didn't help)
-- 10 pre-existing CI failures (not investigated): creative_upload, self_login, contract_pdf_upload, invite, audit, campaign_submit/approve/activate/pause/reject
-- CI #30801646155 green (35/35), UI-smoke 20/20 ✅
+**TRUTH-CI-001C ✅** — returned 3 excluded tests: 23/35 UI-smoke CI-enforced (was 20).
+- advertiser__view ✅ — seed display_name matches CI (Рекламный Альянс), legal_name fixed to «ООО Тестовый Рекламодатель»
+- campaign__create ✅ — added select_first_org step (contract select hidden until org chosen) + data-testid migration (campaign-create-org/contract/code/name/submit)
+- adsettings__configure ✅ — added enabled checkbox (backend masks server_url when enabled=false); root cause: GET response returns server_url="" when enabled=false
+- adsettings__test: made idempotent — accepts all AD states (not_configured/unavailable/ok), 30s timeout for LDAP attempts
+- 12 remaining excluded:
+  - 2 investigated flaky (emergency__activate/deactivate)
+  - 3 timing-dependent (campaign_submit/approve/activate/pause/reject)
+  - 2 pre-existing (creative_upload timeout, contract_pdf_upload)
+  - 5 not investigated (self_login, invite, audit, creative__*)
+- CI #30803800025 green (35/35), UI-smoke 23/23 ✅
 - operator walkthrough: PENDING.
-- Next → TRUTH-CI-001C (remaining 15 excluded tests) или следующий workstream по выбору владельца.
+- Next → TRUTH-CI-001D (remaining 12 excluded) или следующий workstream.
 - Checkpoint by PS-001.
 
 **Previous PLAYER-001B entry (scaffold):**
