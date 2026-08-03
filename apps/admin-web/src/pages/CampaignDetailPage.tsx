@@ -7,6 +7,7 @@ import {
   getCreativesByCampaign,
   listAdvertisers,
   listBrands,
+  listCampaigns,
   listContracts,
   listCreativeAssets,
   getApprovalsByCampaign,
@@ -279,7 +280,11 @@ export default function CampaignDetailPage() {
   const loadData = useCallback(async () => {
     if (!id) return;
 
-    const campaign = await getCampaign(id);
+    // LIFECYCLE-RELOAD-CI-003: use listCampaigns with campaignId instead
+    // of getCampaign() to guarantee the campaign_id query param reaches
+    // the backend (single code path through listCampaigns).
+    const page = await listCampaigns(1, 0, id);
+    const campaign = page.items[0] ?? null;
     if (!campaign) {
       setError("Кампания не найдена");
       setLoading(false);
