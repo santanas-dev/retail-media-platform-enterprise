@@ -280,6 +280,19 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Next → COMMERCE-CONTUR2-001A1 — schema/RLS/pricing choke-point.
 - Checkpoint by PS-001.
 
+**TRUTH-CI-001 ✅** — UI-smoke и roadmap guard стали CI-enforced.
+- CI #30798736853 green (35/35) — proof run с 20/20 UI-smoke P0 subset.
+- Новый job `ui-smoke`: postgres+redis+minio+control-api+admin-web+advertiser-web → Playwright P0 subset.
+- P0 subset (20 тестов): adsettings__test, advertiser__application_review/apply/brand_crud/contact_crud/create_org/legal_requisites, campaign__edit, creative__moderate_approve/reject, device__health_view, inventory__rule_create/simulate, self__apply_or_brief/campaign_view, user__assign_roles/create_advertiser/deactivate/reset_password/split_internal_advertiser.
+- 15 тестов исключены: 13 pre-existing CI failures (sidebar nav, MinIO contract upload, campaign lifecycle) + 2 flaky (emergency_*).
+- Roadmap guard: `continue-on-error: true` убран, `--strict` mode, блокирует CI при violations.
+- Python-tests: anti-skip guard (fail если 0 passed).
+- UI-smoke: anti-skip guard + logs on failure.
+- Tamper proof: поломка `user-roles-open` data-testid → CI #30799093594 failure → revert → CI green.
+- operator walkthrough: PENDING.
+- Next → дофикс 15 исключённых UI-smoke тестов (TRUTH-CI-001B) или KSO-ENV-001.
+- Checkpoint by PS-001.
+
 **Previous PLAYER-001B entry (scaffold):**
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
