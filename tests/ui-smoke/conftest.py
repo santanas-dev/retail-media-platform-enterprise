@@ -24,6 +24,7 @@ if not _RUN_SMOKE:
     navigate_to_campaigns = _stub
     click_create_campaign_button = _stub
     choose_first_contract = _stub
+    select_first_org = _stub
     fill_campaign_code_and_name = _stub
     submit_campaign_form = _stub
     verify_campaign_created = _stub
@@ -74,17 +75,25 @@ else:
         page.wait_for_url("**/campaigns/new", timeout=10000)
         page.wait_for_load_state("networkidle")
 
+    def select_first_org(page: Page) -> None:
+        """Select the first advertiser organization — makes contract select visible."""
+        page.select_option("[data-testid='campaign-create-org']", index=1)
+        page.wait_for_selector(
+            "[data-testid='campaign-create-contract']",
+            state="visible", timeout=10000
+        )
+
     def choose_first_contract(page: Page) -> None:
-        page.select_option("#c-contract", index=1)
+        page.select_option("[data-testid='campaign-create-contract']", index=1)
 
     def fill_campaign_code_and_name(
         page: Page, code: str, name: str
     ) -> None:
-        page.fill("#c-code", code)
-        page.fill("#c-name", name)
+        page.fill("[data-testid='campaign-create-code']", code)
+        page.fill("[data-testid='campaign-create-name']", name)
 
     def submit_campaign_form(page: Page) -> None:
-        page.click('button[type="submit"]')
+        page.click("[data-testid='campaign-create-submit']")
 
     def verify_campaign_created(page: Page) -> None:
         page.wait_for_url("**/campaigns/**", timeout=15000)

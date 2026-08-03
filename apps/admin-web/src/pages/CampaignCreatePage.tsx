@@ -305,6 +305,7 @@ export default function CampaignCreatePage() {
             </label>
             <input
               id="c-name"
+              data-testid="campaign-create-name"
               type="text"
               value={name}
               onChange={(e) => handleNameChange(e.target.value)}
@@ -320,6 +321,7 @@ export default function CampaignCreatePage() {
             </label>
             <input
               id="c-code"
+              data-testid="campaign-create-code"
               type="text"
               value={code}
               onChange={(e) => setCode(e.target.value)}
@@ -355,6 +357,7 @@ export default function CampaignCreatePage() {
             </label>
             <select
               id="c-org"
+              data-testid="campaign-create-org"
               value={orgId}
               onChange={(e) => handleOrgChange(e.target.value)}
               style={css.select}
@@ -398,6 +401,7 @@ export default function CampaignCreatePage() {
                 </label>
                 <select
                   id="c-contract"
+                  data-testid="campaign-create-contract"
                   value={contractId}
                   onChange={(e) => setContractId(e.target.value)}
                   style={css.select}
@@ -587,6 +591,7 @@ export default function CampaignCreatePage() {
           </button>
           <button
             type="submit"
+            data-testid="campaign-create-submit"
             style={{
               ...css.submitBtn,
               ...(submitting ? { background: "#9ca3af", cursor: "default" } : {}),

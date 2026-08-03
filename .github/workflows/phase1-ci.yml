@@ -335,14 +335,18 @@ jobs:
       - name: Run UI-smoke tests (P0 subset)
         run: |
           set -o pipefail
-          # P0 subset: 20 tests (TRUTH-CI-001B, 2026-08-03)
-          # 5 excluded after investigation: adsettings__configure (LDAP save not persisted in CI stack),
-          #   advertiser__view (seed display_name mismatch), campaign__create (#c-contract selector timeout),
-          #   emergency__activate (button disabled — pre-existing flake), emergency__deactivate (button disabled — pre-existing flake)
-          # 10 pre-existing CI failures (not investigated): creative_upload, self_login, contract_pdf_upload,
-          #   invite, audit, campaign_submit/approve/activate/pause/reject
+          # P0 subset: 23 tests (TRUTH-CI-001C, 2026-08-03)
+          # 3 returned (previously excluded, now fixed):
+          #   advertiser__view — seed display_name matches CI (Рекламный Альянс)
+          #   campaign__create — added select_first_org step + data-testid migration
+          #   adsettings__configure — added enabled checkbox (backend masks server_url when disabled)
+          # 12 excluded:
+          #   5 investigated (emergency__activate/deactivate flaky, creative_upload timeout,
+          #     contract_pdf_upload missing, campaign_submit/approve/activate/pause/reject
+          #     timing-dependent)
+          #   7 not investigated (self_login, invite, audit, creative__*)
           UI_SMOKE_RUN=1 python3 -m pytest tests/ui-smoke -v --tb=long \
-            -k "adsettings__test or advertiser__application_review or advertiser__apply or advertiser__brand_crud or advertiser__contact_crud or advertiser__create_org or advertiser__legal_requisites or campaign__edit or creative__moderate_approve or creative__moderate_reject or device__health_view or inventory__rule_create or inventory__simulate or self__apply_or_brief or self__campaign_view or user__assign_roles or user__create_advertiser or user__deactivate or user__reset_password or user__split_internal_advertiser" \
+            -k "adsettings__configure or adsettings__test or advertiser__application_review or advertiser__apply or advertiser__brand_crud or advertiser__contact_crud or advertiser__create_org or advertiser__legal_requisites or advertiser__view or campaign__create or campaign__edit or creative__moderate_approve or creative__moderate_reject or device__health_view or inventory__rule_create or inventory__simulate or self__apply_or_brief or self__campaign_view or user__assign_roles or user__create_advertiser or user__deactivate or user__reset_password or user__split_internal_advertiser" \
             2>&1 | tee /tmp/ui-smoke-output.txt
           PYTEST_EXIT=${PIPESTATUS[0]}
           if ! grep -qE '[0-9]+ passed' /tmp/ui-smoke-output.txt; then
