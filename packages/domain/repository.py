@@ -973,18 +973,23 @@ async def list_campaigns_paginated(
     *,
     limit: int = 50,
     offset: int = 0,
+    campaign_id: str | None = None,
 ) -> tuple[list, int]:
     """Paginated campaign list — returns (items, total_count)."""
     from packages.domain.models import Campaign
     from sqlalchemy import func
 
+    query = select(Campaign)
+    if campaign_id:
+        query = query.where(Campaign.id == campaign_id)
+
     total_result = await session.execute(
-        select(func.count()).select_from(Campaign),
+        select(func.count()).select_from(query.subquery()),
     )
     total = total_result.scalar_one()
 
     stmt = (
-        select(Campaign)
+        query
         .order_by(Campaign.code)
         .offset(offset)
         .limit(limit)

@@ -133,22 +133,6 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     assert "Можно отправить" in submit_status
     print(f"[{time.time()-t0:.1f}s] Ready to submit ✓")
 
-    # 🔍 SUBMIT-READINESS-CI-004 DIAGNOSTIC — one-render debug element
-    diag = page.evaluate("""() => {
-      const flights = document.querySelector('[data-testid="readiness-flight-status"]')?.textContent || 'N/A';
-      const placements = document.querySelector('[data-testid="readiness-placement-status"]')?.textContent || 'N/A';
-      const creatives = document.querySelector('[data-testid="readiness-creative-status"]')?.textContent || 'N/A';
-      const submit = document.querySelector('[data-testid="readiness-submit-status"]')?.textContent || 'N/A';
-      const btn = document.querySelector('[data-testid="campaign-submit-btn"]');
-      const btnDisabled = btn ? btn.disabled : 'BTN_NOT_FOUND';
-      const btnText = btn ? btn.textContent : 'N/A';
-      const debugEl = document.querySelector('[data-testid="campaign-readiness-debug"]');
-      const debugJson = debugEl ? debugEl.getAttribute('data-debug') : 'EL_NOT_FOUND';
-      const url = window.location.href;
-      return { url, flights, placements, creatives, submit, btnDisabled, btnText, debugJson };
-    }""")
-    print(f"[{time.time()-t0:.1f}s] 🔍 DIAG: {diag}")
-
     # ── Submit — button enabled ──
     submit_btn = page.locator('[data-testid="campaign-submit-btn"]')
     expect(submit_btn).to_be_enabled(timeout=10000)

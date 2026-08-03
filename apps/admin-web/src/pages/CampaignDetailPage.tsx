@@ -151,6 +151,20 @@ export default function CampaignDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
 
+  // LIFECYCLE-RELOAD-CI-003: clear guided state on browser reload.
+  // Browser preserves History API state across refresh, so location.state.guided=true
+  // survives reload → guided banner reappears and blocks Overview tab content.
+  useEffect(() => {
+    const navEntry = performance.getEntriesByType?.("navigation")?.[0] as PerformanceNavigationTiming | undefined;
+    const isReload = navEntry?.type === "reload" || performance?.navigation?.type === 1;
+    if (isReload) {
+      setShowBanner(false);
+      if (activeTab === "content" && initialTab === "content") {
+        setActiveTab("overview");
+      }
+    }
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
   // Scroll refs for section navigation from readiness checklist
   const flightsSectionRef = useRef<HTMLDivElement>(null);
   const placementsSectionRef = useRef<HTMLDivElement>(null);
@@ -702,29 +716,6 @@ export default function CampaignDetailPage() {
               >
                 {approvalSubmitting ? "Отправка..." : "Отправить на согласование"}
               </button>
-              {/* 🔍 SUBMIT-READINESS-CI-004 diagnostic — remove after root cause found */}
-              <div
-                data-testid="campaign-readiness-debug"
-                data-debug={JSON.stringify({
-                  flights_len: flights.length,
-                  placements_len: placements.length,
-                  creatives_len: creatives.length,
-                  deliverableCount,
-                  canApprove,
-                  allReady,
-                  status: campaign.status,
-                  approvalSubmitting,
-                  disabledReason: approvalSubmitting ? "approval-in-progress"
-                    : !canApprove
-                      ? `missing:${[
-                          flights.length === 0 ? "flights" : "",
-                          placements.length === 0 ? "placements" : "",
-                          creatives.length === 0 ? "creatives" : "",
-                        ].filter(Boolean).join(",")}`
-                      : "none",
-                })}
-                style={{ display: "none" }}
-              />
             </div>
             {approvalError && (
               <div data-testid="campaign-submit-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
