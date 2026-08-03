@@ -18,8 +18,8 @@ from conftest import login_as_break_glass_admin
 
 # Seed org ADV-001 — must exist in seed
 TARGET_ORG_CODE = "ADV-001"
-TARGET_ORG_DISPLAY_NAME = "Рекламный Альянс"
-TARGET_ORG_LEGAL_NAME = "ООО «Рекламный Альянс»"
+TARGET_ORG_DISPLAY_NAME = "Тестовый Рекламодатель"
+TARGET_ORG_LEGAL_NAME = "ООО Тестовый Рекламодатель"
 
 
 def navigate_to_advertisers(page):

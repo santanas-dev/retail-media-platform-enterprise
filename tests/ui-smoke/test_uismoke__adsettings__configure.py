@@ -19,9 +19,9 @@ from conftest import login_as_break_glass_admin
 
 def navigate_to_ad_settings(page):
     """Click «Настройки AD» in sidebar."""
-    link = page.locator('aside nav a[href="/ad-settings"]')
+    link = page.locator('aside nav a[href="/settings/ad"]')
     link.click(force=True)
-    page.wait_for_url("**/ad-settings", timeout=5000)
+    page.wait_for_url("**/settings/ad", timeout=5000)
     page.wait_for_load_state("networkidle")
 
 

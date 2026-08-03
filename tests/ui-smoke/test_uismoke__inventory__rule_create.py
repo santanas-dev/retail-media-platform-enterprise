@@ -33,7 +33,9 @@ def test_uismoke__inventory__rule_create(smoke_page: Page) -> None:
     # Click "Правила" tab
     page.locator("button", has=page.locator("text=Правила")).click()
     page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1000)
+    page.wait_for_timeout(1500)
+    # Verify tab content loaded
+    expect(page.locator('[data-testid="inventory-rule-create-open"]')).to_be_visible(timeout=10000)
     print(f"[{time.time()-t0:.1f}s] Rules tab loaded")
 
     # ── Click "+ Создать" ──

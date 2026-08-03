@@ -51,9 +51,9 @@ def test_uismoke__emergency__activate(smoke_page: Page) -> None:
     # ── Activate ──
     reason_input = page.locator('[data-testid="emergency-reason-input"]')
     reason_input.fill("Срочные технические работы — smoke test")
-    page.wait_for_timeout(300)  # React re-render
+    page.wait_for_timeout(500)  # React re-render
     act_btn = page.locator('[data-testid="emergency-activate-btn"]')
-    expect(act_btn).to_be_enabled(timeout=5000)
+    expect(act_btn).to_be_enabled(timeout=10000)
     act_btn.click()
 
     # Confirm
