@@ -39,11 +39,19 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     page.wait_for_load_state("networkidle")
 
     # ── CAMPAIGN-UX-001B: Step 0 — Dismiss guided banner if present ──
-    # CAMPAIGN-UX-002D added a guided banner after campaign creation
+    # CAMPAIGN-UX-002D added a guided banner after campaign creation.
+    # CampaignCreatePage passes state: { guided: true } → initialTab="content"
+    # Banner renders async — wait briefly for it to appear before checking
     dismiss_btn = page.locator('[data-testid="campaign-created-dismiss"]')
-    if dismiss_btn.is_visible():
+    try:
+        expect(dismiss_btn).to_be_visible(timeout=3000)
         dismiss_btn.click()
-        page.wait_for_timeout(300)
+        page.wait_for_timeout(500)
+    except Exception:
+        pass  # banner may not have appeared (rare)
+    # Switch to Overview tab — guidedFromCreate sets initialTab="content"
+    page.click('[data-testid="tab-overview"]')
+    page.wait_for_load_state("networkidle")
 
     # ── Step 1 — Verify checklist on Overview ──
     checklist = page.locator('[data-testid="campaign-readiness-checklist"]')

@@ -217,6 +217,7 @@ jobs:
         env:
           MINIO_ROOT_USER: minioadmin
           MINIO_ROOT_PASSWORD: minioadmin
+          MINIO_API_CORS_ALLOW_ORIGIN: "*"
         ports:
           - 9000:9000
           - 9001:9001
@@ -231,10 +232,12 @@ jobs:
       JWT_SECRET: ci-ui-smoke-jwt-secret-at-least-32-chars
       MANIFEST_SIGNING_KEY: ci-manifest-signing-key-at-least-32-chars
       DATABASE_URL: postgresql+asyncpg://retail_media_owner:retail_media_owner_pass@localhost:5432/retail_media_platform
-      MINIO_ENDPOINT: localhost:9000
+      MINIO_INTERNAL_ENDPOINT: localhost:9000
+      MINIO_PUBLIC_ENDPOINT: localhost:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
       MINIO_SECURE: "false"
+      CREATIVE_AUTO_APPROVE_UPLOADS: "true"
       REDIS_URL: redis://localhost:6379/0
       SEED_DEV_CREDENTIALS: "true"
     steps:
@@ -335,19 +338,17 @@ jobs:
       - name: Run UI-smoke tests (P0 subset)
         run: |
           set -o pipefail
-          # P0 subset: 23 tests (TRUTH-CI-001D, 2026-08-03)
-          # ── Campaign lifecycle tests excluded (PRIMARY-UPLOAD-CI-001) ──
-          # 5 campaign lifecycle tests excluded — primary upload path broken in CI:
-          #   creative-upload-done never appears (MinIO presigned URL flow fails).
-          #   Root cause: backend/MinIO — not a smoke test issue.
-          #   Follow-up: PRIMARY-UPLOAD-CI-001 (diagnose MinIO presigned URL in CI).
-          #   Tests ready locally (primary upload + banner dismiss), code kept.
-          # 7 other excluded:
+          # P0 subset: 29 tests (PRIMARY-UPLOAD-CI-001 fixed, 2026-08-03)
+          # ── 6 campaign lifecycle tests returned after MinIO env fix ──
+          #   PRIMARY-UPLOAD-CI-001: added MINIO_INTERNAL_ENDPOINT/MINIO_PUBLIC_ENDPOINT
+          #   + MINIO_API_CORS_ALLOW_ORIGIN + CREATIVE_AUTO_APPROVE_UPLOADS to CI env.
+          #   creative__upload + 5 campaign lifecycle tests now expected green.
+          # 6 excluded:
           #   2 flaky (emergency__activate/deactivate)
-          #   2 pre-existing (creative_upload timeout, contract_pdf_upload)
+          #   1 pre-existing timeout (contract_pdf_upload)
           #   3 not investigated (self_login, invite, audit)
           UI_SMOKE_RUN=1 python3 -m pytest tests/ui-smoke -v --tb=long \
-            -k "adsettings__configure or adsettings__test or advertiser__application_review or advertiser__apply or advertiser__brand_crud or advertiser__contact_crud or advertiser__create_org or advertiser__legal_requisites or advertiser__view or campaign__create or campaign__edit or creative__moderate_approve or creative__moderate_reject or device__health_view or inventory__rule_create or inventory__simulate or self__apply_or_brief or self__campaign_view or user__assign_roles or user__create_advertiser or user__deactivate or user__reset_password or user__split_internal_advertiser" \
+            -k "adsettings__configure or adsettings__test or advertiser__application_review or advertiser__apply or advertiser__brand_crud or advertiser__contact_crud or advertiser__create_org or advertiser__legal_requisites or advertiser__view or campaign__activate or campaign__approve or campaign__create or campaign__edit or campaign__pause or campaign__reject or campaign__submit or creative__moderate_approve or creative__moderate_reject or creative__upload or device__health_view or inventory__rule_create or inventory__simulate or self__apply_or_brief or self__campaign_view or user__assign_roles or user__create_advertiser or user__deactivate or user__reset_password or user__split_internal_advertiser" \
             2>&1 | tee /tmp/ui-smoke-output.txt
           PYTEST_EXIT=${PIPESTATUS[0]}
           if ! grep -qE '[0-9]+ passed' /tmp/ui-smoke-output.txt; then
