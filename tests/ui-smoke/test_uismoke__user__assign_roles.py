@@ -52,7 +52,7 @@ def test_uismoke__user__assign_roles(smoke_page):
     navigate_to_users(page)
 
     # Step 3: wait for user table, click «Роли» on the advertiser_test user
-    page.wait_for_selector('[data-testid="user-roles-open-BROKEN"]', state="visible", timeout=10000)
+    page.wait_for_selector('[data-testid="user-roles-open"]', state="visible", timeout=10000)
 
     # Find which row has "advertiser_test" username and click its «Роли» button
     rows = page.locator("table tbody tr")
