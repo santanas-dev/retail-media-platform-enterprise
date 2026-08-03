@@ -8,7 +8,7 @@
  * 401 triggers the existing onUnauthorized → session clear flow.
  */
 
-import { api, ApiError } from "./client";
+import { api } from "./client";
 import type {
   CampaignOut,
   CampaignCreateRequest,
@@ -78,18 +78,13 @@ export function listCampaigns(
   return api.get<PaginatedResponse<CampaignOut>>(`/campaigns?${params}`);
 }
 
-/** Get a single campaign by ID — uses dedicated detail endpoint. */
+/** Get a single campaign by ID — uses list endpoint with campaign_id filter. */
 export async function getCampaign(id: string): Promise<CampaignOut | null> {
   try {
-    const data = await api.get<CampaignOut | { items: CampaignOut[] }>(`/campaigns/${id}`);
-    // Backward compat: mock data may return paginated wrapper
-    if (data && typeof data === "object" && "items" in data && Array.isArray((data as { items: CampaignOut[] }).items)) {
-      return (data as { items: CampaignOut[] }).items.find((c) => c.id === id) ?? null;
-    }
-    return data as CampaignOut;
-  } catch (e: unknown) {
-    if (e instanceof ApiError && e.status === 404) return null;
-    throw e;
+    const data = await api.get<PaginatedResponse<CampaignOut>>(`/campaigns?campaign_id=${id}&limit=1`);
+    return data.items[0] ?? null;
+  } catch {
+    return null;
   }
 }
 
