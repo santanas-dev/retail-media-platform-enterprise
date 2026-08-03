@@ -336,6 +336,7 @@ jobs:
         run: |
           set -o pipefail
           # P0 subset: 23 tests (TRUTH-CI-001D, 2026-08-03)
+          # ── Campaign lifecycle tests excluded (PRIMARY-UPLOAD-CI-001) ──
           # 5 campaign lifecycle tests excluded — primary upload path broken in CI:
           #   creative-upload-done never appears (MinIO presigned URL flow fails).
           #   Root cause: backend/MinIO — not a smoke test issue.
