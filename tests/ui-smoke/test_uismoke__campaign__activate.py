@@ -1,6 +1,7 @@
 """
 UI-smoke: campaign.activate — activate an approved campaign.
-Pattern: full pipeline → moderate creative → submit → approve → activate → verify.
+Pattern: full pipeline → primary creative upload → submit → approve → activate → verify.
+Uses CREATIVE_AUTO_APPROVE_UPLOADS (CI default) — skips moderation.
 """
 import os, pytest
 
@@ -38,28 +39,23 @@ def test_uismoke__campaign__activate(smoke_page: Page) -> None:
     page.wait_for_url(lambda url: url != BASE_URL + "/campaigns/new", timeout=15000)
     page.wait_for_load_state("networkidle")
 
-    # ── Creative ──
-    creative_code = f"ACT-CR-{os.urandom(2).hex()}"
+    # ── Navigate to content tab ──
     page.click('[data-testid="tab-content"]')
     page.wait_for_load_state("networkidle")
-    page.click('[data-testid="creative-add-library-btn"]')
-    page.fill('[data-testid="creative-code"]', creative_code)
-    page.fill('[data-testid="creative-name"]', "Activate CR")
-    page.click('[data-testid="creative-add-submit"]')
-    page.wait_for_load_state("networkidle")
-    page.click('[data-testid="creative-attach-btn"]')
-    opt = page.locator('[data-testid="creative-attach-select"] option').filter(has_text=creative_code)
-    page.locator('[data-testid="creative-attach-select"]').select_option(value=opt.get_attribute("value"))
-    page.click('[data-testid="creative-attach-submit"]')
-    page.wait_for_load_state("networkidle")
-    page.locator('[data-testid="creative-file-input"]').set_input_files(FIXTURE)
-    expect(page.locator('[data-testid="creative-upload-done"]')).to_be_visible(timeout=20000)
+
+    # ── Primary creative upload ──
+    creative_code = f"ACT-CR-{os.urandom(2).hex()}"
+    page.locator('[data-testid="creative-upload-select-file"]').click()
+    page.locator('[data-testid="creative-upload-primary-file-input"]').set_input_files(FIXTURE)
+    expect(page.locator('[data-testid="creative-upload-primary-code"]')).to_be_visible(timeout=5000)
+    page.locator('[data-testid="creative-upload-primary-code"]').fill(creative_code)
+    page.locator('[data-testid="creative-upload-metadata-submit"]').click()
+    expect(page.locator('[data-testid="creative-upload-done"]')).to_be_visible(timeout=30000)
     print(f"[{time.time()-t0:.1f}s] Creative uploaded")
 
     # ── Flights ──
-    page.click('[data-testid="tab-content"]')
-    page.wait_for_load_state("networkidle")
     page.click('[data-testid="flight-add-btn"]')
+    expect(page.locator('[data-testid="flight-start"]')).to_be_visible(timeout=5000)
     page.fill('[data-testid="flight-start"]', "2026-12-01")
     page.fill('[data-testid="flight-end"]', "2026-12-31")
     page.click('[data-testid="flight-submit"]')
@@ -67,15 +63,14 @@ def test_uismoke__campaign__activate(smoke_page: Page) -> None:
     print(f"[{time.time()-t0:.1f}s] Flight added")
 
     # ── Placements ──
-    page.click('[data-testid="tab-content"]')
-    page.wait_for_load_state("networkidle")
     page.click('[data-testid="placement-add-btn"]')
+    expect(page.locator('[data-testid="placement-surface"]')).to_be_visible(timeout=5000)
     page.locator('[data-testid="placement-surface"]').select_option(index=1)
     page.click('[data-testid="placement-submit"]')
     page.wait_for_load_state("networkidle")
     print(f"[{time.time()-t0:.1f}s] Placement added")
 
-    # ── Go back to overview (creative auto-approved via CREATIVE_AUTO_APPROVE_UPLOADS) ──
+    # ── Back to overview (creative auto-approved via CREATIVE_AUTO_APPROVE_UPLOADS) ──
     page.click('[data-testid="tab-overview"]')
     page.wait_for_load_state("networkidle")
 
@@ -108,7 +103,6 @@ def test_uismoke__campaign__activate(smoke_page: Page) -> None:
     activate_btn = page.locator('[data-testid="campaign-activate-btn"]')
     expect(activate_btn).to_be_visible(timeout=5000)
     activate_btn.click()
-    # XHR, not navigation — wait for button to disappear or error to appear
     try:
         page.wait_for_selector('[data-testid="campaign-lifecycle-error"]', timeout=5000)
         err = page.locator('[data-testid="campaign-lifecycle-error"]').inner_text()

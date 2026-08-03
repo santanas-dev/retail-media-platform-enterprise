@@ -38,7 +38,14 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     page.wait_for_url(lambda url: url != BASE_URL + "/campaigns/new", timeout=15000)
     page.wait_for_load_state("networkidle")
 
-    # ── CAMPAIGN-UX-001B: Step 0 — Verify checklist on Overview ──
+    # ── CAMPAIGN-UX-001B: Step 0 — Dismiss guided banner if present ──
+    # CAMPAIGN-UX-002D added a guided banner after campaign creation
+    dismiss_btn = page.locator('[data-testid="campaign-created-dismiss"]')
+    if dismiss_btn.is_visible():
+        dismiss_btn.click()
+        page.wait_for_timeout(300)
+
+    # ── Step 1 — Verify checklist on Overview ──
     checklist = page.locator('[data-testid="campaign-readiness-checklist"]')
     expect(checklist).to_be_visible(timeout=5000)
     # All three items should show missing
