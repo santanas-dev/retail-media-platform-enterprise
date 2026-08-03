@@ -300,22 +300,21 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Proof: `creative-upload-done` appears in CI. `test_uismoke__creative__upload` ✅.
 - CI subset: 24/35 (+creative__upload, +1 over baseline 23).
 
-**SUBMIT-VALIDATION-CI-002 🔴** — Backend `request_campaign_approval` rejects submit with "Metadata-only creatives"
-even when creative is ready/approved. Reproduces both locally (`retail_media_app`, NOBYPASSRLS)
-and in CI (`retail_media_owner`, BYPASSRLS). 5 lifecycle tests (submit/approve/reject/activate/pause)
-excluded from CI pending investigation.
-- Not a MinIO/upload issue — `creative-upload-done` proves presigned URL flow works in CI.
-- Next investigation: bypass RLS context to identify if `is_deliverable_checksum` or `st != "ready"`
-  check is the failing condition.
+**SUBMIT-VALIDATION-CI-002 ✅** — Backend submit validation fixed. Root cause: inventory_slots.reserved_capacity
+pre-filled by seed data. `request_campaign_approval` → `reserve_inventory_for_placement` → `ValueError`
+(CAPACITY_OVERBOOKED) — error message mislabeled as "Metadata-only creatives". Creative was
+ready/approved — actual failure was inventory reservation.
+- Fix: conftest session fixture clears `inventory_slots.reserved_capacity=0` + deletes reserved
+  `inventory_bookings` before smoke suite via `psql`.
+- Flight dates moved to 2027 (unique month per test: 03/04/05/06/07) to avoid collisions.
+- Reload checks converted from brittle `inner_text()` to `expect().to_contain_text()`.
+- No changes to creative deliverability validation — metadata-only creatives still rejected.
 
-**TRUTH-CI-001D ⚠️** — campaign lifecycle tests rewritten, CI stays 24/35.
-- 5 tests rewritten with primary upload + guided banner dismiss:
-  - submit: campaign-created-dismiss → tab-overview → readiness checklist
-  - approve, reject, activate, pause: consistent primary upload flow
-- creative__upload returned to CI (PRIMARY-UPLOAD-CI-001 fixed).
-- 5 lifecycle excluded: SUBMIT-VALIDATION-CI-002 (backend submit validation bug).
-- 24/24 CI-enforced stable.
-- 5 remaining excluded: 5 lifecycle (SUBMIT-VALIDATION-CI-002) + 2 flaky (emergency_*) + 1 timeout (contract_pdf_upload) + 3 not investigated (self_login, invite, audit) = 11 total excluded.
+**TRUTH-CI-001D ✅** — campaign lifecycle tests green, CI subset 29/35.
+- 5 lifecycle tests (submit/approve/reject/activate/pause) included in CI.
+- Inventory clearing + date fixes + stable assertions.
+- 6 remaining excluded: 2 flaky (emergency_*), 1 timeout (contract_pdf_upload), 3 not investigated.
+- operator walkthrough: PENDING.
 
 **Previous PLAYER-001B entry (scaffold):**
 
