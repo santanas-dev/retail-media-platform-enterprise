@@ -254,6 +254,9 @@ jobs:
       - name: Install Node deps (admin-web)
         working-directory: apps/admin-web
         run: npm ci
+      - name: Install Node deps (advertiser-web)
+        working-directory: apps/advertiser-web
+        run: npm ci
       - name: Wait for PostgreSQL
         run: |
           for i in $(seq 1 30); do
@@ -314,6 +317,19 @@ jobs:
             echo "Waiting for admin-web... ($i/30)"
             sleep 2
           done
+      - name: Start advertiser-web (vite dev)
+        working-directory: apps/advertiser-web
+        run: |
+          nohup npx vite --port 3001 --host 0.0.0.0 > /tmp/advertiser-web.log 2>&1 &
+          echo "advertiser-web PID: $!"
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3001/login >/dev/null 2>&1; then
+              echo "advertiser-web ready."
+              break
+            fi
+            echo "Waiting for advertiser-web... ($i/30)"
+            sleep 2
+          done
       - name: Install Playwright browser
         run: python3 -m playwright install chromium
       - name: Run UI-smoke tests
@@ -334,6 +350,8 @@ jobs:
           tail -200 /tmp/control-api.log 2>/dev/null || echo "(no logs)"
           echo "=== admin-web logs ==="
           tail -200 /tmp/admin-web.log 2>/dev/null || echo "(no logs)"
+          echo "=== advertiser-web logs ==="
+          tail -200 /tmp/advertiser-web.log 2>/dev/null || echo "(no logs)"
 
   docker-compose:
     name: Docker Compose Config Validation
