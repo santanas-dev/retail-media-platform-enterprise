@@ -136,16 +136,18 @@ export default function CampaignDetailPage() {
   const navigationState = location.state as { guided?: boolean } | null;
   const guidedFromState = navigationState?.guided === true;
   const guidedFromQuery = new URLSearchParams(location.search).get("start") === "content";
+  const initialTab: Tab = (guidedFromState || guidedFromQuery) ? "content" : "overview";
   // Clear guided flag on full page reload — browser preserves History API state,
   // so location.state.guided=true survives page refresh, hiding status badge.
-  // On SPA navigation (popstate), keep the flag.
-  const isBrowserReload = typeof window !== "undefined"
-    && window.performance?.getEntriesByType?.("navigation")?.[0] as
-       PerformanceNavigationTiming | undefined;
-  const wasReload = isBrowserReload?.type === "reload";
-  const guidedFromCreate = wasReload ? false : (guidedFromState || guidedFromQuery);
-  const initialTab: Tab = guidedFromCreate ? "content" : "overview";
-  const [showBanner, setShowBanner] = useState(guidedFromCreate);
+  const [showBanner, setShowBanner] = useState(guidedFromState || guidedFromQuery);
+  // On mount, check if this is a browser reload and clear the banner.
+  useEffect(() => {
+    const navEntry = performance?.getEntriesByType?.("navigation")?.[0] as
+      PerformanceNavigationTiming | undefined;
+    if (navEntry?.type === "reload") {
+      setShowBanner(false);
+    }
+  }, []);
 
   const hasApprovePerm = user?.permissions?.includes("campaigns.approve") ?? false;
   const hasManagePerm = user?.permissions?.includes("campaigns.manage") ?? false;
