@@ -306,6 +306,16 @@ jobs:
             echo "Waiting for control-api... ($i/30)"
             sleep 2
           done
+      - name: 🔍 DIAGNOSTIC — write build marker + log source state
+        run: |
+          echo "=== VITE-CI-STALENESS-001 diagnostics ==="
+          echo "Git HEAD: $(git rev-parse HEAD)"
+          echo "Git short: $(git rev-parse --short HEAD)"
+          echo "CampaignDetailPage.tsx md5: $(md5sum apps/admin-web/src/pages/CampaignDetailPage.tsx)"
+          echo "campaigns.ts md5: $(md5sum apps/admin-web/src/api/campaigns.ts)"
+          mkdir -p apps/admin-web/public
+          git rev-parse --short HEAD > apps/admin-web/public/build-marker.txt
+          echo "build-marker written: $(cat apps/admin-web/public/build-marker.txt)"
       - name: Start admin-web (vite dev)
         working-directory: apps/admin-web
         run: |
@@ -320,6 +330,18 @@ jobs:
             echo "Waiting for admin-web... ($i/30)"
             sleep 2
           done
+          # 🔍 DIAGNOSTIC: verify served marker
+          echo "=== VITE SERVED MARKER ==="
+          SERVED=$(curl -sf http://localhost:3000/build-marker.txt 2>/dev/null || echo "FETCH_FAILED")
+          echo "Served marker: '$SERVED'"
+          echo "Expected:      '$(cat public/build-marker.txt)'"
+          if [ "$SERVED" = "$(cat public/build-marker.txt)" ]; then
+            echo "✅ MARKER MATCH — Vite serves current checkout"
+          else
+            echo "❌ MARKER MISMATCH — Vite serves STALE content!"
+            echo "=== Vite log (last 20 lines) ==="
+            tail -20 /tmp/admin-web.log
+          fi
       - name: Start advertiser-web (vite dev)
         working-directory: apps/advertiser-web
         run: |
