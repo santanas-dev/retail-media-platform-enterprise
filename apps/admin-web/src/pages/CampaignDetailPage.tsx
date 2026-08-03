@@ -133,8 +133,17 @@ export default function CampaignDetailPage() {
   const { user } = useAuth();
 
   // CAMPAIGN-UX-002D: guided create-to-fill — detect navigation state or ?start=content
-  const guidedFromCreate = (location.state as { guided?: boolean })?.guided === true
-    || new URLSearchParams(location.search).get("start") === "content";
+  const navigationState = location.state as { guided?: boolean } | null;
+  const guidedFromState = navigationState?.guided === true;
+  const guidedFromQuery = new URLSearchParams(location.search).get("start") === "content";
+  // Clear guided flag on full page reload — browser preserves History API state,
+  // so location.state.guided=true survives page refresh, hiding status badge.
+  // On SPA navigation (popstate), keep the flag.
+  const isBrowserReload = typeof window !== "undefined"
+    && window.performance?.getEntriesByType?.("navigation")?.[0] as
+       PerformanceNavigationTiming | undefined;
+  const wasReload = isBrowserReload?.type === "reload";
+  const guidedFromCreate = wasReload ? false : (guidedFromState || guidedFromQuery);
   const initialTab: Tab = guidedFromCreate ? "content" : "overview";
   const [showBanner, setShowBanner] = useState(guidedFromCreate);
 
