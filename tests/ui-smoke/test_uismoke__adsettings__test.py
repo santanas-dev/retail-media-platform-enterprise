@@ -43,7 +43,14 @@ def test_uismoke__adsettings__test(smoke_page: Page) -> None:
 
     # Verify human-readable message, no [object Object]
     result_text = result.inner_text()
-    assert "AD integration is not configured" in result_text or "Не настроено" in result_text, \
+    # Accept: not_configured (AD disabled), unavailable (enabled but no server), misconfigured
+    assert any(phrase in result_text for phrase in [
+        "AD integration is not configured",
+        "Не настроено",
+        "not reachable",
+        "недоступен",
+        "unavailable",
+    ]), \
         f"Expected controlled failure message, got: {result_text}"
     assert "[object Object]" not in result_text, f"Result contains [object Object]: {result_text}"
     print(f"[{time.time()-t0:.1f}s] Test result visible: {result_text[:80]}...")
