@@ -72,8 +72,8 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     # Should now be on flights tab
     expect(page.locator('[data-testid="flight-add-btn"]')).to_be_visible(timeout=5000)
     page.click('[data-testid="flight-add-btn"]')
-    page.fill('[data-testid="flight-start"]', "2026-08-01")
-    page.fill('[data-testid="flight-end"]', "2026-08-31")
+    page.fill('[data-testid="flight-start"]', "2027-03-01")
+    page.fill('[data-testid="flight-end"]', "2027-03-31")
     page.click('[data-testid="flight-submit"]')
     page.wait_for_load_state("networkidle")
 
@@ -155,5 +155,10 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
 
     page.reload()
     page.wait_for_load_state("networkidle")
-    assert "На согласовании" in page.locator('[data-testid="campaign-status-badge"]').inner_text()
+    # After reload, wait for campaign detail to render
+    page.wait_for_selector("h2", state="visible", timeout=15000)
+    page.wait_for_timeout(1000)  # let React finish
+    status_badge = page.locator('[data-testid="campaign-status-badge"]')
+    expect(status_badge).to_be_visible(timeout=20000)
+    expect(status_badge).to_contain_text("На согласовании", timeout=5000)
     print(f"[{time.time()-t0:.1f}s] Reload ✓ — DONE")

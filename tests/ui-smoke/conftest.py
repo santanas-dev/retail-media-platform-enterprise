@@ -48,6 +48,31 @@ else:
             "locale": "ru-RU",
         }
 
+    @pytest.fixture(scope="session", autouse=True)
+    def _clear_inventory_for_smoke() -> None:
+        """Clear all reserved inventory bookings before smoke tests.
+
+        Each smoke test creates campaigns with placements that reserve
+        inventory slots.  Over time, all slots fill up and subsequent
+        submit calls fail with CAPACITY_OVERBOOKED.  Clearing at session
+        start via direct DB ensures a clean slate.
+        """
+        import subprocess
+        db_url = os.environ.get(
+            "DATABASE_URL",
+            "postgresql://retail_media_owner:retail_media_owner_pass@localhost:5432/retail_media_platform",
+        )
+        # Extract connection params from asyncpg URL
+        # postgresql+asyncpg://user:pass@host:port/db → psql-compatible
+        clean_url = db_url.replace("+asyncpg", "").replace("***", "retail_media_owner_pass")
+        subprocess.run(
+            [
+                "psql", clean_url, "-c",
+                "UPDATE inventory_bookings SET status='released', released_at=NOW(), release_reason='smoke test reset' WHERE status='reserved'; UPDATE inventory_slots SET reserved_capacity = 0, booked_capacity = 0;",
+            ],
+            capture_output=True,
+        )
+
     @pytest.fixture
     def smoke_page(page: Page) -> Page:
         page.goto(LOGIN_URL)

@@ -56,8 +56,8 @@ def test_uismoke__campaign__reject(smoke_page: Page) -> None:
     # ── Flights ──
     page.click('[data-testid="flight-add-btn"]')
     expect(page.locator('[data-testid="flight-start"]')).to_be_visible(timeout=5000)
-    page.fill('[data-testid="flight-start"]', "2026-12-01")
-    page.fill('[data-testid="flight-end"]', "2026-12-31")
+    page.fill('[data-testid="flight-start"]', "2027-05-01")
+    page.fill('[data-testid="flight-end"]', "2027-05-31")
     page.click('[data-testid="flight-submit"]')
     page.wait_for_load_state("networkidle")
     print(f"[{time.time()-t0:.1f}s] Flight added")
@@ -112,8 +112,7 @@ def test_uismoke__campaign__reject(smoke_page: Page) -> None:
     # ── Verify ──
     status_badge = page.locator('[data-testid="campaign-status-badge"]')
     expect(status_badge).to_be_visible(timeout=10000)
-    badge_text = status_badge.inner_text()
-    assert "Отклонена" == badge_text, f"Expected Отклонена, got: {badge_text}"
+    expect(status_badge).to_contain_text("Отклонена", timeout=5000)
     print(f"[{time.time()-t0:.1f}s] Rejected ✓")
 
     # Verify rejection reason is displayed

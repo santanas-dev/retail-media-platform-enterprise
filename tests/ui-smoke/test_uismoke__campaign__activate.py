@@ -56,8 +56,8 @@ def test_uismoke__campaign__activate(smoke_page: Page) -> None:
     # ── Flights ──
     page.click('[data-testid="flight-add-btn"]')
     expect(page.locator('[data-testid="flight-start"]')).to_be_visible(timeout=5000)
-    page.fill('[data-testid="flight-start"]', "2026-12-01")
-    page.fill('[data-testid="flight-end"]', "2026-12-31")
+    page.fill('[data-testid="flight-start"]', "2027-06-01")
+    page.fill('[data-testid="flight-end"]', "2027-06-30")
     page.click('[data-testid="flight-submit"]')
     page.wait_for_load_state("networkidle")
     print(f"[{time.time()-t0:.1f}s] Flight added")
