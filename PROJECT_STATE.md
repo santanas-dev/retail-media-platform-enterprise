@@ -334,11 +334,35 @@ metadata-only creative error.
   on commit 643a132, not introduced by this fix).
 - No changes to business logic, RLS, cross-org checks, or creative deliverability rules.
 
-**TRUTH-CI-001D ✅** — campaign lifecycle tests green, CI subset 29/35.
-- 5 lifecycle tests (submit/approve/reject/activate/pause) included in CI.
-- Inventory clearing + date fixes + stable assertions.
-- 6 remaining excluded: 2 flaky (emergency_*), 1 timeout (contract_pdf_upload), 3 not investigated.
+**TRUTH-CI-001D 🔴** — campaign lifecycle tests GREEN locally, but NOT CI-enforced.
+- 5 lifecycle tests (submit/approve/reject/activate/pause) pass locally against dev stack with
+  real admin-web Vite serving updated code.
+- CI baseline remains 24/35 — lifecycle tests EXCLUDED from CI subset.
+- Reason: **VITE-CI-STALENESS-001** — Vite dev server in CI does not serve updated admin-web bundle.
+  CampaignDetailPage.tsx changes not observed by UI-smoke in CI. Root cause is CI infra, not product.
 - operator walkthrough: PENDING.
+
+**LIFECYCLE-RELOAD-CI-003 🔴 BLOCKED** — campaign detail reload persistence fix.
+- Bug: `getCampaign(id)` → `listCampaigns(200,0)` → client-side filter. At >200 campaigns,
+  target not in first page → null → «Кампания не найдена» on reload.
+- Fix: add `campaign_id` query param to `GET /campaigns` list endpoint; frontend `getCampaign(id)`
+  calls `listCampaigns({ campaign_id: id })`.
+- Backend change ready. Frontend change (CampaignDetailPage.tsx) written.
+- ⚠️ **6 CI iterations failed:** frontend changes never observed by UI-smoke in CI.
+  `campaign_id=` never appeared in control-api logs in CI (no `GET /campaigns?campaign_id=...`).
+  Locally: all 5 lifecycle smokes pass, backend unit tests 1401+ ✅, vitest 314/314 ✅.
+- **Root cause:** VITE-CI-STALENESS-001 — Vite dev server in CI serves stale admin-web bundle.
+  Product code + tests are correct. CI infra prevents verification.
+- All 6 LIFECYCLE-RELOAD commits reverted (bc152d4..7a89f52) — no CI proof.
+- Next: **VITE-CI-STALENESS-001** investigation — CI Vite bundle staleness diagnosis.
+
+**VITE-CI-STALENESS-001 🔴 BLOCKER** — Vite dev server in CI does not serve updated admin-web bundle.
+- Impact: ALL frontend changes relying on UI-smoke verification are blocked from CI proof.
+- Observed: 6 CI iterations of LIFECYCLE-RELOAD-CI-003 — every time `campaign_id=` absent from
+  backend logs, while locally the same code produces correct requests.
+- Diagnosis required: CI Vite start sequence, HMR vs cold start, possible Docker layer caching,
+  service worker, or entrypoint mismatch.
+- Mitigation: lifecycle tests excluded from CI subset until VITE-CI-STALENESS-001 resolved.
 
 **Previous PLAYER-001B entry (scaffold):**
 
