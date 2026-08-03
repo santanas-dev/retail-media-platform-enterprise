@@ -973,7 +973,6 @@ async def list_campaigns_paginated(
     *,
     limit: int = 50,
     offset: int = 0,
-    campaign_id: str | None = None,
 ) -> tuple[list, int]:
     """Paginated campaign list — returns (items, total_count)."""
     from packages.domain.models import Campaign
@@ -990,8 +989,6 @@ async def list_campaigns_paginated(
         .offset(offset)
         .limit(limit)
     )
-    if campaign_id:
-        stmt = stmt.where(Campaign.id == campaign_id)
     result = await session.execute(stmt)
     items = list(result.scalars().all())
     return items, total

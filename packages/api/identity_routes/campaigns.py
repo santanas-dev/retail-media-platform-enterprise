@@ -66,13 +66,11 @@ router = APIRouter()
 async def list_campaigns(
     db=Depends(get_db),
     pagination: PaginationParams = Depends(get_pagination_params),
-    campaign_id: str | None = None,
     _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
     items, total = await repository.list_campaigns_paginated(
         db, limit=pagination.limit, offset=pagination.offset,
-        campaign_id=campaign_id,
     )
     return PaginatedResponse(
         items=[_serialize_campaign(item) for item in items],

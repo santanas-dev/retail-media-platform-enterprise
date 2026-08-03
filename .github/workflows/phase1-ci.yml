@@ -330,7 +330,7 @@ jobs:
             echo "Waiting for admin-web... ($i/30)"
             sleep 2
           done
-          # 🔍 DIAGNOSTIC: verify served marker + campaigns.ts module
+          # 🔍 DIAGNOSTIC: verify served marker
           echo "=== VITE SERVED MARKER ==="
           SERVED=$(curl -sf http://localhost:3000/build-marker.txt 2>/dev/null || echo "FETCH_FAILED")
           echo "Served marker: '$SERVED'"
@@ -341,17 +341,6 @@ jobs:
             echo "❌ MARKER MISMATCH — Vite serves STALE content!"
             echo "=== Vite log (last 20 lines) ==="
             tail -20 /tmp/admin-web.log
-          fi
-          # 🔍 DIAGNOSTIC: verify campaigns.ts served module contains campaign_id
-          echo "=== VITE SERVED campaigns.ts ==="
-          CAMPAIGNS_TS=$(curl -sf http://localhost:3000/src/api/campaigns.ts 2>/dev/null || echo "FETCH_FAILED")
-          if echo "$CAMPAIGNS_TS" | grep -q "campaign_id"; then
-            echo "✅ campaigns.ts contains campaign_id — fix IS served"
-            echo "$CAMPAIGNS_TS" | grep -o '.\{0,40\}campaign_id.\{0,40\}' | head -3
-          else
-            echo "❌ campaigns.ts does NOT contain campaign_id — fix NOT served!"
-            echo "=== First 500 chars of served campaigns.ts ==="
-            echo "$CAMPAIGNS_TS" | head -c 500
           fi
       - name: Start advertiser-web (vite dev)
         working-directory: apps/advertiser-web

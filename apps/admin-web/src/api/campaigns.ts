@@ -71,21 +71,18 @@ import type {
 export function listCampaigns(
   limit = 50,
   offset = 0,
-  campaignId?: string,
 ): Promise<PaginatedResponse<CampaignOut>> {
   const params = new URLSearchParams();
   params.set("limit", String(limit));
   params.set("offset", String(offset));
-  if (campaignId) {
-    params.set("campaign_id", campaignId);
-  }
   return api.get<PaginatedResponse<CampaignOut>>(`/campaigns?${params}`);
 }
 
-/** Get a single campaign by ID — uses campaign_id filter on list endpoint. */
+/** Get a single campaign by ID — fetches from first page and filters client-side.
+ *  Temporary: will be replaced by dedicated detail endpoint (S-XXX). */
 export async function getCampaign(id: string): Promise<CampaignOut | null> {
-  const page = await listCampaigns(1, 0, id);
-  return page.items[0] ?? null;
+  const page = await listCampaigns(200, 0);
+  return page.items.find((c) => c.id === id) ?? null;
 }
 
 /** Create a draft campaign. Returns the created campaign with its ID. */
