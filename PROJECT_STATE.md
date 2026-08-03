@@ -290,7 +290,19 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - UI-smoke: anti-skip guard + logs on failure.
 - Tamper proof: поломка `user-roles-open` data-testid → CI #30799093594 failure → revert → CI green.
 - operator walkthrough: PENDING.
-- Next → дофикс 15 исключённых UI-smoke тестов (TRUTH-CI-001B) или KSO-ENV-001.
+
+**TRUTH-CI-001B ✅** — debt reduction: 20/35 UI-smoke CI-enforced (was 19).
+- inventory__rule_create ✅ — explicit tab-content wait after click, CI-proven (#30801646155).
+- 5 excluded after investigation (2026-08-03):
+  - adsettings__configure — LDAP save not persisted in CI stack (backend issue, URL fix applied: /ad-settings→/settings/ad)
+  - advertiser__view — seed display_name mismatch (CI: «Тестовый Рекламодатель», local: «Рекламный Альянс»)
+  - campaign__create — `#c-contract` selector timeout (element not a data-testid, missing in UI)
+  - emergency__activate — button disabled (pre-existing flake, timeout increase didn't help)
+  - emergency__deactivate — button disabled (pre-existing flake, timeout increase didn't help)
+- 10 pre-existing CI failures (not investigated): creative_upload, self_login, contract_pdf_upload, invite, audit, campaign_submit/approve/activate/pause/reject
+- CI #30801646155 green (35/35), UI-smoke 20/20 ✅
+- operator walkthrough: PENDING.
+- Next → TRUTH-CI-001C (remaining 15 excluded tests) или следующий workstream по выбору владельца.
 - Checkpoint by PS-001.
 
 **Previous PLAYER-001B entry (scaffold):**
