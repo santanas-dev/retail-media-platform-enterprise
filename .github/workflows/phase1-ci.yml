@@ -106,9 +106,19 @@ jobs:
       - name: Install deps
         run: pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT nats-py jsonschema pyyaml pytest-asyncio greenlet minio ldap3 redis aiosqlite requests
       - name: Run tests
+        run: python -m pytest tests/ -v 2>&1 | tee /tmp/python-tests-output.txt
         env:
           PYTHONPATH: apps/kso-player-client
-        run: python -m pytest tests/ -v
+      - name: Anti-skip guard
+        if: always()
+        run: |
+          if [ -f /tmp/python-tests-output.txt ]; then
+            if ! grep -qE '[0-9]+ passed' /tmp/python-tests-output.txt; then
+              echo "::error::No python tests passed — all skipped or zero collected"
+              exit 1
+            fi
+            echo "Python tests passed OK."
+          fi
   import-boundaries:
     name: Import Boundaries — ADR‑014
     runs-on: ubuntu-latest
@@ -174,6 +184,156 @@ jobs:
         run: npm run build
       - name: Run tests
         run: npm test
+
+  ui-smoke:
+    name: UI-Smoke — Playwright (P0 subset)
+    runs-on: ubuntu-latest
+    needs: [python-tests, frontend]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: retail_media_owner
+          POSTGRES_PASSWORD: retail_media_owner_pass
+          POSTGRES_DB: retail_media_platform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      minio:
+        image: minio/minio:latest
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        ports:
+          - 9000:9000
+          - 9001:9001
+        options: >-
+          --health-cmd "curl -sf http://localhost:9000/minio/health/live"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        command: server /data --console-address ":9001"
+    env:
+      ENVIRONMENT: dev
+      JWT_SECRET: ci-ui-smoke-jwt-secret-at-least-32-chars
+      MANIFEST_SIGNING_KEY: ci-manifest-signing-key-at-least-32-chars
+      DATABASE_URL: postgresql+asyncpg://retail_media_owner:retail_media_owner_pass@localhost:5432/retail_media_platform
+      MINIO_ENDPOINT: localhost:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_SECURE: "false"
+      REDIS_URL: redis://localhost:6379/0
+      SEED_DEV_CREDENTIALS: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/admin-web/package-lock.json
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Install Python deps
+        run: pip install sqlalchemy alembic asyncpg fastapi uvicorn httpx pytest bcrypt PyJWT psycopg2-binary greenlet ldap3 minio nats-py jsonschema pyyaml pytest-asyncio redis aiosqlite playwright
+      - name: Install Node deps (admin-web)
+        working-directory: apps/admin-web
+        run: npm ci
+      - name: Wait for PostgreSQL
+        run: |
+          for i in $(seq 1 30); do
+            if pg_isready -h 127.0.0.1 -U retail_media_owner -d retail_media_platform; then
+              echo "PostgreSQL ready."
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
+      - name: Run migrations
+        working-directory: apps/control-api
+        run: alembic upgrade head
+      - name: Seed database
+        run: python3 apps/control-api/seed.py
+      - name: Setup MinIO buckets + CORS
+        run: |
+          # Download MinIO client
+          curl -sSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
+          chmod +x /usr/local/bin/mc
+          mc alias set local http://localhost:9000 minioadmin minioadmin
+          # Create required buckets
+          mc mb local/retail-media-creatives 2>/dev/null || true
+          mc mb local/retail-media-contracts 2>/dev/null || true
+          mc anonymous set public local/retail-media-creatives 2>/dev/null || true
+          mc anonymous set public local/retail-media-contracts 2>/dev/null || true
+          # Set CORS for browser presigned-URL upload
+          mc admin config set local api \
+            cors_allow_origin='http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173' \
+            >/dev/null 2>&1 || true
+          echo "MinIO configured."
+          mc ls local/ 2>/dev/null || true
+      - name: Start control-api
+        run: |
+          cd apps/control-api
+          nohup uvicorn main:app --host 0.0.0.0 --port 8000 > /tmp/control-api.log 2>&1 &
+          echo "control-api PID: $!"
+          # Wait for health
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health/live >/dev/null 2>&1; then
+              echo "control-api ready."
+              break
+            fi
+            echo "Waiting for control-api... ($i/30)"
+            sleep 2
+          done
+      - name: Start admin-web (vite dev)
+        working-directory: apps/admin-web
+        run: |
+          nohup npx vite --port 3000 --host 0.0.0.0 > /tmp/admin-web.log 2>&1 &
+          echo "admin-web PID: $!"
+          # Wait for ready
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/login >/dev/null 2>&1; then
+              echo "admin-web ready."
+              break
+            fi
+            echo "Waiting for admin-web... ($i/30)"
+            sleep 2
+          done
+      - name: Install Playwright browser
+        run: python3 -m playwright install chromium
+      - name: Run UI-smoke tests
+        run: |
+          set -o pipefail
+          UI_SMOKE_RUN=1 python3 -m pytest tests/ui-smoke -v --tb=long 2>&1 | tee /tmp/ui-smoke-output.txt
+          PYTEST_EXIT=${PIPESTATUS[0]}
+          # Anti-skip guard: fail if zero tests passed (all skipped)
+          if ! grep -qE '[0-9]+ passed' /tmp/ui-smoke-output.txt; then
+            echo "::error::No UI-smoke tests passed — all skipped or zero collected"
+            exit 1
+          fi
+          exit $PYTEST_EXIT
+      - name: Save logs on failure
+        if: failure()
+        run: |
+          echo "=== control-api logs ==="
+          tail -200 /tmp/control-api.log 2>/dev/null || echo "(no logs)"
+          echo "=== admin-web logs ==="
+          tail -200 /tmp/admin-web.log 2>/dev/null || echo "(no logs)"
 
   docker-compose:
     name: Docker Compose Config Validation
@@ -342,9 +502,8 @@ jobs:
         run: python -m pytest tests/test_production_config_gate.py -v --tb=short
 
   roadmap-consistency-audit:
-    name: Roadmap Consistency Audit — UI-TRUTH-001B (non-blocking)
+    name: Roadmap Consistency Audit — UI-TRUTH-001B (blocking)
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -352,5 +511,5 @@ jobs:
           python-version: "3.12"
       - name: Install deps
         run: pip install openpyxl pyyaml
-      - name: Run consistency check (audit mode)
-        run: python3 scripts/roadmap-consistency-check.py
+      - name: Run consistency check (strict — blocks on findings)
+        run: python3 scripts/roadmap-consistency-check.py --strict
