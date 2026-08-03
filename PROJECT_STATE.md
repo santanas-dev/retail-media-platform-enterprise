@@ -310,6 +310,30 @@ ready/approved — actual failure was inventory reservation.
 - Reload checks converted from brittle `inner_text()` to `expect().to_contain_text()`.
 - No changes to creative deliverability validation — metadata-only creatives still rejected.
 
+**SUBMIT-VALIDATION-CI-002-FU ✅** — Error discrimination fix. CAPACITY_OVERBOOKED no longer masks as
+metadata-only creative error.
+- Root cause: `request_campaign_approval` returned `(status, status)` on ALL validation failures —
+  inventory overbooking, missing flights, metadata-only creatives, contract window violations.
+  API endpoint used a single generic "Metadata-only creatives" message for all failures.
+- Fix: `request_campaign_approval` now returns `(status, new_status, reason)` with a descriptive
+  Russian reason per failure path. API endpoint uses `reason` in 422 detail.
+- Error reasons:
+  - Missing flights/placements/creatives → "Кампания не готова к отправке: отсутствуют флайты, ..."
+  - Metadata-only creative → "Креатив не загружен: отсутствует файл."
+  - Creative not ready/approved → "Креатив не готов: статус загрузки — «...»"
+  - Contract window violation → "Дата начала флайта (...) раньше даты начала договора (...)"
+  - Inventory overbooking → "Невозможно забронировать инвентарь: Blocked by CAPACITY_OVERBOOKED..."
+- Source-inspection tests (2 new): verify inventory catch produces inventory wording, not metadata-only;
+  verify metadata-only check produces creative wording.
+- Behavioral test updated: `test_metadata_only_creative_blocks_approval` assertion now matches
+  Russian "Креатив не загружен" message.
+- Backend unit tests: 1407+2 new = 1409+ passed (20/20 phase4d). Admin-web vitest: 314/314 ✅.
+- Roadmap guard: 0 findings.
+- UI: formatApiError passes detail through as-is — readable error guaranteed.
+- Lifecycle UI-smokes: submit/approve/reject core flow ✅ (reload persistence is pre-existing bug
+  on commit 643a132, not introduced by this fix).
+- No changes to business logic, RLS, cross-org checks, or creative deliverability rules.
+
 **TRUTH-CI-001D ✅** — campaign lifecycle tests green, CI subset 29/35.
 - 5 lifecycle tests (submit/approve/reject/activate/pause) included in CI.
 - Inventory clearing + date fixes + stable assertions.

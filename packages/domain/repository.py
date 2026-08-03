@@ -1680,15 +1680,17 @@ async def request_campaign_approval(
     *,
     changed_by: str,
     scope_advertiser_ids: frozenset[str] | None = None,
-) -> tuple[str | None, str | None]:
-    """Request approval for a draft campaign. Returns (old_status, new_status).
+) -> tuple[str | None, str | None, str | None]:
+    """Request approval for a draft campaign. Returns (old_status, new_status, reason).
 
     Transition: draft → pending_approval.
     Validates: ≥1 flight, ≥1 placement, ≥1 creative, flights within contract window.
 
-    Returns (None, None) if campaign not found or not in draft status.
-    Returns (old, old) if validation fails (no flights/placements/creatives, or
-        flights outside contract validity window).
+    Returns (None, None, None) if campaign not found or not in draft status.
+    Returns (old, old, reason) if validation fails — reason is a human-readable
+        Russian message explaining which check failed (missing flights/placements,
+        metadata-only creatives, contract window violation, or inventory capacity).
+    Returns (old, new, None) on success.
     """
     import uuid
     from datetime import datetime, timezone as tz
@@ -1704,9 +1706,9 @@ async def request_campaign_approval(
     )
     campaign = result.scalar_one_or_none()
     if campaign is None:
-        return None, None
+        return None, None, None
     if campaign.status != "draft":
-        return None, None
+        return None, None, None
 
     _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
 
@@ -1724,7 +1726,15 @@ async def request_campaign_approval(
         .where(CampaignCreative.campaign_id == campaign_id)
     )
     if not flight_count or not placements or not creatives:
-        return campaign.status, campaign.status  # validation failed
+        missing = []
+        if not flight_count:
+            missing.append("флайты")
+        if not placements:
+            missing.append("плейсменты")
+        if not creatives:
+            missing.append("креативы")
+        reason = "Кампания не готова к отправке: отсутствуют " + ", ".join(missing)
+        return campaign.status, campaign.status, reason
 
     # P1 fix: reject approval if any attached creative is metadata-only
     # (empty sha256_checksum = no real file uploaded yet)
@@ -1743,15 +1753,30 @@ async def request_campaign_approval(
         for aid, cs, st, mod_st, fsz, sk in asset_rows.fetchall():
             # S-017: full deliverability check — not just checksum
             if not is_deliverable_checksum(cs):
-                return campaign.status, campaign.status  # empty/invalid checksum
+                return campaign.status, campaign.status, (
+                    "Креатив не загружен: отсутствует файл. "
+                    "Загрузите файл через библиотеку креативов перед отправкой кампании."
+                )
             if st != "ready":
-                return campaign.status, campaign.status  # not uploaded
+                return campaign.status, campaign.status, (
+                    "Креатив не готов: статус загрузки — «%s». "
+                    "Дождитесь завершения загрузки файла." % st
+                )
             if mod_st != "approved":
-                return campaign.status, campaign.status  # not approved
+                return campaign.status, campaign.status, (
+                    "Креатив не прошёл модерацию: статус — «%s». "
+                    "Отправьте креатив на модерацию и дождитесь одобрения." % mod_st
+                )
             if fsz <= 0:
-                return campaign.status, campaign.status  # zero-size file
+                return campaign.status, campaign.status, (
+                    "Креатив повреждён: размер файла равен нулю. "
+                    "Загрузите файл заново."
+                )
             if not sk or sk == "":
-                return campaign.status, campaign.status  # no storage key
+                return campaign.status, campaign.status, (
+                    "Креатив не загружен: файл отсутствует в хранилище. "
+                    "Загрузите файл через библиотеку креативов."
+                )
 
     # Validate flight windows against contract (ADR-015 §3.5)
     contract = await session.get(AdvertiserContract, campaign.advertiser_contract_id)
@@ -1761,11 +1786,23 @@ async def request_campaign_approval(
         )
         for flight in flights_result.scalars().all():
             if flight.start_at and contract.valid_from and flight.start_at < contract.valid_from:
-                return campaign.status, campaign.status
+                return campaign.status, campaign.status, (
+                    "Дата начала флайта (%s) раньше даты начала договора (%s). "
+                    "Скорректируйте период флайта."
+                    % (flight.start_at.strftime("%d.%m.%Y"), contract.valid_from.strftime("%d.%m.%Y"))
+                )
             if flight.start_at and flight.end_at and flight.end_at < flight.start_at:
-                return campaign.status, campaign.status
+                return campaign.status, campaign.status, (
+                    "Дата окончания флайта (%s) раньше даты начала (%s). "
+                    "Проверьте период флайта."
+                    % (flight.end_at.strftime("%d.%m.%Y"), flight.start_at.strftime("%d.%m.%Y"))
+                )
             if flight.end_at and contract.valid_until and flight.end_at > contract.valid_until:
-                return campaign.status, campaign.status
+                return campaign.status, campaign.status, (
+                    "Дата окончания флайта (%s) позже даты окончания договора (%s). "
+                    "Скорректируйте период флайта."
+                    % (flight.end_at.strftime("%d.%m.%Y"), contract.valid_until.strftime("%d.%m.%Y"))
+                )
 
     now = datetime.now(tz.utc)
     old_status = campaign.status
@@ -1812,9 +1849,17 @@ async def request_campaign_approval(
                     default_total_capacity=cfg.inventory_default_slot_capacity,
                     reservation_ttl_hours=cfg.inventory_reservation_ttl_hours,
                 )
-            except ValueError:
+            except ValueError as e:
                 # Inventory unavailable — fail approval request
-                return campaign.status, campaign.status
+                err_msg = str(e)
+                # Extract capacity-related messages
+                reason = (
+                    "Невозможно забронировать инвентарь: %s. "
+                    "Проверьте доступность рекламных поверхностей на выбранные даты "
+                    "или уменьшите долю голоса (SoV)."
+                    % err_msg
+                )
+                return campaign.status, campaign.status, reason
 
     campaign.status = "pending_approval"
     campaign.updated_at = now
@@ -1830,7 +1875,7 @@ async def request_campaign_approval(
     )
     session.add(history)
 
-    return old_status, "pending_approval"
+    return old_status, "pending_approval", None
 
 
 async def approve_campaign(

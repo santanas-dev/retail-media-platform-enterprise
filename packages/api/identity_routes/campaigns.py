@@ -290,7 +290,7 @@ async def request_approval_endpoint(
 ):
     user_id = claims["sub"]
     try:
-        old_status, new_status = await repository.request_campaign_approval(
+        old_status, new_status, reason = await repository.request_campaign_approval(
             db,
             campaign_id,
             changed_by=user_id,
@@ -304,9 +304,13 @@ async def request_approval_endpoint(
             detail="Campaign not found or not in draft status",
         )
     if old_status == new_status:
+        detail = reason or (
+            "Кампания не готова к отправке. Проверьте заполнение флайтов, "
+            "плейсментов и креативов."
+        )
         raise HTTPException(
             status_code=422,
-            detail="Campaign validation failed: ensure at least one flight, one placement, and one creative with uploaded files exist. Metadata-only creatives (no file uploaded) cannot be approved.",
+            detail=detail,
         )
     await repository.enqueue_outbox_event(
         db,
