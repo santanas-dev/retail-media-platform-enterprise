@@ -81,7 +81,12 @@ function mockFetchFor(path: string): unknown {
   if (path.includes("campaign-approvals")) return [];
   if (path.includes("/display-surfaces")) return [];
   if (path.includes("/stores")) return [];
-  if (path.includes("/campaigns") && !path.includes("flights") && !path.includes("placements") && !path.includes("creatives") && !path.includes("/pop/")) return {items: SEED_CAMPAIGNS, total: SEED_CAMPAIGNS.length, limit: 50, offset: 0};
+  if (path.includes("/campaigns") && !path.includes("flights") && !path.includes("placements") && !path.includes("creatives") && !path.includes("/pop/")) {
+    // Detail endpoint: /campaigns/{id} (no query params)
+    if (!path.includes("?")) return DRAFT_CAMPAIGN;
+    // List endpoint: /campaigns?limit=...&offset=...
+    return {items: SEED_CAMPAIGNS, total: SEED_CAMPAIGNS.length, limit: 50, offset: 0};
+  }
   return [];
 }
 
@@ -1401,8 +1406,11 @@ describe("CampaignDetailPage — S-009e", () => {
       if (url.endsWith("/me")) {
         return Promise.resolve(new Response(JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin", permissions: ["campaigns.approve"] }), { status: 200 }));
       }
-      // Return pending campaign for list
-      if (url.includes("/identity/campaigns?") && method !== "POST") {
+      // Return pending campaign for list AND detail
+      if (url.includes("/identity/campaigns") && !url.includes("flights") && !url.includes("placements") && !url.includes("creatives") && !url.includes("approval") && !url.includes("request-approval") && !url.includes("approve") && !url.includes("reject") && method !== "POST") {
+        // Detail endpoint returns single campaign
+        if (!url.includes("?")) return Promise.resolve(new Response(JSON.stringify(pendingCampaign), { status: 200 }));
+        // List endpoint returns paginated
         return Promise.resolve(new Response(JSON.stringify({items: [pendingCampaign], total: 1, limit: 50, offset: 0}), { status: 200 }));
       }
       // Approve returns 403
@@ -1549,7 +1557,10 @@ describe("CampaignDetailPage — S-009e", () => {
       if (url.endsWith("/me")) {
         return Promise.resolve(new Response(JSON.stringify({ sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin", permissions: ["campaigns.manage"] }), { status: 200 }));
       }
-      if (url.includes("/identity/campaigns?") && (!init || init.method !== "POST")) {
+      if (url.includes("/identity/campaigns") && !url.includes("flights") && !url.includes("placements") && !url.includes("creatives") && !url.includes("approval") && !url.includes("request-approval") && !url.includes("approve") && !url.includes("reject") && (!init || init.method !== "POST")) {
+        // Detail endpoint returns single campaign
+        if (!url.includes("?")) return Promise.resolve(new Response(JSON.stringify(approvedCampaign), { status: 200 }));
+        // List endpoint returns paginated
         return Promise.resolve(new Response(JSON.stringify({items: [approvedCampaign], total: 1, limit: 50, offset: 0}), { status: 200 }));
       }
       if (url.includes("/activate") && init?.method === "POST") {

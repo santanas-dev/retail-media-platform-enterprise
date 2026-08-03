@@ -334,6 +334,22 @@ metadata-only creative error.
   on commit 643a132, not introduced by this fix).
 - No changes to business logic, RLS, cross-org checks, or creative deliverability rules.
 
+**LIFECYCLE-RELOAD-CI-003 ✅** — Campaign detail reload persistence fixed.
+- Root cause: frontend `getCampaign(id)` called `listCampaigns(200, 0)` and client-side filtered.
+  At >200 campaigns the needed campaign fell outside page 1 → `getCampaign` returned `null` →
+  "Кампания не найдена" after any tab switch + reload.
+- Fix: added `GET /campaigns/{id}` backend endpoint for direct lookup.
+  `campaignService.getCampaign` switched to new endpoint.
+- Second bug: `location.state.guided = true` survived `page.reload()` in browser History API →
+  guided banner re-appeared, hiding status badge. Fixed by clearing `guided` after mount
+  only on page reload (not SPA navigation — preserves guided flow on create).
+- 5 lifecycle UI-smokes: submit/approve/reject/activate/pause — ALL 5 PASSED (reload persistence ✅).
+- Backend unit tests: 1405 passed (no regressions). Vitest: 314/314 ✅ (mocks updated for new API).
+- Roadmap guard: 0 findings.
+- Files: `packages/api/identity_routes/campaigns.py` (+14), `apps/admin-web/src/api/campaigns.ts` (+13/-5),
+  `apps/admin-web/src/pages/CampaignDetailPage.tsx` (+15), 2 test files updated.
+- operator walkthrough: PENDING.
+
 **TRUTH-CI-001D ✅** — campaign lifecycle tests green, CI subset 29/35.
 - 5 lifecycle tests (submit/approve/reject/activate/pause) included in CI.
 - Inventory clearing + date fixes + stable assertions.

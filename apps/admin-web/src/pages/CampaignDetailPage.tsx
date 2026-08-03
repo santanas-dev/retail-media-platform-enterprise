@@ -138,6 +138,21 @@ export default function CampaignDetailPage() {
   const initialTab: Tab = guidedFromCreate ? "content" : "overview";
   const [showBanner, setShowBanner] = useState(guidedFromCreate);
 
+  // LIFECYCLE-RELOAD-CI-003: browser preserves history.state across
+  // full page reloads, so a campaign created via SPA redirect with
+  // state.guided=true would keep showing the guided banner after
+  // page.reload().  Detect this by checking the navigation type.
+  useEffect(() => {
+    if (guidedFromCreate) {
+      const navEntries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
+      const isReload = navEntries.length > 0 && navEntries[0].type === "reload";
+      if (!isReload) return;  // SPA navigation — keep banner
+      // Full page reload — clear the stale guided state
+      navigate(location.pathname, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const hasApprovePerm = user?.permissions?.includes("campaigns.approve") ?? false;
   const hasManagePerm = user?.permissions?.includes("campaigns.manage") ?? false;
 

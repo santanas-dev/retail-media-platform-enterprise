@@ -336,6 +336,10 @@ describe("CampaignListPage", () => {
           { status: 200 },
         );
       }
+      // Detail endpoint: GET /campaigns/{id} — must come before list catch-all
+      if (url.includes("/campaigns/") && !url.includes("?") && !url.includes("flights") && !url.includes("placements") && !url.includes("creatives") && !url.includes("approval") && !url.includes("request-approval") && !url.includes("approve") && !url.includes("reject")) {
+        return new Response(JSON.stringify(SEED_CAMPAIGNS[0]), { status: 200 });
+      }
       if (url.includes("/campaigns") && !url.includes("flights") && !url.includes("placements") && !url.includes("creatives")) {
         return new Response(JSON.stringify({items: SEED_CAMPAIGNS, total: SEED_CAMPAIGNS.length, limit: 50, offset: 0}), { status: 200 });
       }
@@ -363,6 +367,10 @@ describe("CampaignListPage", () => {
       }
       if (url.includes("campaign-approvals")) {
         return new Response(JSON.stringify([]), { status: 200 });
+      }
+      // Detail endpoint: GET /campaigns/{id} (duplicate catch-all)
+      if (url.includes("/campaigns/") && !url.includes("?") && !url.includes("flights") && !url.includes("placements") && !url.includes("creatives")) {
+        return new Response(JSON.stringify(SEED_CAMPAIGNS[0]), { status: 200 });
       }
       return new Response(JSON.stringify([]), { status: 200 });
     });
