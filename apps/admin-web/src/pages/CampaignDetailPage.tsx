@@ -702,6 +702,29 @@ export default function CampaignDetailPage() {
               >
                 {approvalSubmitting ? "Отправка..." : "Отправить на согласование"}
               </button>
+              {/* 🔍 SUBMIT-READINESS-CI-004 diagnostic — remove after root cause found */}
+              <div
+                data-testid="campaign-readiness-debug"
+                data-debug={JSON.stringify({
+                  flights_len: flights.length,
+                  placements_len: placements.length,
+                  creatives_len: creatives.length,
+                  deliverableCount,
+                  canApprove,
+                  allReady,
+                  status: campaign.status,
+                  approvalSubmitting,
+                  disabledReason: approvalSubmitting ? "approval-in-progress"
+                    : !canApprove
+                      ? `missing:${[
+                          flights.length === 0 ? "flights" : "",
+                          placements.length === 0 ? "placements" : "",
+                          creatives.length === 0 ? "creatives" : "",
+                        ].filter(Boolean).join(",")}`
+                      : "none",
+                })}
+                style={{ display: "none" }}
+              />
             </div>
             {approvalError && (
               <div data-testid="campaign-submit-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
