@@ -309,6 +309,7 @@ jobs:
       - name: Start admin-web (vite dev)
         working-directory: apps/admin-web
         run: |
+          rm -rf node_modules/.vite  # clear stale HMR cache
           nohup npx vite --port 3000 --host 0.0.0.0 > /tmp/admin-web.log 2>&1 &
           echo "admin-web PID: $!"
           # Wait for ready
