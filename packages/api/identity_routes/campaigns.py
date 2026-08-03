@@ -66,23 +66,17 @@ router = APIRouter()
 async def list_campaigns(
     db=Depends(get_db),
     pagination: PaginationParams = Depends(get_pagination_params),
-    campaign_id: str | None = Query(None, description="Filter by campaign ID"),
     _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
-    if campaign_id:
-        campaign = await repository.get_campaign(db, campaign_id)
-        items = [campaign] if campaign else []
-        total = len(items)
-    else:
-        items, total = await repository.list_campaigns_paginated(
-            db, limit=pagination.limit, offset=pagination.offset,
-        )
+    items, total = await repository.list_campaigns_paginated(
+        db, limit=pagination.limit, offset=pagination.offset,
+    )
     return PaginatedResponse(
         items=[_serialize_campaign(item) for item in items],
         total=total,
-        limit=1 if campaign_id else pagination.limit,
-        offset=0 if campaign_id else pagination.offset,
+        limit=pagination.limit,
+        offset=pagination.offset,
     )
 
 
@@ -611,20 +605,6 @@ async def approval_queue_endpoint(
 
 
 # ── Flights ──
-
-
-@router.get("/campaigns/{campaign_id}", response_model=CampaignOut)
-async def get_campaign_by_id(
-    campaign_id: str,
-    db=Depends(get_db),
-    _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
-    _rls=Depends(set_rls_context),
-):
-    """Get a single campaign by ID. Returns 404 if not found."""
-    campaign = await repository.get_campaign(db, campaign_id)
-    if campaign is None:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    return _serialize_campaign(campaign)
 
 
 @router.post("/campaigns/{campaign_id}/flights",

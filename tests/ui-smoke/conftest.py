@@ -75,13 +75,8 @@ else:
 
     @pytest.fixture
     def smoke_page(page: Page) -> Page:
-        # Clear browser state (cookies, localStorage, sessionStorage) so that
-        # auth from a previous test does not cause React Router to redirect
-        # away from /login before the test can interact with the login form.
-        page.context.clear_cookies()
         page.goto(LOGIN_URL)
         page.wait_for_load_state("networkidle")
-        page.evaluate("() => { localStorage.clear(); sessionStorage.clear(); }")
         return page
 
     def login_as_break_glass_admin(page: Page) -> None:
