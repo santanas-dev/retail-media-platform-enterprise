@@ -616,7 +616,7 @@ export default function CampaignDetailPage() {
 
   function renderOverview() {
     const canApprove = flights.length > 0 && placements.length > 0 && creatives.length > 0;
-    // CAMPAIGN-UX-001B: Readiness checklist
+    // CAMPAIGN-UX-001B: Readiness checklist — require deliverable creative (file uploaded).
     const deliverableCount = creatives.filter((c) => c.asset && c.asset.sha256_checksum && c.asset.sha256_checksum.length === 64).length;
     const allReady = flights.length > 0 && placements.length > 0 && deliverableCount > 0;
     const missingItems: string[] = [];

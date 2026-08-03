@@ -368,7 +368,7 @@ describe("CampaignDetailPage — S-009e", () => {
     // Mock with 1 flight, 1 placement, 1 creative so button is enabled
     const SEED_F: unknown[] = [{ id: "f1", campaign_id: "c1", name: "F1", start_at: "2026-01-01T00:00:00Z", end_at: "2026-02-01T00:00:00Z", priority: 0, created_at: "2026-01-01T00:00:00Z" }];
     const SEED_P: unknown[] = [{ id: "p1", campaign_id: "c1", display_surface_id: null, store_id: "st-1", cluster_id: null, branch_id: null, share_of_voice_pct: 100, max_impressions: null, impressions_delivered: 0, status: "active", created_at: "2026-01-01T00:00:00Z" }];
-    const SEED_C: unknown[] = [{ id: "cc1", campaign_id: "c1", creative_asset_id: "ca-1", sort_order: 0, duration_override_ms: null, created_at: "2026-01-01T00:00:00Z", asset: { id: "ca-1", code: "CR1", name: "Banner", media_type: "image/jpeg", sha256_checksum: "abc", file_size_bytes: 100, status: "active", moderation_status: "approved", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" } }];
+    const SEED_C: unknown[] = [{ id: "cc1", campaign_id: "c1", creative_asset_id: "ca-1", sort_order: 0, duration_override_ms: null, created_at: "2026-01-01T00:00:00Z", asset: { id: "ca-1", code: "CR1", name: "Banner", media_type: "image/jpeg", sha256_checksum: "a".repeat(64), file_size_bytes: 100, status: "active", moderation_status: "approved", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" } }];
 
     mockAllFetches({
       "campaign-flights": () => Promise.resolve(new Response(JSON.stringify(SEED_F), { status: 200 })),
@@ -2086,7 +2086,7 @@ describe("CampaignDetailPage — S-089 Simulation", () => {
 
   const SIM_F = [{ id: "f1", campaign_id: "c1", name: "F1", start_at: "2026-01-01T00:00:00Z", end_at: "2026-02-01T00:00:00Z", priority: 0, created_at: "2026-01-01T00:00:00Z" }];
   const SIM_P = [{ id: "p1", campaign_id: "c1", display_surface_id: "surf-1", store_id: "st-1", cluster_id: null, branch_id: null, share_of_voice_pct: 100, max_impressions: 1000, impressions_delivered: 0, status: "active", created_at: "2026-01-01T00:00:00Z" }];
-  const SIM_C = [{ id: "cc1", campaign_id: "c1", creative_asset_id: "ca-1", sort_order: 0, duration_override_ms: null, created_at: "2026-01-01T00:00:00Z", asset: { id: "ca-1", code: "CR1", name: "Banner", media_type: "image/jpeg", sha256_checksum: "abc", file_size_bytes: 100, status: "active", moderation_status: "approved", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" } }];
+  const SIM_C = [{ id: "cc1", campaign_id: "c1", creative_asset_id: "ca-1", sort_order: 0, duration_override_ms: null, created_at: "2026-01-01T00:00:00Z", asset: { id: "ca-1", code: "CR1", name: "Banner", media_type: "image/jpeg", sha256_checksum: "a".repeat(64), file_size_bytes: 100, status: "active", moderation_status: "approved", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" } }];
 
   const SIM_RESULT = {
     campaign_id: "c1", overall_fit: true,
@@ -2103,7 +2103,7 @@ describe("CampaignDetailPage — S-089 Simulation", () => {
     });
     const router = createRouter("/campaigns/c1");
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
-    await waitFor(() => { expect(screen.getByText("🧪 Симуляция")).toBeTruthy(); });
+    await waitFor(() => { expect(screen.getByTestId("simulate-btn")).toBeTruthy(); });
   });
 
   it("shows simulation result after click (success)", async () => {
@@ -2116,8 +2116,8 @@ describe("CampaignDetailPage — S-089 Simulation", () => {
     });
     const router = createRouter("/campaigns/c1");
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
-    await waitFor(() => { expect(screen.getByText("🧪 Симуляция")).toBeTruthy(); });
-    await userEvent.setup().click(screen.getByText("🧪 Симуляция"));
+    await waitFor(() => { expect(screen.getByTestId("simulate-btn")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByTestId("simulate-btn"));
     await waitFor(() => {
       expect(screen.getByText(/Кампания помещается/)).toBeTruthy();
       expect(screen.getByTestId("simulation-blocking-count").textContent).toBe("0");
@@ -2137,8 +2137,8 @@ describe("CampaignDetailPage — S-089 Simulation", () => {
     });
     const router = createRouter("/campaigns/c1");
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
-    await waitFor(() => { expect(screen.getByText("🧪 Симуляция")).toBeTruthy(); });
-    await userEvent.setup().click(screen.getByText("🧪 Симуляция"));
+    await waitFor(() => { expect(screen.getByTestId("simulate-btn")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByTestId("simulate-btn"));
     await waitFor(() => {
       expect(screen.getByText(/не помещается/)).toBeTruthy();
       expect(screen.getByText("Overbooked")).toBeTruthy();
@@ -2155,8 +2155,8 @@ describe("CampaignDetailPage — S-089 Simulation", () => {
     });
     const router = createRouter("/campaigns/c1");
     render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
-    await waitFor(() => { expect(screen.getByText("🧪 Симуляция")).toBeTruthy(); });
-    await userEvent.setup().click(screen.getByText("🧪 Симуляция"));
+    await waitFor(() => { expect(screen.getByTestId("simulate-btn")).toBeTruthy(); });
+    await userEvent.setup().click(screen.getByTestId("simulate-btn"));
     await waitFor(() => {
       expect(screen.getByText(/Server error/)).toBeTruthy();
     });
