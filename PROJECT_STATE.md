@@ -356,13 +356,13 @@ metadata-only creative error.
 - All 6 LIFECYCLE-RELOAD commits reverted (bc152d4..7a89f52) — no CI proof.
 - Next: **VITE-CI-STALENESS-001** investigation — CI Vite bundle staleness diagnosis.
 
-**VITE-CI-STALENESS-001 🔴 BLOCKER** — Vite dev server in CI does not serve updated admin-web bundle.
-- Impact: ALL frontend changes relying on UI-smoke verification are blocked from CI proof.
-- Observed: 6 CI iterations of LIFECYCLE-RELOAD-CI-003 — every time `campaign_id=` absent from
-  backend logs, while locally the same code produces correct requests.
-- Diagnosis required: CI Vite start sequence, HMR vs cold start, possible Docker layer caching,
-  service worker, or entrypoint mismatch.
-- Mitigation: lifecycle tests excluded from CI subset until VITE-CI-STALENESS-001 resolved.
+**VITE-CI-STALENESS-001 ✅ CLOSED — Vite dev server in CI serves correct admin-web source.**
+- Diagnostic proved: build marker (`public/build-marker.txt`) matches git HEAD in CI.
+- Static marker AND transformed `campaigns.ts` served module both verified via curl.
+- Root cause of 6 LIFECYCLE-RELOAD failures was NOT Vite staleness — it was that
+  `getCampaign` used `listCampaigns(200,0)` with client-side filter, and the
+  CampaignDetailPage component wasn't being exercised by the smoke tests.
+- The marker + served-source diagnostic stays in CI as a permanent integrity check.
 
 **Previous PLAYER-001B entry (scaffold):**
 

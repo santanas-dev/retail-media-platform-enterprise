@@ -330,7 +330,7 @@ jobs:
             echo "Waiting for admin-web... ($i/30)"
             sleep 2
           done
-          # 🔍 DIAGNOSTIC: verify served marker
+          # 🔍 DIAGNOSTIC: verify served marker + campaigns.ts module
           echo "=== VITE SERVED MARKER ==="
           SERVED=$(curl -sf http://localhost:3000/build-marker.txt 2>/dev/null || echo "FETCH_FAILED")
           echo "Served marker: '$SERVED'"
@@ -341,6 +341,17 @@ jobs:
             echo "❌ MARKER MISMATCH — Vite serves STALE content!"
             echo "=== Vite log (last 20 lines) ==="
             tail -20 /tmp/admin-web.log
+          fi
+          # 🔍 DIAGNOSTIC: verify campaigns.ts served module contains campaign_id
+          echo "=== VITE SERVED campaigns.ts ==="
+          CAMPAIGNS_TS=$(curl -sf http://localhost:3000/src/api/campaigns.ts 2>/dev/null || echo "FETCH_FAILED")
+          if echo "$CAMPAIGNS_TS" | grep -q "campaign_id"; then
+            echo "✅ campaigns.ts contains campaign_id — fix IS served"
+            echo "$CAMPAIGNS_TS" | grep -o '.\{0,40\}campaign_id.\{0,40\}' | head -3
+          else
+            echo "❌ campaigns.ts does NOT contain campaign_id — fix NOT served!"
+            echo "=== First 500 chars of served campaigns.ts ==="
+            echo "$CAMPAIGNS_TS" | head -c 500
           fi
       - name: Start advertiser-web (vite dev)
         working-directory: apps/advertiser-web
@@ -360,21 +371,19 @@ jobs:
       - name: Run UI-smoke tests (P0 subset)
         run: |
           set -o pipefail
-          # P0 subset: 24 tests (baseline, PRIMARY-UPLOAD-CI-001 ✅)
-          # ── 5 campaign lifecycle tests excluded (BLOCKER: VITE-CI-STALENESS-001) ──
-          #   campaign__activate, campaign__approve, campaign__pause, campaign__reject,
-          #   campaign__submit: Vite dev server in CI does not serve updated admin-web bundle.
-          #   CampaignDetailPage.tsx changes → `campaign_id` query param → not observed in CI.
-          #   All 6 LIFECYCLE-RELOAD-CI-003 iterations failed to deliver frontend changes to CI.
-          #   Locally lifecycle smokes pass. Root cause is CI infra, not product code.
-          #   Next: VITE-CI-STALENESS-001 investigation.
-          # 11 excluded total:
-          #   5 lifecycle (VITE-CI-STALENESS-001)
+          # P0 subset: 29 tests — campaign detail reload fix + lifecycle returned
+          # ── LIFECYCLE-RELOAD-CI-003 ✅ ──
+          #   Root cause: getCampaign(id) → listCampaigns(200,0) → client-side filter.
+          #   At >200 campaigns, target not in page → null. Not a Vite staleness issue.
+          #   VITE-CI-STALENESS-001 diagnostic PROVED Vite serves current checkout (MARKER MATCH).
+          #   Fix: campaign_id query param on list endpoint + getCampaign uses it.
+          #   5 lifecycle tests now expected green.
+          # 6 excluded:
           #   2 flaky (emergency__activate/deactivate)
           #   1 pre-existing timeout (contract_pdf_upload)
           #   3 not investigated (self_login, invite, audit)
           UI_SMOKE_RUN=1 python3 -m pytest tests/ui-smoke -v --tb=long \
-            -k "adsettings__configure or adsettings__test or advertiser__application_review or advertiser__apply or advertiser__brand_crud or advertiser__contact_crud or advertiser__create_org or advertiser__legal_requisites or advertiser__view or campaign__create or campaign__edit or creative__moderate_approve or creative__moderate_reject or creative__upload or device__health_view or inventory__rule_create or inventory__simulate or self__apply_or_brief or self__campaign_view or user__assign_roles or user__create_advertiser or user__deactivate or user__reset_password or user__split_internal_advertiser" \
+            -k "adsettings__configure or adsettings__test or advertiser__application_review or advertiser__apply or advertiser__brand_crud or advertiser__contact_crud or advertiser__create_org or advertiser__legal_requisites or advertiser__view or campaign__activate or campaign__approve or campaign__create or campaign__edit or campaign__pause or campaign__reject or campaign__submit or creative__moderate_approve or creative__moderate_reject or creative__upload or device__health_view or inventory__rule_create or inventory__simulate or self__apply_or_brief or self__campaign_view or user__assign_roles or user__create_advertiser or user__deactivate or user__reset_password or user__split_internal_advertiser" \
             2>&1 | tee /tmp/ui-smoke-output.txt
           PYTEST_EXIT=${PIPESTATUS[0]}
           if ! grep -qE '[0-9]+ passed' /tmp/ui-smoke-output.txt; then
