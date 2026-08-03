@@ -71,17 +71,19 @@ import type {
 export function listCampaigns(
   limit = 50,
   offset = 0,
+  campaignId?: string,
 ): Promise<PaginatedResponse<CampaignOut>> {
   const params = new URLSearchParams();
   params.set("limit", String(limit));
   params.set("offset", String(offset));
+  if (campaignId) params.set("campaign_id", campaignId);
   return api.get<PaginatedResponse<CampaignOut>>(`/campaigns?${params}`);
 }
 
 /** Get a single campaign by ID — uses list endpoint with campaign_id filter. */
 export async function getCampaign(id: string): Promise<CampaignOut | null> {
   try {
-    const data = await api.get<PaginatedResponse<CampaignOut>>(`/campaigns?campaign_id=${id}&limit=1`);
+    const data = await listCampaigns(1, 0, id);
     return data.items[0] ?? null;
   } catch {
     return null;
