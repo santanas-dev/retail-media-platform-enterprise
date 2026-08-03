@@ -291,19 +291,31 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Tamper proof: поломка `user-roles-open` data-testid → CI #30799093594 failure → revert → CI green.
 - operator walkthrough: PENDING.
 
-**TRUTH-CI-001D ⚠️** — campaign lifecycle tests rewritten, CI stays 23/35 (blocked by PRIMARY-UPLOAD-CI-001).
+**PRIMARY-UPLOAD-CI-001 ✅** — MinIO presigned URL flow fixed in CI. CI #30814378498 (24/35 green, creative__upload ✅ in CI).
+- Root cause: CI set `MINIO_ENDPOINT` but config.py reads `MINIO_INTERNAL_ENDPOINT` / `MINIO_PUBLIC_ENDPOINT`.
+  Both defaulted to `""` → Minio SDK defaulted to `play.min.io:9000` → presigned URLs pointed to wrong host.
+  Also missing: `MINIO_API_CORS_ALLOW_ORIGIN` (CORS preflight failed silently), `CREATIVE_AUTO_APPROVE_UPLOADS` (defaulted to manual moderation).
+- Fix: CI ui-smoke job → `MINIO_INTERNAL_ENDPOINT=localhost:9000`, `MINIO_PUBLIC_ENDPOINT=localhost:9000`, `CREATIVE_AUTO_APPROVE_UPLOADS=true`.
+  CI minio service container → `MINIO_API_CORS_ALLOW_ORIGIN="*"`.
+- Proof: `creative-upload-done` appears in CI. `test_uismoke__creative__upload` ✅.
+- CI subset: 24/35 (+creative__upload, +1 over baseline 23).
+
+**SUBMIT-VALIDATION-CI-002 🔴** — Backend `request_campaign_approval` rejects submit with "Metadata-only creatives"
+even when creative is ready/approved. Reproduces both locally (`retail_media_app`, NOBYPASSRLS)
+and in CI (`retail_media_owner`, BYPASSRLS). 5 lifecycle tests (submit/approve/reject/activate/pause)
+excluded from CI pending investigation.
+- Not a MinIO/upload issue — `creative-upload-done` proves presigned URL flow works in CI.
+- Next investigation: bypass RLS context to identify if `is_deliverable_checksum` or `st != "ready"`
+  check is the failing condition.
+
+**TRUTH-CI-001D ⚠️** — campaign lifecycle tests rewritten, CI stays 24/35.
 - 5 tests rewritten with primary upload + guided banner dismiss:
-  - submit: campaign-created-dismiss before readiness checklist
+  - submit: campaign-created-dismiss → tab-overview → readiness checklist
   - approve, reject, activate, pause: consistent primary upload flow
-- All 5 excluded from CI — primary upload path broken in CI:
-  - creative-upload-done never appears (MinIO presigned URL flow fails silently)
-  - Root cause: backend/MinIO — not fixable in smoke tests
-  - Follow-up: PRIMARY-UPLOAD-CI-001 (diagnose MinIO presigned URL in CI stack)
-  - Tests ready locally, code preserved in repo
-- 22/23 stable, 1 intermittent flake (legal_requisites — CI environment)
-- 7 remaining excluded:
-  - 5 lifecycle (PRIMARY-UPLOAD-CI-001)
-  - 2 flaky (emergency__activate/deactivate)
+- creative__upload returned to CI (PRIMARY-UPLOAD-CI-001 fixed).
+- 5 lifecycle excluded: SUBMIT-VALIDATION-CI-002 (backend submit validation bug).
+- 24/24 CI-enforced stable.
+- 5 remaining excluded: 5 lifecycle (SUBMIT-VALIDATION-CI-002) + 2 flaky (emergency_*) + 1 timeout (contract_pdf_upload) + 3 not investigated (self_login, invite, audit) = 11 total excluded.
 
 **Previous PLAYER-001B entry (scaffold):**
 
