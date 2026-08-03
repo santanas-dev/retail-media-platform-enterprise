@@ -34,9 +34,9 @@ def test_uismoke__emergency__deactivate(smoke_page: Page) -> None:
     if "НЕ АКТИВЕН" in status_el.inner_text():
         reason_input = page.locator('[data-testid="emergency-reason-input"]')
         reason_input.fill("Smoke test — activating before deactivate test")
-        page.wait_for_timeout(500)
+        page.wait_for_timeout(300)
         act_btn = page.locator('[data-testid="emergency-activate-btn"]')
-        expect(act_btn).to_be_enabled(timeout=10000)
+        expect(act_btn).to_be_enabled(timeout=5000)
         act_btn.click()
         page.locator('[data-testid="emergency-confirm-activate"]').click()
         page.wait_for_load_state("networkidle")
@@ -46,9 +46,9 @@ def test_uismoke__emergency__deactivate(smoke_page: Page) -> None:
     # ── Deactivate ──
     reason_input = page.locator('[data-testid="emergency-reason-input"]')
     reason_input.fill("Работы завершены — smoke test")
-    page.wait_for_timeout(500)
+    page.wait_for_timeout(300)
     deact_btn = page.locator('[data-testid="emergency-deactivate-btn"]')
-    expect(deact_btn).to_be_enabled(timeout=10000)
+    expect(deact_btn).to_be_enabled(timeout=5000)
     deact_btn.click()
 
     # Confirm

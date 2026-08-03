@@ -44,7 +44,7 @@ def test_uismoke__campaign__create(smoke_page):
     click_create_campaign_button(page)
 
     # Step 4: fill the form — choose first contract
-    page.wait_for_selector("#c-contract", state="visible", timeout=10000)
+    page.wait_for_selector("#c-contract", state="visible", timeout=5000)
     choose_first_contract(page)
 
     # Step 5: fill code + name (required fields)
