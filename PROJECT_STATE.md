@@ -391,6 +391,20 @@ metadata-only creative error.
 - Tests: 19 new unit tests (enum + transitions + guard).
   Backend suite: 1428 passed ✅.
 
+**LIFECYCLE-COMPLETE-001 ✅** — campaign completion active → completed.
+- CampaignStatus.COMPLETED added. ALLOWED_TRANSITIONS: ACTIVE→{PAUSED,COMPLETED}.
+  Completed is terminal (no outgoing transitions).
+- Repository: complete_campaign() (single) + complete_expired_campaigns() (batch).
+  Guards: only active, all flights expired, no flights→reject, idempotent.
+- API: POST /campaigns/{id}/complete + POST /campaigns/complete-expired.
+- Orchestrator-worker: _campaign_completion_maintenance() — periodic tick
+  every 5 minutes scans and completes expired campaigns.
+- UI: statusLabel('completed')='Завершена' already existed.
+- Tests: 3 new guard tests + 7 behavioral tests.
+  Backend suite: 1431 passed ✅.
+- Trigger: real (orchestrator-worker maintenance + API endpoints).
+  Registry: campaign.complete → reachable.
+
 **Previous PLAYER-001B entry (scaffold):**
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
