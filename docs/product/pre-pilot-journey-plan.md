@@ -80,10 +80,10 @@ Pre-player managed admin-flow (39/49) закрыт и достаточно кл�
 - ✅ **Admin-web (managed):** все 30 UI-фич reachable с зелёным smoke — создание/редактирование/модерация кампаний, загрузка креативов, инвентарь, пользователи/роли, рекламодатели (организации + бренды + договоры + контакты + юр-реквизиты), AD-настройки, аудит, устройства, emergency.
 - ✅ **Public:** заявка рекламодателя reachable (1/1).
 - ✅ **Advertiser-web (self-service):** login, просмотр кампаний, бриф — reachable (3/5).
-- ✅ **Service:** manifest, PoP, device onboard/heartbeat, observability — reachable (5/8).
+- ✅ **Service:** manifest, PoP, device onboard/heartbeat, observability, campaign.complete — reachable (6/8).
 - 🔴 **self.report_view:** blocked — UI не построен, PoP-данные отсутствуют. Разблокируется через player/PoP data path.
 - ⏸️ **self.campaign_create:** deferred managed-first (P2).
-- 🔴 **playlist.build, backup.restore, campaign.complete:** service-deferred.
+- 🔴 **playlist.build, backup.restore:** service-deferred.
 - 🔴 **license.view, license.upload, license.seat_release, license.report, license.enforce:** EPIC-L — canon intake only, no implementation.
 
 **Решение:** PLAYER-001B-FU closed as hardware-independent contract proof (signed manifest, heartbeat, PoP accepted). **KSO-ENV-001 next** — real Sherman-J/KSO environment audit before any kiosk or scheduler code. PLAYER-001C/media playback deferred until real hardware environment is known.
@@ -101,7 +101,7 @@ Pre-player managed admin-flow (39/49) закрыт и достаточно кл�
 **Оставшиеся blocked:**
 - `self.report_view` 🔴 — blocked by PoP/player/data path (JOURNEY-019-DISCOVERY)
 - `self.campaign_create` — deferred managed-first (P2)
-- Service deferred: `playlist.build`, `backup.restore`, `campaign.complete`
+- Service deferred: `playlist.build`, `backup.restore`
 - License (EPIC-L, blocked, no implementation): `license.view`, `license.upload`, `license.seat_release`, `license.report`, `license.enforce`
 
 ## Правила ведения (для каждого журнея)

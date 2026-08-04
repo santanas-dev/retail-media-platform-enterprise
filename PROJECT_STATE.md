@@ -417,6 +417,18 @@ metadata-only creative error.
 - Repository fix: changed_by default "system"→break_glass_admin UUID (avoids FK violation).
 - CI run: #30942823862 ✅.
 
+**AUDIT-REMEDIATION-001-CLOSURE ✅** — canonical closure of independent audit remediation (A→B→C).
+- A. TRUTH-CI-001: UI-smoke CI-enforced 29/35, roadmap guard blocking, python-tests anti-skip.
+- B. DOMAIN-ENUM-001: CampaignStatus → runtime lifecycle with transition guard, OrderType removed.
+- C. LIFECYCLE-COMPLETE-001 + FU: campaign.complete implemented, real DB proof 7/7, CI #30942823862.
+- Canon consistency verified: PROJECT_STATE ✅, feature-registry ✅, pre-pilot-journey-plan ✅.
+- Roadmap-consistency guard: 0 findings ✅.
+- Remaining debt (honest, не блокирует closure):
+  - UI-smoke excluded 6/35: emergency__activate/deactivate flaky, contract_pdf_upload timeout,
+    self_login/invite/audit not CI-investigated.
+  - tests/player_client/test_player_client.py: local import path bug; not covered by CI.
+- Operator walkthrough: PENDING.
+
 **Previous PLAYER-001B entry (scaffold):**
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
