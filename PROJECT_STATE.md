@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-03 (TRUTH-CI-001E)
+**Last updated:** 2026-08-04 (TRUTH-CI-001F)
 
 **Next Active Workstream:** CAMPAIGN-UX-002C — merge flights/placements/creatives into Наполнение
 
@@ -366,6 +366,20 @@ metadata-only creative error.
 - campaign__submit promoted to permanent CI subset (25/35).
 - Diagnostic debug code removed from CampaignDetailPage + smoke test.
 - Working tree clean, guard 0, docs-only.
+
+**TRUTH-CI-001F ✅** — All 5 campaign lifecycle smokes GREEN in CI (29/35).
+- CI #30933109700 (rerun): 29 passed, 6 deselected. All lifecycle tests green:
+  campaign__submit, campaign__approve, campaign__reject,
+  campaign__activate, campaign__pause.
+- Root cause fix (LIFECYCLE-RELOAD-CI-003) applies universally —
+  location.state.guided survives browser refresh via History API.
+- No test changes needed — all 4 candidates passed on first attempt.
+  Single flaky failure (advertiser__legal_requisites) on first run,
+  passed on rerun — pre-existing, not lifecycle-related.
+- Excluded: 2 flaky (emergency__activate/deactivate),
+  1 timeout (contract_pdf_upload),
+  3 not investigated (self_login, invite, audit).
+- operator walkthrough: PENDING.
 
 **Previous PLAYER-001B entry (scaffold):**
 
