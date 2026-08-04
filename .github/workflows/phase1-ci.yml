@@ -360,12 +360,11 @@ jobs:
       - name: Run UI-smoke tests (P0 subset)
         run: |
           set -o pipefail
-          # P0 subset: 25 tests — SUBMIT-READINESS-CI-004 diagnostic
-          # ── campaign__submit included for diagnostic, 4 lifecycle excluded ──
-          #   campaign__approve, campaign__reject, campaign__activate, campaign__pause
-          #   excluded until submit readiness root cause fixed.
+          # P0 subset: 25 tests (TRUTH-CI-001E — campaign__submit promoted to permanent)
+          # ── 4 lifecycle tests excluded (approve/reject/activate/pause) ──
+          #   Candidate for promotion after individual verification.
           # 10 excluded total:
-          #   4 lifecycle (pending SUBMIT-READINESS-CI-004)
+          #   4 lifecycle (approve/reject/activate/pause — candidate)
           #   2 flaky (emergency__activate/deactivate)
           #   1 pre-existing timeout (contract_pdf_upload)
           #   3 not investigated (self_login, invite, audit)

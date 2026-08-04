@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-07-31 (CAMPAIGN-UX-002B)
+**Last updated:** 2026-08-03 (TRUTH-CI-001E)
 
 **Next Active Workstream:** CAMPAIGN-UX-002C — merge flights/placements/creatives into Наполнение
 
@@ -334,35 +334,38 @@ metadata-only creative error.
   on commit 643a132, not introduced by this fix).
 - No changes to business logic, RLS, cross-org checks, or creative deliverability rules.
 
-**TRUTH-CI-001D 🔴** — campaign lifecycle tests GREEN locally, but NOT CI-enforced.
-- 5 lifecycle tests (submit/approve/reject/activate/pause) pass locally against dev stack with
-  real admin-web Vite serving updated code.
-- CI baseline remains 24/35 — lifecycle tests EXCLUDED from CI subset.
-- Reason: **VITE-CI-STALENESS-001** — Vite dev server in CI does not serve updated admin-web bundle.
-  CampaignDetailPage.tsx changes not observed by UI-smoke in CI. Root cause is CI infra, not product.
+**TRUTH-CI-001D ✅** — campaign__submit GREEN in CI with reload persistence (promoted to permanent subset in TRUTH-CI-001E).
+- CI #30851047869: 25/25 UI-smoke, campaign__submit passes including reload.
+- Diagnostic CI proof: canApprove=true, allReady=true, btnDisabled=false — no submit readiness bug.
+- Root cause of ALL previous lifecycle CI failures: location.state.guided survives browser
+  refresh via History API and sets initialTab="content", blocking Overview tab (with submit
+  button + status badge) after reload. NOT a submit readiness issue.
 - operator walkthrough: PENDING.
 
-**LIFECYCLE-RELOAD-CI-003 🔴 BLOCKED** — campaign detail reload persistence fix.
-- Bug: `getCampaign(id)` → `listCampaigns(200,0)` → client-side filter. At >200 campaigns,
-  target not in first page → null → «Кампания не найдена» on reload.
-- Fix: add `campaign_id` query param to `GET /campaigns` list endpoint; frontend `getCampaign(id)`
-  calls `listCampaigns({ campaign_id: id })`.
-- Backend change ready. Frontend change (CampaignDetailPage.tsx) written.
-- ⚠️ **6 CI iterations failed:** frontend changes never observed by UI-smoke in CI.
-  `campaign_id=` never appeared in control-api logs in CI (no `GET /campaigns?campaign_id=...`).
-  Locally: all 5 lifecycle smokes pass, backend unit tests 1401+ ✅, vitest 314/314 ✅.
-- **Root cause:** VITE-CI-STALENESS-001 — Vite dev server in CI serves stale admin-web bundle.
-  Product code + tests are correct. CI infra prevents verification.
-- All 6 LIFECYCLE-RELOAD commits reverted (bc152d4..7a89f52) — no CI proof.
-- Next: **VITE-CI-STALENESS-001** investigation — CI Vite bundle staleness diagnosis.
+**SUBMIT-READINESS-CI-004 ✅ FALSE ALARM** — campaign submit button was never disabled.
+- Diagnostic CI #30850413906: canApprove=true, allReady=true, btnDisabled=false.
+  Submit succeeded, status changed to «На согласовании». No discrepancy between
+  canApprove (creatives.length) and allReady (deliverableCount) — both were true.
+- Actual failure was reload persistence (LIFECYCLE-RELOAD-CI-003).
 
-**VITE-CI-STALENESS-001 🔴 BLOCKER** — Vite dev server in CI does not serve updated admin-web bundle.
-- Impact: ALL frontend changes relying on UI-smoke verification are blocked from CI proof.
-- Observed: 6 CI iterations of LIFECYCLE-RELOAD-CI-003 — every time `campaign_id=` absent from
-  backend logs, while locally the same code produces correct requests.
-- Diagnosis required: CI Vite start sequence, HMR vs cold start, possible Docker layer caching,
-  service worker, or entrypoint mismatch.
-- Mitigation: lifecycle tests excluded from CI subset until VITE-CI-STALENESS-001 resolved.
+**VITE-CI-STALENESS-001 ✅ CLOSED** — Vite dev server in CI serves current checkout.
+- Proven by build marker match (public/build-marker.txt) in every CI run.
+- CI #30670673217: marker 66a9e03 matched. CI #30851047869: marker 103a135 matched.
+- 6 previous LIFECYCLE-RELOAD-CI-003 failures were NOT caused by Vite staleness.
+  They were caused by location.state.guided surviving browser refresh.
+
+**LIFECYCLE-RELOAD-CI-003 ✅ FIXED** — campaign detail reload persistence.
+- Fix 1: getCampaign(id) → server-side filter via campaign_id query param
+  (backend endpoint + repository + frontend).
+- Fix 2: useEffect clears showBanner + switches to Overview tab on detected
+  browser reload (PerformanceNavigationTiming.type === 'reload').
+- CI #30851047869: campaign__submit green including reload persistence check.
+- Remaining lifecycle candidates (approve/reject/activate/pause) — not yet CI-enforced.
+
+**TRUTH-CI-001E** — CI hygiene for TRUTH-CI-001D resolution.
+- campaign__submit promoted to permanent CI subset (25/35).
+- Diagnostic debug code removed from CampaignDetailPage + smoke test.
+- Working tree clean, guard 0, docs-only.
 
 **Previous PLAYER-001B entry (scaffold):**
 
