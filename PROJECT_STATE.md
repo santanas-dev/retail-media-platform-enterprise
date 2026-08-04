@@ -381,6 +381,16 @@ metadata-only creative error.
   3 not investigated (self_login, invite, audit).
 - operator walkthrough: PENDING.
 
+**DOMAIN-ENUM-001 ✅** — CampaignStatus enum canonical + transition guard.
+- CampaignStatus reduced to real lifecycle: DRAFT, PENDING_APPROVAL, APPROVED,
+  ACTIVE, PAUSED, REJECTED. Removed dead values: MODERATION, REVIEW, SCHEDULED,
+  LIVE, COMPLETED, ARCHIVED, CANCELLED.
+- OrderType removed — 0 usage, dead enum.
+- ALLOWED_TRANSITIONS + validate_transition() guard all 5 lifecycle functions.
+- All ad-hoc string comparisons replaced with enum values.
+- Tests: 19 new unit tests (enum + transitions + guard).
+  Backend suite: 1428 passed ✅.
+
 **Previous PLAYER-001B entry (scaffold):**
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
