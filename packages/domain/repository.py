@@ -2221,7 +2221,7 @@ async def complete_campaign(
     session: AsyncSession,
     campaign_id: str,
     *,
-    changed_by: str = "system",
+    changed_by: str = "00000000-0000-0000-0000-000000000150",  # break_glass_admin (system)
     scope_advertiser_ids: frozenset[str] | None = None,
 ) -> tuple[str | None, str | None]:
     """Complete an active campaign whose flights have all ended.
@@ -2300,7 +2300,7 @@ async def complete_campaign(
 async def complete_expired_campaigns(
     session: AsyncSession,
     *,
-    changed_by: str = "system",
+    changed_by: str = "00000000-0000-0000-0000-000000000150",  # break_glass_admin (system)
 ) -> list[str]:
     """Find all active campaigns with expired flights and complete them.
 

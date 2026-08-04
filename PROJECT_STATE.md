@@ -405,6 +405,18 @@ metadata-only creative error.
 - Trigger: real (orchestrator-worker maintenance + API endpoints).
   Registry: campaign.complete → reachable.
 
+**LIFECYCLE-COMPLETE-001-FU ✅** — real DB proof for campaign.complete.
+- Behavioral tests rewritten against real PostgreSQL (RUN_BEHAVIORAL_TESTS=1).
+- 7 tests: active+expired→completed, future flight→stays active, no flights→not completed,
+  draft→not completed, idempotent (1 history row), terminal guard, batch (4 campaigns).
+- Verified: CampaignStatusHistory rows with old_status/new_status, changed_by FK
+  (break_glass_admin), cleanup cascade (history→flights→campaigns).
+- Backend suite: 1427 passed (6 pre-existing env failures).
+- Guard: 22/22 ✅.
+- Feature-registry: campaign.complete status→reachable, blocked count 17→16.
+- Repository fix: changed_by default "system"→break_glass_admin UUID (avoids FK violation).
+- CI run: PENDING.
+
 **Previous PLAYER-001B entry (scaffold):**
 
 **JOURNEY-001** ✅ — advertiser.apply reachable. CI #29776465950.
