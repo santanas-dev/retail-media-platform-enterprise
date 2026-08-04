@@ -415,7 +415,7 @@ metadata-only creative error.
 - Guard: 22/22 ✅.
 - Feature-registry: campaign.complete status→reachable, blocked count 17→16.
 - Repository fix: changed_by default "system"→break_glass_admin UUID (avoids FK violation).
-- CI run: PENDING.
+- CI run: #30942823862 ✅.
 
 **Previous PLAYER-001B entry (scaffold):**
 
