@@ -457,6 +457,41 @@ async def _start_stub_consumer(engine) -> bool:
 # ---------------------------------------------------------------------------
 
 
+async def _campaign_completion_maintenance(interval: float = 300.0) -> None:
+    """Periodically complete active campaigns whose flights have all expired.
+
+    LIFECYCLE-COMPLETE-001: Every `interval` seconds (default 5 min), scans for
+    active campaigns where all flights have ended and transitions them to completed.
+    Safe to run frequently — idempotent, no duplicates.
+    """
+    from packages.domain.repository import complete_expired_campaigns
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+    from sqlalchemy.orm import sessionmaker
+    import os as _os
+
+    db_url = _os.environ.get("DATABASE_URL", "").strip()
+    if not db_url:
+        logger.warning("DATABASE_URL not set — campaign completion maintenance disabled")
+        return
+
+    engine = create_async_engine(db_url, echo=False, pool_size=2, max_overflow=2)
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    while True:
+        await asyncio.sleep(interval)
+        try:
+            async with async_session() as session:
+                completed = await complete_expired_campaigns(session)
+                if completed:
+                    logger.info(
+                        "Campaign completion: %d campaigns completed: %s",
+                        len(completed), completed,
+                    )
+                await session.commit()
+        except Exception:
+            logger.exception("Campaign completion maintenance tick failed")
+
+
 async def _observability_reporter(interval: float = 60.0) -> None:
     """Periodically log health state summary for ops visibility."""
     from packages.services.health_state import get_health_state
@@ -529,6 +564,9 @@ async def main():
 
     # --- Observability reporter ---
     asyncio.create_task(_observability_reporter())
+
+    # --- Campaign completion maintenance (LIFECYCLE-COMPLETE-001) ---
+    asyncio.create_task(_campaign_completion_maintenance())
 
     logger.info("%s running — health :8003", SERVICE_NAME)
 

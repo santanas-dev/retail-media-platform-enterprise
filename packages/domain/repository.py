@@ -2217,6 +2217,132 @@ async def pause_campaign(
     return old_status, "paused"
 
 
+async def complete_campaign(
+    session: AsyncSession,
+    campaign_id: str,
+    *,
+    changed_by: str = "system",
+    scope_advertiser_ids: frozenset[str] | None = None,
+) -> tuple[str | None, str | None]:
+    """Complete an active campaign whose flights have all ended.
+
+    Transition: active → completed  (LIFECYCLE-COMPLETE-001).
+    Guards: only active campaigns; all flights must have end_at < now.
+    Idempotent: already completed → returns (completed, completed).
+    Creates status history entry.
+
+    Returns (old_status, new_status) or (None, None) if not found/scoped.
+    """
+    import uuid as _uuid
+    from datetime import datetime, timezone as tz
+    from packages.domain.models import (
+        Campaign, CampaignFlight, CampaignStatusHistory,
+    )
+
+    result = await session.execute(
+        select(Campaign)
+        .where(Campaign.id == campaign_id)
+        .with_for_update()
+    )
+    campaign = result.scalar_one_or_none()
+    if campaign is None:
+        return None, None
+
+    # Already completed — idempotent
+    if campaign.status == CampaignStatus.COMPLETED:
+        return CampaignStatus.COMPLETED, CampaignStatus.COMPLETED
+
+    if campaign.status != CampaignStatus.ACTIVE:
+        return None, None
+
+    _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    # Transition guard
+    try:
+        validate_transition(campaign.status, CampaignStatus.COMPLETED)
+    except ValueError:
+        return None, None
+
+    # Check all flights have ended
+    now = datetime.now(tz.utc)
+    flights_result = await session.execute(
+        select(CampaignFlight)
+        .where(CampaignFlight.campaign_id == campaign_id)
+    )
+    flights = flights_result.scalars().all()
+
+    if not flights:
+        return None, None  # no flights — cannot determine completion
+
+    for flight in flights:
+        if flight.end_at is None or flight.end_at >= now:
+            return None, None  # at least one flight still active or in the future
+
+    # All flights ended — complete
+    old_status = campaign.status
+    campaign.status = CampaignStatus.COMPLETED
+    campaign.updated_at = now
+
+    history = CampaignStatusHistory(
+        id=str(_uuid.uuid4()),
+        campaign_id=campaign_id,
+        old_status=old_status,
+        new_status=CampaignStatus.COMPLETED,
+        changed_by=changed_by,
+        changed_at=now,
+        reason="All flights ended — campaign completed by system",
+    )
+    session.add(history)
+
+    return old_status, CampaignStatus.COMPLETED
+
+
+async def complete_expired_campaigns(
+    session: AsyncSession,
+    *,
+    changed_by: str = "system",
+) -> list[str]:
+    """Find all active campaigns with expired flights and complete them.
+
+    Returns list of campaign IDs that were completed.
+    Safe to call periodically — idempotent, no duplicates.
+    """
+    from datetime import datetime, timezone as tz
+    from packages.domain.models import Campaign, CampaignFlight
+
+    now = datetime.now(tz.utc)
+
+    # Find active campaigns where ALL flights have ended
+    # Strategy: find campaigns with flights, exclude those with any future flight
+    future_flight_campaigns = (
+        select(CampaignFlight.campaign_id)
+        .where(CampaignFlight.end_at >= now)
+        .distinct()
+    )
+
+    result = await session.execute(
+        select(Campaign.id)
+        .where(
+            Campaign.status == CampaignStatus.ACTIVE,
+            Campaign.id.in_(
+                select(CampaignFlight.campaign_id).distinct()
+            ),
+            Campaign.id.notin_(future_flight_campaigns),
+        )
+    )
+    candidate_ids = [row[0] for row in result.fetchall()]
+
+    completed_ids: list[str] = []
+    for cid in candidate_ids:
+        old, new = await complete_campaign(
+            session, cid, changed_by=changed_by,
+        )
+        if old is not None and new == CampaignStatus.COMPLETED:
+            completed_ids.append(cid)
+
+    return completed_ids
+
+
 # ---------------------------------------------------------------------------
 # Campaign Flight / Placement / Creative  (Pilot B1)
 # ---------------------------------------------------------------------------

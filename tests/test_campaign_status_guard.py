@@ -21,8 +21,9 @@ class TestCampaignStatusEnum:
         assert CampaignStatus.REJECTED == "rejected"
 
     def test_no_dead_values(self):
-        """MODERATION, REVIEW, SCHEDULED, LIVE, COMPLETED, ARCHIVED, CANCELLED removed."""
-        dead = {"moderation", "review", "scheduled", "live", "completed", "archived", "cancelled"}
+        """MODERATION, REVIEW, SCHEDULED, LIVE, ARCHIVED, CANCELLED removed.
+        COMPLETED is now implemented (LIFECYCLE-COMPLETE-001)."""
+        dead = {"moderation", "review", "scheduled", "live", "archived", "cancelled"}
         enum_values = {s.value for s in CampaignStatus}
         assert enum_values.isdisjoint(dead), f"Dead values still in enum: {enum_values & dead}"
 
@@ -45,14 +46,17 @@ class TestAllowedTransitions:
         assert CampaignStatus.PAUSED in ALLOWED_TRANSITIONS[CampaignStatus.ACTIVE]
 
     def test_no_completed_yet(self):
-        """LIFECYCLE-COMPLETE-001 not implemented — completed not in enum."""
-        # COMPLETED was intentionally NOT added to CampaignStatus — it's a future lifecycle state.
-        status_values = {s.value for s in CampaignStatus}
-        assert "completed" not in status_values, "COMPLETED not yet implemented"
+        """COMPLETED is now implemented — LIFECYCLE-COMPLETE-001."""
+        assert CampaignStatus.COMPLETED == "completed"
+        assert CampaignStatus.COMPLETED in ALLOWED_TRANSITIONS[CampaignStatus.ACTIVE]
 
     def test_rejected_is_terminal(self):
         """Rejected has no outgoing transitions."""
         assert CampaignStatus.REJECTED not in ALLOWED_TRANSITIONS
+
+    def test_completed_is_terminal(self):
+        """Completed has no outgoing transitions."""
+        assert CampaignStatus.COMPLETED not in ALLOWED_TRANSITIONS
 
 
 class TestValidateTransition:
@@ -76,6 +80,10 @@ class TestValidateTransition:
 
     def test_valid_active_to_paused(self):
         result = validate_transition(CampaignStatus.ACTIVE, CampaignStatus.PAUSED)
+        assert result == CampaignStatus.ACTIVE
+
+    def test_valid_active_to_completed(self):
+        result = validate_transition(CampaignStatus.ACTIVE, CampaignStatus.COMPLETED)
         assert result == CampaignStatus.ACTIVE
 
     def test_string_input_accepted(self):
@@ -104,3 +112,8 @@ class TestValidateTransition:
     def test_unknown_status_raises(self):
         with pytest.raises(ValueError, match="Неизвестный статус"):
             validate_transition("garbage_status", CampaignStatus.ACTIVE)
+
+    def test_completed_to_anything_rejected(self):
+        """Completed is terminal — no outgoing transitions."""
+        with pytest.raises(ValueError, match="Недопустимый переход"):
+            validate_transition(CampaignStatus.COMPLETED, CampaignStatus.ACTIVE)

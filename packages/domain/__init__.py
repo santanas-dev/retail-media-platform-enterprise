@@ -62,8 +62,7 @@ class CampaignStatus(StrEnum):
     Realised transitions (guarded by ALLOWED_TRANSITIONS):
         draft → pending_approval → approved → active → paused
         pending_approval → rejected
-
-    Future (LIFECYCLE-COMPLETE-001): active → completed, paused → completed.
+        active → completed  (LIFECYCLE-COMPLETE-001)
     """
     DRAFT = "draft"
     PENDING_APPROVAL = "pending_approval"
@@ -71,6 +70,7 @@ class CampaignStatus(StrEnum):
     ACTIVE = "active"
     PAUSED = "paused"
     REJECTED = "rejected"
+    COMPLETED = "completed"
 
 
 # ── Campaign lifecycle transition guard ──
@@ -80,8 +80,7 @@ ALLOWED_TRANSITIONS: dict[CampaignStatus, set[CampaignStatus]] = {
     CampaignStatus.DRAFT: {CampaignStatus.PENDING_APPROVAL},
     CampaignStatus.PENDING_APPROVAL: {CampaignStatus.APPROVED, CampaignStatus.REJECTED},
     CampaignStatus.APPROVED: {CampaignStatus.ACTIVE},
-    CampaignStatus.ACTIVE: {CampaignStatus.PAUSED},
-    # TODO(LIFECYCLE-COMPLETE-001): active→completed, paused→completed
+    CampaignStatus.ACTIVE: {CampaignStatus.PAUSED, CampaignStatus.COMPLETED},
 }
 
 
