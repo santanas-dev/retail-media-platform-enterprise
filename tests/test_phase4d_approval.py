@@ -149,9 +149,9 @@ class TestApprovalRepositoryFunctions(unittest.TestCase):
             "packages", "domain", "repository.py",
         )
         content = open(repo_path).read()
-        # Should query CampaignStatusHistory for the request transition
-        self.assertIn("CampaignStatusHistory.old_status == \"draft\"", content)
-        self.assertIn("CampaignStatusHistory.new_status == \"pending_approval\"", content)
+        # Should query CampaignStatusHistory for the request transition (now using enum)
+        self.assertIn("CampaignStatusHistory.old_status == CampaignStatus.DRAFT", content)
+        self.assertIn("CampaignStatusHistory.new_status == CampaignStatus.PENDING_APPROVAL", content)
         # requested_at should NOT be set to "now" — it comes from the query
         self.assertIn("requested_at=requested_at", content)
         # Verify the function uses the looked-up timestamp variable
@@ -167,7 +167,7 @@ class TestApprovalRepositoryFunctions(unittest.TestCase):
         # reject_campaign also uses CampaignStatusHistory lookup
         # (count occurrences — should be 2: one in approve, one in reject)
         self.assertGreaterEqual(
-            content.count("CampaignStatusHistory.old_status == \"draft\""),
+            content.count("CampaignStatusHistory.old_status == CampaignStatus.DRAFT"),
             2,
             "Both approve_campaign and reject_campaign should look up request timestamp"
         )

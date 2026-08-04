@@ -35,6 +35,8 @@ from packages.domain.models import (
     UserRole,
 )
 
+from packages.domain import CampaignStatus, validate_transition
+
 
 async def list_users(
     session: AsyncSession,
@@ -1291,7 +1293,7 @@ async def list_approval_queue(
             CampaignStatusHistory,
             Campaign.id == CampaignStatusHistory.campaign_id,
         )
-        .where(CampaignStatusHistory.new_status == "pending_approval")
+        .where(CampaignStatusHistory.new_status == CampaignStatus.PENDING_APPROVAL)
     )
 
     if status_filter != "all":
@@ -1370,7 +1372,7 @@ async def list_approval_queue_paginated(
         .select_from(Campaign)
         .join(CampaignStatusHistory,
               Campaign.id == CampaignStatusHistory.campaign_id)
-        .where(CampaignStatusHistory.new_status == "pending_approval")
+        .where(CampaignStatusHistory.new_status == CampaignStatus.PENDING_APPROVAL)
     )
     if status_filter != "all":
         count_stmt = count_stmt.where(Campaign.status == status_filter)
@@ -1383,7 +1385,7 @@ async def list_approval_queue_paginated(
         sa_select(Campaign.id)
         .join(CampaignStatusHistory,
               Campaign.id == CampaignStatusHistory.campaign_id)
-        .where(CampaignStatusHistory.new_status == "pending_approval")
+        .where(CampaignStatusHistory.new_status == CampaignStatus.PENDING_APPROVAL)
         .order_by(CampaignStatusHistory.changed_at.desc())
         .offset(offset)
         .limit(limit)
@@ -1432,7 +1434,7 @@ async def _approval_queue_rows_by_ids(
         .outerjoin(CampaignApproval, Campaign.id == CampaignApproval.campaign_id)
         .outerjoin(CampaignStatusHistory, Campaign.id == CampaignStatusHistory.campaign_id)
         .where(Campaign.id.in_(campaign_ids))
-        .where(CampaignStatusHistory.new_status == "pending_approval")
+        .where(CampaignStatusHistory.new_status == CampaignStatus.PENDING_APPROVAL)
         .order_by(CampaignStatusHistory.changed_at.desc())
     )
 
@@ -1712,10 +1714,16 @@ async def request_campaign_approval(
     campaign = result.scalar_one_or_none()
     if campaign is None:
         return None, None, None
-    if campaign.status != "draft":
+    if campaign.status != CampaignStatus.DRAFT:
         return None, None, None
 
     _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    # Transition guard — raises ValueError on invalid transition
+    try:
+        validate_transition(campaign.status, CampaignStatus.PENDING_APPROVAL)
+    except ValueError:
+        return None, None, None
 
     # Validation: ≥1 flight, ≥1 placement, ≥1 creative
     flight_count = await session.scalar(
@@ -1866,21 +1874,21 @@ async def request_campaign_approval(
                 )
                 return campaign.status, campaign.status, reason
 
-    campaign.status = "pending_approval"
+    campaign.status = CampaignStatus.PENDING_APPROVAL
     campaign.updated_at = now
 
     history = CampaignStatusHistory(
         id=str(uuid.uuid4()),
         campaign_id=campaign_id,
         old_status=old_status,
-        new_status="pending_approval",
+        new_status=CampaignStatus.PENDING_APPROVAL,
         changed_by=changed_by,
         changed_at=now,
         reason="Approval requested",
     )
     session.add(history)
 
-    return old_status, "pending_approval", None
+    return old_status, CampaignStatus.PENDING_APPROVAL, None
 
 
 async def approve_campaign(
@@ -1914,10 +1922,16 @@ async def approve_campaign(
     campaign = result.scalar_one_or_none()
     if campaign is None:
         return None, None
-    if campaign.status != "pending_approval":
+    if campaign.status != CampaignStatus.PENDING_APPROVAL:
         return None, None
 
     _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    # Transition guard
+    try:
+        validate_transition(campaign.status, CampaignStatus.APPROVED)
+    except ValueError:
+        return None, None
 
     # S-038: re-verify readiness at approve time — creative moderation may have
     # changed since the original request_approval call.
@@ -1956,8 +1970,8 @@ async def approve_campaign(
         select(CampaignStatusHistory.changed_at)
         .where(
             CampaignStatusHistory.campaign_id == campaign_id,
-            CampaignStatusHistory.old_status == "draft",
-            CampaignStatusHistory.new_status == "pending_approval",
+            CampaignStatusHistory.old_status == CampaignStatus.DRAFT,
+            CampaignStatusHistory.new_status == CampaignStatus.PENDING_APPROVAL,
         )
         .order_by(CampaignStatusHistory.changed_at.desc())
         .limit(1)
@@ -2031,10 +2045,16 @@ async def reject_campaign(
     campaign = result.scalar_one_or_none()
     if campaign is None:
         return None, None
-    if campaign.status != "pending_approval":
+    if campaign.status != CampaignStatus.PENDING_APPROVAL:
         return None, None
 
     _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    # Transition guard
+    try:
+        validate_transition(campaign.status, CampaignStatus.REJECTED)
+    except ValueError:
+        return None, None
 
     # Look up the request timestamp from the draft→pending_approval transition.
     # Fail if no such transition exists (never requested approval legitimately).
@@ -2042,8 +2062,8 @@ async def reject_campaign(
         select(CampaignStatusHistory.changed_at)
         .where(
             CampaignStatusHistory.campaign_id == campaign_id,
-            CampaignStatusHistory.old_status == "draft",
-            CampaignStatusHistory.new_status == "pending_approval",
+            CampaignStatusHistory.old_status == CampaignStatus.DRAFT,
+            CampaignStatusHistory.new_status == CampaignStatus.PENDING_APPROVAL,
         )
         .order_by(CampaignStatusHistory.changed_at.desc())
         .limit(1)
@@ -2113,21 +2133,27 @@ async def activate_campaign(
     campaign = result.scalar_one_or_none()
     if campaign is None:
         return None, None
-    if campaign.status != "approved":
+    if campaign.status != CampaignStatus.APPROVED:
         return None, None
 
     _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
 
+    # Transition guard
+    try:
+        validate_transition(campaign.status, CampaignStatus.ACTIVE)
+    except ValueError:
+        return None, None
+
     now = datetime.now(tz.utc)
     old_status = campaign.status
-    campaign.status = "active"
+    campaign.status = CampaignStatus.ACTIVE
     campaign.updated_at = now
 
     history = CampaignStatusHistory(
         id=str(uuid.uuid4()),
         campaign_id=campaign_id,
         old_status=old_status,
-        new_status="active",
+        new_status=CampaignStatus.ACTIVE,
         changed_by=changed_by,
         changed_at=now,
         reason="Campaign activated",
@@ -2161,21 +2187,27 @@ async def pause_campaign(
     campaign = result.scalar_one_or_none()
     if campaign is None:
         return None, None
-    if campaign.status != "active":
+    if campaign.status != CampaignStatus.ACTIVE:
         return None, None
 
     _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
 
+    # Transition guard
+    try:
+        validate_transition(campaign.status, CampaignStatus.PAUSED)
+    except ValueError:
+        return None, None
+
     now = datetime.now(tz.utc)
     old_status = campaign.status
-    campaign.status = "paused"
+    campaign.status = CampaignStatus.PAUSED
     campaign.updated_at = now
 
     history = CampaignStatusHistory(
         id=str(uuid.uuid4()),
         campaign_id=campaign_id,
         old_status=old_status,
-        new_status="paused",
+        new_status=CampaignStatus.PAUSED,
         changed_by=changed_by,
         changed_at=now,
         reason="Campaign paused",

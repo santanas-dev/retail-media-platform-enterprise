@@ -57,23 +57,59 @@ class PlaybackResult(StrEnum):
 
 
 class CampaignStatus(StrEnum):
+    """Campaign lifecycle status — single source of truth.
+
+    Realised transitions (guarded by ALLOWED_TRANSITIONS):
+        draft → pending_approval → approved → active → paused
+        pending_approval → rejected
+
+    Future (LIFECYCLE-COMPLETE-001): active → completed, paused → completed.
+    """
     DRAFT = "draft"
-    MODERATION = "moderation"
-    REVIEW = "review"
+    PENDING_APPROVAL = "pending_approval"
     APPROVED = "approved"
-    SCHEDULED = "scheduled"
-    LIVE = "live"
+    ACTIVE = "active"
     PAUSED = "paused"
-    COMPLETED = "completed"
-    ARCHIVED = "archived"
-    CANCELLED = "cancelled"
+    REJECTED = "rejected"
 
 
-class OrderType(StrEnum):
-    COMMERCIAL = "commercial"
-    INTERNAL = "internal"
-    COMPENSATION = "compensation"
-    TEST = "test"
+# ── Campaign lifecycle transition guard ──
+# Only these transitions are valid.  A transition NOT listed here raises
+# ValueError, which callers translate into a 409/422 domain error.
+ALLOWED_TRANSITIONS: dict[CampaignStatus, set[CampaignStatus]] = {
+    CampaignStatus.DRAFT: {CampaignStatus.PENDING_APPROVAL},
+    CampaignStatus.PENDING_APPROVAL: {CampaignStatus.APPROVED, CampaignStatus.REJECTED},
+    CampaignStatus.APPROVED: {CampaignStatus.ACTIVE},
+    CampaignStatus.ACTIVE: {CampaignStatus.PAUSED},
+    # TODO(LIFECYCLE-COMPLETE-001): active→completed, paused→completed
+}
+
+
+def validate_transition(
+    current: CampaignStatus | str,
+    target: CampaignStatus,
+) -> CampaignStatus:
+    """Validate a campaign status transition.
+
+    Raises ValueError with a Russian message if the transition is not allowed.
+    Returns the current status coerced to CampaignStatus on success.
+    """
+    if isinstance(current, str):
+        try:
+            current = CampaignStatus(current)
+        except ValueError:
+            raise ValueError(
+                f"Неизвестный статус кампании: {current}. "
+                f"Допустимые: {[s.value for s in CampaignStatus]}"
+            )
+    allowed = ALLOWED_TRANSITIONS.get(current, set())
+    if target not in allowed:
+        raise ValueError(
+            f"Недопустимый переход: {current.value} → {target.value}. "
+            f"Разрешённые переходы из {current.value}: "
+            f"{[s.value for s in sorted(allowed)]}"
+        )
+    return current
 
 
 # Service identifiers for logging/metrics

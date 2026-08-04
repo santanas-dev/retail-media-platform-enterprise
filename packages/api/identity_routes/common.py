@@ -8,6 +8,7 @@ moved here to avoid circular imports.
 from fastapi import HTTPException
 
 from packages.api.dependencies import set_rls_context
+from packages.domain import CampaignStatus
 from packages.domain import repository
 from packages.domain.scopes import ScopeContext
 from packages.domain.schemas import (
@@ -43,7 +44,7 @@ async def _require_draft_campaign(db, campaign_id: str, scope):
     campaign = await repository.get_campaign(db, campaign_id)
     if campaign is None:
         raise HTTPException(status_code=404, detail={"code": "CAMPAIGN_NOT_FOUND"})
-    if campaign.status != "draft":
+    if campaign.status != CampaignStatus.DRAFT:
         raise HTTPException(status_code=409, detail="Campaign is not in draft status")
     if not scope.is_admin:
         org_str = str(campaign.advertiser_organization_id)
