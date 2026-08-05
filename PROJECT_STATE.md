@@ -433,7 +433,18 @@ metadata-only creative error.
 - UI-smoke CI-enforced: 35/35, 0 excluded.
 
 **Remaining debt (честный список):**
-  - None — all 35 UI-smoke tests in CI.
+  - UI-smoke: invite + audit temporarily excluded (33/35) — timing flaky in CI
+    (advertiser-approve-btn slow render, httpx emergency API call latency).
+    Follow-up: SMOKES-FLAKY-001.
+  - tests/player_client/test_player_client.py: local import path bug; not covered by CI.
+
+**COMMERCE-CONTUR2-001A1 ✅** — schema/RLS/pricing choke-point foundation.
+- Migration 032: 4 commerce tables (tariff_versions, price_items, orders, order_lines).
+- Domain enums: CommerceOrderStatus, CommercePaymentStatus, CommerceTariffStatus, BillingUnit.
+- Pydantic schemas: create/out DTOs + CommerceQuoteRequest/Response.
+- Pricing choke-point: calculate_order_quote() — validates tariff, loads prices, computes totals.
+- Tests: 15/15 unit tests (pricing logic, schemas, enums, validation).
+- No UI yet — backend foundation only. Next: A2 (API endpoints, RLS, order CRUD).
 
 **SELF-LOGIN-CI-001-FU ✅** — self__login returned to blocking CI, tamper-proofed.
 
