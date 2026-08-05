@@ -449,6 +449,16 @@ metadata-only creative error.
 - **Честно:** UI нет, backend foundation only. Commerce feature IDs остаются blocked в feature-registry.
 - Next → COMMERCE-CONTUR2-001A2 — API endpoints, RLS enforcement, order CRUD.
 
+**COMMERCE-CONTUR2-001A2 ✅** — commerce API endpoints + RLS/order CRUD foundation.
+- Payload SHA: eeae6f3 (CI pending).
+- Commerce router: 11 endpoints — tariff CRUD, price CRUD, quote, order CRUD + status PATCH.
+- Status transition guard: draft→offered→booked→confirmed→closed/cancelled (terminal).
+- Payment: status_only, transition validation, no provider.
+- Seed: 4 commerce permissions (tariff_read/manage, order_read/manage).
+- Tests: 36/36 (A2) + 15/15 (A1 regression) — 51 combined, guard 0.
+- **Честно:** UI нет, commerce feature IDs остаются blocked.
+- Next → COMMERCE-CONTUR2-001A3 — admin UI for tariff/order management, or plan-driven priority.
+
 **SELF-LOGIN-CI-001-FU ✅** — self__login returned to blocking CI, tamper-proofed.
 
 **AUDIT-REMEDIATION-001-CLOSURE ✅** — canonical closure of independent audit remediation (A→B→C).
