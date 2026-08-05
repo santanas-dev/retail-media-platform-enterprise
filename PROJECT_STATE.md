@@ -491,8 +491,8 @@ metadata-only creative error.
 - Next → defined by roadmap or remaining commerce gaps (order_close, confirmed, cancelled).
 
 **COMMERCE-CONTUR2-001A3c ✅** — commerce.order_close smoke proof.
-- Payload SHA: (pending commit).
-- CI: (pending push).
+- Payload SHA: 40d28c9 (A3c — order_close smoke proof).
+- CI: #579 — success (30/30 green).
 - Smoke: booked→confirmed→closed + reload persistence + terminal (no transition buttons).
 - Vitest: 2 new (close button for confirmed, closed status in list). Admin-web: 331/331.
 - Feature-registry: commerce.order_close → reachable (48/57, +1).
