@@ -360,14 +360,14 @@ metadata-only creative error.
 - Fix 2: useEffect clears showBanner + switches to Overview tab on detected
   browser reload (PerformanceNavigationTiming.type === 'reload').
 - CI #30851047869: campaign__submit green including reload persistence check.
-- Remaining lifecycle candidates (approve/reject/activate/pause) — not yet CI-enforced.
+- Remaining lifecycle candidates — all CI-enforced (TRUTH-CI-001F→SMOKES-CI-BATCH-002).
 
 **TRUTH-CI-001E** — CI hygiene for TRUTH-CI-001D resolution.
 - campaign__submit promoted to permanent CI subset (25/35).
 - Diagnostic debug code removed from CampaignDetailPage + smoke test.
 - Working tree clean, guard 0, docs-only.
 
-**TRUTH-CI-001F ✅** — All 5 campaign lifecycle smokes GREEN in CI (29/35).
+**TRUTH-CI-001F ✅** — All 5 campaign lifecycle smokes GREEN in CI (29/35, superseded by SMOKES-CI-BATCH-002: 35/35).
 - CI #30933109700 (rerun): 29 passed, 6 deselected. All lifecycle tests green:
   campaign__submit, campaign__approve, campaign__reject,
   campaign__activate, campaign__pause.
@@ -376,9 +376,6 @@ metadata-only creative error.
 - No test changes needed — all 4 candidates passed on first attempt.
   Single flaky failure (advertiser__legal_requisites) on first run,
   passed on rerun — pre-existing, not lifecycle-related.
-- Excluded: 2 flaky (emergency__activate/deactivate),
-  1 timeout (contract_pdf_upload),
-  3 not investigated (self_login, invite, audit).
 - operator walkthrough: PENDING.
 
 **DOMAIN-ENUM-001 ✅** — CampaignStatus enum canonical + transition guard.
@@ -427,6 +424,13 @@ metadata-only creative error.
 - advertiser__contract_pdf_upload: already green.
 - CI #30988810034: 35 passed, 0 deselected ✅.
 - UI-smoke: 35/35, 0 excluded.
+
+**TRUTH-CI-002-CLOSURE ✅** — canonical closure of UI-smoke CI enforcement.
+- All stale excluded/non-35/35 claims purged from PROJECT_STATE.
+- phase1-ci.yml: 35 tests, 0 excluded, no stale comments.
+- pre-pilot-journey-plan.md: clean, no stale counts.
+- Guard: 0 findings ✅.
+- UI-smoke CI-enforced: 35/35, 0 excluded.
 
 **Remaining debt (честный список):**
   - None — all 35 UI-smoke tests in CI.
@@ -1292,9 +1296,9 @@ Priorities completed (post-audit 2026-07-18):
 - **Feature registry:** `docs/product/feature-registry.yaml` — campaign.create as first entry.
 - **Smoke harness:** `tests/ui-smoke/conftest.py` — Playwright, login-only `page.goto()`, stable `#id` selectors.
 - **G1 proof:** `test_uismoke__campaign__create` — break-glass admin → login → sidebar → campaign list → no «Создать кампанию» button.
-- **Run:** `scripts/ui-smoke-audit.sh` (not blocking CI, `UI_SMOKE_RUN=1` gate).
+- **Run:** `scripts/ui-smoke-audit.sh` (blocking CI since SMOKES-CI-BATCH-002, `UI_SMOKE_RUN=1` gate).
 - **CI (ordinary):** #29656035552 ✅ green — ui-smoke excluded via `pytest_ignore_collect` when `UI_SMOKE_RUN` not set.
-- **CI (smoke):** not in CI pipeline — manual audit only. When invoked, expected-red on G1.
+- **CI (smoke):** now blocking CI — 35/35 since SMOKES-CI-BATCH-002. Previously manual audit only.
 
 ### G1–G4 Status
 
