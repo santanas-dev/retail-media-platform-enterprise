@@ -450,7 +450,9 @@ metadata-only creative error.
 - Next → COMMERCE-CONTUR2-001A2 — API endpoints, RLS enforcement, order CRUD.
 
 **COMMERCE-CONTUR2-001A2 ✅** — commerce API endpoints + RLS/order CRUD foundation.
-- Payload SHA: eeae6f3 (CI pending).
+- Payload SHA: eeae6f3 (A2 impl) → 7b78c86 (canon).
+- CI: #30996275725 — backend ALL green (unit, behavioral, syntax, guard).
+  UI-smoke 30/33 + 2 deselected; 3 pre-existing flaky (contact_crud, campaign_activate, campaign_edit — unrelated to commerce).
 - Commerce router: 11 endpoints — tariff CRUD, price CRUD, quote, order CRUD + status PATCH.
 - Status transition guard: draft→offered→booked→confirmed→closed/cancelled (terminal).
 - Payment: status_only, transition validation, no provider.

@@ -680,7 +680,7 @@ See: `docs/architecture/epic-l-licensing.md`.
 - No UI — all commerce feature IDs remain blocked.
 - Next → A2: API endpoints, RLS enforcement, order CRUD.
 
-**A2 STATUS: ✅ API/RLS foundation done** (SHA eeae6f3, CI pending).
+**A2 STATUS: ✅ API/RLS foundation done** (SHA eeae6f3, CI #30996275725 backend green).
 - 11 commerce endpoints: tariff/price CRUD, quote, order CRUD + status PATCH.
 - Status transition guard: draft→offered→booked→confirmed→closed/cancelled.
 - 4 seed permissions, 51 combined tests, guard 0.
