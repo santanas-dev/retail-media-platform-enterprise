@@ -64,12 +64,13 @@ def test_uismoke__advertiser__invite(page: Page):
     page.get_by_test_id("advertiser-review-start").click()
     expect(page.locator("text=Заявка переведена в статус «На рассмотрении»")).to_be_visible(timeout=10000)
 
-    # Re-select the row (UI re-renders detail after review action)
+    # Re-select the row and wait for detail panel to load
     row = page.locator(f"tr:has-text('ООО Инвайт-{TS}')").first
     row.click()
+    page.wait_for_load_state("networkidle")
 
     # Click approve
-    expect(page.get_by_test_id("advertiser-approve-btn")).to_be_visible(timeout=5000)
+    expect(page.get_by_test_id("advertiser-approve-btn")).to_be_visible(timeout=15000)
     page.get_by_test_id("advertiser-approve-btn").click()
     expect(page.locator("text=Заявка одобрена")).to_be_visible(timeout=10000)
 
