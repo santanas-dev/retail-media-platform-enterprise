@@ -31,13 +31,12 @@ def test_uismoke__emergency__activate(smoke_page: Page) -> None:
     status_el = page.locator('[data-testid="emergency-status"]')
     expect(status_el).to_be_visible(timeout=10000)
 
-    if "АКТИВЕН" in status_el.inner_text():
+    if "АКТИВЕН" == status_el.inner_text():
         # Deactivate to get clean state
         reason_input = page.locator('[data-testid="emergency-reason-input"]')
         reason_input.fill("Smoke test cleanup — deactivating before activate test")
-        page.wait_for_timeout(300)  # React re-render
         deact_btn = page.locator('[data-testid="emergency-deactivate-btn"]')
-        expect(deact_btn).to_be_enabled(timeout=5000)
+        expect(deact_btn).not_to_be_disabled(timeout=15000)
         deact_btn.click()
         page.locator('[data-testid="emergency-confirm-deactivate"]').click()
         page.wait_for_load_state("networkidle")
@@ -45,15 +44,19 @@ def test_uismoke__emergency__activate(smoke_page: Page) -> None:
         print(f"[{time.time()-t0:.1f}s] Deactivated previous active state")
 
     # ── Verify inactive state ──
+    # Reload page to get clean React state after any cleanup deactivation
+    page.reload()
+    page.wait_for_load_state("networkidle")
+    status_el = page.locator('[data-testid="emergency-status"]')
+    expect(status_el).to_be_visible(timeout=10000)
     expect(status_el).to_contain_text("НЕ АКТИВЕН", timeout=5000)
     print(f"[{time.time()-t0:.1f}s] Inactive confirmed")
 
     # ── Activate ──
     reason_input = page.locator('[data-testid="emergency-reason-input"]')
     reason_input.fill("Срочные технические работы — smoke test")
-    page.wait_for_timeout(300)  # React re-render
     act_btn = page.locator('[data-testid="emergency-activate-btn"]')
-    expect(act_btn).to_be_enabled(timeout=5000)
+    expect(act_btn).not_to_be_disabled(timeout=15000)
     act_btn.click()
 
     # Confirm

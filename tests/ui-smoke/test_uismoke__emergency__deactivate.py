@@ -31,10 +31,13 @@ def test_uismoke__emergency__deactivate(smoke_page: Page) -> None:
     status_el = page.locator('[data-testid="emergency-status"]')
     expect(status_el).to_be_visible(timeout=10000)
 
-    if "НЕ АКТИВЕН" in status_el.inner_text():
+    if "НЕ АКТИВЕН" == status_el.inner_text():
         reason_input = page.locator('[data-testid="emergency-reason-input"]')
         reason_input.fill("Smoke test — activating before deactivate test")
-        page.wait_for_timeout(300)
+        page.wait_for_function(
+            'document.querySelector(\'[data-testid="emergency-activate-btn"]\')?.disabled === false',
+            timeout=10000,
+        )
         act_btn = page.locator('[data-testid="emergency-activate-btn"]')
         expect(act_btn).to_be_enabled(timeout=5000)
         act_btn.click()
@@ -44,9 +47,16 @@ def test_uismoke__emergency__deactivate(smoke_page: Page) -> None:
         print(f"[{time.time()-t0:.1f}s] Activated for deactivate test")
 
     # ── Deactivate ──
+    # Reload page to get clean React state after any prior activation
+    page.reload()
+    page.wait_for_load_state("networkidle")
+    expect(page.locator('[data-testid="emergency-status"]')).to_contain_text("АКТИВЕН", timeout=10000)
     reason_input = page.locator('[data-testid="emergency-reason-input"]')
     reason_input.fill("Работы завершены — smoke test")
-    page.wait_for_timeout(300)
+    page.wait_for_function(
+        'document.querySelector(\'[data-testid="emergency-deactivate-btn"]\')?.disabled === false',
+        timeout=10000,
+    )
     deact_btn = page.locator('[data-testid="emergency-deactivate-btn"]')
     expect(deact_btn).to_be_enabled(timeout=5000)
     deact_btn.click()
