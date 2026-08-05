@@ -462,8 +462,8 @@ metadata-only creative error.
 - Next → COMMERCE-CONTUR2-001A3 — admin UI for tariff/order management, or plan-driven priority.
 
 **COMMERCE-CONTUR2-001A3a ✅** — admin UI for tariff + price management.
-- Payload SHA: (pending FU3 — price item smoke restored with SEED_SURFACE_ID).
-- CI: (pending push).
+- Payload SHA: 8f9c8c9 (FU3 — price item smoke proof).
+- CI: #575 — success (commerce__tariff_manage GREEN).
 - CommerceTariffsPage: tariffs tab (CRUD) + prices tab (CRUD per tariff).
 - Nav: «Коммерция» → /commerce/tariffs (commerce.tariff_read).
 - RBAC: manage permission gates create/edit; read-only hides buttons.
