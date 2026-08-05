@@ -143,6 +143,7 @@ def test_uismoke__self__login(page: Page):
     # ═══════════════════════════════════════════════════════════
     # Check that we see the advertiser dashboard
     expect(page.locator("text=Кабинет рекламодателя")).to_be_visible(timeout=15000)
-    expect(page.locator("text=Кампании")).to_be_visible(timeout=10000)
+    # "Кампании" appears twice (nav link + heading), use test-id
+    expect(page.get_by_test_id("nav-campaigns")).to_be_visible(timeout=10000)
     # Verify user email is shown in sidebar (proof of login)
     expect(page.locator(f"text={APP_EMAIL.split('@')[0]}")).to_be_visible(timeout=10000)
