@@ -1711,3 +1711,117 @@ class InventorySimulationResponse(BaseModel):
     placements: list[InventorySimulationPlacementResult] = Field(default_factory=list)
     blocking_count: int = 0
     warning_count: int = 0
+
+
+# ── Commerce Contour 2 (COMMERCE-CONTUR2-001A1) ──
+
+
+class CommerceTariffVersionCreate(BaseModel):
+    code: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=255)
+    valid_from: date_type
+    valid_to: date_type | None = None
+    currency: str = Field(default="RUB", min_length=3, max_length=3)
+
+
+class CommerceTariffVersionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    code: str
+    name: str
+    status: str
+    valid_from: date_type
+    valid_to: date_type | None = None
+    currency: str
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class CommercePriceItemCreate(BaseModel):
+    surface_id: str
+    billing_unit: str = "surface_day"
+    unit_price_amount: float = Field(gt=0)
+    currency: str = Field(default="RUB", min_length=3, max_length=3)
+
+
+class CommercePriceItemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    tariff_version_id: str
+    surface_id: str
+    billing_unit: str
+    unit_price_amount: float
+    currency: str
+    created_at: datetime | None = None
+
+
+class CommerceOrderLineCreate(BaseModel):
+    surface_id: str
+    date_from: date_type
+    date_to: date_type
+    quantity_days: int = Field(gt=0)
+    unit_price_amount: float = Field(gt=0)
+    line_amount: float = Field(gt=0)
+
+
+class CommerceOrderLineOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    order_id: str
+    surface_id: str
+    date_from: date_type
+    date_to: date_type
+    quantity_days: int
+    unit_price_amount: float
+    line_amount: float
+
+
+class CommerceOrderCreate(BaseModel):
+    advertiser_organization_id: str
+    tariff_version_id: str | None = None
+    currency: str = Field(default="RUB", min_length=3, max_length=3)
+    lines: list[CommerceOrderLineCreate] = Field(min_length=1)
+
+
+class CommerceOrderOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    advertiser_organization_id: str
+    code: str
+    status: str
+    payment_status: str
+    tariff_version_id: str | None = None
+    total_amount: float | None = None
+    currency: str
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    lines: list[CommerceOrderLineOut] = Field(default_factory=list)
+
+
+class CommerceQuoteRequest(BaseModel):
+    """Input for calculate_order_quote — pricing choke-point."""
+    tariff_version_id: str
+    advertiser_organization_id: str
+    lines: list[CommerceOrderLineCreate] = Field(min_length=1)
+
+
+class CommerceQuoteLine(BaseModel):
+    surface_id: str
+    date_from: date_type
+    date_to: date_type
+    quantity_days: int
+    unit_price_amount: float
+    line_amount: float
+    error: str | None = None
+
+
+class CommerceQuoteResponse(BaseModel):
+    tariff_version_id: str
+    currency: str
+    lines: list[CommerceQuoteLine] = Field(default_factory=list)
+    total_amount: float = 0.0
+    errors: list[str] = Field(default_factory=list)

@@ -120,5 +120,36 @@ SERVICE_ADAPTER_MOCK = "adapter-mock"
 SERVICE_ADAPTER_KSO = "adapter-kso"
 
 # Defaults
+
+# ── Commerce Contour 2 (COMMERCE-CONTUR2-001A1) ──
+
+
+class CommerceOrderStatus(StrEnum):
+    DRAFT = "draft"
+    OFFERED = "offered"
+    BOOKED = "booked"
+    CONFIRMED = "confirmed"
+    CLOSED = "closed"
+    CANCELLED = "cancelled"
+
+
+class CommercePaymentStatus(StrEnum):
+    NOT_REQUIRED = "not_required"
+    UNPAID = "unpaid"
+    PARTIAL = "partial"
+    PAID = "paid"
+    OVERDUE = "overdue"
+
+
+class CommerceTariffStatus(StrEnum):
+    DRAFT = "draft"
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+
+
+class BillingUnit(StrEnum):
+    SURFACE_DAY = "surface_day"
+
+
 DEFAULT_CORRELATION_ID_HEADER = "X-Correlation-ID"
 DEVICE_CORRELATION_ID_HEADER = "X-Device-Correlation-ID"

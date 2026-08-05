@@ -56,6 +56,10 @@ __all__ = [
     "AdvertiserBrand",
     "AdvertiserContract",
     "AdvertiserContact",
+    "CommerceTariffVersion",
+    "CommercePriceItem",
+    "CommerceOrder",
+    "CommerceOrderLine",
     "LocalCredential",
     "RefreshSession",
     "LoginAttempt",
@@ -1412,6 +1416,111 @@ class InventoryRule(Base):
     updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
 
 
+# ---------------------------------------------------------------------------
+# Commerce Contour 2 (COMMERCE-CONTUR2-001A1)
+# ---------------------------------------------------------------------------
+
+
+class CommerceTariffVersion(Base):
+    """Tariff version — pricing container scoped to a validity period."""
+
+    __tablename__ = "commerce_tariff_versions"
+    __table_args__ = (
+        Index("ix_commerce_tariff_versions_status", "status"),
+        Index("ix_commerce_tariff_versions_valid", "valid_from", "valid_to"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    code = Column(String(64), nullable=False, unique=True, index=True)
+    name = Column(String(255), nullable=False)
+    status = Column(String(32), nullable=False, default="draft")
+    valid_from = Column(Date, nullable=False)
+    valid_to = Column(Date, nullable=True)
+    currency = Column(String(3), nullable=False, default="RUB")
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+    price_items = relationship("CommercePriceItem", back_populates="tariff_version")
+
+
+class CommercePriceItem(Base):
+    """Price line inside a tariff version — scoped to a surface or surface group."""
+
+    __tablename__ = "commerce_price_items"
+    __table_args__ = (
+        Index("ix_commerce_price_items_tariff", "tariff_version_id"),
+        UniqueConstraint("tariff_version_id", "surface_id",
+                         name="uq_price_item_tariff_surface"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    tariff_version_id = Column(
+        String(36), ForeignKey("commerce_tariff_versions.id"), nullable=False, index=True,
+    )
+    surface_id = Column(
+        String(36), ForeignKey("display_surfaces.id"), nullable=False, index=True,
+    )
+    billing_unit = Column(String(32), nullable=False, default="surface_day")
+    unit_price_amount = Column(Numeric(12, 2), nullable=False)
+    currency = Column(String(3), nullable=False, default="RUB")
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+    tariff_version = relationship("CommerceTariffVersion", back_populates="price_items")
+
+
+class CommerceOrder(Base):
+    """Commerce order — advertiser purchases inventory from operator."""
+
+    __tablename__ = "commerce_orders"
+    __table_args__ = (
+        Index("ix_commerce_orders_org", "advertiser_organization_id"),
+        Index("ix_commerce_orders_status", "status"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    advertiser_organization_id = Column(
+        String(36), ForeignKey("advertiser_organizations.id"), nullable=False, index=True,
+    )
+    code = Column(String(64), nullable=False, unique=True, index=True)
+    status = Column(String(32), nullable=False, default="draft")
+    payment_status = Column(String(32), nullable=False, default="not_required")
+    tariff_version_id = Column(
+        String(36), ForeignKey("commerce_tariff_versions.id"), nullable=True, index=True,
+    )
+    total_amount = Column(Numeric(14, 2), nullable=True)
+    currency = Column(String(3), nullable=False, default="RUB")
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+    lines = relationship("CommerceOrderLine", back_populates="order")
+
+
+class CommerceOrderLine(Base):
+    """Single line item in a commerce order."""
+
+    __tablename__ = "commerce_order_lines"
+    __table_args__ = (
+        Index("ix_commerce_order_lines_order", "order_id"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    order_id = Column(
+        String(36), ForeignKey("commerce_orders.id"), nullable=False, index=True,
+    )
+    surface_id = Column(
+        String(36), ForeignKey("display_surfaces.id"), nullable=False, index=True,
+    )
+    date_from = Column(Date, nullable=False)
+    date_to = Column(Date, nullable=False)
+    quantity_days = Column(Integer, nullable=False)
+    unit_price_amount = Column(Numeric(12, 2), nullable=False)
+    line_amount = Column(Numeric(14, 2), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    order = relationship("CommerceOrder", back_populates="lines")
+
+
 REQUIRED_TABLES = frozenset({
     "retailers",
     "branches", "clusters", "stores",
@@ -1444,4 +1553,6 @@ REQUIRED_TABLES = frozenset({
     "campaign_briefs",
     "device_onboarding_codes",
     "ad_settings",
+    "commerce_tariff_versions", "commerce_price_items",
+    "commerce_orders", "commerce_order_lines",
 })
