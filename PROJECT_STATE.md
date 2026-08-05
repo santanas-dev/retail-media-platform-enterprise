@@ -439,12 +439,15 @@ metadata-only creative error.
   - tests/player_client/test_player_client.py: local import path bug; not covered by CI.
 
 **COMMERCE-CONTUR2-001A1 ✅** — schema/RLS/pricing choke-point foundation.
+- Payload SHA: 33f8b32 → 95bb0ad (CI fixup).
+- CI: #30991448734 — **success**. UI-smoke 33/35 (invite + audit pre-existing flaky, SMOKES-FLAKY-001).
 - Migration 032: 4 commerce tables (tariff_versions, price_items, orders, order_lines).
 - Domain enums: CommerceOrderStatus, CommercePaymentStatus, CommerceTariffStatus, BillingUnit.
 - Pydantic schemas: create/out DTOs + CommerceQuoteRequest/Response.
 - Pricing choke-point: calculate_order_quote() — validates tariff, loads prices, computes totals.
 - Tests: 15/15 unit tests (pricing logic, schemas, enums, validation).
-- No UI yet — backend foundation only. Next: A2 (API endpoints, RLS, order CRUD).
+- **Честно:** UI нет, backend foundation only. Commerce feature IDs остаются blocked в feature-registry.
+- Next → COMMERCE-CONTUR2-001A2 — API endpoints, RLS enforcement, order CRUD.
 
 **SELF-LOGIN-CI-001-FU ✅** — self__login returned to blocking CI, tamper-proofed.
 

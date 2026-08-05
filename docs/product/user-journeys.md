@@ -674,6 +674,11 @@ See: `docs/architecture/epic-l-licensing.md`.
 ### Decision Matrix — Owner Approved (2026-07-31)
 
 **approved for COMMERCE-CONTUR2-001A1 schema/RLS/pricing implementation by owner on 2026-07-31**
+**A1 STATUS: ✅ backend foundation done** (CI #30991448734, SHA 95bb0ad).
+- Migration 032 applied (4 commerce tables).
+- Pricing choke-point `calculate_order_quote()` implemented (15/15 tests).
+- No UI — all commerce feature IDs remain blocked.
+- Next → A2: API endpoints, RLS enforcement, order CRUD.
 
 | # | Decision | Approved value | Status |
 |---|----------|---------------|--------|
