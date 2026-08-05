@@ -461,6 +461,19 @@ metadata-only creative error.
 - **Честно:** UI нет, commerce feature IDs остаются blocked.
 - Next → COMMERCE-CONTUR2-001A3 — admin UI for tariff/order management, or plan-driven priority.
 
+**COMMERCE-CONTUR2-001A3a ✅** — admin UI for tariff + price management.
+- Payload SHA: pending (CI after push).
+- CommerceTariffsPage: tariffs tab (CRUD) + prices tab (CRUD per tariff).
+- Nav: «Коммерция» → /commerce/tariffs (commerce.tariff_read).
+- RBAC: manage permission gates create/edit; read-only hides buttons.
+- Types: CommerceTariffVersionOut/Create/Update, CommercePriceItemOut/Create/Update.
+- API client: api/commerce.ts (6 functions).
+- Vitest: 7/7, admin-web: 321/321 (no regressions).
+- UI-smoke: test_uismoke__commerce__tariff_manage (create tariff + price item + reload).
+- Feature-registry: commerce.tariff_manage + commerce.price_list_manage → reachable (43/57).
+- Operator walkthrough: PENDING.
+- Next → COMMERCE-CONTUR2-001A3b — admin UI for order CRUD + status management.
+
 **SELF-LOGIN-CI-001-FU ✅** — self__login returned to blocking CI, tamper-proofed.
 
 **AUDIT-REMEDIATION-001-CLOSURE ✅** — canonical closure of independent audit remediation (A→B→C).

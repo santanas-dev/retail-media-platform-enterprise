@@ -685,7 +685,16 @@ See: `docs/architecture/epic-l-licensing.md`.
 - Status transition guard: draft→offered→booked→confirmed→closed/cancelled.
 - 4 seed permissions, 51 combined tests, guard 0.
 - No UI — commerce feature IDs remain blocked.
-- Next → A3: admin UI for tariff/order management.
+- Next → A3a: admin UI for tariff/price management.
+
+**A3a STATUS: ✅ admin UI done** (SHA pending, CI pending).
+- CommerceTariffsPage: tariffs tab (CRUD) + prices tab (CRUD per tariff).
+- Nav: «Коммерция» → /commerce/tariffs (permission: commerce.tariff_read).
+- Vitest: 7/7, admin-web: 321/321 (no regressions).
+- UI-smoke: test_uismoke__commerce__tariff_manage — create tariff + price item + reload.
+- Feature-registry: commerce.tariff_manage + commerce.price_list_manage → reachable (43/57).
+- Operator walkthrough: PENDING.
+- Next → A3b: admin UI for order CRUD + status management.
 
 | # | Decision | Approved value | Status |
 |---|----------|---------------|--------|

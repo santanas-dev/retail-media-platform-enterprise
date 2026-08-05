@@ -919,3 +919,54 @@ export interface AssignRoleResponse {
   scope_id: string | null;
   message: string;
 }
+
+// ── Commerce ──
+
+export interface CommerceTariffVersionOut {
+  id: string;
+  code: string;
+  name: string;
+  status: string;
+  valid_from: string;
+  valid_to: string | null;
+  currency: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface CommerceTariffVersionCreate {
+  code: string;
+  name: string;
+  valid_from: string;
+  valid_to?: string | null;
+  currency?: string;
+}
+
+export interface CommerceTariffVersionUpdate {
+  name?: string;
+  status?: string;
+  valid_from?: string;
+  valid_to?: string | null;
+}
+
+export interface CommercePriceItemOut {
+  id: string;
+  tariff_version_id: string;
+  surface_id: string;
+  billing_unit: string;
+  unit_price_amount: number;
+  currency: string;
+  created_at: string | null;
+}
+
+export interface CommercePriceItemCreate {
+  surface_id: string;
+  unit_price_amount: number;
+  billing_unit?: string;
+  currency?: string;
+}
+
+export interface CommercePriceItemUpdate {
+  unit_price_amount?: number;
+  billing_unit?: string;
+}

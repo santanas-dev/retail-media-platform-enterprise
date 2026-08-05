@@ -20,6 +20,7 @@ import AuditLogPage from "./pages/AuditLogPage";
 import DeviceHealthPage from "./pages/DeviceHealthPage";
 import EmergencyPage from "./pages/EmergencyPage";
 import AdvertiserApplicationsPage from "./pages/AdvertiserApplicationsPage";
+import CommerceTariffsPage from "./pages/CommerceTariffsPage";
 import PublicApplicationForm from "./pages/PublicApplicationForm";
 
 /** Route-level error fallback — resets when the user navigates to a different route. */
@@ -94,6 +95,7 @@ const router = createBrowserRouter([
       { path: "devices", element: <DeviceHealthPage /> },
       { path: "emergency", element: <EmergencyPage /> },
       { path: "advertiser-applications", element: <AdvertiserApplicationsPage /> },
+      { path: "commerce/tariffs", element: <CommerceTariffsPage /> },
     ],
   },
 ]);

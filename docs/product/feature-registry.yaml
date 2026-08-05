@@ -711,13 +711,13 @@ features:
   - id: commerce.tariff_manage
     frontend: admin-web
     name: Управление тарифами и прайс-листами
-    route: n/a
-    path: n/a
-    smoke: n/a
+    route: /commerce/tariffs
+    path: apps/admin-web/src/pages/CommerceTariffsPage.tsx
+    smoke: test_uismoke__commerce__tariff_manage
     priority: P1
     roles: [system_admin, campaign_manager]
-    status: blocked
-    gap: "COMMERCE-CONTUR2-001A0 canon intake only. Owner approval required before A1."
+    status: reachable
+    note: "COMMERCE-CONTUR2-001A3a — UI + smoke green (tariff CRUD + price items). Price items reachable via same smoke."
 
   - id: commerce.offer_generate
     frontend: admin-web
@@ -779,8 +779,8 @@ features:
   # ═══════════════════════════════════════════════════════════════
   #   total: 57
   # by status:
-  #   reachable: 41 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, user.split_internal_advertiser, advertiser.create_org, advertiser.view, advertiser.contact_crud, advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites, inventory.simulate, advertiser.invite, adsettings.configure, adsettings.test, audit.view, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, campaign.complete, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, device.health_view, observability, user.reset_password, user.deactivate, inventory.rule_create)
-  #   blocked:     16 (self.report_view, self.campaign_create, playlist.build, backup.restore, license.view, license.upload, license.seat_release, license.report, license.enforce, commerce.order_create, commerce.tariff_manage, commerce.offer_generate, commerce.booking, commerce.payment_status, commerce.order_close, commerce.price_list_manage)
+  #   reachable: 43 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, user.split_internal_advertiser, advertiser.create_org, advertiser.view, advertiser.contact_crud, advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites, inventory.simulate, advertiser.invite, adsettings.configure, adsettings.test, audit.view, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, campaign.complete, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, device.health_view, observability, user.reset_password, user.deactivate, inventory.rule_create, commerce.tariff_manage, commerce.price_list_manage)
+  #   blocked:     14 (self.report_view, self.campaign_create, playlist.build, backup.restore, license.view, license.upload, license.seat_release, license.report, license.enforce, commerce.order_create, commerce.offer_generate, commerce.booking, commerce.payment_status, commerce.order_close)
   # by frontend:
   #   admin-web:      38
   #   advertiser-web:  5
