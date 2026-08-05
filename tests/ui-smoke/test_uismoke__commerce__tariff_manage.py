@@ -1,22 +1,27 @@
 """
-COMMERCE-CONTUR2-001A3a — commerce.tariff_manage UI-smoke.
+COMMERCE-CONTUR2-001A3a — commerce.tariff_manage + commerce.price_list_manage UI-smoke.
 
-Happy-path (7 шагов):
+Happy-path (10 шагов):
   1. login → 2. Коммерция (nav) → 3. create tariff (code/name/valid_from)
-  → 4. save → 5. verify row → 6. edit tariff status → 7. reload persistence.
+  → 4. save → 5. verify row → 6. edit tariff status
+  → 7. switch to Прайс-листы → 8. select tariff → 9. create price item
+  → 10. reload persistence (tariff + price item survive).
 
 Only /login via page.goto(); all navigation via clicks.
-Note: price item smoke requires a real surface_id from seed.
-      Price items covered in vitest; backend integration tested via A2 backend tests.
+SEED_SURFACE_ID = 00000000-0000-0000-0000-000000000031 — deterministic from seed.
 """
 import os
 import time
 import pytest
 from conftest import login_as_break_glass_admin
 
+SEED_SURFACE_ID = "00000000-0000-0000-0000-000000000031"
+
 
 def _nav_commerce(page):
-    link = page.locator('aside nav a[href="/commerce/tariffs"]')
+    # Use text-based locator — more robust than CSS href selectors
+    link = page.locator('aside nav a:has-text("Коммерция")')
+    link.wait_for(state="visible", timeout=10000)
     link.click(force=True)
     page.wait_for_url("**/commerce/tariffs", timeout=8000)
     page.wait_for_load_state("networkidle")
@@ -52,11 +57,49 @@ def test_uismoke__commerce__tariff_manage(smoke_page):
     page.locator('[data-testid="commerce-tariff-submit"]').click()
     page.wait_for_timeout(1000)
 
-    # 3. Reload persistence check
+    # ── Price Item ──
+
+    # 3. Select tariff on the Тарифы tab first (sets selectedTariffId), then switch
+    page.locator(f'[data-testid^="commerce-tariff-row-"]:has-text("{tariff_code}")').click()
+    page.wait_for_timeout(300)
+
+    # 4. Switch to Прайс-листы sub-tab
+    page.locator('button:has-text("Прайс-листы")').click()
+    page.wait_for_timeout(500)
+    page.wait_for_selector('[data-testid="commerce-price-item-create-open"]', timeout=5000)
+
+    # 5. Open price item creation form
+    page.locator('[data-testid="commerce-price-item-create-open"]').click()
+    page.wait_for_selector('[data-testid="commerce-price-item-form"]', timeout=5000)
+
+    # 6. Fill price item
+    price_value = 150.00
+    page.fill('[data-testid="commerce-price-item-surface"]', SEED_SURFACE_ID)
+    page.fill('[data-testid="commerce-price-item-unit-price"]', str(price_value))
+    page.locator('[data-testid="commerce-price-item-submit"]').click()
+    page.wait_for_timeout(1000)
+
+    # 7. Verify price item row
+    page.wait_for_selector('[data-testid="commerce-price-items-table"]', timeout=8000)
+    # billing_unit must be surface_day
+    page.wait_for_selector('text=surface_day', timeout=5000)
+    # price displayed
+    page.wait_for_selector(f'text=150', timeout=5000)
+
+    # 8. Reload persistence check — both tariff and price item
     page.reload()
     page.wait_for_load_state("networkidle")
     page.wait_for_selector('h1', timeout=10000)
 
-    # Verify tariff survived reload
+    # Verify tariff survived reload (on Тарифы tab by default after reload)
     page.wait_for_selector(f'text={tariff_code}', timeout=8000)
     page.wait_for_selector(f'text=Активен', timeout=5000)
+
+    # Switch back to Прайс-листы and verify price item survived
+    page.locator(f'[data-testid^="commerce-tariff-row-"]:has-text("{tariff_code}")').click()
+    page.wait_for_timeout(300)
+    page.locator('button:has-text("Прайс-листы")').click()
+    page.wait_for_timeout(500)
+    page.wait_for_selector('[data-testid="commerce-price-items-table"]', timeout=8000)
+    page.wait_for_selector('text=surface_day', timeout=5000)
+    page.wait_for_selector(f'text=150', timeout=5000)

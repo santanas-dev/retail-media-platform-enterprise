@@ -462,16 +462,16 @@ metadata-only creative error.
 - Next → COMMERCE-CONTUR2-001A3 — admin UI for tariff/order management, or plan-driven priority.
 
 **COMMERCE-CONTUR2-001A3a ✅** — admin UI for tariff + price management.
-- Payload SHA: ab7a901 (FU2 — tariff-only smoke).
-- CI: #30998309408 — backend ALL green, UI-smoke 33/34 + 2 deselected.
-  1 pre-existing flaky (campaign_activate), commerce__tariff_manage GREEN.
+- Payload SHA: (pending FU3 — price item smoke restored with SEED_SURFACE_ID).
+- CI: (pending push).
 - CommerceTariffsPage: tariffs tab (CRUD) + prices tab (CRUD per tariff).
 - Nav: «Коммерция» → /commerce/tariffs (commerce.tariff_read).
 - RBAC: manage permission gates create/edit; read-only hides buttons.
 - Types: CommerceTariffVersionOut/Create/Update, CommercePriceItemOut/Create/Update.
 - API client: api/commerce.ts (6 functions).
 - Vitest: 7/7, admin-web: 321/321 (no regressions).
-- UI-smoke: test_uismoke__commerce__tariff_manage (create tariff + price item + reload).
+- UI-smoke: test_uismoke__commerce__tariff_manage (create tariff + create price item with real surface_id + reload persistence for both).
+- FU3: price_list_manage smoke proof — deterministic SEED_SURFACE_ID 00000000-0000-0000-0000-000000000031 used.
 - Feature-registry: commerce.tariff_manage + commerce.price_list_manage → reachable (43/57).
 - Operator walkthrough: PENDING.
 - Next → COMMERCE-CONTUR2-001A3b — admin UI for order CRUD + status management.
