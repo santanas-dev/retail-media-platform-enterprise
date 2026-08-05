@@ -1825,3 +1825,23 @@ class CommerceQuoteResponse(BaseModel):
     lines: list[CommerceQuoteLine] = Field(default_factory=list)
     total_amount: float = 0.0
     errors: list[str] = Field(default_factory=list)
+
+
+# ── Commerce PATCH schemas ──
+
+
+class CommerceTariffVersionUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    status: str | None = None
+    valid_from: date_type | None = None
+    valid_to: date_type | None = None
+
+
+class CommercePriceItemUpdate(BaseModel):
+    unit_price_amount: float | None = Field(default=None, gt=0)
+    billing_unit: str | None = None
+
+
+class CommerceOrderUpdate(BaseModel):
+    new_status: str | None = None
+    payment_status: str | None = None
