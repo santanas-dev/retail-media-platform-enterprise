@@ -687,7 +687,7 @@ See: `docs/architecture/epic-l-licensing.md`.
 - No UI — commerce feature IDs remain blocked.
 - Next → A3a: admin UI for tariff/price management.
 
-**A3a STATUS: ✅ admin UI done** (SHA pending, CI pending).
+**A3a STATUS: ✅ admin UI done** (SHA ab7a901, CI #30998309408, commerce smoke green).
 - CommerceTariffsPage: tariffs tab (CRUD) + prices tab (CRUD per tariff).
 - Nav: «Коммерция» → /commerce/tariffs (permission: commerce.tariff_read).
 - Vitest: 7/7, admin-web: 321/321 (no regressions).
