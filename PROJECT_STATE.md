@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-05 (SELF-LOGIN-CI-001-FU)
+**Last updated:** 2026-08-05 (SMOKES-CI-BATCH-002)
 
 **Next Active Workstream:** ADVERTISER-UX-001B2 — contract PDF upload smoke
 
@@ -417,17 +417,21 @@ metadata-only creative error.
 - Repository fix: changed_by default "system"→break_glass_admin UUID (avoids FK violation).
 - CI run: #30942823862 ✅.
 
-**SELF-LOGIN-CI-001-FU ✅** — self__login returned to blocking CI, tamper-proofed.
-- Root cause fixed: cascade of 5 production bugs (org.id NULL, sa_update, RLS bypass, race condition).
-- Tamper proof: CI #30984114169 red (tampered selector → FAILED [83%]).
-- Revert green: CI #30984507078 red (strict-mode violation — text=Кампании×2).
-- Fix: text=Кампании → get_by_test_id("nav-campaigns").
-- Final green: CI #30986133701 ✅ — 30 passed, 5 deselected, self__login PASSED [83%].
-- UI-smoke now 30/35 (self__login included).
+**SMOKES-CI-BATCH-002 ✅** — all 5 excluded UI-smoke promoted to blocking CI (35/35).
+- advertiser__invite: wait_for_load_state after row re-select, timeout 5→15s.
+- audit__view: rewritten with API-driven audit event creation (emergency via httpx),
+  UI verification stays real clicks.
+- emergency__activate/deactivate: substring bug fixed (АКТИВЕН in НЕ АКТИВЕН),
+  wait_for_function→expect(not_to_be_disabled), reload between actions.
+  Teardown: emergency__activate restores INACTIVE state.
+- advertiser__contract_pdf_upload: already green.
+- CI #30988810034: 35 passed, 0 deselected ✅.
+- UI-smoke: 35/35, 0 excluded.
 
 **Remaining debt (честный список):**
-  - UI-smoke excluded 5/35: emergency__activate/deactivate flaky, contract_pdf_upload, invite, audit.
-  - tests/player_client/test_player_client.py: local import path bug; not covered by CI.
+  - None — all 35 UI-smoke tests in CI.
+
+**SELF-LOGIN-CI-001-FU ✅** — self__login returned to blocking CI, tamper-proofed.
 
 **AUDIT-REMEDIATION-001-CLOSURE ✅** — canonical closure of independent audit remediation (A→B→C).
 
