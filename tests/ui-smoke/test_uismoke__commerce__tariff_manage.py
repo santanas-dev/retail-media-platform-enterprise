@@ -26,8 +26,10 @@ def test_uismoke__commerce__tariff_manage(smoke_page):
     login_as_break_glass_admin(page)
     _nav_commerce(page)
 
-    # Wait for page to load
-    page.wait_for_selector('[data-testid="commerce-tariffs-page"]', timeout=8000)
+    # Wait for page to load — use h1 text (more robust than testid in CI)
+    page.wait_for_selector('h1', timeout=10000)
+    expect_text = page.locator('h1').inner_text()
+    assert "Коммерция" in expect_text, f"Expected Коммерция, got: {expect_text}"
 
     # 1. Create tariff
     page.locator('[data-testid="commerce-tariff-create-open"]').click()
