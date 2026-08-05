@@ -53,7 +53,7 @@ def test_uismoke__self__login(page: Page):
     page.get_by_test_id("advertiser-apply-email").fill(APP_EMAIL)
     page.get_by_test_id("advertiser-apply-phone").fill("+7-222-222-2222")
     page.get_by_test_id("advertiser-apply-consent").check()
-    page.get_by_test_id("advertiser-apply-submit-TAMPERED").click()
+    page.get_by_test_id("advertiser-apply-submit").click()
 
     expect(page.locator("text=Заявка отправлена")).to_be_visible(timeout=10000)
 
