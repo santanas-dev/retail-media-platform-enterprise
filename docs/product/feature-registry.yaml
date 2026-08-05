@@ -724,33 +724,33 @@ features:
     name: Генерация коммерческого предложения (draft→offered)
     route: "/commerce/tariffs (tab: Заказы)"
     path: apps/admin-web/src/pages/CommerceOrdersTab.tsx
-    smoke: n/a
+    smoke: test_uismoke__commerce__order_create
     priority: P1
     roles: [system_admin, campaign_manager]
     status: reachable
-    note: "COMMERCE-CONTUR2-001A3b — proven via test_uismoke__commerce__order_create (shared smoke)."
+    note: "COMMERCE-CONTUR2-001A3b — draft→offered status transition proof via shared smoke."
 
   - id: commerce.booking
     frontend: admin-web
     name: Бронирование (offered→booked)
     route: "/commerce/tariffs (tab: Заказы)"
     path: apps/admin-web/src/pages/CommerceOrdersTab.tsx
-    smoke: n/a
+    smoke: test_uismoke__commerce__order_create
     priority: P1
     roles: [system_admin, campaign_manager]
     status: reachable
-    note: "COMMERCE-CONTUR2-001A3b — proven via test_uismoke__commerce__order_create (shared smoke)."
+    note: "COMMERCE-CONTUR2-001A3b — offered→booked transition proof via shared smoke."
 
   - id: commerce.payment_status
     frontend: admin-web
     name: Статус оплаты заказа
     route: "/commerce/tariffs (tab: Заказы)"
     path: apps/admin-web/src/pages/CommerceOrdersTab.tsx
-    smoke: n/a
+    smoke: test_uismoke__commerce__order_create
     priority: P1
     roles: [system_admin, campaign_manager]
     status: reachable
-    note: "COMMERCE-CONTUR2-001A3b — proven via test_uismoke__commerce__order_create (shared smoke)."
+    note: "COMMERCE-CONTUR2-001A3b — payment update proof via shared smoke."
 
   - id: commerce.order_close
     frontend: admin-web

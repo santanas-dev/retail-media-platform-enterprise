@@ -477,7 +477,7 @@ metadata-only creative error.
 - Next → COMMERCE-CONTUR2-001A3b — admin UI for order CRUD + status management.
 
 **COMMERCE-CONTUR2-001A3b ✅** — admin UI for commerce order CRUD + status management.
-- Payload SHA: (pending commit).
+- Payload SHA: 26f3aa2 (A3b — order UI + smoke green).
 - CI: (pending push).
 - CommerceOrdersTab: order list + create form + detail panel + status/payment management.
 - Create order flow: org_id + tariff_id + surface_id + dates → backend quote → lines + total display.

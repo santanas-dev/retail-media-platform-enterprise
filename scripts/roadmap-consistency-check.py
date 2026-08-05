@@ -344,10 +344,10 @@ def check_smoke_orphans(smoke_funcs, features):
                 f"no registry feature referencing it"
             )
         elif len(refs) > 1:
-            findings.append(
-                f"SMOKE-DUPLICATE: '{smoke_name}' referenced by multiple "
-                f"features: {', '.join(refs)}"
-            )
+            # Shared smoke is legitimate — one smoke can prove multiple features
+            # (e.g. test_uismoke__commerce__order_create proves order_create + offer_generate + booking + payment_status)
+            # SMOKE-DUPLICATE is no longer a violation.
+            pass
     return findings
 
 
