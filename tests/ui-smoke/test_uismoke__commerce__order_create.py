@@ -1,12 +1,14 @@
 """
-COMMERCE-CONTUR2-001A3b — commerce.order_create + status management UI-smoke.
+COMMERCE-CONTUR2-001A3b+A3c — commerce.order_create + close UI-smoke.
 
-Happy-path (10 шагов):
+Happy-path (12 шагов):
   1. login → 2. Коммерция (nav) → 3. create tariff
   → 4. switch to Заказы → 5. create order (org + tariff + surface + dates)
   → 6. verify order row (code, status, total) → 7. click row → verify lines
-  → 8. transition draft→offered→booked → 9. update payment_status
-  → 10. reload persistence.
+  → 8. transition draft→offered→booked→confirmed→closed
+  → 9. update payment_status → 10. reload persistence (status=closed).
+  → 11. no transition buttons for closed order (terminal).
+  → 12. commerce.order_close smoke proof.
 
 Only /login via page.goto(); all navigation via clicks.
 SEED_ADV_ORG_ID = 00000000-0000-0000-0000-000000000200
@@ -124,23 +126,39 @@ def test_uismoke__commerce__order_create(smoke_page):
     page.wait_for_timeout(1000)
     page.wait_for_selector('text=Забронирован', timeout=5000)
 
+    # 8b. Transition: booked → confirmed
+    page.locator('[data-testid="commerce-order-transition-confirmed"]').click()
+    page.wait_for_timeout(1000)
+    page.wait_for_selector('text=Подтверждён', timeout=5000)
+
+    # 8c. Transition: confirmed → closed (A3c — order_close proof)
+    page.locator('[data-testid="commerce-order-transition-closed"]').click()
+    page.wait_for_timeout(1000)
+    page.wait_for_selector('text=Закрыт', timeout=5000)
+
     # 9. Update payment status
     page.select_option('[data-testid="commerce-order-payment-select"]', "paid")
     page.wait_for_timeout(1500)
     page.wait_for_selector('[data-testid="commerce-order-payment-status"]:has-text("Оплачен")', timeout=10000)
 
-    # 10. Reload persistence
+    # 10. Reload persistence — verify order stays closed
     page.reload()
     page.wait_for_load_state("networkidle")
     page.wait_for_selector('h1', timeout=10000)
 
-    # Switch to Заказы and verify order survived
+    # Switch to Заказы and verify order survived as closed
     page.locator('button:has-text("Заказы")').click()
     page.wait_for_timeout(500)
     page.wait_for_selector('[data-testid="commerce-orders-table"]', timeout=8000)
-    page.wait_for_selector('text=Забронирован', timeout=5000)
+    page.wait_for_selector('text=Закрыт', timeout=5000)
     # Click order row to expand detail (selectedOrder resets on reload)
     page.locator('[data-testid^="commerce-order-row-"]').first.click()
     page.wait_for_timeout(500)
     page.wait_for_selector('[data-testid="commerce-order-detail"]', timeout=5000)
     page.wait_for_selector('[data-testid="commerce-order-payment-status"]:has-text("Оплачен")', timeout=5000)
+
+    # 11. Terminal: closed order has no transition buttons
+    # Verify none of the transition buttons exist
+    for btn in ["offered", "booked", "confirmed", "closed", "cancelled"]:
+        loc = page.locator(f'[data-testid="commerce-order-transition-{btn}"]')
+        assert loc.count() == 0, f"Closed order should have no transition buttons, but found '{btn}'"

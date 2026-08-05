@@ -754,14 +754,14 @@ features:
 
   - id: commerce.order_close
     frontend: admin-web
-    name: Закрытие заказа + no-retro-reprice
-    route: n/a
-    path: n/a
-    smoke: n/a
+    name: Закрытие заказа (terminal)
+    route: "/commerce/tariffs (tab: Заказы)"
+    path: apps/admin-web/src/pages/CommerceOrdersTab.tsx
+    smoke: test_uismoke__commerce__order_create
     priority: P1
     roles: [system_admin, campaign_manager]
-    status: blocked
-    gap: "COMMERCE-CONTUR2-001A0 canon intake only. Owner approval required before A1."
+    status: reachable
+    note: "COMMERCE-CONTUR2-001A3c — booked→confirmed→closed smoke proof via shared test."
 
   - id: commerce.price_list_manage
     frontend: admin-web
@@ -779,8 +779,8 @@ features:
   # ═══════════════════════════════════════════════════════════════
   #   total: 57
   # by status:
-  #   reachable: 47 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, user.split_internal_advertiser, advertiser.create_org, advertiser.view, advertiser.contact_crud, advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites, inventory.simulate, advertiser.invite, adsettings.configure, adsettings.test, audit.view, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, campaign.complete, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, device.health_view, observability, user.reset_password, user.deactivate, inventory.rule_create, commerce.tariff_manage, commerce.price_list_manage, commerce.order_create, commerce.offer_generate, commerce.booking, commerce.payment_status)
-  #   blocked:     10 (self.report_view, self.campaign_create, playlist.build, backup.restore, license.view, license.upload, license.seat_release, license.report, license.enforce, commerce.order_close)
+  #   reachable: 48 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, user.split_internal_advertiser, advertiser.create_org, advertiser.view, advertiser.contact_crud, advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites, inventory.simulate, advertiser.invite, adsettings.configure, adsettings.test, audit.view, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, campaign.complete, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, device.health_view, observability, user.reset_password, user.deactivate, inventory.rule_create, commerce.tariff_manage, commerce.price_list_manage, commerce.order_create, commerce.offer_generate, commerce.booking, commerce.payment_status, commerce.order_close)
+  #   blocked:      9 (self.report_view, self.campaign_create, playlist.build, backup.restore, license.view, license.upload, license.seat_release, license.report, license.enforce)
   # by frontend:
   #   admin-web:      38
   #   advertiser-web:  5

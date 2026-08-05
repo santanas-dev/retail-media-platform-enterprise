@@ -490,6 +490,16 @@ metadata-only creative error.
 - Operator walkthrough: PENDING.
 - Next → defined by roadmap or remaining commerce gaps (order_close, confirmed, cancelled).
 
+**COMMERCE-CONTUR2-001A3c ✅** — commerce.order_close smoke proof.
+- Payload SHA: (pending commit).
+- CI: (pending push).
+- Smoke: booked→confirmed→closed + reload persistence + terminal (no transition buttons).
+- Vitest: 2 new (close button for confirmed, closed status in list). Admin-web: 331/331.
+- Feature-registry: commerce.order_close → reachable (48/57, +1).
+- Commerce features: all 5 now reachable (order_create, offer_generate, booking, payment_status, order_close).
+- Operator walkthrough: PENDING.
+- Next → defined by roadmap.
+
 **SELF-LOGIN-CI-001-FU ✅** — self__login returned to blocking CI, tamper-proofed.
 
 **AUDIT-REMEDIATION-001-CLOSURE ✅** — canonical closure of independent audit remediation (A→B→C).
