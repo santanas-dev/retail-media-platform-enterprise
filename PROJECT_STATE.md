@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-04 (TRUTH-CI-001F)
+**Last updated:** 2026-08-05 (SELF-LOGIN-CI-001-FU)
 
-**Next Active Workstream:** CAMPAIGN-UX-002C — merge flights/placements/creatives into Наполнение
+**Next Active Workstream:** ADVERTISER-UX-001B2 — contract PDF upload smoke
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `84fe4c3` (PLAYER-001B-FU — substantive)
@@ -417,17 +417,19 @@ metadata-only creative error.
 - Repository fix: changed_by default "system"→break_glass_admin UUID (avoids FK violation).
 - CI run: #30942823862 ✅.
 
-**AUDIT-REMEDIATION-001-CLOSURE ✅** — canonical closure of independent audit remediation (A→B→C).
-- A. TRUTH-CI-001: UI-smoke CI-enforced 29/35, roadmap guard blocking, python-tests anti-skip.
-- B. DOMAIN-ENUM-001: CampaignStatus → runtime lifecycle with transition guard, OrderType removed.
-- C. LIFECYCLE-COMPLETE-001 + FU: campaign.complete implemented, real DB proof 7/7, CI #30942823862.
-- Canon consistency verified: PROJECT_STATE ✅, feature-registry ✅, pre-pilot-journey-plan ✅.
-- Roadmap-consistency guard: 0 findings ✅.
-- Remaining debt (honest, не блокирует closure):
-  - UI-smoke excluded 6/35: emergency__activate/deactivate flaky, contract_pdf_upload timeout,
-    self_login/invite/audit not CI-investigated.
+**SELF-LOGIN-CI-001-FU ✅** — self__login returned to blocking CI, tamper-proofed.
+- Root cause fixed: cascade of 5 production bugs (org.id NULL, sa_update, RLS bypass, race condition).
+- Tamper proof: CI #30984114169 red (tampered selector → FAILED [83%]).
+- Revert green: CI #30984507078 red (strict-mode violation — text=Кампании×2).
+- Fix: text=Кампании → get_by_test_id("nav-campaigns").
+- Final green: CI #30986133701 ✅ — 30 passed, 5 deselected, self__login PASSED [83%].
+- UI-smoke now 30/35 (self__login included).
+
+**Remaining debt (честный список):**
+  - UI-smoke excluded 5/35: emergency__activate/deactivate flaky, contract_pdf_upload, invite, audit.
   - tests/player_client/test_player_client.py: local import path bug; not covered by CI.
-- Operator walkthrough: PENDING.
+
+**AUDIT-REMEDIATION-001-CLOSURE ✅** — canonical closure of independent audit remediation (A→B→C).
 
 **Previous PLAYER-001B entry (scaffold):**
 
