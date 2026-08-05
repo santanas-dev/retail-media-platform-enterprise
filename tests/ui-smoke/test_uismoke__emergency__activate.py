@@ -91,4 +91,15 @@ def test_uismoke__emergency__activate(smoke_page: Page) -> None:
     page.reload()
     page.wait_for_load_state("networkidle")
     expect(page.locator('[data-testid="emergency-status"]')).to_contain_text("АКТИВЕН", timeout=10000)
-    print(f"[{time.time()-t0:.1f}s] Reload — active persists ✓ — DONE")
+    print(f"[{time.time()-t0:.1f}s] Reload — active persists ✓")
+
+    # ── Teardown: restore INACTIVE to not pollute other tests ──
+    reason_input = page.locator('[data-testid="emergency-reason-input"]')
+    reason_input.fill("Smoke test teardown — restoring inactive state")
+    deact_btn = page.locator('[data-testid="emergency-deactivate-btn"]')
+    expect(deact_btn).not_to_be_disabled(timeout=15000)
+    deact_btn.click()
+    page.locator('[data-testid="emergency-confirm-deactivate"]').click()
+    page.wait_for_load_state("networkidle")
+    expect(page.locator('[data-testid="emergency-status"]')).to_contain_text("НЕ АКТИВЕН", timeout=10000)
+    print(f"[{time.time()-t0:.1f}s] Teardown — inactive restored ✓ — DONE")
