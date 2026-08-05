@@ -64,3 +64,36 @@ export function updatePriceItem(
     body,
   );
 }
+
+// ── Orders ──
+
+import type {
+  CommerceOrderOut,
+  CommerceOrderCreate,
+  CommerceOrderUpdate,
+  CommerceOrderLineCreate,
+} from "./types";
+
+export function listOrders(): Promise<CommerceOrderOut[]> {
+  return api.get<CommerceOrderOut[]>("/commerce/orders");
+}
+
+export function getOrder(orderId: string): Promise<CommerceOrderOut> {
+  return api.get<CommerceOrderOut>(`/commerce/orders/${orderId}`);
+}
+
+export function createOrder(
+  body: CommerceOrderCreate,
+): Promise<CommerceOrderOut> {
+  return api.post<CommerceOrderOut>("/commerce/orders", body);
+}
+
+export function updateOrder(
+  orderId: string,
+  body: CommerceOrderUpdate,
+): Promise<CommerceOrderOut> {
+  return api.patch<CommerceOrderOut>(
+    `/commerce/orders/${orderId}`,
+    body,
+  );
+}

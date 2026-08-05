@@ -476,6 +476,20 @@ metadata-only creative error.
 - Operator walkthrough: PENDING.
 - Next → COMMERCE-CONTUR2-001A3b — admin UI for order CRUD + status management.
 
+**COMMERCE-CONTUR2-001A3b ✅** — admin UI for commerce order CRUD + status management.
+- Payload SHA: (pending commit).
+- CI: (pending push).
+- CommerceOrdersTab: order list + create form + detail panel + status/payment management.
+- Create order flow: org_id + tariff_id + surface_id + dates → backend quote → lines + total display.
+- Status transitions: draft→offered→booked (smoke-proven). Payment: select → update persistence.
+- Types: CommerceOrderOut/Create/Update, CommerceOrderLineOut/Create.
+- API client: listOrders, getOrder, createOrder, updateOrder (api/commerce.ts).
+- Vitest: 8/8, admin-web: 329/329 (no regressions).
+- UI-smoke: test_uismoke__commerce__order_create (create + offered + booked + payment + reload persistence) — 2/2 green.
+- Feature-registry: commerce.order_create + commerce.offer_generate + commerce.booking + commerce.payment_status → reachable (47/57).
+- Operator walkthrough: PENDING.
+- Next → defined by roadmap or remaining commerce gaps (order_close, confirmed, cancelled).
+
 **SELF-LOGIN-CI-001-FU ✅** — self__login returned to blocking CI, tamper-proofed.
 
 **AUDIT-REMEDIATION-001-CLOSURE ✅** — canonical closure of independent audit remediation (A→B→C).

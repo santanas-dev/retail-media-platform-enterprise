@@ -970,3 +970,48 @@ export interface CommercePriceItemUpdate {
   unit_price_amount?: number;
   billing_unit?: string;
 }
+
+// ── Commerce Orders ──
+
+export interface CommerceOrderLineOut {
+  id: string;
+  order_id: string;
+  surface_id: string;
+  date_from: string;
+  date_to: string;
+  quantity_days: number;
+  unit_price_amount: number;
+  line_amount: number;
+}
+
+export interface CommerceOrderLineCreate {
+  surface_id: string;
+  date_from: string;
+  date_to: string;
+}
+
+export interface CommerceOrderOut {
+  id: string;
+  advertiser_organization_id: string;
+  code: string;
+  status: string;
+  payment_status: string;
+  tariff_version_id: string | null;
+  total_amount: number | null;
+  currency: string;
+  created_at: string | null;
+  updated_at: string | null;
+  lines: CommerceOrderLineOut[];
+}
+
+export interface CommerceOrderCreate {
+  advertiser_organization_id: string;
+  tariff_version_id?: string | null;
+  currency?: string;
+  lines: CommerceOrderLineCreate[];
+}
+
+export interface CommerceOrderUpdate {
+  new_status?: string;
+  payment_status?: string;
+}

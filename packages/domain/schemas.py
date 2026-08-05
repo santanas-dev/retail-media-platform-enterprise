@@ -1761,9 +1761,9 @@ class CommerceOrderLineCreate(BaseModel):
     surface_id: str
     date_from: date_type
     date_to: date_type
-    quantity_days: int = Field(gt=0)
-    unit_price_amount: float = Field(gt=0)
-    line_amount: float = Field(gt=0)
+    quantity_days: int = Field(default=0, ge=0)
+    unit_price_amount: float = Field(default=0.0, ge=0)
+    line_amount: float = Field(default=0.0, ge=0)
 
 
 class CommerceOrderLineOut(BaseModel):

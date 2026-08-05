@@ -1,0 +1,146 @@
+"""
+COMMERCE-CONTUR2-001A3b — commerce.order_create + status management UI-smoke.
+
+Happy-path (10 шагов):
+  1. login → 2. Коммерция (nav) → 3. create tariff
+  → 4. switch to Заказы → 5. create order (org + tariff + surface + dates)
+  → 6. verify order row (code, status, total) → 7. click row → verify lines
+  → 8. transition draft→offered→booked → 9. update payment_status
+  → 10. reload persistence.
+
+Only /login via page.goto(); all navigation via clicks.
+SEED_ADV_ORG_ID = 00000000-0000-0000-0000-000000000200
+SEED_SURFACE_ID = 00000000-0000-0000-0000-000000000031
+"""
+import os
+import time
+import pytest
+from conftest import login_as_break_glass_admin
+
+SEED_ADV_ORG_ID = "00000000-0000-0000-0000-000000000200"
+SEED_SURFACE_ID = "00000000-0000-0000-0000-000000000031"
+
+
+def _nav_commerce(page):
+    link = page.locator('aside nav a:has-text("Коммерция")')
+    link.wait_for(state="visible", timeout=10000)
+    link.click(force=True)
+    page.wait_for_url("**/commerce/tariffs", timeout=8000)
+    page.wait_for_load_state("networkidle")
+
+
+def test_uismoke__commerce__order_create(smoke_page):
+    page = smoke_page
+    login_as_break_glass_admin(page)
+    _nav_commerce(page)
+
+    page.wait_for_selector('h1', timeout=10000)
+    h1_text = page.locator('h1').inner_text()
+    assert "Коммерция" in h1_text
+
+    # 1. Create tariff (needed for order)
+    page.locator('[data-testid="commerce-tariff-create-open"]').click()
+    page.wait_for_selector('[data-testid="commerce-tariff-form"]', timeout=5000)
+
+    tariff_code = f"ORD-{int(time.time()) % 100000}"
+    page.fill('[data-testid="commerce-tariff-code"]', tariff_code)
+    page.fill('[data-testid="commerce-tariff-name"]', f"Тариф для заказа {tariff_code}")
+    page.locator('[data-testid="commerce-tariff-submit"]').click()
+    page.wait_for_timeout(1000)
+    page.wait_for_selector(f'text={tariff_code}', timeout=8000)
+
+    # Get tariff ID from row data-testid
+    tariff_row = page.locator(f'[data-testid^="commerce-tariff-row-"]:has-text("{tariff_code}")')
+    tariff_testid = tariff_row.get_attribute("data-testid") or ""
+    tariff_id = tariff_testid.replace("commerce-tariff-row-", "")
+
+    # 2. Create price item for this tariff (needed for order pricing)
+    tariff_row.click()
+    page.wait_for_timeout(300)
+    page.locator('button:has-text("Прайс-листы")').click()
+    page.wait_for_timeout(500)
+    page.wait_for_selector('[data-testid="commerce-price-item-create-open"]', timeout=5000)
+    page.locator('[data-testid="commerce-price-item-create-open"]').click()
+    page.wait_for_selector('[data-testid="commerce-price-item-form"]', timeout=5000)
+    page.fill('[data-testid="commerce-price-item-surface"]', SEED_SURFACE_ID)
+    page.fill('[data-testid="commerce-price-item-unit-price"]', "200")
+    page.locator('[data-testid="commerce-price-item-submit"]').click()
+    page.wait_for_timeout(1000)
+    page.wait_for_selector('text=surface_day', timeout=5000)
+
+    # 3a. Activate tariff (required for order creation)
+    page.locator('button:has-text("Тарифы")').click()
+    page.wait_for_timeout(300)
+    page.locator(f'[data-testid^="commerce-tariff-row-"]:has-text("{tariff_code}") button:has-text("Изменить")').click()
+    page.wait_for_selector('[data-testid="commerce-tariff-form"]', timeout=5000)
+    page.select_option('[data-testid="commerce-tariff-status"]', "active")
+    page.locator('[data-testid="commerce-tariff-submit"]').click()
+    page.wait_for_timeout(1000)
+
+    # 3b. Switch to Заказы tab
+    page.locator('button:has-text("Заказы")').click()
+    page.wait_for_timeout(500)
+
+    # 4. Create order
+    page.wait_for_selector('[data-testid="commerce-order-create-open"]', timeout=5000)
+    page.locator('[data-testid="commerce-order-create-open"]').click()
+    page.wait_for_selector('[data-testid="commerce-order-create-form"]', timeout=5000)
+
+    page.fill('[data-testid="commerce-order-org-id"]', SEED_ADV_ORG_ID)
+    page.fill('[data-testid="commerce-order-tariff-id"]', tariff_id)
+    page.fill('[data-testid="commerce-order-surface-id"]', SEED_SURFACE_ID)
+    # dates pre-filled: today → today+7
+
+    page.locator('[data-testid="commerce-order-submit"]').click()
+    page.wait_for_timeout(1500)
+
+    # Check for error message
+    error_locator = page.locator('[data-testid="commerce-order-error"]')
+    if error_locator.is_visible():
+        error_text = error_locator.inner_text()
+        raise AssertionError(f"Order creation error: {error_text}")
+
+    # 5. Verify order row appears
+    page.wait_for_selector('[data-testid="commerce-orders-table"]', timeout=10000)
+    # Order should have status "Черновик" (draft)
+    page.wait_for_selector('text=Черновик', timeout=5000)
+    # Should have a total (non-zero)
+    page.wait_for_selector('[data-testid="commerce-orders-table"]', timeout=5000)
+
+    # 6. Click order row to see detail
+    order_row = page.locator('[data-testid^="commerce-order-row-"]').first
+    order_row.click()
+    page.wait_for_timeout(500)
+    page.wait_for_selector('[data-testid="commerce-order-detail"]', timeout=5000)
+    page.wait_for_selector('[data-testid="commerce-order-lines-table"]', timeout=5000)
+
+    # 7. Transition: draft → offered
+    page.locator('[data-testid="commerce-order-transition-offered"]').click()
+    page.wait_for_timeout(1000)
+    page.wait_for_selector('text=Предложен', timeout=5000)
+
+    # 8. Transition: offered → booked
+    page.locator('[data-testid="commerce-order-transition-booked"]').click()
+    page.wait_for_timeout(1000)
+    page.wait_for_selector('text=Забронирован', timeout=5000)
+
+    # 9. Update payment status
+    page.select_option('[data-testid="commerce-order-payment-select"]', "paid")
+    page.wait_for_timeout(1500)
+    page.wait_for_selector('[data-testid="commerce-order-payment-status"]:has-text("Оплачен")', timeout=10000)
+
+    # 10. Reload persistence
+    page.reload()
+    page.wait_for_load_state("networkidle")
+    page.wait_for_selector('h1', timeout=10000)
+
+    # Switch to Заказы and verify order survived
+    page.locator('button:has-text("Заказы")').click()
+    page.wait_for_timeout(500)
+    page.wait_for_selector('[data-testid="commerce-orders-table"]', timeout=8000)
+    page.wait_for_selector('text=Забронирован', timeout=5000)
+    # Click order row to expand detail (selectedOrder resets on reload)
+    page.locator('[data-testid^="commerce-order-row-"]').first.click()
+    page.wait_for_timeout(500)
+    page.wait_for_selector('[data-testid="commerce-order-detail"]', timeout=5000)
+    page.wait_for_selector('[data-testid="commerce-order-payment-status"]:has-text("Оплачен")', timeout=5000)

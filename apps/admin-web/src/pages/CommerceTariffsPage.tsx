@@ -24,6 +24,8 @@ import type {
   CommercePriceItemOut,
 } from "../api/types";
 
+import CommerceOrdersTab from "./CommerceOrdersTab";
+
 // ── Helpers ──
 
 function fmtDate(iso: string | null): string {
@@ -350,7 +352,7 @@ function PriceForm({
 
 // ── Page ──
 
-type SubTab = "tariffs" | "prices";
+type SubTab = "tariffs" | "prices" | "orders";
 
 export default function CommerceTariffsPage() {
   const { user } = useAuth();
@@ -724,10 +726,21 @@ export default function CommerceTariffsPage() {
         >
           Прайс-листы
         </button>
+        <button
+          onClick={() => setSubTab("orders")}
+          style={tabBtn(subTab === "orders")}
+        >
+          Заказы
+        </button>
       </div>
 
       {subTab === "tariffs" && renderTariffsTab()}
       {subTab === "prices" && renderPricesTab()}
+      {subTab === "orders" && (
+        <CommerceOrdersTab
+          canManage={user?.permissions?.includes("commerce.order_manage") ?? false}
+        />
+      )}
     </div>
   );
 }

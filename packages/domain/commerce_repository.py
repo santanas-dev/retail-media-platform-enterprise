@@ -9,6 +9,7 @@ import uuid
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from packages.domain import (
     CommerceOrderStatus,
@@ -391,6 +392,8 @@ async def create_order(
         session.add(line)
 
     await session.flush()
+    # Eager-load lines so serialization doesn't lazy-load outside session scope
+    await session.refresh(order, ["lines"])
     return order
 
 
@@ -398,7 +401,7 @@ async def list_orders(
     session: AsyncSession,
     scope_advertiser_ids: frozenset[str] | None = None,
 ) -> list[CommerceOrder]:
-    stmt = select(CommerceOrder).order_by(CommerceOrder.created_at.desc())
+    stmt = select(CommerceOrder).options(selectinload(CommerceOrder.lines)).order_by(CommerceOrder.created_at.desc())
     result = await session.execute(stmt)
     orders = result.scalars().all()
 
@@ -415,7 +418,7 @@ async def get_order(
     order_id: str,
     scope_advertiser_ids: frozenset[str] | None = None,
 ) -> CommerceOrder | None:
-    stmt = select(CommerceOrder).where(CommerceOrder.id == order_id)
+    stmt = select(CommerceOrder).options(selectinload(CommerceOrder.lines)).where(CommerceOrder.id == order_id)
     result = await session.execute(stmt)
     order = result.scalar_one_or_none()
     if order is None:
@@ -433,7 +436,7 @@ async def update_order_status(
     scope_advertiser_ids: frozenset[str] | None = None,
 ) -> CommerceOrder | None:
     """Transition order to a new status. Enforces the transition guard."""
-    stmt = select(CommerceOrder).where(CommerceOrder.id == order_id)
+    stmt = select(CommerceOrder).options(selectinload(CommerceOrder.lines)).where(CommerceOrder.id == order_id)
     result = await session.execute(stmt)
     order = result.scalar_one_or_none()
     if order is None:
@@ -441,9 +444,10 @@ async def update_order_status(
 
     _assert_org_in_scope(order.advertiser_organization_id, scope_advertiser_ids)
 
-    validate_order_transition(order.status, new_status)
-    order.status = new_status
-    order.updated_at = _utcnow_compat()
+    if new_status:
+        validate_order_transition(order.status, new_status)
+        order.status = new_status
+        order.updated_at = _utcnow_compat()
 
     if payment_status is not None:
         if payment_status not in _VALID_PAYMENT_STATUSES:
