@@ -99,6 +99,7 @@ async def review_application(
         )
         # Store organization_id on application for later invite creation
         app.organization_id = org_id
+        await db.flush()  # ensure org_id is persisted before audit flush
         await repository.create_audit_event(
             db,
             actor_user_id=actor,

@@ -360,14 +360,14 @@ jobs:
       - name: Run UI-smoke tests (P0 subset)
         run: |
           set -o pipefail
-          # P0 subset: 29 tests (TRUTH-CI-001F — all 5 lifecycle promoted)
+          # P0 subset: 30 tests (SELF-LOGIN-CI-001 — self__login promoted)
           # ── campaign lifecycle: submit/approve/reject/activate/pause all included ──
-          # 6 excluded total:
+          # 5 excluded total:
           #   2 flaky (emergency__activate/deactivate)
           #   1 pre-existing timeout (contract_pdf_upload)
-          #   3 not investigated (self_login, invite, audit)
+          #   2 not investigated (invite, audit)
           UI_SMOKE_RUN=1 python3 -m pytest tests/ui-smoke -v --tb=long \
-            -k "adsettings__configure or adsettings__test or advertiser__application_review or advertiser__apply or advertiser__brand_crud or advertiser__contact_crud or advertiser__create_org or advertiser__legal_requisites or advertiser__view or campaign__create or campaign__edit or campaign__submit or campaign__approve or campaign__reject or campaign__activate or campaign__pause or creative__moderate_approve or creative__moderate_reject or creative__upload or device__health_view or inventory__rule_create or inventory__simulate or self__apply_or_brief or self__campaign_view or user__assign_roles or user__create_advertiser or user__deactivate or user__reset_password or user__split_internal_advertiser" \
+            -k "adsettings__configure or adsettings__test or advertiser__application_review or advertiser__apply or advertiser__brand_crud or advertiser__contact_crud or advertiser__create_org or advertiser__legal_requisites or advertiser__view or campaign__create or campaign__edit or campaign__submit or campaign__approve or campaign__reject or campaign__activate or campaign__pause or creative__moderate_approve or creative__moderate_reject or creative__upload or device__health_view or inventory__rule_create or inventory__simulate or self__apply_or_brief or self__campaign_view or self__login or user__assign_roles or user__create_advertiser or user__deactivate or user__reset_password or user__split_internal_advertiser" \
             2>&1 | tee /tmp/ui-smoke-output.txt
           PYTEST_EXIT=${PIPESTATUS[0]}
           if ! grep -qE '[0-9]+ passed' /tmp/ui-smoke-output.txt; then

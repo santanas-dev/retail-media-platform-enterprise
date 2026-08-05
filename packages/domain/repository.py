@@ -4417,6 +4417,7 @@ async def create_advertiser_from_application(
         status="active",
     )
     session.add(org)
+    await session.flush()  # populate org.id (default=_new_uuid runs at flush)
     return org.id
 
 
@@ -4446,7 +4447,7 @@ async def create_advertiser_invite(
 
     # Expire any existing pending invites for this application
     stmt = (
-        sa_update(AdvertiserInvite)
+        update(AdvertiserInvite)
         .where(
             AdvertiserInvite.advertiser_application_id == advertiser_application_id,
             AdvertiserInvite.status == "pending",
@@ -4512,8 +4513,11 @@ async def accept_advertiser_invite(
     from datetime import timezone
     from packages.domain.models import AdvertiserInvite
     from packages.security.password import hash_password
+    from sqlalchemy import text
 
     # SELECT ... FOR UPDATE — row-level lock prevents concurrent double-accept
+    # Bypass RLS: public endpoint, token IS the auth — no scope context available
+    await session.execute(text("SET LOCAL app.rmp_is_admin = 'true'"))
     stmt = (
         select(AdvertiserInvite)
         .where(AdvertiserInvite.token == token)

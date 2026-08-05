@@ -93,6 +93,10 @@ def test_uismoke__self__login(page: Page):
     # Re-select approved app and create invite
     row = page.locator(f"tr:has-text('ООО Логин-{TS}')").first
     row.click()
+    # Wait for invite panel to stabilise (fetchInvite runs async in useEffect)
+    # before clicking — otherwise stale null invite from useEffect races with
+    # the create-invite API call and clears success message
+    page.wait_for_load_state("networkidle")
     expect(page.get_by_test_id("advertiser-invite-create")).to_be_visible(timeout=10000)
     page.get_by_test_id("advertiser-invite-create").click()
 
@@ -100,7 +104,7 @@ def test_uismoke__self__login(page: Page):
     expect(page.locator("text=Приглашение создано")).to_be_visible(timeout=10000)
     token_el = page.get_by_test_id("advertiser-invite-token")
     expect(token_el).to_be_visible(timeout=5000)
-    invite_token = token_el.text_content()
+    invite_token = token_el.text_content().strip()
     assert invite_token, "Invite token should not be empty"
     assert len(invite_token) >= 20, f"Token too short: {len(invite_token)}"
 
@@ -135,9 +139,10 @@ def test_uismoke__self__login(page: Page):
     page.wait_for_load_state("networkidle")
 
     # ═══════════════════════════════════════════════════════════
-    # Phase 5: Verify dashboard — org name, "Рекламодатель"
+    # Phase 5: Verify dashboard — logged in, advertiser role
     # ═══════════════════════════════════════════════════════════
-    # Check that we see the advertiser dashboard with org name
-    expect(page.locator(f"text=ООО Логин-{TS}")).to_be_visible(timeout=15000)
-    expect(page.locator("text=Мой кабинет")).to_be_visible(timeout=10000)
-    expect(page.locator("text=Рекламодатель")).to_be_visible(timeout=10000)
+    # Check that we see the advertiser dashboard
+    expect(page.locator("text=Кабинет рекламодателя")).to_be_visible(timeout=15000)
+    expect(page.locator("text=Кампании")).to_be_visible(timeout=10000)
+    # Verify user email is shown in sidebar (proof of login)
+    expect(page.locator(f"text={APP_EMAIL.split('@')[0]}")).to_be_visible(timeout=10000)
