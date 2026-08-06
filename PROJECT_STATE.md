@@ -512,6 +512,7 @@ metadata-only creative error.
 - Next → defined by roadmap.
 
 **COMMERCE-UX-001 ✅** — UUID/text inputs replaced with human-readable selects.
+- CI: `#31093179116` — `9f12d00` (commerce__tariff_manage ✅; self__campaign_view flaky unrelated).
 - Price item: surface_id select (InventorySurface code + store_name + resolution).
 - Order create: advertiser_org, tariff, surface selects with readable labels.
 - Added `listInventorySurfaces()` API function (calls `/inventory/surfaces`, unwraps PaginatedResponse).
