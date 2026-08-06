@@ -530,6 +530,7 @@ metadata-only creative error.
 - Operator walkthrough: not applicable (CI guard, no UI change).
 
 **THEME-SWITCH-001B ✅** — Dark theme token overrides + accessible toggle.
+- CI: `#31089201732` — `25b5249` ✅.
 - ThemeId extended: `"light" | "dark"`, AVAILABLE_THEMES = `["light", "dark"]`.
 - Dark tokens: 58 semantic overrides in `:root[data-theme="dark"]` — bg, text, border,
   sidebar, status badges, shadows, focus. Added 5 new semantic tokens to light theme
