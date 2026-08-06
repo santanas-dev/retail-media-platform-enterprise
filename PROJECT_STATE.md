@@ -543,8 +543,6 @@ metadata-only creative error.
 - Guard: 0 violations, TS clean, Vite build OK.
 - Screenshots: dark campaigns, campaign-detail, advertisers, users, commerce-tariffs + light comparison.
 - Operator walkthrough: PENDING.
-- Screenshots: no visual change (light theme unchanged).
-- Next → THEME-SWITCH-001B: dark theme palette + toggle UI.
 
 **SELF-LOGIN-CI-001-FU ✅** — self__login returned to blocking CI, tamper-proofed.
 
