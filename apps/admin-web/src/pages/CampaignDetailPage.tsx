@@ -726,7 +726,7 @@ export default function CampaignDetailPage() {
             <div style={{ marginBottom: "1rem" }}>
               <button type="button" data-testid="campaign-start-filling-btn"
                 onClick={() => scrollToSection(flightsSectionRef)}
-                style={{ background: "var(--rmp-primary-500)", color: "#fff", border: "none", borderRadius: 4, padding: "0.5rem 1rem", fontSize: "0.85rem", cursor: "pointer", fontWeight: 500 }}>
+                style={{ background: "var(--rmp-primary-500)", color: "var(--rmp-text-inverse)", border: "none", borderRadius: 4, padding: "0.5rem 1rem", fontSize: "0.85rem", cursor: "pointer", fontWeight: 500 }}>
                 Начать наполнение →
               </button>
             </div>
@@ -769,7 +769,7 @@ export default function CampaignDetailPage() {
 
         {/* ── Pending approval: approve / reject or read-only ── */}
         {isPendingApproval && (
-          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasApprovePerm ? "#fffbeb" : "var(--rmp-bg-page)", borderRadius: 6, border: hasApprovePerm ? "1px solid #fde68a" : "1px solid var(--rmp-border)" }}>
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasApprovePerm ? "var(--rmp-warning-50)" : "var(--rmp-bg-page)", borderRadius: 6, border: hasApprovePerm ? "1px solid #fde68a" : "1px solid var(--rmp-border)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
               <div style={{ flex: 1, fontSize: "0.825rem", color: hasApprovePerm ? "#92400e" : "var(--rmp-text-secondary)" }}>
                 Кампания ожидает согласования.
@@ -815,7 +815,7 @@ export default function CampaignDetailPage() {
             )}
             {/* Reject reason dialog */}
             {hasApprovePerm && showReject && (
-              <div style={{ marginTop: "0.75rem", padding: "0.75rem", background: "#fff", borderRadius: 4, border: "1px solid #fecaca" }}>
+              <div style={{ marginTop: "0.75rem", padding: "0.75rem", background: "var(--rmp-bg-surface)", borderRadius: 4, border: "1px solid #fecaca" }}>
                 <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 500, marginBottom: "0.25rem" }}>
                   Причина отклонения *
                 </label>
@@ -1661,7 +1661,7 @@ export default function CampaignDetailPage() {
                     <td style={css.miniTd}>
                       {isDeliverable(a)
                         ? statusLabel(a.status)
-                        : <span style={{ color: "#d97706", fontWeight: 500 }}>⚠ Ожидает загрузки</span>}
+                        : <span style={{ color: "var(--rmp-warning-600)", fontWeight: 500 }}>⚠ Ожидает загрузки</span>}
                     </td>
                   </tr>
                 ))}
@@ -1789,7 +1789,7 @@ export default function CampaignDetailPage() {
                     {cc.asset
                       ? isDeliverable(cc.asset)
                         ? statusLabel(cc.asset.status)
-                        : <span style={{ color: "#d97706", fontWeight: 500 }}>⚠ Ожидает загрузки</span>
+                        : <span style={{ color: "var(--rmp-warning-600)", fontWeight: 500 }}>⚠ Ожидает загрузки</span>
                       : "—"}
                   </td>
                   {isDraft && (
@@ -1798,7 +1798,7 @@ export default function CampaignDetailPage() {
                         <button
                           type="button"
                           data-upload={cc.asset.id}
-                          style={{ background: "var(--rmp-primary-500)", color: "#fff", border: "none", borderRadius: 3, padding: "0.2rem 0.4rem", fontSize: "0.72rem", cursor: "pointer" }}
+                          style={{ background: "var(--rmp-primary-500)", color: "var(--rmp-text-inverse)", border: "none", borderRadius: 3, padding: "0.2rem 0.4rem", fontSize: "0.72rem", cursor: "pointer" }}
                           onClick={() => uploadInputRef.current?.click()}
                         >
                           Загрузить файл
@@ -1840,7 +1840,7 @@ export default function CampaignDetailPage() {
         deliveryColor = "var(--rmp-success-600)";
       } else if (deviationPct !== null && deviationPct >= -30) {
         deliveryLabel = "Недопоказ";
-        deliveryColor = "#d97706";
+        deliveryColor = "var(--rmp-warning-600)";
       } else {
         deliveryLabel = "Критичный недопоказ";
         deliveryColor = "var(--rmp-danger-600)";
@@ -1887,14 +1887,14 @@ export default function CampaignDetailPage() {
                 <DCard label={hasPoP ? "Факт (показы)" : "Факт"} value={hasPoP ? actual.toLocaleString("ru-RU") : "Нет данных"} color={hasPoP ? undefined : "var(--rmp-text-muted)"} />
                 {deviationAbs !== null && (
                   <DCard label="Отклонение" value={`${deviationAbs >= 0 ? "+" : ""}${deviationAbs.toLocaleString("ru-RU")} (${deviationPct !== null && deviationPct >= 0 ? "+" : ""}${deviationPct}%)`}
-                    color={deviationPct !== null && deviationPct >= -5 ? "var(--rmp-success-600)" : deviationPct !== null && deviationPct >= -30 ? "#d97706" : "var(--rmp-danger-600)"} />
+                    color={deviationPct !== null && deviationPct >= -5 ? "var(--rmp-success-600)" : deviationPct !== null && deviationPct >= -30 ? "var(--rmp-warning-600)" : "var(--rmp-danger-600)"} />
                 )}
                 <DCard label="Статус доставки" value={deliveryLabel} color={deliveryColor} />
               </div>
 
               {/* Underdelivery note */}
               {hasPlan && hasPoP && deviationPct !== null && deviationPct < -5 && (
-                <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.75rem", background: "#fffbeb", borderRadius: 4, border: "1px solid #fde68a", fontSize: "0.8rem", color: "#92400e" }}>
+                <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.75rem", background: "var(--rmp-warning-50)", borderRadius: 4, border: "1px solid #fde68a", fontSize: "0.8rem", color: "#92400e" }}>
                   ⚠️ Недопоказ: план {totalPlan.toLocaleString("ru-RU")}, факт {actual.toLocaleString("ru-RU")} ({deviationPct}%).
                   Детализация — ниже (по дням / по поверхностям).
                   Автоматические компенсации — в плане (S-096).
@@ -2115,7 +2115,7 @@ export default function CampaignDetailPage() {
                   border: "1px solid var(--rmp-primary-500)",
                   borderRadius: 4,
                   background: "var(--rmp-primary-500)",
-                  color: "#fff",
+                  color: "var(--rmp-text-inverse)",
                   cursor: exportLoading ? "not-allowed" : "pointer",
                   opacity: exportLoading ? 0.6 : 1,
                 }}
@@ -2180,10 +2180,10 @@ export default function CampaignDetailPage() {
       </h2>
       {/* CAMPAIGN-UX-002D: created banner — visible on any tab, dismissable */}
       {campaign && campaign.status === "draft" && showBanner && !(flights.length > 0 && placements.length > 0 && creatives.filter(c => c.asset != null).length > 0) && (
-        <div data-testid="campaign-created-next-step" style={{ marginBottom: "1rem", padding: "0.75rem 1rem", background: "#eff6ff", borderRadius: 6, border: "1px solid #93c5fd", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <div data-testid="campaign-created-next-step" style={{ marginBottom: "1rem", padding: "0.75rem 1rem", background: "var(--rmp-primary-50)", borderRadius: 6, border: "1px solid #93c5fd", display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <span style={{ fontSize: "1rem" }}>📋</span>
-          <span style={{ flex: 1, fontSize: "0.85rem", color: "#1e40af" }}>Кампания создана. Добавьте рейс, размещение и креатив, чтобы отправить на согласование.</span>
-          <button type="button" onClick={() => scrollToSection(flightsSectionRef)} style={{ background: "var(--rmp-primary-500)", color: "#fff", border: "none", borderRadius: 4, padding: "0.35rem 0.75rem", fontSize: "0.8rem", cursor: "pointer", whiteSpace: "nowrap" }}>Начать наполнение →</button>
+          <span style={{ flex: 1, fontSize: "0.85rem", color: "var(--rmp-primary-700)" }}>Кампания создана. Добавьте рейс, размещение и креатив, чтобы отправить на согласование.</span>
+          <button type="button" onClick={() => scrollToSection(flightsSectionRef)} style={{ background: "var(--rmp-primary-500)", color: "var(--rmp-text-inverse)", border: "none", borderRadius: 4, padding: "0.35rem 0.75rem", fontSize: "0.8rem", cursor: "pointer", whiteSpace: "nowrap" }}>Начать наполнение →</button>
           <button type="button" data-testid="campaign-created-dismiss" onClick={() => setShowBanner(false)} style={{ background: "none", border: "none", color: "var(--rmp-text-muted)", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1, padding: "0 0.25rem" }} aria-label="Закрыть">✕</button>
         </div>
       )}
@@ -2211,7 +2211,7 @@ function FSpan({ label, value }: { label: string; value: string }) {
   return <div style={{ gridColumn: "1 / -1" }}><div style={css.fieldLabel}>{label}</div><div style={{ ...css.fieldValue, whiteSpace: "pre-wrap" }}>{value}</div></div>;
 }
 function Badge({ s }: { s: string }) {
-  return <span style={{ display: "inline-block", padding: "0.15rem 0.5rem", borderRadius: 999, fontSize: "0.8rem", fontWeight: 500, color: "#fff", background: statusColor(s) }}>{statusLabel(s)}</span>;
+  return <span style={{ display: "inline-block", padding: "0.15rem 0.5rem", borderRadius: 999, fontSize: "0.8rem", fontWeight: 500, color: "var(--rmp-text-inverse)", background: statusColor(s) }}>{statusLabel(s)}</span>;
 }
 
 function fmtDuration(ms: number): string {
@@ -2234,21 +2234,21 @@ const css: Record<string, React.CSSProperties> = {
   tab: { padding: "0.5rem 0.75rem", background: "none", border: "none", borderBottom: "2px solid transparent", marginBottom: -2, cursor: "pointer", fontSize: "0.825rem", color: "var(--rmp-text-secondary)", fontWeight: 500, display: "flex", alignItems: "center", gap: "0.35rem" },
   tabActive: { color: "var(--rmp-gray-800)", borderBottomColor: "var(--rmp-primary-500)" },
   tabCount: { background: "var(--rmp-border)", color: "var(--rmp-gray-600)", borderRadius: 999, padding: "0 0.4rem", fontSize: "0.7rem", fontWeight: 600, lineHeight: "1.4" },
-  section: { background: "#fff", borderRadius: 6, padding: "1rem", boxShadow: "0 1px 2px rgba(0,0,0,0.06)" },
+  section: { background: "var(--rmp-bg-surface)", borderRadius: 6, padding: "1rem", boxShadow: "0 1px 2px rgba(0,0,0,0.06)" },
   fieldGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "0.75rem" },
   fieldLabel: { fontSize: "0.7rem", fontWeight: 600, color: "var(--rmp-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.15rem" },
   fieldValue: { fontSize: "0.875rem", color: "var(--rmp-gray-800)" },
   miniTable: { width: "100%", borderCollapse: "collapse", fontSize: "0.825rem" },
   miniTh: { textAlign: "left", padding: "0.4rem 0.5rem", fontWeight: 600, color: "var(--rmp-gray-600)", borderBottom: "1px solid var(--rmp-border)", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.05em" },
   miniTd: { padding: "0.4rem 0.5rem", borderBottom: "1px solid var(--rmp-gray-100)", verticalAlign: "middle" },
-  addBtn: { padding: "0.35rem 0.75rem", background: "var(--rmp-primary-500)", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: "0.8rem", fontWeight: 500 },
-  primaryBtn: { padding: "0.35rem 0.75rem", background: "var(--rmp-primary-500)", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: "0.8rem", fontWeight: 500 },
-  cancelBtn: { padding: "0.35rem 0.75rem", background: "#fff", border: "1px solid #d1d5db", borderRadius: 4, cursor: "pointer", fontSize: "0.8rem", color: "var(--rmp-gray-600)" },
+  addBtn: { padding: "0.35rem 0.75rem", background: "var(--rmp-primary-500)", color: "var(--rmp-text-inverse)", border: "none", borderRadius: 4, cursor: "pointer", fontSize: "0.8rem", fontWeight: 500 },
+  primaryBtn: { padding: "0.35rem 0.75rem", background: "var(--rmp-primary-500)", color: "var(--rmp-text-inverse)", border: "none", borderRadius: 4, cursor: "pointer", fontSize: "0.8rem", fontWeight: 500 },
+  cancelBtn: { padding: "0.35rem 0.75rem", background: "var(--rmp-bg-surface)", border: "1px solid #d1d5db", borderRadius: 4, cursor: "pointer", fontSize: "0.8rem", color: "var(--rmp-gray-600)" },
   inlineForm: { background: "var(--rmp-bg-page)", border: "1px solid var(--rmp-border)", borderRadius: 4, padding: "0.75rem" },
   inlineFields: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "flex-end" },
   miniLabel: { display: "block", fontSize: "0.65rem", fontWeight: 600, color: "var(--rmp-text-secondary)", marginBottom: "0.1rem", textTransform: "uppercase" },
   miniInput: { padding: "0.3rem 0.5rem", border: "1px solid #d1d5db", borderRadius: 3, fontSize: "0.8rem", boxSizing: "border-box", fontFamily: "inherit" },
-  miniSelect: { padding: "0.3rem 0.5rem", border: "1px solid #d1d5db", borderRadius: 3, fontSize: "0.8rem", background: "#fff", boxSizing: "border-box" },
+  miniSelect: { padding: "0.3rem 0.5rem", border: "1px solid #d1d5db", borderRadius: 3, fontSize: "0.8rem", background: "var(--rmp-bg-surface)", boxSizing: "border-box" },
   reportGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.5rem", marginBottom: "0.5rem" },
   reportCard: { background: "var(--rmp-bg-page)", border: "1px solid var(--rmp-border)", borderRadius: 6, padding: "0.75rem 1rem" },
   reportCardLabel: { fontSize: "0.65rem", fontWeight: 600, color: "var(--rmp-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.25rem" },

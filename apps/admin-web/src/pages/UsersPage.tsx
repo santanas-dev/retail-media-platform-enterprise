@@ -448,7 +448,7 @@ export default function UsersPage() {
     fontSize: "0.75rem",
     border: "1px solid var(--rmp-border-strong)",
     borderRadius: 4,
-    background: "#fff",
+    background: "var(--rmp-bg-surface)",
     cursor: "pointer",
     marginRight: "0.25rem",
     marginBottom: "0.25rem",
@@ -531,7 +531,7 @@ export default function UsersPage() {
     borderBottom: active ? "2px solid #3b82f6" : "2px solid transparent",
     background: "transparent",
     cursor: "pointer",
-    color: active ? "#1e40af" : "var(--rmp-text-secondary)",
+    color: active ? "var(--rmp-primary-700)" : "var(--rmp-text-secondary)",
     fontWeight: active ? 600 : 400,
   });
 
@@ -678,7 +678,7 @@ export default function UsersPage() {
                 marginTop: "0.75rem",
                 padding: "0.5rem",
                 background: createResult.one_time_password
-                  ? "#fef3c7"
+                  ? "var(--rmp-warning-100)"
                   : "var(--rmp-danger-100)",
                 borderRadius: 4,
                 fontSize: "0.8rem",
@@ -780,7 +780,7 @@ export default function UsersPage() {
                 marginTop: "0.75rem",
                 padding: "0.5rem",
                 background: resetResult.one_time_password
-                  ? "#fef3c7"
+                  ? "var(--rmp-warning-100)"
                   : "var(--rmp-danger-100)",
                 borderRadius: 4,
                 fontSize: "0.8rem",

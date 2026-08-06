@@ -82,7 +82,7 @@ const S = {
     alignItems: "center", justifyContent: "center", zIndex: 1000,
   } as React.CSSProperties,
   panel: {
-    background: "#fff", borderRadius: 8, padding: "1.5rem",
+    background: "var(--rmp-bg-surface)", borderRadius: 8, padding: "1.5rem",
     minWidth: 520, maxWidth: 600, maxHeight: "90vh", overflow: "auto",
   } as React.CSSProperties,
   stepper: {
@@ -105,7 +105,7 @@ const S = {
   select: {
     width: "100%", padding: "0.4rem 0.5rem", border: "1px solid var(--rmp-border)",
     borderRadius: 4, fontSize: "0.875rem", marginBottom: "0.5rem",
-    background: "#fff",
+    background: "var(--rmp-bg-surface)",
   },
   label: {
     fontSize: "0.75rem", color: "var(--rmp-text-secondary)", marginBottom: "0.15rem",
@@ -116,7 +116,7 @@ const S = {
   } as React.CSSProperties,
   btnPrimary: {
     padding: "0.5rem 1rem", cursor: "pointer", background: "var(--rmp-primary-500)",
-    color: "#fff", border: "none", borderRadius: 4, fontWeight: 500,
+    color: "var(--rmp-text-inverse)", border: "none", borderRadius: 4, fontWeight: 500,
   } as React.CSSProperties,
   btnSecondary: {
     padding: "0.5rem 1rem", cursor: "pointer", background: "var(--rmp-gray-100)",

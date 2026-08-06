@@ -151,3 +151,59 @@ The codemod is purely mechanical — replace literal `#64748b` with `var(--rmp-t
 6. **UI-smoke**: 35/35 must stay green.
 7. **Visual diff**: playwright screenshot compare pre/post — must be pixel-identical.
 8. **Merge**: single commit, clean git history.
+
+---
+
+## STYLE-TOKENS-001A1b — #fff + Low-Count Exact-Match Migration
+
+**Date:** 2026-08-06
+**Predecessor:** A1a (444 unambiguous hex → var())
+
+### #fff Context-Aware Migration
+
+All 56 remaining `#fff` occurrences classified by CSS property:
+
+| Context | Token | Count | Pattern |
+|---------|-------|-------|---------|
+| `color: "#fff"` | `var(--rmp-text-inverse)` | 12 | Text on colored buttons/badges |
+| `background: "#fff"` | `var(--rmp-bg-surface)` | 44 | Card/table/section/modal surfaces |
+
+Both tokens resolve to `#fff` in tokens.css — visually identical.
+
+### Low-Count Exact-Match Tokens
+
+| Hex | Token | Count |
+|-----|-------|-------|
+| `#eff6ff` | `var(--rmp-primary-50)` | 3 |
+| `#1e40af` | `var(--rmp-primary-700)` | 2 |
+| `#fffbeb` | `var(--rmp-warning-50)` | 2 |
+| `#fef3c7` | `var(--rmp-warning-100)` | 3 |
+| `#d97706` | `var(--rmp-warning-600)` | 5 |
+
+### Overall Delta (A1a + A1b)
+
+| Metric | A0 Baseline | After A1a | After A1b | Total Δ |
+|--------|-------------|-----------|-----------|---------|
+| Raw hex lines | 89 | 89 | 47 | **-42 lines** |
+| #fff occurrences | 56 | 56 | 0 | **-56** |
+| Var() usages | 483 | 927 | 994 | **+511** |
+| Unique raw hex colors | 61 | 43 | 36 | **-25** |
+
+### Remaining Allowlist (47 lines, 36 unique colors)
+
+No exact token exists for these. Visual preservation forbids guessing.
+
+| Category | Colors | Reason |
+|----------|--------|--------|
+| Legacy grays | #f5f5f5, #ccc, #888, #666, #333, #52525b, #9ca3af | No matching `--rmp-gray-*` |
+| Border variants | #d1d5db (7×), #fecaca (6×) | Close but ≠ `--rmp-border` (#e2e8f0) or `--rmp-border-strong` (#cbd5e1) |
+| Warning/amber | #fefce8, #fde68a, #f59e0b, #92400e, #854d0e, #fff7ed, #fdba74, #9a3412 | No full warning palette in tokens.css |
+| Purple | #8b5cf6, #9333ea, #6b21a8, #faf5ff, #e9d5ff | No purple tokens defined |
+| Blue/sky | #f0f9ff, #e0f2fe, #0c4a6e, #0369a1, #3b82f6, #bfdbfe, #93c5fd, #bae6fd, #7dd3fc | No blue/sky tokens defined |
+| Green/emerald | #059669, #86efac, #bbf7d0 | No emerald tokens defined |
+| Red/orange | #fca5a5, #7f1d1d | No red-300/-900 tokens |
+| Gray | #f9fafb | ≠ `--rmp-gray-50` (#f8fafc) |
+
+### Next: STYLE-TOKENS-001A1c (allowlist reduction)
+
+Add missing tokens to tokens.css for remaining colors, or accept allowlist.

@@ -540,7 +540,7 @@ export default function CampaignCreatePage() {
                 </select>
               </div>
               <button type="button" onClick={handleForecast} disabled={!forecastSurface || !startAt || !endAt || forecastLoading}
-                style={{ padding: "0.4rem 0.8rem", fontSize: "0.8rem", background: "var(--rmp-gray-800)", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", opacity: (!forecastSurface || !startAt || !endAt || forecastLoading) ? 0.5 : 1 }}>
+                style={{ padding: "0.4rem 0.8rem", fontSize: "0.8rem", background: "var(--rmp-gray-800)", color: "var(--rmp-text-inverse)", border: "none", borderRadius: 4, cursor: "pointer", opacity: (!forecastSurface || !startAt || !endAt || forecastLoading) ? 0.5 : 1 }}>
                 {forecastLoading ? "..." : "Проверить"}
               </button>
             </div>
@@ -666,7 +666,7 @@ const css: Record<string, React.CSSProperties> = {
     textDecoration: "underline",
   },
   form: {
-    background: "#fff",
+    background: "var(--rmp-bg-surface)",
     borderRadius: 6,
     padding: "1.5rem",
     boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
@@ -709,7 +709,7 @@ const css: Record<string, React.CSSProperties> = {
     border: "1px solid #d1d5db",
     borderRadius: 4,
     fontSize: "0.875rem",
-    background: "#fff",
+    background: "var(--rmp-bg-surface)",
     boxSizing: "border-box" as const,
   },
   inlineFields: {
@@ -725,7 +725,7 @@ const css: Record<string, React.CSSProperties> = {
   },
   cancelBtn: {
     padding: "0.45rem 1rem",
-    background: "#fff",
+    background: "var(--rmp-bg-surface)",
     border: "1px solid #d1d5db",
     borderRadius: 4,
     cursor: "pointer",
@@ -735,7 +735,7 @@ const css: Record<string, React.CSSProperties> = {
   submitBtn: {
     padding: "0.45rem 1.25rem",
     background: "var(--rmp-primary-500)",
-    color: "#fff",
+    color: "var(--rmp-text-inverse)",
     border: "none",
     borderRadius: 4,
     cursor: "pointer",

@@ -511,14 +511,15 @@ metadata-only creative error.
 - Registry: 48/57 reachable, 9 blocked (non-commerce).
 - Next → defined by roadmap.
 
-**STYLE-TOKENS-001A1a ✅** — unambiguous raw hex → var(--rmp-*) migration.
-- Before: 594 raw hex, 483 var(). After: 150 raw hex, 927 var().
-- 444 hex occurrences migrated (75% reduction). 18 unique colors replaced.
-- Migrated: text colors (3), borders (2), danger (4), success (4), primary (1), backgrounds (2), dark grays (3).
-- Intentionally deferred: #fff (56×, ambiguous bg-surface vs text-inverse), low-count outliers (warning/amber, purple, light blue, legacy grays).
-- Vitest: 331/331. TypeScript: clean. Screenshots before/after captured.
-- Commerce smoke tests: pre-existing navigation race (not token-related).
-- Next → STYLE-TOKENS-001A1b: handle #fff + ambiguous/outlier colors.
+**STYLE-TOKENS-001A1a ✅** — unambiguous raw hex → var(--rmp-*) migration (commit 3887111).
+
+**STYLE-TOKENS-001A1b ✅** — #fff context-aware + low-count exact-match migration.
+- #fff: 56 → 0 in pages/components. Context: `color` → `var(--rmp-text-inverse)` (12×), `background` → `var(--rmp-bg-surface)` (44×).
+- Low-count exact tokens: #eff6ff→primary-50 (3), #1e40af→primary-700 (2), #fffbeb→warning-50 (2), #fef3c7→warning-100 (3), #d97706→warning-600 (5).
+- Overall delta (A0→A1b): raw hex 89→47 lines (-42), #fff 56→0, var() 483→994 (+511), unique hex 61→36 (-25).
+- Remaining allowlist: 47 lines, 36 unique colors without exact token matches (legacy grays, border variants, warning/amber/purple/blue/sky/emerald).
+- Vitest: 331/331. TypeScript: clean. UI-smoke: 33/35 (2 pre-existing: campaign_create, user_create_advertiser). Screenshots: 5 pages after.
+- Next → STYLE-TOKENS-001A1c: add missing tokens to tokens.css OR accept allowlist.
 
 **SELF-LOGIN-CI-001-FU ✅** — self__login returned to blocking CI, tamper-proofed.
 

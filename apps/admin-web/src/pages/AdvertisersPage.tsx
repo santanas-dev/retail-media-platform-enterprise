@@ -116,14 +116,14 @@ const S = {
     borderRadius: 999,
     fontSize: "0.75rem",
     fontWeight: 500,
-    color: "#fff",
+    color: "var(--rmp-text-inverse)",
     background: color,
   }),
   detailPanel: {
     marginTop: "1.5rem",
     border: "1px solid var(--rmp-border)",
     borderRadius: 8,
-    background: "#fff",
+    background: "var(--rmp-bg-surface)",
     overflow: "hidden",
   } as React.CSSProperties,
   tabs: {
@@ -138,7 +138,7 @@ const S = {
     color: active ? "var(--rmp-gray-800)" : "var(--rmp-text-secondary)",
     borderBottom: active ? "2px solid var(--rmp-primary-500)" : "2px solid transparent",
     cursor: "pointer",
-    background: active ? "#fff" : "transparent",
+    background: active ? "var(--rmp-bg-surface)" : "transparent",
   }),
   tabContent: {
     padding: "1rem",
@@ -210,7 +210,7 @@ const S = {
     padding: "0.25rem 0.75rem",
     fontSize: "0.8125rem",
     fontWeight: 500,
-    color: "#fff",
+    color: "var(--rmp-text-inverse)",
     background: "var(--rmp-primary-500)",
     border: "none",
     borderRadius: 4,
@@ -231,7 +231,7 @@ const S = {
     fontSize: "0.75rem",
     fontWeight: 500,
     color: "var(--rmp-primary-500)",
-    background: "#eff6ff",
+    background: "var(--rmp-primary-50)",
     border: "1px solid #bfdbfe",
     borderRadius: 4,
     cursor: "pointer",
@@ -265,7 +265,7 @@ const S = {
     borderRadius: 4,
     width: "100%",
     marginBottom: "0.5rem",
-    background: "#fff",
+    background: "var(--rmp-bg-surface)",
   } as React.CSSProperties,
 };
 
@@ -467,7 +467,7 @@ export default function AdvertisersPage() {
                 data-testid="advertiser-org-row"
                 style={{
                   ...S.row,
-                  background: selectedOrgId === org.id ? "#eff6ff" : undefined,
+                  background: selectedOrgId === org.id ? "var(--rmp-primary-50)" : undefined,
                 }}
                 onClick={() => {
                   setSelectedOrgId(org.id);
@@ -780,7 +780,7 @@ function LegalRequisitesTab({ org, onSaved }: { org: AdvertiserOrganizationDetai
             <button onClick={() => { setEditing(false); setError(""); setSuccess(""); }}
               style={{ padding: "0.5rem 1rem", cursor: "pointer" }}>Отмена</button>
             <button data-testid="advertiser-legal-submit" onClick={handleSave} disabled={saving}
-              style={{ padding: "0.5rem 1rem", cursor: "pointer", background: "var(--rmp-primary-500)", color: "#fff", border: "none", borderRadius: 4, opacity: saving ? 0.6 : 1 }}>
+              style={{ padding: "0.5rem 1rem", cursor: "pointer", background: "var(--rmp-primary-500)", color: "var(--rmp-text-inverse)", border: "none", borderRadius: 4, opacity: saving ? 0.6 : 1 }}>
               {saving ? "Сохранение..." : "Сохранить"}
             </button>
           </div>
@@ -896,7 +896,7 @@ function BrandsTab({ brands, orgId, onBrandChange }: { brands: AdvertiserBrandOu
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button onClick={resetForm} style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem" }}>Отмена</button>
             <button data-testid="advertiser-brand-submit" onClick={handleCreate} disabled={saving}
-              style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem", background: "var(--rmp-primary-500)", color: "#fff", border: "none", borderRadius: 4 }}>Сохранить</button>
+              style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem", background: "var(--rmp-primary-500)", color: "var(--rmp-text-inverse)", border: "none", borderRadius: 4 }}>Сохранить</button>
           </div>
         </div>
       )}
@@ -1154,7 +1154,7 @@ function ContractsTab({ contracts, orgId, onContractChange }: { contracts: Adver
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button onClick={resetForm} style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem" }}>Отмена</button>
             <button data-testid="advertiser-contract-submit" onClick={handleCreate} disabled={saving}
-              style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem", background: "var(--rmp-primary-500)", color: "#fff", border: "none", borderRadius: 4 }}>Сохранить</button>
+              style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem", background: "var(--rmp-primary-500)", color: "var(--rmp-text-inverse)", border: "none", borderRadius: 4 }}>Сохранить</button>
           </div>
         </div>
       )}
@@ -1216,7 +1216,7 @@ function ContractsTab({ contracts, orgId, onContractChange }: { contracts: Adver
                           📄 {pendingFile.file.name}
                         </span>
                         <button data-testid="advertiser-contract-upload-done"
-                          style={{ padding: "0.15rem 0.4rem", cursor: "pointer", fontSize: "0.7rem", background: "var(--rmp-success-600)", color: "#fff", border: "none", borderRadius: 3 }}
+                          style={{ padding: "0.15rem 0.4rem", cursor: "pointer", fontSize: "0.7rem", background: "var(--rmp-success-600)", color: "var(--rmp-text-inverse)", border: "none", borderRadius: 3 }}
                           onClick={() => {
                             handleFileUpload(c.id, c.code, pendingFile.file);
                             setPendingFile(null);

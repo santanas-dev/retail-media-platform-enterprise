@@ -40,7 +40,7 @@ function Pagination({
 function pgnBtn(enabled: boolean): React.CSSProperties {
   return {
     padding: "0.2rem 0.6rem", fontSize: "0.75rem", border: "1px solid var(--rmp-border-strong)",
-    borderRadius: 4, background: enabled ? "#fff" : "var(--rmp-gray-100)",
+    borderRadius: 4, background: enabled ? "var(--rmp-bg-surface)" : "var(--rmp-gray-100)",
     color: enabled ? "var(--rmp-gray-700)" : "var(--rmp-text-muted)", cursor: enabled ? "pointer" : "default",
   };
 }
@@ -130,8 +130,8 @@ export default function ApprovalInboxPage() {
               padding: "0.25rem 0.75rem",
               borderRadius: 4,
               border: "1px solid var(--rmp-border-strong)",
-              background: filter === f.value ? "var(--rmp-gray-800)" : "#fff",
-              color: filter === f.value ? "#fff" : "var(--rmp-gray-700)",
+              background: filter === f.value ? "var(--rmp-gray-800)" : "var(--rmp-bg-surface)",
+              color: filter === f.value ? "var(--rmp-text-inverse)" : "var(--rmp-gray-700)",
               cursor: "pointer",
               fontSize: "0.8125rem",
             }}
@@ -184,7 +184,7 @@ export default function ApprovalInboxPage() {
                   </td>
                   <td style={tdStyle}>
                     <span style={{
-                      color: item.campaign_status === "pending_approval" ? "#d97706"
+                      color: item.campaign_status === "pending_approval" ? "var(--rmp-warning-600)"
                            : item.campaign_status === "approved" ? "#059669"
                            : "var(--rmp-danger-600)",
                       fontWeight: 500,
@@ -253,7 +253,7 @@ const tdStyle: React.CSSProperties = {
 function actionBtn(color: string, disabled = false): React.CSSProperties {
   return {
     padding: "0.15rem 0.5rem", fontSize: "0.75rem", border: `1px solid ${color}`,
-    borderRadius: 4, background: disabled ? "var(--rmp-border)" : "#fff",
+    borderRadius: 4, background: disabled ? "var(--rmp-border)" : "var(--rmp-bg-surface)",
     color: disabled ? "var(--rmp-text-muted)" : color, cursor: disabled ? "default" : "pointer",
   };
 }
