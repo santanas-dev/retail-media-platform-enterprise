@@ -35,6 +35,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 REGISTRY_PATH = REPO_ROOT / "docs" / "product" / "feature-registry.yaml"
 ROADMAP_PATH = REPO_ROOT / "docs" / "product" / "roadmap-s020-2026-07-10.xlsx"
 UI_SMOKE_DIR = REPO_ROOT / "tests" / "ui-smoke"
+CI_SUBSET_PATH = UI_SMOKE_DIR / "ci-subset.txt"
 
 # Column names in the 4-column business sheet (ROADMAP-DONE-GATE-001)
 COL_BACKEND = "Бэкенд"
@@ -68,6 +69,22 @@ def scan_smoke_functions():
         except SyntaxError:
             pass
     return smoke_funcs
+
+
+def load_ci_subset():
+    """Read tests/ui-smoke/ci-subset.txt.
+    Returns set of smoke function names in the CI subset.
+    Lines starting with # are comments, empty lines ignored.
+    """
+    if not CI_SUBSET_PATH.is_file():
+        return set()
+    subset = set()
+    for line in CI_SUBSET_PATH.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        subset.add(line)
+    return subset
 
 
 def load_roadmap_business():
@@ -351,6 +368,45 @@ def check_smoke_orphans(smoke_funcs, features):
     return findings
 
 
+# ---- Direction D: Every reachable UI smoke must be in CI subset -------------
+
+def check_ci_subset_membership(features, smoke_funcs, ci_subset):
+    """Direction D: For every reachable UI feature with smoke, verify the
+    smoke function is listed in ci-subset.txt (CI-enforced).
+
+    Returns list of REGISTRY-CI-EXCLUDED findings.
+    """
+    findings = []
+    if not ci_subset:
+        findings.append("CI-SUBSET-MISSING: ci-subset.txt not found or empty")
+        return findings
+
+    for f in features:
+        fid = f.get("id", "?")
+        if f.get("status") != "reachable":
+            continue
+        if f.get("frontend", "") == "service":
+            continue
+        smoke = f.get("smoke", "")
+        if not smoke:
+            continue
+        if not smoke.startswith("test_uismoke__"):
+            continue
+        if smoke not in smoke_funcs:
+            # Already caught by REGISTRY-SMOKE
+            continue
+        # ci-subset.txt stores short names (e.g. campaign__create),
+        # registry stores full test function names (e.g. test_uismoke__campaign__create)
+        short_name = smoke.replace("test_uismoke__", "", 1)
+        if short_name not in ci_subset:
+            findings.append(
+                f"REGISTRY-CI-EXCLUDED: '{fid}' smoke '{smoke}' "
+                f"is reachable but not listed in ci-subset.txt "
+                f"(feature is reachable but not CI-enforced)"
+            )
+    return findings
+
+
 # ---- Main ------------------------------------------------------------------
 
 def main():
@@ -394,6 +450,11 @@ def main():
     # 3. Direction C: Smoke orphans/duplicates
     smoke_orphan_findings = check_smoke_orphans(smoke_funcs, features)
     all_findings.extend(smoke_orphan_findings)
+
+    # 4. Direction D: CI subset membership
+    ci_subset = load_ci_subset()
+    ci_excluded_findings = check_ci_subset_membership(features, smoke_funcs, ci_subset)
+    all_findings.extend(ci_excluded_findings)
 
     # Report
     print("=== Roadmap-Consistency Guard (ROADMAP-GUARD-002, 4-column) ===")
