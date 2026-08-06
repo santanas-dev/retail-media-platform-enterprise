@@ -511,6 +511,15 @@ metadata-only creative error.
 - Registry: 48/57 reachable, 9 blocked (non-commerce).
 - Next → defined by roadmap.
 
+**COMMERCE-UX-001 ✅** — UUID/text inputs replaced with human-readable selects.
+- Price item: surface_id select (InventorySurface code + store_name + resolution).
+- Order create: advertiser_org, tariff, surface selects with readable labels.
+- Added `listInventorySurfaces()` API function (calls `/inventory/surfaces`, unwraps PaginatedResponse).
+- Empty states: readable placeholder text («Нет доступных поверхностей» etc.).
+- Vitest: 345/345 ✅. Existing commerce smokes updated to `select_option`.
+- Guards: 0 violations (style/roadmap).
+- Operator walkthrough: PENDING.
+
 **STYLE-TOKENS-001A1c ✅** — allowlist reduction to justified minimum.
 - Added 30 new tokens to tokens.css: warning-200/400/800/900, danger-200/300/900, success-200/300/500, info-50/100/200/300/600/800, purple-50/200/500/600/800, alert-50/200/800, primary-200/300/400, input-border, button-disabled-bg.
 - #fefce8 (3) → var(--rmp-warning-50), #f9fafb (1) → var(--rmp-gray-50) — visually ≈existing.
