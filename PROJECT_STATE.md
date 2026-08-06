@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-05 (SMOKES-CI-BATCH-002)
+**Last updated:** 2026-08-06 (COMMERCE-RLS-001 — CI retry after stuck GitHub Actions run #31116254982)
 
-**Next Active Workstream:** ADVERTISER-UX-001B2 — contract PDF upload smoke
+**Next Active Workstream:** COMMERCE-RLS-001 — DB-level RLS for Commerce Contour 2
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `84fe4c3` (PLAYER-001B-FU — substantive)
