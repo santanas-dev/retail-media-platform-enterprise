@@ -16,6 +16,7 @@ on:
       - "scripts/**"
       - ".github/workflows/phase1-ci.yml"
       - "docs/**"
+      - "PROJECT_STATE.md"
   pull_request:
     paths:
       - "apps/control-api/**"
