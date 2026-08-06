@@ -185,7 +185,7 @@ export default function ApprovalInboxPage() {
                   <td style={tdStyle}>
                     <span style={{
                       color: item.campaign_status === "pending_approval" ? "var(--rmp-warning-600)"
-                           : item.campaign_status === "approved" ? "#059669"
+                           : item.campaign_status === "approved" ? "var(--rmp-success-500)"
                            : "var(--rmp-danger-600)",
                       fontWeight: 500,
                     }}>
@@ -216,7 +216,7 @@ export default function ApprovalInboxPage() {
                         <div style={{ display: "flex", gap: 4 }}>
                           <button onClick={() => handleApprove(item.campaign_id)}
                             disabled={!canApprove}
-                            style={actionBtn("#059669", !canApprove)}
+                            style={actionBtn("var(--rmp-success-500)", !canApprove)}
                             title={!canApprove ? "Кампания не готова к согласованию" : ""}>
                             Согласовать
                           </button>

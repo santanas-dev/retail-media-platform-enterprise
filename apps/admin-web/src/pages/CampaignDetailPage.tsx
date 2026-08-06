@@ -686,13 +686,13 @@ export default function CampaignDetailPage() {
               <span style={{ flex: 1, color: deliverableCount > 0 ? "var(--rmp-success-800)" : "var(--rmp-text-secondary)" }}>Креатив с файлом{deliverableCount > 0 ? ` — ${deliverableCount} шт.` : ""}</span>
               {deliverableCount === 0 && <button type="button" data-testid="readiness-creative-action" onClick={() => scrollToSection(creativesSectionRef)} style={{ background: "none", border: "none", color: "var(--rmp-primary-500)", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Загрузить креатив →</button>}
             </div>
-            <div data-testid="readiness-submit-status" style={{ marginTop: "0.5rem", padding: "0.5rem", borderRadius: 4, fontSize: "0.8rem", background: allReady ? "var(--rmp-success-50)" : "#fff7ed", color: allReady ? "var(--rmp-success-800)" : "#9a3412", border: allReady ? "1px solid #86efac" : "1px solid #fdba74" }}>
+            <div data-testid="readiness-submit-status" style={{ marginTop: "0.5rem", padding: "0.5rem", borderRadius: 4, fontSize: "0.8rem", background: allReady ? "var(--rmp-success-50)" : "var(--rmp-alert-50)", color: allReady ? "var(--rmp-success-800)" : "var(--rmp-alert-800)", border: allReady ? "1px solid var(--rmp-success-300)" : "1px solid var(--rmp-alert-200)" }}>
               {allReady ? "✅ Можно отправить на согласование — все условия выполнены." : `Осталось: ${missingItems.join(", ")}.`}
             </div>
           </div>
-          <div data-testid="campaign-submit-hint" style={{ marginBottom: "1rem", padding: "0.75rem", background: "#f0f9ff", borderRadius: 6, border: "1px solid #bae6fd" }}>
+          <div data-testid="campaign-submit-hint" style={{ marginBottom: "1rem", padding: "0.75rem", background: "var(--rmp-info-50)", borderRadius: 6, border: "1px solid var(--rmp-info-200)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-              <div style={{ flex: 1, fontSize: "0.825rem", color: "#0c4a6e" }}>
+              <div style={{ flex: 1, fontSize: "0.825rem", color: "var(--rmp-info-800)" }}>
                 Кампания в черновике.
                 {!canApprove && " Добавьте минимум один флайт, плейсмент и креатив для отправки на согласование."}
               </div>
@@ -709,7 +709,7 @@ export default function CampaignDetailPage() {
                 data-testid="campaign-submit-btn"
                 style={{
                   ...css.primaryBtn,
-                  ...((!canApprove || approvalSubmitting) ? { background: "#9ca3af", cursor: "default" } : {}),
+                  ...((!canApprove || approvalSubmitting) ? { background: "var(--rmp-button-disabled-bg)", cursor: "default" } : {}),
                 }}
                 disabled={!canApprove || approvalSubmitting}
                 onClick={handleRequestApproval}
@@ -752,7 +752,7 @@ export default function CampaignDetailPage() {
                 {p.conflicts.length > 0 && (
                   <ul data-testid={`simulation-conflicts-${i}`} style={{ margin: "0.15rem 0 0", paddingLeft: "1.2rem", fontSize: "0.75rem" }}>
                     {p.conflicts.slice(0, 3).map((c, j) => (
-                      <li key={j} style={{ color: c.severity === "blocking" ? "var(--rmp-danger-600)" : "#92400e" }}>
+                      <li key={j} style={{ color: c.severity === "blocking" ? "var(--rmp-danger-600)" : "var(--rmp-warning-800)" }}>
                         {c.message}
                       </li>
                     ))}
@@ -769,9 +769,9 @@ export default function CampaignDetailPage() {
 
         {/* ── Pending approval: approve / reject or read-only ── */}
         {isPendingApproval && (
-          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasApprovePerm ? "var(--rmp-warning-50)" : "var(--rmp-bg-page)", borderRadius: 6, border: hasApprovePerm ? "1px solid #fde68a" : "1px solid var(--rmp-border)" }}>
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasApprovePerm ? "var(--rmp-warning-50)" : "var(--rmp-bg-page)", borderRadius: 6, border: hasApprovePerm ? "1px solid var(--rmp-warning-200)" : "1px solid var(--rmp-border)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-              <div style={{ flex: 1, fontSize: "0.825rem", color: hasApprovePerm ? "#92400e" : "var(--rmp-text-secondary)" }}>
+              <div style={{ flex: 1, fontSize: "0.825rem", color: hasApprovePerm ? "var(--rmp-warning-800)" : "var(--rmp-text-secondary)" }}>
                 Кампания ожидает согласования.
                 {!hasApprovePerm && " У вас нет прав на согласование."}
               </div>
@@ -780,7 +780,7 @@ export default function CampaignDetailPage() {
                   <button
                     type="button"
                     data-testid="campaign-approve-btn"
-                    style={{ ...css.primaryBtn, background: "#059669" }}
+                    style={{ ...css.primaryBtn, background: "var(--rmp-success-500)" }}
                     disabled={approvalSubmitting}
                     onClick={async () => {
                       setApprovalError(null);
@@ -815,7 +815,7 @@ export default function CampaignDetailPage() {
             )}
             {/* Reject reason dialog */}
             {hasApprovePerm && showReject && (
-              <div style={{ marginTop: "0.75rem", padding: "0.75rem", background: "var(--rmp-bg-surface)", borderRadius: 4, border: "1px solid #fecaca" }}>
+              <div style={{ marginTop: "0.75rem", padding: "0.75rem", background: "var(--rmp-bg-surface)", borderRadius: 4, border: "1px solid var(--rmp-danger-200)" }}>
                 <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 500, marginBottom: "0.25rem" }}>
                   Причина отклонения *
                 </label>
@@ -823,7 +823,7 @@ export default function CampaignDetailPage() {
                   data-testid="campaign-reject-reason"
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
-                  style={{ width: "100%", minHeight: 60, padding: "0.4rem", border: "1px solid #d1d5db", borderRadius: 3, fontSize: "0.825rem", boxSizing: "border-box" }}
+                  style={{ width: "100%", minHeight: 60, padding: "0.4rem", border: "1px solid var(--rmp-input-border)", borderRadius: 3, fontSize: "0.825rem", boxSizing: "border-box" }}
                   placeholder="Укажите причину отклонения"
                   maxLength={1000}
                   rows={2}
@@ -868,15 +868,15 @@ export default function CampaignDetailPage() {
 
         {/* ── Rejected: show reason ── */}
         {lastRejectionReason && (
-          <div data-testid="campaign-rejection-reason-display" style={{ marginBottom: "1rem", padding: "0.75rem", background: "var(--rmp-danger-50)", borderRadius: 6, border: "1px solid #fecaca" }}>
+          <div data-testid="campaign-rejection-reason-display" style={{ marginBottom: "1rem", padding: "0.75rem", background: "var(--rmp-danger-50)", borderRadius: 6, border: "1px solid var(--rmp-danger-200)" }}>
             <div style={{ fontSize: "0.8rem", fontWeight: 500, color: "var(--rmp-danger-800)", marginBottom: "0.25rem" }}>Причина отклонения:</div>
-            <div style={{ fontSize: "0.825rem", color: "#7f1d1d" }}>{lastRejectionReason}</div>
+            <div style={{ fontSize: "0.825rem", color: "var(--rmp-danger-900)" }}>{lastRejectionReason}</div>
           </div>
         )}
 
         {/* ── Approved: activate ── */}
         {isApproved && (
-          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasManagePerm ? "var(--rmp-success-50)" : "var(--rmp-bg-page)", borderRadius: 6, border: hasManagePerm ? "1px solid #bbf7d0" : "1px solid var(--rmp-border)" }}>
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasManagePerm ? "var(--rmp-success-50)" : "var(--rmp-bg-page)", borderRadius: 6, border: hasManagePerm ? "1px solid var(--rmp-success-200)" : "1px solid var(--rmp-border)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
               <div style={{ flex: 1, fontSize: "0.825rem", color: hasManagePerm ? "var(--rmp-success-800)" : "var(--rmp-text-secondary)" }}>
                 Кампания согласована и готова к запуску.
@@ -886,7 +886,7 @@ export default function CampaignDetailPage() {
                 <button
                   type="button"
                   data-testid="campaign-activate-btn"
-                  style={{ ...css.primaryBtn, background: "#059669" }}
+                  style={{ ...css.primaryBtn, background: "var(--rmp-success-500)" }}
                   disabled={approvalSubmitting}
                   onClick={async () => {
                     setApprovalError(null);
@@ -914,7 +914,7 @@ export default function CampaignDetailPage() {
 
         {/* ── Active: pause ── */}
         {isActive && (
-          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasManagePerm ? "var(--rmp-success-50)" : "var(--rmp-bg-page)", borderRadius: 6, border: hasManagePerm ? "1px solid #bbf7d0" : "1px solid var(--rmp-border)" }}>
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasManagePerm ? "var(--rmp-success-50)" : "var(--rmp-bg-page)", borderRadius: 6, border: hasManagePerm ? "1px solid var(--rmp-success-200)" : "1px solid var(--rmp-border)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
               <div style={{ flex: 1, fontSize: "0.825rem", color: hasManagePerm ? "var(--rmp-success-800)" : "var(--rmp-text-secondary)" }}>
                 Кампания активна — показы идут.
@@ -924,7 +924,7 @@ export default function CampaignDetailPage() {
                 <button
                   type="button"
                   data-testid="campaign-pause-btn"
-                  style={{ ...css.primaryBtn, background: "#9333ea" }}
+                  style={{ ...css.primaryBtn, background: "var(--rmp-purple-600)" }}
                   disabled={approvalSubmitting}
                   onClick={async () => {
                     setApprovalError(null);
@@ -952,7 +952,7 @@ export default function CampaignDetailPage() {
 
         {/* ── Paused: status info ── */}
         {isPaused && (
-          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#faf5ff", borderRadius: 6, border: "1px solid #e9d5ff", fontSize: "0.825rem", color: "#6b21a8" }}>
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "var(--rmp-purple-50)", borderRadius: 6, border: "1px solid var(--rmp-purple-200)", fontSize: "0.825rem", color: "var(--rmp-purple-800)" }}>
             Кампания приостановлена. Показы остановлены.
           </div>
         )}
@@ -1214,7 +1214,7 @@ export default function CampaignDetailPage() {
         {/* Reference loading/error */}
         {refLoading && <p style={css.muted}>Загрузка справочников...</p>}
         {!refLoading && refError && (
-          <div style={{ marginBottom: "0.75rem", padding: "0.5rem", background: "var(--rmp-danger-50)", borderRadius: 4, border: "1px solid #fecaca", fontSize: "0.75rem", color: "var(--rmp-danger-800)" }}>
+          <div style={{ marginBottom: "0.75rem", padding: "0.5rem", background: "var(--rmp-danger-50)", borderRadius: 4, border: "1px solid var(--rmp-danger-200)", fontSize: "0.75rem", color: "var(--rmp-danger-800)" }}>
             {refError}
           </div>
         )}
@@ -1435,10 +1435,10 @@ export default function CampaignDetailPage() {
       <div>
         {/* ── CAMPAIGN-UX-001A: Primary upload path — visible, single-flow ── */}
         {isDraft && (
-          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#f0f9ff", border: "1px solid #7dd3fc", borderRadius: 6 }}>
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "var(--rmp-info-50)", border: "1px solid var(--rmp-info-300)", borderRadius: 6 }}>
             {!showPrimaryUpload ? (
               <div data-testid="creative-upload-primary">
-                <div style={{ fontWeight: 600, fontSize: "0.85rem", marginBottom: "0.4rem", color: "#0369a1" }}>
+                <div style={{ fontWeight: 600, fontSize: "0.85rem", marginBottom: "0.4rem", color: "var(--rmp-info-600)" }}>
                   Загрузить файл с ПК
                 </div>
                 <p style={{ fontSize: "0.75rem", color: "var(--rmp-gray-600)", margin: "0 0 0.5rem 0" }}>
@@ -1455,11 +1455,11 @@ export default function CampaignDetailPage() {
               </div>
             ) : (
               <form onSubmit={handlePrimaryUploadSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "#0369a1" }}>
+                <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--rmp-info-600)" }}>
                   Новый креатив из файла
                 </div>
                 {primaryFile && (
-                  <div style={{ padding: "0.4rem 0.6rem", background: "#e0f2fe", borderRadius: 4, fontSize: "0.8rem", color: "#0c4a6e" }}>
+                  <div style={{ padding: "0.4rem 0.6rem", background: "var(--rmp-info-100)", borderRadius: 4, fontSize: "0.8rem", color: "var(--rmp-info-800)" }}>
                     📄 {primaryFile.name} ({(primaryFile.size / 1024).toFixed(0)} КБ)
                   </div>
                 )}
@@ -1545,7 +1545,7 @@ export default function CampaignDetailPage() {
                     const selected = unattached.find((a) => a.id === attachAssetId);
                     if (selected && !isDeliverable(selected)) {
                       return (
-                        <div style={{ padding: "0.5rem", background: "#fff7ed", borderRadius: 4, border: "1px solid #fdba74", fontSize: "0.75rem", color: "#9a3412", marginBottom: "0.5rem" }}>
+                        <div style={{ padding: "0.5rem", background: "var(--rmp-alert-50)", borderRadius: 4, border: "1px solid var(--rmp-alert-200)", fontSize: "0.75rem", color: "var(--rmp-alert-800)", marginBottom: "0.5rem" }}>
                           ⚠ Этот креатив ещё не загружен. Кампания с ним не пройдёт согласование — сначала загрузите файл.
                         </div>
                       );
@@ -1725,7 +1725,7 @@ export default function CampaignDetailPage() {
           <>
             {/* S-017: Upload progress indicators */}
             {uploadStage === "done" && uploadFile && (
-              <div data-testid="creative-upload-done" style={{ padding: "0.5rem 0.75rem", background: "var(--rmp-success-50)", border: "1px solid #86efac", borderRadius: 4, marginBottom: "0.5rem", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <div data-testid="creative-upload-done" style={{ padding: "0.5rem 0.75rem", background: "var(--rmp-success-50)", border: "1px solid var(--rmp-success-300)", borderRadius: 4, marginBottom: "0.5rem", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <span style={{ fontWeight: 600, color: "var(--rmp-success-800)" }}>✅ Готов</span>
                 <span style={{ color: "#52525b" }}>{uploadFile.name}</span>
               </div>
@@ -1752,7 +1752,7 @@ export default function CampaignDetailPage() {
               </div>
             )}
             {uploadStage === "idle" && uploadError && (
-              <div style={{ padding: "0.5rem 0.75rem", background: "var(--rmp-danger-50)", border: "1px solid #fecaca", borderRadius: 4, marginBottom: "0.5rem", fontSize: "0.8rem", color: "var(--rmp-danger-800)" }}>
+              <div style={{ padding: "0.5rem 0.75rem", background: "var(--rmp-danger-50)", border: "1px solid var(--rmp-danger-200)", borderRadius: 4, marginBottom: "0.5rem", fontSize: "0.8rem", color: "var(--rmp-danger-800)" }}>
                 {uploadError}
                 <button type="button" onClick={resetUpload} style={{ marginLeft: "0.75rem", background: "none", border: "none", color: "var(--rmp-primary-500)", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>
                   Сбросить
@@ -1870,7 +1870,7 @@ export default function CampaignDetailPage() {
         {/* ── Error ── */}
         {!popLoading && popError && (
           <div style={css.section}>
-            <div style={{ padding: "0.75rem", background: "var(--rmp-danger-50)", borderRadius: 4, border: "1px solid #fecaca", color: "var(--rmp-danger-800)", fontSize: "0.875rem" }}>
+            <div style={{ padding: "0.75rem", background: "var(--rmp-danger-50)", borderRadius: 4, border: "1px solid var(--rmp-danger-200)", color: "var(--rmp-danger-800)", fontSize: "0.875rem" }}>
               {popError}
             </div>
           </div>
@@ -1894,7 +1894,7 @@ export default function CampaignDetailPage() {
 
               {/* Underdelivery note */}
               {hasPlan && hasPoP && deviationPct !== null && deviationPct < -5 && (
-                <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.75rem", background: "var(--rmp-warning-50)", borderRadius: 4, border: "1px solid #fde68a", fontSize: "0.8rem", color: "#92400e" }}>
+                <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.75rem", background: "var(--rmp-warning-50)", borderRadius: 4, border: "1px solid var(--rmp-warning-200)", fontSize: "0.8rem", color: "var(--rmp-warning-800)" }}>
                   ⚠️ Недопоказ: план {totalPlan.toLocaleString("ru-RU")}, факт {actual.toLocaleString("ru-RU")} ({deviationPct}%).
                   Детализация — ниже (по дням / по поверхностям).
                   Автоматические компенсации — в плане (S-096).
@@ -2025,7 +2025,7 @@ export default function CampaignDetailPage() {
 
         {/* ── Error state ── */}
         {!popLoading && popError && (
-          <div style={{ padding: "0.75rem", background: "var(--rmp-danger-50)", borderRadius: 4, border: "1px solid #fecaca", color: "var(--rmp-danger-800)", fontSize: "0.875rem" }}>
+          <div style={{ padding: "0.75rem", background: "var(--rmp-danger-50)", borderRadius: 4, border: "1px solid var(--rmp-danger-200)", color: "var(--rmp-danger-800)", fontSize: "0.875rem" }}>
             {popError}
           </div>
         )}
@@ -2180,7 +2180,7 @@ export default function CampaignDetailPage() {
       </h2>
       {/* CAMPAIGN-UX-002D: created banner — visible on any tab, dismissable */}
       {campaign && campaign.status === "draft" && showBanner && !(flights.length > 0 && placements.length > 0 && creatives.filter(c => c.asset != null).length > 0) && (
-        <div data-testid="campaign-created-next-step" style={{ marginBottom: "1rem", padding: "0.75rem 1rem", background: "var(--rmp-primary-50)", borderRadius: 6, border: "1px solid #93c5fd", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <div data-testid="campaign-created-next-step" style={{ marginBottom: "1rem", padding: "0.75rem 1rem", background: "var(--rmp-primary-50)", borderRadius: 6, border: "1px solid var(--rmp-primary-300)", display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <span style={{ fontSize: "1rem" }}>📋</span>
           <span style={{ flex: 1, fontSize: "0.85rem", color: "var(--rmp-primary-700)" }}>Кампания создана. Добавьте рейс, размещение и креатив, чтобы отправить на согласование.</span>
           <button type="button" onClick={() => scrollToSection(flightsSectionRef)} style={{ background: "var(--rmp-primary-500)", color: "var(--rmp-text-inverse)", border: "none", borderRadius: 4, padding: "0.35rem 0.75rem", fontSize: "0.8rem", cursor: "pointer", whiteSpace: "nowrap" }}>Начать наполнение →</button>
@@ -2234,7 +2234,7 @@ const css: Record<string, React.CSSProperties> = {
   tab: { padding: "0.5rem 0.75rem", background: "none", border: "none", borderBottom: "2px solid transparent", marginBottom: -2, cursor: "pointer", fontSize: "0.825rem", color: "var(--rmp-text-secondary)", fontWeight: 500, display: "flex", alignItems: "center", gap: "0.35rem" },
   tabActive: { color: "var(--rmp-gray-800)", borderBottomColor: "var(--rmp-primary-500)" },
   tabCount: { background: "var(--rmp-border)", color: "var(--rmp-gray-600)", borderRadius: 999, padding: "0 0.4rem", fontSize: "0.7rem", fontWeight: 600, lineHeight: "1.4" },
-  section: { background: "var(--rmp-bg-surface)", borderRadius: 6, padding: "1rem", boxShadow: "0 1px 2px rgba(0,0,0,0.06)" },
+  section: { background: "var(--rmp-bg-surface)", borderRadius: 6, padding: "1rem", boxShadow: "var(--rmp-shadow-sm)" },
   fieldGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "0.75rem" },
   fieldLabel: { fontSize: "0.7rem", fontWeight: 600, color: "var(--rmp-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.15rem" },
   fieldValue: { fontSize: "0.875rem", color: "var(--rmp-gray-800)" },
@@ -2243,12 +2243,12 @@ const css: Record<string, React.CSSProperties> = {
   miniTd: { padding: "0.4rem 0.5rem", borderBottom: "1px solid var(--rmp-gray-100)", verticalAlign: "middle" },
   addBtn: { padding: "0.35rem 0.75rem", background: "var(--rmp-primary-500)", color: "var(--rmp-text-inverse)", border: "none", borderRadius: 4, cursor: "pointer", fontSize: "0.8rem", fontWeight: 500 },
   primaryBtn: { padding: "0.35rem 0.75rem", background: "var(--rmp-primary-500)", color: "var(--rmp-text-inverse)", border: "none", borderRadius: 4, cursor: "pointer", fontSize: "0.8rem", fontWeight: 500 },
-  cancelBtn: { padding: "0.35rem 0.75rem", background: "var(--rmp-bg-surface)", border: "1px solid #d1d5db", borderRadius: 4, cursor: "pointer", fontSize: "0.8rem", color: "var(--rmp-gray-600)" },
+  cancelBtn: { padding: "0.35rem 0.75rem", background: "var(--rmp-bg-surface)", border: "1px solid var(--rmp-input-border)", borderRadius: 4, cursor: "pointer", fontSize: "0.8rem", color: "var(--rmp-gray-600)" },
   inlineForm: { background: "var(--rmp-bg-page)", border: "1px solid var(--rmp-border)", borderRadius: 4, padding: "0.75rem" },
   inlineFields: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "flex-end" },
   miniLabel: { display: "block", fontSize: "0.65rem", fontWeight: 600, color: "var(--rmp-text-secondary)", marginBottom: "0.1rem", textTransform: "uppercase" },
-  miniInput: { padding: "0.3rem 0.5rem", border: "1px solid #d1d5db", borderRadius: 3, fontSize: "0.8rem", boxSizing: "border-box", fontFamily: "inherit" },
-  miniSelect: { padding: "0.3rem 0.5rem", border: "1px solid #d1d5db", borderRadius: 3, fontSize: "0.8rem", background: "var(--rmp-bg-surface)", boxSizing: "border-box" },
+  miniInput: { padding: "0.3rem 0.5rem", border: "1px solid var(--rmp-input-border)", borderRadius: 3, fontSize: "0.8rem", boxSizing: "border-box", fontFamily: "inherit" },
+  miniSelect: { padding: "0.3rem 0.5rem", border: "1px solid var(--rmp-input-border)", borderRadius: 3, fontSize: "0.8rem", background: "var(--rmp-bg-surface)", boxSizing: "border-box" },
   reportGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.5rem", marginBottom: "0.5rem" },
   reportCard: { background: "var(--rmp-bg-page)", border: "1px solid var(--rmp-border)", borderRadius: 6, padding: "0.75rem 1rem" },
   reportCardLabel: { fontSize: "0.65rem", fontWeight: 600, color: "var(--rmp-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.25rem" },

@@ -19,9 +19,9 @@ const S = {
   btn: (bg: string) => ({ padding: "0.4rem 1rem", border: "none", borderRadius: 4, background: bg, color: "var(--rmp-text-inverse)", fontWeight: 600, cursor: "pointer", fontSize: "0.85rem" }) as const,
   textarea: { width: "100%", minHeight: 60, padding: "0.5rem", border: "1px solid var(--rmp-border-strong)", borderRadius: 4, fontSize: "0.85rem", resize: "vertical" as const },
   success: { padding: "1rem", color: "var(--rmp-success-800)", background: "var(--rmp-success-50)", borderRadius: 6, marginBottom: "1rem" },
-  tokenBox: { marginTop: "1rem", padding: "0.75rem", borderRadius: 6, background: "#fefce8", border: "1px solid #fde68a", fontSize: "0.8rem" },
+  tokenBox: { marginTop: "1rem", padding: "0.75rem", borderRadius: 6, background: "var(--rmp-warning-50)", border: "1px solid var(--rmp-warning-200)", fontSize: "0.8rem" },
   tokenCode: { fontSize: "0.75rem", fontFamily: "monospace", background: "var(--rmp-gray-100)", padding: "0.25rem 0.5rem", borderRadius: 4, wordBreak: "break-all" as const },
-  note: { color: "#92400e", fontSize: "0.75rem", marginTop: "0.5rem" },
+  note: { color: "var(--rmp-warning-800)", fontSize: "0.75rem", marginTop: "0.5rem" },
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -32,8 +32,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  new: "#3b82f6",
-  reviewing: "#f59e0b",
+  new: "var(--rmp-primary-400)",
+  reviewing: "var(--rmp-warning-400)",
   approved: "var(--rmp-success-600)",
   rejected: "var(--rmp-danger-600)",
 };
@@ -45,7 +45,7 @@ const INVITE_STATUS_LABELS: Record<string, string> = {
 };
 
 const INVITE_STATUS_COLORS: Record<string, string> = {
-  pending: "#8b5cf6",
+  pending: "var(--rmp-purple-500)",
   accepted: "var(--rmp-success-600)",
   expired: "var(--rmp-text-muted)",
 };
@@ -200,7 +200,7 @@ export default function AdvertiserApplicationsPage() {
           {selected.status === "new" && (
             <div>
               <div style={S.actions}>
-                <button style={S.btn("#f59e0b")} onClick={() => handleReview("reviewing", selected.id)} data-testid="advertiser-review-start">Начать рассмотрение</button>
+                <button style={S.btn("var(--rmp-warning-400)")} onClick={() => handleReview("reviewing", selected.id)} data-testid="advertiser-review-start">Начать рассмотрение</button>
               </div>
             </div>
           )}
@@ -236,7 +236,7 @@ export default function AdvertiserApplicationsPage() {
                     <div style={S.note}>⚠️ В режиме разработки токен показывается в интерфейсе. Скопируйте код и передайте контактному лицу. В production токен будет отправляться по email.</div>
                   </div>
                   <div style={S.actions}>
-                    <button style={S.btn("#8b5cf6")} onClick={() => handleCreateInvite(selected.id)} data-testid="advertiser-invite-create">
+                    <button style={S.btn("var(--rmp-purple-500)")} onClick={() => handleCreateInvite(selected.id)} data-testid="advertiser-invite-create">
                       {invite.status === "expired" || invite.status === "accepted" ? "Создать новое приглашение" : "Переслать приглашение"}
                     </button>
                   </div>
@@ -245,7 +245,7 @@ export default function AdvertiserApplicationsPage() {
                 <div>
                   <div style={S.value}>Не отправлено</div>
                   <div style={S.actions}>
-                    <button style={S.btn("#8b5cf6")} onClick={() => handleCreateInvite(selected.id)} data-testid="advertiser-invite-create">Создать приглашение</button>
+                    <button style={S.btn("var(--rmp-purple-500)")} onClick={() => handleCreateInvite(selected.id)} data-testid="advertiser-invite-create">Создать приглашение</button>
                   </div>
                 </div>
               )}

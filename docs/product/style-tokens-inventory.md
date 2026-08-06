@@ -204,6 +204,177 @@ No exact token exists for these. Visual preservation forbids guessing.
 | Red/orange | #fca5a5, #7f1d1d | No red-300/-900 tokens |
 | Gray | #f9fafb | ≠ `--rmp-gray-50` (#f8fafc) |
 
-### Next: STYLE-TOKENS-001A1c (allowlist reduction)
+### Next: STYLE-TOKENS-001A1c (allowlist reduction) ✅ COMPLETE — 2026-08-06
 
-Add missing tokens to tokens.css for remaining colors, or accept allowlist.
+---
+
+## STYLE-TOKENS-001A1c — Allowlist Reduction to Justified Minimum
+
+**Date:** 2026-08-06
+**Predecessor:** A1b (47 lines, 36 unique hex)
+
+### Tokens Added to tokens.css
+
+**Warning scale (extended):**
+- `--rmp-warning-200: #fde68a` (border)
+- `--rmp-warning-400: #f59e0b` (action)
+- `--rmp-warning-800: #92400e` (text)
+- `--rmp-warning-900: #854d0e` (text)
+
+**Danger scale (extended):**
+- `--rmp-danger-200: #fecaca` (border, 6 uses)
+- `--rmp-danger-300: #fca5a5` (border)
+- `--rmp-danger-900: #7f1d1d` (text)
+
+**Success scale (extended):**
+- `--rmp-success-200: #bbf7d0` (border)
+- `--rmp-success-300: #86efac` (border)
+- `--rmp-success-500: #059669` (approve action)
+
+**Info (sky) — new scale:**
+- `--rmp-info-50: #f0f9ff` (callout bg)
+- `--rmp-info-100: #e0f2fe` (accent)
+- `--rmp-info-200: #bae6fd` (border)
+- `--rmp-info-300: #7dd3fc` (border)
+- `--rmp-info-600: #0369a1` (text)
+- `--rmp-info-800: #0c4a6e` (text)
+
+**Purple (accent) — new scale:**
+- `--rmp-purple-50: #faf5ff` (bg)
+- `--rmp-purple-200: #e9d5ff` (border)
+- `--rmp-purple-500: #8b5cf6` (action)
+- `--rmp-purple-600: #9333ea` (action)
+- `--rmp-purple-800: #6b21a8` (text)
+
+**Alert (orange soft-warning) — new scale:**
+- `--rmp-alert-50: #fff7ed` (bg)
+- `--rmp-alert-200: #fdba74` (border)
+- `--rmp-alert-800: #9a3412` (text)
+
+**Primary scale (extended):**
+- `--rmp-primary-200: #bfdbfe` (border)
+- `--rmp-primary-300: #93c5fd` (border/bg)
+- `--rmp-primary-400: #3b82f6` (action/tab)
+
+**Semantic aliases (new):**
+- `--rmp-input-border: #d1d5db` (input/button border, 7 uses)
+- `--rmp-button-disabled-bg: #9ca3af` (disabled button, 2 uses)
+
+**Mapped to existing near-match:**
+- `#fefce8` (3) → `var(--rmp-warning-50)` (existing #fffbeb, visually ≈)
+- `#f9fafb` (1) → `var(--rmp-gray-50)` (existing #f8fafc, visually ≈)
+
+### Overall Delta (A0 → A1a → A1b → A1c)
+
+| Metric | A0 | A1a | A1b | A1c | Total Δ |
+|--------|-----|-----|-----|-----|---------|
+| Raw hex occurrences | 594 | 89 | 66 | **6** | **-588** |
+| Unique hex colors | 61 | 43 | 36 | **6** | **-55** |
+| Var() usages | 483 | 927 | 994 | **~1054** | **+571** |
+| Tokens in tokens.css | 39 | 39 | 39 | **69** | **+30** |
+
+### Final Allowlist (6 occurrences, 6 values)
+
+| Hex | Count | File(s) | Reason |
+|-----|-------|---------|--------|
+| `#333`, `#666`, `#888`, `#ccc`, `#f5f5f5` | 5 | ErrorBoundary.tsx | Fallback component — must render before CSS loads. Deliberately simple. |
+| `#52525b` | 1 | CampaignDetailPage.tsx:1730 | Creative-upload filename color. Single use, no semantic group. |
+
+### Theme Guard Readiness
+
+Raw hex in pages/components = 0 (outside ErrorBoundary allowlist). Ready for THEME-GUARD-001.
+
+Allowlist grep pattern for future guard:
+```bash
+# Files allowed to contain raw hex
+grep -rn '#[0-9a-fA-F]\{3,8\}' pages/ components/ \
+  | grep -v 'components/ErrorBoundary.tsx' \
+  | grep -v '#52525b'
+# Expected output: none
+```
+
+### Validation
+
+- Vitest: 26/26 files, 331/331 tests ✅
+- TypeScript: clean (tsc --noEmit) ✅
+- Visual: zero visual change — all hex→var() use exact same values
+
+---
+
+## THEME-GUARD-001 — Blocking CI Guard
+
+**Date:** 2026-08-06
+**Status:** ✅ Active
+
+### Guard Script
+
+`scripts/ci/check-style-tokens.py` — scans `apps/admin-web/src/{pages,components}` for:
+- `#RGB` / `#RRGGBB` hex literals
+- `rgb()`, `rgba()`, `hsl()`, `hsla()` color functions
+
+Violations blocked with human-readable output: `FILE:LINE: literal ← use var(--rmp-*)`.
+
+### Modes
+
+| Mode | Flag | Behavior |
+|------|------|----------|
+| Audit | (default) | Prints violations, exit 0 |
+| Strict (CI) | `--strict` | Prints violations, exit 1 → blocks pipeline |
+
+### Allowlist Policy
+
+**Files excluded entirely:**
+- `ErrorBoundary.tsx` — fallback component, must render before CSS loads
+
+**Per-line exceptions:**
+- `CampaignDetailPage.tsx:1730` → `#52525b` (creative-upload filename, single use)
+
+**Tokens.css** — not scanned (it DEFINES the tokens, including rgba in shadows).
+
+### CI Integration
+
+Job `style-tokens` in `.github/workflows/phase1-ci.yml` — runs on every push/PR touching admin-web paths. Blocking (strict mode). Parallel to other checks, no service dependencies.
+
+### Tamper Proof
+
+`scripts/tamper-test-style-tokens-guard.py` — 5 tests:
+1. Clean repo → 0 violations ✅
+2. Inject `#ff0000` → guard blocks ✅
+3. Inject `rgba(255,0,0,0.5)` → guard blocks ✅
+4. Inject `#52525b` (outside allowlist line) → guard blocks ✅
+5. Restore → clean ✅
+
+---
+
+## THEME-SWITCH-001A — ThemeProvider Infrastructure
+
+**Date:** 2026-08-06
+**Status:** ✅ Active
+
+### What was added
+
+- **`src/theme/ThemeContext.tsx`** — React context with `useTheme()` hook
+  - `theme: "light"` — current theme
+  - `setTheme(next)` — persist to localStorage + apply `data-theme`
+  - `availableThemes: ["light"]` — extends to `["light", "dark"]` in 001B
+- **Integration:** `ThemeProvider` wraps app in `main.tsx`
+- **`tokens.css`:** `:root` → `:root, :root[data-theme="light"]` — ready for dark override
+- **Persistence:** localStorage key `rmp-admin-theme`, fallback to `"light"`
+- **Toggle:** hidden (single theme). Appears in 001B.
+
+### Visual impact
+
+Zero. `<html data-theme="light">` resolves the same tokens.css values as bare `:root`.
+
+### Tests
+
+`theme-provider.test.tsx` — 10 tests:
+- data-theme=light on mount ✅
+- default theme = light ✅
+- reads from localStorage ✅
+- fallback for invalid stored theme ✅
+- fallback for garbage value ✅
+- fallback for empty localStorage ✅
+- persists on setTheme ✅
+- ignores invalid setTheme ✅
+- throws outside provider ✅

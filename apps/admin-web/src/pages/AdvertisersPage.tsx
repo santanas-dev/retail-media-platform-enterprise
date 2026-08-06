@@ -232,7 +232,7 @@ const S = {
     fontWeight: 500,
     color: "var(--rmp-primary-500)",
     background: "var(--rmp-primary-50)",
-    border: "1px solid #bfdbfe",
+    border: "1px solid var(--rmp-primary-200)",
     borderRadius: 4,
     cursor: "pointer",
   } as React.CSSProperties,
@@ -1212,7 +1212,7 @@ function ContractsTab({ contracts, orgId, onContractChange }: { contracts: Adver
                       <span>{c.file_name}{c.file_size_bytes ? ` (${(c.file_size_bytes / 1024).toFixed(1)} KB)` : ""}</span>
                     ) : pendingFile && pendingFile.contractId === c.id ? (
                       <span style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem" }}>
-                        <span data-testid="advertiser-contract-selected-file" style={{ fontSize: "0.75rem", color: "#0c4a6e" }}>
+                        <span data-testid="advertiser-contract-selected-file" style={{ fontSize: "0.75rem", color: "var(--rmp-info-800)" }}>
                           📄 {pendingFile.file.name}
                         </span>
                         <button data-testid="advertiser-contract-upload-done"
@@ -1379,7 +1379,7 @@ function ContactsTab({ contacts, users, orgId, onContactChange: _onContactChange
 
       {/* Create form */}
       {creating && (
-        <div style={{ marginBottom: 16, padding: 12, background: "#f9fafb", borderRadius: 6 }}>
+        <div style={{ marginBottom: 16, padding: 12, background: "var(--rmp-gray-50)", borderRadius: 6 }}>
           <div style={{ fontWeight: 600, marginBottom: 8 }}>Новый контакт</div>
           <input style={S.input} placeholder="ФИО" value={form.full_name} onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))} data-testid="advertiser-contact-name" />
           <input style={S.input} placeholder="Email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} data-testid="advertiser-contact-email" />

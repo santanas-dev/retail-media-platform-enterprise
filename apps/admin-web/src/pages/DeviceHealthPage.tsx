@@ -15,7 +15,7 @@ const STATUS_COLORS: Record<string, React.CSSProperties> = {
   active: { background: "var(--rmp-success-50)", color: "var(--rmp-success-800)" },
   inactive: { background: "var(--rmp-gray-100)", color: "var(--rmp-gray-600)" },
   error: { background: "var(--rmp-danger-50)", color: "var(--rmp-danger-800)" },
-  unregistered: { background: "#fefce8", color: "#854d0e" },
+  unregistered: { background: "var(--rmp-warning-50)", color: "var(--rmp-warning-900)" },
 };
 
 const HEALTH_LABELS: Record<string, string> = {
@@ -28,7 +28,7 @@ const HEALTH_LABELS: Record<string, string> = {
 const HEALTH_COLORS: Record<string, React.CSSProperties> = {
   unknown: { background: "var(--rmp-gray-100)", color: "var(--rmp-gray-600)" },
   healthy: { background: "var(--rmp-success-50)", color: "var(--rmp-success-800)" },
-  degraded: { background: "#fefce8", color: "#854d0e" },
+  degraded: { background: "var(--rmp-warning-50)", color: "var(--rmp-warning-900)" },
   unhealthy: { background: "var(--rmp-danger-50)", color: "var(--rmp-danger-800)" },
 };
 
@@ -125,7 +125,7 @@ export default function DeviceHealthPage() {
           </div>
           <div style={styles.summaryCard}>
             <div style={styles.summaryLabel}>Не зарегистр.</div>
-            <div style={{ ...styles.summaryValue, color: "#854d0e" }}>{summary.unregistered}</div>
+            <div style={{ ...styles.summaryValue, color: "var(--rmp-warning-900)" }}>{summary.unregistered}</div>
           </div>
         </div>
       )}

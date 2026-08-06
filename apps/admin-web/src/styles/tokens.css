@@ -4,7 +4,12 @@
    Apply once via import in main.tsx.
    ===================================================================== */
 
-:root {
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME-SWITCH-001: :root = default (light), :root[data-theme="light"] = explicit.
+   Future: :root[data-theme="dark"] will override color tokens only.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root,
+:root[data-theme="light"] {
   /* ── Neutral (slate/gray) ── */
   --rmp-gray-50:  #f8fafc;
   --rmp-gray-100: #f1f5f9;
@@ -20,6 +25,9 @@
   /* ── Primary (blue) ── */
   --rmp-primary-50:  #eff6ff;
   --rmp-primary-100: #dbeafe;
+  --rmp-primary-200: #bfdbfe;
+  --rmp-primary-300: #93c5fd;
+  --rmp-primary-400: #3b82f6;
   --rmp-primary-500: #2563eb;
   --rmp-primary-600: #1d4ed8;
   --rmp-primary-700: #1e40af;
@@ -27,6 +35,9 @@
   /* ── Success (green) ── */
   --rmp-success-50:  #f0fdf4;
   --rmp-success-100: #dcfce7;
+  --rmp-success-200: #bbf7d0;
+  --rmp-success-300: #86efac;
+  --rmp-success-500: #059669;
   --rmp-success-600: #16a34a;
   --rmp-success-700: #15803d;
   --rmp-success-800: #166534;
@@ -34,15 +45,42 @@
   /* ── Warning (amber) ── */
   --rmp-warning-50:  #fffbeb;
   --rmp-warning-100: #fef3c7;
+  --rmp-warning-200: #fde68a;
+  --rmp-warning-400: #f59e0b;
   --rmp-warning-600: #d97706;
   --rmp-warning-700: #b45309;
+  --rmp-warning-800: #92400e;
+  --rmp-warning-900: #854d0e;
 
   /* ── Danger (red) ── */
   --rmp-danger-50:  #fef2f2;
   --rmp-danger-100: #fee2e2;
+  --rmp-danger-200: #fecaca;
+  --rmp-danger-300: #fca5a5;
   --rmp-danger-600: #dc2626;
   --rmp-danger-700: #b91c1c;
   --rmp-danger-800: #991b1b;
+  --rmp-danger-900: #7f1d1d;
+
+  /* ── Info (sky) ── */
+  --rmp-info-50:  #f0f9ff;
+  --rmp-info-100: #e0f2fe;
+  --rmp-info-200: #bae6fd;
+  --rmp-info-300: #7dd3fc;
+  --rmp-info-600: #0369a1;
+  --rmp-info-800: #0c4a6e;
+
+  /* ── Purple (accent) ── */
+  --rmp-purple-50:  #faf5ff;
+  --rmp-purple-200: #e9d5ff;
+  --rmp-purple-500: #8b5cf6;
+  --rmp-purple-600: #9333ea;
+  --rmp-purple-800: #6b21a8;
+
+  /* ── Alert (orange soft-warning) ── */
+  --rmp-alert-50:  #fff7ed;
+  --rmp-alert-200: #fdba74;
+  --rmp-alert-800: #9a3412;
 
   /* ── Semantic aliases ── */
   --rmp-bg-page:          var(--rmp-gray-50);
@@ -53,6 +91,8 @@
   --rmp-text-secondary:   var(--rmp-gray-500);
   --rmp-text-muted:       var(--rmp-gray-400);
   --rmp-text-inverse:     #fff;
+  --rmp-input-border:         #d1d5db;
+  --rmp-button-disabled-bg:   #9ca3af;
 
   /* ── Sidebar ── */
   --rmp-sidebar-bg:       var(--rmp-gray-800);
@@ -88,6 +128,9 @@
   --rmp-shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
   --rmp-shadow-md: 0 1px 3px rgba(0,0,0,0.10);
   --rmp-shadow-lg: 0 4px 12px rgba(0,0,0,0.10);
+
+  /* ── Overlay / structural ── */
+  --rmp-overlay-backdrop: rgba(0,0,0,0.4);
 
   /* ── Focus ring ── */
   --rmp-focus-ring: 0 0 0 2px var(--rmp-primary-500);

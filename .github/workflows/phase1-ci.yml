@@ -131,6 +131,16 @@ jobs:
           python-version: "3.12"
       - name: Check import boundaries
         run: python scripts/ci/check-import-boundaries.py
+  style-tokens:
+    name: Style Tokens — THEME-GUARD-001
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check style tokens (strict)
+        run: python scripts/ci/check-style-tokens.py --strict
   json-schema:
     name: JSON Schema Validation
     runs-on: ubuntu-latest

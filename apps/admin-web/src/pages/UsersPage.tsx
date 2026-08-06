@@ -456,7 +456,7 @@ export default function UsersPage() {
   const dangerBtn: React.CSSProperties = {
     ...btnStyle,
     color: "var(--rmp-danger-600)",
-    borderColor: "#fca5a5",
+    borderColor: "var(--rmp-danger-300)",
   };
   const badge: React.CSSProperties = {
     display: "inline-block",
@@ -528,7 +528,7 @@ export default function UsersPage() {
     padding: "0.5rem 1rem",
     fontSize: "0.875rem",
     border: "none",
-    borderBottom: active ? "2px solid #3b82f6" : "2px solid transparent",
+    borderBottom: active ? "2px solid var(--rmp-primary-400)" : "2px solid transparent",
     background: "transparent",
     cursor: "pointer",
     color: active ? "var(--rmp-primary-700)" : "var(--rmp-text-secondary)",
@@ -1000,7 +1000,7 @@ export default function UsersPage() {
         <div
           style={{
             background: "var(--rmp-danger-50)",
-            border: "1px solid #fca5a5",
+            border: "1px solid var(--rmp-danger-300)",
             borderRadius: 8,
             padding: "1rem",
             marginBottom: "1rem",

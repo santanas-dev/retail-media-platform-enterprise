@@ -594,7 +594,7 @@ export default function CampaignCreatePage() {
             data-testid="campaign-create-submit"
             style={{
               ...css.submitBtn,
-              ...(submitting ? { background: "#9ca3af", cursor: "default" } : {}),
+              ...(submitting ? { background: "var(--rmp-button-disabled-bg)", cursor: "default" } : {}),
             }}
             disabled={submitting}
           >
@@ -669,7 +669,7 @@ const css: Record<string, React.CSSProperties> = {
     background: "var(--rmp-bg-surface)",
     borderRadius: 6,
     padding: "1.5rem",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
+    boxShadow: "var(--rmp-shadow-sm)",
     maxWidth: 700,
   },
   fieldset: {
@@ -697,7 +697,7 @@ const css: Record<string, React.CSSProperties> = {
   input: {
     width: "100%",
     padding: "0.45rem 0.6rem",
-    border: "1px solid #d1d5db",
+    border: "1px solid var(--rmp-input-border)",
     borderRadius: 4,
     fontSize: "0.875rem",
     boxSizing: "border-box" as const,
@@ -706,7 +706,7 @@ const css: Record<string, React.CSSProperties> = {
   select: {
     width: "100%",
     padding: "0.45rem 0.6rem",
-    border: "1px solid #d1d5db",
+    border: "1px solid var(--rmp-input-border)",
     borderRadius: 4,
     fontSize: "0.875rem",
     background: "var(--rmp-bg-surface)",
@@ -726,7 +726,7 @@ const css: Record<string, React.CSSProperties> = {
   cancelBtn: {
     padding: "0.45rem 1rem",
     background: "var(--rmp-bg-surface)",
-    border: "1px solid #d1d5db",
+    border: "1px solid var(--rmp-input-border)",
     borderRadius: 4,
     cursor: "pointer",
     fontSize: "0.875rem",

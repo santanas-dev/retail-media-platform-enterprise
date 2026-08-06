@@ -947,7 +947,7 @@ function RulesTab() {
 
       {/* ── Create/Edit modal ── */}
       {showForm && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+        <div style={{ position: "fixed", inset: 0, background: "var(--rmp-overlay-backdrop)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
           <form onSubmit={handleSave} data-testid="inventory-rule-form"
             style={{ background: "var(--rmp-bg-surface)", borderRadius: 8, padding: "1.5rem", width: 480, maxHeight: "90vh", overflow: "auto" }}>
             <h3 style={{ margin: "0 0 1rem" }}>{editId ? "Редактировать правило" : "Создать правило"}</h3>

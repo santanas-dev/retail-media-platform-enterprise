@@ -511,15 +511,34 @@ metadata-only creative error.
 - Registry: 48/57 reachable, 9 blocked (non-commerce).
 - Next → defined by roadmap.
 
-**STYLE-TOKENS-001A1a ✅** — unambiguous raw hex → var(--rmp-*) migration (commit 3887111).
+**STYLE-TOKENS-001A1c ✅** — allowlist reduction to justified minimum.
+- Added 30 new tokens to tokens.css: warning-200/400/800/900, danger-200/300/900, success-200/300/500, info-50/100/200/300/600/800, purple-50/200/500/600/800, alert-50/200/800, primary-200/300/400, input-border, button-disabled-bg.
+- #fefce8 (3) → var(--rmp-warning-50), #f9fafb (1) → var(--rmp-gray-50) — visually ≈existing.
+- Overall delta (A0→A1c): raw hex 594→6 (-588), unique hex 61→6 (-55), var() 483→~1054 (+571), tokens 39→69 (+30).
+- Final allowlist: 6 occurrences, all justified — ErrorBoundary (5 legacy grays, must work pre-CSS) + CampaignDetailPage:1730 (1 #52525b, single-use filename color).
+- Raw hex in pages/components (excl ErrorBoundary) = 0. Ready for THEME-GUARD-001.
+- Vitest: 26/26 files, 331/331 tests ✅. TypeScript: clean ✅.
+- Next → THEME-GUARD-001: prevent raw hex regression.
 
-**STYLE-TOKENS-001A1b ✅** — #fff context-aware + low-count exact-match migration.
-- #fff: 56 → 0 in pages/components. Context: `color` → `var(--rmp-text-inverse)` (12×), `background` → `var(--rmp-bg-surface)` (44×).
-- Low-count exact tokens: #eff6ff→primary-50 (3), #1e40af→primary-700 (2), #fffbeb→warning-50 (2), #fef3c7→warning-100 (3), #d97706→warning-600 (5).
-- Overall delta (A0→A1b): raw hex 89→47 lines (-42), #fff 56→0, var() 483→994 (+511), unique hex 61→36 (-25).
-- Remaining allowlist: 47 lines, 36 unique colors without exact token matches (legacy grays, border variants, warning/amber/purple/blue/sky/emerald).
-- Vitest: 331/331. TypeScript: clean. UI-smoke: 33/35 (2 pre-existing: campaign_create, user_create_advertiser). Screenshots: 5 pages after.
-- Next → STYLE-TOKENS-001A1c: add missing tokens to tokens.css OR accept allowlist.
+**THEME-GUARD-001 ✅** — blocking CI guard against raw color literals in admin-web.
+- Script: `scripts/ci/check-style-tokens.py` — scans pages/components for #hex, rgb(), rgba(), hsl(), hsla().
+- Modes: `--audit` (non-blocking) / `--strict` (CI, exit 1 on violation).
+- Allowlist: ErrorBoundary.tsx (excluded file), CampaignDetailPage.tsx:1730 (#52525b, single-use).
+- CI: job `style-tokens` in phase1-ci.yml, blocking, parallel, no dependencies.
+- Tamper proof: `scripts/tamper-test-style-tokens-guard.py` — 5/5 tests pass (inject #ff0000 → caught, inject rgba(255,0,0,0.5) → caught, inject #52525b outside allowlist → caught, clean → passes, final restore → clean).
+- Vitest: 331/331 ✅. Guard on current repo: 0 violations.
+- Operator walkthrough: not applicable (CI guard, no UI change).
+
+**THEME-SWITCH-001A ✅** — ThemeProvider infrastructure + data-theme, no visual change.
+- Created `src/theme/ThemeContext.tsx` — React context with `theme`, `setTheme`, `availableThemes`.
+- Persistence: localStorage key `rmp-admin-theme`, fallback to `"light"`.
+- Integration: `ThemeProvider` wraps the app in `main.tsx` (inside ErrorBoundary, outside AuthProvider).
+- `tokens.css`: `:root` → `:root, :root[data-theme="light"]` — explicit theme selector, zero value change.
+- `<html data-theme="light">` set on mount, persisted on change.
+- Theme toggle: hidden for now (single-theme). Will appear in 001B with dark theme.
+- Vitest: 27/27 files, 341/341 tests ✅ (new: `theme-provider.test.tsx` — 10 tests: data-theme, localStorage, fallback, invalid guard).
+- Screenshots: no visual change (light theme unchanged).
+- Next → THEME-SWITCH-001B: dark theme palette + toggle UI.
 
 **SELF-LOGIN-CI-001-FU ✅** — self__login returned to blocking CI, tamper-proofed.
 

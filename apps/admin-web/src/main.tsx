@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
+import { ThemeProvider } from "./theme/ThemeContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./styles/tokens.css";
@@ -103,9 +104,11 @@ const router = createBrowserRouter([
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   </StrictMode>,
 );

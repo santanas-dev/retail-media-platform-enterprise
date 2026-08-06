@@ -34,7 +34,7 @@ const modeLabel = (mode: string): string => {
 const modeColor = (mode: string): string => {
   const map: Record<string, string> = {
     disabled: "var(--rmp-text-muted)",
-    stub: "#f59e0b",
+    stub: "var(--rmp-warning-400)",
     configured: "var(--rmp-success-600)",
   };
   return map[mode] ?? "var(--rmp-text-muted)";
