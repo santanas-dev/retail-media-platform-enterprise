@@ -774,19 +774,30 @@ features:
     status: reachable
     note: "COMMERCE-CONTUR2-001A3a — proven via shared tariff smoke (price items CRUD)."
 
+  - id: system.theme_switch
+    frontend: admin-web
+    name: Переключение темы (light/dark)
+    route: sidebar footer toggle
+    path: apps/admin-web/src/components/Layout.tsx
+    smoke: test_uismoke__system__theme_switch
+    priority: P2
+    roles: [system_admin, campaign_manager, security_admin, ops_operator, moderator, approver, analyst]
+    status: reachable
+    note: "THEME-SWITCH-001B — dark theme tokens + accessible toggle, persists across reload."
+
   # ═══════════════════════════════════════════════════════════════
   # Summary counts (auto-generated — do not edit manually)
   # ═══════════════════════════════════════════════════════════════
-  #   total: 57
+  #   total: 58
   # by status:
-  #   reachable: 48 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, user.split_internal_advertiser, advertiser.create_org, advertiser.view, advertiser.contact_crud, advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites, inventory.simulate, advertiser.invite, adsettings.configure, adsettings.test, audit.view, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, campaign.complete, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, device.health_view, observability, user.reset_password, user.deactivate, inventory.rule_create, commerce.tariff_manage, commerce.price_list_manage, commerce.order_create, commerce.offer_generate, commerce.booking, commerce.payment_status, commerce.order_close)
+  #   reachable: 49 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, user.split_internal_advertiser, advertiser.create_org, advertiser.view, advertiser.contact_crud, advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites, inventory.simulate, advertiser.invite, adsettings.configure, adsettings.test, audit.view, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, campaign.complete, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, device.health_view, observability, user.reset_password, user.deactivate, inventory.rule_create, commerce.tariff_manage, commerce.price_list_manage, commerce.order_create, commerce.offer_generate, commerce.booking, commerce.payment_status, commerce.order_close, system.theme_switch)
   #   blocked:      9 (self.report_view, self.campaign_create, playlist.build, backup.restore, license.view, license.upload, license.seat_release, license.report, license.enforce)
   # by frontend:
-  #   admin-web:      38
+  #   admin-web:      39
   #   advertiser-web:  5
   #   public:          1
   #   service:         8
   # by priority:
   #   P0: 20
   #   P1: 31
-  #   P2:  1
+  #   P2:  2
