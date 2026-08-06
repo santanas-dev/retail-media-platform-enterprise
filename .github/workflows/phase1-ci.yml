@@ -1,6 +1,7 @@
 name: Phase 1 — Quality Gates
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - "apps/control-api/**"
