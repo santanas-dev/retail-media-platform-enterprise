@@ -6,6 +6,7 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
+import { ThemeProvider } from "../theme/ThemeContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Layout from "../components/Layout";
 import CreativeModerationPage from "../pages/CreativeModerationPage";
@@ -103,7 +104,9 @@ describe("CreativeModerationPage — S-036", () => {
   it("renders page with title and filters", async () => {
     mockAllFetches();
     const router = createRouter("/creatives/moderation");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => {
       expect(screen.getByText("Модерация креативов")).toBeTruthy();
@@ -118,7 +121,9 @@ describe("CreativeModerationPage — S-036", () => {
   it("renders queue with a pending item", async () => {
     mockAllFetches();
     const router = createRouter("/creatives/moderation");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => {
       expect(screen.getByTestId("moderation-row-CR-001")).toBeTruthy();
@@ -149,7 +154,9 @@ describe("CreativeModerationPage — S-036", () => {
     });
 
     const router = createRouter("/creatives/moderation");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => {
       expect(screen.getByTestId("moderation-empty")).toBeTruthy();
@@ -176,7 +183,9 @@ describe("CreativeModerationPage — S-036", () => {
     );
 
     const router = createRouter("/creatives/moderation");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => {
       expect(screen.getByTestId("moderation-approve-CR-001")).toBeTruthy();
@@ -195,7 +204,9 @@ describe("CreativeModerationPage — S-036", () => {
   it("opens reject input and shows cancel/confirm buttons", async () => {
     mockAllFetches(undefined, ["creatives.moderate"]);
     const router = createRouter("/creatives/moderation");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => {
       expect(screen.getByTestId("moderation-reject-CR-001")).toBeTruthy();
@@ -232,7 +243,9 @@ describe("CreativeModerationPage — S-036", () => {
     );
 
     const router = createRouter("/creatives/moderation");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => {
       expect(screen.getByTestId("moderation-reject-CR-001")).toBeTruthy();
@@ -264,7 +277,9 @@ describe("CreativeModerationPage — S-036", () => {
   it("cancels reject and returns to approve/reject buttons", async () => {
     mockAllFetches(undefined, ["creatives.moderate"]);
     const router = createRouter("/creatives/moderation");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => {
       expect(screen.getByTestId("moderation-reject-CR-001")).toBeTruthy();
@@ -304,7 +319,9 @@ describe("CreativeModerationPage — S-036", () => {
     );
 
     const router = createRouter("/creatives/moderation");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => {
       expect(screen.getByTestId("moderation-approve-CR-001")).toBeTruthy();
@@ -342,7 +359,9 @@ describe("CreativeModerationPage — S-036", () => {
     });
 
     const router = createRouter("/creatives/moderation");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => {
       expect(screen.getByTestId("moderation-error")).toBeTruthy();

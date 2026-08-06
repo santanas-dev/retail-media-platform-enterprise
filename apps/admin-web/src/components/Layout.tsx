@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useTheme } from "../theme/ThemeContext";
 
 interface NavItem {
   to: string;
@@ -30,6 +31,7 @@ function hasAnyPermission(userPermissions: string[] | undefined, required: strin
 
 export default function Layout() {
   const { user, loading, logout } = useAuth();
+  const { theme, setTheme, availableThemes } = useTheme();
   const navigate = useNavigate();
 
   const visibleItems = useMemo(() => {
@@ -121,11 +123,43 @@ export default function Layout() {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              gap: "var(--rmp-space-2)",
             }}
           >
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
               {user?.display_name || user?.username || "—"}
             </span>
+            <div
+              data-testid="theme-toggle"
+              role="radiogroup"
+              aria-label="Тема оформления"
+              style={{ display: "flex", gap: 1 }}
+            >
+              {availableThemes.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  role="radio"
+                  aria-checked={theme === t}
+                  aria-label={t === "light" ? "Светлая тема" : "Тёмная тема"}
+                  data-testid={`theme-option-${t}`}
+                  onClick={() => setTheme(t)}
+                  style={{
+                    background: theme === t ? "var(--rmp-gray-600)" : "transparent",
+                    border: "1px solid var(--rmp-gray-600)",
+                    color: theme === t ? "var(--rmp-text-inverse)" : "var(--rmp-gray-400)",
+                    padding: "0.15rem 0.45rem",
+                    borderRadius: "var(--rmp-radius-sm)",
+                    cursor: "pointer",
+                    fontSize: "var(--rmp-font-size-xs)",
+                    lineHeight: 1.4,
+                    transition: "background 0.15s, color 0.15s",
+                  }}
+                >
+                  {t === "light" ? "☀️" : "🌙"}
+                </button>
+              ))}
+            </div>
             <button
               type="button"
               onClick={handleLogout}

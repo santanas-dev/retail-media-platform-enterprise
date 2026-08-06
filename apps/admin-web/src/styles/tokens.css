@@ -85,14 +85,19 @@
   /* ── Semantic aliases ── */
   --rmp-bg-page:          var(--rmp-gray-50);
   --rmp-bg-surface:       #fff;
+  --rmp-bg-surface-muted: var(--rmp-gray-100);
   --rmp-border:           var(--rmp-gray-200);
   --rmp-border-strong:    var(--rmp-gray-300);
   --rmp-text-primary:     var(--rmp-gray-900);
   --rmp-text-secondary:   var(--rmp-gray-500);
   --rmp-text-muted:       var(--rmp-gray-400);
   --rmp-text-inverse:     #fff;
+  --rmp-link-color:       var(--rmp-primary-600);
   --rmp-input-border:         #d1d5db;
   --rmp-button-disabled-bg:   #9ca3af;
+  --rmp-table-header-bg:      var(--rmp-gray-100);
+  --rmp-table-row-hover-bg:   var(--rmp-gray-50);
+  --rmp-focus-outline-color:  var(--rmp-primary-500);
 
   /* ── Sidebar ── */
   --rmp-sidebar-bg:       var(--rmp-gray-800);
@@ -146,6 +151,63 @@
   --rmp-font-size-2xl: 1.5rem;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME-SWITCH-001B — Dark theme overrides.
+   Semantic tokens only — scale colors are theme-agnostic.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root[data-theme="dark"] {
+  /* ── Backgrounds ── */
+  --rmp-bg-page:          var(--rmp-gray-900);      /* #0f172a */
+  --rmp-bg-surface:       var(--rmp-gray-800);      /* #1e293b */
+  --rmp-bg-surface-muted: var(--rmp-gray-700);      /* #334155 */
+
+  /* ── Text ── */
+  --rmp-text-primary:     var(--rmp-gray-100);      /* #f1f5f9 */
+  --rmp-text-secondary:   var(--rmp-gray-400);      /* #94a3b8 */
+  --rmp-text-muted:       var(--rmp-gray-500);      /* #64748b */
+  --rmp-text-inverse:     var(--rmp-gray-900);      /* #0f172a */
+
+  /* ── Links ── */
+  --rmp-link-color:       var(--rmp-primary-400);   /* #3b82f6 — brighter on dark bg */
+
+  /* ── Borders ── */
+  --rmp-border:           var(--rmp-gray-700);      /* #334155 */
+  --rmp-border-strong:    var(--rmp-gray-600);      /* #475569 */
+  --rmp-input-border:     var(--rmp-gray-600);
+  --rmp-button-disabled-bg: var(--rmp-gray-600);
+
+  /* ── Tables ── */
+  --rmp-table-header-bg:    var(--rmp-gray-800);
+  --rmp-table-row-hover-bg: var(--rmp-gray-800);
+
+  /* ── Sidebar — deeper than page bg ── */
+  --rmp-sidebar-bg:       #020617;
+  --rmp-sidebar-text:     var(--rmp-gray-300);
+  --rmp-sidebar-active:   var(--rmp-gray-800);
+  --rmp-sidebar-hover:    rgba(255,255,255,0.08);
+
+  /* ── Status badges — dark backgrounds, light text ── */
+  --rmp-status-active-text:    var(--rmp-success-300);
+  --rmp-status-active-bg:      #052e16;
+  --rmp-status-draft-text:     var(--rmp-gray-400);
+  --rmp-status-draft-bg:       var(--rmp-gray-800);
+  --rmp-status-review-text:    var(--rmp-warning-200);
+  --rmp-status-review-bg:      #451a03;
+  --rmp-status-rejected-text:  var(--rmp-danger-300);
+  --rmp-status-rejected-bg:    #450a0a;
+
+  /* ── Shadows — higher opacity for depth on dark ── */
+  --rmp-shadow-sm:  0 1px 2px rgba(0,0,0,0.30);
+  --rmp-shadow-md:  0 1px 3px rgba(0,0,0,0.40);
+  --rmp-shadow-lg:  0 4px 12px rgba(0,0,0,0.50);
+  --rmp-overlay-backdrop: rgba(0,0,0,0.70);
+
+  /* ── Focus — brighter ring on dark ── */
+  --rmp-focus-outline-color:  var(--rmp-primary-400);
+  --rmp-focus-ring:        0 0 0 2px var(--rmp-primary-400);
+  --rmp-focus-ring-offset: 0 0 0 2px var(--rmp-gray-900), 0 0 0 4px var(--rmp-primary-400);
+}
+
 /* ── Global reset ── */
 *,
 *::before,
@@ -164,13 +226,13 @@ body {
 
 /* ── Focus visibility — never remove browser outline unless replaced ── */
 :focus-visible {
-  outline: 2px solid var(--rmp-primary-500);
+  outline: 2px solid var(--rmp-focus-outline-color);
   outline-offset: 2px;
 }
 
 /* ── Link reset ── */
 a {
-  color: var(--rmp-primary-600);
+  color: var(--rmp-link-color);
   text-decoration: none;
 }
 a:hover {
@@ -189,7 +251,7 @@ a:hover {
   color: var(--rmp-text-secondary);
   font-size: var(--rmp-font-size-xs);
   text-align: left;
-  background: var(--rmp-gray-100);
+  background: var(--rmp-table-header-bg);
   border-bottom: 2px solid var(--rmp-border);
 }
 .rmp-table td {
@@ -198,5 +260,5 @@ a:hover {
   border-bottom: 1px solid var(--rmp-border);
 }
 .rmp-table tr:hover td {
-  background: var(--rmp-gray-50);
+  background: var(--rmp-table-row-hover-bg);
 }

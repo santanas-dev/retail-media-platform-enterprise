@@ -7,11 +7,11 @@ import {
   type ReactNode,
 } from "react";
 
-/** Supported theme identifiers. Initially only "light". */
-export type ThemeId = "light";
+/** Supported theme identifiers. */
+export type ThemeId = "light" | "dark";
 
-/** Available themes — extends to ["light", "dark"] in THEME-SWITCH-001B. */
-const AVAILABLE_THEMES: readonly ThemeId[] = ["light"] as const;
+/** Available themes for the ThemeProvider toggle. */
+const AVAILABLE_THEMES: readonly ThemeId[] = ["light", "dark"] as const;
 
 const DEFAULT_THEME: ThemeId = "light";
 const STORAGE_KEY = "rmp-admin-theme";

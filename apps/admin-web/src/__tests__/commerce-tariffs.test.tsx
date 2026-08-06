@@ -6,6 +6,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
+import { ThemeProvider } from "../theme/ThemeContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Layout from "../components/Layout";
 import CommerceTariffsPage from "../pages/CommerceTariffsPage";
@@ -82,7 +83,9 @@ function renderPage(perms?: string[]) {
   setupFetch(perms);
   const router = createRouter();
   return render(
-    <AuthProvider><RouterProvider router={router} /></AuthProvider>,
+    <ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>,
   );
 }
 

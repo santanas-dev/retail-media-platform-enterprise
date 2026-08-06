@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
+import { ThemeProvider } from "../theme/ThemeContext";
 import { useAuth } from "../auth/AuthContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Layout from "../components/Layout";
@@ -32,9 +33,11 @@ function createRouter() {
 function renderPage() {
   const router = createRouter();
   return render(
-    <AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
       <RouterProvider router={router} />
-    </AuthProvider>,
+    </AuthProvider>
+    </ThemeProvider>,
   );
 }
 

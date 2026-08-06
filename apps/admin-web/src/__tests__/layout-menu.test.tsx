@@ -5,6 +5,7 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
+import { ThemeProvider } from "../theme/ThemeContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Layout from "../components/Layout";
 
@@ -73,9 +74,11 @@ function renderLayout(user: TestUser) {
   mockSession(user);
   const router = createLayoutRouter();
   return render(
-    <AuthProvider>
-      <RouterProvider router={router} />
-    </AuthProvider>,
+    <ThemeProvider>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </ThemeProvider>,
   );
 }
 

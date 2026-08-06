@@ -6,6 +6,7 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
+import { ThemeProvider } from "../theme/ThemeContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Layout from "../components/Layout";
 import CampaignCreatePage from "../pages/CampaignCreatePage";
@@ -84,9 +85,11 @@ describe("CampaignCreatePage", () => {
 
     const router = createRouter("/campaigns/new");
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     await waitFor(() => {
@@ -129,9 +132,11 @@ describe("CampaignCreatePage", () => {
 
     const router = createRouter("/campaigns/new");
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     // Wait for form to appear
@@ -185,9 +190,11 @@ describe("CampaignCreatePage", () => {
 
     const router = createRouter("/campaigns/new");
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     await waitFor(() => {
@@ -270,9 +277,11 @@ describe("CampaignCreatePage", () => {
 
     const router = createRouter("/campaigns/new");
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     await waitFor(() => {
@@ -352,9 +361,11 @@ describe("CampaignCreatePage", () => {
 
     const router = createRouter("/campaigns/new");
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     await waitFor(() => {
@@ -418,9 +429,11 @@ describe("CampaignCreatePage", () => {
 
     const router = createRouter("/campaigns/new");
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     await waitFor(() => {
@@ -450,9 +463,11 @@ describe("CampaignCreatePage", () => {
 
     const router = createRouter("/campaigns/new");
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     await waitFor(() => {
@@ -475,7 +490,9 @@ describe("CampaignCreatePage", () => {
     });
 
     const router = createRouter("/campaigns/new");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Доступность инвентаря")).toBeTruthy(); });
     expect(screen.getByText("Проверить")).toBeTruthy();
@@ -495,7 +512,9 @@ describe("CampaignCreatePage", () => {
     });
 
     const router = createRouter("/campaigns/new");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Доступность инвентаря")).toBeTruthy(); });
     // Select surface and fill dates
@@ -527,7 +546,9 @@ describe("CampaignCreatePage", () => {
     });
 
     const router = createRouter("/campaigns/new");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Доступность инвентаря")).toBeTruthy(); });
     const surfaceSelect = document.getElementById("fc-surface") as HTMLSelectElement;
@@ -556,7 +577,9 @@ describe("CampaignCreatePage", () => {
     });
 
     const router = createRouter("/campaigns/new");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Доступность инвентаря")).toBeTruthy(); });
     const surfaceSelect = document.getElementById("fc-surface") as HTMLSelectElement;

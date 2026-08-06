@@ -6,6 +6,7 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
+import { ThemeProvider } from "../theme/ThemeContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Layout from "../components/Layout";
 import CampaignDetailPage from "../pages/CampaignDetailPage";
@@ -124,7 +125,9 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAllFetches();
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     expect(screen.getByText("Наполнение")).toBeTruthy();
@@ -140,7 +143,9 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAuthenticatedSession();
     mockAllFetches();
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
 
     expect(screen.getByTestId("tab-overview")).toBeTruthy();
@@ -158,7 +163,9 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAuthenticatedSession();
     mockAllFetches();
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
 
     const user = userEvent.setup();
@@ -177,7 +184,9 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAuthenticatedSession();
     mockAllFetches();
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
 
     const user = userEvent.setup();
@@ -195,7 +204,9 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAllFetches();
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
 
@@ -236,7 +247,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
@@ -267,7 +280,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
@@ -292,7 +307,9 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAllFetches();
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
@@ -317,7 +334,9 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAllFetches();
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
@@ -336,7 +355,9 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAllFetches();
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Наполнение"));
@@ -353,7 +374,9 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAllFetches();
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => {
       const btn = screen.getByText("Отправить на согласование") as HTMLButtonElement;
@@ -379,7 +402,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(async () => {
       const btn = screen.getByText("Отправить на согласование") as HTMLButtonElement;
@@ -412,7 +437,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => {
       // Active campaign shows the lifecycle banner, not generic read-only
@@ -430,7 +457,9 @@ describe("CampaignDetailPage — S-009e", () => {
   it("401 clears session", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Unauthorized"));
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
     await waitFor(() => { expect(screen.getByText("Login")).toBeTruthy(); });
   });
 
@@ -450,7 +479,9 @@ describe("CampaignDetailPage — S-009e", () => {
       });
 
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       await userEvent.setup().click(screen.getByText("Наполнение"));
 
@@ -478,7 +509,9 @@ describe("CampaignDetailPage — S-009e", () => {
       });
 
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       await userEvent.setup().click(screen.getByText("Наполнение"));
 
@@ -498,7 +531,9 @@ describe("CampaignDetailPage — S-009e", () => {
       });
 
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       await userEvent.setup().click(screen.getByText("Наполнение"));
 
@@ -531,7 +566,9 @@ describe("CampaignDetailPage — S-009e", () => {
       });
 
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       await userEvent.setup().click(screen.getByText("Наполнение"));
 
@@ -566,7 +603,9 @@ describe("CampaignDetailPage — S-009e", () => {
       mockAuthenticatedSession();
       mockAllFetches();
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
       await user.click(screen.getByText("Наполнение"));
@@ -590,7 +629,9 @@ describe("CampaignDetailPage — S-009e", () => {
       mockAuthenticatedSession();
       mockAllFetches();
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
       await user.click(screen.getByText("Наполнение"));
@@ -608,7 +649,9 @@ describe("CampaignDetailPage — S-009e", () => {
       mockAuthenticatedSession();
       mockAllFetches();
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
       await user.click(screen.getByText("Наполнение"));
@@ -623,7 +666,9 @@ describe("CampaignDetailPage — S-009e", () => {
       mockAuthenticatedSession();
       mockAllFetches();
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
       await user.click(screen.getByText("Наполнение"));
@@ -656,7 +701,9 @@ describe("CampaignDetailPage — S-009e", () => {
         },
       });
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
       await user.click(screen.getByText("Наполнение"));
@@ -683,7 +730,9 @@ describe("CampaignDetailPage — S-009e", () => {
         },
       });
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
       await user.click(screen.getByText("Наполнение"));
@@ -714,7 +763,9 @@ describe("CampaignDetailPage — S-009e", () => {
         ),
       });
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
       await user.click(screen.getByText("Наполнение"));
@@ -734,7 +785,9 @@ describe("CampaignDetailPage — S-009e", () => {
       mockAuthenticatedSession();
       mockAllFetches();
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
       await user.click(screen.getByText("Наполнение"));
@@ -751,7 +804,9 @@ describe("CampaignDetailPage — S-009e", () => {
       mockAuthenticatedSession();
       mockAllFetches();
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
       await user.click(screen.getByText("Наполнение"));
@@ -769,7 +824,9 @@ describe("CampaignDetailPage — S-009e", () => {
       mockAuthenticatedSession();
       mockAllFetches();
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
       await user.click(screen.getByText("Наполнение"));
@@ -788,7 +845,9 @@ describe("CampaignDetailPage — S-009e", () => {
       mockAuthenticatedSession();
       mockAllFetches();
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
       await user.click(screen.getByText("Наполнение"));
@@ -831,7 +890,9 @@ describe("CampaignDetailPage — S-009e", () => {
       });
 
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
       await user.click(screen.getByText("Наполнение"));
@@ -877,7 +938,9 @@ describe("CampaignDetailPage — S-009e", () => {
       });
 
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
       await user.click(screen.getByText("Наполнение"));
@@ -962,7 +1025,9 @@ describe("CampaignDetailPage — S-009e", () => {
       });
 
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
       await user.click(screen.getByText("Наполнение"));
@@ -1006,7 +1071,9 @@ describe("CampaignDetailPage — S-009e", () => {
       mockAuthenticatedSession();
       mockAllFetches();
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
 
       expect(screen.getByTestId("campaign-readiness-checklist")).toBeTruthy();
@@ -1017,7 +1084,9 @@ describe("CampaignDetailPage — S-009e", () => {
       mockAuthenticatedSession();
       mockAllFetches();
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
 
       // All three status indicators should show "—" (missing)
@@ -1042,7 +1111,9 @@ describe("CampaignDetailPage — S-009e", () => {
       mockAuthenticatedSession();
       mockAllFetches();
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
       const user = userEvent.setup();
 
@@ -1078,7 +1149,9 @@ describe("CampaignDetailPage — S-009e", () => {
       });
 
       const router = createRouter("/campaigns/c1");
-      render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+      render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
       await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
 
       // All statuses show ✅
@@ -1097,7 +1170,9 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAuthenticatedSession();
     mockAllFetches();
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
 
     const user = userEvent.setup();
@@ -1123,7 +1198,9 @@ describe("CampaignDetailPage — S-009e", () => {
       "creative-assets": () => Promise.resolve(new Response(JSON.stringify(SEED_CA), { status: 200 })),
     });
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
 
     const user = userEvent.setup();
@@ -1138,7 +1215,9 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAuthenticatedSession();
     mockAllFetches();
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
 
     // Draft with no flights → start filling button visible
@@ -1158,7 +1237,9 @@ describe("CampaignDetailPage — S-009e", () => {
       ],
       { initialEntries: [{ pathname: "/campaigns/c1", state: { guided: true } }] },
     );
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
     await waitFor(() => { expect(screen.getByText("← К списку кампаний")).toBeTruthy(); });
 
     // Banner visible via state
@@ -1180,7 +1261,9 @@ describe("CampaignDetailPage — S-009e", () => {
       ],
       { initialEntries: [{ pathname: "/campaigns/c1", state: { guided: true } }] },
     );
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
     await waitFor(() => { expect(screen.getByTestId("campaign-created-next-step")).toBeTruthy(); });
 
     // Click dismiss
@@ -1195,7 +1278,9 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAuthenticatedSession();
     mockAllFetches();
     const router = createRouter("/campaigns/c1?start=content");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
     await waitFor(() => { expect(screen.getByText("← К списку кампаний")).toBeTruthy(); });
 
     // Banner visible
@@ -1208,7 +1293,9 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAuthenticatedSession();
     mockAllFetches();
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
 
     // No banner without ?start
@@ -1219,7 +1306,9 @@ describe("CampaignDetailPage — S-009e", () => {
     mockAuthenticatedSession();
     mockAllFetches();
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
 
     expect(screen.getByTestId("tab-overview")).toBeTruthy();
@@ -1246,7 +1335,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
@@ -1270,7 +1361,9 @@ describe("CampaignDetailPage — S-009e", () => {
     }, ["campaigns.approve"]);
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => {
       expect(screen.getByText("Кампания ожидает согласования.")).toBeTruthy();
@@ -1287,7 +1380,9 @@ describe("CampaignDetailPage — S-009e", () => {
     }, ["campaigns.approve"]);
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Отклонить")).toBeTruthy(); });
 
@@ -1313,7 +1408,9 @@ describe("CampaignDetailPage — S-009e", () => {
     }, ["campaigns.approve"]);
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Согласовать")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Согласовать"));
@@ -1338,7 +1435,9 @@ describe("CampaignDetailPage — S-009e", () => {
     }, ["campaigns.approve"]);
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Отклонить")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Отклонить"));
@@ -1374,7 +1473,9 @@ describe("CampaignDetailPage — S-009e", () => {
     }, ["campaigns.approve"]);
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Отклонить")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Отклонить"));
@@ -1413,7 +1514,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Согласовать")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Согласовать"));
@@ -1432,7 +1535,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => {
       // Should show the pending message with no-rights note
@@ -1454,7 +1559,9 @@ describe("CampaignDetailPage — S-009e", () => {
     }, ["campaigns.manage"]);
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => {
       expect(screen.getByText("Кампания согласована и готова к запуску.")).toBeTruthy();
@@ -1474,7 +1581,9 @@ describe("CampaignDetailPage — S-009e", () => {
     }, ["campaigns.manage"]);
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Активировать")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Активировать"));
@@ -1492,7 +1601,9 @@ describe("CampaignDetailPage — S-009e", () => {
     }, ["campaigns.manage"]);
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => {
       expect(screen.getByText("Кампания активна — показы идут.")).toBeTruthy();
@@ -1512,7 +1623,9 @@ describe("CampaignDetailPage — S-009e", () => {
     }, ["campaigns.manage"]);
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Приостановить")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Приостановить"));
@@ -1530,7 +1643,9 @@ describe("CampaignDetailPage — S-009e", () => {
     }); // no campaigns.manage → default /me has no permissions
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => {
       expect(screen.getByText(/Кампания согласована/)).toBeTruthy();
@@ -1559,7 +1674,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Активировать")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Активировать"));
@@ -1577,7 +1694,9 @@ describe("CampaignDetailPage — S-009e", () => {
     }, ["campaigns.manage"]);
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     expect(screen.queryByText("Активировать")).toBeNull();
@@ -1606,7 +1725,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Дашборд"));
@@ -1635,7 +1756,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Дашборд"));
@@ -1663,7 +1786,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Дашборд"));
@@ -1689,7 +1814,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Дашборд"));
@@ -1708,7 +1835,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Дашборд"));
@@ -1725,7 +1854,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Дашборд"));
@@ -1754,7 +1885,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
@@ -1784,7 +1917,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
@@ -1809,7 +1944,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
@@ -1840,7 +1977,9 @@ describe("CampaignDetailPage — S-009e", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     const user = userEvent.setup();
@@ -1919,7 +2058,9 @@ describe("CampaignDetailPage — S-090 Dashboard", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Дашборд"));
@@ -1941,7 +2082,9 @@ describe("CampaignDetailPage — S-090 Dashboard", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Дашборд"));
@@ -1962,7 +2105,9 @@ describe("CampaignDetailPage — S-090 Dashboard", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Дашборд"));
@@ -1981,7 +2126,9 @@ describe("CampaignDetailPage — S-090 Dashboard", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Дашборд"));
@@ -2004,7 +2151,9 @@ describe("CampaignDetailPage — S-090 Dashboard", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Дашборд"));
@@ -2026,7 +2175,9 @@ describe("CampaignDetailPage — S-090 Dashboard", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Дашборд"));
@@ -2046,7 +2197,9 @@ describe("CampaignDetailPage — S-090 Dashboard", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Дашборд"));
@@ -2066,7 +2219,9 @@ describe("CampaignDetailPage — S-090 Dashboard", () => {
     });
 
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Обзор")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByText("Дашборд"));
@@ -2102,7 +2257,9 @@ describe("CampaignDetailPage — S-089 Simulation", () => {
       "campaign-creatives": () => Promise.resolve(new Response(JSON.stringify(SIM_C), { status: 200 })),
     });
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
     await waitFor(() => { expect(screen.getByTestId("simulate-btn")).toBeTruthy(); });
   });
 
@@ -2115,7 +2272,9 @@ describe("CampaignDetailPage — S-089 Simulation", () => {
       "/inventory/simulate": () => Promise.resolve(new Response(JSON.stringify(SIM_RESULT), { status: 200 })),
     });
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
     await waitFor(() => { expect(screen.getByTestId("simulate-btn")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByTestId("simulate-btn"));
     await waitFor(() => {
@@ -2136,7 +2295,9 @@ describe("CampaignDetailPage — S-089 Simulation", () => {
       "/inventory/simulate": () => Promise.resolve(new Response(JSON.stringify(conflictResult), { status: 200 })),
     });
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
     await waitFor(() => { expect(screen.getByTestId("simulate-btn")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByTestId("simulate-btn"));
     await waitFor(() => {
@@ -2154,7 +2315,9 @@ describe("CampaignDetailPage — S-089 Simulation", () => {
       "/inventory/simulate": () => Promise.resolve(new Response(JSON.stringify({ detail: "Server error" }), { status: 500 })),
     });
     const router = createRouter("/campaigns/c1");
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
     await waitFor(() => { expect(screen.getByTestId("simulate-btn")).toBeTruthy(); });
     await userEvent.setup().click(screen.getByTestId("simulate-btn"));
     await waitFor(() => {

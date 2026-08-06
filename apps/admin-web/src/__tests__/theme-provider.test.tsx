@@ -15,10 +15,16 @@ function ThemeConsumer() {
       >
         Set Light
       </button>
-      {/* @ts-expect-error — test invalid theme call */}
+      <button
+        data-testid="set-dark"
+        onClick={() => setTheme("dark")}
+      >
+        Set Dark
+      </button>
+      {/* test invalid theme call */}
       <button
         data-testid="set-invalid"
-        onClick={() => setTheme("dark" as ThemeId)}
+        onClick={() => setTheme("purple" as ThemeId)}
       >
         Set Invalid
       </button>
@@ -37,7 +43,6 @@ function renderProvider() {
 describe("ThemeProvider", () => {
   beforeEach(() => {
     localStorage.clear();
-    // Reset data-theme to clean state
     delete document.documentElement.dataset.theme;
   });
 
@@ -56,20 +61,27 @@ describe("ThemeProvider", () => {
     expect(screen.getByTestId("theme-value").textContent).toBe("light");
   });
 
-  it("exposes availableThemes", () => {
+  it("exposes availableThemes with light and dark", () => {
     renderProvider();
-    expect(screen.getByTestId("available-count").textContent).toBe("1");
+    expect(screen.getByTestId("available-count").textContent).toBe("2");
   });
 
-  it("reads theme from localStorage on mount", () => {
+  it("reads persisted light theme from localStorage on mount", () => {
     localStorage.setItem("rmp-admin-theme", "light");
     renderProvider();
     expect(screen.getByTestId("theme-value").textContent).toBe("light");
     expect(document.documentElement.dataset.theme).toBe("light");
   });
 
-  it("falls back to light for invalid stored theme", () => {
+  it("reads persisted dark theme from localStorage on mount", () => {
     localStorage.setItem("rmp-admin-theme", "dark");
+    renderProvider();
+    expect(screen.getByTestId("theme-value").textContent).toBe("dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
+  it("falls back to light for invalid stored theme", () => {
+    localStorage.setItem("rmp-admin-theme", "purple");
     renderProvider();
     expect(screen.getByTestId("theme-value").textContent).toBe("light");
     expect(document.documentElement.dataset.theme).toBe("light");
@@ -86,12 +98,59 @@ describe("ThemeProvider", () => {
     expect(screen.getByTestId("theme-value").textContent).toBe("light");
   });
 
-  it("persists theme to localStorage on setTheme", () => {
+  it("persists light theme to localStorage on setTheme", () => {
     renderProvider();
     act(() => {
       screen.getByTestId("set-light").click();
     });
     expect(localStorage.getItem("rmp-admin-theme")).toBe("light");
+  });
+
+  it("persists dark theme to localStorage on setTheme", () => {
+    renderProvider();
+    act(() => {
+      screen.getByTestId("set-dark").click();
+    });
+    expect(localStorage.getItem("rmp-admin-theme")).toBe("dark");
+    expect(screen.getByTestId("theme-value").textContent).toBe("dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
+  it("toggles dark → light → dark correctly", () => {
+    renderProvider();
+    act(() => {
+      screen.getByTestId("set-dark").click();
+    });
+    expect(screen.getByTestId("theme-value").textContent).toBe("dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+
+    act(() => {
+      screen.getByTestId("set-light").click();
+    });
+    expect(screen.getByTestId("theme-value").textContent).toBe("light");
+    expect(document.documentElement.dataset.theme).toBe("light");
+
+    act(() => {
+      screen.getByTestId("set-dark").click();
+    });
+    expect(screen.getByTestId("theme-value").textContent).toBe("dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
+  it("persists dark across remount (simulated reload)", () => {
+    localStorage.setItem("rmp-admin-theme", "dark");
+    const { unmount } = renderProvider();
+    expect(screen.getByTestId("theme-value").textContent).toBe("dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+
+    // Simulate page reload — unmount and remount with localStorage still set
+    unmount();
+    delete document.documentElement.dataset.theme;
+
+    renderProvider();
+    expect(screen.getByTestId("theme-value").textContent).toBe("dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(localStorage.getItem("rmp-admin-theme")).toBe("dark");
   });
 
   it("ignores setTheme call with invalid theme", () => {
@@ -101,12 +160,9 @@ describe("ThemeProvider", () => {
     });
     // Theme should still be light, not changed
     expect(screen.getByTestId("theme-value").textContent).toBe("light");
-    // Guard rejected the write, so localStorage remains whatever it was
-    // (empty in this test — ThemeProvider only writes on explicit setTheme)
   });
 
   it("throws when useTheme is used outside provider", () => {
-    // Suppress console.error for expected error boundary
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(() => render(<ThemeConsumer />)).toThrow(
       "useTheme must be used within ThemeProvider",

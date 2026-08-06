@@ -6,6 +6,7 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
+import { ThemeProvider } from "../theme/ThemeContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Layout from "../components/Layout";
 import CampaignListPage from "../pages/CampaignListPage";
@@ -182,9 +183,11 @@ describe("CampaignListPage", () => {
 
     const router = createRouter("/campaigns");
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     await waitFor(() => {
@@ -226,9 +229,11 @@ describe("CampaignListPage", () => {
 
     const router = createRouter("/campaigns");
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     await waitFor(() => {
@@ -276,9 +281,11 @@ describe("CampaignListPage", () => {
 
     const router = createRouter("/campaigns");
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     await waitFor(() => {
@@ -308,9 +315,11 @@ describe("CampaignListPage", () => {
 
     const router = createRouter("/campaigns");
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     await waitFor(() => {
@@ -369,9 +378,11 @@ describe("CampaignListPage", () => {
 
     const router = createRouter("/campaigns");
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     // Wait for the list to load
@@ -417,9 +428,11 @@ describe("CampaignListPage", () => {
 
     const router = createRouter("/campaigns");
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     await waitFor(() => {
@@ -457,9 +470,11 @@ describe("CampaignListPage", () => {
 
     const router = createRouter("/campaigns");
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     await waitFor(() => {
