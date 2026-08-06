@@ -511,6 +511,16 @@ metadata-only creative error.
 - Registry: 48/57 reachable, 9 blocked (non-commerce).
 - Next → defined by roadmap.
 
+**STYLE-TOKENS-001A0 ✅** — inventory + semantic token mapping baseline.
+- Raw hex: 61 unique, 594 occurrences across 24 files (pages + components).
+- Var() usage: 483 across 53 unique tokens — partially tokenized.
+- tokens.css: already defines ALL needed hex values as --rmp-*.
+- Gap: components use raw #hex instead of var(--rmp-*). No new tokens needed.
+- Mapping: 95%+ hex→semantic coverage. Ambiguous: #fff, low outliers.
+- Codemod plan (A1): mechanical sed → vitest → build → UI-smoke → visual diff.
+- Docs: docs/product/style-tokens-inventory.md.
+- Next → STYLE-TOKENS-001A1.
+
 **SELF-LOGIN-CI-001-FU ✅** — self__login returned to blocking CI, tamper-proofed.
 
 **AUDIT-REMEDIATION-001-CLOSURE ✅** — canonical closure of independent audit remediation (A→B→C).
