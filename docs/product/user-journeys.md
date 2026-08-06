@@ -696,6 +696,24 @@ See: `docs/architecture/epic-l-licensing.md`.
 - Operator walkthrough: PENDING.
 - Next → A3b: admin UI for order CRUD + status management.
 
+**A3b STATUS: ✅ admin order UI done** (SHA 43b09e3, CI #578 green).
+- CommerceOrdersTab: order list + create + detail + status/payment management.
+- Create order: org_id + tariff_id + surface_id + dates → backend quote → lines + total.
+- Status transitions: draft→offered→booked (UI proof). Payment: select → update persistence.
+- Vitest: 8/8, admin-web: 329/329.
+- UI-smoke: test_uismoke__commerce__order_create (create + offered + booked + payment + reload).
+- Feature-registry: +4 commerce → reachable (47/57).
+- Operator walkthrough: PENDING.
+- Next → A3c: commerce.order_close smoke proof.
+
+**A3c STATUS: ✅ order_close smoke proof** (SHA 40d28c9, CI #579 green).
+- UI-smoke extended: booked→confirmed→closed + reload persistence + terminal check.
+- Closed orders have no transition buttons — smoke-verified.
+- Vitest: +2 close tests, admin-web: 331/331.
+- Feature-registry: commerce.order_close → reachable (48/57). All 7 commerce features reachable.
+- Operator walkthrough: PENDING.
+- Next → Commerce Contour 2 MVP closed.
+
 | # | Decision | Approved value | Status |
 |---|----------|---------------|--------|
 | 1 | billing_unit | `surface_day` — рассчитывается до player/PoP, совместим с бронированием инвентаря до показа | ✅ approved |
@@ -713,6 +731,11 @@ See: `docs/architecture/epic-l-licensing.md`.
 - No retroactive repricing (завершённые заказы не пересчитываются)
 - No Contour 1 / EPIC-L merge
 - No feature statuses reachable until A1 implementation
+
+---
+
+**Commerce Contour 2 MVP closed.** All 7 commerce feature IDs reachable (48/57 total registry).
+Operator walkthrough PENDING. UUID text inputs → selectors deferred to UX FU.
 
 ---
 
@@ -769,14 +792,14 @@ A0 — canon intake + owner decisions (этот этап) ✅
 
 A1 unblocked by owner on 2026-07-31. A2–A6 blocked pending A1 completion.
 
-### Feature IDs (blocked)
+### Feature IDs (all reachable)
 
 | ID | Status |
 |----|--------|
-| commerce.order_create | blocked |
-| commerce.tariff_manage | blocked |
-| commerce.offer_generate | blocked |
-| commerce.booking | blocked |
-| commerce.payment_status | blocked |
-| commerce.order_close | blocked |
-| commerce.price_list_manage | blocked |
+| commerce.order_create | reachable |
+| commerce.tariff_manage | reachable |
+| commerce.offer_generate | reachable |
+| commerce.booking | reachable |
+| commerce.payment_status | reachable |
+| commerce.order_close | reachable |
+| commerce.price_list_manage | reachable |

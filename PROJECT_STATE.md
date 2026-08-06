@@ -496,8 +496,19 @@ metadata-only creative error.
 - Smoke: booked→confirmed→closed + reload persistence + terminal (no transition buttons).
 - Vitest: 2 new (close button for confirmed, closed status in list). Admin-web: 331/331.
 - Feature-registry: commerce.order_close → reachable (48/57, +1).
-- Commerce features: all 5 now reachable (order_create, offer_generate, booking, payment_status, order_close).
+- Commerce features: all 7 now reachable (tariff_manage, price_list_manage, order_create, offer_generate, booking, payment_status, order_close).
 - Operator walkthrough: PENDING.
+- Next → defined by roadmap.
+
+**COMMERCE-CONTUR2-001-CLOSURE 🏁** — Commerce Contour 2 MVP canonically closed.
+- All 7 commerce feature IDs reachable, CI #580 green, guard 0.
+- Remaining debts (non-blocking):
+  - UUID/text inputs for org/tariff/surface → UX FU (selectors/autocomplete).
+  - No discounts in MVP (per owner decision #4).
+  - Payment is status_only, no provider (per owner decision #2).
+  - Operator walkthrough PENDING across all commerce features.
+- Commerce Contour 2 remains separate from EPIC-L licensing.
+- Registry: 48/57 reachable, 9 blocked (non-commerce).
 - Next → defined by roadmap.
 
 **SELF-LOGIN-CI-001-FU ✅** — self__login returned to blocking CI, tamper-proofed.

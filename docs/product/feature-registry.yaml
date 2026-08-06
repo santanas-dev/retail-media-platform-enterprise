@@ -694,7 +694,7 @@ features:
     gap: "EPIC-L canon intake only. No implementation."
 
   # ═══════════════════════════════════════════════════════════════
-  # COMMERCE-CONTUR2 — Commercial inventory sales engine (blocked)
+  # COMMERCE-CONTUR2 — Commercial inventory sales engine (MVP closed)
   # ═══════════════════════════════════════════════════════════════
 
   - id: commerce.order_create
@@ -768,11 +768,11 @@ features:
     name: Управление версиями прайс-листов
     route: n/a
     path: n/a
-    smoke: n/a
+    smoke: test_uismoke__commerce__tariff_manage
     priority: P1
     roles: [system_admin, campaign_manager]
-    status: blocked
-    gap: "COMMERCE-CONTUR2-001A0 canon intake only. Owner approval required before A1."
+    status: reachable
+    note: "COMMERCE-CONTUR2-001A3a — proven via shared tariff smoke (price items CRUD)."
 
   # ═══════════════════════════════════════════════════════════════
   # Summary counts (auto-generated — do not edit manually)
