@@ -544,6 +544,20 @@ metadata-only creative error.
 - Screenshots: dark campaigns, campaign-detail, advertisers, users, commerce-tariffs + light comparison.
 - Operator walkthrough: PENDING.
 
+**STYLE-TOKENS-001-CLOSURE ✅** — Canonical close of design tokens + theme switch workstream.
+- CI: `#31089201732` — `25b5249` ✅.
+- Final state:
+  - Raw hex allowlist: 6 (ErrorBoundary.tsx excluded, CampaignDetailPage.tsx:1730 #52525b, +4 rgba(0,0,0,X) structural shadows)
+  - Style guard: blocking in CI (`check-style-tokens.py --strict`)
+  - Dark theme: available via ☀️/🌙 toggle, persists across reload
+  - `system.theme_switch`: reachable in feature-registry, UI-smoke green
+  - Operator walkthrough: PENDING
+- Remaining debt (non-blocking):
+  - advertiser-web not tokenized — raw hex still present
+  - Optional client-branding theme (operator-customizable palette)
+  - 6-entry allowlist remains intentional (structural + single-use)
+- Phases: A0 inventory → A1a/A1b/A1c migration (594→6) → THEME-GUARD-001 → THEME-SWITCH-001A → THEME-SWITCH-001B → closure.
+
 **SELF-LOGIN-CI-001-FU ✅** — self__login returned to blocking CI, tamper-proofed.
 
 **AUDIT-REMEDIATION-001-CLOSURE ✅** — canonical closure of independent audit remediation (A→B→C).

@@ -438,3 +438,51 @@ Zero. `<html data-theme="light">` resolves the same tokens.css values as bare `:
 ### Operator walkthrough
 
 PENDING — requires human operator to verify dark mode in DEV portal.
+
+---
+
+## STYLE-TOKENS-001-CLOSURE — Workstream Canonical Close
+
+**Date:** 2026-08-06
+**CI:** `#31089201732` — `25b5249` ✅
+
+### Final State
+
+| Metric | Value |
+|--------|-------|
+| Raw hex (pages/components) | 6 (allowlisted) |
+| Unique hex | 6 |
+| var() references | ~1,054 |
+| Design tokens defined | 69 (30 semantic + 39 scale) |
+| Style guard | Blocking in CI (`check-style-tokens.py --strict`) |
+| Dark theme | Available via ☀️/🌙 toggle, persists across reload |
+| `system.theme_switch` | Reachable (registry + UI-smoke) |
+| Operator walkthrough | PENDING |
+
+### Allowlist (6 entries, intentional)
+
+1. `ErrorBoundary.tsx` — full file exclusion (pre-CSS fallback, must work without tokens)
+2. `CampaignDetailPage.tsx:1730` — `#52525b` (single-use, no semantic group)
+3. `rgba(0,0,0,0.05)` — `--rmp-shadow-sm` (structural, defined in tokens.css)
+4. `rgba(0,0,0,0.10)` — `--rmp-shadow-md` (structural)
+5. `rgba(0,0,0,0.10)` — `--rmp-shadow-lg` (structural)
+6. `rgba(0,0,0,0.4)` — `--rmp-overlay-backdrop` (structural)
+
+### Remaining Debt (non-blocking)
+
+- **advertiser-web** — not tokenized (raw hex still present in advertiser portal)
+- **Client-branding theme** — optional operator-customizable palette (e.g. swap primary from blue to brand color)
+- **Operator walkthrough** — dark mode not yet verified by human in DEV portal
+
+### Phase History
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| A0 | Inventory baseline (594 raw hex, 61 unique) | ✅ |
+| A1a | Unambiguous hex migration (15 mappings) | ✅ |
+| A1b | #fff context-aware + low-count migration | ✅ |
+| A1c | Allowlist reduction (add 15 tokens, 30→69) | ✅ |
+| GUARD-001 | Blocking CI guard + tamper proof | ✅ |
+| SWITCH-001A | ThemeProvider + data-theme infrastructure | ✅ |
+| SWITCH-001B | Dark theme tokens + accessible toggle + UI-smoke | ✅ |
+| CLOSURE | Canonical close (this document) | ✅ |
