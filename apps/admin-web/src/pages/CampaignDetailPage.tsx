@@ -669,24 +669,24 @@ export default function CampaignDetailPage() {
         {/* ── Draft: submit for approval ── */}
         {isDraft && (
           <>
-          <div data-testid="campaign-readiness-checklist" style={{ marginBottom: "1rem", padding: "0.75rem", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0" }}>
-            <div style={{ fontWeight: 600, fontSize: "0.85rem", marginBottom: "0.5rem", color: "#334155" }}>Готовность к отправке</div>
+          <div data-testid="campaign-readiness-checklist" style={{ marginBottom: "1rem", padding: "0.75rem", background: "var(--rmp-bg-page)", borderRadius: 6, border: "1px solid var(--rmp-border)" }}>
+            <div style={{ fontWeight: 600, fontSize: "0.85rem", marginBottom: "0.5rem", color: "var(--rmp-gray-700)" }}>Готовность к отправке</div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0", fontSize: "0.8rem" }}>
-              <span data-testid="readiness-flight-status" style={{ fontWeight: 500, color: flights.length > 0 ? "#16a34a" : "#94a3b8", minWidth: "1.2rem" }}>{flights.length > 0 ? "✅" : "—"}</span>
-              <span style={{ flex: 1, color: flights.length > 0 ? "#166534" : "#64748b" }}>Рейс (flight){flights.length > 0 ? ` — ${flights.length} шт.` : ""}</span>
-              {flights.length === 0 && <button type="button" data-testid="readiness-flight-action" onClick={() => scrollToSection(flightsSectionRef)} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Добавить рейс →</button>}
+              <span data-testid="readiness-flight-status" style={{ fontWeight: 500, color: flights.length > 0 ? "var(--rmp-success-600)" : "var(--rmp-text-muted)", minWidth: "1.2rem" }}>{flights.length > 0 ? "✅" : "—"}</span>
+              <span style={{ flex: 1, color: flights.length > 0 ? "var(--rmp-success-800)" : "var(--rmp-text-secondary)" }}>Рейс (flight){flights.length > 0 ? ` — ${flights.length} шт.` : ""}</span>
+              {flights.length === 0 && <button type="button" data-testid="readiness-flight-action" onClick={() => scrollToSection(flightsSectionRef)} style={{ background: "none", border: "none", color: "var(--rmp-primary-500)", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Добавить рейс →</button>}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0", fontSize: "0.8rem" }}>
-              <span data-testid="readiness-placement-status" style={{ fontWeight: 500, color: placements.length > 0 ? "#16a34a" : "#94a3b8", minWidth: "1.2rem" }}>{placements.length > 0 ? "✅" : "—"}</span>
-              <span style={{ flex: 1, color: placements.length > 0 ? "#166534" : "#64748b" }}>Размещение (placement){placements.length > 0 ? ` — ${placements.length} шт.` : ""}</span>
-              {placements.length === 0 && <button type="button" data-testid="readiness-placement-action" onClick={() => scrollToSection(placementsSectionRef)} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Добавить размещение →</button>}
+              <span data-testid="readiness-placement-status" style={{ fontWeight: 500, color: placements.length > 0 ? "var(--rmp-success-600)" : "var(--rmp-text-muted)", minWidth: "1.2rem" }}>{placements.length > 0 ? "✅" : "—"}</span>
+              <span style={{ flex: 1, color: placements.length > 0 ? "var(--rmp-success-800)" : "var(--rmp-text-secondary)" }}>Размещение (placement){placements.length > 0 ? ` — ${placements.length} шт.` : ""}</span>
+              {placements.length === 0 && <button type="button" data-testid="readiness-placement-action" onClick={() => scrollToSection(placementsSectionRef)} style={{ background: "none", border: "none", color: "var(--rmp-primary-500)", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Добавить размещение →</button>}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0", fontSize: "0.8rem" }}>
-              <span data-testid="readiness-creative-status" style={{ fontWeight: 500, color: deliverableCount > 0 ? "#16a34a" : "#94a3b8", minWidth: "1.2rem" }}>{deliverableCount > 0 ? "✅" : "—"}</span>
-              <span style={{ flex: 1, color: deliverableCount > 0 ? "#166534" : "#64748b" }}>Креатив с файлом{deliverableCount > 0 ? ` — ${deliverableCount} шт.` : ""}</span>
-              {deliverableCount === 0 && <button type="button" data-testid="readiness-creative-action" onClick={() => scrollToSection(creativesSectionRef)} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Загрузить креатив →</button>}
+              <span data-testid="readiness-creative-status" style={{ fontWeight: 500, color: deliverableCount > 0 ? "var(--rmp-success-600)" : "var(--rmp-text-muted)", minWidth: "1.2rem" }}>{deliverableCount > 0 ? "✅" : "—"}</span>
+              <span style={{ flex: 1, color: deliverableCount > 0 ? "var(--rmp-success-800)" : "var(--rmp-text-secondary)" }}>Креатив с файлом{deliverableCount > 0 ? ` — ${deliverableCount} шт.` : ""}</span>
+              {deliverableCount === 0 && <button type="button" data-testid="readiness-creative-action" onClick={() => scrollToSection(creativesSectionRef)} style={{ background: "none", border: "none", color: "var(--rmp-primary-500)", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>Загрузить креатив →</button>}
             </div>
-            <div data-testid="readiness-submit-status" style={{ marginTop: "0.5rem", padding: "0.5rem", borderRadius: 4, fontSize: "0.8rem", background: allReady ? "#f0fdf4" : "#fff7ed", color: allReady ? "#166534" : "#9a3412", border: allReady ? "1px solid #86efac" : "1px solid #fdba74" }}>
+            <div data-testid="readiness-submit-status" style={{ marginTop: "0.5rem", padding: "0.5rem", borderRadius: 4, fontSize: "0.8rem", background: allReady ? "var(--rmp-success-50)" : "#fff7ed", color: allReady ? "var(--rmp-success-800)" : "#9a3412", border: allReady ? "1px solid #86efac" : "1px solid #fdba74" }}>
               {allReady ? "✅ Можно отправить на согласование — все условия выполнены." : `Осталось: ${missingItems.join(", ")}.`}
             </div>
           </div>
@@ -718,7 +718,7 @@ export default function CampaignDetailPage() {
               </button>
             </div>
             {approvalError && (
-              <div data-testid="campaign-submit-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
+              <div data-testid="campaign-submit-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "var(--rmp-danger-600)" }}>{approvalError}</div>
             )}
           </div>
           {/* CAMPAIGN-UX-002D: start filling CTA for incomplete draft */}
@@ -726,7 +726,7 @@ export default function CampaignDetailPage() {
             <div style={{ marginBottom: "1rem" }}>
               <button type="button" data-testid="campaign-start-filling-btn"
                 onClick={() => scrollToSection(flightsSectionRef)}
-                style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 4, padding: "0.5rem 1rem", fontSize: "0.85rem", cursor: "pointer", fontWeight: 500 }}>
+                style={{ background: "var(--rmp-primary-500)", color: "#fff", border: "none", borderRadius: 4, padding: "0.5rem 1rem", fontSize: "0.85rem", cursor: "pointer", fontWeight: 500 }}>
                 Начать наполнение →
               </button>
             </div>
@@ -740,11 +740,11 @@ export default function CampaignDetailPage() {
             <strong data-testid="simulation-verdict" style={{ color: simulationResult.overall_fit ? "var(--rmp-success-600)" : "var(--rmp-danger-600)" }}>
               {simulationResult.overall_fit ? "✅ Кампания помещается" : "❌ Кампания не помещается"}
             </strong>
-            <span style={{ marginLeft: "0.5rem", color: "#64748b" }}>
+            <span style={{ marginLeft: "0.5rem", color: "var(--rmp-text-secondary)" }}>
               (<span data-testid="simulation-blocking-count">{simulationResult.blocking_count}</span> блок., <span data-testid="simulation-warning-count">{simulationResult.warning_count}</span> пред.)
             </span>
             {simulationResult.placements.map((p, i) => (
-              <div key={i} data-testid={`simulation-placement-${i}`} style={{ marginTop: "0.4rem", padding: "0.35rem", background: p.fit ? "#f0fdf4" : "#fef2f2", borderRadius: 4 }}>
+              <div key={i} data-testid={`simulation-placement-${i}`} style={{ marginTop: "0.4rem", padding: "0.35rem", background: p.fit ? "var(--rmp-success-50)" : "var(--rmp-danger-50)", borderRadius: 4 }}>
                 <span style={{ fontWeight: 600 }}>{p.surface_code || p.surface_id}</span>
                 {" "}— fill <span data-testid={`simulation-slot-fill-${i}`}>{p.slot_fill_percent}</span>%
                 (<span data-testid={`simulation-total-requested-${i}`}>{p.total_requested}</span>/<span data-testid={`simulation-total-available-${i}`}>{p.total_available}</span>)
@@ -756,7 +756,7 @@ export default function CampaignDetailPage() {
                         {c.message}
                       </li>
                     ))}
-                    {p.conflicts.length > 3 && <li style={{ color: "#64748b" }}>...и ещё {p.conflicts.length - 3}</li>}
+                    {p.conflicts.length > 3 && <li style={{ color: "var(--rmp-text-secondary)" }}>...и ещё {p.conflicts.length - 3}</li>}
                   </ul>
                 )}
               </div>
@@ -764,14 +764,14 @@ export default function CampaignDetailPage() {
           </div>
         )}
         {simulationError && (
-          <div data-testid="simulation-error" style={{ color: "#dc2626", fontSize: "0.8rem", marginBottom: "1rem" }}>{simulationError}</div>
+          <div data-testid="simulation-error" style={{ color: "var(--rmp-danger-600)", fontSize: "0.8rem", marginBottom: "1rem" }}>{simulationError}</div>
         )}
 
         {/* ── Pending approval: approve / reject or read-only ── */}
         {isPendingApproval && (
-          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasApprovePerm ? "#fffbeb" : "#f8fafc", borderRadius: 6, border: hasApprovePerm ? "1px solid #fde68a" : "1px solid #e2e8f0" }}>
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasApprovePerm ? "#fffbeb" : "var(--rmp-bg-page)", borderRadius: 6, border: hasApprovePerm ? "1px solid #fde68a" : "1px solid var(--rmp-border)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-              <div style={{ flex: 1, fontSize: "0.825rem", color: hasApprovePerm ? "#92400e" : "#64748b" }}>
+              <div style={{ flex: 1, fontSize: "0.825rem", color: hasApprovePerm ? "#92400e" : "var(--rmp-text-secondary)" }}>
                 Кампания ожидает согласования.
                 {!hasApprovePerm && " У вас нет прав на согласование."}
               </div>
@@ -801,7 +801,7 @@ export default function CampaignDetailPage() {
                   <button
                     type="button"
                     data-testid="campaign-reject-btn"
-                    style={{ ...css.cancelBtn, borderColor: "#dc2626", color: "#dc2626" }}
+                    style={{ ...css.cancelBtn, borderColor: "var(--rmp-danger-600)", color: "var(--rmp-danger-600)" }}
                     disabled={approvalSubmitting}
                     onClick={() => { setShowReject(true); setRejectReason(""); setApprovalError(null); }}
                   >
@@ -811,7 +811,7 @@ export default function CampaignDetailPage() {
               )}
             </div>
             {approvalError && (
-              <div data-testid="campaign-approval-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
+              <div data-testid="campaign-approval-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "var(--rmp-danger-600)" }}>{approvalError}</div>
             )}
             {/* Reject reason dialog */}
             {hasApprovePerm && showReject && (
@@ -832,7 +832,7 @@ export default function CampaignDetailPage() {
                   <button
                     type="button"
                     data-testid="campaign-reject-confirm"
-                    style={{ ...css.primaryBtn, background: "#dc2626" }}
+                    style={{ ...css.primaryBtn, background: "var(--rmp-danger-600)" }}
                     disabled={!rejectReason.trim() || approvalSubmitting}
                     onClick={async () => {
                       if (!rejectReason.trim()) return;
@@ -868,17 +868,17 @@ export default function CampaignDetailPage() {
 
         {/* ── Rejected: show reason ── */}
         {lastRejectionReason && (
-          <div data-testid="campaign-rejection-reason-display" style={{ marginBottom: "1rem", padding: "0.75rem", background: "#fef2f2", borderRadius: 6, border: "1px solid #fecaca" }}>
-            <div style={{ fontSize: "0.8rem", fontWeight: 500, color: "#991b1b", marginBottom: "0.25rem" }}>Причина отклонения:</div>
+          <div data-testid="campaign-rejection-reason-display" style={{ marginBottom: "1rem", padding: "0.75rem", background: "var(--rmp-danger-50)", borderRadius: 6, border: "1px solid #fecaca" }}>
+            <div style={{ fontSize: "0.8rem", fontWeight: 500, color: "var(--rmp-danger-800)", marginBottom: "0.25rem" }}>Причина отклонения:</div>
             <div style={{ fontSize: "0.825rem", color: "#7f1d1d" }}>{lastRejectionReason}</div>
           </div>
         )}
 
         {/* ── Approved: activate ── */}
         {isApproved && (
-          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasManagePerm ? "#f0fdf4" : "#f8fafc", borderRadius: 6, border: hasManagePerm ? "1px solid #bbf7d0" : "1px solid #e2e8f0" }}>
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasManagePerm ? "var(--rmp-success-50)" : "var(--rmp-bg-page)", borderRadius: 6, border: hasManagePerm ? "1px solid #bbf7d0" : "1px solid var(--rmp-border)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-              <div style={{ flex: 1, fontSize: "0.825rem", color: hasManagePerm ? "#166534" : "#64748b" }}>
+              <div style={{ flex: 1, fontSize: "0.825rem", color: hasManagePerm ? "var(--rmp-success-800)" : "var(--rmp-text-secondary)" }}>
                 Кампания согласована и готова к запуску.
                 {!hasManagePerm && " У вас нет прав на управление кампанией."}
               </div>
@@ -907,16 +907,16 @@ export default function CampaignDetailPage() {
               )}
             </div>
             {approvalError && (
-              <div data-testid="campaign-lifecycle-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
+              <div data-testid="campaign-lifecycle-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "var(--rmp-danger-600)" }}>{approvalError}</div>
             )}
           </div>
         )}
 
         {/* ── Active: pause ── */}
         {isActive && (
-          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasManagePerm ? "#f0fdf4" : "#f8fafc", borderRadius: 6, border: hasManagePerm ? "1px solid #bbf7d0" : "1px solid #e2e8f0" }}>
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: hasManagePerm ? "var(--rmp-success-50)" : "var(--rmp-bg-page)", borderRadius: 6, border: hasManagePerm ? "1px solid #bbf7d0" : "1px solid var(--rmp-border)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-              <div style={{ flex: 1, fontSize: "0.825rem", color: hasManagePerm ? "#166534" : "#64748b" }}>
+              <div style={{ flex: 1, fontSize: "0.825rem", color: hasManagePerm ? "var(--rmp-success-800)" : "var(--rmp-text-secondary)" }}>
                 Кампания активна — показы идут.
                 {!hasManagePerm && " У вас нет прав на управление кампанией."}
               </div>
@@ -945,7 +945,7 @@ export default function CampaignDetailPage() {
               )}
             </div>
             {approvalError && (
-              <div data-testid="campaign-lifecycle-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "#dc2626" }}>{approvalError}</div>
+              <div data-testid="campaign-lifecycle-error" style={{ marginTop: "0.5rem", fontSize: "0.8rem", color: "var(--rmp-danger-600)" }}>{approvalError}</div>
             )}
           </div>
         )}
@@ -958,7 +958,7 @@ export default function CampaignDetailPage() {
         )}
 
         {!isDraft && !isPendingApproval && !isApproved && !isActive && !isPaused && (
-          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: "0.825rem", color: "#64748b" }}>
+          <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "var(--rmp-bg-page)", borderRadius: 6, border: "1px solid var(--rmp-border)", fontSize: "0.825rem", color: "var(--rmp-text-secondary)" }}>
             Изменения доступны только в статусе «Черновик». Текущий статус: {statusLabel(campaign.status)}.
           </div>
         )}
@@ -1067,7 +1067,7 @@ export default function CampaignDetailPage() {
                     <button type="button" style={css.cancelBtn} onClick={resetFlightForm}>Отмена</button>
                   </div>
                 </div>
-                {flightError && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginTop: "0.5rem" }}>{flightError}</div>}
+                {flightError && <div style={{ color: "var(--rmp-danger-600)", fontSize: "0.8rem", marginTop: "0.5rem" }}>{flightError}</div>}
               </form>
             )}
           </div>
@@ -1214,7 +1214,7 @@ export default function CampaignDetailPage() {
         {/* Reference loading/error */}
         {refLoading && <p style={css.muted}>Загрузка справочников...</p>}
         {!refLoading && refError && (
-          <div style={{ marginBottom: "0.75rem", padding: "0.5rem", background: "#fef2f2", borderRadius: 4, border: "1px solid #fecaca", fontSize: "0.75rem", color: "#991b1b" }}>
+          <div style={{ marginBottom: "0.75rem", padding: "0.5rem", background: "var(--rmp-danger-50)", borderRadius: 4, border: "1px solid #fecaca", fontSize: "0.75rem", color: "var(--rmp-danger-800)" }}>
             {refError}
           </div>
         )}
@@ -1284,11 +1284,11 @@ export default function CampaignDetailPage() {
                   </div>
                 </div>
                 {!hasRefData && !refLoading && (
-                  <p style={{ fontSize: "0.7rem", color: "#94a3b8", margin: "0.4rem 0 0" }}>
+                  <p style={{ fontSize: "0.7rem", color: "var(--rmp-text-muted)", margin: "0.4rem 0 0" }}>
                     Нет доступных поверхностей для выбора. Справочники загружаются через API при наличии данных.
                   </p>
                 )}
-                {placementError && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginTop: "0.5rem" }}>{placementError}</div>}
+                {placementError && <div style={{ color: "var(--rmp-danger-600)", fontSize: "0.8rem", marginTop: "0.5rem" }}>{placementError}</div>}
                 {availabilityResult && (
                   <div style={{ marginTop: "0.75rem", padding: "0.5rem", border: "1px solid var(--rmp-border-strong)", borderRadius: "var(--rmp-radius-sm)", fontSize: "0.8rem" }}>
                     <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
@@ -1306,16 +1306,16 @@ export default function CampaignDetailPage() {
                   </div>
                 )}
                 {availabilityError && (
-                  <div style={{ color: "#dc2626", fontSize: "0.8rem", marginTop: "0.5rem" }}>{availabilityError}</div>
+                  <div style={{ color: "var(--rmp-danger-600)", fontSize: "0.8rem", marginTop: "0.5rem" }}>{availabilityError}</div>
                 )}
                 {/* S-087 — Placement alternatives */}
                 {!availabilityResult?.all_available && placementAlternatives && (
                   <div style={{ marginTop: "0.5rem", padding: "0.4rem", border: "1px solid var(--rmp-border-strong)", borderRadius: "var(--rmp-radius-sm)", fontSize: "0.8rem" }}>
                     <strong>Возможные альтернативы ({placementAlternatives.total_found}):</strong>
                     {altLoading ? (
-                      <p style={{ color: "#64748b", margin: "0.15rem 0 0" }}>Поиск альтернатив...</p>
+                      <p style={{ color: "var(--rmp-text-secondary)", margin: "0.15rem 0 0" }}>Поиск альтернатив...</p>
                     ) : placementAlternatives.alternatives.length === 0 ? (
-                      <p style={{ color: "#64748b", margin: "0.15rem 0 0" }}>Нет альтернатив. Попробуйте изменить период или SOV.</p>
+                      <p style={{ color: "var(--rmp-text-secondary)", margin: "0.15rem 0 0" }}>Нет альтернатив. Попробуйте изменить период или SOV.</p>
                     ) : (
                       <ul style={{ margin: "0.25rem 0 0", paddingLeft: "1.2rem", display: "flex", flexDirection: "column", gap: "0.2rem" }}>
                         {placementAlternatives.alternatives.map((alt, i) => (
@@ -1441,7 +1441,7 @@ export default function CampaignDetailPage() {
                 <div style={{ fontWeight: 600, fontSize: "0.85rem", marginBottom: "0.4rem", color: "#0369a1" }}>
                   Загрузить файл с ПК
                 </div>
-                <p style={{ fontSize: "0.75rem", color: "#475569", margin: "0 0 0.5rem 0" }}>
+                <p style={{ fontSize: "0.75rem", color: "var(--rmp-gray-600)", margin: "0 0 0.5rem 0" }}>
                   Выберите файл → заполните метаданные → готово. Креатив будет автоматически прикреплён к кампании.
                 </p>
                 <button
@@ -1487,7 +1487,7 @@ export default function CampaignDetailPage() {
                   </button>
                   <button type="button" style={css.cancelBtn} onClick={resetPrimaryUpload}>Отмена</button>
                 </div>
-                {primaryError && <div data-testid="creative-upload-primary-error" style={{ color: "#dc2626", fontSize: "0.8rem" }}>{primaryError}</div>}
+                {primaryError && <div data-testid="creative-upload-primary-error" style={{ color: "var(--rmp-danger-600)", fontSize: "0.8rem" }}>{primaryError}</div>}
               </form>
             )}
           </div>
@@ -1495,7 +1495,7 @@ export default function CampaignDetailPage() {
 
         {/* ── Existing paths (secondary) ── */}
         {isDraft && !showPrimaryUpload && (
-          <div style={{ marginBottom: "0.25rem", fontSize: "0.75rem", color: "#94a3b8", fontWeight: 500 }}>
+          <div style={{ marginBottom: "0.25rem", fontSize: "0.75rem", color: "var(--rmp-text-muted)", fontWeight: 500 }}>
             Другие способы добавить креатив ↓
           </div>
         )}
@@ -1534,7 +1534,7 @@ export default function CampaignDetailPage() {
                         ))}
                       </select>
                     ) : (
-                      <p style={{ fontSize: "0.75rem", color: "#94a3b8", margin: 0 }}>
+                      <p style={{ fontSize: "0.75rem", color: "var(--rmp-text-muted)", margin: 0 }}>
                         {allAssets.filter((a) => a.advertiser_organization_id === campaign.advertiser_organization_id).length === 0
                           ? "Нет доступных креативов для рекламодателя этой кампании."
                           : "Все креативы рекламодателя уже прикреплены."}
@@ -1563,7 +1563,7 @@ export default function CampaignDetailPage() {
                     </div>
                   )}
                 </div>
-                {attachError && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginTop: "0.5rem" }}>{attachError}</div>}
+                {attachError && <div style={{ color: "var(--rmp-danger-600)", fontSize: "0.8rem", marginTop: "0.5rem" }}>{attachError}</div>}
               </form>
             )}
           </div>
@@ -1613,7 +1613,7 @@ export default function CampaignDetailPage() {
 
                 {/* Technical params — collapsed */}
                 <details style={{ marginBottom: "0.75rem", fontSize: "0.75rem" }}>
-                  <summary style={{ cursor: "pointer", color: "#64748b" }}>
+                  <summary style={{ cursor: "pointer", color: "var(--rmp-text-secondary)" }}>
                     Технические параметры
                   </summary>
                   <div style={{ marginTop: "0.5rem" }}>
@@ -1630,7 +1630,7 @@ export default function CampaignDetailPage() {
                   </button>
                   <button type="button" style={css.cancelBtn} onClick={resetAssetForm}>Отмена</button>
                 </div>
-                {assetError && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginTop: "0.5rem" }}>{assetError}</div>}
+                {assetError && <div style={{ color: "var(--rmp-danger-600)", fontSize: "0.8rem", marginTop: "0.5rem" }}>{assetError}</div>}
               </form>
             )}
           </div>
@@ -1638,7 +1638,7 @@ export default function CampaignDetailPage() {
 
         {allAssets.length > 0 && (
           <details style={{ marginBottom: "0.75rem", fontSize: "0.8rem" }}>
-            <summary style={{ cursor: "pointer", color: "#475569", fontWeight: 500 }}>
+            <summary style={{ cursor: "pointer", color: "var(--rmp-gray-600)", fontWeight: 500 }}>
               Существующие креативы ({allAssets.filter((a) => a.advertiser_organization_id === campaign.advertiser_organization_id).length})
             </summary>
             <table style={{ ...css.miniTable, marginTop: "0.5rem" }}>
@@ -1725,13 +1725,13 @@ export default function CampaignDetailPage() {
           <>
             {/* S-017: Upload progress indicators */}
             {uploadStage === "done" && uploadFile && (
-              <div data-testid="creative-upload-done" style={{ padding: "0.5rem 0.75rem", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 4, marginBottom: "0.5rem", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <span style={{ fontWeight: 600, color: "#166534" }}>✅ Готов</span>
+              <div data-testid="creative-upload-done" style={{ padding: "0.5rem 0.75rem", background: "var(--rmp-success-50)", border: "1px solid #86efac", borderRadius: 4, marginBottom: "0.5rem", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span style={{ fontWeight: 600, color: "var(--rmp-success-800)" }}>✅ Готов</span>
                 <span style={{ color: "#52525b" }}>{uploadFile.name}</span>
               </div>
             )}
             {uploadStage !== "idle" && uploadStage !== "done" && (
-              <div style={{ padding: "0.5rem 0.75rem", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 4, marginBottom: "0.5rem", fontSize: "0.8rem" }}>
+              <div style={{ padding: "0.5rem 0.75rem", background: "var(--rmp-bg-page)", border: "1px solid var(--rmp-border)", borderRadius: 4, marginBottom: "0.5rem", fontSize: "0.8rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
                   <span style={{ fontWeight: 600 }}>
                     {uploadStage === "requesting_url" && "Запрос адреса загрузки..."}
@@ -1740,21 +1740,21 @@ export default function CampaignDetailPage() {
                   </span>
                 </div>
                 {(uploadStage === "uploading" || uploadStage === "requesting_url") && (
-                  <div style={{ width: "100%", height: 4, background: "#e2e8f0", borderRadius: 2, overflow: "hidden" }}>
-                    <div style={{ width: `${uploadStage === "requesting_url" ? 10 : uploadProgress}%`, height: "100%", background: "#2563eb", transition: "width 0.2s" }} />
+                  <div style={{ width: "100%", height: 4, background: "var(--rmp-border)", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ width: `${uploadStage === "requesting_url" ? 10 : uploadProgress}%`, height: "100%", background: "var(--rmp-primary-500)", transition: "width 0.2s" }} />
                   </div>
                 )}
                 {uploadStage === "error" && (
-                  <div data-testid="creative-upload-error" style={{ color: "#dc2626", marginTop: "0.35rem" }}>
+                  <div data-testid="creative-upload-error" style={{ color: "var(--rmp-danger-600)", marginTop: "0.35rem" }}>
                     Ошибка: {uploadError || "Не удалось загрузить файл"}
                   </div>
                 )}
               </div>
             )}
             {uploadStage === "idle" && uploadError && (
-              <div style={{ padding: "0.5rem 0.75rem", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 4, marginBottom: "0.5rem", fontSize: "0.8rem", color: "#991b1b" }}>
+              <div style={{ padding: "0.5rem 0.75rem", background: "var(--rmp-danger-50)", border: "1px solid #fecaca", borderRadius: 4, marginBottom: "0.5rem", fontSize: "0.8rem", color: "var(--rmp-danger-800)" }}>
                 {uploadError}
-                <button type="button" onClick={resetUpload} style={{ marginLeft: "0.75rem", background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>
+                <button type="button" onClick={resetUpload} style={{ marginLeft: "0.75rem", background: "none", border: "none", color: "var(--rmp-primary-500)", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}>
                   Сбросить
                 </button>
               </div>
@@ -1798,7 +1798,7 @@ export default function CampaignDetailPage() {
                         <button
                           type="button"
                           data-upload={cc.asset.id}
-                          style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 3, padding: "0.2rem 0.4rem", fontSize: "0.72rem", cursor: "pointer" }}
+                          style={{ background: "var(--rmp-primary-500)", color: "#fff", border: "none", borderRadius: 3, padding: "0.2rem 0.4rem", fontSize: "0.72rem", cursor: "pointer" }}
                           onClick={() => uploadInputRef.current?.click()}
                         >
                           Загрузить файл
@@ -1833,17 +1833,17 @@ export default function CampaignDetailPage() {
 
     // Delivery status
     let deliveryLabel = "—";
-    let deliveryColor = "#94a3b8";
+    let deliveryColor = "var(--rmp-text-muted)";
     if (hasPlan && hasPoP) {
       if (deviationPct !== null && deviationPct >= -5) {
         deliveryLabel = deviationPct >= 0 ? "Перевыполнение" : "В норме";
-        deliveryColor = "#16a34a";
+        deliveryColor = "var(--rmp-success-600)";
       } else if (deviationPct !== null && deviationPct >= -30) {
         deliveryLabel = "Недопоказ";
         deliveryColor = "#d97706";
       } else {
         deliveryLabel = "Критичный недопоказ";
-        deliveryColor = "#dc2626";
+        deliveryColor = "var(--rmp-danger-600)";
       }
     }
 
@@ -1852,7 +1852,7 @@ export default function CampaignDetailPage() {
       return (
         <div style={{ ...css.reportCard }}>
           <div style={css.reportCardLabel}>{label}</div>
-          <div style={{ ...css.reportCardValue, color: color ?? "#0f172a" }}>{value}</div>
+          <div style={{ ...css.reportCardValue, color: color ?? "var(--rmp-text-primary)" }}>{value}</div>
         </div>
       );
     }
@@ -1870,7 +1870,7 @@ export default function CampaignDetailPage() {
         {/* ── Error ── */}
         {!popLoading && popError && (
           <div style={css.section}>
-            <div style={{ padding: "0.75rem", background: "#fef2f2", borderRadius: 4, border: "1px solid #fecaca", color: "#991b1b", fontSize: "0.875rem" }}>
+            <div style={{ padding: "0.75rem", background: "var(--rmp-danger-50)", borderRadius: 4, border: "1px solid #fecaca", color: "var(--rmp-danger-800)", fontSize: "0.875rem" }}>
               {popError}
             </div>
           </div>
@@ -1884,10 +1884,10 @@ export default function CampaignDetailPage() {
               <h3 style={{ ...css.subheading, marginTop: 0 }}>План / Факт</h3>
               <div style={css.reportGrid}>
                 <DCard label={hasPlan ? "План (показы)" : "План"} value={hasPlan ? totalPlan.toLocaleString("ru-RU") : "Не задан"} />
-                <DCard label={hasPoP ? "Факт (показы)" : "Факт"} value={hasPoP ? actual.toLocaleString("ru-RU") : "Нет данных"} color={hasPoP ? undefined : "#94a3b8"} />
+                <DCard label={hasPoP ? "Факт (показы)" : "Факт"} value={hasPoP ? actual.toLocaleString("ru-RU") : "Нет данных"} color={hasPoP ? undefined : "var(--rmp-text-muted)"} />
                 {deviationAbs !== null && (
                   <DCard label="Отклонение" value={`${deviationAbs >= 0 ? "+" : ""}${deviationAbs.toLocaleString("ru-RU")} (${deviationPct !== null && deviationPct >= 0 ? "+" : ""}${deviationPct}%)`}
-                    color={deviationPct !== null && deviationPct >= -5 ? "#16a34a" : deviationPct !== null && deviationPct >= -30 ? "#d97706" : "#dc2626"} />
+                    color={deviationPct !== null && deviationPct >= -5 ? "var(--rmp-success-600)" : deviationPct !== null && deviationPct >= -30 ? "#d97706" : "var(--rmp-danger-600)"} />
                 )}
                 <DCard label="Статус доставки" value={deliveryLabel} color={deliveryColor} />
               </div>
@@ -1901,12 +1901,12 @@ export default function CampaignDetailPage() {
                 </div>
               )}
               {!hasPoP && (
-                <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.75rem", background: "#f8fafc", borderRadius: 4, border: "1px solid #e2e8f0", fontSize: "0.8rem", color: "#64748b" }}>
+                <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.75rem", background: "var(--rmp-bg-page)", borderRadius: 4, border: "1px solid var(--rmp-border)", fontSize: "0.8rem", color: "var(--rmp-text-secondary)" }}>
                   Пока нет подтверждённых показов. Данные появятся после поступления PoP-событий.
                 </div>
               )}
               {hasPoP && !hasPlan && (
-                <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.75rem", background: "#f8fafc", borderRadius: 4, border: "1px solid #e2e8f0", fontSize: "0.8rem", color: "#64748b" }}>
+                <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.75rem", background: "var(--rmp-bg-page)", borderRadius: 4, border: "1px solid var(--rmp-border)", fontSize: "0.8rem", color: "var(--rmp-text-secondary)" }}>
                   План показов не задан в плейсментах. Добавьте max_impressions в плейсменты для расчёта план/факт.
                 </div>
               )}
@@ -1968,20 +1968,20 @@ export default function CampaignDetailPage() {
               {popSummary && popSummary.unique_devices > 0 ? (
                 <div>
                   <div style={css.reportGrid}>
-                    <DCard label="Устройств с показами" value={popSummary.unique_devices.toLocaleString("ru-RU")} color="#2563eb" />
+                    <DCard label="Устройств с показами" value={popSummary.unique_devices.toLocaleString("ru-RU")} color="var(--rmp-primary-500)" />
                     <DCard label="Поверхностей" value={popSummary.unique_surfaces.toLocaleString("ru-RU")} />
                   </div>
-                  <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.75rem", background: "#f8fafc", borderRadius: 4, border: "1px solid #e2e8f0", fontSize: "0.8rem", color: "#64748b" }}>
+                  <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.75rem", background: "var(--rmp-bg-page)", borderRadius: 4, border: "1px solid var(--rmp-border)", fontSize: "0.8rem", color: "var(--rmp-text-secondary)" }}>
                     <strong>Ограничение:</strong> операционный центр здоровья устройств (online/offline, ошибки плеера, heartbeat, версии) — в плане (S-097).
                     Сейчас доступно только количество устройств, подтвердивших показы (PoP).
                   </div>
                 </div>
               ) : (
                 <div style={{ padding: "1.5rem 1rem", textAlign: "center" }}>
-                  <p style={{ fontSize: "0.9rem", color: "#94a3b8", margin: "0 0 0.5rem" }}>
+                  <p style={{ fontSize: "0.9rem", color: "var(--rmp-text-muted)", margin: "0 0 0.5rem" }}>
                     Нет данных об устройствах
                   </p>
-                  <p style={{ fontSize: "0.75rem", color: "#cbd5e1" }}>
+                  <p style={{ fontSize: "0.75rem", color: "var(--rmp-border-strong)" }}>
                     Данные появятся после поступления PoP-событий
                   </p>
                 </div>
@@ -1991,10 +1991,10 @@ export default function CampaignDetailPage() {
             {/* ── No PoP at all ── */}
             {!hasPoP && popByDay.length === 0 && popBySurface.length === 0 && (
               <div data-testid="campaign-dashboard-empty-pop" style={{ ...css.section, padding: "2rem 1rem", textAlign: "center" }}>
-                <p style={{ fontSize: "0.9rem", color: "#94a3b8", margin: "0 0 0.5rem" }}>
+                <p style={{ fontSize: "0.9rem", color: "var(--rmp-text-muted)", margin: "0 0 0.5rem" }}>
                   Пока нет подтверждённых показов
                 </p>
-                <p style={{ fontSize: "0.75rem", color: "#cbd5e1" }}>
+                <p style={{ fontSize: "0.75rem", color: "var(--rmp-border-strong)" }}>
                   Дашборд обновится после поступления PoP-событий от устройств
                 </p>
               </div>
@@ -2025,7 +2025,7 @@ export default function CampaignDetailPage() {
 
         {/* ── Error state ── */}
         {!popLoading && popError && (
-          <div style={{ padding: "0.75rem", background: "#fef2f2", borderRadius: 4, border: "1px solid #fecaca", color: "#991b1b", fontSize: "0.875rem" }}>
+          <div style={{ padding: "0.75rem", background: "var(--rmp-danger-50)", borderRadius: 4, border: "1px solid #fecaca", color: "var(--rmp-danger-800)", fontSize: "0.875rem" }}>
             {popError}
           </div>
         )}
@@ -2033,10 +2033,10 @@ export default function CampaignDetailPage() {
         {/* ── Empty state ── */}
         {!popLoading && !popError && !hasData && (
           <div style={{ padding: "2rem 1rem", textAlign: "center" }}>
-            <p style={{ fontSize: "0.9rem", color: "#94a3b8", margin: "0 0 0.5rem" }}>
+            <p style={{ fontSize: "0.9rem", color: "var(--rmp-text-muted)", margin: "0 0 0.5rem" }}>
               Пока нет подтверждённых показов
             </p>
-            <p style={{ fontSize: "0.75rem", color: "#cbd5e1" }}>
+            <p style={{ fontSize: "0.75rem", color: "var(--rmp-border-strong)" }}>
               Отчётность обновится после поступления PoP-событий от устройств
             </p>
           </div>
@@ -2104,7 +2104,7 @@ export default function CampaignDetailPage() {
             )}
 
             {/* Limitation note + Export button */}
-            <div style={{ marginTop: "1.5rem", borderTop: "1px solid #f1f5f9", paddingTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+            <div style={{ marginTop: "1.5rem", borderTop: "1px solid var(--rmp-gray-100)", paddingTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
               <button
                 type="button"
                 onClick={handleExportCsv}
@@ -2112,9 +2112,9 @@ export default function CampaignDetailPage() {
                 style={{
                   padding: "0.35rem 0.75rem",
                   fontSize: "0.8rem",
-                  border: "1px solid #2563eb",
+                  border: "1px solid var(--rmp-primary-500)",
                   borderRadius: 4,
-                  background: "#2563eb",
+                  background: "var(--rmp-primary-500)",
                   color: "#fff",
                   cursor: exportLoading ? "not-allowed" : "pointer",
                   opacity: exportLoading ? 0.6 : 1,
@@ -2122,11 +2122,11 @@ export default function CampaignDetailPage() {
               >
                 {exportLoading ? "Экспорт..." : "Скачать CSV"}
               </button>
-              <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
+              <span style={{ fontSize: "0.75rem", color: "var(--rmp-text-muted)" }}>
                 XLSX — в разработке
               </span>
               {exportError && (
-                <span style={{ fontSize: "0.75rem", color: "#dc2626" }}>{exportError}</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--rmp-danger-600)" }}>{exportError}</span>
               )}
             </div>
           </>
@@ -2150,11 +2150,11 @@ export default function CampaignDetailPage() {
 
     return (
       <div data-testid="content-panel">
-        <div data-testid="content-readiness-summary" style={{ marginBottom: "1rem", padding: "0.5rem 0.75rem", background: "#f8fafc", borderRadius: 6, border: "1px solid #e2e8f0", display: "flex", gap: "1.5rem", fontSize: "0.8rem", color: "#475569" }}>
+        <div data-testid="content-readiness-summary" style={{ marginBottom: "1rem", padding: "0.5rem 0.75rem", background: "var(--rmp-bg-page)", borderRadius: 6, border: "1px solid var(--rmp-border)", display: "flex", gap: "1.5rem", fontSize: "0.8rem", color: "var(--rmp-gray-600)" }}>
           <span data-testid="content-flights-status">Рейсы: {hasFlight ? "✅" : "—"}</span>
           <span data-testid="content-placements-status">Плейсменты: {hasPlacement ? "✅" : "—"}</span>
           <span data-testid="content-creatives-status">Креатив с файлом: {hasDeliverable ? "✅" : "—"}</span>
-          <span data-testid="content-next-step" style={{ marginLeft: "auto", fontWeight: 600, color: hasFlight && hasPlacement && hasDeliverable ? "#16a34a" : "#2563eb" }}>→ {nextStep}</span>
+          <span data-testid="content-next-step" style={{ marginLeft: "auto", fontWeight: 600, color: hasFlight && hasPlacement && hasDeliverable ? "var(--rmp-success-600)" : "var(--rmp-primary-500)" }}>→ {nextStep}</span>
         </div>
         <div ref={flightsSectionRef} data-testid="content-flights-section">
           {renderFlights()}
@@ -2176,15 +2176,15 @@ export default function CampaignDetailPage() {
       </div>
       <h2 style={css.heading}>
         {campaign.name}
-        <span style={{ fontSize: "0.7rem", color: "#94a3b8", marginLeft: "0.5rem", fontWeight: 400 }}>{campaign.code}</span>
+        <span style={{ fontSize: "0.7rem", color: "var(--rmp-text-muted)", marginLeft: "0.5rem", fontWeight: 400 }}>{campaign.code}</span>
       </h2>
       {/* CAMPAIGN-UX-002D: created banner — visible on any tab, dismissable */}
       {campaign && campaign.status === "draft" && showBanner && !(flights.length > 0 && placements.length > 0 && creatives.filter(c => c.asset != null).length > 0) && (
         <div data-testid="campaign-created-next-step" style={{ marginBottom: "1rem", padding: "0.75rem 1rem", background: "#eff6ff", borderRadius: 6, border: "1px solid #93c5fd", display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <span style={{ fontSize: "1rem" }}>📋</span>
           <span style={{ flex: 1, fontSize: "0.85rem", color: "#1e40af" }}>Кампания создана. Добавьте рейс, размещение и креатив, чтобы отправить на согласование.</span>
-          <button type="button" onClick={() => scrollToSection(flightsSectionRef)} style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 4, padding: "0.35rem 0.75rem", fontSize: "0.8rem", cursor: "pointer", whiteSpace: "nowrap" }}>Начать наполнение →</button>
-          <button type="button" data-testid="campaign-created-dismiss" onClick={() => setShowBanner(false)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1, padding: "0 0.25rem" }} aria-label="Закрыть">✕</button>
+          <button type="button" onClick={() => scrollToSection(flightsSectionRef)} style={{ background: "var(--rmp-primary-500)", color: "#fff", border: "none", borderRadius: 4, padding: "0.35rem 0.75rem", fontSize: "0.8rem", cursor: "pointer", whiteSpace: "nowrap" }}>Начать наполнение →</button>
+          <button type="button" data-testid="campaign-created-dismiss" onClick={() => setShowBanner(false)} style={{ background: "none", border: "none", color: "var(--rmp-text-muted)", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1, padding: "0 0.25rem" }} aria-label="Закрыть">✕</button>
         </div>
       )}
       <div style={css.tabBar}>
@@ -2225,32 +2225,32 @@ function fmtDuration(ms: number): string {
 
 const css: Record<string, React.CSSProperties> = {
   heading: { margin: "0 0 1rem", fontSize: "1.25rem", fontWeight: 600 },
-  subheading: { margin: "1.25rem 0 0.5rem", fontSize: "0.9rem", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0", paddingBottom: "0.25rem" },
+  subheading: { margin: "1.25rem 0 0.5rem", fontSize: "0.9rem", fontWeight: 600, color: "var(--rmp-gray-700)", borderBottom: "1px solid var(--rmp-border)", paddingBottom: "0.25rem" },
   centered: { display: "flex", alignItems: "center", justifyContent: "center", minHeight: 200, flexDirection: "column" },
-  muted: { color: "#64748b", fontSize: "0.875rem" },
-  errorBox: { background: "#fef2f2", color: "#991b1b", padding: "1rem", borderRadius: 6, maxWidth: 480 },
-  linkBtn: { background: "none", border: "none", color: "#2563eb", cursor: "pointer", padding: 0, fontSize: "0.875rem", textDecoration: "underline" },
-  tabBar: { display: "flex", gap: 0, borderBottom: "2px solid #e2e8f0", marginBottom: "1rem" },
-  tab: { padding: "0.5rem 0.75rem", background: "none", border: "none", borderBottom: "2px solid transparent", marginBottom: -2, cursor: "pointer", fontSize: "0.825rem", color: "#64748b", fontWeight: 500, display: "flex", alignItems: "center", gap: "0.35rem" },
-  tabActive: { color: "#1e293b", borderBottomColor: "#2563eb" },
-  tabCount: { background: "#e2e8f0", color: "#475569", borderRadius: 999, padding: "0 0.4rem", fontSize: "0.7rem", fontWeight: 600, lineHeight: "1.4" },
+  muted: { color: "var(--rmp-text-secondary)", fontSize: "0.875rem" },
+  errorBox: { background: "var(--rmp-danger-50)", color: "var(--rmp-danger-800)", padding: "1rem", borderRadius: 6, maxWidth: 480 },
+  linkBtn: { background: "none", border: "none", color: "var(--rmp-primary-500)", cursor: "pointer", padding: 0, fontSize: "0.875rem", textDecoration: "underline" },
+  tabBar: { display: "flex", gap: 0, borderBottom: "2px solid var(--rmp-border)", marginBottom: "1rem" },
+  tab: { padding: "0.5rem 0.75rem", background: "none", border: "none", borderBottom: "2px solid transparent", marginBottom: -2, cursor: "pointer", fontSize: "0.825rem", color: "var(--rmp-text-secondary)", fontWeight: 500, display: "flex", alignItems: "center", gap: "0.35rem" },
+  tabActive: { color: "var(--rmp-gray-800)", borderBottomColor: "var(--rmp-primary-500)" },
+  tabCount: { background: "var(--rmp-border)", color: "var(--rmp-gray-600)", borderRadius: 999, padding: "0 0.4rem", fontSize: "0.7rem", fontWeight: 600, lineHeight: "1.4" },
   section: { background: "#fff", borderRadius: 6, padding: "1rem", boxShadow: "0 1px 2px rgba(0,0,0,0.06)" },
   fieldGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "0.75rem" },
-  fieldLabel: { fontSize: "0.7rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.15rem" },
-  fieldValue: { fontSize: "0.875rem", color: "#1e293b" },
+  fieldLabel: { fontSize: "0.7rem", fontWeight: 600, color: "var(--rmp-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.15rem" },
+  fieldValue: { fontSize: "0.875rem", color: "var(--rmp-gray-800)" },
   miniTable: { width: "100%", borderCollapse: "collapse", fontSize: "0.825rem" },
-  miniTh: { textAlign: "left", padding: "0.4rem 0.5rem", fontWeight: 600, color: "#475569", borderBottom: "1px solid #e2e8f0", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.05em" },
-  miniTd: { padding: "0.4rem 0.5rem", borderBottom: "1px solid #f1f5f9", verticalAlign: "middle" },
-  addBtn: { padding: "0.35rem 0.75rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: "0.8rem", fontWeight: 500 },
-  primaryBtn: { padding: "0.35rem 0.75rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: "0.8rem", fontWeight: 500 },
-  cancelBtn: { padding: "0.35rem 0.75rem", background: "#fff", border: "1px solid #d1d5db", borderRadius: 4, cursor: "pointer", fontSize: "0.8rem", color: "#475569" },
-  inlineForm: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 4, padding: "0.75rem" },
+  miniTh: { textAlign: "left", padding: "0.4rem 0.5rem", fontWeight: 600, color: "var(--rmp-gray-600)", borderBottom: "1px solid var(--rmp-border)", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.05em" },
+  miniTd: { padding: "0.4rem 0.5rem", borderBottom: "1px solid var(--rmp-gray-100)", verticalAlign: "middle" },
+  addBtn: { padding: "0.35rem 0.75rem", background: "var(--rmp-primary-500)", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: "0.8rem", fontWeight: 500 },
+  primaryBtn: { padding: "0.35rem 0.75rem", background: "var(--rmp-primary-500)", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: "0.8rem", fontWeight: 500 },
+  cancelBtn: { padding: "0.35rem 0.75rem", background: "#fff", border: "1px solid #d1d5db", borderRadius: 4, cursor: "pointer", fontSize: "0.8rem", color: "var(--rmp-gray-600)" },
+  inlineForm: { background: "var(--rmp-bg-page)", border: "1px solid var(--rmp-border)", borderRadius: 4, padding: "0.75rem" },
   inlineFields: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "flex-end" },
-  miniLabel: { display: "block", fontSize: "0.65rem", fontWeight: 600, color: "#64748b", marginBottom: "0.1rem", textTransform: "uppercase" },
+  miniLabel: { display: "block", fontSize: "0.65rem", fontWeight: 600, color: "var(--rmp-text-secondary)", marginBottom: "0.1rem", textTransform: "uppercase" },
   miniInput: { padding: "0.3rem 0.5rem", border: "1px solid #d1d5db", borderRadius: 3, fontSize: "0.8rem", boxSizing: "border-box", fontFamily: "inherit" },
   miniSelect: { padding: "0.3rem 0.5rem", border: "1px solid #d1d5db", borderRadius: 3, fontSize: "0.8rem", background: "#fff", boxSizing: "border-box" },
   reportGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.5rem", marginBottom: "0.5rem" },
-  reportCard: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: "0.75rem 1rem" },
-  reportCardLabel: { fontSize: "0.65rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.25rem" },
-  reportCardValue: { fontSize: "1.25rem", fontWeight: 600, color: "#0f172a" },
+  reportCard: { background: "var(--rmp-bg-page)", border: "1px solid var(--rmp-border)", borderRadius: 6, padding: "0.75rem 1rem" },
+  reportCardLabel: { fontSize: "0.65rem", fontWeight: 600, color: "var(--rmp-text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.25rem" },
+  reportCardValue: { fontSize: "1.25rem", fontWeight: 600, color: "var(--rmp-text-primary)" },
 };

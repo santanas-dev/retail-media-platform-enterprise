@@ -33,11 +33,11 @@ const modeLabel = (mode: string): string => {
 
 const modeColor = (mode: string): string => {
   const map: Record<string, string> = {
-    disabled: "#94a3b8",
+    disabled: "var(--rmp-text-muted)",
     stub: "#f59e0b",
-    configured: "#16a34a",
+    configured: "var(--rmp-success-600)",
   };
-  return map[mode] ?? "#94a3b8";
+  return map[mode] ?? "var(--rmp-text-muted)";
 };
 
 const testStatusLabel = (status: string): string => {
@@ -163,7 +163,7 @@ export default function ADSettingsPage() {
     page: { maxWidth: 800, margin: "0 auto" } as React.CSSProperties,
     card: {
       background: "#fff",
-      border: "1px solid #e2e8f0",
+      border: "1px solid var(--rmp-border)",
       borderRadius: 8,
       padding: "1.25rem",
       marginBottom: "1rem",
@@ -172,17 +172,17 @@ export default function ADSettingsPage() {
       fontSize: "1rem",
       fontWeight: 600,
       margin: "0 0 0.75rem",
-      color: "#1e293b",
+      color: "var(--rmp-gray-800)",
     } as React.CSSProperties,
     row: {
       display: "flex",
       justifyContent: "space-between",
       padding: "0.35rem 0",
-      borderBottom: "1px solid #f1f5f9",
+      borderBottom: "1px solid var(--rmp-gray-100)",
       fontSize: "0.85rem",
     } as React.CSSProperties,
-    label: { color: "#64748b" } as React.CSSProperties,
-    value: { color: "#1e293b", fontWeight: 500, textAlign: "right" as const } as React.CSSProperties,
+    label: { color: "var(--rmp-text-secondary)" } as React.CSSProperties,
+    value: { color: "var(--rmp-gray-800)", fontWeight: 500, textAlign: "right" as const } as React.CSSProperties,
     badge: (color: string): React.CSSProperties => ({
       display: "inline-block",
       padding: "0.15rem 0.5rem",
@@ -195,7 +195,7 @@ export default function ADSettingsPage() {
     btn: {
       padding: "0.5rem 1.25rem",
       fontSize: "0.875rem",
-      border: "1px solid #cbd5e1",
+      border: "1px solid var(--rmp-border-strong)",
       borderRadius: 6,
       background: "#fff",
       cursor: "pointer",
@@ -206,7 +206,7 @@ export default function ADSettingsPage() {
       fontSize: "0.875rem",
       border: "none",
       borderRadius: 6,
-      background: "#2563eb",
+      background: "var(--rmp-primary-500)",
       color: "#fff",
       cursor: "pointer",
       marginTop: "0.5rem",
@@ -215,9 +215,9 @@ export default function ADSettingsPage() {
       marginTop: "0.75rem",
       padding: "0.75rem",
       borderRadius: 6,
-      background: status === "ok" ? "#dcfce7" : status === "stub" ? "#fef3c7" : "#fee2e2",
+      background: status === "ok" ? "var(--rmp-success-100)" : status === "stub" ? "#fef3c7" : "var(--rmp-danger-100)",
       fontSize: "0.85rem",
-      color: "#1e293b",
+      color: "var(--rmp-gray-800)",
     }),
     field: {
       display: "flex",
@@ -227,13 +227,13 @@ export default function ADSettingsPage() {
     fieldLabel: {
       fontSize: "0.8rem",
       fontWeight: 500,
-      color: "#475569",
+      color: "var(--rmp-gray-600)",
       marginBottom: "0.2rem",
     },
     input: {
       padding: "0.4rem 0.55rem",
       fontSize: "0.85rem",
-      border: "1px solid #cbd5e1",
+      border: "1px solid var(--rmp-border-strong)",
       borderRadius: 4,
       width: "100%",
       boxSizing: "border-box" as const,
@@ -241,7 +241,7 @@ export default function ADSettingsPage() {
     select: {
       padding: "0.4rem 0.55rem",
       fontSize: "0.85rem",
-      border: "1px solid #cbd5e1",
+      border: "1px solid var(--rmp-border-strong)",
       borderRadius: 4,
       background: "#fff",
     },
@@ -258,22 +258,22 @@ export default function ADSettingsPage() {
       marginTop: "0.75rem",
       padding: "0.5rem 0.75rem",
       borderRadius: 4,
-      background: "#dcfce7",
-      color: "#166534",
+      background: "var(--rmp-success-100)",
+      color: "var(--rmp-success-800)",
       fontSize: "0.85rem",
     },
     errorBanner: {
       marginTop: "0.75rem",
       padding: "0.5rem 0.75rem",
       borderRadius: 4,
-      background: "#fee2e2",
-      color: "#991b1b",
+      background: "var(--rmp-danger-100)",
+      color: "var(--rmp-danger-800)",
       fontSize: "0.85rem",
     },
   };
 
   if (loading) return <p>Загрузка настроек AD...</p>;
-  if (error) return <p style={{ color: "#dc2626" }}>{error}</p>;
+  if (error) return <p style={{ color: "var(--rmp-danger-600)" }}>{error}</p>;
   if (!settings) return <p>Настройки AD не найдены.</p>;
 
   return (
@@ -288,7 +288,7 @@ export default function ADSettingsPage() {
             {modeLabel(settings.mode)}
           </span>
         </div>
-        <p style={{ margin: 0, fontSize: "0.85rem", color: "#475569", lineHeight: 1.5 }}>
+        <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--rmp-gray-600)", lineHeight: 1.5 }}>
           {settings.message}
         </p>
         <button
@@ -300,7 +300,7 @@ export default function ADSettingsPage() {
         >
           {testing ? "Проверка..." : "Проверить подключение"}
         </button>
-        {testing && <div data-testid="adsettings-test-loading" style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "0.5rem" }}>Проверка подключения...</div>}
+        {testing && <div data-testid="adsettings-test-loading" style={{ fontSize: "0.85rem", color: "var(--rmp-text-secondary)", marginTop: "0.5rem" }}>Проверка подключения...</div>}
         {testResult && (
           <div
             style={styles.resultBox(testResult.status)}
@@ -493,7 +493,7 @@ export default function ADSettingsPage() {
             {certLabel(settings.certificate_validation)}
           </span>
         </div>
-        <p style={{ margin: "0.75rem 0 0", fontSize: "0.75rem", color: "#94a3b8" }}>
+        <p style={{ margin: "0.75rem 0 0", fontSize: "0.75rem", color: "var(--rmp-text-muted)" }}>
           Пароль для bind (AD_BIND_PASSWORD) не отображается и не передаётся через API.
         </p>
       </div>

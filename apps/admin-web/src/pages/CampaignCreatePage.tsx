@@ -264,7 +264,7 @@ export default function CampaignCreatePage() {
         <h2 style={css.heading}>Новая кампания</h2>
         <div style={css.emptyBox}>
           <p style={{ margin: 0, fontWeight: 500 }}>Нет доступных рекламодателей</p>
-          <p style={{ margin: "0.25rem 0 0", fontSize: "0.875rem", color: "#94a3b8" }}>
+          <p style={{ margin: "0.25rem 0 0", fontSize: "0.875rem", color: "var(--rmp-text-muted)" }}>
             Для создания кампании необходим хотя бы один активный рекламодатель.
           </p>
         </div>
@@ -301,7 +301,7 @@ export default function CampaignCreatePage() {
 
           <div style={css.fieldRow}>
             <label htmlFor="c-name" style={css.label}>
-              Название <span style={{ color: "#dc2626" }}>*</span>
+              Название <span style={{ color: "var(--rmp-danger-600)" }}>*</span>
             </label>
             <input
               id="c-name"
@@ -317,7 +317,7 @@ export default function CampaignCreatePage() {
 
           <div style={css.fieldRow}>
             <label htmlFor="c-code" style={css.label}>
-              Код <span style={{ color: "#dc2626" }}>*</span>
+              Код <span style={{ color: "var(--rmp-danger-600)" }}>*</span>
             </label>
             <input
               id="c-code"
@@ -329,7 +329,7 @@ export default function CampaignCreatePage() {
               placeholder="Автоматически из названия"
               maxLength={64}
             />
-            <div style={{ fontSize: "0.7rem", color: "#94a3b8", marginTop: "0.15rem" }}>
+            <div style={{ fontSize: "0.7rem", color: "var(--rmp-text-muted)", marginTop: "0.15rem" }}>
               Уникальный код кампании, до 64 символов
             </div>
           </div>
@@ -353,7 +353,7 @@ export default function CampaignCreatePage() {
 
           <div style={css.fieldRow}>
             <label htmlFor="c-org" style={css.label}>
-              Организация <span style={{ color: "#dc2626" }}>*</span>
+              Организация <span style={{ color: "var(--rmp-danger-600)" }}>*</span>
             </label>
             <select
               id="c-org"
@@ -389,7 +389,7 @@ export default function CampaignCreatePage() {
                   ))}
                 </select>
                 {filteredBrands.length === 0 && (
-                  <div style={{ fontSize: "0.7rem", color: "#94a3b8", marginTop: "0.15rem" }}>
+                  <div style={{ fontSize: "0.7rem", color: "var(--rmp-text-muted)", marginTop: "0.15rem" }}>
                     У этой организации нет брендов
                   </div>
                 )}
@@ -397,7 +397,7 @@ export default function CampaignCreatePage() {
 
               <div style={css.fieldRow}>
                 <label htmlFor="c-contract" style={css.label}>
-                  Договор <span style={{ color: "#dc2626" }}>*</span>
+                  Договор <span style={{ color: "var(--rmp-danger-600)" }}>*</span>
                 </label>
                 <select
                   id="c-contract"
@@ -417,7 +417,7 @@ export default function CampaignCreatePage() {
                   ))}
                 </select>
                 {filteredContracts.length === 0 && (
-                  <div style={{ fontSize: "0.7rem", color: "#dc2626", marginTop: "0.15rem" }}>
+                  <div style={{ fontSize: "0.7rem", color: "var(--rmp-danger-600)", marginTop: "0.15rem" }}>
                     У организации нет договоров. Создайте договор перед созданием кампании.
                   </div>
                 )}
@@ -497,7 +497,7 @@ export default function CampaignCreatePage() {
                 max={99}
                 style={{ ...css.input, width: 80 }}
               />
-              <div style={{ fontSize: "0.7rem", color: "#94a3b8", marginTop: "0.15rem" }}>
+              <div style={{ fontSize: "0.7rem", color: "var(--rmp-text-muted)", marginTop: "0.15rem" }}>
                 0 — обычный, чем выше число — тем выше приоритет
               </div>
             </div>
@@ -515,7 +515,7 @@ export default function CampaignCreatePage() {
               style={{ ...css.input, width: 200 }}
               placeholder="Не ограничен"
             />
-            <div style={{ fontSize: "0.7rem", color: "#94a3b8", marginTop: "0.15rem" }}>
+            <div style={{ fontSize: "0.7rem", color: "var(--rmp-text-muted)", marginTop: "0.15rem" }}>
               Оставьте пустым, если бюджет не ограничен
             </div>
           </div>
@@ -525,7 +525,7 @@ export default function CampaignCreatePage() {
         {surfacesLoaded && surfaces.length > 0 && (
           <fieldset style={css.fieldset}>
             <legend style={css.legend}>Доступность инвентаря</legend>
-            <p style={{ fontSize: "0.8rem", color: "#64748b", margin: "0 0 0.75rem" }}>
+            <p style={{ fontSize: "0.8rem", color: "var(--rmp-text-secondary)", margin: "0 0 0.75rem" }}>
               Проверка показывает предварительную доступность. Финальное бронирование — при отправке на согласование.
             </p>
             <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-end", flexWrap: "wrap" }}>
@@ -555,15 +555,15 @@ export default function CampaignCreatePage() {
                 </div>
               </div>
             )}
-            {forecastError && <div style={{ color: "#dc2626", fontSize: "0.8rem", marginTop: "0.5rem" }}>{forecastError}</div>}
+            {forecastError && <div style={{ color: "var(--rmp-danger-600)", fontSize: "0.8rem", marginTop: "0.5rem" }}>{forecastError}</div>}
             {/* S-087 — Alternatives */}
             {!forecastResult?.all_available && alternatives && (
               <div style={{ marginTop: "0.75rem", padding: "0.5rem", border: "1px solid var(--rmp-border-strong)", borderRadius: "var(--rmp-radius-sm)", fontSize: "0.8rem" }}>
                 <strong>Возможные альтернативы ({alternatives.total_found}):</strong>
                 {altLoading ? (
-                  <p style={{ color: "#64748b", margin: "0.25rem 0 0" }}>Загрузка...</p>
+                  <p style={{ color: "var(--rmp-text-secondary)", margin: "0.25rem 0 0" }}>Загрузка...</p>
                 ) : alternatives.alternatives.length === 0 ? (
-                  <p style={{ color: "#64748b", margin: "0.25rem 0 0" }}>Альтернатив не найдено. Попробуйте изменить период или запрошенную ёмкость.</p>
+                  <p style={{ color: "var(--rmp-text-secondary)", margin: "0.25rem 0 0" }}>Альтернатив не найдено. Попробуйте изменить период или запрошенную ёмкость.</p>
                 ) : (
                   <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.2rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
                     {alternatives.alternatives.map((alt, i) => (
@@ -602,7 +602,7 @@ export default function CampaignCreatePage() {
           </button>
         </div>
 
-        <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "0.5rem" }}>
+        <div style={{ fontSize: "0.75rem", color: "var(--rmp-text-muted)", marginTop: "0.5rem" }}>
           Кампания будет создана в статусе «Черновик». Флайты, плейсменты и креативы
           добавляются отдельно после создания.
         </div>
@@ -639,27 +639,27 @@ const css: Record<string, React.CSSProperties> = {
     minHeight: 200,
     flexDirection: "column",
   },
-  muted: { color: "#64748b", fontSize: "0.875rem" },
+  muted: { color: "var(--rmp-text-secondary)", fontSize: "0.875rem" },
   errorBox: {
-    background: "#fef2f2",
-    color: "#991b1b",
+    background: "var(--rmp-danger-50)",
+    color: "var(--rmp-danger-800)",
     padding: "0.75rem 1rem",
     borderRadius: 6,
     marginBottom: "1rem",
     fontSize: "0.875rem",
   },
   emptyBox: {
-    background: "#f8fafc",
-    border: "1px dashed #cbd5e1",
+    background: "var(--rmp-bg-page)",
+    border: "1px dashed var(--rmp-border-strong)",
     borderRadius: 6,
     padding: "2rem",
     textAlign: "center",
-    color: "#64748b",
+    color: "var(--rmp-text-secondary)",
   },
   linkBtn: {
     background: "none",
     border: "none",
-    color: "#2563eb",
+    color: "var(--rmp-primary-500)",
     cursor: "pointer",
     padding: 0,
     fontSize: "0.875rem",
@@ -673,7 +673,7 @@ const css: Record<string, React.CSSProperties> = {
     maxWidth: 700,
   },
   fieldset: {
-    border: "1px solid #e2e8f0",
+    border: "1px solid var(--rmp-border)",
     borderRadius: 4,
     padding: "1rem",
     marginBottom: "1rem",
@@ -681,7 +681,7 @@ const css: Record<string, React.CSSProperties> = {
   legend: {
     fontSize: "0.8rem",
     fontWeight: 600,
-    color: "#475569",
+    color: "var(--rmp-gray-600)",
     padding: "0 0.5rem",
   },
   fieldRow: {
@@ -691,7 +691,7 @@ const css: Record<string, React.CSSProperties> = {
     display: "block",
     fontSize: "0.8rem",
     fontWeight: 500,
-    color: "#334155",
+    color: "var(--rmp-gray-700)",
     marginBottom: "0.2rem",
   },
   input: {
@@ -730,11 +730,11 @@ const css: Record<string, React.CSSProperties> = {
     borderRadius: 4,
     cursor: "pointer",
     fontSize: "0.875rem",
-    color: "#475569",
+    color: "var(--rmp-gray-600)",
   },
   submitBtn: {
     padding: "0.45rem 1.25rem",
-    background: "#2563eb",
+    background: "var(--rmp-primary-500)",
     color: "#fff",
     border: "none",
     borderRadius: 4,

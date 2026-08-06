@@ -28,7 +28,7 @@ function Pagination({
   const to = Math.min(offset + limit, total);
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.75rem", fontSize: "0.8125rem" }}>
-      <span style={{ color: "#64748b" }}>{from}–{to} из {total}</span>
+      <span style={{ color: "var(--rmp-text-secondary)" }}>{from}–{to} из {total}</span>
       <div style={{ display: "flex", gap: "0.25rem" }}>
         <button onClick={onPrev} disabled={!hasPrev} style={pgnBtn(hasPrev)}>← Назад</button>
         <button onClick={onNext} disabled={!hasNext} style={pgnBtn(hasNext)}>Вперёд →</button>
@@ -39,9 +39,9 @@ function Pagination({
 
 function pgnBtn(enabled: boolean): React.CSSProperties {
   return {
-    padding: "0.2rem 0.6rem", fontSize: "0.75rem", border: "1px solid #cbd5e1",
-    borderRadius: 4, background: enabled ? "#fff" : "#f1f5f9",
-    color: enabled ? "#334155" : "#94a3b8", cursor: enabled ? "pointer" : "default",
+    padding: "0.2rem 0.6rem", fontSize: "0.75rem", border: "1px solid var(--rmp-border-strong)",
+    borderRadius: 4, background: enabled ? "#fff" : "var(--rmp-gray-100)",
+    color: enabled ? "var(--rmp-gray-700)" : "var(--rmp-text-muted)", cursor: enabled ? "pointer" : "default",
   };
 }
 
@@ -117,7 +117,7 @@ export default function ApprovalInboxPage() {
         Согласование кампаний
       </h1>
       {actionError && (
-        <div style={{ padding: "0.5rem 1rem", marginBottom: "0.5rem", background: "#fef2f2", color: "#dc2626", borderRadius: 4, fontSize: "0.875rem" }}>
+        <div style={{ padding: "0.5rem 1rem", marginBottom: "0.5rem", background: "var(--rmp-danger-50)", color: "var(--rmp-danger-600)", borderRadius: 4, fontSize: "0.875rem" }}>
           {actionError}
         </div>
       )}
@@ -129,9 +129,9 @@ export default function ApprovalInboxPage() {
             style={{
               padding: "0.25rem 0.75rem",
               borderRadius: 4,
-              border: "1px solid #cbd5e1",
-              background: filter === f.value ? "#1e293b" : "#fff",
-              color: filter === f.value ? "#fff" : "#334155",
+              border: "1px solid var(--rmp-border-strong)",
+              background: filter === f.value ? "var(--rmp-gray-800)" : "#fff",
+              color: filter === f.value ? "#fff" : "var(--rmp-gray-700)",
               cursor: "pointer",
               fontSize: "0.8125rem",
             }}
@@ -140,15 +140,15 @@ export default function ApprovalInboxPage() {
           </button>
         ))}
       </div>
-      {loading && <p style={{ color: "#64748b" }}>Загрузка...</p>}
-      {error && !loading && <p style={{ color: "#dc2626" }}>{error}</p>}
+      {loading && <p style={{ color: "var(--rmp-text-secondary)" }}>Загрузка...</p>}
+      {error && !loading && <p style={{ color: "var(--rmp-danger-600)" }}>{error}</p>}
       {!loading && !error && items.length === 0 && (
-        <p style={{ color: "#64748b" }}>Нет кампаний на согласовании</p>
+        <p style={{ color: "var(--rmp-text-secondary)" }}>Нет кампаний на согласовании</p>
       )}
       {!loading && items.length > 0 && (
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
           <thead>
-            <tr style={{ background: "#f1f5f9", textAlign: "left" }}>
+            <tr style={{ background: "var(--rmp-gray-100)", textAlign: "left" }}>
               <th style={thStyle}>Кампания</th>
               <th style={thStyle}>Рекламодатель</th>
               <th style={thStyle}>Готовность</th>
@@ -161,17 +161,17 @@ export default function ApprovalInboxPage() {
             {items.map((item) => {
               const canApprove = item.has_flight && item.has_placement && item.has_creative && item.all_creatives_ready && item.all_creatives_approved;
               return (
-                <tr key={item.campaign_id} style={{ borderBottom: "1px solid #e2e8f0" }}>
+                <tr key={item.campaign_id} style={{ borderBottom: "1px solid var(--rmp-border)" }}>
                   <td style={tdStyle}>
-                    <div style={{ fontWeight: 600, cursor: "pointer", color: "#2563eb" }}
+                    <div style={{ fontWeight: 600, cursor: "pointer", color: "var(--rmp-primary-500)" }}
                          onClick={() => navigate(`/campaigns/${item.campaign_id}`)}>
                       {item.campaign_name}
                     </div>
-                    <div style={{ color: "#64748b", fontSize: "0.75rem" }}>{item.campaign_code}</div>
+                    <div style={{ color: "var(--rmp-text-secondary)", fontSize: "0.75rem" }}>{item.campaign_code}</div>
                   </td>
                   <td style={tdStyle}>
                     {item.advertiser_org_name ?? item.advertiser_org_id ?? "—"}
-                    {item.advertiser_brand_name && <><br /><span style={{ color: "#64748b", fontSize: "0.75rem" }}>{item.advertiser_brand_name}</span></>}
+                    {item.advertiser_brand_name && <><br /><span style={{ color: "var(--rmp-text-secondary)", fontSize: "0.75rem" }}>{item.advertiser_brand_name}</span></>}
                   </td>
                   <td style={tdStyle}>
                     <div style={{ fontSize: "0.75rem", lineHeight: 1.6 }}>
@@ -186,13 +186,13 @@ export default function ApprovalInboxPage() {
                     <span style={{
                       color: item.campaign_status === "pending_approval" ? "#d97706"
                            : item.campaign_status === "approved" ? "#059669"
-                           : "#dc2626",
+                           : "var(--rmp-danger-600)",
                       fontWeight: 500,
                     }}>
                       {statusLabel(item.campaign_status)}
                     </span>
                     {item.rejection_reason && (
-                      <div style={{ color: "#dc2626", fontSize: "0.75rem", maxWidth: 200, marginTop: 2 }}>
+                      <div style={{ color: "var(--rmp-danger-600)", fontSize: "0.75rem", maxWidth: 200, marginTop: 2 }}>
                         {item.rejection_reason}
                       </div>
                     )}
@@ -204,12 +204,12 @@ export default function ApprovalInboxPage() {
                         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                           <input type="text" placeholder="Причина отказа" value={rejectReason}
                             onChange={(e) => setRejectReason(e.target.value)}
-                            style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem", border: "1px solid #cbd5e1", borderRadius: 4, width: 140 }} />
+                            style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem", border: "1px solid var(--rmp-border-strong)", borderRadius: 4, width: 140 }} />
                           <div style={{ display: "flex", gap: 4 }}>
                             <button onClick={() => handleReject(item.campaign_id)} disabled={!rejectReason.trim()}
-                              style={actionBtn("#dc2626", !rejectReason.trim())}>Отклонить</button>
+                              style={actionBtn("var(--rmp-danger-600)", !rejectReason.trim())}>Отклонить</button>
                             <button onClick={() => setRejectingId(null)}
-                              style={actionBtn("#64748b")}>Отмена</button>
+                              style={actionBtn("var(--rmp-text-secondary)")}>Отмена</button>
                           </div>
                         </div>
                       ) : (
@@ -221,7 +221,7 @@ export default function ApprovalInboxPage() {
                             Согласовать
                           </button>
                           <button onClick={() => { setRejectingId(item.campaign_id); setRejectReason(""); }}
-                            style={actionBtn("#dc2626")}>Отклонить</button>
+                            style={actionBtn("var(--rmp-danger-600)")}>Отклонить</button>
                         </div>
                       )
                     )}
@@ -245,7 +245,7 @@ export default function ApprovalInboxPage() {
 }
 
 const thStyle: React.CSSProperties = {
-  padding: "0.5rem 0.75rem", fontWeight: 600, color: "#475569", fontSize: "0.75rem",
+  padding: "0.5rem 0.75rem", fontWeight: 600, color: "var(--rmp-gray-600)", fontSize: "0.75rem",
 };
 const tdStyle: React.CSSProperties = {
   padding: "0.5rem 0.75rem", verticalAlign: "top",
@@ -253,7 +253,7 @@ const tdStyle: React.CSSProperties = {
 function actionBtn(color: string, disabled = false): React.CSSProperties {
   return {
     padding: "0.15rem 0.5rem", fontSize: "0.75rem", border: `1px solid ${color}`,
-    borderRadius: 4, background: disabled ? "#e2e8f0" : "#fff",
-    color: disabled ? "#94a3b8" : color, cursor: disabled ? "default" : "pointer",
+    borderRadius: 4, background: disabled ? "var(--rmp-border)" : "#fff",
+    color: disabled ? "var(--rmp-text-muted)" : color, cursor: disabled ? "default" : "pointer",
   };
 }

@@ -90,47 +90,47 @@ const S = {
   } as React.CSSProperties,
   stepDot: (active: boolean, done: boolean): React.CSSProperties => ({
     flex: 1, height: 4, borderRadius: 2,
-    background: active ? "#2563eb" : done ? "#16a34a" : "#e2e8f0",
+    background: active ? "var(--rmp-primary-500)" : done ? "var(--rmp-success-600)" : "var(--rmp-border)",
     transition: "background 0.2s",
   }),
   stepLabel: {
     display: "flex", justifyContent: "space-between",
-    fontSize: "0.75rem", color: "#64748b", marginBottom: "0.25rem",
+    fontSize: "0.75rem", color: "var(--rmp-text-secondary)", marginBottom: "0.25rem",
   } as React.CSSProperties,
   input: {
-    width: "100%", padding: "0.4rem 0.5rem", border: "1px solid #e2e8f0",
+    width: "100%", padding: "0.4rem 0.5rem", border: "1px solid var(--rmp-border)",
     borderRadius: 4, fontSize: "0.875rem", marginBottom: "0.5rem",
     boxSizing: "border-box" as const,
   },
   select: {
-    width: "100%", padding: "0.4rem 0.5rem", border: "1px solid #e2e8f0",
+    width: "100%", padding: "0.4rem 0.5rem", border: "1px solid var(--rmp-border)",
     borderRadius: 4, fontSize: "0.875rem", marginBottom: "0.5rem",
     background: "#fff",
   },
   label: {
-    fontSize: "0.75rem", color: "#64748b", marginBottom: "0.15rem",
+    fontSize: "0.75rem", color: "var(--rmp-text-secondary)", marginBottom: "0.15rem",
   } as React.CSSProperties,
   btnRow: {
     display: "flex", gap: "0.5rem", justifyContent: "space-between",
     marginTop: "1rem",
   } as React.CSSProperties,
   btnPrimary: {
-    padding: "0.5rem 1rem", cursor: "pointer", background: "#2563eb",
+    padding: "0.5rem 1rem", cursor: "pointer", background: "var(--rmp-primary-500)",
     color: "#fff", border: "none", borderRadius: 4, fontWeight: 500,
   } as React.CSSProperties,
   btnSecondary: {
-    padding: "0.5rem 1rem", cursor: "pointer", background: "#f1f5f9",
-    color: "#475569", border: "1px solid #e2e8f0", borderRadius: 4,
+    padding: "0.5rem 1rem", cursor: "pointer", background: "var(--rmp-gray-100)",
+    color: "var(--rmp-gray-600)", border: "1px solid var(--rmp-border)", borderRadius: 4,
   } as React.CSSProperties,
   error: {
-    color: "#dc2626", fontSize: "0.8125rem", marginBottom: "0.5rem",
+    color: "var(--rmp-danger-600)", fontSize: "0.8125rem", marginBottom: "0.5rem",
   } as React.CSSProperties,
   success: {
-    color: "#16a34a", fontSize: "0.8125rem", marginBottom: "0.5rem",
+    color: "var(--rmp-success-600)", fontSize: "0.8125rem", marginBottom: "0.5rem",
   } as React.CSSProperties,
   summaryRow: {
     display: "flex", justifyContent: "space-between",
-    padding: "0.3rem 0", borderBottom: "1px solid #f1f5f9",
+    padding: "0.3rem 0", borderBottom: "1px solid var(--rmp-gray-100)",
     fontSize: "0.875rem",
   } as React.CSSProperties,
   note: {
@@ -433,30 +433,30 @@ export default function AdvertiserWizard({ onClose, onCreated }: AdvertiserWizar
         <h3 style={{ margin: "0 0 0.75rem", fontSize: "1rem" }}>Проверьте данные</h3>
 
         <div style={S.summaryRow}>
-          <span style={{ color: "#64748b" }}>Код</span>
+          <span style={{ color: "var(--rmp-text-secondary)" }}>Код</span>
           <strong data-testid="advertiser-wizard-summary-code">{orgCode || "—"}</strong>
         </div>
         <div style={S.summaryRow}>
-          <span style={{ color: "#64748b" }}>Организация</span>
+          <span style={{ color: "var(--rmp-text-secondary)" }}>Организация</span>
           <span>{main.display_name}</span>
         </div>
         <div style={S.summaryRow}>
-          <span style={{ color: "#64748b" }}>ИНН</span>
+          <span style={{ color: "var(--rmp-text-secondary)" }}>ИНН</span>
           <span data-testid="advertiser-wizard-summary-inn">{legal.inn || "—"}</span>
         </div>
         <div style={S.summaryRow}>
-          <span style={{ color: "#64748b" }}>Банк</span>
+          <span style={{ color: "var(--rmp-text-secondary)" }}>Банк</span>
           <span>{legal.bank_name || "—"}</span>
         </div>
         <div style={S.summaryRow}>
-          <span style={{ color: "#64748b" }}>Контакт</span>
+          <span style={{ color: "var(--rmp-text-secondary)" }}>Контакт</span>
           <span data-testid="advertiser-wizard-summary-contact">
             {contact.full_name}{contact.email ? ` (${contact.email})` : ""}
           </span>
         </div>
         <div style={{ ...S.summaryRow, marginBottom: "0.5rem" }}>
-          <span style={{ color: "#64748b" }}>Договор</span>
-          <span style={{ color: "#64748b", fontStyle: "italic" }}>
+          <span style={{ color: "var(--rmp-text-secondary)" }}>Договор</span>
+          <span style={{ color: "var(--rmp-text-secondary)", fontStyle: "italic" }}>
             Будет добавлен в карточке
           </span>
         </div>

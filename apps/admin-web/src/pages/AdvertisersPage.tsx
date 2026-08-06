@@ -85,7 +85,7 @@ const S = {
     maxWidth: 360,
     padding: "0.5rem 0.75rem",
     marginBottom: "1rem",
-    border: "1px solid #e2e8f0",
+    border: "1px solid var(--rmp-border)",
     borderRadius: 6,
     fontSize: "0.875rem",
   } as React.CSSProperties,
@@ -97,15 +97,15 @@ const S = {
   th: {
     textAlign: "left" as const,
     padding: "0.5rem 0.75rem",
-    borderBottom: "2px solid #e2e8f0",
-    color: "#64748b",
+    borderBottom: "2px solid var(--rmp-border)",
+    color: "var(--rmp-text-secondary)",
     fontWeight: 600,
     fontSize: "0.8rem",
     whiteSpace: "nowrap" as const,
   },
   td: {
     padding: "0.5rem 0.75rem",
-    borderBottom: "1px solid #f1f5f9",
+    borderBottom: "1px solid var(--rmp-gray-100)",
   },
   row: {
     cursor: "pointer",
@@ -121,22 +121,22 @@ const S = {
   }),
   detailPanel: {
     marginTop: "1.5rem",
-    border: "1px solid #e2e8f0",
+    border: "1px solid var(--rmp-border)",
     borderRadius: 8,
     background: "#fff",
     overflow: "hidden",
   } as React.CSSProperties,
   tabs: {
     display: "flex",
-    borderBottom: "1px solid #e2e8f0",
-    background: "#f8fafc",
+    borderBottom: "1px solid var(--rmp-border)",
+    background: "var(--rmp-bg-page)",
   } as React.CSSProperties,
   tab: (active: boolean): React.CSSProperties => ({
     padding: "0.5rem 1rem",
     fontSize: "0.8125rem",
     fontWeight: active ? 600 : 400,
-    color: active ? "#1e293b" : "#64748b",
-    borderBottom: active ? "2px solid #2563eb" : "2px solid transparent",
+    color: active ? "var(--rmp-gray-800)" : "var(--rmp-text-secondary)",
+    borderBottom: active ? "2px solid var(--rmp-primary-500)" : "2px solid transparent",
     cursor: "pointer",
     background: active ? "#fff" : "transparent",
   }),
@@ -154,29 +154,29 @@ const S = {
     border: "none",
     fontSize: "1.25rem",
     cursor: "pointer",
-    color: "#64748b",
+    color: "var(--rmp-text-secondary)",
     padding: "0 0.25rem",
   } as React.CSSProperties,
   empty: {
     textAlign: "center" as const,
-    color: "#64748b",
+    color: "var(--rmp-text-secondary)",
     padding: "2rem",
     fontSize: "0.875rem",
   },
   error: {
-    color: "#dc2626",
+    color: "var(--rmp-danger-600)",
     padding: "1rem",
     fontSize: "0.875rem",
   },
   loading: {
-    color: "#64748b",
+    color: "var(--rmp-text-secondary)",
     padding: "1rem",
     fontSize: "0.875rem",
   },
   count: {
     display: "inline-block",
-    background: "#f1f5f9",
-    color: "#475569",
+    background: "var(--rmp-gray-100)",
+    color: "var(--rmp-gray-600)",
     borderRadius: 999,
     padding: "0.05rem 0.5rem",
     fontSize: "0.75rem",
@@ -189,7 +189,7 @@ const S = {
   } as React.CSSProperties,
   fieldLabel: {
     fontSize: "0.75rem",
-    color: "#64748b",
+    color: "var(--rmp-text-secondary)",
     fontWeight: 500,
     marginBottom: "0.15rem",
   } as React.CSSProperties,
@@ -197,12 +197,12 @@ const S = {
     fontSize: "0.875rem",
   } as React.CSSProperties,
   fieldError: {
-    color: "#dc2626",
+    color: "var(--rmp-danger-600)",
     fontSize: "0.8125rem",
     marginBottom: "0.5rem",
   } as React.CSSProperties,
   fieldSuccess: {
-    color: "#16a34a",
+    color: "var(--rmp-success-600)",
     fontSize: "0.8125rem",
     marginBottom: "0.5rem",
   } as React.CSSProperties,
@@ -211,7 +211,7 @@ const S = {
     fontSize: "0.8125rem",
     fontWeight: 500,
     color: "#fff",
-    background: "#2563eb",
+    background: "var(--rmp-primary-500)",
     border: "none",
     borderRadius: 4,
     cursor: "pointer",
@@ -220,9 +220,9 @@ const S = {
     padding: "0.25rem 0.75rem",
     fontSize: "0.8125rem",
     fontWeight: 500,
-    color: "#475569",
-    background: "#f1f5f9",
-    border: "1px solid #e2e8f0",
+    color: "var(--rmp-gray-600)",
+    background: "var(--rmp-gray-100)",
+    border: "1px solid var(--rmp-border)",
     borderRadius: 4,
     cursor: "pointer",
   } as React.CSSProperties,
@@ -230,7 +230,7 @@ const S = {
     padding: "0.2rem 0.5rem",
     fontSize: "0.75rem",
     fontWeight: 500,
-    color: "#2563eb",
+    color: "var(--rmp-primary-500)",
     background: "#eff6ff",
     border: "1px solid #bfdbfe",
     borderRadius: 4,
@@ -239,20 +239,20 @@ const S = {
   inputSmall: {
     padding: "0.2rem 0.4rem",
     fontSize: "0.8125rem",
-    border: "1px solid #e2e8f0",
+    border: "1px solid var(--rmp-border)",
     borderRadius: 4,
     width: "100%",
   } as React.CSSProperties,
   selectSmall: {
     padding: "0.2rem 0.4rem",
     fontSize: "0.8125rem",
-    border: "1px solid #e2e8f0",
+    border: "1px solid var(--rmp-border)",
     borderRadius: 4,
   } as React.CSSProperties,
   input: {
     padding: "0.4rem 0.6rem",
     fontSize: "0.875rem",
-    border: "1px solid #e2e8f0",
+    border: "1px solid var(--rmp-border)",
     borderRadius: 4,
     width: "100%",
     marginBottom: "0.5rem",
@@ -261,7 +261,7 @@ const S = {
   select: {
     padding: "0.4rem 0.6rem",
     fontSize: "0.875rem",
-    border: "1px solid #e2e8f0",
+    border: "1px solid var(--rmp-border)",
     borderRadius: 4,
     width: "100%",
     marginBottom: "0.5rem",
@@ -661,12 +661,12 @@ function LegalRequisitesTab({ org, onSaved }: { org: AdvertiserOrganizationDetai
   }
 
   const inputStyle: React.CSSProperties = {
-    width: "100%", padding: "0.4rem 0.5rem", border: "1px solid #e2e8f0",
+    width: "100%", padding: "0.4rem 0.5rem", border: "1px solid var(--rmp-border)",
     borderRadius: 4, fontSize: "0.875rem", boxSizing: "border-box",
   };
   const labelStyle: React.CSSProperties = {
     display: "block", fontSize: "0.8rem", marginBottom: "0.2rem",
-    color: "#64748b", fontWeight: 500,
+    color: "var(--rmp-text-secondary)", fontWeight: 500,
   };
   const groupStyle: React.CSSProperties = { marginBottom: "0.75rem" };
 
@@ -703,7 +703,7 @@ function LegalRequisitesTab({ org, onSaved }: { org: AdvertiserOrganizationDetai
               <div style={groupStyle}><div style={labelStyle}>Банк</div><div style={{ fontSize: "0.875rem" }} data-testid="advertiser-legal-display-bank-name">{org.bank_name}</div></div>
             </div>
           ) : (
-            <div style={{ color: "#64748b", fontSize: "0.875rem" }}>
+            <div style={{ color: "var(--rmp-text-secondary)", fontSize: "0.875rem" }}>
               {canEdit ? "Нажмите «Заполнить» чтобы добавить реквизиты." : "Нет данных."}
             </div>
           )}
@@ -713,8 +713,8 @@ function LegalRequisitesTab({ org, onSaved }: { org: AdvertiserOrganizationDetai
       {editing && (
         <div>
           <h4 style={{ margin: "0 0 1rem", fontSize: "0.9rem" }}>Редактирование реквизитов</h4>
-          {error && <div data-testid="advertiser-legal-error" style={{ color: "#dc2626", marginBottom: "0.75rem", fontSize: "0.875rem" }}>{error}</div>}
-          {success && <div data-testid="advertiser-legal-success" style={{ color: "#16a34a", marginBottom: "0.75rem", fontSize: "0.875rem" }}>{success}</div>}
+          {error && <div data-testid="advertiser-legal-error" style={{ color: "var(--rmp-danger-600)", marginBottom: "0.75rem", fontSize: "0.875rem" }}>{error}</div>}
+          {success && <div data-testid="advertiser-legal-success" style={{ color: "var(--rmp-success-600)", marginBottom: "0.75rem", fontSize: "0.875rem" }}>{success}</div>}
 
           <div style={groupStyle}><div style={labelStyle}>Тип *</div>
             <select data-testid="advertiser-legal-entity-type" style={inputStyle} value={form.legal_entity_type}
@@ -780,7 +780,7 @@ function LegalRequisitesTab({ org, onSaved }: { org: AdvertiserOrganizationDetai
             <button onClick={() => { setEditing(false); setError(""); setSuccess(""); }}
               style={{ padding: "0.5rem 1rem", cursor: "pointer" }}>Отмена</button>
             <button data-testid="advertiser-legal-submit" onClick={handleSave} disabled={saving}
-              style={{ padding: "0.5rem 1rem", cursor: "pointer", background: "#2563eb", color: "#fff", border: "none", borderRadius: 4, opacity: saving ? 0.6 : 1 }}>
+              style={{ padding: "0.5rem 1rem", cursor: "pointer", background: "var(--rmp-primary-500)", color: "#fff", border: "none", borderRadius: 4, opacity: saving ? 0.6 : 1 }}>
               {saving ? "Сохранение..." : "Сохранить"}
             </button>
           </div>
@@ -862,14 +862,14 @@ function BrandsTab({ brands, orgId, onBrandChange }: { brands: AdvertiserBrandOu
   }
 
   const inputStyle: React.CSSProperties = {
-    width: "100%", padding: "0.35rem 0.5rem", border: "1px solid #e2e8f0",
+    width: "100%", padding: "0.35rem 0.5rem", border: "1px solid var(--rmp-border)",
     borderRadius: 4, fontSize: "0.875rem", boxSizing: "border-box",
   };
 
   return (
     <div data-testid="advertiser-brands-section">
-      {error && <div data-testid="advertiser-brand-error" style={{ color: "#dc2626", marginBottom: "0.5rem", fontSize: "0.875rem" }}>{error}</div>}
-      {success && <div data-testid="advertiser-brand-success" style={{ color: "#16a34a", marginBottom: "0.5rem", fontSize: "0.875rem" }}>{success}</div>}
+      {error && <div data-testid="advertiser-brand-error" style={{ color: "var(--rmp-danger-600)", marginBottom: "0.5rem", fontSize: "0.875rem" }}>{error}</div>}
+      {success && <div data-testid="advertiser-brand-success" style={{ color: "var(--rmp-success-600)", marginBottom: "0.5rem", fontSize: "0.875rem" }}>{success}</div>}
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
         <h4 style={{ margin: 0, fontSize: "0.9rem" }}>Бренды</h4>
@@ -880,23 +880,23 @@ function BrandsTab({ brands, orgId, onBrandChange }: { brands: AdvertiserBrandOu
       </div>
 
       {creating && (
-        <div style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "0.75rem", marginBottom: "0.75rem", background: "#f8fafc" }}>
+        <div style={{ border: "1px solid var(--rmp-border)", borderRadius: 6, padding: "0.75rem", marginBottom: "0.75rem", background: "var(--rmp-bg-page)" }}>
           <div style={{ marginBottom: "0.5rem" }}>
-            <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>Код *</div>
+            <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "var(--rmp-text-secondary)" }}>Код *</div>
             <input data-testid="advertiser-brand-code" style={inputStyle} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
           </div>
           <div style={{ marginBottom: "0.5rem" }}>
-            <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>Название *</div>
+            <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "var(--rmp-text-secondary)" }}>Название *</div>
             <input data-testid="advertiser-brand-name" style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
           <div style={{ marginBottom: "0.5rem" }}>
-            <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>Описание</div>
+            <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "var(--rmp-text-secondary)" }}>Описание</div>
             <input data-testid="advertiser-brand-description" style={inputStyle} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </div>
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button onClick={resetForm} style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem" }}>Отмена</button>
             <button data-testid="advertiser-brand-submit" onClick={handleCreate} disabled={saving}
-              style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: 4 }}>Сохранить</button>
+              style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem", background: "var(--rmp-primary-500)", color: "#fff", border: "none", borderRadius: 4 }}>Сохранить</button>
           </div>
         </div>
       )}
@@ -1105,15 +1105,15 @@ function ContractsTab({ contracts, orgId, onContractChange }: { contracts: Adver
   }
 
   const inputStyle: React.CSSProperties = {
-    width: "100%", padding: "0.35rem 0.5rem", border: "1px solid #e2e8f0",
+    width: "100%", padding: "0.35rem 0.5rem", border: "1px solid var(--rmp-border)",
     borderRadius: 4, fontSize: "0.875rem", boxSizing: "border-box",
   };
   const narrowInput: React.CSSProperties = { ...inputStyle, width: "100%" };
 
   return (
     <div data-testid="advertiser-contracts-section">
-      {error && <div data-testid="advertiser-contract-error" style={{ color: "#dc2626", marginBottom: "0.5rem", fontSize: "0.875rem" }}>{error}</div>}
-      {success && <div data-testid="advertiser-contract-success" style={{ color: "#16a34a", marginBottom: "0.5rem", fontSize: "0.875rem" }}>{success}</div>}
+      {error && <div data-testid="advertiser-contract-error" style={{ color: "var(--rmp-danger-600)", marginBottom: "0.5rem", fontSize: "0.875rem" }}>{error}</div>}
+      {success && <div data-testid="advertiser-contract-success" style={{ color: "var(--rmp-success-600)", marginBottom: "0.5rem", fontSize: "0.875rem" }}>{success}</div>}
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
         <h4 style={{ margin: 0, fontSize: "0.9rem" }}>Договоры</h4>
@@ -1124,37 +1124,37 @@ function ContractsTab({ contracts, orgId, onContractChange }: { contracts: Adver
       </div>
 
       {creating && (
-        <div style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "0.75rem", marginBottom: "0.75rem", background: "#f8fafc" }}>
+        <div style={{ border: "1px solid var(--rmp-border)", borderRadius: 6, padding: "0.75rem", marginBottom: "0.75rem", background: "var(--rmp-bg-page)" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", marginBottom: "0.5rem" }}>
             <div>
-              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>Код *</div>
+              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "var(--rmp-text-secondary)" }}>Код *</div>
               <input data-testid="advertiser-contract-number" style={inputStyle} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
             </div>
             <div>
-              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>Название *</div>
+              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "var(--rmp-text-secondary)" }}>Название *</div>
               <input data-testid="advertiser-contract-title" style={inputStyle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
             <div>
-              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>№ договора</div>
+              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "var(--rmp-text-secondary)" }}>№ договора</div>
               <input data-testid="advertiser-contract-contract-number" style={inputStyle} value={form.contract_number} onChange={(e) => setForm({ ...form, contract_number: e.target.value })} />
             </div>
             <div>
-              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>Бюджет</div>
+              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "var(--rmp-text-secondary)" }}>Бюджет</div>
               <input data-testid="advertiser-contract-budget" style={inputStyle} type="number" value={form.budget_limit_amount} onChange={(e) => setForm({ ...form, budget_limit_amount: e.target.value })} />
             </div>
             <div>
-              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>Действует с</div>
+              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "var(--rmp-text-secondary)" }}>Действует с</div>
               <input data-testid="advertiser-contract-starts-at" style={inputStyle} type="date" value={form.valid_from} onChange={(e) => setForm({ ...form, valid_from: e.target.value })} />
             </div>
             <div>
-              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "#64748b" }}>Действует по</div>
+              <div style={{ fontSize: "0.8rem", marginBottom: "0.2rem", color: "var(--rmp-text-secondary)" }}>Действует по</div>
               <input data-testid="advertiser-contract-ends-at" style={inputStyle} type="date" value={form.valid_until} onChange={(e) => setForm({ ...form, valid_until: e.target.value })} />
             </div>
           </div>
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button onClick={resetForm} style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem" }}>Отмена</button>
             <button data-testid="advertiser-contract-submit" onClick={handleCreate} disabled={saving}
-              style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: 4 }}>Сохранить</button>
+              style={{ padding: "0.35rem 0.75rem", cursor: "pointer", fontSize: "0.8125rem", background: "var(--rmp-primary-500)", color: "#fff", border: "none", borderRadius: 4 }}>Сохранить</button>
           </div>
         </div>
       )}
@@ -1216,7 +1216,7 @@ function ContractsTab({ contracts, orgId, onContractChange }: { contracts: Adver
                           📄 {pendingFile.file.name}
                         </span>
                         <button data-testid="advertiser-contract-upload-done"
-                          style={{ padding: "0.15rem 0.4rem", cursor: "pointer", fontSize: "0.7rem", background: "#16a34a", color: "#fff", border: "none", borderRadius: 3 }}
+                          style={{ padding: "0.15rem 0.4rem", cursor: "pointer", fontSize: "0.7rem", background: "var(--rmp-success-600)", color: "#fff", border: "none", borderRadius: 3 }}
                           onClick={() => {
                             handleFileUpload(c.id, c.code, pendingFile.file);
                             setPendingFile(null);
@@ -1225,7 +1225,7 @@ function ContractsTab({ contracts, orgId, onContractChange }: { contracts: Adver
                       </span>
                     ) : canEdit ? (
                       <button data-testid={`advertiser-contract-upload-${c.id}`}
-                        style={{ padding: "0.2rem 0.4rem", cursor: "pointer", fontSize: "0.75rem", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 3 }}
+                        style={{ padding: "0.2rem 0.4rem", cursor: "pointer", fontSize: "0.75rem", background: "var(--rmp-gray-100)", border: "1px solid var(--rmp-border)", borderRadius: 3 }}
                         onClick={() => {
                           pendingContractRef.current = c.id;
                           fileInputRef.current?.click();

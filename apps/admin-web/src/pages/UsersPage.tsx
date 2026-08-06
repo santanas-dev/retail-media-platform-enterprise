@@ -73,7 +73,7 @@ function UsersTable({
             <td style={tdStyle}>
               <strong>{u.display_name}</strong>
               <br />
-              <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>
+              <span style={{ color: "var(--rmp-text-muted)", fontSize: "0.8rem" }}>
                 {u.username}
               </span>
             </td>
@@ -434,19 +434,19 @@ export default function UsersPage() {
   const thStyle: React.CSSProperties = {
     textAlign: "left",
     padding: "0.5rem",
-    borderBottom: "2px solid #e2e8f0",
-    color: "#475569",
+    borderBottom: "2px solid var(--rmp-border)",
+    color: "var(--rmp-gray-600)",
     fontWeight: 600,
   };
   const tdStyle: React.CSSProperties = {
     padding: "0.5rem",
-    borderBottom: "1px solid #e2e8f0",
+    borderBottom: "1px solid var(--rmp-border)",
     verticalAlign: "top",
   };
   const btnStyle: React.CSSProperties = {
     padding: "0.25rem 0.5rem",
     fontSize: "0.75rem",
-    border: "1px solid #cbd5e1",
+    border: "1px solid var(--rmp-border-strong)",
     borderRadius: 4,
     background: "#fff",
     cursor: "pointer",
@@ -455,7 +455,7 @@ export default function UsersPage() {
   };
   const dangerBtn: React.CSSProperties = {
     ...btnStyle,
-    color: "#dc2626",
+    color: "var(--rmp-danger-600)",
     borderColor: "#fca5a5",
   };
   const badge: React.CSSProperties = {
@@ -469,7 +469,7 @@ export default function UsersPage() {
   const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: "0.375rem 0.5rem",
-    border: "1px solid #cbd5e1",
+    border: "1px solid var(--rmp-border-strong)",
     borderRadius: 4,
     fontSize: "0.875rem",
     boxSizing: "border-box",
@@ -478,7 +478,7 @@ export default function UsersPage() {
   const labelStyle: React.CSSProperties = {
     display: "block",
     fontSize: "0.8rem",
-    color: "#475569",
+    color: "var(--rmp-gray-600)",
     marginBottom: "0.25rem",
   };
 
@@ -490,8 +490,8 @@ export default function UsersPage() {
       <span
         style={{
           ...badge,
-          background: active ? "#dcfce7" : "#fee2e2",
-          color: active ? "#166534" : "#991b1b",
+          background: active ? "var(--rmp-success-100)" : "var(--rmp-danger-100)",
+          color: active ? "var(--rmp-success-800)" : "var(--rmp-danger-800)",
         }}
       >
         {active ? "Активен" : "Неактивен"}
@@ -531,14 +531,14 @@ export default function UsersPage() {
     borderBottom: active ? "2px solid #3b82f6" : "2px solid transparent",
     background: "transparent",
     cursor: "pointer",
-    color: active ? "#1e40af" : "#64748b",
+    color: active ? "#1e40af" : "var(--rmp-text-secondary)",
     fontWeight: active ? 600 : 400,
   });
 
   const tabBarStyle: React.CSSProperties = {
     display: "flex",
     gap: "0",
-    borderBottom: "1px solid #e2e8f0",
+    borderBottom: "1px solid var(--rmp-border)",
     marginBottom: "1rem",
   };
 
@@ -566,10 +566,10 @@ export default function UsersPage() {
       </div>
 
       {state.error && (
-        <p style={{ color: "#dc2626", marginBottom: "1rem" }}>{state.error}</p>
+        <p style={{ color: "var(--rmp-danger-600)", marginBottom: "1rem" }}>{state.error}</p>
       )}
       {state.actionError && (
-        <p style={{ color: "#dc2626", marginBottom: "0.5rem" }}>
+        <p style={{ color: "var(--rmp-danger-600)", marginBottom: "0.5rem" }}>
           {state.actionError}
         </p>
       )}
@@ -578,8 +578,8 @@ export default function UsersPage() {
       {createOpen && (
         <div
           style={{
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
+            background: "var(--rmp-bg-page)",
+            border: "1px solid var(--rmp-border)",
             borderRadius: 8,
             padding: "1rem",
             marginBottom: "1rem",
@@ -679,7 +679,7 @@ export default function UsersPage() {
                 padding: "0.5rem",
                 background: createResult.one_time_password
                   ? "#fef3c7"
-                  : "#fee2e2",
+                  : "var(--rmp-danger-100)",
                 borderRadius: 4,
                 fontSize: "0.8rem",
               }}
@@ -704,8 +704,8 @@ export default function UsersPage() {
       {resetOpen && (
         <div
           style={{
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
+            background: "var(--rmp-bg-page)",
+            border: "1px solid var(--rmp-border)",
             borderRadius: 8,
             padding: "1rem",
             marginBottom: "1rem",
@@ -781,7 +781,7 @@ export default function UsersPage() {
                 padding: "0.5rem",
                 background: resetResult.one_time_password
                   ? "#fef3c7"
-                  : "#fee2e2",
+                  : "var(--rmp-danger-100)",
                 borderRadius: 4,
                 fontSize: "0.8rem",
               }}
@@ -807,8 +807,8 @@ export default function UsersPage() {
         <div
           data-testid="user-roles-panel"
           style={{
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
+            background: "var(--rmp-bg-page)",
+            border: "1px solid var(--rmp-border)",
             borderRadius: 8,
             padding: "1rem",
             marginBottom: "1rem",
@@ -823,7 +823,7 @@ export default function UsersPage() {
           <div style={{ marginBottom: "0.75rem" }}>
             <strong>Текущие роли:</strong>
             {state.selectedUser.roles.length === 0 && (
-              <p style={{ color: "#94a3b8", margin: "0.25rem 0" }}>
+              <p style={{ color: "var(--rmp-text-muted)", margin: "0.25rem 0" }}>
                 Нет назначенных ролей
               </p>
             )}
@@ -834,9 +834,9 @@ export default function UsersPage() {
                   style={{ marginBottom: "0.25rem", fontSize: "0.85rem" }}
                 >
                   <strong>{r.role_name}</strong>{" "}
-                  <code style={{ fontSize: "0.8rem", color: "#64748b" }}>({r.role_code})</code>
+                  <code style={{ fontSize: "0.8rem", color: "var(--rmp-text-secondary)" }}>({r.role_code})</code>
                   {r.scope_type && (
-                    <span style={{ color: "#64748b" }}>
+                    <span style={{ color: "var(--rmp-text-secondary)" }}>
                       {" "}
                       — scope: {r.scope_type}/{r.scope_id?.slice(0, 8)}…
                     </span>
@@ -865,7 +865,7 @@ export default function UsersPage() {
           <div
             style={{
               marginBottom: "0.75rem",
-              borderTop: "1px solid #e2e8f0",
+              borderTop: "1px solid var(--rmp-border)",
               paddingTop: "0.75rem",
             }}
             data-testid="permission-catalog"
@@ -904,8 +904,8 @@ export default function UsersPage() {
                       data-testid={`permission-code-${safeCode}`}
                       style={{
                         fontSize: "0.7rem",
-                        color: "#94a3b8",
-                        background: "#f1f5f9",
+                        color: "var(--rmp-text-muted)",
+                        background: "var(--rmp-gray-100)",
                         padding: "0 4px",
                         borderRadius: 2,
                       }}
@@ -915,7 +915,7 @@ export default function UsersPage() {
                     <br />
                     <span
                       data-testid={`permission-description-${safeCode}`}
-                      style={{ color: "#475569", fontSize: "0.75rem" }}
+                      style={{ color: "var(--rmp-gray-600)", fontSize: "0.75rem" }}
                     >
                       {desc.description}
                     </span>
@@ -929,7 +929,7 @@ export default function UsersPage() {
           {canManageRoles && (
             <div
               style={{
-                borderTop: "1px solid #e2e8f0",
+                borderTop: "1px solid var(--rmp-border)",
                 paddingTop: "0.75rem",
               }}
             >
@@ -937,7 +937,7 @@ export default function UsersPage() {
                 Назначить роль:
               </strong>
               {roleAssignError && (
-                <p style={{ color: "#dc2626", fontSize: "0.8rem", margin: "0.25rem 0" }}>
+                <p style={{ color: "var(--rmp-danger-600)", fontSize: "0.8rem", margin: "0.25rem 0" }}>
                   {roleAssignError}
                 </p>
               )}
@@ -999,7 +999,7 @@ export default function UsersPage() {
       {deactivateOpen && (
         <div
           style={{
-            background: "#fef2f2",
+            background: "var(--rmp-danger-50)",
             border: "1px solid #fca5a5",
             borderRadius: 8,
             padding: "1rem",
@@ -1007,7 +1007,7 @@ export default function UsersPage() {
             maxWidth: 420,
           }}
         >
-          <h3 style={{ color: "#dc2626" }}>Деактивировать пользователя</h3>
+          <h3 style={{ color: "var(--rmp-danger-600)" }}>Деактивировать пользователя</h3>
           <p>
             Вы собираетесь деактивировать пользователя{" "}
             <strong>{deactivateUsername}</strong>. Все активные сессии будут
@@ -1047,7 +1047,7 @@ export default function UsersPage() {
               style={{
                 marginTop: "0.75rem",
                 padding: "0.5rem",
-                background: deactivateResult.success ? "#dcfce7" : "#fee2e2",
+                background: deactivateResult.success ? "var(--rmp-success-100)" : "var(--rmp-danger-100)",
                 borderRadius: 4,
                 fontSize: "0.8rem",
               }}
@@ -1090,7 +1090,7 @@ export default function UsersPage() {
       {userTab === "all" && (
         <div data-testid="users-section-all">
           {tabUsers.length === 0 ? (
-            <p data-testid="users-empty-all" style={{ color: "#94a3b8", marginTop: "1rem" }}>
+            <p data-testid="users-empty-all" style={{ color: "var(--rmp-text-muted)", marginTop: "1rem" }}>
               Нет пользователей.
             </p>
           ) : (
@@ -1119,7 +1119,7 @@ export default function UsersPage() {
       {userTab === "internal" && (
         <div data-testid="users-section-internal">
           {tabUsers.length === 0 ? (
-            <p data-testid="users-empty-internal" style={{ color: "#94a3b8", marginTop: "1rem" }}>
+            <p data-testid="users-empty-internal" style={{ color: "var(--rmp-text-muted)", marginTop: "1rem" }}>
               Нет внутренних пользователей.
             </p>
           ) : (
@@ -1148,7 +1148,7 @@ export default function UsersPage() {
       {userTab === "advertiser" && (
         <div data-testid="users-section-advertiser">
           {tabUsers.length === 0 ? (
-            <p data-testid="users-empty-advertiser" style={{ color: "#94a3b8", marginTop: "1rem" }}>
+            <p data-testid="users-empty-advertiser" style={{ color: "var(--rmp-text-muted)", marginTop: "1rem" }}>
               Нет пользователей рекламодателей.
             </p>
           ) : (

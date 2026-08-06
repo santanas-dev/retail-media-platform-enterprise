@@ -6,21 +6,21 @@ const S = {
   page: { fontFamily: "system-ui, sans-serif" } as const,
   h1: { fontSize: "1.25rem", fontWeight: 600, margin: "0 0 1rem" } as const,
   table: { width: "100%", borderCollapse: "collapse" as const, fontSize: "0.9rem" },
-  th: { textAlign: "left" as const, padding: "0.5rem", borderBottom: "2px solid #e2e8f0", background: "#f8fafc" },
-  td: { padding: "0.5rem", borderBottom: "1px solid #e2e8f0", verticalAlign: "top" as const },
+  th: { textAlign: "left" as const, padding: "0.5rem", borderBottom: "2px solid var(--rmp-border)", background: "var(--rmp-bg-page)" },
+  td: { padding: "0.5rem", borderBottom: "1px solid var(--rmp-border)", verticalAlign: "top" as const },
   badge: (color: string) =>
     ({ display: "inline-block", padding: "0.15rem 0.5rem", borderRadius: 9999, fontSize: "0.75rem", fontWeight: 700, background: color, color: "#fff" }) as const,
-  loading: { padding: "2rem", textAlign: "center" as const, color: "#94a3b8" },
-  error: { padding: "1rem", color: "#991b1b", background: "#fef2f2", borderRadius: 6, marginBottom: "1rem" },
-  detail: { marginTop: "1.5rem", padding: "1rem", borderRadius: 6, background: "#f8fafc", border: "1px solid #e2e8f0" },
-  label: { fontSize: "0.8rem", color: "#64748b", marginBottom: "0.25rem" },
+  loading: { padding: "2rem", textAlign: "center" as const, color: "var(--rmp-text-muted)" },
+  error: { padding: "1rem", color: "var(--rmp-danger-800)", background: "var(--rmp-danger-50)", borderRadius: 6, marginBottom: "1rem" },
+  detail: { marginTop: "1.5rem", padding: "1rem", borderRadius: 6, background: "var(--rmp-bg-page)", border: "1px solid var(--rmp-border)" },
+  label: { fontSize: "0.8rem", color: "var(--rmp-text-secondary)", marginBottom: "0.25rem" },
   value: { fontSize: "0.95rem", marginBottom: "0.75rem" },
   actions: { display: "flex", gap: "0.5rem", marginTop: "1rem" },
   btn: (bg: string) => ({ padding: "0.4rem 1rem", border: "none", borderRadius: 4, background: bg, color: "#fff", fontWeight: 600, cursor: "pointer", fontSize: "0.85rem" }) as const,
-  textarea: { width: "100%", minHeight: 60, padding: "0.5rem", border: "1px solid #cbd5e1", borderRadius: 4, fontSize: "0.85rem", resize: "vertical" as const },
-  success: { padding: "1rem", color: "#166534", background: "#f0fdf4", borderRadius: 6, marginBottom: "1rem" },
+  textarea: { width: "100%", minHeight: 60, padding: "0.5rem", border: "1px solid var(--rmp-border-strong)", borderRadius: 4, fontSize: "0.85rem", resize: "vertical" as const },
+  success: { padding: "1rem", color: "var(--rmp-success-800)", background: "var(--rmp-success-50)", borderRadius: 6, marginBottom: "1rem" },
   tokenBox: { marginTop: "1rem", padding: "0.75rem", borderRadius: 6, background: "#fefce8", border: "1px solid #fde68a", fontSize: "0.8rem" },
-  tokenCode: { fontSize: "0.75rem", fontFamily: "monospace", background: "#f1f5f9", padding: "0.25rem 0.5rem", borderRadius: 4, wordBreak: "break-all" as const },
+  tokenCode: { fontSize: "0.75rem", fontFamily: "monospace", background: "var(--rmp-gray-100)", padding: "0.25rem 0.5rem", borderRadius: 4, wordBreak: "break-all" as const },
   note: { color: "#92400e", fontSize: "0.75rem", marginTop: "0.5rem" },
 };
 
@@ -34,8 +34,8 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   new: "#3b82f6",
   reviewing: "#f59e0b",
-  approved: "#16a34a",
-  rejected: "#dc2626",
+  approved: "var(--rmp-success-600)",
+  rejected: "var(--rmp-danger-600)",
 };
 
 const INVITE_STATUS_LABELS: Record<string, string> = {
@@ -46,8 +46,8 @@ const INVITE_STATUS_LABELS: Record<string, string> = {
 
 const INVITE_STATUS_COLORS: Record<string, string> = {
   pending: "#8b5cf6",
-  accepted: "#16a34a",
-  expired: "#94a3b8",
+  accepted: "var(--rmp-success-600)",
+  expired: "var(--rmp-text-muted)",
 };
 
 function formatDt(iso: string | null): string {
@@ -151,7 +151,7 @@ export default function AdvertiserApplicationsPage() {
       {success && <div style={S.success}>{success}</div>}
 
       {!loading && apps.length === 0 && !error && (
-        <div style={{ color: "#94a3b8", padding: "2rem", textAlign: "center" }}>Нет заявок</div>
+        <div style={{ color: "var(--rmp-text-muted)", padding: "2rem", textAlign: "center" }}>Нет заявок</div>
       )}
 
       {apps.length > 0 && (
@@ -173,7 +173,7 @@ export default function AdvertiserApplicationsPage() {
                 <td style={S.td}>{a.contact_name}</td>
                 <td style={S.td}>{a.email}</td>
                 <td style={S.td}>
-                  <span style={S.badge(STATUS_COLORS[a.status] || "#94a3b8")}>{STATUS_LABELS[a.status] || a.status}</span>
+                  <span style={S.badge(STATUS_COLORS[a.status] || "var(--rmp-text-muted)")}>{STATUS_LABELS[a.status] || a.status}</span>
                 </td>
                 <td style={S.td}>
                   {a.status === "approved" ? (selected?.id === a.id ? "..." : "—") : "—"}
@@ -210,8 +210,8 @@ export default function AdvertiserApplicationsPage() {
               <div style={S.label}>Причина решения</div>
               <textarea style={S.textarea} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Причина одобрения или отклонения" />
               <div style={S.actions}>
-                <button style={S.btn("#16a34a")} onClick={() => handleReview("approve", selected.id)} data-testid="advertiser-approve-btn">Одобрить</button>
-                <button style={S.btn("#dc2626")} onClick={() => handleReview("reject", selected.id)}>Отклонить</button>
+                <button style={S.btn("var(--rmp-success-600)")} onClick={() => handleReview("approve", selected.id)} data-testid="advertiser-approve-btn">Одобрить</button>
+                <button style={S.btn("var(--rmp-danger-600)")} onClick={() => handleReview("reject", selected.id)}>Отклонить</button>
               </div>
             </div>
           )}
@@ -224,7 +224,7 @@ export default function AdvertiserApplicationsPage() {
               ) : invite ? (
                 <div>
                   <div style={S.value} data-testid="advertiser-invite-status">
-                    <span style={S.badge(INVITE_STATUS_COLORS[invite.status] || "#94a3b8")}>
+                    <span style={S.badge(INVITE_STATUS_COLORS[invite.status] || "var(--rmp-text-muted)")}>
                       {INVITE_STATUS_LABELS[invite.status] || invite.status}
                     </span>
                     {" "}до {formatDt(invite.expires_at)}

@@ -890,7 +890,7 @@ function RulesTab() {
       </div>
 
       {formSuccess && (
-        <div data-testid="inventory-rule-success" style={{ padding: "0.5rem 1rem", background: "#dcfce7", borderRadius: 4, marginBottom: "1rem", fontSize: "0.85rem", color: "#166534" }}>
+        <div data-testid="inventory-rule-success" style={{ padding: "0.5rem 1rem", background: "var(--rmp-success-100)", borderRadius: 4, marginBottom: "1rem", fontSize: "0.85rem", color: "var(--rmp-success-800)" }}>
           {formSuccess}
         </div>
       )}

@@ -4,15 +4,15 @@ const S = {
   page: { fontFamily: "system-ui, sans-serif", maxWidth: 500, margin: "2rem auto", padding: "0 1rem" } as const,
   h1: { fontSize: "1.5rem", fontWeight: 600, marginBottom: "1.5rem" } as const,
   form: { display: "flex", flexDirection: "column" as const, gap: "0.75rem" },
-  label: { fontSize: "0.85rem", color: "#475569", marginBottom: "0.15rem" },
-  input: { width: "100%", padding: "0.5rem", border: "1px solid #cbd5e1", borderRadius: 4, fontSize: "0.95rem", boxSizing: "border-box" as const },
-  textarea: { width: "100%", minHeight: 80, padding: "0.5rem", border: "1px solid #cbd5e1", borderRadius: 4, fontSize: "0.95rem", resize: "vertical" as const, boxSizing: "border-box" as const },
+  label: { fontSize: "0.85rem", color: "var(--rmp-gray-600)", marginBottom: "0.15rem" },
+  input: { width: "100%", padding: "0.5rem", border: "1px solid var(--rmp-border-strong)", borderRadius: 4, fontSize: "0.95rem", boxSizing: "border-box" as const },
+  textarea: { width: "100%", minHeight: 80, padding: "0.5rem", border: "1px solid var(--rmp-border-strong)", borderRadius: 4, fontSize: "0.95rem", resize: "vertical" as const, boxSizing: "border-box" as const },
   checkbox: { display: "flex", alignItems: "flex-start", gap: "0.5rem", fontSize: "0.85rem" } as const,
-  btn: { padding: "0.7rem 1.5rem", border: "none", borderRadius: 6, background: "#2563eb", color: "#fff", fontWeight: 600, fontSize: "1rem", cursor: "pointer", alignSelf: "flex-start" as const },
+  btn: { padding: "0.7rem 1.5rem", border: "none", borderRadius: 6, background: "var(--rmp-primary-500)", color: "#fff", fontWeight: 600, fontSize: "1rem", cursor: "pointer", alignSelf: "flex-start" as const },
   btnDisabled: { padding: "0.7rem 1.5rem", border: "none", borderRadius: 6, background: "#93c5fd", color: "#fff", fontWeight: 600, fontSize: "1rem", cursor: "not-allowed", alignSelf: "flex-start" as const },
-  success: { padding: "2rem", textAlign: "center" as const, color: "#166534", background: "#f0fdf4", borderRadius: 8 },
-  error: { padding: "1rem", color: "#991b1b", background: "#fef2f2", borderRadius: 6 },
-  fieldError: { fontSize: "0.8rem", color: "#dc2626", marginTop: "0.15rem" },
+  success: { padding: "2rem", textAlign: "center" as const, color: "var(--rmp-success-800)", background: "var(--rmp-success-50)", borderRadius: 8 },
+  error: { padding: "1rem", color: "var(--rmp-danger-800)", background: "var(--rmp-danger-50)", borderRadius: 6 },
+  fieldError: { fontSize: "0.8rem", color: "var(--rmp-danger-600)", marginTop: "0.15rem" },
 };
 
 export default function PublicApplicationForm() {
@@ -61,11 +61,11 @@ export default function PublicApplicationForm() {
       <div style={S.page}>
         <div style={S.success}>
           <h2 style={{ margin: "0 0 0.5rem", fontSize: "1.3rem" }}>Заявка отправлена</h2>
-          <p style={{ margin: 0, fontSize: "0.95rem", color: "#166534" }}>
+          <p style={{ margin: 0, fontSize: "0.95rem", color: "var(--rmp-success-800)" }}>
             Спасибо! Ваша заявка принята и будет рассмотрена в ближайшее время.
             Мы свяжемся с вами по указанному email.
           </p>
-          <p style={{ marginTop: "1rem", fontSize: "0.8rem", color: "#94a3b8" }}>
+          <p style={{ marginTop: "1rem", fontSize: "0.8rem", color: "var(--rmp-text-muted)" }}>
             Это не даёт немедленного доступа к платформе — заявка проходит проверку администратором.
           </p>
         </div>
@@ -76,7 +76,7 @@ export default function PublicApplicationForm() {
   return (
     <div style={S.page}>
       <h1 style={S.h1}>Стать рекламодателем</h1>
-      <p style={{ color: "#64748b", fontSize: "0.9rem", marginBottom: "1.5rem" }}>
+      <p style={{ color: "var(--rmp-text-secondary)", fontSize: "0.9rem", marginBottom: "1.5rem" }}>
         Заполните форму, чтобы подать заявку на размещение рекламы. После проверки администратор свяжется с вами.
       </p>
 

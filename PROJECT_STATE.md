@@ -511,15 +511,14 @@ metadata-only creative error.
 - Registry: 48/57 reachable, 9 blocked (non-commerce).
 - Next → defined by roadmap.
 
-**STYLE-TOKENS-001A0 ✅** — inventory + semantic token mapping baseline.
-- Raw hex: 61 unique, 594 occurrences across 24 files (pages + components).
-- Var() usage: 483 across 53 unique tokens — partially tokenized.
-- tokens.css: already defines ALL needed hex values as --rmp-*.
-- Gap: components use raw #hex instead of var(--rmp-*). No new tokens needed.
-- Mapping: 95%+ hex→semantic coverage. Ambiguous: #fff, low outliers.
-- Codemod plan (A1): mechanical sed → vitest → build → UI-smoke → visual diff.
-- Docs: docs/product/style-tokens-inventory.md.
-- Next → STYLE-TOKENS-001A1.
+**STYLE-TOKENS-001A1a ✅** — unambiguous raw hex → var(--rmp-*) migration.
+- Before: 594 raw hex, 483 var(). After: 150 raw hex, 927 var().
+- 444 hex occurrences migrated (75% reduction). 18 unique colors replaced.
+- Migrated: text colors (3), borders (2), danger (4), success (4), primary (1), backgrounds (2), dark grays (3).
+- Intentionally deferred: #fff (56×, ambiguous bg-surface vs text-inverse), low-count outliers (warning/amber, purple, light blue, legacy grays).
+- Vitest: 331/331. TypeScript: clean. Screenshots before/after captured.
+- Commerce smoke tests: pre-existing navigation race (not token-related).
+- Next → STYLE-TOKENS-001A1b: handle #fff + ambiguous/outlier colors.
 
 **SELF-LOGIN-CI-001-FU ✅** — self__login returned to blocking CI, tamper-proofed.
 
