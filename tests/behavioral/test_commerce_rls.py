@@ -16,15 +16,13 @@ Admin-bypass is NOT set on the DB session — real RLS applies.
 
 import asyncio
 import os
-import sys
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine as _cae, AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine as _cae
 from sqlalchemy.pool import NullPool
 
 from tests.behavioral.builder import BehBuilder
-from tests.behavioral.conftest import _get_setup_engine
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────
@@ -43,40 +41,6 @@ def _run_setup(sql: str) -> None:
     """Run owner-level setup SQL (rmp_is_admin=true)."""
     from tests.behavioral.conftest import _run_sql
     asyncio.run(_run_sql(sql))
-
-
-async def _app_exec(stmt: str, params: dict | None = None) -> list[dict]:
-    """Execute SQL via app role (NOBYPASSRLS) and return rows as dicts."""
-    engine = _cae(_APP_DB_URL, echo=False, poolclass=NullPool)
-    try:
-        async with engine.connect() as conn:
-            result = await conn.execute(text(stmt), params or {})
-            rows = result.fetchall()
-            return [dict(row._mapping) for row in rows]
-    finally:
-        await engine.dispose()
-
-
-async def _app_set_scope(
-    session: AsyncSession,
-    *,
-    admin: bool = False,
-    advertiser_ids: str | None = None,
-) -> None:
-    """Set RLS context on an app-role session."""
-    await session.execute(
-        text("SELECT set_config('app.rmp_is_admin', :admin, true)"),
-        {"admin": "true" if admin else "false"},
-    )
-    if advertiser_ids:
-        await session.execute(
-            text("SELECT set_config('app.rmp_scope_advertiser_ids', :ids, true)"),
-            {"ids": advertiser_ids},
-        )
-    else:
-        await session.execute(
-            text("SELECT set_config('app.rmp_scope_advertiser_ids', '', true)"),
-        )
 
 
 # ── Fixtures ────────────────────────────────────────────────────────────
@@ -223,40 +187,39 @@ class TestCommerceRLS:
     def test_insert_foreign_org_rejected(self):
         """ORG_A scope INSERT order with advertiser_organization_id=ORG_B → rejected."""
         new_id = self.b._uid("frgn")
-        try:
+        # Attempt INSERT with ORG_A scope but ORG_B's org_id — RLS must block.
+        # RLS raises an error (not silent), so we catch it.
+        with pytest.raises(Exception) as exc_info:
             asyncio.run(_attempt_insert(
                 table="commerce_orders",
                 columns="id, advertiser_organization_id, code, status, payment_status",
                 values=f"'{new_id}', '{self.org_b['org_id']}', 'ORD-FRGN', 'draft', 'not_required'",
                 advertiser_ids=self.org_a["org_id"],
             ))
-            # If we get here, RLS didn't block — but this is expected to fail silently
-            # (0 rows inserted). Verify.
-            rows = asyncio.run(_execute_with_scope(
-                f"SELECT id FROM commerce_orders WHERE id = '{new_id}'",
-                advertiser_ids=self.org_a["org_id"],
-            ))
-            assert len(rows) == 0, f"Foreign org INSERT must be rejected: got {rows}"
-        finally:
-            _run_setup(f"DELETE FROM commerce_orders WHERE id = '{new_id}'")
+        assert "violates row-level security" in str(exc_info.value), \
+            f"Expected RLS violation, got: {exc_info.value}"
 
     # ── Scope D: UPDATE foreign rejected ──────────────────────────
 
     def test_update_foreign_order_rejected(self):
         """ORG_A scope UPDATE on ORG_B's order → rejected (0 rows affected)."""
-        asyncio.run(_attempt_update(
+        rows_before = asyncio.run(_attempt_update(
             table="commerce_orders",
             set_clause="status = 'booked'",
             where_id=self.order_b_id,
             advertiser_ids=self.org_a["org_id"],
         ))
-        # Verify status unchanged
+        # 0 rows affected = RLS blocked
+        assert rows_before == 0, \
+            f"Foreign UPDATE must affect 0 rows (RLS blocked), got {rows_before}"
+
+        # Verify status unchanged (using ORG_B scope, which can see its own)
         rows = asyncio.run(_execute_with_scope(
             f"SELECT status FROM commerce_orders WHERE id = '{self.order_b_id}'",
             advertiser_ids=self.org_b["org_id"],
         ))
         assert rows[0]["status"] == "draft", \
-            f"Foreign UPDATE must be rejected, status unchanged: {rows[0]['status']}"
+            f"Foreign UPDATE must not change status: {rows[0]['status']}"
 
     # ── Scope E: Admin GUC ────────────────────────────────────────
 
@@ -285,7 +248,7 @@ class TestCommerceRLS:
     def test_non_admin_cannot_insert_tariff(self):
         """Non-admin cannot INSERT into commerce_tariff_versions."""
         new_id = self.b._uid("tins")
-        try:
+        with pytest.raises(Exception) as exc_info:
             asyncio.run(_attempt_insert(
                 table="commerce_tariff_versions",
                 columns="id, code, name, status, valid_from, currency",
@@ -293,14 +256,8 @@ class TestCommerceRLS:
                 admin=False,
                 advertiser_ids="",
             ))
-            # Verify not inserted
-            rows = asyncio.run(_execute_with_scope(
-                f"SELECT id FROM commerce_tariff_versions WHERE id = '{new_id}'",
-                admin=True,
-            ))
-            assert len(rows) == 0, f"Non-admin INSERT must be rejected: got {rows}"
-        finally:
-            _run_setup(f"DELETE FROM commerce_tariff_versions WHERE id = '{new_id}'")
+        assert "violates row-level security" in str(exc_info.value), \
+            f"Expected RLS violation, got: {exc_info.value}"
 
 
 # ── Raw exec helpers (app role) ────────────────────────────────────────
@@ -312,24 +269,27 @@ async def _execute_with_scope(
     admin: bool = False,
     advertiser_ids: str | None = None,
 ) -> list[dict]:
-    """Run a SELECT via app role with RLS scope set."""
+    """Run a SELECT via app role with RLS scope set in the same transaction."""
     engine = _cae(_APP_DB_URL, echo=False, poolclass=NullPool)
     try:
         async with engine.connect() as conn:
+            # set_config is_local=true — lives for the current transaction only.
+            # Do NOT commit between set_config and the query.
             await conn.execute(
                 text("SELECT set_config('app.rmp_is_admin', :admin, true)"),
                 {"admin": "true" if admin else "false"},
             )
             if advertiser_ids:
                 await conn.execute(
-                    text("SELECT set_config('app.rmp_scope_advertiser_ids', :ids, true)"),
+                    text(
+                        "SELECT set_config('app.rmp_scope_advertiser_ids', :ids, true)"
+                    ),
                     {"ids": advertiser_ids},
                 )
             else:
                 await conn.execute(
                     text("SELECT set_config('app.rmp_scope_advertiser_ids', '', true)"),
                 )
-            await conn.commit()
             result = await conn.execute(text(stmt))
             rows = result.fetchall()
             return [dict(row._mapping) for row in rows]
@@ -345,7 +305,7 @@ async def _attempt_insert(
     admin: bool = False,
     advertiser_ids: str | None = None,
 ) -> None:
-    """Attempt INSERT via app role with scope set. Silently ignores RLS rejection."""
+    """Attempt INSERT via app role with scope set. RLS violation raises."""
     engine = _cae(_APP_DB_URL, echo=False, poolclass=NullPool)
     try:
         async with engine.connect() as conn:
@@ -355,14 +315,16 @@ async def _attempt_insert(
             )
             if advertiser_ids:
                 await conn.execute(
-                    text("SELECT set_config('app.rmp_scope_advertiser_ids', :ids, true)"),
+                    text(
+                        "SELECT set_config('app.rmp_scope_advertiser_ids', :ids, true)"
+                    ),
                     {"ids": advertiser_ids},
                 )
             else:
                 await conn.execute(
                     text("SELECT set_config('app.rmp_scope_advertiser_ids', '', true)"),
                 )
-            await conn.commit()
+            # No commit — keep scope alive for the INSERT
             await conn.execute(text(
                 f"INSERT INTO {table} ({columns}) VALUES ({values})"
             ))
@@ -378,8 +340,8 @@ async def _attempt_update(
     *,
     admin: bool = False,
     advertiser_ids: str | None = None,
-) -> None:
-    """Attempt UPDATE via app role with scope set."""
+) -> int:
+    """Attempt UPDATE via app role with scope set. Returns rowcount."""
     engine = _cae(_APP_DB_URL, echo=False, poolclass=NullPool)
     try:
         async with engine.connect() as conn:
@@ -389,13 +351,16 @@ async def _attempt_update(
             )
             if advertiser_ids:
                 await conn.execute(
-                    text("SELECT set_config('app.rmp_scope_advertiser_ids', :ids, true)"),
+                    text(
+                        "SELECT set_config('app.rmp_scope_advertiser_ids', :ids, true)"
+                    ),
                     {"ids": advertiser_ids},
                 )
-            await conn.commit()
-            await conn.execute(text(
+            # No commit — keep scope alive
+            result = await conn.execute(text(
                 f"UPDATE {table} SET {set_clause} WHERE id = '{where_id}'"
             ))
             await conn.commit()
+            return result.rowcount
     finally:
         await engine.dispose()
