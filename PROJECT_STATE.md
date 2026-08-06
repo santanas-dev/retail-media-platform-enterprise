@@ -686,7 +686,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | c34a737 | c34a737 | PYTHON-CI-GATE-001 — Python Unit Tests blocking, CI #31104676738 ✅ |
+| develop | d6e5684 | d6e5684 | SUBSET-SSOT-001 — CI smoke subset SSOT, guard membership, CI #31106505209 ✅ |
 | main    | 96b5159     | —               | R3 ✅ RELEASED — v0.10.0-preplayer-business-ready, CI #30354973869 ✅ |
 | NAS mirror (ASUSTOR) | pending | — | Hermes cron sync every 3 min |
 
@@ -892,6 +892,16 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 - No `continue-on-error: true` found anywhere in workflow — pipefail was the only mask.
 - Quarantine: none needed. All failures were either brittle tests or env-dependent (local-only).
 - Python Unit Tests: 1501 passed, 0 failed (with CI-equivalent env). Behavioral: success. Smoke: success.
+- Guards: 0 findings.
+- Operator walkthrough: not applicable (CI infrastructure).
+
+**SUBSET-SSOT-001 ✅** — Single source CI smoke subset + guard membership check.
+- CI: `#31106505209` — `d6e5684` ✅ green (rerun, flake `campaign__activate`).
+- ci-subset.txt: 38/38 smoke functions CI-enforced, zero deselected.
+- CI workflow reads -k expression from ci-subset.txt (not inline).
+- guard: Direction D — `check_ci_subset_membership()` catches reachable smoke not in subset.
+- 4 previously excluded smokes now CI-enforced: advertiser__invite, audit__view, commerce__order_create, system__theme_switch — all passed first try.
+- Tamper proof: removed advertiser__invite → REGISTRY-CI-EXCLUDED caught → restored.
 - Guards: 0 findings.
 - Operator walkthrough: not applicable (CI infrastructure).
 
