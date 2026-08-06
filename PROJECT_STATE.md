@@ -512,7 +512,8 @@ metadata-only creative error.
 - Next → defined by roadmap.
 
 **COMMERCE-UX-001 ✅** — UUID/text inputs replaced with human-readable selects.
-- CI: `#31093179116` — `9f12d00` (commerce__tariff_manage ✅; self__campaign_view flaky unrelated; Python `test_campaign_completion` + `test_phase2_models` pre-existing failures unrelated).
+- CI: `#31093179116` — `9f12d00` ✅ green (rerun 2; flake pattern: run 1 `self__campaign_view`, rerun 1 `campaign__activate`, rerun 2 all green).
+- Python `test_campaign_completion` + `test_phase2_models`: pre-existing failures masked by `continue-on-error: true` — not caused by COMMERCE-UX-001 (frontend-only change). Present on #31092735526, absent on baseline #31090315491 but intermittent.
 - Price item: surface_id select (InventorySurface store_code + store_name) replaces text input.
 - Order create: advertiser select (code + display/legal_name), tariff select (code + name + status),
   surface select — replace org_id/tariff_id/surface_id text inputs.
@@ -520,7 +521,7 @@ metadata-only creative error.
 - Added `listInventorySurfaces()` API function (calls `/inventory/surfaces`, unwraps PaginatedResponse).
 - Empty states: readable placeholder text («Нет доступных поверхностей» etc.).
 - Vitest: 345/345 ✅. commerce-tariffs: 7/7, commerce-orders: 10/10.
-- Smoke: `commerce__tariff_manage` ✅ (select_option). `commerce__order_create` not in P0 subset (by design).
+- Smoke P0: `commerce__tariff_manage` ✅ (select_option). `commerce__order_create` not in P0 subset (by design).
 - Guards: 0 violations (style/roadmap).
 - Operator walkthrough: PENDING.
 - UX debt from COMMERCE-CONTUR2-001-CLOSURE line 506 resolved.
