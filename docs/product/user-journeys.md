@@ -735,7 +735,15 @@ See: `docs/architecture/epic-l-licensing.md`.
 ---
 
 **Commerce Contour 2 MVP closed.** All 7 commerce feature IDs reachable (48/57 total registry).
-Operator walkthrough PENDING. UUID text inputs → selectors deferred to UX FU.
+Operator walkthrough PENDING.
+
+**COMMERCE-UX-001 ✅ (UX hardening).** UUID/text inputs replaced with human-readable selects/autocomplete:
+- Price form: surface select (store_code + store_name) replaced surface_id text input.
+- Order form: advertiser select (code + display/legal_name), tariff select (code + name + status),
+  surface select — replaced org_id/tariff_id/surface_id text inputs.
+- All payloads still send IDs; operator no longer copies UUIDs by hand.
+- Backend: reused existing `/inventory/surfaces`, `/advertiser-organizations`, `/commerce/tariffs` list endpoints — no new backend work.
+- CI green (CI #585). Vitest: 345/345. Commerce smokes green. Guard 0.
 
 ---
 
