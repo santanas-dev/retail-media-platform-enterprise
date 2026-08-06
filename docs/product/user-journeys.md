@@ -811,4 +811,3 @@ A1 unblocked by owner on 2026-07-31. A2–A6 blocked pending A1 completion.
 | commerce.payment_status | reachable |
 | commerce.order_close | reachable |
 | commerce.price_list_manage | reachable |
-# CI retry after stuck run #31116254982
