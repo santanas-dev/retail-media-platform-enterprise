@@ -529,14 +529,19 @@ metadata-only creative error.
 - Vitest: 331/331 ✅. Guard on current repo: 0 violations.
 - Operator walkthrough: not applicable (CI guard, no UI change).
 
-**THEME-SWITCH-001A ✅** — ThemeProvider infrastructure + data-theme, no visual change.
-- Created `src/theme/ThemeContext.tsx` — React context with `theme`, `setTheme`, `availableThemes`.
-- Persistence: localStorage key `rmp-admin-theme`, fallback to `"light"`.
-- Integration: `ThemeProvider` wraps the app in `main.tsx` (inside ErrorBoundary, outside AuthProvider).
-- `tokens.css`: `:root` → `:root, :root[data-theme="light"]` — explicit theme selector, zero value change.
-- `<html data-theme="light">` set on mount, persisted on change.
-- Theme toggle: hidden for now (single-theme). Will appear in 001B with dark theme.
-- Vitest: 27/27 files, 341/341 tests ✅ (new: `theme-provider.test.tsx` — 10 tests: data-theme, localStorage, fallback, invalid guard).
+**THEME-SWITCH-001B ✅** — Dark theme token overrides + accessible toggle.
+- ThemeId extended: `"light" | "dark"`, AVAILABLE_THEMES = `["light", "dark"]`.
+- Dark tokens: 58 semantic overrides in `:root[data-theme="dark"]` — bg, text, border,
+  sidebar, status badges, shadows, focus. Added 5 new semantic tokens to light theme
+  (`--rmp-bg-surface-muted`, `--rmp-link-color`, `--rmp-table-header-bg`,
+  `--rmp-table-row-hover-bg`, `--rmp-focus-outline-color`).
+- Toggle: ☀️/🌙 radiogroup in sidebar footer (aria-label, role=radio, keyboard-accessible).
+- data-testid: theme-toggle, theme-option-light, theme-option-dark.
+- Vitest: 27/27 files, 345/345 ✅ (14 theme tests: dark set, persist, remount, toggle).
+- UI-smoke: `test_uismoke__system__theme_switch.py` — login → dark → reload → persist → light ✅.
+- Guard: 0 violations, TS clean, Vite build OK.
+- Screenshots: dark campaigns, campaign-detail, advertisers, users, commerce-tariffs + light comparison.
+- Operator walkthrough: PENDING.
 - Screenshots: no visual change (light theme unchanged).
 - Next → THEME-SWITCH-001B: dark theme palette + toggle UI.
 

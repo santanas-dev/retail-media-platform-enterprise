@@ -378,3 +378,63 @@ Zero. `<html data-theme="light">` resolves the same tokens.css values as bare `:
 - persists on setTheme ✅
 - ignores invalid setTheme ✅
 - throws outside provider ✅
+
+---
+
+## THEME-SWITCH-001B — Dark Theme + Accessible Toggle
+
+**Date:** 2026-08-06
+**Status:** ✅ Active
+**CI:** `#31088542794` — `478124d`
+
+### What was added
+
+**ThemeProvider (Scope A)**
+- `ThemeId` extended to `"light" | "dark"`
+- `AVAILABLE_THEMES` now `["light", "dark"]`
+- Stored `"dark"` restores correctly on mount (no fallback — it's valid)
+- Invalid stored values still fall back to `"light"`
+
+**Dark tokens (Scope B)**
+- `:root[data-theme="dark"]` block overrides **semantic tokens only** — scale colors unchanged
+- Overridden tokens: bg-page/surface/surface-muted, text-primary/secondary/muted/inverse,
+  link-color, border/strong, input-border, button-disabled-bg,
+  table-header-bg/row-hover-bg, sidebar-bg/text/active/hover,
+  status badges (active/draft/review/rejected), shadows, overlay-backdrop,
+  focus-outline-color, focus-ring/offset
+- New light-mode tokens: `--rmp-bg-surface-muted`, `--rmp-link-color`,
+  `--rmp-table-header-bg`, `--rmp-table-row-hover-bg`, `--rmp-focus-outline-color`
+- Hardcoded CSS rules (`a`, `:focus-visible`, `.rmp-table th`, `.rmp-table tr:hover td`)
+  now reference semantic tokens instead of raw scale values
+
+**UI toggle (Scope C)**
+- Sidebar footer: ☀️/🌙 radiogroup between username and logout
+- `role="radiogroup"`, `aria-label="Тема оформления"`, `role="radio"`, `aria-checked`
+- `data-testid`: `theme-toggle`, `theme-option-light`, `theme-option-dark`
+
+**Tests (Scope D)**
+- Vitest: 14 tests — dark set, persists, remount/reload, toggle back, invalid fallback
+- UI-smoke: `test_uismoke__system__theme_switch.py` — login → toggle dark → assert → reload → assert → toggle light → assert
+- All 345 vitest tests green, TypeScript clean
+
+**Visual proof (Scope E)**
+- Dark screenshots: campaigns, campaign-detail, advertisers, users, commerce-tariffs
+- Light comparison: campaigns
+- Saved to `/tmp/theme-screenshots/`
+
+**Guard**
+- `check-style-tokens.py --strict` → 0 violations
+
+### Token additions
+
+| Token | Light | Dark |
+|-------|-------|------|
+| `--rmp-bg-surface-muted` | `var(--rmp-gray-100)` | `var(--rmp-gray-700)` |
+| `--rmp-link-color` | `var(--rmp-primary-600)` | `var(--rmp-primary-400)` |
+| `--rmp-table-header-bg` | `var(--rmp-gray-100)` | `var(--rmp-gray-800)` |
+| `--rmp-table-row-hover-bg` | `var(--rmp-gray-50)` | `var(--rmp-gray-800)` |
+| `--rmp-focus-outline-color` | `var(--rmp-primary-500)` | `var(--rmp-primary-400)` |
+
+### Operator walkthrough
+
+PENDING — requires human operator to verify dark mode in DEV portal.
