@@ -64,7 +64,10 @@ def test_uismoke__commerce__order_create(smoke_page):
     page.wait_for_selector('[data-testid="commerce-price-item-create-open"]', timeout=5000)
     page.locator('[data-testid="commerce-price-item-create-open"]').click()
     page.wait_for_selector('[data-testid="commerce-price-item-form"]', timeout=5000)
-    page.wait_for_selector('[data-testid="commerce-price-item-surface"] option:nth-child(2)', timeout=15000)
+    page.wait_for_function(
+        "document.querySelector('[data-testid=\"commerce-price-item-surface\"]')?.options?.length > 1",
+        timeout=15000,
+    )
     page.select_option('[data-testid="commerce-price-item-surface"]', index=1)
     page.fill('[data-testid="commerce-price-item-unit-price"]', "200")
     page.locator('[data-testid="commerce-price-item-submit"]').click()
@@ -89,10 +92,19 @@ def test_uismoke__commerce__order_create(smoke_page):
     page.locator('[data-testid="commerce-order-create-open"]').click()
     page.wait_for_selector('[data-testid="commerce-order-create-form"]', timeout=5000)
 
-    # Wait for reference data to load in selects (at least 2 options: placeholder + 1 value)
-    page.wait_for_selector('[data-testid="commerce-order-org-id"] option:nth-child(2)', timeout=15000)
-    page.wait_for_selector('[data-testid="commerce-order-tariff-id"] option:nth-child(2)', timeout=5000)
-    page.wait_for_selector('[data-testid="commerce-order-surface-id"] option:nth-child(2)', timeout=15000)
+    # Wait for reference data to populate in selects
+    page.wait_for_function(
+        "document.querySelector('[data-testid=\"commerce-order-org-id\"]')?.options?.length > 1",
+        timeout=15000,
+    )
+    page.wait_for_function(
+        "document.querySelector('[data-testid=\"commerce-order-tariff-id\"]')?.options?.length > 1",
+        timeout=5000,
+    )
+    page.wait_for_function(
+        "document.querySelector('[data-testid=\"commerce-order-surface-id\"]')?.options?.length > 1",
+        timeout=15000,
+    )
 
     page.select_option('[data-testid="commerce-order-org-id"]', index=1)
     page.select_option('[data-testid="commerce-order-tariff-id"]', index=1)

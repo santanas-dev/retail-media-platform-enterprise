@@ -72,9 +72,12 @@ def test_uismoke__commerce__tariff_manage(smoke_page):
     page.locator('[data-testid="commerce-price-item-create-open"]').click()
     page.wait_for_selector('[data-testid="commerce-price-item-form"]', timeout=5000)
 
-    # 6. Select first available surface from dropdown
+    # 6. Select first available surface — wait for API data to populate
     price_value = 150.00
-    page.wait_for_selector('[data-testid="commerce-price-item-surface"] option:nth-child(2)', timeout=15000)
+    page.wait_for_function(
+        "document.querySelector('[data-testid=\"commerce-price-item-surface\"]')?.options?.length > 1",
+        timeout=15000,
+    )
     page.select_option('[data-testid="commerce-price-item-surface"]', index=1)
     page.fill('[data-testid="commerce-price-item-unit-price"]', str(price_value))
     page.locator('[data-testid="commerce-price-item-submit"]').click()
