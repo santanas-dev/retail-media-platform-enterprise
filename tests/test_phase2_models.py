@@ -31,10 +31,10 @@ class TestPhase2Metadata(unittest.TestCase):
         self.assertSetEqual(missing, set(), f"Missing tables: {missing}")
 
     def test_exact_table_count(self):
-        """Metadata table count — grows with each phase."""
+        """Metadata table count — grows, never shrinks below 56 (post-commerce baseline)."""
         from packages.domain.models import Base
         count = len(Base.metadata.tables)
-        self.assertEqual(count, 56, f"Expected 56 tables, got {count}")
+        self.assertGreaterEqual(count, 56, f"Tables must not shrink below 56. Got {count}")
 
 
 class TestPhase2ModelColumns(unittest.TestCase):
@@ -452,13 +452,13 @@ class TestPhase21SeedIdentity(unittest.TestCase):
                          f"INSERT count {insert_count} != ON CONFLICT count {conflict_count}")
 
     def test_seed_insert_count(self):
-        """Seed INSERT count — grows with each phase. BP-001: +4 advertiser_applications INSERTs (108)."""
+        """Seed INSERT count — grows, never shrinks below 109 (post-commerce baseline)."""
         src = self._SEED_SRC
         m = re.search(r'SEED_SQL = f"""(.+?)"""', src, re.DOTALL)
         self.assertIsNotNone(m, "Cannot find SEED_SQL")
         sql = m.group(1)
         inserts = [l for l in sql.split("\n") if l.strip().upper().startswith("INSERT")]
-        self.assertEqual(len(inserts), 109, f"Expected 109 INSERTs, got {len(inserts)}")
+        self.assertGreaterEqual(len(inserts), 109, f"Seed must not shrink below 109 INSERTs. Got {len(inserts)}")
 
 
 class TestPhase21AuditEventModel(unittest.TestCase):

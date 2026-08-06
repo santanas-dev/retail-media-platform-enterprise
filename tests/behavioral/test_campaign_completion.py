@@ -29,6 +29,8 @@ DB_URL = os.environ.get(
 REQUIRE_ENV = os.environ.get("RUN_BEHAVIORAL_TESTS", "") == "1"
 SKIP_REASON = "RUN_BEHAVIORAL_TESTS=1 not set."
 
+pytestmark = pytest.mark.skipif(not REQUIRE_ENV, reason=SKIP_REASON)
+
 
 def _engine():
     """Create a fresh async engine for the behavioral DB."""

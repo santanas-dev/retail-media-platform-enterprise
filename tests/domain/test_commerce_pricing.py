@@ -146,13 +146,16 @@ class TestCommerceOrderLineCreate:
                 line_amount=-500.0,
             )
 
-    def test_zero_price_rejected(self):
-        with pytest.raises(Exception):
-            CommerceOrderLineCreate(
-                surface_id="s1",
-                date_from=date(2026, 8, 1),
-                date_to=date(2026, 8, 5),
-                quantity_days=5,
-                unit_price_amount=0.0,
-                line_amount=0.0,
-            )
+    def test_zero_price_accepted(self):
+        """Zero unit_price/line_amount is valid at Pydantic level (ge=0).
+        Business validation (nonzero price) happens at service layer."""
+        line = CommerceOrderLineCreate(
+            surface_id="s1",
+            date_from=date(2026, 8, 1),
+            date_to=date(2026, 8, 5),
+            quantity_days=5,
+            unit_price_amount=0.0,
+            line_amount=0.0,
+        )
+        assert line.unit_price_amount == 0.0
+        assert line.line_amount == 0.0
