@@ -19,9 +19,11 @@ import {
   createPriceItem,
   updatePriceItem,
 } from "../api/commerce";
+import { listInventorySurfaces } from "../api/campaigns";
 import type {
   CommerceTariffVersionOut,
   CommercePriceItemOut,
+  InventorySurfaceOut,
 } from "../api/types";
 
 import CommerceOrdersTab from "./CommerceOrdersTab";
@@ -260,10 +262,14 @@ function PriceForm({
   onSubmit,
   initial,
   onCancel,
+  surfaces,
+  surfacesLoading,
 }: {
   onSubmit: (data: PriceFormState) => Promise<void>;
   initial?: CommercePriceItemOut;
   onCancel?: () => void;
+  surfaces: InventorySurfaceOut[];
+  surfacesLoading?: boolean;
 }) {
   const [form, setForm] = useState<PriceFormState>(
     initial
@@ -278,7 +284,7 @@ function PriceForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.surface_id.trim() || !form.unit_price_amount) return;
+    if (!form.surface_id || !form.unit_price_amount) return;
     setSaving(true);
     setError(null);
     try {
@@ -291,6 +297,13 @@ function PriceForm({
     }
   }
 
+  function surfaceLabel(s: InventorySurfaceOut): string {
+    const parts = [s.code];
+    if (s.store_name) parts.push(s.store_name);
+    parts.push(`${s.resolution_w}×${s.resolution_h}`);
+    return parts.join(" — ");
+  }
+
   return (
     <form
       data-testid="commerce-price-item-form"
@@ -299,15 +312,27 @@ function PriceForm({
     >
       <div>
         <label htmlFor="cpi-surface">Поверхность *</label>
-        <input
+        <select
           id="cpi-surface"
           data-testid="commerce-price-item-surface"
           value={form.surface_id}
           onChange={(e) => setForm({ ...form, surface_id: e.target.value })}
           disabled={!!initial}
           required
-          placeholder="UUID поверхности"
-        />
+        >
+          <option value="">
+            {surfacesLoading ? "Загрузка…" : surfaces.length === 0 ? "Нет доступных поверхностей" : "— Выберите поверхность —"}
+          </option>
+          {surfaces.map((s) => (
+            <option
+              key={s.id}
+              value={s.id}
+              data-testid={`commerce-price-item-surface-option-${s.id}`}
+            >
+              {surfaceLabel(s)}
+            </option>
+          ))}
+        </select>
       </div>
       <div>
         <label htmlFor="cpi-price">Цена за surface_day *</label>
@@ -378,6 +403,10 @@ export default function CommerceTariffsPage() {
   const [editingPrice, setEditingPrice] =
     useState<CommercePriceItemOut | null>(null);
 
+  // Surfaces (for price item / order selects)
+  const [surfaces, setSurfaces] = useState<InventorySurfaceOut[]>([]);
+  const [surfacesLoading, setSurfacesLoading] = useState(true);
+
   // Load tariffs
   const loadTariffs = useCallback(async () => {
     setTariffsLoading(true);
@@ -399,6 +428,24 @@ export default function CommerceTariffsPage() {
   useEffect(() => {
     loadTariffs();
   }, [loadTariffs]);
+
+  // Load surfaces
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setSurfacesLoading(true);
+      try {
+        const data = await listInventorySurfaces();
+        if (!cancelled) setSurfaces(data);
+      } catch {
+        if (!cancelled) setSurfaces([]);
+      } finally {
+        if (!cancelled) setSurfacesLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, []);
 
   // Load prices for selected tariff
   const loadPrices = useCallback(async (tariffId: string) => {
@@ -625,6 +672,8 @@ export default function CommerceTariffsPage() {
           <PriceForm
             onSubmit={handleCreatePrice}
             onCancel={() => setShowCreatePrice(false)}
+            surfaces={surfaces}
+            surfacesLoading={surfacesLoading}
           />
         )}
 
@@ -660,6 +709,8 @@ export default function CommerceTariffsPage() {
                         onSubmit={handleUpdatePrice}
                         initial={pi}
                         onCancel={() => setEditingPrice(null)}
+                        surfaces={surfaces}
+                        surfacesLoading={surfacesLoading}
                       />
                     </td>
                   </tr>

@@ -44,6 +44,7 @@ import type {
   ClusterOut,
   StoreOut,
   DisplaySurfaceRefOut,
+  InventorySurfaceOut,
   CampaignRejectRequest,
   CampaignCreativeAttachRequest,
   PaginatedResponse,
@@ -448,6 +449,12 @@ export function listStores(): Promise<StoreOut[]> {
 
 export function listDisplaySurfaces(): Promise<DisplaySurfaceRefOut[]> {
   return api.get<DisplaySurfaceRefOut[]>("/display-surfaces");
+}
+
+export function listInventorySurfaces(): Promise<InventorySurfaceOut[]> {
+  return api
+    .get<PaginatedResponse<InventorySurfaceOut>>("/inventory/surfaces")
+    .then((r) => r.items);
 }
 
 // ── S-017: Creative Upload (presigned URL flow) ──

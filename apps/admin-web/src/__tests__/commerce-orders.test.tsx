@@ -81,6 +81,17 @@ function mockDefault(perms?: string[]) {
     if (url.includes("/commerce/tariff-versions")) {
       return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
     }
+    if (url.includes("/advertiser-organizations")) {
+      return Promise.resolve(new Response(JSON.stringify([
+        { id: "00000000-0000-0000-0000-000000000200", code: "ADV-001", legal_name: "ООО Тест", display_name: "Тестовый рекламодатель", status: "active" },
+      ]), { status: 200 }));
+    }
+    if (url.includes("/inventory/surfaces")) {
+      return Promise.resolve(new Response(JSON.stringify({
+        items: [{ id: "00000000-0000-0000-0000-000000000031", code: "SURF-001", store_id: "st-1", store_code: "ST001", store_name: "СуперМаг Сокольники", resolution_w: 1920, resolution_h: 1080, is_active: true }],
+        total: 1, limit: 50, offset: 0,
+      }), { status: 200 }));
+    }
     if (url.includes("/commerce/orders")) {
       return Promise.resolve(new Response(JSON.stringify(MOCK_ORDERS), { status: 200 }));
     }
@@ -106,6 +117,17 @@ function mockOrdersWithClosed() {
     }
     if (url.includes("/commerce/tariff-versions")) {
       return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+    }
+    if (url.includes("/advertiser-organizations")) {
+      return Promise.resolve(new Response(JSON.stringify([
+        { id: "00000000-0000-0000-0000-000000000200", code: "ADV-001", legal_name: "ООО Тест", display_name: "Тестовый рекламодатель", status: "active" },
+      ]), { status: 200 }));
+    }
+    if (url.includes("/inventory/surfaces")) {
+      return Promise.resolve(new Response(JSON.stringify({
+        items: [{ id: "00000000-0000-0000-0000-000000000031", code: "SURF-001", store_id: "st-1", store_code: "ST001", store_name: "СуперМаг Сокольники", resolution_w: 1920, resolution_h: 1080, is_active: true }],
+        total: 1, limit: 50, offset: 0,
+      }), { status: 200 }));
     }
     if (url.includes("/commerce/orders")) {
       const resp = [MOCK_ORDERS[0], MOCK_ORDERS[1], CLOSED_ORDER];

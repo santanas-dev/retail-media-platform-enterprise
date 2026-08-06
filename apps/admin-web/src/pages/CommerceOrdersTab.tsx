@@ -12,9 +12,13 @@ import {
   updateOrder,
   listTariffVersions,
 } from "../api/commerce";
+import { listAdvertisers, listInventorySurfaces } from "../api/campaigns";
 import type {
   CommerceOrderOut,
   CommerceOrderLineCreate,
+  CommerceTariffVersionOut,
+  AdvertiserOrganizationOut,
+  InventorySurfaceOut,
 } from "../api/types";
 
 // ── Constants ──
@@ -34,6 +38,12 @@ const PAYMENT_STATUS_LABELS: Record<string, string> = {
   partial: "Частично",
   paid: "Оплачен",
   overdue: "Просрочен",
+};
+
+const TARIFF_STATUS_LABELS: Record<string, string> = {
+  draft: "Черновик",
+  active: "Активен",
+  archived: "Архивный",
 };
 
 // Valid status transitions
@@ -112,16 +122,19 @@ interface CreateOrderFormProps {
   onSubmit: (data: CreateOrderFormState) => Promise<void>;
   onCancel: () => void;
   canManage: boolean;
+  advertisers: AdvertiserOrganizationOut[];
+  tariffs: CommerceTariffVersionOut[];
+  surfaces: InventorySurfaceOut[];
 }
 
-function CreateOrderForm({ onSubmit, onCancel }: CreateOrderFormProps) {
+function CreateOrderForm({ onSubmit, onCancel, advertisers, tariffs, surfaces }: CreateOrderFormProps) {
   const [form, setForm] = useState<CreateOrderFormState>(emptyForm());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.advertiser_organization_id.trim()) return;
+    if (!form.advertiser_organization_id) return;
     if (!form.tariff_version_id) return;
     setSaving(true);
     setError(null);
@@ -137,6 +150,22 @@ function CreateOrderForm({ onSubmit, onCancel }: CreateOrderFormProps) {
 
   const today = new Date().toISOString().slice(0, 10);
 
+  function advertiserLabel(a: AdvertiserOrganizationOut): string {
+    return `${a.code} — ${a.display_name || a.legal_name}`;
+  }
+
+  function tariffLabel(t: CommerceTariffVersionOut): string {
+    const status = TARIFF_STATUS_LABELS[t.status] ?? t.status;
+    return `${t.code} — ${t.name} (${status})`;
+  }
+
+  function surfaceLabel(s: InventorySurfaceOut): string {
+    const parts = [s.code];
+    if (s.store_name) parts.push(s.store_name);
+    parts.push(`${s.resolution_w}×${s.resolution_h}`);
+    return parts.join(" — ");
+  }
+
   return (
     <form
       data-testid="commerce-order-create-form"
@@ -145,39 +174,72 @@ function CreateOrderForm({ onSubmit, onCancel }: CreateOrderFormProps) {
     >
       <div>
         <label htmlFor="co-org">Организация *</label>
-        <input
-          id="co-org"
-          data-testid="commerce-order-org-id"
-          value={form.advertiser_organization_id}
-          onChange={(e) =>
-            setForm({ ...form, advertiser_organization_id: e.target.value })
-          }
-          placeholder="UUID организации"
-          required
-        />
+        {advertisers.length === 0 ? (
+          <p style={{ color: "var(--rmp-text-muted)", fontSize: "var(--rmp-font-size-sm)", margin: "var(--rmp-space-1) 0" }}>
+            Нет доступных организаций
+          </p>
+        ) : (
+          <select
+            id="co-org"
+            data-testid="commerce-order-org-id"
+            value={form.advertiser_organization_id}
+            onChange={(e) => setForm({ ...form, advertiser_organization_id: e.target.value })}
+            required
+          >
+            <option value="">— Выберите организацию —</option>
+            {advertisers.map((a) => (
+              <option key={a.id} value={a.id} data-testid={`commerce-order-org-option-${a.id}`}>
+                {advertiserLabel(a)}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
       <div>
         <label htmlFor="co-tariff">Тариф *</label>
-        <input
-          id="co-tariff"
-          data-testid="commerce-order-tariff-id"
-          value={form.tariff_version_id}
-          onChange={(e) =>
-            setForm({ ...form, tariff_version_id: e.target.value })
-          }
-          placeholder="UUID тарифа"
-          required
-        />
+        {tariffs.length === 0 ? (
+          <p style={{ color: "var(--rmp-text-muted)", fontSize: "var(--rmp-font-size-sm)", margin: "var(--rmp-space-1) 0" }}>
+            Нет доступных тарифов
+          </p>
+        ) : (
+          <select
+            id="co-tariff"
+            data-testid="commerce-order-tariff-id"
+            value={form.tariff_version_id}
+            onChange={(e) => setForm({ ...form, tariff_version_id: e.target.value })}
+            required
+          >
+            <option value="">— Выберите тариф —</option>
+            {tariffs.map((t) => (
+              <option key={t.id} value={t.id} data-testid={`commerce-order-tariff-option-${t.id}`}>
+                {tariffLabel(t)}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
       <div>
         <label htmlFor="co-surface">Поверхность *</label>
-        <input
-          id="co-surface"
-          data-testid="commerce-order-surface-id"
-          value={form.surface_id}
-          onChange={(e) => setForm({ ...form, surface_id: e.target.value })}
-          required
-        />
+        {surfaces.length === 0 ? (
+          <p style={{ color: "var(--rmp-text-muted)", fontSize: "var(--rmp-font-size-sm)", margin: "var(--rmp-space-1) 0" }}>
+            Нет доступных поверхностей
+          </p>
+        ) : (
+          <select
+            id="co-surface"
+            data-testid="commerce-order-surface-id"
+            value={form.surface_id}
+            onChange={(e) => setForm({ ...form, surface_id: e.target.value })}
+            required
+          >
+            <option value="">— Выберите поверхность —</option>
+            {surfaces.map((s) => (
+              <option key={s.id} value={s.id} data-testid={`commerce-order-surface-option-${s.id}`}>
+                {surfaceLabel(s)}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
       <div>
         <label htmlFor="co-from">С *</label>
@@ -395,6 +457,25 @@ export default function CommerceOrdersTab({ canManage }: CommerceOrdersTabProps)
   const [showCreate, setShowCreate] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<CommerceOrderOut | null>(null);
 
+  // Reference data for selects
+  const [advertisers, setAdvertisers] = useState<AdvertiserOrganizationOut[]>([]);
+  const [tariffs, setTariffs] = useState<CommerceTariffVersionOut[]>([]);
+  const [surfaces, setSurfaces] = useState<InventorySurfaceOut[]>([]);
+
+  useEffect(() => {
+    async function loadRefs() {
+      const [adv, tar, sur] = await Promise.all([
+        listAdvertisers().catch(() => [] as AdvertiserOrganizationOut[]),
+        listTariffVersions().catch(() => [] as CommerceTariffVersionOut[]),
+        listInventorySurfaces().catch(() => [] as InventorySurfaceOut[]),
+      ]);
+      setAdvertisers(adv);
+      setTariffs(tar);
+      setSurfaces(sur);
+    }
+    loadRefs();
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -459,6 +540,9 @@ export default function CommerceOrdersTab({ canManage }: CommerceOrdersTabProps)
           onSubmit={handleCreate}
           onCancel={() => setShowCreate(false)}
           canManage={canManage}
+          advertisers={advertisers}
+          tariffs={tariffs}
+          surfaces={surfaces}
         />
       )}
 
