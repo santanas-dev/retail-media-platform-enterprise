@@ -401,16 +401,17 @@ async def list_orders(
     session: AsyncSession,
     scope_advertiser_ids: frozenset[str] | None = None,
 ) -> list[CommerceOrder]:
-    stmt = select(CommerceOrder).options(selectinload(CommerceOrder.lines)).order_by(CommerceOrder.created_at.desc())
-    result = await session.execute(stmt)
-    orders = result.scalars().all()
-
+    stmt = (
+        select(CommerceOrder)
+        .options(selectinload(CommerceOrder.lines))
+        .order_by(CommerceOrder.created_at.desc())
+    )
     if scope_advertiser_ids is not None:
-        orders = [
-            o for o in orders
-            if o.advertiser_organization_id in scope_advertiser_ids
-        ]
-    return list(orders)
+        stmt = stmt.where(
+            CommerceOrder.advertiser_organization_id.in_(scope_advertiser_ids)
+        )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
 
 
 async def get_order(
