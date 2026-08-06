@@ -512,14 +512,18 @@ metadata-only creative error.
 - Next → defined by roadmap.
 
 **COMMERCE-UX-001 ✅** — UUID/text inputs replaced with human-readable selects.
-- CI: `#31093179116` — `9f12d00` (commerce__tariff_manage ✅; self__campaign_view flaky unrelated).
-- Price item: surface_id select (InventorySurface code + store_name + resolution).
-- Order create: advertiser_org, tariff, surface selects with readable labels.
+- CI: `#31093179116` — `9f12d00` (commerce__tariff_manage ✅; self__campaign_view flaky unrelated; Python `test_campaign_completion` + `test_phase2_models` pre-existing failures unrelated).
+- Price item: surface_id select (InventorySurface store_code + store_name) replaces text input.
+- Order create: advertiser select (code + display/legal_name), tariff select (code + name + status),
+  surface select — replace org_id/tariff_id/surface_id text inputs.
+- Backend: reused existing `/inventory/surfaces`, `/advertiser-organizations`, `/commerce/tariffs` list endpoints — zero new backend code.
 - Added `listInventorySurfaces()` API function (calls `/inventory/surfaces`, unwraps PaginatedResponse).
 - Empty states: readable placeholder text («Нет доступных поверхностей» etc.).
-- Vitest: 345/345 ✅. Existing commerce smokes updated to `select_option`.
+- Vitest: 345/345 ✅. commerce-tariffs: 7/7, commerce-orders: 10/10.
+- Smoke: `commerce__tariff_manage` ✅ (select_option). `commerce__order_create` not in P0 subset (by design).
 - Guards: 0 violations (style/roadmap).
 - Operator walkthrough: PENDING.
+- UX debt from COMMERCE-CONTUR2-001-CLOSURE line 506 resolved.
 
 **STYLE-TOKENS-001A1c ✅** — allowlist reduction to justified minimum.
 - Added 30 new tokens to tokens.css: warning-200/400/800/900, danger-200/300/900, success-200/300/500, info-50/100/200/300/600/800, purple-50/200/500/600/800, alert-50/200/800, primary-200/300/400, input-border, button-disabled-bg.
@@ -681,7 +685,7 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 
 | Branch  | Payload SHA | State/Docs SHA | Note |
 |---------|-------------|----------------|------|
-| develop | a9fc2a3 | a9fc2a3 | ADVERTISER-UX-001A2 — admin-web UI + smoke |
+| develop | 1ac51b2 | 1ac51b2 | COMMERCE-UX-001 — UX hardening: selects replace UUID inputs |
 | main    | 96b5159     | —               | R3 ✅ RELEASED — v0.10.0-preplayer-business-ready, CI #30354973869 ✅ |
 | NAS mirror (ASUSTOR) | pending | — | Hermes cron sync every 3 min |
 
