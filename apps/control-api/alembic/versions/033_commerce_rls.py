@@ -183,3 +183,4 @@ def downgrade() -> None:
             f"DROP POLICY IF EXISTS commerce_price_items_rls_{suffix} ON commerce_price_items"
         )
     op.execute("ALTER TABLE commerce_price_items NO FORCE ROW LEVEL SECURITY")
+
