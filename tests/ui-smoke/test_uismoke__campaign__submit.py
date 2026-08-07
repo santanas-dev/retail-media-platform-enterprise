@@ -111,12 +111,23 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     expect(page.locator('[data-testid="tab-content"]')).to_be_visible(timeout=5000)
 
     # Use primary upload path
+    expect(page.locator('[data-testid="creative-upload-primary"]')).to_be_visible(timeout=5000)
     page.locator('[data-testid="creative-upload-select-file"]').click()
     page.locator('[data-testid="creative-upload-primary-file-input"]').set_input_files(FIXTURE)
     expect(page.locator('[data-testid="creative-upload-primary-code"]')).to_be_visible(timeout=5000)
     page.locator('[data-testid="creative-upload-primary-code"]').fill("")
     page.locator('[data-testid="creative-upload-primary-code"]').fill(creative_code)
-    page.locator('[data-testid="creative-upload-metadata-submit"]').click()
+    submit_btn = page.locator('[data-testid="creative-upload-metadata-submit"]')
+    expect(submit_btn).to_be_visible(timeout=3000)
+    submit_btn.click()
+    # Fail fast on upload error
+    try:
+        expect(page.locator('[data-testid="creative-upload-primary-error"]')).to_be_visible(timeout=5000)
+        err = page.locator('[data-testid="creative-upload-primary-error"]').inner_text()
+        raise AssertionError(f"Upload failed: {err}")
+    except Exception as e:
+        if "Upload failed" in str(e):
+            raise
     expect(page.locator('[data-testid="creative-upload-done"]')).to_be_visible(timeout=30000)
 
     # Return to Overview
