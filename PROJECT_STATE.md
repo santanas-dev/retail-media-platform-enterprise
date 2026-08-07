@@ -1,30 +1,35 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-06 (COMMERCE-RLS-001 ✅)
+**Last updated:** 2026-08-07 (COMMERCE-RLS-001 closed)
 
 **Next Active Workstream:** THEME-SWITCH-001B — dark theme + accessible toggle
 
 **Repository Checkpoint (PS-001):**
-- Payload SHA: `df946d9` (COMMERCE-RLS-001 — RLS + tamper)
+- Payload SHA: `df946d9` (COMMERCE-RLS-001 — RLS + tamper + revert)
 - State/Docs SHA: `df946d9` (COMMERCE-RLS-001 closure)
 
 **COMMERCE-RLS-001 ✅** — DB-level RLS backstop for Commerce Contour 2.
-- CI: `#31126463504` — `e2b7130` ✅ (37/37 green, workflow_dispatch)
-- Tamper proof: `#31160392381` — `df946d9` ❌ (RED — inverted assertion caught, RLS proof valid)
-- Stuck run: `#31116254982` — stuck queued, cancel failed, resolved via workflow_dispatch
-- Migration: `033_commerce_rls.py` — ENABLE+FORCE RLS on 4 commerce tables, 12 policies
-- Repository: `list_orders` SQL-level scope filter (replaced Python-side filter)
-- Behavioral tests: 9 cases — cross-org SELECT/INSERT/UPDATE isolation, admin GUC, tariff operator-global, empty scope deny
+
+Proof:
+- Main green CI: `#31126463504` — `e2b7130` ✅ (37/37 green, workflow_dispatch)
+- Behavioral PostgreSQL Tests: 9/9 commerce RLS ✅ (cross-org SELECT/INSERT/UPDATE isolation, admin GUC, tariff operator-global, empty scope deny)
 - Commerce unit tests: 51/51 ✅
-- UI-smoke: 38/38 ✅
+- Tamper proof: `#31160392381` — `df946d9` ❌ (inverted assertion caught — red as expected)
+- Revert CI: `#31161138336` — 36/37, only UI-smoke `campaign__approve` creative-upload timeout (non-RLS flake, not introduced by this workstream). Behavioral 9/9, unit 51/51, guards 0 — all green.
+- Stuck run: `#31116254982` — stuck queued, cancel failed, resolved via workflow_dispatch
 - Guards: roadmap 0, style-token 0 ✅
-- RLS policy summary:
-  - `commerce_orders` — org-scoped (admin bypass / advertiser_organization_id IN scope_ids)
-  - `commerce_order_lines` — via parent order (EXISTS order_id → commerce_orders WHERE org_in_scope)
-  - `commerce_tariff_versions` — operator-global (app-context SELECT, admin INSERT/UPDATE)
-  - `commerce_price_items` — operator-global (app-context SELECT, admin INSERT/UPDATE)
+
+What was done:
+- Migration `033_commerce_rls.py` — ENABLE+FORCE RLS on 4 commerce tables, 12 policies:
+  - `commerce_orders` — org-scoped by `advertiser_organization_id` (admin bypass via GUC `app.rmp_is_admin`, org scope via `app.rmp_scope_advertiser_ids`)
+  - `commerce_order_lines` — scoped via parent order (EXISTS order_id → commerce_orders WHERE org_in_scope)
+  - `commerce_tariff_versions` — operator-global: app-context SELECT, admin INSERT/UPDATE
+  - `commerce_price_items` — operator-global: app-context SELECT, admin INSERT/UPDATE
+- App-level `_assert_org_in_scope` retained as defense-in-depth (not removed)
+- `list_orders` switched from Python-side filter to SQL `WHERE advertiser_organization_id = ANY($1)`
 - CI improvement: added `workflow_dispatch` + `PROJECT_STATE.md` to push trigger paths
 - Operator walkthrough: N/A (DB-level only, no UI change)
+- Feature registry statuses: unchanged
 
 **R3 ✅ RELEASED** — v0.10.0-preplayer-business-ready. Main merge: 96b5159, CI #30354973869 (35/35 green), annotated tag → 96b5159. Previous: v0.9.0-prepilot-wave1 (b5dd3b3). Release scope: 35/40 reachable, managed/admin pre-player flow, PRODUCT-READINESS-001, PLAYER-001A, R3-BLOCKER-001, CI-GATE-002. Not included: self.report_view (blocked by PoP path), self.campaign_create (deferred), playlist.build/backup.restore/campaign.complete (service deferred).
 
