@@ -1,12 +1,28 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-07 (COMMERCE-RLS-001 closed)
+**Last updated:** 2026-08-07 (UI-SMOKE-FLAKE-001 closed)
 
 **Next Active Workstream:** THEME-SWITCH-001B — dark theme + accessible toggle
 
 **Repository Checkpoint (PS-001):**
-- Payload SHA: `df946d9` (COMMERCE-RLS-001 — RLS + tamper + revert)
-- State/Docs SHA: `df946d9` (COMMERCE-RLS-001 closure)
+- Payload SHA: `9a1ab6a` (UI-SMOKE-FLAKE-001 — stabilize campaign__approve creative upload)
+- State/Docs SHA: pending (UI-SMOKE-FLAKE-001 closure)
+
+**UI-SMOKE-FLAKE-001 ✅** — Stabilize `campaign__approve` creative upload timeout.
+
+Root cause: missing `expect(creative-upload-primary).to_be_visible()` after content-tab switch. On slow CI runners, React component not mounted when `set_input_files` fires → upload flow silently skipped → 30s timeout. No error detection after metadata-submit — API errors swallowed.
+
+Fix (both `campaign__approve` and `campaign__submit`, matching `creative__upload` pattern):
+1. `expect(creative-upload-primary).to_be_visible()` after tab-content click
+2. `expect(submit_btn).to_be_visible()` before metadata-submit click
+3. Fail-fast: check `creative-upload-primary-error` after submit
+
+Proof:
+- CI `#31164271308` rerun: 37/38, `campaign__approve` ✅, `campaign__submit` ✅
+- Only failure: `advertiser__legal_requisites` — pre-existing Page.wait_for_selector timeout, unrelated
+- Guards: roadmap 0, style-token 0 ✅
+- Feature registry: unchanged
+- Operator walkthrough: N/A
 
 **COMMERCE-RLS-001 ✅** — DB-level RLS backstop for Commerce Contour 2.
 
