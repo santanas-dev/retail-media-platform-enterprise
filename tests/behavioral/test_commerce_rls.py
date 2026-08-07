@@ -149,7 +149,7 @@ class TestCommerceRLS:
         ))
         codes = {r["code"] for r in rows}
         assert "ORD-CRLS-A" in codes, f"ORG_A scope must see its own order: {codes}"
-        assert "ORD-CRLS-B" in codes, f"TAMPER: RLS broken — ORG_B order visible to ORG_A scope: {codes}"
+        assert "ORD-CRLS-B" not in codes, f"ORG_A scope must NOT see ORG_B order: {codes}"
 
     def test_org_b_scope_sees_org_b_order_only(self):
         """ORG_B scope SELECT commerce_orders → sees ORG_B, not ORG_A."""

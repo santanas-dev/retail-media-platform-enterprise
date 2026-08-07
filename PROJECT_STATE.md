@@ -1,12 +1,30 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-06 (COMMERCE-RLS-001 — CI retry after stuck GitHub Actions run #31116254982)
+**Last updated:** 2026-08-06 (COMMERCE-RLS-001 ✅)
 
-**Next Active Workstream:** COMMERCE-RLS-001 — DB-level RLS for Commerce Contour 2
+**Next Active Workstream:** THEME-SWITCH-001B — dark theme + accessible toggle
 
 **Repository Checkpoint (PS-001):**
-- Payload SHA: `84fe4c3` (PLAYER-001B-FU — substantive)
-- State/Docs SHA: `4d2dd77` (KSO-STRATEGY-001)
+- Payload SHA: `df946d9` (COMMERCE-RLS-001 — RLS + tamper)
+- State/Docs SHA: `df946d9` (COMMERCE-RLS-001 closure)
+
+**COMMERCE-RLS-001 ✅** — DB-level RLS backstop for Commerce Contour 2.
+- CI: `#31126463504` — `e2b7130` ✅ (37/37 green, workflow_dispatch)
+- Tamper proof: `#31160392381` — `df946d9` ❌ (RED — inverted assertion caught, RLS proof valid)
+- Stuck run: `#31116254982` — stuck queued, cancel failed, resolved via workflow_dispatch
+- Migration: `033_commerce_rls.py` — ENABLE+FORCE RLS on 4 commerce tables, 12 policies
+- Repository: `list_orders` SQL-level scope filter (replaced Python-side filter)
+- Behavioral tests: 9 cases — cross-org SELECT/INSERT/UPDATE isolation, admin GUC, tariff operator-global, empty scope deny
+- Commerce unit tests: 51/51 ✅
+- UI-smoke: 38/38 ✅
+- Guards: roadmap 0, style-token 0 ✅
+- RLS policy summary:
+  - `commerce_orders` — org-scoped (admin bypass / advertiser_organization_id IN scope_ids)
+  - `commerce_order_lines` — via parent order (EXISTS order_id → commerce_orders WHERE org_in_scope)
+  - `commerce_tariff_versions` — operator-global (app-context SELECT, admin INSERT/UPDATE)
+  - `commerce_price_items` — operator-global (app-context SELECT, admin INSERT/UPDATE)
+- CI improvement: added `workflow_dispatch` + `PROJECT_STATE.md` to push trigger paths
+- Operator walkthrough: N/A (DB-level only, no UI change)
 
 **R3 ✅ RELEASED** — v0.10.0-preplayer-business-ready. Main merge: 96b5159, CI #30354973869 (35/35 green), annotated tag → 96b5159. Previous: v0.9.0-prepilot-wave1 (b5dd3b3). Release scope: 35/40 reachable, managed/admin pre-player flow, PRODUCT-READINESS-001, PLAYER-001A, R3-BLOCKER-001, CI-GATE-002. Not included: self.report_view (blocked by PoP path), self.campaign_create (deferred), playlist.build/backup.restore/campaign.complete (service deferred).
 
