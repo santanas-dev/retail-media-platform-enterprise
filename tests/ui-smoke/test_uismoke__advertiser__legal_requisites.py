@@ -7,6 +7,7 @@ Only /login via page.goto(); all navigation via clicks.
 """
 
 import pytest
+from playwright.sync_api import expect
 from conftest import login_as_break_glass_admin
 
 
@@ -54,8 +55,12 @@ def test_uismoke__advertiser__legal_requisites(smoke_page):
     # Save
     page.locator('[data-testid="advertiser-legal-submit"]').click()
 
-    # Wait for success or displayed values
-    page.wait_for_selector('[data-testid="advertiser-legal-display-inn"]', timeout=10000)
+    # Wait for edit form to close (confirms save succeeded, display mode active)
+    expect(page.locator('[data-testid="advertiser-legal-submit"]')).not_to_be_visible(timeout=10000)
+
+    # Wait for display with refetched data (ADV-001 seed has no pre-existing requisites,
+    # so org.inn is null until refetch completes — needs generous timeout on slow CI)
+    expect(page.locator('[data-testid="advertiser-legal-display-inn"]')).to_be_visible(timeout=15000)
 
     # Verify displayed fields
     assert page.locator('[data-testid="advertiser-legal-display-legal-name"]').text_content() == "ООО Тестовый Рекламодатель"
@@ -78,7 +83,8 @@ def test_uismoke__advertiser__legal_requisites(smoke_page):
     row.click()
     page.wait_for_selector('[data-testid="advertiser-detail-panel"]', timeout=5000)
     page.locator('text=Реквизиты').click()
-    page.wait_for_selector('[data-testid="advertiser-legal-display-inn"]', timeout=10000)
+    page.wait_for_selector('[data-testid="advertiser-legal-section"]', timeout=5000)
+    expect(page.locator('[data-testid="advertiser-legal-display-inn"]')).to_be_visible(timeout=10000)
 
     # Verify persistence
     assert page.locator('[data-testid="advertiser-legal-display-inn"]').text_content() == "7707083893"
