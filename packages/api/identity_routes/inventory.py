@@ -96,6 +96,7 @@ async def list_inventory_stores(
     db=Depends(get_db),
     pagination: PaginationParams = Depends(get_pagination_params),
     _claims: dict = Depends(require_permission("inventory.read")),
+    _rls=Depends(set_rls_context),
 ):
     items, total = await repository.get_inventory_stores_paginated(
         db, limit=pagination.limit, offset=pagination.offset,
@@ -113,6 +114,7 @@ async def list_inventory_surfaces(
     db=Depends(get_db),
     pagination: PaginationParams = Depends(get_pagination_params),
     _claims: dict = Depends(require_permission("inventory.read")),
+    _rls=Depends(set_rls_context),
 ):
     items, total = await repository.get_inventory_surfaces_paginated(
         db, limit=pagination.limit, offset=pagination.offset,
@@ -132,6 +134,7 @@ async def patch_inventory_surface(
     body: InventorySurfacePatchRequest,
     db=Depends(get_db),
     _claims: dict = Depends(require_permission("inventory.manage")),
+    _rls=Depends(set_rls_context),
 ):
     surface = await repository.get_display_surface(db, surface_id)
     if surface is None:
@@ -169,6 +172,7 @@ async def check_availability(
     body: InventoryAvailabilityRequest,
     db=Depends(get_db),
     _claims: dict = Depends(require_permission("inventory.read")),
+    _rls=Depends(set_rls_context),
 ):
     """Check if a surface has enough inventory capacity over a time range.
 
@@ -251,6 +255,7 @@ async def suggest_alternatives(
     body: InventoryAlternativesRequest,
     db=Depends(get_db),
     _claims: dict = Depends(require_permission("inventory.read")),
+    _rls=Depends(set_rls_context),
 ):
     """Suggest alternative surfaces/slots when a placement is unavailable.
 
@@ -384,6 +389,7 @@ async def update_rule(
     body: InventoryRuleUpdate,
     db=Depends(get_db),
     _claims: dict = Depends(require_permission("inventory.manage")),
+    _rls=Depends(set_rls_context),
 ):
     """Partial update of an inventory rule."""
     _validate_rule(body)
@@ -410,6 +416,7 @@ async def activate_rule(
     rule_id: str,
     db=Depends(get_db),
     _claims: dict = Depends(require_permission("inventory.manage")),
+    _rls=Depends(set_rls_context),
 ):
     """Activate an inventory rule."""
     rule = await repository.set_inventory_rule_active(db, rule_id=rule_id, is_active=True)
@@ -424,6 +431,7 @@ async def deactivate_rule(
     rule_id: str,
     db=Depends(get_db),
     _claims: dict = Depends(require_permission("inventory.manage")),
+    _rls=Depends(set_rls_context),
 ):
     """Deactivate an inventory rule."""
     rule = await repository.set_inventory_rule_active(db, rule_id=rule_id, is_active=False)
