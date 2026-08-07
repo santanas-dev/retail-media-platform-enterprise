@@ -114,7 +114,6 @@ async def list_inventory_surfaces(
     db=Depends(get_db),
     pagination: PaginationParams = Depends(get_pagination_params),
     _claims: dict = Depends(require_permission("inventory.read")),
-    _rls=Depends(set_rls_context),
 ):
     items, total = await repository.get_inventory_surfaces_paginated(
         db, limit=pagination.limit, offset=pagination.offset,
