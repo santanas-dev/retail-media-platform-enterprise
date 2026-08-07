@@ -6,7 +6,7 @@
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `3e3f3ca` (UI-SMOKE-FLAKE-002 — stabilize advertiser__legal_requisites)
-- State/Docs SHA: pending (UI-SMOKE-FLAKE-002 closure)
+- State/Docs SHA: `987a999` (UI-SMOKE-FLAKE-002 closure)
 
 **UI-SMOKE-FLAKE-002 ✅** — Stabilize `advertiser__legal_requisites` wait_for_selector timeout.
 
