@@ -1,12 +1,29 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-07 (UI-SMOKE-FLAKE-001 closed)
+**Last updated:** 2026-08-07 (UI-SMOKE-FLAKE-002 closed)
 
 **Next Active Workstream:** THEME-SWITCH-001B — dark theme + accessible toggle
 
 **Repository Checkpoint (PS-001):**
-- Payload SHA: `9a1ab6a` (UI-SMOKE-FLAKE-001 — stabilize campaign__approve creative upload)
-- State/Docs SHA: `7ba6122` (UI-SMOKE-FLAKE-001 closure)
+- Payload SHA: `3e3f3ca` (UI-SMOKE-FLAKE-002 — stabilize advertiser__legal_requisites)
+- State/Docs SHA: pending (UI-SMOKE-FLAKE-002 closure)
+
+**UI-SMOKE-FLAKE-002 ✅** — Stabilize `advertiser__legal_requisites` wait_for_selector timeout.
+
+Root cause: ADV-001 seed has no pre-existing legal requisites (inn=NULL). After save, `setEditing(false)` switches to display mode BEFORE the async refetch (`onSaved` → `detailVersion` → `getAdvertiserDetail`) completes. `org.inn` is still null during this window → display shows «Нет данных» → `advertiser-legal-display-inn` not rendered. On slow CI, refetch takes >10s → timeout.
+
+Fix:
+1. `expect(submit_btn).not_to_be_visible(timeout=10000)` — wait for edit form to close (confirms save API succeeded)
+2. `expect(display-inn).to_be_visible(timeout=15000)` — generous timeout for refetch
+3. Same pattern in reload persistence section
+4. Added `from playwright.sync_api import expect` import
+
+Proof:
+- CI `#31166429800` ✅ 37/37 green, UI-smoke 38/38
+- `advertiser__legal_requisites` ✅
+- Guards: roadmap 0, style-token 0 ✅
+- Feature registry: unchanged
+- Operator walkthrough: N/A
 
 **UI-SMOKE-FLAKE-001 ✅** — Stabilize `campaign__approve` creative upload timeout.
 
@@ -18,8 +35,7 @@ Fix (both `campaign__approve` and `campaign__submit`, matching `creative__upload
 3. Fail-fast: check `creative-upload-primary-error` after submit
 
 Proof:
-- CI `#31164271308` rerun: 37/38, `campaign__approve` ✅, `campaign__submit` ✅
-- Only failure: `advertiser__legal_requisites` — pre-existing Page.wait_for_selector timeout, unrelated
+- CI `#31166429800` ✅ 37/37 green, UI-smoke 38/38 — both `campaign__approve` and `campaign__submit` ✅
 - Guards: roadmap 0, style-token 0 ✅
 - Feature registry: unchanged
 - Operator walkthrough: N/A
