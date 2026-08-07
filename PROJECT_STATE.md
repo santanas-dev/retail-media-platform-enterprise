@@ -6,7 +6,7 @@
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `9a1ab6a` (UI-SMOKE-FLAKE-001 — stabilize campaign__approve creative upload)
-- State/Docs SHA: pending (UI-SMOKE-FLAKE-001 closure)
+- State/Docs SHA: `7ba6122` (UI-SMOKE-FLAKE-001 closure)
 
 **UI-SMOKE-FLAKE-001 ✅** — Stabilize `campaign__approve` creative upload timeout.
 
