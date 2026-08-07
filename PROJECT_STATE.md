@@ -1,12 +1,30 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-07 (UI-SMOKE-FLAKE-002 closed)
+**Last updated:** 2026-08-07 (INVENTORY-RLS-CONTEXT-001 + SMOKE-FIDELITY-001 closed)
 
 **Next Active Workstream:** THEME-SWITCH-001B — dark theme + accessible toggle
 
 **Repository Checkpoint (PS-001):**
-- Payload SHA: `3e3f3ca` (UI-SMOKE-FLAKE-002 — stabilize advertiser__legal_requisites)
-- State/Docs SHA: `987a999` (UI-SMOKE-FLAKE-002 closure)
+- Payload SHA: `cd24d8e` (INVENTORY-RLS-CONTEXT-001 + SMOKE-FIDELITY-001 closure)
+- State/Docs SHA: `cd24d8e` (INVENTORY-RLS-CONTEXT-001 + SMOKE-FIDELITY-001 closure)
+
+**INVENTORY-RLS-CONTEXT-001 ✅ + SMOKE-FIDELITY-001 ✅** — Set RLS context in inventory routes + run UI-smoke under NOBYPASSRLS app role.
+
+What was done:
+- Added `_rls=Depends(set_rls_context)` to all 8 inventory endpoints in `packages/api/identity_routes/inventory.py`:
+  `list_inventory_stores`, `list_inventory_surfaces`, `patch_inventory_surface`,
+  `check_availability`, `suggest_alternatives`, `update_rule`, `activate_rule`, `deactivate_rule`.
+- CI workflow `phase1-ci.yml`: UI-smoke job now creates `retail_media_app` role with NOBYPASSRLS
+  and runs control-api under that role via sync DATABASE_URL.
+- Root cause: inventory endpoints had no RLS context → empty result sets under app role
+  (Commerce Contour 2 surface listing broken on DEV).
+
+Proof:
+- Main green CI: `#31185154165` — 37/37 green ✅, UI-smoke 38/38 under NOBYPASSRLS
+- Tamper proof: `#31190205197` — removed `set_rls_context` from `list_inventory_surfaces` → CI red ❌ (UI-smoke failure, caught as expected)
+- Guards: roadmap consistency 0, style-tokens 0 ✅
+- Feature registry: unchanged
+- Operator walkthrough: N/A (infra-level fix, no UI change)
 
 **UI-SMOKE-FLAKE-002 ✅** — Stabilize `advertiser__legal_requisites` wait_for_selector timeout.
 
