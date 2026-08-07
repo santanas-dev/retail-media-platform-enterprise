@@ -290,6 +290,8 @@ jobs:
       - name: Seed database
         run: python3 apps/control-api/seed.py
       - name: Create app runtime role (non-superuser NOBYPASSRLS)
+        env:
+          DATABASE_URL: postgresql://retail_media_owner:***@localhost:5432/retail_media_platform
         run: |
           python3 -c "
           import os
@@ -520,6 +522,8 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://retail_media_owner:retail_media_owner_pass@localhost:5432/retail_media_platform
         run: python3 apps/control-api/seed.py
       - name: Create app runtime role (non-superuser NOBYPASSRLS)
+        env:
+          DATABASE_URL: postgresql://retail_media_owner:***@localhost:5432/retail_media_platform
         run: |
           python3 -c "
           import os
