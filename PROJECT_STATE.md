@@ -1,12 +1,31 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-07 (INVENTORY-RLS-CONTEXT-001 + SMOKE-FIDELITY-001 closed)
+**Last updated:** 2026-08-20 (COMMERCE-PRICING-001 closed)
 
-**Next Active Workstream:** THEME-SWITCH-001B — dark theme + accessible toggle
+**Next Active Workstream:** (pending — operator walkthrough Commerce)
 
 **Repository Checkpoint (PS-001):**
-- Payload SHA: `cd24d8e` (INVENTORY-RLS-CONTEXT-001 + SMOKE-FIDELITY-001 closure)
-- State/Docs SHA: `cd24d8e` (INVENTORY-RLS-CONTEXT-001 + SMOKE-FIDELITY-001 closure)
+- Payload SHA: `71f16b6` (COMMERCE-PRICING-001 — server-derived quantity_days)
+- State/Docs SHA: `71f16b6` (COMMERCE-PRICING-001 closure)
+
+**COMMERCE-PRICING-001 ✅** — Server-derived `quantity_days`, no silent zero-priced orders.
+- Policy: `quantity_days = (date_to - date_from).days + 1` (inclusive). Order total is
+  server-derived from date range × unit price. Client `quantity_days` is ignored for
+  pricing (field retained in DTO for backward compatibility only).
+- Validation: `date_to >= date_from` (else 422); derived `quantity_days >= 1` (never 0).
+  No `line_amount=0` fallback from missing/zero days.
+- Backend: `derive_quantity_days()` in commerce_repository; `calculate_order_quote` and
+  `create_order` use server-derived days; `CommerceOrderLineCreate` model validator.
+- UI: order total cell + line days/amount gained `data-testid` for smoke assertions.
+- Tests: +10 (derive_quantity_days, quote server-days, create_order non-zero total,
+  date-range rejection). 61 passed in domain/commerce suite.
+- UI-smoke: order_create asserts non-zero total, `line_amount = unit_price × days`,
+  reload preserves total. Runs under NOBYPASSRLS (SMOKE-FIDELITY).
+- Green CI: `#32398527948` — `71f16b6` ✅ (Python + behavioral + UI-smoke all green).
+- Tamper proof: `#32398343356` — `eaaddb9` ❌ (client quantity_days → 4 pricing tests fail, red as expected).
+- Guards: roadmap consistency 0, style-tokens 0 ✅.
+- Feature registry: unchanged (statuses not modified).
+- Operator walkthrough: PENDING.
 
 **INVENTORY-RLS-CONTEXT-001 ✅ + SMOKE-FIDELITY-001 ✅** — Set RLS context in inventory routes + run UI-smoke under NOBYPASSRLS app role.
 
