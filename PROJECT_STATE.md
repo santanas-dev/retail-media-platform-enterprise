@@ -1,12 +1,12 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-20 (EPIC-L-SEAT-LEDGER-001A1 — schema/migration + dev-ingest + read model)
+**Last updated:** 2026-08-20 (EPIC-L-SEAT-LEDGER-001A2-FU — current grant outranks historical revoked)
 
-**Next Active Workstream:** EPIC-L-SEAT-LEDGER-001A2 (transactional enrollment choke-point + concurrency proof)
+**Next Active Workstream:** EPIC-L-SEAT-LEDGER-001A3 (decommission/release + exact monthly peak)
 
 **Repository Checkpoint (PS-001):**
-- Payload SHA: `1b0452c` (UI-SMOKE-FLAKE-003 — stabilize commerce__tariff_manage)
-- State/Docs SHA: `1b0452c` (UI-SMOKE-FLAKE-003 closure)
+- Payload SHA: `19be38c` (EPIC-L-SEAT-LEDGER-001A2-FU — current-over-revoked selector)
+- State/Docs SHA: `19be38c` (EPIC-L-SEAT-LEDGER-001A2-FU closure)
 
 **EPIC-L-SEAT-LEDGER-001A1 ✅** — License seat ledger schema/migration + dev-ingest + read model.
 
@@ -43,6 +43,68 @@ NOT added.
 - Layer 2 operator walkthrough: PENDING (agent does not set OK).
 - Guards: roadmap-consistency-check.py --strict = 0; style-tokens 0; import-boundaries green.
 - Green CI: `#32412861257` — `f4a88b2` ✅ (Python 1511 passed, behavioral 381 passed incl. 18 license tests, UI-smoke 38/38). UI-smoke first attempt flaked on 3 unrelated tests (campaign__edit/submit, inventory__simulate) → `--failed` rerun green.
+- Checkpoint by PS-001.
+
+**EPIC-L-SEAT-LEDGER-001A2 ✅** — Transactional enrollment choke-point + concurrency proof.
+
+As-built (per design freeze §"Layer 1 Seat Ledger Design Freeze", decision #4):
+- Single choke-point `packages/domain/licensing_service.py`:
+  `authorize_and_reserve_enrollment(session, create_device=…, now=…)` runs in
+  ONE transaction: (1) server-set `app.rmp_is_admin` RLS context (not a client
+  param); (2) `SELECT … FOR UPDATE` on the effective grant (all enrollments
+  serialize on this row); (3) effective state via A1 read model; (4) count
+  occupied seats post-lock; (5) capacity check (`occupied >= max_devices +
+  overage_allowance` → `LICENSE_SEAT_LIMIT`); (6) device mint via injected
+  factory; (7) seat reserve. Route `POST /device/onboard` calls this ONE
+  method — no scattered license checks.
+- Effective-grant selector `effective_grant_query(lock=…)` in
+  `packages/domain/licensing_repository.py` — the single source of truth for
+  the read model (`get_effective_license`) and the FOR UPDATE path
+  (`lock_current_grant`). Status-prioritized: 'current' outranks any 'revoked'
+  grant regardless of `issued_at`; 'revoked' is chosen only when no 'current'
+  exists; `issued_at DESC` breaks ties only within one status; 'superseded' is
+  history. (A2-FU fix — before: `issued_at DESC` alone let a newer historical
+  revoked outrank a live current grant and deny enrollment as `LICENSE_REVOKED`.)
+- 409 denials: `LICENSE_MISSING`, `LICENSE_REVOKED`, `LICENSE_EXPIRED`,
+  `LICENSE_SEAT_LIMIT` (Russian message, no HTTP 402, no SQL/GUC leakage).
+  Grace allowed and surfaced additively as `license_state` on success.
+- Soft enforcement: denial blocks ONLY new enrollment. Existing active devices
+  keep status + open seat; heartbeat/device-auth/player/manifest/PoP untouched.
+- Grandfather reconciliation `reconcile_existing_fleet` +
+  `scripts/dev/license-reconcile-seats.py` (fail-closed ENVIRONMENT + flag,
+  idempotent, over-cap preserved as overage; inactive/unregistered not seated).
+- Behavioral `tests/behavioral/test_license_enrollment.py` — 13 tests under
+  `retail_media_app` NOBYPASSRLS: enforcement matrix, idempotency + rollback
+  fault-injection, softness (heartbeat survives over-cap/expired/revoked),
+  reconciliation, RLS-context, and deterministic last-seat concurrency proof.
+- Tamper proof: removing `FOR UPDATE` makes the concurrency test fail
+  deterministically (`AssertionError: B must block on the FOR UPDATE row lock`)
+  — red CI `#32419994031` (branch `epic-l-a2-tamper`, deleted). Lock restored.
+- A2-FU regression proof (current-over-revoked): two tests —
+  `test_current_outranks_newer_revoked` in read model (current with OLDER
+  `issued_at` + revoked with NEWER → current wins, state active) and in
+  enrollment (current + newer revoked → 200 active, seat under current
+  `license_id`, no `LICENSE_REVOKED`). Both RED before fix, GREEN after
+  (local behavioral, then CI behavioral). Existing proofs preserved:
+  revoked-without-current → `LICENSE_REVOKED`, single-current constraint,
+  FOR UPDATE concurrency.
+
+Not done in A2 (deferred to A3/A4): decommission/release, peak_seats_for_month,
+report endpoint/UI, signed upload/JWS/CRL, registry status changes. Manual
+release of active seat NOT added.
+
+- license.* feature-registry: still `blocked` (registry closure is A4).
+- Layer 1 NOT closed — A1 + A2 (incl. A2-FU) done. Next: 001A3.
+- Layer 2 operator walkthrough: PENDING (agent does not set OK).
+- Guards: roadmap-consistency-check.py --strict = 0; style-tokens 0; import-boundaries green.
+- Substantive CI `#32422432510` — `19be38c`: Python unit 1511 passed; behavioral
+  394 passed (33 license = 18 A1 + 13 A2 + 2 A2-FU); import-boundaries,
+  style-tokens, roadmap, JSON-schema, frontend (admin+advertiser),
+  docker-compose, production-config all green. UI-smoke NOT fully green on this
+  run — pre-existing flaky suite (5 re-runs with disjoint random failures
+  incl. `self__login`; journeys do not touch the license selector). Behavioral
+  gate is the authoritative proof for this change. Row-lock tamper red CI:
+  `#32419994031`.
 - Checkpoint by PS-001.
 
 **UI-SMOKE-FLAKE-003 ✅** — Stabilize `commerce__tariff_manage` navigation race.

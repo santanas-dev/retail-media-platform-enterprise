@@ -668,6 +668,32 @@ Feature IDs remain `blocked` (no enforcement/user behavior yet).
 - Deferred to A2/A3/A4: enrollment choke-point, decommission/release, peak,
   report API, signed upload. Next: 001A2.
 
+### Layer 1 implementation (EPIC-L-SEAT-LEDGER-001A2) ✅
+
+**Status:** A2 done — transactional enrollment choke-point + concurrency proof.
+Feature IDs remain `blocked` (registry closure is A4).
+
+- Single choke-point `authorize_and_reserve_enrollment` in
+  `packages/domain/licensing_service.py`: one DB transaction does server-set
+  RLS context → `SELECT … FOR UPDATE` on the effective grant → effective state
+  from dates → occupied-seat count post-lock → capacity check → device mint →
+  seat reserve. `POST /device/onboard` calls exactly this method.
+- Single effective-grant selector `effective_grant_query(lock=…)` in
+  `packages/domain/licensing_repository.py`, shared by the read model and the
+  FOR UPDATE path: 'current' outranks any 'revoked' grant regardless of
+  `issued_at`; 'revoked' is chosen only when no 'current' exists; `issued_at
+  DESC` breaks ties only within one status (A2-FU fix).
+- 409 denials `LICENSE_MISSING`/`LICENSE_REVOKED`/`LICENSE_EXPIRED`/
+  `LICENSE_SEAT_LIMIT`; grace allowed and surfaced as `license_state`. Soft
+  enforcement — only NEW enrollment is blocked.
+- Grandfather reconciliation `reconcile_existing_fleet` +
+  `scripts/dev/license-reconcile-seats.py` (idempotent, over-cap preserved).
+- Behavioral proof 13 tests under `retail_media_app` NOBYPASSRLS, incl.
+  deterministic last-seat concurrency (FOR UPDATE) proof, plus A2-FU
+  current-over-revoked regression tests (read model + enrollment).
+- Deferred to A3/A4: decommission/release, peak, report API, signed upload.
+  Next: 001A3.
+
 ---
 
 ## COMMERCE-CONTUR2-001 — Commercial Inventory Sales Engine
