@@ -1,8 +1,154 @@
 # EPIC-L — Platform/Device Licensing Architecture
 
-**Date:** 2026-07-30  
-**Status:** Canon intake only. No implementation.  
+**Date:** 2026-07-30 (updated 2026-08-20 — Layer 1 design freeze, 001A0)
+**Status:** Canon intake + Layer 1 design freeze. No implementation.
 **Owner gate §08:** Approved 2026-07-30.
+
+---
+
+## Layer 1 — Seat Ledger Design Freeze (EPIC-L-SEAT-LEDGER-001A0)
+
+**Status:** Discovery + decisions recorded. No migrations/models/API/UI.
+
+This section freezes the eight Layer 1 decisions that the seat-ledger schema
+MUST be compatible with. It is the source of truth for tasks 001A1–001A4 and
+for the Layer 2 signed-license work. Any Layer 1 implementation that contradicts
+these decisions is out of contract.
+
+### Repo discovery (actual code, current `origin/develop`)
+
+Anchors in the auditor document may be stale; the following was verified against
+the current tree (commit `1b0452c`).
+
+**A. `POST /device/onboard` flow** — `packages/api/device_routes/onboard.py` +
+`packages/domain/repository.py` (EDGE-001 section).
+
+- Transaction boundary: `get_db` (`packages/api/dependencies.py:21`) opens
+  `async with session.begin():` — a single transaction per request, committed
+  on context exit. No explicit `commit()` in the handler; the async context
+  manager commits on success.
+- Claim: `claim_onboarding_code` runs `UPDATE device_onboarding_codes SET
+  status='claimed' WHERE code=:code AND status='active' AND expires_at > now
+  RETURNING id` (atomic CAS, raw SQL for asyncpg). Two racing requests → one wins.
+- `physical_devices` row creation: `create_physical_device_onboard` (`repository.py:6328`)
+  builds `PhysicalDevice(status="active")` and `session.add()` — the row is
+  inserted with `status='active'` at onboard time, in the same transaction.
+- Code→device bind: `bind_code_to_device` (`repository.py:6411`) sets
+  `status='used'`, `hardware_fingerprint_bound`, `physical_device_id`, `used_at`.
+- Repeat request (idempotency): on `CODE_ALREADY_USED`, `get_device_by_fingerprint`
+  is consulted; if the same fingerprint already owns the device, the existing
+  identity + a fresh token is returned (no new device). A NEW code with a
+  fingerprint that belongs to a DIFFERENT device → `revert_claim` then
+  `FINGERPRINT_CONFLICT` 403.
+- Atomic device + seat reserve: NOT currently possible — there is no seat
+  concept. The existing transaction is atomic for device+code, so the seat
+  reservation can be added inside the same `session.begin()` block at the
+  enrollment choke-point (decision #4 below).
+
+**B. `physical_devices.status` mutation paths.**
+
+- The ONLY production write path that sets status is onboard
+  (`create_physical_device_onboard` → `status='active'`).
+- There is NO active→inactive/decommission endpoint or repository function, and
+  NO re-activation path. `devices.py` (`identity_routes`) exposes read-only
+  endpoints (`GET /devices`, `/devices/summary`, `/devices/{id}`) — no PATCH.
+- Heartbeat (`record_device_heartbeat`, `repository.py:3110`) updates
+  `last_heartbeat_at`, `health_state`, runtime/player versions — it does NOT
+  touch `status`.
+- `PhysicalDevice.status` is documented in `models.py:216` as a
+  "Current state CACHE. See device_status_history for authoritative transitions."
+  `DeviceStatusHistory` exists but no code writes to it yet.
+- **Divergence found:** `apps/control-api/seed.py:206` inserts a `physical_devices`
+  row directly with `status='unregistered'` (seed fixture `KSO-001`), bypassing
+  onboard entirely. This is a third status path (seed-only, not API). The
+  `unregistered` value is also the model default but is never produced by the
+  API. Layer 1 must not assume the only statuses are the ones onboard writes.
+
+**C. RLS / role posture.**
+
+- `retail_media_app` is created NOBYPASSRLS in CI
+  (`.github/workflows/phase1-ci.yml:292-323`) with an assert on
+  `rolsuper=false` and `rolbypassrls=false`. control-api and UI-smoke run under
+  this role.
+- `physical_devices` is in `HIERARCHY_TABLES` (`020_multitenancy_retailer_id.py:84`)
+  → `ENABLE ROW LEVEL SECURITY` + `FORCE ROW LEVEL SECURITY` with `RETAILER_ONLY`
+  policies (admin OR `retailer_id = ANY(app.rmp_scope_retailer_ids)`).
+- Migration `023` adds a device bootstrap to the SELECT policy:
+  `id = app.rmp_device_id` allows the device-gateway to read its own row before
+  the retailer scope is known.
+- `set_rls_context` (`packages/api/dependencies.py:153`) sets `app.rmp_user_id`,
+  `app.rmp_is_admin`, `app.rmp_scope_retailer_ids`, `app.rmp_scope_advertiser_ids`.
+  device-gateway uses its own `set_device_rls_context` bootstrap
+  (`apps/device-gateway/main.py:135`).
+- Behavioral tests: `tests/behavioral/conftest.py` points `DATABASE_URL` at
+  `postgresql+asyncpg://retail_media_app:retail_media_app@...` (NOBYPASSRLS); a
+  separate owner-role `_run_sql` does setup/cleanup with
+  `set_config('app.rmp_is_admin','true')` to bypass RLS for fixtures only.
+
+**D. license.* registry + CI/guard/import-boundaries.**
+
+- `docs/product/feature-registry.yaml`: `license.view`, `license.upload`,
+  `license.seat_release`, `license.report`, `license.enforce` — all `status:
+  blocked`, `gap: "EPIC-L canon intake only. No implementation."`. Roles `[service]`.
+- `user-journeys.md` §EPIC-L mirrors the same blocked list and non-goals.
+- CI quality gates (from `phase1-ci.yml`): Python unit tests, import-boundaries
+  (ADR-014), roadmap-consistency-audit (blocking, `--strict`), style-tokens,
+  JSON-schema, production-config gate, behavioral PostgreSQL (ADR-008),
+  UI-smoke (P0 subset, NOBYPASSRLS).
+- `scripts/ci/check-import-boundaries.py` + `import-boundaries.toml` enforce
+  layering (domain/auth/security/observability/contracts + cross-app + legacy).
+  There is currently NO rule forbidding licensing↔commerce imports — decision #8
+  makes that a required rule for 001A4.
+
+### Layer 1 frozen decisions
+
+1. **Single effective grant.** One installation has exactly one effective
+   license grant. Limits from multiple grants are NOT summed; a second grant
+   supersedes/replaces, never adds.
+
+2. **Seat ↔ device identity.** A seat belongs to a device identity. Layer 2
+   grant replacement MUST atomically transfer/re-bind occupied seats — the
+   existing fleet must not lose seats or be shut off. In 001A0 we only describe
+   a compatible data model; renewal/upload is NOT implemented here.
+
+3. **Enrollment enforcement.** When enforcement blocks onboarding:
+   HTTP **409**, body carries a stable `code` + Russian `message`.
+   Codes: `LICENSE_MISSING`, `LICENSE_SEAT_LIMIT`, `LICENSE_EXPIRED`.
+   Missing license blocks ONLY new enrollment (never an already-active device).
+   DEV runs through an explicit dev-ingest license/fixture — no hidden bypass.
+
+4. **Atomic capacity + create + reserve.** Capacity check, `physical_devices`
+   insert, and seat reserve happen in ONE transaction. Concurrent enrollments
+   use a row lock on the effective grant (or equivalent DB serialization).
+   A bare `COUNT(*)` before INSERT is insufficient.
+
+5. **Active device always holds a seat.** Release is allowed ONLY as part of a
+   confirmed `active → inactive/decommission` transition. There is no manual
+   "free a seat from a still-playing active device" operation.
+
+6. **Peak seat-month.** The monthly peak is the exact maximum of concurrently
+   open intervals `reserved_at <= t < released_at` over the calendar month, UTC.
+   Daily snapshots are forbidden (they can miss an intraday peak).
+
+7. **Effective state is computed.** `active` / `grace` / `expired` are derived
+   from `valid_from`, `valid_until`, `grace_days` at check time. The `status`
+   column is NOT the sole source of truth; `revoked` remains an explicit state.
+
+8. **Contour isolation.** Licensing may read device/enrollment domain, but NOT
+   `commerce_*` or advertiser-commercial. Контур 1 and Контур 2 must not mix.
+
+### Task slicing (recorded, NOT started)
+
+- **001A1** — schema/migration + dev-ingest fixture + repository read model.
+- **001A2** — transactional enrollment choke-point + concurrency proof.
+- **001A3** — decommission/release + exact monthly peak.
+- **001A4** — report API + registry/import-boundaries + full behavioral matrix.
+- **EPIC-L-SIGNED-LICENSE-002** — only after full Layer 1 closure.
+
+### Layer 1 non-goals (unchanged from intake)
+
+- No license issuer implementation; no `.lic` upload; no player/KSO changes;
+  no advertiser billing; no feature statuses reachable in registry.
 
 ---
 

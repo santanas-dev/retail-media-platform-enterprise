@@ -638,6 +638,21 @@ See: `docs/architecture/epic-l-licensing.md`.
 - No advertiser billing
 - No feature statuses reachable
 
+### Layer 1 design freeze (EPIC-L-SEAT-LEDGER-001A0)
+
+**Status:** Discovery + decisions recorded against current `origin/develop`.
+No migrations/models/API/UI. Feature IDs remain `blocked`.
+
+The eight Layer 1 decisions (single effective grant; seat↔device identity with
+atomic re-bind on grant replacement; 409 enforcement codes
+`LICENSE_MISSING`/`LICENSE_SEAT_LIMIT`/`LICENSE_EXPIRED`; atomic
+capacity+create+reserve with row lock; active device always holds seat;
+exact monthly peak over `reserved_at <= t < released_at`; effective state
+computed from dates not `status`; licensing↔commerce contour isolation) are
+recorded in `docs/architecture/epic-l-licensing.md` §"Layer 1 — Seat Ledger
+Design Freeze". Task slicing 001A1→001A4 + EPIC-L-SIGNED-LICENSE-002 is
+frozen there. Layer 2 operator walkthrough stays PENDING.
+
 ---
 
 ## COMMERCE-CONTUR2-001 — Commercial Inventory Sales Engine

@@ -1,12 +1,12 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-20 (UI-SMOKE-FLAKE-003 closed)
+**Last updated:** 2026-08-20 (EPIC-L-SEAT-LEDGER-001A0 design freeze recorded)
 
-**Next Active Workstream:** (pending — operator walkthrough Commerce)
+**Next Active Workstream:** EPIC-L-SEAT-LEDGER-001A1 (schema/migration + dev-ingest fixture + read model) — recorded, NOT started
 
 **Repository Checkpoint (PS-001):**
-- Payload SHA: `0aa4d4a` (UI-SMOKE-FLAKE-003 — stabilize commerce__tariff_manage)
-- State/Docs SHA: `0aa4d4a` (UI-SMOKE-FLAKE-003 closure)
+- Payload SHA: `1b0452c` (UI-SMOKE-FLAKE-003 — stabilize commerce__tariff_manage)
+- State/Docs SHA: `1b0452c` (UI-SMOKE-FLAKE-003 closure)
 
 **UI-SMOKE-FLAKE-003 ✅** — Stabilize `commerce__tariff_manage` navigation race.
 
@@ -379,6 +379,43 @@ Hardware-independent contract client ready. Not a real KSO player — no Chromiu
 - Constraint: A→B advertiser onboarding continues (ADVERTISER-UX-001B1 next). No license code started.
 - LICENSE-001 — seat-hook in enrollment planned before real fleet enrollment / KSO deployment.
 - No migrations, models, API, UI, or player changes.
+- Checkpoint by PS-001.
+
+**EPIC-L-SEAT-LEDGER-001A0 ✅** — Layer 1 design freeze + discovery (docs-only, no code).
+
+Discovery (actual `origin/develop`, commit `1b0452c`):
+- `POST /device/onboard` (`packages/api/device_routes/onboard.py`): single
+  `session.begin()` transaction (commits on context exit, no explicit commit).
+  Atomic claim via `UPDATE device_onboarding_codes SET status='claimed' ...
+  RETURNING id`; device created with `status='active'`; idempotent re-onboard on
+  `CODE_ALREADY_USED` + same fingerprint; `FINGERPRINT_CONFLICT` reverts claim.
+- `physical_devices.status` paths: onboard (→active) is the ONLY production
+  write; no decommission/re-activation endpoint (`devices.py` is read-only);
+  heartbeat doesn't touch status; `status` is documented as a cache over
+  `device_status_history` (which no code writes yet). Divergence: `seed.py:206`
+  inserts `status='unregistered'` directly, bypassing onboard.
+- RLS: `physical_devices` = ENABLE+FORCE RLS (RETAILER_ONLY, migration 020);
+  migration 023 adds device-bootstrap SELECT; `retail_media_app` NOBYPASSRLS
+  (asserted in CI); behavioral tests run under app role, fixtures via owner role.
+- Registry: license.view/upload/seat_release/report/enforce all `blocked`.
+
+Eight frozen Layer 1 decisions (full text in `docs/architecture/epic-l-licensing.md`
+§"Layer 1 — Seat Ledger Design Freeze"): single effective grant; seat↔device
+identity + atomic re-bind; 409 codes LICENSE_MISSING/LICENSE_SEAT_LIMIT/
+LICENSE_EXPIRED; atomic capacity+create+reserve (row lock, not bare COUNT);
+active device always holds seat; exact monthly peak (`reserved_at<=t<released_at`);
+effective state computed from dates not status; licensing↔commerce contour
+isolation (no `commerce_*`/advertiser-commercial reads).
+
+Task slicing (recorded, NOT started): 001A1 schema/fixture/read-model →
+001A2 enrollment choke-point + concurrency → 001A3 decommission/release + peak →
+001A4 report API + import-boundaries + behavioral matrix →
+EPIC-L-SIGNED-LICENSE-002 (only after full Layer 1 closure).
+
+- Product code, migrations, models, API, registry statuses: unchanged.
+- license.* NOT reachable.
+- Layer 2 operator walkthrough: PENDING (agent does not set OK).
+- Guards: roadmap-consistency-check.py --strict = 0; style-tokens 0.
 - Checkpoint by PS-001.
 
 **COMMERCE-CONTUR2-001A0 ✅** — Commerce contour 2 canon intake + owner decision matrix.
