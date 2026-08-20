@@ -42,7 +42,7 @@ NOT added.
 - Layer 1 NOT closed — only A1 done. Next: 001A2.
 - Layer 2 operator walkthrough: PENDING (agent does not set OK).
 - Guards: roadmap-consistency-check.py --strict = 0; style-tokens 0; import-boundaries green.
-- CI: (pending — see run URL in report; unit + behavioral green locally).
+- Green CI: `#32412861257` — `f4a88b2` ✅ (Python 1511 passed, behavioral 381 passed incl. 18 license tests, UI-smoke 38/38). UI-smoke first attempt flaked on 3 unrelated tests (campaign__edit/submit, inventory__simulate) → `--failed` rerun green.
 - Checkpoint by PS-001.
 
 **UI-SMOKE-FLAKE-003 ✅** — Stabilize `commerce__tariff_manage` navigation race.
