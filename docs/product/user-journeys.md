@@ -714,6 +714,17 @@ See: `docs/architecture/epic-l-licensing.md`.
 - Operator walkthrough: PENDING.
 - Next → Commerce Contour 2 MVP closed.
 
+**COMMERCE-PRICING-001 ✅** — Server-derived `quantity_days`, no silent zero-priced orders.
+- Policy: `quantity_days = (date_to - date_from).days + 1` (inclusive). Order total
+  is server-derived from date range × unit price — the client `quantity_days` field
+  is ignored for pricing (retained in DTO for backward compatibility only).
+- Validation: `date_to >= date_from` (else 422); derived `quantity_days >= 1` (never 0).
+- Backend tests: derive_quantity_days (1-day/multi-day/never-zero/date-range-error),
+  calculate_order_quote (one-day, multi-day, client-zero-days-ignored),
+  create_order without quantity_days → non-zero total.
+- UI-smoke: order create asserts non-zero total, `line_amount = unit_price × days`,
+  and reload persistence preserves the same total.
+
 | # | Decision | Approved value | Status |
 |---|----------|---------------|--------|
 | 1 | billing_unit | `surface_day` — рассчитывается до player/PoP, совместим с бронированием инвентаря до показа | ✅ approved |
