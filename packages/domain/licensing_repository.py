@@ -34,15 +34,24 @@ MISSING = "missing"
 
 
 async def get_effective_license(session: AsyncSession) -> LicenseGrant | None:
-    """Return the single current/effective grant, or None.
+    """Return the single effective grant, or None.
 
-    The partial unique index (uq_license_grants_single_current) guarantees at
-    most one row with status='current'. If the RLS context is not admin, the
-    DB policy hides the row and this returns None (same as a missing license
-    under app role without service/admin context).
+    The effective grant is the 'current' grant if one exists, otherwise the
+    most recent 'revoked' grant (a revoked license still blocks enrollment and
+    must be reported as REVOKED, not MISSING). 'superseded' grants are history
+    and never effective. The partial unique index (uq_license_grants_single_
+    current) guarantees at most one 'current' row; in Layer 1 there is a single
+    grant row, so ``order_by(issued_at).limit(1)`` is unambiguous.
+
+    If the RLS context is not admin, the DB policy hides the row and this
+    returns None (same as a missing license under app role without
+    service/admin context).
     """
     result = await session.execute(
-        select(LicenseGrant).where(LicenseGrant.status == "current")
+        select(LicenseGrant)
+        .where(LicenseGrant.status.in_(["current", "revoked"]))
+        .order_by(LicenseGrant.issued_at.desc())
+        .limit(1)
     )
     return result.scalar_one_or_none()
 

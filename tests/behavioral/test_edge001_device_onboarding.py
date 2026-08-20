@@ -87,7 +87,21 @@ def e001_setup(db_available, test_users):
             'KSO Test', 'chromium')
     ON CONFLICT (code) DO NOTHING
     """))
+    # EPIC-L A2: onboarding now enforces the seat ledger. Provide a permissive
+    # dev-ingest grant so the EDGE-001 onboarding tests remain green; wiped in
+    # teardown so it never leaks a stray 'current' grant into other modules.
+    asyncio.run(_run_sql("""
+    INSERT INTO license_grants (id, license_id, licensee_id, licensee_name,
+        tier, issued_at, valid_from, valid_until, max_devices,
+        overage_allowance, grace_days, source, status)
+    VALUES ('beh-e001-grant-00000000000001', 'beh-e001-lic-0000000000001',
+        'beh-e001-op', 'E001 Operator', 'dev', NOW(), NOW() - INTERVAL '1 day',
+        NULL, 1000, 100, 0, 'dev-ingest', 'current')
+    ON CONFLICT (license_id) DO NOTHING
+    """))
     yield {"ret_a": RET_A, "ret_b": RET_B, "store_a": STORE_A}
+    asyncio.run(_run_sql("DELETE FROM license_seats WHERE id LIKE 'beh-e001-%' OR license_id LIKE 'beh-e001-%'"))
+    asyncio.run(_run_sql("DELETE FROM license_grants WHERE id LIKE 'beh-e001-%' OR license_id LIKE 'beh-e001-%'"))
     asyncio.run(_run_sql("DELETE FROM device_onboarding_codes WHERE id LIKE 'beh-e001-%' OR retailer_id LIKE 'beh-e001-%'"))
     asyncio.run(_run_sql("DELETE FROM physical_devices WHERE id LIKE 'beh-e001-%' OR retailer_id LIKE 'beh-e001-%'"))
     asyncio.run(_run_sql("DELETE FROM device_types WHERE id LIKE 'beh-e001-%'"))

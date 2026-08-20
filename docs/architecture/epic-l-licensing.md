@@ -140,8 +140,8 @@ the current tree (commit `1b0452c`).
 ### Task slicing
 
 - **001A1 ✅** — schema/migration + dev-ingest fixture + repository read model.
-- **001A2** — transactional enrollment choke-point + concurrency proof. ← NEXT
-- **001A3** — decommission/release + exact monthly peak.
+- **001A2 ✅** — transactional enrollment choke-point + concurrency proof.
+- **001A3** — decommission/release + exact monthly peak. ← NEXT
 - **001A4** — report API + registry/import-boundaries + full behavioral matrix.
 - **EPIC-L-SIGNED-LICENSE-002** — only after full Layer 1 closure.
 
@@ -171,6 +171,41 @@ the current tree (commit `1b0452c`).
   under `retail_media_app` NOBYPASSRLS — no-context hides/blocks, admin context
   reads/writes, constraint proof, read-model proof, dev-ingest idempotency +
   production refusal.
+
+### 001A2 implementation notes (as-built)
+
+- Single choke-point `packages/domain/licensing_service.py`:
+  `authorize_and_reserve_enrollment(session, create_device=…, now=…)` does, in
+  ONE transaction: (1) server-set `app.rmp_is_admin` context; (2) lock the
+  effective grant with `SELECT … FOR UPDATE`; (3) compute effective state via
+  the A1 read model; (4) count occupied seats post-lock; (5) enforce capacity
+  (`occupied >= max_devices + overage_allowance` → `LICENSE_SEAT_LIMIT`);
+  (6) mint the device via an injected factory; (7) reserve the seat. Denials
+  return a stable `code` + Russian `message`; the route reverts the code claim
+  and raises HTTP 409 (no HTTP 402, no SQL/GUC leakage).
+- Effective-grant lookup now treats `current` OR the most recent `revoked`
+  grant as effective (so a revoked license reports `LICENSE_REVOKED`, not
+  `LICENSE_MISSING`); `superseded` is history. `get_effective_license` (A1) and
+  `lock_current_grant` (A2) share this semantics.
+- `POST /device/onboard` returns 409 with stable codes `LICENSE_MISSING`,
+  `LICENSE_REVOKED`, `LICENSE_EXPIRED`, `LICENSE_SEAT_LIMIT`; grace is allowed
+  and reflected additively as `license_state` on the success response.
+- Soft enforcement: denial blocks ONLY new enrollment. Existing active devices
+  keep status and open seat; heartbeat/device-auth/player/manifest/PoP are
+  untouched.
+- Grandfather reconciliation `reconcile_existing_fleet` + dev-only script
+  `scripts/dev/license-reconcile-seats.py` (fail-closed, idempotent): seats
+  every active device lacking an open seat (over-cap preserved as overage);
+  inactive/unregistered never seated.
+- Behavioral proof: `tests/behavioral/test_license_enrollment.py` (13 tests)
+  under `retail_media_app` NOBYPASSRLS — the full enforcement matrix,
+  idempotency + rollback fault-injection, softness (heartbeat survives
+  over-cap/expired/revoked), reconciliation, RLS-context, and a deterministic
+  last-seat concurrency proof (a parallel enrollment blocks on the FOR UPDATE
+  row lock, then returns `LICENSE_SEAT_LIMIT`; one device + one seat).
+- A2 does NOT: decommission/release, peak_seats_for_month, report endpoint/UI,
+  signed upload/JWS/CRL, or feature-registry status changes. `license.*` stays
+  blocked. Layer 1 is not closed — registry closure remains A4.
 
 ### Layer 1 non-goals (unchanged from intake)
 

@@ -79,21 +79,44 @@ async def device_onboard(
                        "Use the original onboarding code for idempotent re-onboarding.",
         })
 
-    # New device — create and bind
+    # New device — run the single licensing choke-point, then bind the code.
+    # License authorization (row-locked) + device creation + seat reservation
+    # happen in ONE transaction. On denial the claim is reverted and HTTP 409
+    # with a stable code is returned (SCOPE C); the transaction rolls back so
+    # neither the device nor the seat nor the code claim survives.
+    from packages.domain import licensing_service
+
     code = await repository.get_onboarding_code(db, body.device_code)
-    device = await repository.create_physical_device_onboard(
+    now = datetime.now(timezone.utc)
+    decision = await licensing_service.authorize_and_reserve_enrollment(
         db,
-        store_id=code.store_id or "00000000-0000-0000-0000-000000000003",
-        device_type_id=code.device_type_id,
-        hardware_fingerprint=body.hardware_fingerprint,
-        retailer_id=code.retailer_id,
+        create_device=lambda: repository.create_physical_device_onboard(
+            db,
+            store_id=code.store_id or "00000000-0000-0000-0000-000000000003",
+            device_type_id=code.device_type_id,
+            hardware_fingerprint=body.hardware_fingerprint,
+            retailer_id=code.retailer_id,
+        ),
+        now=now,
     )
-    await db.flush()
+    if not decision.allowed:
+        await repository.revert_claim(db, body.device_code)
+        raise HTTPException(
+            status_code=409,
+            detail={"code": decision.code, "message": decision.message},
+        )
+
+    device = decision.device
     await repository.bind_code_to_device(db, body.device_code, device, body.hardware_fingerprint)
 
     token = create_access_token(str(device.id), "device")
     logger.info("Device onboarded: %s (retailer=%s, fingerprint=%s...)", device.id, code.retailer_id, body.hardware_fingerprint[:16])
-    return DeviceOnboardResponse(device_id=str(device.id), status=device.status, access_token=token)
+    return DeviceOnboardResponse(
+        device_id=str(device.id),
+        status=device.status,
+        access_token=token,
+        license_state=decision.state,
+    )
 
 
 # ---------------------------------------------------------------------------

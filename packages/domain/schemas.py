@@ -1233,12 +1233,18 @@ class DeviceOnboardRequest(BaseModel):
 
 
 class DeviceOnboardResponse(BaseModel):
-    """Successful onboarding — returns device identity + access token."""
+    """Successful onboarding — returns device identity + access token.
+
+    ``license_state`` (additive, default None) reflects the computed effective
+    license state at enrollment time (``active`` or ``grace``) so soft
+    enforcement can surface grace without a breaking contract change.
+    """
 
     device_id: str
     status: str
     access_token: str
     token_type: str = "bearer"
+    license_state: str | None = None
 
 
 class DeviceCodeCreateRequest(BaseModel):
