@@ -164,7 +164,7 @@ async def calculate_order_quote(
             continue
 
         unit_price = Decimal(str(price_item.unit_price_amount))
-        line_amount = unit_price * req_line.quantity_days  # TAMPER: client field (0) → zero total
+        line_amount = unit_price * quantity_days
         total += line_amount
 
         quote_lines.append(CommerceQuoteLine(
