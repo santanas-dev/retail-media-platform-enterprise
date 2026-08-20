@@ -1555,4 +1555,12 @@ REQUIRED_TABLES = frozenset({
     "ad_settings",
     "commerce_tariff_versions", "commerce_price_items",
     "commerce_orders", "commerce_order_lines",
+    "license_grants", "license_seats",
 })
+
+
+# Register licensing models on Base.metadata. Imported last (plain `import`,
+# not `from`) so the licensing module can `from packages.domain.models import
+# Base` without a circular-import failure regardless of which module is
+# imported first.
+from packages.domain import licensing as _licensing  # noqa: E402,F401

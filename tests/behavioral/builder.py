@@ -35,6 +35,8 @@ _CLEANUP_TABLES = [
     "commerce_orders",
     "commerce_price_items",
     "commerce_tariff_versions",
+    "license_seats",
+    "license_grants",
     "delivery_manifest_surfaces",
     "delivery_manifest_assets",
     "delivery_manifests",

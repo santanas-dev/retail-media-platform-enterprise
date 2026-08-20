@@ -653,6 +653,21 @@ recorded in `docs/architecture/epic-l-licensing.md` §"Layer 1 — Seat Ledger
 Design Freeze". Task slicing 001A1→001A4 + EPIC-L-SIGNED-LICENSE-002 is
 frozen there. Layer 2 operator walkthrough stays PENDING.
 
+### Layer 1 implementation (EPIC-L-SEAT-LEDGER-001A1) ✅
+
+**Status:** A1 done — schema/migration + dev-ingest fixture + read model.
+Feature IDs remain `blocked` (no enforcement/user behavior yet).
+
+- Migration `034_license_seat_ledger.py` (license_grants + license_seats,
+  ENABLE+FORCE RLS admin-context, single-current + single-open-seat partial
+  unique indexes, CHECK constraints, FK RESTRICT history preservation).
+- ORM `packages/domain/licensing.py`; read model
+  `packages/domain/licensing_repository.py`; dev-ingest
+  `scripts/dev/license-dev-ingest.py` (fail-closed, idempotent).
+- Behavioral proof 18 tests under retail_media_app NOBYPASSRLS.
+- Deferred to A2/A3/A4: enrollment choke-point, decommission/release, peak,
+  report API, signed upload. Next: 001A2.
+
 ---
 
 ## COMMERCE-CONTUR2-001 — Commercial Inventory Sales Engine

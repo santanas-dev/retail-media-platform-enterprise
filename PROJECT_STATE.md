@@ -1,12 +1,49 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-20 (EPIC-L-SEAT-LEDGER-001A0 design freeze recorded)
+**Last updated:** 2026-08-20 (EPIC-L-SEAT-LEDGER-001A1 — schema/migration + dev-ingest + read model)
 
-**Next Active Workstream:** EPIC-L-SEAT-LEDGER-001A1 (schema/migration + dev-ingest fixture + read model) — recorded, NOT started
+**Next Active Workstream:** EPIC-L-SEAT-LEDGER-001A2 (transactional enrollment choke-point + concurrency proof)
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `1b0452c` (UI-SMOKE-FLAKE-003 — stabilize commerce__tariff_manage)
 - State/Docs SHA: `1b0452c` (UI-SMOKE-FLAKE-003 closure)
+
+**EPIC-L-SEAT-LEDGER-001A1 ✅** — License seat ledger schema/migration + dev-ingest + read model.
+
+As-built (per design freeze §"Layer 1 Seat Ledger Design Freeze"):
+- Migration `034_license_seat_ledger.py`: `license_grants` + `license_seats`.
+  ENABLE+FORCE RLS (admin-only `app.rmp_is_admin=true` context; no advertiser
+  scope). Partial unique `uq_license_grants_single_current` (one current grant)
+  + `uq_license_seats_open_per_device` (one open seat per device). CHECK:
+  non-negative limits/grace, `valid_until>=valid_from`, `released_at>=reserved_at`,
+  source restricted to `dev-ingest`. FK `ondelete=RESTRICT` (no cascade wipe of
+  seat history — matches audit-history FK pattern).
+- ORM `packages/domain/licensing.py` (`LicenseGrant`, `LicenseSeat`), registered
+  on `Base.metadata` via tail import in `models.py`. No commerce_* / advertiser
+  imports.
+- Read model `packages/domain/licensing_repository.py`: `get_effective_license`,
+  `compute_effective_state` (active/grace/expired/revoked/missing from dates),
+  `count_occupied_seats` (open seats on active devices), `capacity_of`, `free_of`.
+  No GUC-setting — works under NOBYPASSRLS when caller set service/admin context.
+- Dev-ingest `scripts/dev/license-dev-ingest.py`: fail-closed (ENVIRONMENT ∈
+  dev/development/local/test AND LICENSE_DEV_INGEST_ENABLED=true), idempotent,
+  deterministic `dev-ingest-0001` grant (source=dev-ingest). Not in production
+  seed, not license.upload.
+- Behavioral `tests/behavioral/test_license_seat_ledger.py` — 18 tests under
+  `retail_media_app` NOBYPASSRLS (no-context hides/blocks; admin context reads/
+  writes; constraint proof; read-model proof; dev-ingest idempotency + prod refuse).
+
+Not done in A1 (deferred to A2/A3/A4): seat reserve in device_onboard, limit
+enforcement, decommission/release, peak_seats_for_month, report endpoint/UI,
+signed upload/JWS/CRL, registry status changes. Manual release of active seat
+NOT added.
+
+- license.* feature-registry: still `blocked` (enforcement/user behavior not built).
+- Layer 1 NOT closed — only A1 done. Next: 001A2.
+- Layer 2 operator walkthrough: PENDING (agent does not set OK).
+- Guards: roadmap-consistency-check.py --strict = 0; style-tokens 0; import-boundaries green.
+- CI: (pending — see run URL in report; unit + behavioral green locally).
+- Checkpoint by PS-001.
 
 **UI-SMOKE-FLAKE-003 ✅** — Stabilize `commerce__tariff_manage` navigation race.
 

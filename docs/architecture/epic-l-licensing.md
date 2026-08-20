@@ -137,18 +137,49 @@ the current tree (commit `1b0452c`).
 8. **Contour isolation.** Licensing may read device/enrollment domain, but NOT
    `commerce_*` or advertiser-commercial. Контур 1 and Контур 2 must not mix.
 
-### Task slicing (recorded, NOT started)
+### Task slicing
 
-- **001A1** — schema/migration + dev-ingest fixture + repository read model.
-- **001A2** — transactional enrollment choke-point + concurrency proof.
+- **001A1 ✅** — schema/migration + dev-ingest fixture + repository read model.
+- **001A2** — transactional enrollment choke-point + concurrency proof. ← NEXT
 - **001A3** — decommission/release + exact monthly peak.
 - **001A4** — report API + registry/import-boundaries + full behavioral matrix.
 - **EPIC-L-SIGNED-LICENSE-002** — only after full Layer 1 closure.
+
+### 001A1 implementation notes (as-built)
+
+- Migration `034_license_seat_ledger.py` (`apps/control-api/alembic/versions/`).
+  Tables `license_grants` + `license_seats`; ENABLE+FORCE RLS (admin-only context);
+  partial unique indexes `uq_license_grants_single_current` (single current grant)
+  and `uq_license_seats_open_per_device` (single open seat per device); CHECK
+  constraints for non-negative limits/grace, valid window, release-after-reserve,
+  Layer-1 source restriction (`dev-ingest` only); FK ondelete RESTRICT preserves
+  license history (no cascade wipe of seat intervals).
+- ORM models in `packages/domain/licensing.py` (`LicenseGrant`, `LicenseSeat`),
+  registered on `Base.metadata` via a tail import in `models.py`. No FK/import to
+  `commerce_*` or advertiser-commercial.
+- Read model in `packages/domain/licensing_repository.py`:
+  `get_effective_license`, `compute_effective_state` (active/grace/expired/
+  revoked/missing from dates, not status), `count_occupied_seats` (open seats on
+  active devices only), `capacity_of`, `free_of`. No GUC-setting; works under
+  NOBYPASSRLS when the caller has set service/admin context.
+- Dev-ingest: `scripts/dev/license-dev-ingest.py` — fail-closed (requires
+  ENVIRONMENT ∈ {dev,development,local,test} AND LICENSE_DEV_INGEST_ENABLED=true),
+  idempotent, deterministic `dev-ingest-0001` grant with source=dev-ingest.
+  Not wired into the universal production seed and NOT an implementation of
+  license.upload.
+- Behavioral proof: `tests/behavioral/test_license_seat_ledger.py` (18 tests)
+  under `retail_media_app` NOBYPASSRLS — no-context hides/blocks, admin context
+  reads/writes, constraint proof, read-model proof, dev-ingest idempotency +
+  production refusal.
 
 ### Layer 1 non-goals (unchanged from intake)
 
 - No license issuer implementation; no `.lic` upload; no player/KSO changes;
   no advertiser billing; no feature statuses reachable in registry.
+- A1 does NOT: reserve seats in device_onboard, enforce limits, decommission/
+  release, peak_seats_for_month, report endpoint/UI, signed upload/JWS/CRL,
+  or change feature-registry statuses. Manual release of an active seat is
+  not added.
 
 ---
 
