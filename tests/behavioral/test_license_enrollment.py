@@ -152,7 +152,8 @@ class _EnrollBase:
         self.token_admin = _token(USER_IDS["readonly"])  # system_admin
 
     def _grant(self, *, max_devices=10, overage=0, grace=0,
-               valid_until="NULL", status="current", valid_from="NOW() - INTERVAL '1 day'"):
+               valid_until="NULL", status="current", valid_from="NOW() - INTERVAL '1 day'",
+               issued_at="NOW()"):
         gid = self.b._uid("g")
         lid = self.b._uid("lic")
         _setup(f"""
@@ -160,7 +161,7 @@ class _EnrollBase:
                 tier, issued_at, valid_from, valid_until, max_devices,
                 overage_allowance, grace_days, source, status)
             VALUES ('{gid}', '{lid}', 'a2-op', 'A2 Operator', 'pro',
-                NOW(), {valid_from}, {valid_until}, {max_devices}, {overage}, {grace},
+                {issued_at}, {valid_from}, {valid_until}, {max_devices}, {overage}, {grace},
                 'dev-ingest', '{status}');
         """)
         return gid
@@ -267,6 +268,27 @@ class TestEnrollmentEnforcement(_EnrollBase):
         resp = self._onboard(code, "a2-fp-revoked-000000000001")
         assert resp.status_code == 409
         assert self._detail(resp)["code"] == "LICENSE_REVOKED"
+
+    def test_current_outranks_newer_revoked(self):
+        # current grant issued EARLIER; revoked grant issued LATER. A naive
+        # `issued_at DESC` would select the revoked grant and deny enrollment
+        # as LICENSE_REVOKED, even though a live current grant exists.
+        g_current = self._grant(max_devices=5, valid_from="NOW() - INTERVAL '5 days'",
+                                issued_at="NOW() - INTERVAL '5 days'")
+        self._grant(status="revoked", valid_from="NOW() - INTERVAL '1 day'",
+                    issued_at="NOW()")
+
+        code = self._create_code()
+        fp = "a2-fp-cur-revoked-000000000001"
+        resp = self._onboard(code, fp)
+        assert resp.status_code == 200, f"enrollment must use current grant: {resp.status_code} {resp.text[:200]}"
+        data = resp.json()
+        assert data["license_state"] == "active", "must not be treated as revoked"
+        assert _q(f"SELECT count(*) AS n FROM physical_devices WHERE hardware_fingerprint='{fp}'")[0]["n"] == 1
+        seats = _q(f"SELECT license_id FROM license_seats WHERE device_id='{data['device_id']}' AND released_at IS NULL")
+        assert len(seats) == 1
+        assert seats[0]["license_id"] == g_current, "seat must be reserved under the current grant"
+        assert self._open_seats() == 1
 
 
 @pytest.mark.usefixtures("enroll_setup")

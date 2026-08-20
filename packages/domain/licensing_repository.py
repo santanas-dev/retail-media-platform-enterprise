@@ -19,7 +19,7 @@ Contract (design freeze):
 
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.domain.licensing import LicenseGrant, LicenseSeat
@@ -33,26 +33,51 @@ REVOKED = "revoked"
 MISSING = "missing"
 
 
+def effective_grant_query(lock: bool = False):
+    """Build the single effective-grant query.
+
+    The effective grant is **status-prioritized**: the 'current' grant always
+    outranks any 'revoked' grant, regardless of ``issued_at``. Only when no
+    'current' row exists is the most recent 'revoked' grant chosen (a revoked
+    license still blocks enrollment and must be reported as REVOKED, not
+    MISSING). 'superseded' grants are history and never effective.
+
+    ``issued_at DESC`` breaks ties only WITHIN the same status. When ``lock``
+    is True the selected row is locked with ``SELECT ... FOR UPDATE`` so that
+    concurrent enrollments serialize on it. This is the single source of truth
+    for effective-grant selection — the read model
+    (:func:`get_effective_license`) and the enrollment choke-point
+    (``licensing_service.lock_current_grant``) both delegate here so the two
+    can never diverge again.
+    """
+    stmt = (
+        select(LicenseGrant)
+        .where(LicenseGrant.status.in_(["current", "revoked"]))
+        .order_by(
+            case((LicenseGrant.status == "current", 0), else_=1),
+            LicenseGrant.issued_at.desc(),
+        )
+        .limit(1)
+    )
+    if lock:
+        stmt = stmt.with_for_update()
+    return stmt
+
+
 async def get_effective_license(session: AsyncSession) -> LicenseGrant | None:
     """Return the single effective grant, or None.
 
-    The effective grant is the 'current' grant if one exists, otherwise the
-    most recent 'revoked' grant (a revoked license still blocks enrollment and
-    must be reported as REVOKED, not MISSING). 'superseded' grants are history
-    and never effective. The partial unique index (uq_license_grants_single_
-    current) guarantees at most one 'current' row; in Layer 1 there is a single
-    grant row, so ``order_by(issued_at).limit(1)`` is unambiguous.
+    Priority is status-based (see :func:`effective_grant_query`): 'current'
+    outranks 'revoked' regardless of ``issued_at``; 'revoked' is chosen only
+    when no 'current' exists. 'superseded' grants are history and never
+    effective. The partial unique index (uq_license_grants_single_current)
+    guarantees at most one 'current' row.
 
     If the RLS context is not admin, the DB policy hides the row and this
     returns None (same as a missing license under app role without
     service/admin context).
     """
-    result = await session.execute(
-        select(LicenseGrant)
-        .where(LicenseGrant.status.in_(["current", "revoked"]))
-        .order_by(LicenseGrant.issued_at.desc())
-        .limit(1)
-    )
+    result = await session.execute(effective_grant_query(lock=False))
     return result.scalar_one_or_none()
 
 

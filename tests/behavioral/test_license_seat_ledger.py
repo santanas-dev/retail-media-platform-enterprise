@@ -324,6 +324,38 @@ class TestReadModel:
         assert grant is not None
         assert grant.id == self.grant_id
 
+    def test_current_outranks_newer_revoked(self):
+        from datetime import datetime, timezone
+
+        # Isolate from the fixture's single 'current' grant.
+        _run_setup("DELETE FROM license_seats WHERE id LIKE 'beh-lic%';")
+        _run_setup("DELETE FROM license_grants WHERE id LIKE 'beh-lic%';")
+        # current grant issued EARLIER than the revoked grant. A naive
+        # `issued_at DESC` would wrongly return the revoked row.
+        g_current = self.b._uid("cur")
+        g_revoked = self.b._uid("rvk")
+        _run_setup(f"""
+            INSERT INTO license_grants (id, license_id, licensee_id, licensee_name,
+                tier, issued_at, valid_from, valid_until, max_devices,
+                overage_allowance, grace_days, source, status)
+            VALUES ('{g_current}', '{self.b._uid("lic")}', 'op', 'Op', 'pro',
+                NOW() - INTERVAL '5 days', NOW() - INTERVAL '5 days',
+                NOW() + INTERVAL '30 days', 5, 0, 3, 'dev-ingest', 'current');
+        """)
+        _run_setup(f"""
+            INSERT INTO license_grants (id, license_id, licensee_id, licensee_name,
+                tier, issued_at, valid_from, valid_until, max_devices,
+                overage_allowance, grace_days, source, status)
+            VALUES ('{g_revoked}', '{self.b._uid("lic")}', 'op', 'Op', 'pro',
+                NOW(), NOW() - INTERVAL '1 day', NOW() + INTERVAL '30 days',
+                1, 0, 0, 'dev-ingest', 'revoked');
+        """)
+        grant = asyncio.run(_app_get_effective())
+        assert grant is not None
+        assert grant.id == g_current, "current grant must outrank a newer revoked grant"
+        assert grant.status == "current"
+        assert compute_effective_state(grant, datetime.now(timezone.utc)) == ACTIVE
+
 
 @pytest.mark.usefixtures("ledger_setup")
 class TestDevIngest:

@@ -45,6 +45,7 @@ from packages.domain.licensing_repository import (
     capacity_of,
     compute_effective_state,
     count_occupied_seats,
+    effective_grant_query,
     free_of,
 )
 from packages.domain.models import PhysicalDevice
@@ -142,19 +143,15 @@ async def set_licensing_admin_context(session: AsyncSession) -> None:
 async def lock_current_grant(session: AsyncSession) -> "LicenseGrant | None":
     """Return the single effective grant, locked with ``SELECT ... FOR UPDATE``.
 
-    The effective grant is the 'current' grant if present, else the most recent
-    'revoked' grant (so a revoked license is reported as REVOKED, not MISSING).
-    All enrollments for this installation serialize on this one row. Under
-    NOBYPASSRLS the caller must already have set the admin context (the RLS
-    policy admits the SELECT and the row lock is held until commit/rollback).
+    Priority is status-based (see
+    :func:`licensing_repository.effective_grant_query`): the 'current' grant
+    outranks any 'revoked' grant regardless of ``issued_at``; 'revoked' is
+    chosen only when no 'current' exists. All enrollments for this installation
+    serialize on this one row. Under NOBYPASSRLS the caller must already have
+    set the admin context (the RLS policy admits the SELECT and the row lock is
+    held until commit/rollback).
     """
-    result = await session.execute(
-        select(LicenseGrant)
-        .where(LicenseGrant.status.in_(["current", "revoked"]))
-        .order_by(LicenseGrant.issued_at.desc())
-        .limit(1)
-        .with_for_update()
-    )
+    result = await session.execute(effective_grant_query(lock=True))
     return result.scalar_one_or_none()
 
 
