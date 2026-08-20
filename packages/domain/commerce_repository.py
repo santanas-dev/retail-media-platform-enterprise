@@ -37,6 +37,19 @@ def _new_uuid() -> str:
     return str(uuid.uuid4())
 
 
+def derive_quantity_days(date_from: date, date_to: date) -> int:
+    """COMMERCE-PRICING-001: inclusive day count from date range.
+
+    quantity_days = (date_to - date_from).days + 1.
+    Never zero — one-day range yields 1. Client-supplied quantity_days is
+    deliberately ignored so a missing/zero client field cannot silently
+    produce a zero-priced line.
+    """
+    if date_to < date_from:
+        raise ValueError("date_to must be >= date_from")
+    return (date_to - date_from).days + 1
+
+
 # ── Tariff helpers ──
 
 
@@ -117,12 +130,16 @@ async def calculate_order_quote(
     # 5. Calculate per-line
     total = Decimal("0.00")
     for req_line in request.lines:
+        # COMMERCE-PRICING-001: quantity_days is server-derived from dates.
+        # Client-supplied quantity_days is ignored for pricing.
+        quantity_days = derive_quantity_days(req_line.date_from, req_line.date_to)
+
         if req_line.surface_id not in existing_surfaces:
             quote_lines.append(CommerceQuoteLine(
                 surface_id=req_line.surface_id,
                 date_from=req_line.date_from,
                 date_to=req_line.date_to,
-                quantity_days=req_line.quantity_days,
+                quantity_days=quantity_days,
                 unit_price_amount=0.0,
                 line_amount=0.0,
                 error=f"Surface {req_line.surface_id} not found",
@@ -136,7 +153,7 @@ async def calculate_order_quote(
                 surface_id=req_line.surface_id,
                 date_from=req_line.date_from,
                 date_to=req_line.date_to,
-                quantity_days=req_line.quantity_days,
+                quantity_days=quantity_days,
                 unit_price_amount=0.0,
                 line_amount=0.0,
                 error=f"No price for surface {req_line.surface_id} in tariff {tariff.code}",
@@ -147,14 +164,14 @@ async def calculate_order_quote(
             continue
 
         unit_price = Decimal(str(price_item.unit_price_amount))
-        line_amount = unit_price * req_line.quantity_days
+        line_amount = unit_price * quantity_days
         total += line_amount
 
         quote_lines.append(CommerceQuoteLine(
             surface_id=req_line.surface_id,
             date_from=req_line.date_from,
             date_to=req_line.date_to,
-            quantity_days=req_line.quantity_days,
+            quantity_days=quantity_days,
             unit_price_amount=float(unit_price),
             line_amount=float(line_amount),
         ))

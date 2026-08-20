@@ -428,7 +428,9 @@ function OrderDetail({
                 <td style={tdStyle}>
                   {fmtDate(ln.date_from)} – {fmtDate(ln.date_to)}
                 </td>
-                <td style={tdStyle}>{ln.quantity_days}</td>
+                <td style={tdStyle} data-testid={`commerce-order-line-days-${ln.id}`}>
+                  {ln.quantity_days}
+                </td>
                 <td style={tdStyle}>
                   {ln.unit_price_amount.toLocaleString("ru-RU")}
                 </td>
@@ -597,7 +599,10 @@ export default function CommerceOrdersTab({ canManage }: CommerceOrdersTabProps)
                   {PAYMENT_STATUS_LABELS[o.payment_status] ?? o.payment_status}
                 </td>
                 <td style={tdStyle}>
-                  {o.total_amount?.toLocaleString("ru-RU") ?? "—"} {o.currency}
+                  <span data-testid={`commerce-order-total-${o.id}`}>
+                    {o.total_amount?.toLocaleString("ru-RU") ?? "—"}
+                  </span>{" "}
+                  {o.currency}
                 </td>
                 <td style={tdStyle}>{fmtDate(o.created_at)}</td>
               </tr>

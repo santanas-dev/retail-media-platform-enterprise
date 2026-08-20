@@ -1761,9 +1761,18 @@ class CommerceOrderLineCreate(BaseModel):
     surface_id: str
     date_from: date_type
     date_to: date_type
+    # Client-supplied quantity_days is IGNORED for pricing (COMMERCE-PRICING-001).
+    # Server derives quantity_days = (date_to - date_from).days + 1 (inclusive).
+    # Field retained for backward compatibility only.
     quantity_days: int = Field(default=0, ge=0)
     unit_price_amount: float = Field(default=0.0, ge=0)
     line_amount: float = Field(default=0.0, ge=0)
+
+    @model_validator(mode="after")
+    def _validate_date_range(self) -> "CommerceOrderLineCreate":
+        if self.date_to < self.date_from:
+            raise ValueError("date_to must be >= date_from")
+        return self
 
 
 class CommerceOrderLineOut(BaseModel):

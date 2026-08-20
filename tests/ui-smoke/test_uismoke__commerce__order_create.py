@@ -15,6 +15,7 @@ SEED_ADV_ORG_ID = 00000000-0000-0000-0000-000000000200
 SEED_SURFACE_ID = 00000000-0000-0000-0000-000000000031
 """
 import os
+import re
 import time
 import pytest
 from conftest import login_as_break_glass_admin
@@ -124,15 +125,38 @@ def test_uismoke__commerce__order_create(smoke_page):
     page.wait_for_selector('[data-testid="commerce-orders-table"]', timeout=10000)
     # Order should have status "Черновик" (draft)
     page.wait_for_selector('text=Черновик', timeout=5000)
-    # Should have a total (non-zero)
-    page.wait_for_selector('[data-testid="commerce-orders-table"]', timeout=5000)
+
+    # COMMERCE-PRICING-001: assert non-zero total (no silent zero-priced order)
+    order_row = page.locator('[data-testid^="commerce-order-row-"]').first
+    order_testid = order_row.get_attribute("data-testid") or ""
+    order_id = order_testid.replace("commerce-order-row-", "")
+    total_el = page.locator(f'[data-testid="commerce-order-total-{order_id}"]')
+    total_text = total_el.inner_text().strip()
+    total_digits = re.sub(r"\D", "", total_text)
+    assert total_digits and int(total_digits) > 0, (
+        f"Order total must be non-zero, got: {total_text!r}"
+    )
 
     # 6. Click order row to see detail
-    order_row = page.locator('[data-testid^="commerce-order-row-"]').first
     order_row.click()
     page.wait_for_timeout(500)
     page.wait_for_selector('[data-testid="commerce-order-detail"]', timeout=5000)
     page.wait_for_selector('[data-testid="commerce-order-lines-table"]', timeout=5000)
+
+    # COMMERCE-PRICING-001: line_amount = unit_price × server-derived days.
+    # Price item was created with unit_price=200; date range today→today+7 = 8 days.
+    days_el = page.locator('[data-testid^="commerce-order-line-days-"]').first
+    days_text = days_el.inner_text().strip()
+    days = int(re.sub(r"\D", "", days_text))
+    assert days >= 1, f"quantity_days must be >= 1 (server-derived), got: {days_text!r}"
+
+    amount_el = page.locator('[data-testid^="commerce-order-line-amount-"]').first
+    amount_text = amount_el.inner_text().strip()
+    amount_digits = int(re.sub(r"\D", "", amount_text))
+    assert amount_digits == 200 * days, (
+        f"line_amount must equal unit_price(200) × days({days}) = {200 * days}, "
+        f"got {amount_text!r}"
+    )
 
     # 7. Transition: draft → offered
     page.locator('[data-testid="commerce-order-transition-offered"]').click()
@@ -169,8 +193,19 @@ def test_uismoke__commerce__order_create(smoke_page):
     page.wait_for_timeout(500)
     page.wait_for_selector('[data-testid="commerce-orders-table"]', timeout=8000)
     page.wait_for_selector('text=Закрыт', timeout=5000)
+
+    # COMMERCE-PRICING-001: reload preserves same non-zero total
+    reload_row = page.locator('[data-testid^="commerce-order-row-"]').first
+    reload_testid = reload_row.get_attribute("data-testid") or ""
+    reload_order_id = reload_testid.replace("commerce-order-row-", "")
+    reload_total = page.locator(f'[data-testid="commerce-order-total-{reload_order_id}"]').inner_text().strip()
+    reload_digits = re.sub(r"\D", "", reload_total)
+    assert reload_digits == total_digits, (
+        f"Reload must preserve total: before={total_digits!r}, after={reload_digits!r}"
+    )
+
     # Click order row to expand detail (selectedOrder resets on reload)
-    page.locator('[data-testid^="commerce-order-row-"]').first.click()
+    reload_row.click()
     page.wait_for_timeout(500)
     page.wait_for_selector('[data-testid="commerce-order-detail"]', timeout=5000)
     page.wait_for_selector('[data-testid="commerce-order-payment-status"]:has-text("Оплачен")', timeout=5000)
