@@ -1,12 +1,39 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-20 (COMMERCE-PRICING-001 closed)
+**Last updated:** 2026-08-20 (UI-SMOKE-FLAKE-003 closed)
 
 **Next Active Workstream:** (pending — operator walkthrough Commerce)
 
 **Repository Checkpoint (PS-001):**
-- Payload SHA: `71f16b6` (COMMERCE-PRICING-001 — server-derived quantity_days)
-- State/Docs SHA: `71f16b6` (COMMERCE-PRICING-001 closure)
+- Payload SHA: `0aa4d4a` (UI-SMOKE-FLAKE-003 — stabilize commerce__tariff_manage)
+- State/Docs SHA: `0aa4d4a` (UI-SMOKE-FLAKE-003 closure)
+
+**UI-SMOKE-FLAKE-003 ✅** — Stabilize `commerce__tariff_manage` navigation race.
+
+Root cause: SPA navigation race. After clicking «Коммерция» the React Router
+transition is asynchronous — `wait_for_url` + `wait_for_load_state("networkidle")`
+pass BEFORE the new page mounts, so a bare `page.wait_for_selector('h1')` grabbed
+the old «Кампании» h1 and the assertion `'Коммерция' in h1` failed. Reproduced
+locally at ~5/8 (deterministic under load).
+
+Fix (all in `tests/ui-smoke/test_uismoke__commerce__tariff_manage.py`, no app code):
+1. `_nav_commerce` + test body wait for `[data-testid="commerce-tariffs-page"]`
+   (page container) instead of `h1` text — proves the target page actually rendered.
+2. Form close/open waits switched to `state="detached"` / `state="visible"`
+   (removed all arbitrary `wait_for_timeout` sleeps).
+3. Prices sub-tab switch waits for `h3:has-text("Прайс-лист:")` — proves both the
+   tariff row click registered (`selectedTariffId`) AND the tab switched.
+4. Post-edit wait for the row to show «Активен» — closes the gap between the edit
+   form detaching (`setEditingTariff(null)`) and `loadTariffs()` re-rendering.
+
+Proof:
+- Local loop: 15/15 stable (plus 12/12 + 6/6 across prior runs); pre-fix 3/8.
+- Green CI: `#32402102386` — `0aa4d4a` ✅ (Python 1511 passed, UI-smoke 38/38,
+  `commerce__tariff_manage` PASSED).
+- Stability re-run: `#32402863528` (workflow_dispatch) ✅ green — `commerce__tariff_manage` PASSED again (38/38 smoke, 1511 Python). No retry masking: fix is deterministic, not a lucky rerun.
+- Guards: roadmap consistency 0, style-tokens 0 ✅.
+- Feature registry: unchanged.
+- Operator walkthrough: N/A (test-only fix, no UI behavior change).
 
 **COMMERCE-PRICING-001 ✅** — Server-derived `quantity_days`, no silent zero-priced orders.
 - Policy: `quantity_days = (date_to - date_from).days + 1` (inclusive). Order total is
