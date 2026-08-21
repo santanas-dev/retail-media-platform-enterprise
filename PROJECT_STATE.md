@@ -1,12 +1,12 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-21 (EPIC-L-SEAT-LEDGER-001A3 — decommission → seat release + exact monthly peak)
+**Last updated:** 2026-08-21 (EPIC-L-SEAT-LEDGER-001A4 — Layer 1 closure: report API + reconciliation + import boundaries)
 
-**Next Active Workstream:** EPIC-L-SEAT-LEDGER-001A4 (report API + registry/import-boundaries closure)
+**Next Active Workstream:** R4-READINESS-001 (R4 readiness — не автоматический merge/deploy)
 
 **Repository Checkpoint (PS-001):**
-- Payload SHA: `bf846e1` (EPIC-L-SEAT-LEDGER-001A3 — decommission + peak)
-- State/Docs SHA: `bf846e1` (EPIC-L-SEAT-LEDGER-001A3)
+- Payload SHA: `8637b1d` (EPIC-L-SEAT-LEDGER-001A4 — Layer 1 closure)
+- State/Docs SHA: `8637b1d` (EPIC-L-SEAT-LEDGER-001A4)
 
 **ROADMAP-RELEASE-SYNC-002 ✅** — Roadmap truth sync + owner release decision prep.
 
@@ -224,6 +224,76 @@ release.
   R4-READINESS-001.
 - Layer 1 NOT closed — A1 + A2 (+FU) + A3 done. Next: 001A4.
 - Layer 2 operator walkthrough: PENDING (agent does not set OK).
+- Checkpoint by PS-001.
+
+**EPIC-L-SEAT-LEDGER-001A4 ✅** — Report API + reconciliation + import boundaries → Layer 1 closure.
+
+As-built:
+- `get_license_report(session, *, year, month, now)` (`packages/domain/
+  licensing_repository.py`) — single read-only report. `license` (effective_state
+  active/grace/expired/revoked/missing, license_id, licensee_id/name, tier,
+  source, valid_from/until, grace_days, capacity = max_devices + overage_allowance,
+  days_remaining UTC-ceil: active→valid_until, grace→valid_until+grace_days,
+  expired/revoked→0, perpetual/missing→null, over_capacity_by), `usage`
+  (occupied/free/peak/year/month/timezone=UTC), `seats` (currently-open only:
+  seat_id/license_id/device_id/device_code/device_status/last_heartbeat_at/
+  reserved_at + store_id/store_code/store_name via the authoritative
+  `physical_devices.store_id → stores` relation + anomaly_flags). Never returns
+  hardware secrets/certificates/tokens/advertiser-commercial data. Missing
+  license → controlled `effective_state="missing"`, not 500.
+- `GET /licenses/report?year&month` (`packages/api/identity_routes/licenses.py`,
+  `license.read` granted to system_admin + security_admin). Server-side
+  service/admin RLS context via the accepted `set_rls_context` dependency; under
+  NOBYPASSRLS license tables + physical_devices are only visible with it.
+  year/month validation → 422 `INVALID_MONTH`. No commit/mutation.
+- Reconciliation `get_reconciliation_report(session, *, now)` (service) — DRY-RUN
+  read-only drift detection: current_grant_missing, over_capacity,
+  active_device_without_seat, inactive_device_with_seat,
+  seat_under_noncurrent_grant, occupied_mapping_mismatch → counts + findings
+  (severity/code/message/device/seat) + consistent. CLI
+  `scripts/dev/license-reconcile-seats.py`: DRY RUN default (exit 0 consistent /
+  1 drift), `--apply` grandfather repair only in DEV/TEST + dev-ingest flag
+  (exit 2 fail-closed BEFORE any DB connection in production), idempotent, never
+  releases an active seat / never deactivates.
+- Import boundary (`scripts/ci/import-boundaries.toml` + `check-import-boundaries.py`)
+  — AST-based `[[licensing_boundary]]`: licensing modules may import only
+  explicitly-allowlisted device/status symbols from monolithic models.py (Base,
+  _new_uuid, _utcnow, PhysicalDevice, DeviceStatusHistory, Store); forbidden
+  `commerce`/`advertiser` module imports and `commerce_*`/`advertiser_*` table
+  literals (docstrings excluded).
+- No new migration — alembic heads stays 1 (034). No advertiser-commercial or
+  commerce imports anywhere in licensing.
+
+Proof:
+- 62 behavioral license tests (A1 19 + A2 14 + A3 13 + A4 16) local, all green;
+  29 unit (17 peak + 9 days_remaining + 3 CLI fail-closed), green. Full unit
+  suite green (2 scope-reset tests are a local-only env artifact — missing
+  `retail_media` role — pass in CI).
+- Green CI `#32523165305` — `8637b1d` ✅ (unit incl. 29, behavioral 62,
+  import-boundaries, style-tokens, roadmap, UI-smoke 38/38).
+- Tamper proof RLS (red) `#32522513042` — branch `epic-l-a4-tamper-rls` (deleted):
+  report `set_rls_context` removed → `test_report_requires_admin_rls_context`
+  fails `assert 'missing' == 'active'` (report empty under NOBYPASSRLS).
+- Tamper proof import-boundary (red) `#32522546049` — branch
+  `epic-l-a4-tamper-import` (deleted): `from packages.domain.commerce_repository
+  import calculate_order_quote` → `import-boundaries` FAIL (matches 'commerce').
+  develop has no tamper; no tamper commit is an ancestor of develop.
+
+Layer 1 closure truth:
+- Layer 1 INCLUDES: dev-ingest unsigned grant, seat ledger, transactional
+  enrollment enforcement, current-over-revoked selector, grandfather
+  reconciliation, decommission release, exact UTC monthly peak, report API,
+  import boundary.
+- Layer 1 does NOT include: signed `.lic`, issuer CLI/private key, offline
+  Ed25519 verify, kid/CRL, installation-binding runtime, anti-clock rollback,
+  license UI/upload, production deployment.
+- NOT production-ready. Operator walkthrough: license UI absent; Layer 2
+  walkthrough PENDING (agent does not set OK).
+- Registry: `license.enforce`, `license.seat_release`, `license.report` →
+  reachable (service, behavioral smoke named); `license.view`, `license.upload`
+  remain blocked (Layer 2). Counts 58 total / 52 reachable / 6 blocked
+  (programmatically verified).
+- Next → R4-READINESS-001 (not an automatic merge/deploy).
 - Checkpoint by PS-001.
 
 **UI-SMOKE-STABILITY-004 ✅** — Deterministic 38/38 CI smoke.

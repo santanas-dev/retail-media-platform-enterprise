@@ -635,12 +635,45 @@ features:
     gap: "LIFECYCLE-COMPLETE-001-FU: real DB proof. 7 behavioral tests green. Orchestrator-worker maintenance tick (5 min). CampaignStatusHistory verified. Idempotency proven."
 
   # ═══════════════════════════════════════════════════════════════
-  # EPIC-L — Licensing (blocked, docs-only)
+  # EPIC-L — Licensing (Layer 1 reachable; Layer 2 blocked)
   # ═══════════════════════════════════════════════════════════════
+
+  - id: license.enforce
+    frontend: service
+    name: Enforcement лицензии при device enrollment
+    route: POST /device/onboard (enrollment choke-point)
+    path: packages/domain/licensing_service.py (authorize_and_reserve_enrollment)
+    smoke: test_license_enrollment.py (13 behavioral tests)
+    priority: P1
+    roles: [service]
+    status: reachable
+    gap: ""
+
+  - id: license.seat_release
+    frontend: service
+    name: Освобождение лицензионного seat при decommission
+    route: POST /devices/{device_id}/decommission
+    path: packages/domain/licensing_service.py (decommission_device)
+    smoke: test_license_decommission.py (13 behavioral tests)
+    priority: P1
+    roles: [service]
+    status: reachable
+    gap: ""
+
+  - id: license.report
+    frontend: service
+    name: Отчёт по лицензии (занятые/свободные seats + пик)
+    route: GET /licenses/report?year&month
+    path: packages/api/identity_routes/licenses.py (get_license_report)
+    smoke: test_license_report.py (16 behavioral tests)
+    priority: P1
+    roles: [service, system_admin, security_admin]
+    status: reachable
+    gap: ""
 
   - id: license.view
     frontend: service
-    name: Просмотр активных лицензий
+    name: Просмотр активных лицензий (UI)
     route: n/a
     path: n/a
     smoke: n/a
@@ -659,39 +692,6 @@ features:
     roles: [service]
     status: blocked
     gap: "Layer 2 (signed-license/JWS/CRL + UI upload) — не реализован."
-
-  - id: license.seat_release
-    frontend: service
-    name: Освобождение лицензионного seat при decommission
-    route: n/a
-    path: n/a
-    smoke: n/a
-    priority: P1
-    roles: [service]
-    status: blocked
-    gap: "A3 (seat release при decommission) — не реализован."
-
-  - id: license.report
-    frontend: service
-    name: Отчёт по занятым/свободным seats
-    route: n/a
-    path: n/a
-    smoke: n/a
-    priority: P1
-    roles: [service]
-    status: blocked
-    gap: "A4 (peak_seats_for_month + report endpoint/UI) — не реализован."
-
-  - id: license.enforce
-    frontend: service
-    name: Enforcement лицензии при device enrollment
-    route: n/a
-    path: n/a
-    smoke: n/a
-    priority: P1
-    roles: [service]
-    status: blocked
-    gap: "A1+A2 implementation + behavioral/concurrency/tamper proof готовы; status намеренно остаётся blocked до A4 registry closure (Layer 1)."
 
   # ═══════════════════════════════════════════════════════════════
   # COMMERCE-CONTUR2 — Commercial inventory sales engine (MVP closed)
@@ -790,8 +790,8 @@ features:
   # ═══════════════════════════════════════════════════════════════
   #   total: 58
   # by status:
-  #   reachable: 49 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, user.split_internal_advertiser, advertiser.create_org, advertiser.view, advertiser.contact_crud, advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites, inventory.simulate, advertiser.invite, adsettings.configure, adsettings.test, audit.view, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, campaign.complete, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, device.health_view, observability, user.reset_password, user.deactivate, inventory.rule_create, commerce.tariff_manage, commerce.price_list_manage, commerce.order_create, commerce.offer_generate, commerce.booking, commerce.payment_status, commerce.order_close, system.theme_switch)
-  #   blocked:      9 (self.report_view, self.campaign_create, playlist.build, backup.restore, license.view, license.upload, license.seat_release, license.report, license.enforce)
+  #   reachable: 52 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, user.split_internal_advertiser, advertiser.create_org, advertiser.view, advertiser.contact_crud, advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites, inventory.simulate, advertiser.invite, adsettings.configure, adsettings.test, audit.view, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, campaign.complete, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, device.health_view, observability, user.reset_password, user.deactivate, inventory.rule_create, commerce.tariff_manage, commerce.price_list_manage, commerce.order_create, commerce.offer_generate, commerce.booking, commerce.payment_status, commerce.order_close, system.theme_switch, license.enforce, license.seat_release, license.report)
+  #   blocked:      6 (self.report_view, self.campaign_create, playlist.build, backup.restore, license.view, license.upload)
   # by frontend:
   #   admin-web:      39
   #   advertiser-web:  5

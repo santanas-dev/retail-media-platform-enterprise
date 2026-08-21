@@ -142,8 +142,8 @@ the current tree (commit `1b0452c`).
 - **001A1 ✅** — schema/migration + dev-ingest fixture + repository read model.
 - **001A2 ✅** — transactional enrollment choke-point + concurrency proof.
 - **001A3 ✅** — decommission/release + exact monthly peak.
-- **001A4** — report API + registry/import-boundaries + full behavioral matrix. ← NEXT
-- **EPIC-L-SIGNED-LICENSE-002** — only after full Layer 1 closure.
+- **001A4 ✅** — report API + reconciliation + import boundaries + Layer 1 closure.
+- **EPIC-L-SIGNED-LICENSE-002** — only after full Layer 1 closure. ← NEXT
 
 ### 001A1 implementation notes (as-built)
 
@@ -235,6 +235,27 @@ the current tree (commit `1b0452c`).
   Green CI `#32511602631` (`bf846e1`); tamper red CI `#32511818898`
   (branch `epic-l-a3-tamper`, deleted) — 7 deterministic failures across
   seat-release and peak categories.
+
+### 001A4 implementation notes (as-built)
+
+- `get_license_report(session, *, year, month, now)` — single read-only report
+  (license + usage + currently-open seats). `days_remaining` = UTC ceil
+  (active→valid_until, grace→+grace_days, expired/revoked→0, perpetual/missing→
+  null). Store fields only via authoritative `physical_devices.store_id → stores`;
+  no commerce_*/advertiser-commercial tables, no secrets.
+- `GET /licenses/report?year&month` (identity route, `license.read` = system_admin
+  + security_admin) — `set_rls_context` server-side context; under NOBYPASSRLS the
+  report is empty without it (tamper-proven). 422 on invalid month.
+- `get_reconciliation_report()` — read-only drift detection (6 finding codes);
+  CLI DRY RUN default + `--apply` grandfather repair (DEV/TEST + dev-ingest flag
+  only, fail-closed before DB in production).
+- Import boundary (`import-boundaries.toml` + `check-import-boundaries.py`) —
+  AST guard: allowlisted models symbols, forbidden commerce/advertiser imports
+  and table literals.
+- Proof: 62 behavioral license tests (A1 19 + A2 14 + A3 13 + A4 16) + 29 unit.
+  Green CI `#32523165305` (`8637b1d`); tamper red `#32522513042` (RLS context
+  removed → report empty) + `#32522546049` (commerce import → import-boundaries
+  FAIL). Layer 1 CLOSED. Registry 58/52/6.
 
 ### Layer 1 non-goals (unchanged from intake)
 

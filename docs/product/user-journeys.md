@@ -577,7 +577,7 @@ Operator must type legal address. Client-side validation: «Укажите юр�
 
 ## EPIC-L — Platform/Device Licensing
 
-**Status:** Canon intake only. No implementation.
+**Status:** Layer 1 complete (A1–A4: seat ledger, enrollment enforcement, decommission release, report API + reconciliation). Layer 2 (signed `.lic` / UI) pending.
 
 **Owner gate §08:** Approved 2026-07-30.
 
@@ -619,24 +619,23 @@ PLAYER/KSO implementation must not create enrollable devices without this hook.
 Counting/enforcement may come later, but identity/seat hook is required at enrollment boundary.
 See: `docs/architecture/epic-l-licensing.md`.
 
-### Feature IDs (blocked)
+### Feature IDs
 
 | ID | Status |
 |----|--------|
-| license.view | blocked |
-| license.upload | blocked |
-| license.seat_release | blocked |
-| license.report | blocked |
-| license.enforce | blocked |
+| license.enforce | reachable (service, enrollment choke-point) |
+| license.seat_release | reachable (service, decommission release) |
+| license.report | reachable (service, `GET /licenses/report`) |
+| license.view | blocked (Layer 2 UI) |
+| license.upload | blocked (Layer 2 signed upload) |
 
 ### Non-Goals (explicit)
 
-- No license issuer implementation
-- No license models/migrations/API
+- No signed `.lic` issuer implementation
+- No offline Ed25519 verification / kid / CRL (Layer 2)
 - No UI for licensing
 - No player code changes
 - No advertiser billing
-- No feature statuses reachable
 
 ### Layer 1 design freeze (EPIC-L-SEAT-LEDGER-001A0)
 
