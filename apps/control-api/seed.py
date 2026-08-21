@@ -41,6 +41,7 @@ SEED_PERM_IDS = {
     "organization.read": "00000000-0000-0000-0000-000000000105",
     "channels.read":   "00000000-0000-0000-0000-000000000106",
     "devices.read":    "00000000-0000-0000-0000-000000000107",
+    "devices.manage":  "00000000-0000-0000-0000-000000000123",
     "emergency.read":  "00000000-0000-0000-0000-000000000115",
     "emergency.manage":"00000000-0000-0000-0000-000000000116",
     "advertiser_applications.read":  "00000000-0000-0000-0000-00000000011b",
@@ -255,6 +256,10 @@ VALUES ('{SEED_PERM_IDS["devices.read"]}', 'devices.read', 'Просмотр у�
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["devices.manage"]}', 'devices.manage', 'Управление устройствами')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
 VALUES ('{SEED_PERM_IDS["emergency.read"]}', 'emergency.read', 'Просмотр аварийного режима')
 ON CONFLICT (code) DO NOTHING;
 
@@ -393,6 +398,10 @@ VALUES ('{_rp(127)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["device
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(262)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["devices.manage"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(162)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["emergency.read"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
@@ -524,6 +533,10 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(222)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["inventory.manage"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(263)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["devices.manage"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 

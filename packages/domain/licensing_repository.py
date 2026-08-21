@@ -19,7 +19,7 @@ Contract (design freeze):
 
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import case, select
+from sqlalchemy import case, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.domain.licensing import LicenseGrant, LicenseSeat
@@ -147,3 +147,117 @@ def capacity_of(grant: LicenseGrant) -> int:
 def free_of(capacity: int, occupied: int) -> int:
     """Free seats = max(capacity - occupied, 0)."""
     return max(capacity - occupied, 0)
+
+
+# ---------------------------------------------------------------------------
+# Exact monthly peak (SCOPE D — 001A3)
+# ---------------------------------------------------------------------------
+
+
+def _month_bounds(
+    year: int,
+    month: int,
+    tz: timezone = timezone.utc,
+) -> tuple[datetime, datetime]:
+    """Validate and return the half-open calendar-month window.
+
+    Returns ``(month_start, next_month_start)`` where the month is
+    ``[month_start, next_month_start)``. Raises ``ValueError`` with a clear
+    message for an invalid ``year``/``month`` so the caller can surface a
+    controlled validation error (never a raw ``ValueError`` from
+    ``datetime(…)``).
+    """
+    if not isinstance(year, int) or isinstance(year, bool) or not 1 <= year <= 9999:
+        raise ValueError(f"year must be an integer in 1..9999, got {year!r}")
+    if not isinstance(month, int) or isinstance(month, bool) or not 1 <= month <= 12:
+        raise ValueError(f"month must be an integer in 1..12, got {month!r}")
+
+    month_start = datetime(year, month, 1, tzinfo=tz)
+    if month == 12:
+        next_month_start = datetime(year + 1, 1, 1, tzinfo=tz)
+    else:
+        next_month_start = datetime(year, month + 1, 1, tzinfo=tz)
+    return month_start, next_month_start
+
+
+def _peak_from_intervals(
+    intervals: list[tuple[datetime, datetime | None]],
+    month_start: datetime,
+    next_month_start: datetime,
+) -> int:
+    """Exact maximum of concurrently open seat intervals over a month window.
+
+    Canonical half-open policy (design freeze §6):
+    - seat interval is ``[reserved_at, released_at)``; an open seat
+      (``released_at is None``) is treated as occupied through
+      ``next_month_start``;
+    - ``released_at == month_start`` is NOT included;
+    - ``reserved_at == next_month_start`` is NOT included;
+    - an interval that began before the month and is still open at
+      ``month_start`` is counted from ``month_start``;
+    - events sharing the same timestamp are grouped with ends before starts,
+      so a release+reserve at one instant never fabricates a false peak.
+
+    The result is the maximum number of simultaneously open intervals — not a
+    current count and not a daily snapshot.
+    """
+    events: list[tuple[datetime, int]] = []
+    for reserved_at, released_at in intervals:
+        s = reserved_at
+        e = released_at if released_at is not None else next_month_start
+        if s < month_start:
+            s = month_start
+        if e > next_month_start:
+            e = next_month_start
+        if s >= e:
+            continue  # zero-length or entirely outside the month
+        events.append((s, +1))
+        events.append((e, -1))
+
+    # Same-timestamp grouping: a release (-1) sorts before a reserve (+1), so
+    # a seat handed from one device to another at the same instant is counted
+    # once, not twice.
+    events.sort(key=lambda ev: (ev[0], ev[1]))
+
+    current = 0
+    peak = 0
+    for _ts, delta in events:
+        current += delta
+        if current > peak:
+            peak = current
+    return peak
+
+
+async def peak_seats_for_month(
+    session: AsyncSession,
+    *,
+    license_id: str,
+    year: int,
+    month: int,
+    timezone: timezone = timezone.utc,
+) -> int:
+    """Exact maximum of concurrently open seats for ``license_id`` in a month.
+
+    ``license_id`` is the internal ``license_grants.id`` (the FK target of
+    ``license_seats.license_id``), NOT the business ``license_id`` string.
+
+    The query is restricted to ``license_id`` and to intervals that overlap the
+    month (``reserved_at < next_month_start AND (released_at IS NULL OR
+    released_at > month_start)``) — it never loads the whole seat history of
+    every license. The peak is computed from those intervals via
+    :func:`_peak_from_intervals`.
+
+    Under NOBYPASSRLS the caller must already have set the service/admin RLS
+    context (the DB RLS policy on ``license_seats`` enforces it) — this
+    function does not set GUCs.
+    """
+    month_start, next_month_start = _month_bounds(year, month, timezone)
+
+    result = await session.execute(
+        select(LicenseSeat.reserved_at, LicenseSeat.released_at)
+        .where(LicenseSeat.license_id == license_id)
+        .where(LicenseSeat.reserved_at < next_month_start)
+        .where(or_(LicenseSeat.released_at.is_(None), LicenseSeat.released_at > month_start))
+    )
+    intervals = [(r, e) for r, e in result.all()]
+    return _peak_from_intervals(intervals, month_start, next_month_start)

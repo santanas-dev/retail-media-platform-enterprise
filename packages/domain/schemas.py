@@ -1334,6 +1334,29 @@ class PaginatedDevices(BaseModel):
     offset: int
 
 
+class DeviceDecommissionRequest(BaseModel):
+    """Admin request to decommission a device (active → inactive)."""
+
+    reason: str = Field(default="", max_length=255)
+
+
+class DeviceDecommissionResponse(BaseModel):
+    """Decommission result — device status + seat-release outcome.
+
+    ``transitioned`` is True when an ``active → inactive`` transition happened;
+    False when the device was already ``inactive`` (idempotent). ``anomaly`` is
+    True when an active device had no open seat (reconciliation anomaly) —
+    decommission still succeeds but ``seat_released=False``.
+    """
+
+    device_id: str
+    status: str
+    seat_released: bool
+    released_at: datetime | None = None
+    transitioned: bool = True
+    anomaly: bool = False
+
+
 # ---------------------------------------------------------------------------
 # S-071 — Emergency Override
 # ---------------------------------------------------------------------------

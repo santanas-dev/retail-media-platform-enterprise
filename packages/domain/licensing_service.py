@@ -48,7 +48,7 @@ from packages.domain.licensing_repository import (
     effective_grant_query,
     free_of,
 )
-from packages.domain.models import PhysicalDevice
+from packages.domain.models import DeviceStatusHistory, PhysicalDevice
 
 # Stable denial codes (SCOPE C). These are the ONLY codes this layer emits.
 DENIAL_MESSAGES = {
@@ -298,4 +298,145 @@ async def reconcile_existing_fleet(
         scanned_active=len(device_ids),
         created_seats=created,
         overage=occupied > capacity_of(grant),
+    )
+
+
+@dataclass
+class DecommissionResult:
+    """Result of the decommission choke-point (active → inactive + release).
+
+    - ``transitioned=True``: an ``active → inactive`` transition happened, the
+      device's open seat (if any) was released, and one ``DeviceStatusHistory``
+      row was written.
+    - ``transitioned=False`` with ``error is None``: the device was already
+      ``inactive`` — idempotent success, nothing changed.
+    - ``transitioned=False`` with ``error="INVALID_TRANSITION"``: the device is
+      in an unsupported status (e.g. ``unregistered``/``error``) — the caller
+      maps this to HTTP 409.
+    - ``anomaly=True``: an ``active`` device had no open seat; decommission is
+      still allowed (``status → inactive``) but ``seat_released=False`` and the
+      caller must surface the reconciliation anomaly rather than a 500.
+    """
+
+    device_id: str
+    status: str
+    transitioned: bool
+    seat_released: bool
+    released_at: datetime | None
+    anomaly: bool = False
+    error: str | None = None
+    message: str | None = None
+
+
+DECOMMISSION_ERROR_MESSAGES = {
+    "INVALID_TRANSITION": "Невозможно вывести устройство из текущего статуса.",
+}
+
+
+async def decommission_device(
+    session: AsyncSession,
+    *,
+    device_id: str,
+    changed_by: str,
+    reason: str,
+    now: datetime,
+) -> DecommissionResult | None:
+    """Single decommission choke-point (Layer 1, task 001A3).
+
+    In one DB transaction this:
+      1. sets the transaction-local service/admin RLS context (server-set),
+      2. locks the device row with ``SELECT ... FOR UPDATE`` (concurrent
+         decommissions of the same device serialize on this row),
+      3. checks the status: ``inactive`` → idempotent no-op; anything other
+         than ``active``/``inactive`` → ``INVALID_TRANSITION`` (409),
+      4. for ``active``: ``status → inactive``, releases the single open seat
+         (``released_at = now``), and writes one ``DeviceStatusHistory`` row
+         (``old_status/new_status/changed_at/reason/source`` + ``changed_by``
+         in ``details_json``),
+      5. if the active device has no open seat it is still decommissioned and
+         ``seat_released=False`` + ``anomaly=True`` is reported (reconciliation
+         anomaly, not an HTTP 500; no fabricated back-dated seat history).
+
+    Returns ``None`` when the device does not exist (caller → 404). The commit
+    is performed by the calling transaction (``get_db``'s ``session.begin``) —
+    this function never commits. Soft enforcement: license state
+    (expired/revoked/missing) is NOT consulted here — decommission is a device
+    lifecycle operation, not an enrollment, and must never be blocked by the
+    license state.
+    """
+    # 1. Server-set RLS context — license tables are admin-only RLS.
+    await set_licensing_admin_context(session)
+
+    # 2. Row lock: serialize concurrent decommissions of the same device.
+    result = await session.execute(
+        select(PhysicalDevice)
+        .where(PhysicalDevice.id == device_id)
+        .with_for_update()
+    )
+    device = result.scalar_one_or_none()
+    if device is None:
+        return None
+
+    # 3. Idempotent repeat decommission.
+    if device.status == "inactive":
+        return DecommissionResult(
+            device_id=device_id,
+            status="inactive",
+            transitioned=False,
+            seat_released=False,
+            released_at=None,
+        )
+
+    # 4. Unsupported status → controlled 409.
+    if device.status != "active":
+        return DecommissionResult(
+            device_id=device_id,
+            status=device.status,
+            transitioned=False,
+            seat_released=False,
+            released_at=None,
+            error="INVALID_TRANSITION",
+            message=DECOMMISSION_ERROR_MESSAGES["INVALID_TRANSITION"],
+        )
+
+    # 5. active → inactive.
+    old_status = device.status
+    device.status = "inactive"
+
+    # 6. Release the single open seat, if present.
+    seat_result = await session.execute(
+        select(LicenseSeat)
+        .where(LicenseSeat.device_id == device_id)
+        .where(LicenseSeat.released_at.is_(None))
+    )
+    open_seat = seat_result.scalar_one_or_none()
+
+    seat_released = False
+    released_at = None
+    anomaly = False
+    if open_seat is not None:
+        open_seat.released_at = now
+        seat_released = True
+        released_at = now
+    else:
+        anomaly = True  # active device without an open seat — reconciliation anomaly
+
+    # 7. Write the authoritative status-history row.
+    session.add(DeviceStatusHistory(
+        physical_device_id=device_id,
+        old_status=old_status,
+        new_status="inactive",
+        changed_at=now,
+        reason=reason,
+        source="decommission",
+        details_json={"changed_by": changed_by},
+    ))
+
+    return DecommissionResult(
+        device_id=device_id,
+        status="inactive",
+        transitioned=True,
+        seat_released=seat_released,
+        released_at=released_at,
+        anomaly=anomaly,
     )
