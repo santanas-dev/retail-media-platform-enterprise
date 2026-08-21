@@ -1,12 +1,60 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-21 (EPIC-L-SEAT-LEDGER-001A4 — Layer 1 closure: report API + reconciliation + import boundaries)
+**Last updated:** 2026-08-21 (R4-READINESS-001 — release readiness audit, candidate `c14dd3e`)
 
-**Next Active Workstream:** R4-READINESS-001 (R4 readiness — не автоматический merge/deploy)
+**Next Active Workstream:** R4-RELEASE-001 (release branch → merge → tag) — условно, после включения branch protection (governance blocker)
 
 **Repository Checkpoint (PS-001):**
-- Payload SHA: `8637b1d` (EPIC-L-SEAT-LEDGER-001A4 — Layer 1 closure)
-- State/Docs SHA: `8637b1d` (EPIC-L-SEAT-LEDGER-001A4)
+- Payload SHA: `8637b1d` (EPIC-L-SEAT-LEDGER-001A4 — Layer 1 closure, last substantive code)
+- State/Docs SHA: `c14dd3e` (R4 release candidate — A4 closure; audit docs on top)
+
+**R4-READINESS-001 ✅** — Release readiness audit (evidence-based; merge/tag/deploy НЕ выполнялись).
+
+Candidate `c14dd3e` (develop, 2026-08-21); main `96b5159` (tag `v0.10.0-preplayer-business-ready`,
+2026-07-28). merge-base `90305cf`; develop **204 ahead / 4 behind** (4 = R1/R3 release-merge commits).
+
+Release-candidate CI — **3 sequential workflow_dispatch, same head SHA `c14dd3e`, first-attempt, no rerun**:
+- `#32528447486` ✅ (UI-smoke 38/38)
+- `#32529010778` ✅ (UI-smoke 38/38)
+- `#32529621919` ✅ (UI-smoke 38/38)
+- Flake `advertiser__invite` (single A4 occurrence `#32522469144`) **не повторился** → классифицирован как transient, не release blocker.
+
+Migrations 029–034: один head (034); fresh DB → head ✅ (1.5s); R3 schema (028) → head с
+сохранением seed-строки ✅; idempotent ✅; все add-column nullable (нет NOT NULL backfill);
+нет DROP COLUMN в upgrade. Rollback: R3 binary работает после 034 → код-rollback безопасен;
+schema downgrade 034→028 — lossy для commerce/license → restore-from-backup как страховка
+(`backup.restore` остаётся blocked до реального restore drill).
+
+Security/build: `retail_media_app` = NOBYPASSRLS ✅; FORCE RLS на physical_devices +
+license_* + commerce_* ✅; нет private keys/`.lic`/`.pem` ✅; нет hardcoded prod-секретов
+(config.py отклоняет minioadmin + dev DB-пароли в production) ✅; dev-ingest лицензия
+гейтится ENVIRONMENT+flag ✅; lockfiles есть ✅; frontend production build в CI (vite) ✅;
+production-config gate (S-030) ✅.
+
+THREE VERDICTS:
+1. **R4 software release to main/tag: CONDITIONAL GO** — код зелёный (3×CI, 62 behavioral
+   + 29 unit, guards 0), миграции проверены. Blocker: **main НЕ защищён branch protection**
+   (нет required status checks, прямой push, 0 rulesets/tag protection) — release-governance
+   blocker. Owner action: включить branch protection на main (+develop) + tag protection до merge.
+2. **Pilot deployment: CONDITIONAL GO** — control-plane backend готов к релизу, но пилот
+   требует (жёсткие предусловия): backup restore drill (`backup.restore` blocked), operator
+   walkthrough (PENDING), явное целевое окружение + deployed SHA tracking, ручная
+   deploy-процедура (CD нет). KSO real-player proof отсутствует.
+3. **Production deployment: NO-GO** — не production-ready (запрещено заявлять); нет signed
+   license (Layer 2), нет backup drill, нет CD, deployed SHA не отслеживается.
+
+Repository hygiene: release blocker НЕТ. Cleanup debt (не блокеры): `.hermes/screenshots/**`
+(~3MB) + `.hermes/tmp-*.py` (theme-switch visual evidence + temp scripts). Допустимый test
+evidence: `scripts/tamper-test-*.py` (guard tests), test-credentials в `tests/`. Нет build
+artifacts; zero-byte — только пустые `__init__.py`.
+
+- Deployed production SHA остаётся UNKNOWN/NOT TRACKED (CD отсутствует).
+- Feature statuses НЕ менялись (58 total / 52 reachable / 6 blocked).
+- Release notes draft: `docs/release/RELEASE-NOTES-v0.11.0-draft.md` (tag
+  `v0.11.0-pilot-control-plane`, НЕ создан).
+- Next → **R4-RELEASE-001** (после включения branch protection — governance blocker),
+  либо отдельный blocker task, если владелец protection не включает.
+- Checkpoint by PS-001.
 
 **ROADMAP-RELEASE-SYNC-002 ✅** — Roadmap truth sync + owner release decision prep.
 
