@@ -1,12 +1,55 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-21 (UI-SMOKE-STABILITY-004 closure — deterministic 38/38 CI, 3× green)
+**Last updated:** 2026-08-21 (ROADMAP-RELEASE-SYNC-002 — roadmap truth + owner release decision prep)
 
-**Next Active Workstream:** EPIC-L-SEAT-LEDGER-001A3 (decommission/release + exact monthly peak)
+**Next Active Workstream:** OWNER-RELEASE-DECISION-002 (R4 checkpoint / pilot / KSO — решение владельца)
 
 **Repository Checkpoint (PS-001):**
-- Payload SHA: `19be38c` (EPIC-L-SEAT-LEDGER-001A2-FU — current-over-revoked selector)
-- State/Docs SHA: `19be38c` (EPIC-L-SEAT-LEDGER-001A2-FU closure)
+- Payload SHA: `4411561` (UI-SMOKE-STABILITY-004 — production-bundle smoke + creative commit + concurrency group; 3×38/38)
+- State/Docs SHA: `4411561` (last substantive code; ROADMAP-RELEASE-SYNC-002 is a docs-only closure on top)
+
+**ROADMAP-RELEASE-SYNC-002 ✅** — Roadmap truth sync + owner release decision prep.
+
+Registry truth (programmatic recount of `docs/product/feature-registry.yaml`):
+- **58 total / 49 reachable / 9 blocked**.
+- frontend: admin-web 39, advertiser-web 5, public 1, service 13.
+- priority: P0 20, P1 36, P2 2.
+- license.* gaps corrected (removed stale "EPIC-L canon intake only. No implementation."):
+  - `license.enforce` → A1+A2 implementation + behavioral/concurrency/tamper proof готовы; status намеренно остаётся blocked до A4 registry closure (Layer 1).
+  - `license.seat_release` → A3 не реализован. `license.report` → A4 не реализован.
+  - `license.view` / `license.upload` → Layer 2 (signed-license/UI) не реализованы.
+- Feature statuses NOT changed (no new behavioral/UI proof in this task).
+
+Release delta (main vs develop):
+- main: `96b5159` — R3 v0.10.0-preplayer-business-ready (2026-07-28).
+- develop: `d6a6daa` (2026-08-21).
+- develop is 199 commits ahead of main; main carries 4 release-only commits (R1/R2/R3 release + merge) absent from develop → branches diverged (main is not a fast-forward of develop), but develop code is a superset of the R3 snapshot (R3 was merged from develop).
+- migrations after R3: 6 — `029_advertiser_legal_requisites`, `030_advertiser_contract_files_and_upload_sessions`, `031_advertiser_contacts_user_id_and_title`, `032_commerce_contour2_foundation`, `033_commerce_rls`, `034_license_seat_ledger`.
+- feature IDs reachable after R3 (13): commerce.* ×7 (tariff_manage, price_list_manage, order_create, offer_generate, booking, payment_status, order_close), advertiser onboarding ×4 (legal_requisites, contract_crud, contact_crud, brand_crud), system.theme_switch, campaign.complete (service).
+- workstreams after R3: Commerce Contour 2 + COMMERCE-RLS-001 + COMMERCE-PRICING-001; advertiser onboarding (ADVERTISER-UX-001); theme switch (THEME-SWITCH-001B); campaign lifecycle complete (LIFECYCLE-COMPLETE-001); EPIC-L Layer 1 A0+A1+A2 (+FU); CI truth/stability (UI-SMOKE-FLAKE-001/002/003, UI-SMOKE-STABILITY-004, SUBSET-SSOT-001, PYTHON-CI-GATE-001); RLS hardening (INVENTORY-RLS-CONTEXT-001, SMOKE-FIDELITY-001).
+- CI/security/RLS changes: UI-smoke deterministic 38/38 (production bundle + serialized heavy runs); UI-smoke runs under NOBYPASSRLS app role; Python unit tests blocking; single-source smoke subset (ci-subset.txt); commerce DB-level RLS backstop.
+- blocked/deferred (9): self.report_view, self.campaign_create (P2), playlist.build, backup.restore, license.* ×5.
+
+Production status — UNKNOWN / NOT TRACKED:
+- `main` ≠ production deployment. The repo has exactly one workflow (`phase1-ci.yml` — quality gates); there is NO CD/deployment workflow.
+- deployed production SHA is not canonically tracked anywhere in the repo.
+- therefore it is impossible to assert which version actually runs in PROD (no invented deployed SHA).
+
+Readiness decision matrix (owner decides; agent does NOT):
+1. **R4 release to main** — technically possible after a release audit.
+2. **Pilot deployment** — requires explicit deployed SHA, backup/rollback, migration rehearsal, operator walkthrough, target environment.
+3. **Real KSO pilot** — blocked by KSO-ENV-001 + real playback/playlist path.
+4. **Production** — blocked by real KSO proof, backup.restore, HA/load acceptance, formal deployment process.
+
+Owner decision options (prepared, NOT taken):
+- **Option A** — R4 checkpoint now; EPIC-L Layer 1 stays incomplete (A3+A4 missing).
+- **Option B** — first A3+A4, then R4 with full unsigned Layer 1.
+- **Option C** — first KSO-ENV-001, then define pilot release scope.
+- Agent recommendation (advisory only): **Option B** — A3/A4 are deterministic backend work with no external dependency; releasing R4 with enforcement but no seat-release/report would leak occupied seats on decommission. KSO (Option C) is externally gated and should not gate the release. Option A is acceptable only if the owner explicitly accepts an incomplete Layer 1.
+
+Next → **OWNER-RELEASE-DECISION-002** (not an automatic merge, not A3).
+- Layer 2 operator walkthrough: PENDING (agent does not set OK).
+- Guards: roadmap-consistency-check.py --strict = 0; style-tokens 0; import-boundaries green.
 
 **EPIC-L-SEAT-LEDGER-001A1 ✅** — License seat ledger schema/migration + dev-ingest + read model.
 

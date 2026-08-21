@@ -647,7 +647,7 @@ features:
     priority: P1
     roles: [service]
     status: blocked
-    gap: "EPIC-L canon intake only. No implementation."
+    gap: "Layer 2 (signed-license/UI) — не реализован."
 
   - id: license.upload
     frontend: service
@@ -658,7 +658,7 @@ features:
     priority: P1
     roles: [service]
     status: blocked
-    gap: "EPIC-L canon intake only. No implementation."
+    gap: "Layer 2 (signed-license/JWS/CRL + UI upload) — не реализован."
 
   - id: license.seat_release
     frontend: service
@@ -669,7 +669,7 @@ features:
     priority: P1
     roles: [service]
     status: blocked
-    gap: "EPIC-L canon intake only. No implementation."
+    gap: "A3 (seat release при decommission) — не реализован."
 
   - id: license.report
     frontend: service
@@ -680,7 +680,7 @@ features:
     priority: P1
     roles: [service]
     status: blocked
-    gap: "EPIC-L canon intake only. No implementation."
+    gap: "A4 (peak_seats_for_month + report endpoint/UI) — не реализован."
 
   - id: license.enforce
     frontend: service
@@ -691,7 +691,7 @@ features:
     priority: P1
     roles: [service]
     status: blocked
-    gap: "EPIC-L canon intake only. No implementation."
+    gap: "A1+A2 implementation + behavioral/concurrency/tamper proof готовы; status намеренно остаётся blocked до A4 registry closure (Layer 1)."
 
   # ═══════════════════════════════════════════════════════════════
   # COMMERCE-CONTUR2 — Commercial inventory sales engine (MVP closed)
@@ -796,8 +796,8 @@ features:
   #   admin-web:      39
   #   advertiser-web:  5
   #   public:          1
-  #   service:         8
+  #   service:        13
   # by priority:
   #   P0: 20
-  #   P1: 31
+  #   P1: 36
   #   P2:  2

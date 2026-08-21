@@ -1,9 +1,9 @@
 # Программа до-пилотных бизнес-журнеев (КСО, ручной проход)
 
 > **Канон для Codex/Hermes.** Источник истины по статусам — `docs/product/feature-registry.yaml` + зелёный UI-smoke; эта программа задаёт ПОРЯДОК закрытия.
-> Обновлено 2026-07-27 после PRODUCT-READINESS-001 (pre-player readiness audit). Wave 1–6: ✅ COMPLETE.
-> Текущие counts: 39 reachable, 10 blocked (из feature-registry.yaml, 49 total).
-> Рост с 35/5/40 связан с: EPIC-L licensing (5 blocked feature IDs), advertiser onboarding accounting (legal/brand/contract/contact — 4 reachable IDs).
+> Обновлено 2026-08-21 (ROADMAP-RELEASE-SYNC-002 — release decision prep). Wave 1–6: ✅ COMPLETE.
+> Текущие counts (feature-registry.yaml): **58 total / 49 reachable / 9 blocked** (admin-web 39, advertiser-web 5, public 1, service 13).
+> После R3 (main 96b5159, 2026-07-28) закрыты: Commerce Contour 2 (7 reachable), advertiser onboarding (legal/brand/contract/contact), system.theme_switch, campaign.complete, RLS/pricing hardening, CI truth/stability (UI-SMOKE-STABILITY-004), EPIC-L A1+A2 (license.* остаётся blocked).
 
 ## Цель и принцип
 
@@ -73,18 +73,24 @@ R2 выпущен: main b5dd3b3, tag v0.9.0-prepilot-wave1, CI #29937353570.
 
 Закрыто: 4/4 journeys 🟢.
 
-### Pre-player readiness statement (PLAN-COUNT-SYNC-001)
+### Readiness statement (ROADMAP-RELEASE-SYNC-002)
 
-Pre-player managed admin-flow (39/49) закрыт и достаточно кликабелен для перехода к PLAYER-001 player integration. **Не все бизнес-функции продукта готовы** — это не 49/49:
+Текущая база: **58 total / 49 reachable / 9 blocked**. `reachable` = зелёный UI-smoke (UI-фичи) или зелёный behavioral proof (service-фичи). Это **«функция достижима»**, а НЕ «pilot-ready» и НЕ «production-ready» — три разных понятия (см. ниже).
 
-- ✅ **Admin-web (managed):** все 30 UI-фич reachable с зелёным smoke — создание/редактирование/модерация кампаний, загрузка креативов, инвентарь, пользователи/роли, рекламодатели (организации + бренды + договоры + контакты + юр-реквизиты), AD-настройки, аудит, устройства, emergency.
+- ✅ **Admin-web (managed):** 39 фич reachable — кампании (create/edit/submit/approve/reject/activate/pause/complete), креативы (upload/moderate), инвентарь (simulate/rule_create), пользователи/роли, рекламодатели (организации + бренды + договоры + контакты + юр-реквизиты), AD-настройки, аудит, устройства, emergency, коммерция (тарифы/заказы/бронирование/оплата), тема (light/dark).
 - ✅ **Public:** заявка рекламодателя reachable (1/1).
 - ✅ **Advertiser-web (self-service):** login, просмотр кампаний, бриф — reachable (3/5).
-- ✅ **Service:** manifest, PoP, device onboard/heartbeat, observability, campaign.complete — reachable (6/8).
+- ✅ **Service:** manifest, PoP, device onboard/heartbeat, observability, campaign.complete — reachable (6/13, остальные service blocked).
 - 🔴 **self.report_view:** blocked — UI не построен, PoP-данные отсутствуют. Разблокируется через player/PoP data path.
 - ⏸️ **self.campaign_create:** deferred managed-first (P2).
 - 🔴 **playlist.build, backup.restore:** service-deferred.
-- 🔴 **license.view, license.upload, license.seat_release, license.report, license.enforce:** EPIC-L — canon intake only, no implementation.
+- 🔴 **license.* (5):** EPIC-L — A1+A2 (enforcement choke-point) implementation + behavioral/concurrency/tamper proof готовы, но все 5 остаются `blocked` до A4 registry closure. A3 (seat_release), A4 (report), Layer 2 (view/upload signed-license/UI) не реализованы.
+
+### Три разных понятия готовности
+
+1. **feature reachable** — есть зелёный UI-smoke (реальные клики) или behavioral proof (service). Нижняя планка; НЕ означает готовность к пилоту.
+2. **pilot-ready** — сверх reachable нужен явный deployed SHA, backup/rollback, migration rehearsal, operator walkthrough и целевое окружение.
+3. **production-ready** — сверх pilot-ready: реальный KSO proof, backup.restore, HA/load acceptance и формализованный deployment process.
 
 **Решение:** PLAYER-001B-FU closed as hardware-independent contract proof (signed manifest, heartbeat, PoP accepted). **KSO-ENV-001 next** — real Sherman-J/KSO environment audit before any kiosk or scheduler code. PLAYER-001C/media playback deferred until real hardware environment is known.
 
@@ -96,16 +102,16 @@ Pre-player managed admin-flow (39/49) закрыт и достаточно кл�
 
 - `self.report_view` остаётся 🔴 blocked — разблокируется через player/PoP data path, не через искусственный report workaround.
 - `self.campaign_create` остаётся deferred managed-first (P2).
-- Pre-player managed admin-flow (39/49) закрыт — достаточно кликабелен для перехода к player integration.
+- Pre-player managed admin-flow (49/58 reachable) закрыт — достаточно кликабелен для перехода к player integration.
 
 **Оставшиеся blocked:**
 - `self.report_view` 🔴 — blocked by PoP/player/data path (JOURNEY-019-DISCOVERY)
 - `self.campaign_create` — deferred managed-first (P2)
 - Service deferred: `playlist.build`, `backup.restore`
-- License (EPIC-L, blocked, no implementation): `license.view`, `license.upload`, `license.seat_release`, `license.report`, `license.enforce`
+- License (EPIC-L): A1+A2 complete (enforcement choke-point, behavioral/concurrency/tamper proof), A3 (seat_release) + A4 (report) + Layer 2 (view/upload signed-license/UI) pending. Все `license.*` остаются `blocked`.
 
 ## Правила ведения (для каждого журнея)
 - Done = поведение: достижимый UI (реальные клики, `goto` только `/login`) + зелёный `test_uismoke__<domain>__<action>`.
 - В ДК поднять 3 колонки (Бэкенд/UI/Юзер-стори) и пересчитать Итог; guard ROADMAP-GUARD-002 обязан оставаться зелёным.
 - Одна задача Hermes за раз. ⚙-журнеи требуют реального бэкенда — не «просто кнопки».
-- Прогресс мерить по этой программе: закрытых журнеев 39 из 49 (Wave 1–4: 22/23 closed, self.campaign_create deferred; Wave 5: 3/4 closed, self.report_view blocked; Wave 6: 4/4 ✅ COMPLETE; +5 service reachable; +5 license blocked EPIC-L; +4 advertiser onboarding reachable). UX-hardening (CAMPAIGN-UX-001A/B, UX-FIX-002) completed — не новые журнеи, улучшение существующих reachable-фич.
+- Прогресс мерить по этой программе: 49/58 reachable (9 blocked). Wave 1–4: 22/23 closed (self.campaign_create deferred); Wave 5: 3/4 (self.report_view blocked); Wave 6: 4/4 ✅; +7 commerce reachable; +4 advertiser onboarding reachable; +1 theme; +5 license blocked (EPIC-L A1+A2 done). UX-hardening (CAMPAIGN-UX-001A/B, UX-FIX-002) и CI/stability (UI-SMOKE-STABILITY-004) — улучшение существующих reachable-фич, не новые журнеи.
