@@ -9,7 +9,7 @@ if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
 from playwright.sync_api import Page, expect
-from conftest import BASE_URL
+from conftest import BASE_URL, login_as_break_glass_admin
 
 
 def test_uismoke__user__deactivate(smoke_page: Page) -> None:
@@ -17,12 +17,7 @@ def test_uismoke__user__deactivate(smoke_page: Page) -> None:
     import time, uuid; t0 = time.time()
 
     # ── Login as break_glass_admin ──
-    page.select_option("#login-provider", "local_break_glass")
-    page.fill("#login-username", "break_glass_admin")
-    page.fill("#login-password", "break-glass-dev-only")
-    page.click('button[type="submit"]')
-    page.wait_for_url("**/campaigns", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    login_as_break_glass_admin(page)
     print(f"[{time.time()-t0:.1f}s] Logged in")
 
     # ── Navigate to Users ──
@@ -32,7 +27,7 @@ def test_uismoke__user__deactivate(smoke_page: Page) -> None:
 
     # ── Create throwaway user ──
     unique_id = str(uuid.uuid4())[:8]
-    smoke_username = f"sd-{unique_id}"  # prefix short enough to keep code unique
+    smoke_username = f"smoke_deact_{unique_id}"  # matches the smoke% cleanup marker
     create_btn = page.locator('[data-testid="user-create-advertiser-open"]')
     expect(create_btn).to_be_visible(timeout=5000)
     create_btn.click()
@@ -146,9 +141,5 @@ def test_uismoke__user__deactivate(smoke_page: Page) -> None:
     print(f"[{time.time()-t0:.1f}s] Blocked login: ✓ (stayed on login, error visible)")
 
     # ── Verify admin can still login (no global break) ──
-    page.select_option("#login-provider", "local_break_glass")
-    page.fill("#login-username", "break_glass_admin")
-    page.fill("#login-password", "break-glass-dev-only")
-    page.click('button[type="submit"]')
-    page.wait_for_url("**/campaigns", timeout=15000)
+    login_as_break_glass_admin(page)
     print(f"[{time.time()-t0:.1f}s] Admin login verified — DONE")

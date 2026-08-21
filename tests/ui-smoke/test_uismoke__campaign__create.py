@@ -20,6 +20,7 @@ from conftest import (
     fill_campaign_code_and_name,
     submit_campaign_form,
     verify_campaign_created,
+    unique_suffix,
 )
 
 
@@ -52,8 +53,9 @@ def test_uismoke__campaign__create(smoke_page):
     # Step 5: choose first contract
     choose_first_contract(page)
 
-    # Step 6: fill code + name (required fields)
-    fill_campaign_code_and_name(page, "SMOKE-001", "Smoke Test Campaign")
+    # Step 6: fill code + name (required fields) — unique code per run so a
+    # re-run against a long-lived DB never collides on the campaign code.
+    fill_campaign_code_and_name(page, f"SMOKE-{unique_suffix()}", "Smoke Test Campaign")
 
     # Step 7: select placement basis (default "commercial" is fine)
     page.select_option("#c-placement-basis", "commercial")

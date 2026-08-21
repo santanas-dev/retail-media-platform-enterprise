@@ -11,7 +11,7 @@ Only /login via page.goto(); all navigation via clicks.
 import os
 import time
 import pytest
-from conftest import login_as_break_glass_admin
+from conftest import login_as_break_glass_admin, unique_suffix
 
 
 def _navigate_to_advertisers(page):
@@ -41,8 +41,8 @@ def test_uismoke__advertiser__contact_crud(smoke_page):
     page.wait_for_selector('[data-testid="advertiser-contact-submit"]', timeout=5000)
 
     # Fill form
-    contact_name = f"Смоук Контакт {int(time.time()) % 100000}"
-    contact_email = f"smoke-{int(time.time()) % 100000}@test.ru"
+    contact_name = f"Смоук Контакт {unique_suffix()}"
+    contact_email = f"smoke-{unique_suffix()}@test.ru"
     page.fill('[data-testid="advertiser-contact-name"]', contact_name)
     page.fill('[data-testid="advertiser-contact-email"]', contact_email)
     page.fill('[data-testid="advertiser-contact-phone"]', "+7-999-000-00-01")

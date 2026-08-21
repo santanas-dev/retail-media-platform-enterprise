@@ -6,7 +6,7 @@ Happy-path: login → Рекламодатели → select ADV-001 → Брен
 Only /login via page.goto(); all navigation via clicks.
 """
 import pytest
-from conftest import login_as_break_glass_admin
+from conftest import login_as_break_glass_admin, unique_suffix
 
 
 def _navigate_to_advertisers(page):
@@ -37,7 +37,7 @@ def test_uismoke__advertiser__brand_crud(smoke_page):
 
     # Fill form with deterministic but unique data
     import time
-    brand_code = f"SMOKE-{int(time.time()) % 100000}"
+    brand_code = f"SMOKE-{unique_suffix()}"
     brand_name = f"Смоук Бренд {brand_code}"
     page.fill('[data-testid="advertiser-brand-code"]', brand_code)
     page.fill('[data-testid="advertiser-brand-name"]', brand_name)

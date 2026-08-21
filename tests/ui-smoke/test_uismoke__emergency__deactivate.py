@@ -8,7 +8,7 @@ if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
 from playwright.sync_api import Page, expect
-from conftest import BASE_URL
+from conftest import BASE_URL, login_as_break_glass_admin
 
 
 def test_uismoke__emergency__deactivate(smoke_page: Page) -> None:
@@ -16,12 +16,7 @@ def test_uismoke__emergency__deactivate(smoke_page: Page) -> None:
     import time; t0 = time.time()
 
     # ── Login ──
-    page.select_option("#login-provider", "local_break_glass")
-    page.fill("#login-username", "break_glass_admin")
-    page.fill("#login-password", "break-glass-dev-only")
-    page.click('button[type="submit"]')
-    page.wait_for_url("**/campaigns", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    login_as_break_glass_admin(page)
 
     # ── Navigate to Emergency page ──
     page.locator('aside nav a[href="/emergency"]').click(force=True)
@@ -42,15 +37,18 @@ def test_uismoke__emergency__deactivate(smoke_page: Page) -> None:
         expect(act_btn).to_be_enabled(timeout=5000)
         act_btn.click()
         page.locator('[data-testid="emergency-confirm-activate"]').click()
-        page.wait_for_load_state("networkidle")
-        expect(page.locator('[data-testid="emergency-status"]')).to_contain_text("АКТИВЕН", timeout=10000)
+        # State-based: success renders only after the activate POST succeeds,
+        # then fetchStatus flips the status. `to_have_text` is exact — the
+        # substring form ("АКТИВЕН" ⊂ "НЕ АКТИВЕН") gives false confidence.
+        expect(page.locator('[data-testid="emergency-success"]')).to_be_visible(timeout=10000)
+        expect(page.locator('[data-testid="emergency-status"]')).to_have_text("АКТИВЕН", timeout=10000)
         print(f"[{time.time()-t0:.1f}s] Activated for deactivate test")
 
     # ── Deactivate ──
     # Reload page to get clean React state after any prior activation
     page.reload()
     page.wait_for_load_state("networkidle")
-    expect(page.locator('[data-testid="emergency-status"]')).to_contain_text("АКТИВЕН", timeout=10000)
+    expect(page.locator('[data-testid="emergency-status"]')).to_have_text("АКТИВЕН", timeout=10000)
     reason_input = page.locator('[data-testid="emergency-reason-input"]')
     reason_input.fill("Работы завершены — smoke test")
     page.wait_for_function(
@@ -65,10 +63,13 @@ def test_uismoke__emergency__deactivate(smoke_page: Page) -> None:
     confirm_btn = page.locator('[data-testid="emergency-confirm-deactivate"]')
     expect(confirm_btn).to_be_visible(timeout=5000)
     confirm_btn.click()
-    page.wait_for_load_state("networkidle")
 
     # ── Verify inactive state ──
-    expect(page.locator('[data-testid="emergency-status"]')).to_contain_text("НЕ АКТИВЕН", timeout=10000)
+    # State-based: success renders only after the deactivate POST succeeds,
+    # then fetchStatus flips the status. Do NOT rely on networkidle (SPA async
+    # state-update race) — that let the status stay «АКТИВЕН» intermittently.
+    expect(page.locator('[data-testid="emergency-success"]')).to_be_visible(timeout=10000)
+    expect(page.locator('[data-testid="emergency-status"]')).to_have_text("НЕ АКТИВЕН", timeout=10000)
     expect(page.locator('[data-testid="emergency-success"]')).to_be_visible(timeout=5000)
     print(f"[{time.time()-t0:.1f}s] Inactive — status + success")
 
@@ -79,5 +80,5 @@ def test_uismoke__emergency__deactivate(smoke_page: Page) -> None:
     # ── Reload: persistence ──
     page.reload()
     page.wait_for_load_state("networkidle")
-    expect(page.locator('[data-testid="emergency-status"]')).to_contain_text("НЕ АКТИВЕН", timeout=10000)
+    expect(page.locator('[data-testid="emergency-status"]')).to_have_text("НЕ АКТИВЕН", timeout=10000)
     print(f"[{time.time()-t0:.1f}s] Reload — inactive persists ✓ — DONE")

@@ -20,6 +20,7 @@ import pytest
 if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
+from conftest import login_as_break_glass_admin
 from playwright.sync_api import Page, expect
 
 ADMIN_URL = os.environ.get("UI_SMOKE_BASE_URL", "http://localhost:3000")
@@ -62,12 +63,7 @@ def test_uismoke__self__login(page: Page):
     # ═══════════════════════════════════════════════════════════
     page.goto(LOGIN_URL)
     page.wait_for_load_state("networkidle")
-    page.select_option("#login-provider", "local_break_glass")
-    page.fill("#login-username", ADMIN_USER)
-    page.fill("#login-password", ADMIN_PASS)
-    page.click('button[type="submit"]')
-    page.wait_for_url("**/campaigns", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    login_as_break_glass_admin(page)
 
     # Navigate to applications
     page.get_by_role("link", name="Заявки рекламодателей").click()

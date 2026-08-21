@@ -11,7 +11,7 @@ Only /login via page.goto(); all navigation via clicks.
 import os
 import time
 import pytest
-from conftest import login_as_break_glass_admin
+from conftest import login_as_break_glass_admin, unique_suffix
 
 
 FIXTURE_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
@@ -49,7 +49,7 @@ def test_uismoke__advertiser__contract_pdf_upload(smoke_page):
     page.wait_for_selector('[data-testid="advertiser-contract-submit"]', timeout=5000)
 
     # Fill form with deterministic but unique data
-    contract_code = f"SMOKE-C-{int(time.time()) % 100000}"
+    contract_code = f"SMOKE-C-{unique_suffix()}"
     contract_name = f"Смоук Договор {contract_code}"
     page.fill('[data-testid="advertiser-contract-number"]', contract_code)
     page.fill('[data-testid="advertiser-contract-title"]', contract_name)

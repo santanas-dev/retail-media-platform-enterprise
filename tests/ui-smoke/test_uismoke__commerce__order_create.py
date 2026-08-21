@@ -18,7 +18,8 @@ import os
 import re
 import time
 import pytest
-from conftest import login_as_break_glass_admin
+from playwright.sync_api import expect
+from conftest import login_as_break_glass_admin, unique_suffix
 
 SEED_ADV_ORG_ID = "00000000-0000-0000-0000-000000000200"
 SEED_SURFACE_ID = "00000000-0000-0000-0000-000000000031"
@@ -29,7 +30,12 @@ def _nav_commerce(page):
     link.wait_for(state="visible", timeout=10000)
     link.click(force=True)
     page.wait_for_url("**/commerce/tariffs", timeout=8000)
-    page.wait_for_load_state("networkidle")
+    # State-based: the commerce page container must actually render before
+    # proceeding. `networkidle` + a bare h1 can grab the old «Кампании» page
+    # during the SPA transition (UI-SMOKE-FLAKE-003).
+    page.wait_for_selector(
+        '[data-testid="commerce-tariffs-page"]', state="visible", timeout=10000
+    )
 
 
 def test_uismoke__commerce__order_create(smoke_page):
@@ -37,15 +43,11 @@ def test_uismoke__commerce__order_create(smoke_page):
     login_as_break_glass_admin(page)
     _nav_commerce(page)
 
-    page.wait_for_selector('h1', timeout=10000)
-    h1_text = page.locator('h1').inner_text()
-    assert "Коммерция" in h1_text
-
     # 1. Create tariff (needed for order)
     page.locator('[data-testid="commerce-tariff-create-open"]').click()
     page.wait_for_selector('[data-testid="commerce-tariff-form"]', timeout=5000)
 
-    tariff_code = f"ORD-{int(time.time()) % 100000}"
+    tariff_code = f"ORD-{unique_suffix()}"
     page.fill('[data-testid="commerce-tariff-code"]', tariff_code)
     page.fill('[data-testid="commerce-tariff-name"]', f"Тариф для заказа {tariff_code}")
     page.locator('[data-testid="commerce-tariff-submit"]').click()
@@ -107,9 +109,21 @@ def test_uismoke__commerce__order_create(smoke_page):
         timeout=15000,
     )
 
-    page.select_option('[data-testid="commerce-order-org-id"]', index=1)
-    page.select_option('[data-testid="commerce-order-tariff-id"]', index=1)
-    page.select_option('[data-testid="commerce-order-surface-id"]', index=1)
+    # Select by stable identifiers, NOT index=1. Accumulated test runs leave
+    # stale tariffs/orgs/surfaces in the dropdown; index=1 then picks an OLD
+    # tariff with a different unit_price → line_amount mismatch (amount 1200
+    # vs 1600). The org/surface are seed-stable; the tariff is per-run, so
+    # select its option by code.
+    page.select_option('[data-testid="commerce-order-org-id"]', value=SEED_ADV_ORG_ID)
+    page.select_option('[data-testid="commerce-order-surface-id"]', value=SEED_SURFACE_ID)
+    tariff_option = page.locator(
+        f'[data-testid="commerce-order-tariff-id"] option:has-text("{tariff_code}")'
+    )
+    expect(tariff_option).to_have_count(1, timeout=10000)
+    page.select_option(
+        '[data-testid="commerce-order-tariff-id"]',
+        value=tariff_option.get_attribute("value"),
+    )
     # dates pre-filled: today → today+7
 
     page.locator('[data-testid="commerce-order-submit"]').click()

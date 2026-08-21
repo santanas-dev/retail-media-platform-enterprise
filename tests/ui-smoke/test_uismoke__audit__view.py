@@ -8,7 +8,7 @@ if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
 from playwright.sync_api import Page, expect
-from conftest import BASE_URL
+from conftest import BASE_URL, login_as_break_glass_admin
 
 API_URL = "http://localhost:8000/api/v1/identity"
 
@@ -31,12 +31,7 @@ def test_uismoke__audit__view(smoke_page: Page) -> None:
     t0 = time.time()
 
     # ── Login via UI ──
-    page.select_option("#login-provider", "local_break_glass")
-    page.fill("#login-username", "break_glass_admin")
-    page.fill("#login-password", "break-glass-dev-only")
-    page.click('button[type="submit"]')
-    page.wait_for_url("**/campaigns", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    login_as_break_glass_admin(page)
     print(f"[{time.time()-t0:.1f}s] Logged in")
 
     # ── Create audit events via API (deterministic setup) ──

@@ -19,7 +19,7 @@ all arbitrary `wait_for_timeout` sleeps.
 """
 import time
 import pytest
-from conftest import login_as_break_glass_admin
+from conftest import login_as_break_glass_admin, unique_suffix
 
 SEED_SURFACE_ID = "00000000-0000-0000-0000-000000000031"
 
@@ -54,7 +54,7 @@ def test_uismoke__commerce__tariff_manage(smoke_page):
         '[data-testid="commerce-tariff-form"]', state="visible", timeout=5000
     )
 
-    tariff_code = f"SMOKE-{int(time.time()) % 100000}"
+    tariff_code = f"SMOKE-{unique_suffix()}"
     page.fill('[data-testid="commerce-tariff-code"]', tariff_code)
     page.fill('[data-testid="commerce-tariff-name"]', f"Смоук тариф {tariff_code}")
     page.locator('[data-testid="commerce-tariff-submit"]').click()

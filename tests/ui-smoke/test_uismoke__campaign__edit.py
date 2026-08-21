@@ -18,6 +18,7 @@ import pytest
 if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
+from conftest import login_as_break_glass_admin
 from playwright.sync_api import Page, expect
 
 ADMIN_URL = os.environ.get("UI_SMOKE_BASE_URL", "http://localhost:3000")
@@ -37,12 +38,7 @@ def test_uismoke__campaign__edit(page: Page):
     # ═══════════════════════════════════════════════════════════
     page.goto(LOGIN_URL)
     page.wait_for_load_state("networkidle")
-    page.select_option("#login-provider", "local_break_glass")
-    page.fill("#login-username", BG_USERNAME)
-    page.fill("#login-password", BG_PASSWORD)
-    page.click('button[type="submit"]')
-    page.wait_for_url(f"{ADMIN_URL}/campaigns", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    login_as_break_glass_admin(page)
 
     # ═══════════════════════════════════════════════════════════
     # Phase 2: Create campaign draft
@@ -59,8 +55,13 @@ def test_uismoke__campaign__edit(page: Page):
     page.fill("#c-code", CAMPAIGN_CODE)
     page.fill("#c-name", CAMPAIGN_NAME)
     page.click('button[type="submit"]')
-    # Redirect to campaign detail
-    page.wait_for_url("**/campaigns/**", timeout=15000)
+    # Redirect to campaign detail — leave /campaigns/new (the create form).
+    # `**/campaigns/**` also matches /campaigns/new, so it does NOT prove the
+    # draft was created; require the URL to contain /campaigns but not /campaigns/new.
+    page.wait_for_url(
+        lambda url: "/campaigns/new" not in url and "/campaigns" in url,
+        timeout=15000,
+    )
     page.wait_for_load_state("networkidle")
 
     # ═══════════════════════════════════════════════════════════
