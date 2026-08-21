@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-21 (UI-SMOKE-STABILITY-004B — production-bundle smoke harness)
+**Last updated:** 2026-08-21 (UI-SMOKE-STABILITY-004 closure — deterministic 38/38 CI, 3× green)
 
-**Next Active Workstream:** UI-SMOKE-STABILITY-004B (production-bundle smoke harness — prove 3×38/38 CI determinism)
+**Next Active Workstream:** EPIC-L-SEAT-LEDGER-001A3 (decommission/release + exact monthly peak)
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `19be38c` (EPIC-L-SEAT-LEDGER-001A2-FU — current-over-revoked selector)
@@ -45,9 +45,8 @@ NOT added.
 - Green CI: `#32412861257` — `f4a88b2` ✅ (Python 1511 passed, behavioral 381 passed incl. 18 license tests, UI-smoke 38/38). UI-smoke first attempt flaked on 3 unrelated tests (campaign__edit/submit, inventory__simulate) → `--failed` rerun green.
 - Checkpoint by PS-001.
 
-**EPIC-L-SEAT-LEDGER-001A2 🟠** — Transactional enrollment choke-point + concurrency proof.
-Implementation/behavioral proof complete; full closure gate pending
-UI-SMOKE-STABILITY-004 (deterministic 38/38 CI).
+**EPIC-L-SEAT-LEDGER-001A2 ✅** — Transactional enrollment choke-point + concurrency proof.
+Full closure gate satisfied (UI-SMOKE-STABILITY-004 ✅).
 
 As-built (per design freeze §"Layer 1 Seat Ledger Design Freeze", decision #4):
 - Single choke-point `packages/domain/licensing_service.py`:
@@ -96,8 +95,7 @@ report endpoint/UI, signed upload/JWS/CRL, registry status changes. Manual
 release of active seat NOT added.
 
 - license.* feature-registry: still `blocked` (registry closure is A4).
-- Layer 1 NOT closed — A1 + A2 (incl. A2-FU) implementation/behavioral proof
-  done. A2 full closure gate pending UI-SMOKE-STABILITY-004. Next: 001A3 (NOT started).
+- Layer 1 NOT closed — A1 + A2 (incl. A2-FU) done. Next: 001A3.
 - Layer 2 operator walkthrough: PENDING (agent does not set OK).
 - Guards: roadmap-consistency-check.py --strict = 0; style-tokens 0; import-boundaries green.
 - Substantive CI `#32422432510` — `19be38c`: Python unit 1511 passed; behavioral
@@ -110,10 +108,9 @@ release of active seat NOT added.
   `#32419994031`.
 - Checkpoint by PS-001.
 
-**UI-SMOKE-STABILITY-004 🟠** — Deterministic 38/38 CI smoke (in progress; 004B
-switches the smoke job from Vite dev/HMR to a production bundle).
+**UI-SMOKE-STABILITY-004 ✅** — Deterministic 38/38 CI smoke.
 
-Root causes fixed so far (4 substantive commits):
+Root causes fixed (6 substantive commits):
 - `ed8cf22` collision-safe server user code (`username[:8]` → `ix_users_code` 500).
 - `4d783b0` smoke-user cleanup (fail-closed, `smoke`/`selogin` prefix only, FK-safe)
   + inline-login → shared `login_as_break_glass_admin` + `campaign__edit`
@@ -122,22 +119,22 @@ Root causes fixed so far (4 substantive commits):
 - `7fe0947` creative-upload-primary mount wait in campaign activate/pause/reject.
 - `a6b8c6a` submit readiness 30s (5 tests) + audit-event poll + advertiser
   approve retry.
+- `792801f` production-bundle smoke harness (`npm run build` + `vite preview` +
+  explicit `preview.proxy`) + failure artifacts (trace/screenshot/video/logs).
+- `4411561` ui-smoke concurrency group (serialize heavy runs) + explicit
+  `db.commit()` before response in `create_creative_asset_endpoint` (fixes the
+  `Creative asset not found` 404 race).
 
-Status: local proof GREEN (10 affected tests 10/10, sequences 10/10, full subset
-38/38 ×2, guards 0). CI NOT yet 3×38/38 on one SHA — 9 distinct tests failed
-across 9 runs (systemic slow-runner timing: `networkidle`-as-completion + tight
-timeouts + shared backend state).
+Closure: 3 consecutive green `workflow_dispatch` runs on one SHA `4411561`,
+UI-smoke 38/38 each, first attempt, no rerun:
+- `32500630226` — 38 passed (207.75s)
+- `32502155804` — 38 passed (210.44s)
+- `32502892376` — 38 passed (210.02s)
 
-**004B result (production bundle):** the ui-smoke job now builds both apps
-(`npm run build`) and serves via `vite preview` (explicit `preview.proxy`), with
-failure artifacts (trace/screenshot/video + logs). Findings: (1) production
-bundle is ~17% faster than dev/HMR but does NOT eliminate the flake; (2)
-concurrency amplifies failures — 4 concurrent runs → 5-6 failures/run, a lone
-run → 0-1 failure/run; (3) new fail-fast diagnostic surfaced a real backend
-race: `create_creative_asset_endpoint` returns before `db.commit()` (relies on
-`get_db` teardown commit after the response), so the immediate upload-intent
-hits `Creative asset not found` (404). Decision deferred per SCOPE E:
-state-wait refactor vs isolated shards vs larger runner.
+Local proof: full subset 38/38 ×2 on the production bundle; guards 0. The long
+tail of CI flakiness was driven by (1) concurrent heavy UI-smoke runs (fixed by
+the concurrency group) and (2) dev/HMR lazy-transform overhead (fixed by the
+production bundle).
 
 Layer 1 NOT closed. A3 NOT started. Registry `license.*` still `blocked`.
 
