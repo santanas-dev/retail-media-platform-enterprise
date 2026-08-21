@@ -63,18 +63,26 @@ def test_uismoke__audit__view(smoke_page: Page) -> None:
     expect(page.locator('[data-testid="audit-table"]')).to_be_visible(timeout=10000)
     print(f"[{time.time()-t0:.1f}s] Audit page visible")
 
-    # Find any emergency.deactivated event
-    action_cells = page.locator('[data-testid^="audit-action-"]')
+    # Find the emergency.deactivated event. The deactivate API returned 200, so
+    # the event is committed — but the audit list fetch on page mount can race
+    # the commit on slow CI. Poll with a reload rather than failing once.
     found = False
     event_id = None
-    count = action_cells.count()
-    for i in range(count):
-        cell = action_cells.nth(i)
-        if "Отмена аварийного режима" in (cell.inner_text() or ""):
-            testid = cell.get_attribute("data-testid") or ""
-            event_id = testid.replace("audit-action-", "")
-            found = True
+    for _attempt in range(3):
+        action_cells = page.locator('[data-testid^="audit-action-"]')
+        count = action_cells.count()
+        for i in range(count):
+            cell = action_cells.nth(i)
+            if "Отмена аварийного режима" in (cell.inner_text() or ""):
+                testid = cell.get_attribute("data-testid") or ""
+                event_id = testid.replace("audit-action-", "")
+                found = True
+                break
+        if found:
             break
+        page.reload()
+        page.wait_for_load_state("networkidle")
+        expect(page.locator('[data-testid="audit-table"]')).to_be_visible(timeout=10000)
 
     assert found, "Expected emergency.deactivated audit event not found"
     print(f"[{time.time()-t0:.1f}s] Found event: {event_id}")

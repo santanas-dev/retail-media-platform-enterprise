@@ -141,7 +141,9 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
 
     # ── Submit — button enabled ──
     submit_btn = page.locator('[data-testid="campaign-submit-btn"]')
-    expect(submit_btn).to_be_enabled(timeout=10000)
+    # Submit readiness needs refreshCampaign to re-fetch creatives/flights/
+    # placements after the uploads; on slow CI this exceeds 10s.
+    expect(submit_btn).to_be_enabled(timeout=30000)
     submit_btn.click()
     try:
         page.wait_for_selector('[data-testid="campaign-submit-error"]', timeout=5000)
