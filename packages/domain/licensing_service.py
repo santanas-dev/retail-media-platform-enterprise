@@ -32,7 +32,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Awaitable, Callable
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.domain.licensing import LicenseGrant, LicenseSeat
@@ -47,6 +47,7 @@ from packages.domain.licensing_repository import (
     count_occupied_seats,
     effective_grant_query,
     free_of,
+    get_effective_license,
 )
 from packages.domain.models import DeviceStatusHistory, PhysicalDevice
 
@@ -439,4 +440,145 @@ async def decommission_device(
         seat_released=seat_released,
         released_at=released_at,
         anomaly=anomaly,
+    )
+
+
+@dataclass
+class ReconciliationFinding:
+    """A single detected drift in the seat ledger."""
+
+    code: str
+    severity: str  # "error" | "warning"
+    message: str
+    device_id: str | None = None
+    seat_id: str | None = None
+
+
+@dataclass
+class ReconciliationReport:
+    """Read-only drift report. ``consistent`` is True only with zero findings."""
+
+    consistent: bool
+    counts: dict
+    findings: list[ReconciliationFinding] = field(default_factory=list)
+
+
+async def get_reconciliation_report(
+    session: AsyncSession,
+    *,
+    now: datetime,
+) -> ReconciliationReport:
+    """Read-only reconciliation drift detection (Layer 1, task 001A4).
+
+    Detects, but never fixes:
+      - ``current_grant_missing`` — no effective grant (error);
+      - ``over_capacity`` — occupied open seats exceed capacity (error);
+      - ``active_device_without_seat`` — active device has no open seat (error);
+      - ``inactive_device_with_seat`` — inactive/unregistered device still holds
+        an open seat (error);
+      - ``seat_under_noncurrent_grant`` — open seat reserved under a
+        historical/non-current grant (error);
+      - ``occupied_mapping_mismatch`` — open seats on active devices != active
+        device count (warning).
+
+    Sets the server-side admin RLS context. Read-only — performs no writes and
+    no repair. The caller commits nothing; the report is used by the DRY-RUN
+    CLI (default) and the reconciliation endpoint.
+    """
+    await set_licensing_admin_context(session)
+
+    findings: list[ReconciliationFinding] = []
+
+    grant = await get_effective_license(session)
+    capacity = capacity_of(grant) if grant is not None else 0
+    current_grant_id = grant.id if grant is not None else None
+
+    if grant is None:
+        findings.append(ReconciliationFinding(
+            code="current_grant_missing", severity="error",
+            message="Effective license grant not found.",
+        ))
+
+    occupied = await count_occupied_seats(session)
+    if grant is not None and occupied > capacity:
+        findings.append(ReconciliationFinding(
+            code="over_capacity", severity="error",
+            message=f"Occupied {occupied} exceeds capacity {capacity}.",
+        ))
+
+    # Active devices without an open seat.
+    active_without_seat = await session.execute(
+        select(PhysicalDevice.id)
+        .outerjoin(
+            LicenseSeat,
+            (LicenseSeat.device_id == PhysicalDevice.id)
+            & (LicenseSeat.released_at.is_(None)),
+        )
+        .where(PhysicalDevice.status == "active")
+        .where(LicenseSeat.id.is_(None))
+    )
+    for device_id in active_without_seat.scalars().all():
+        findings.append(ReconciliationFinding(
+            code="active_device_without_seat", severity="error",
+            message="Active device has no open seat.", device_id=device_id,
+        ))
+
+    # Inactive/unregistered devices still holding an open seat.
+    inactive_with_seat = await session.execute(
+        select(PhysicalDevice.id, LicenseSeat.id)
+        .join(LicenseSeat, LicenseSeat.device_id == PhysicalDevice.id)
+        .where(LicenseSeat.released_at.is_(None))
+        .where(PhysicalDevice.status != "active")
+    )
+    for device_id, seat_id in inactive_with_seat.all():
+        findings.append(ReconciliationFinding(
+            code="inactive_device_with_seat", severity="error",
+            message="Inactive device still holds an open seat.",
+            device_id=device_id, seat_id=seat_id,
+        ))
+
+    # Open seats reserved under a non-current (historical) grant.
+    if current_grant_id is not None:
+        noncurrent = await session.execute(
+            select(LicenseSeat.id, LicenseSeat.device_id)
+            .where(LicenseSeat.released_at.is_(None))
+            .where(LicenseSeat.license_id != current_grant_id)
+        )
+        for seat_id, device_id in noncurrent.all():
+            findings.append(ReconciliationFinding(
+                code="seat_under_noncurrent_grant", severity="error",
+                message="Open seat reserved under a non-current grant.",
+                device_id=device_id, seat_id=seat_id,
+            ))
+
+    active_count = await session.scalar(
+        select(func.count()).select_from(PhysicalDevice)
+        .where(PhysicalDevice.status == "active")
+    ) or 0
+    open_seats_total = await session.scalar(
+        select(func.count()).select_from(LicenseSeat)
+        .where(LicenseSeat.released_at.is_(None))
+    ) or 0
+
+    # Ledger occupancy vs expected active-device mapping (summary).
+    if active_count != occupied:
+        findings.append(ReconciliationFinding(
+            code="occupied_mapping_mismatch", severity="warning",
+            message=(
+                f"Open seats on active devices ({occupied}) != active device "
+                f"count ({active_count})."
+            ),
+        ))
+
+    return ReconciliationReport(
+        consistent=len(findings) == 0,
+        counts={
+            "active_devices": active_count,
+            "open_seats": open_seats_total,
+            "occupied": occupied,
+            "capacity": capacity,
+            "over_capacity_by": max(occupied - capacity, 0),
+            "finding_count": len(findings),
+        },
+        findings=findings,
     )

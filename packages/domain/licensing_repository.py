@@ -17,13 +17,15 @@ Contract (design freeze):
   physical_devices.status = 'active'.
 """
 
+import math
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import case, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.domain.licensing import LicenseGrant, LicenseSeat
-from packages.domain.models import PhysicalDevice
+from packages.domain.models import PhysicalDevice, Store
 
 # Effective license state strings (computed).
 ACTIVE = "active"
@@ -261,3 +263,193 @@ async def peak_seats_for_month(
     )
     intervals = [(r, e) for r, e in result.all()]
     return _peak_from_intervals(intervals, month_start, next_month_start)
+
+
+# ---------------------------------------------------------------------------
+# License report read model (SCOPE B — 001A4)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class LicenseReportLicense:
+    """License section of the report (single effective grant)."""
+
+    effective_state: str  # active/grace/expired/revoked/missing
+    license_id: str | None = None
+    licensee_id: str | None = None
+    licensee_name: str | None = None
+    tier: str | None = None
+    source: str | None = None
+    valid_from: datetime | None = None
+    valid_until: datetime | None = None
+    grace_days: int = 0
+    capacity: int = 0
+    days_remaining: int | None = None
+    over_capacity_by: int = 0
+
+
+@dataclass
+class LicenseReportUsage:
+    """Usage section: occupancy + exact monthly peak."""
+
+    occupied: int = 0
+    free: int = 0
+    peak: int = 0
+    year: int = 0
+    month: int = 0
+    timezone: str = "UTC"
+
+
+@dataclass
+class LicenseReportSeat:
+    """A single currently-open seat with its device + authoritative store."""
+
+    seat_id: str
+    license_id: str
+    device_id: str
+    device_code: str
+    device_status: str
+    reserved_at: datetime
+    last_heartbeat_at: datetime | None = None
+    store_id: str | None = None
+    store_code: str | None = None
+    store_name: str | None = None
+    anomaly_flags: list[str] = field(default_factory=list)
+
+
+@dataclass
+class LicenseReport:
+    """Read-only license report (no mutation, no secrets)."""
+
+    license: LicenseReportLicense
+    usage: LicenseReportUsage
+    seats: list[LicenseReportSeat] = field(default_factory=list)
+
+
+def _days_remaining(
+    state: str,
+    grant: "LicenseGrant | None",
+    now: datetime,
+) -> int | None:
+    """UTC ceil days until the effective window ends.
+
+    - active → ceil to ``valid_until``;
+    - grace  → ceil to ``valid_until + grace_days``;
+    - expired/revoked → 0;
+    - perpetual (no ``valid_until``) / missing → None.
+    """
+    if state == MISSING:
+        return None
+    if state in (EXPIRED, REVOKED):
+        return 0
+    if grant is None or grant.valid_until is None:
+        return None  # perpetual / defensive
+    deadline = grant.valid_until if state == ACTIVE else grant.valid_until + timedelta(days=grant.grace_days)
+    seconds = (deadline - now).total_seconds()
+    if seconds <= 0:
+        return 0
+    return math.ceil(seconds / 86400)
+
+
+async def _load_open_seats(
+    session: AsyncSession,
+    *,
+    current_grant_id: str | None,
+) -> list[LicenseReportSeat]:
+    """Load currently-open seats joined to device + authoritative store.
+
+    Store fields come only from ``physical_devices.store_id → stores`` (the
+    authoritative device/inventory identity relation) — never advertiser or
+    commerce tables.
+    """
+    result = await session.execute(
+        select(LicenseSeat, PhysicalDevice, Store)
+        .join(PhysicalDevice, LicenseSeat.device_id == PhysicalDevice.id)
+        .outerjoin(Store, PhysicalDevice.store_id == Store.id)
+        .where(LicenseSeat.released_at.is_(None))
+    )
+
+    seats: list[LicenseReportSeat] = []
+    for seat, device, store in result.all():
+        flags: list[str] = []
+        if device.status != "active":
+            flags.append("device_not_active")
+        if current_grant_id is not None and seat.license_id != current_grant_id:
+            flags.append("seat_under_noncurrent_grant")
+        seats.append(LicenseReportSeat(
+            seat_id=seat.id,
+            license_id=seat.license_id,
+            device_id=device.id,
+            device_code=device.code,
+            device_status=device.status,
+            reserved_at=seat.reserved_at,
+            last_heartbeat_at=device.last_heartbeat_at,
+            store_id=store.id if store else None,
+            store_code=store.code if store else None,
+            store_name=store.name if store else None,
+            anomaly_flags=flags,
+        ))
+    return seats
+
+
+async def get_license_report(
+    session: AsyncSession,
+    *,
+    year: int,
+    month: int,
+    now: datetime,
+) -> LicenseReport:
+    """Single read-only license report (license + usage + open seats).
+
+    Never sets RLS GUCs — the caller (report route / service boundary) must
+    already have applied the service/admin context. Reads only license tables,
+    ``physical_devices`` and ``stores`` (device/inventory identity) — never
+    ``commerce_*`` or advertiser-commercial tables. Missing license produces a
+    controlled ``effective_state="missing"`` report, not a 500 and not a
+    fabricated grant.
+    """
+    grant = await get_effective_license(session)
+    state = compute_effective_state(grant, now)
+
+    occupied = await count_occupied_seats(session)
+    capacity = capacity_of(grant) if grant is not None else 0
+    free = max(capacity - occupied, 0)
+    over_capacity_by = max(occupied - capacity, 0)
+
+    peak = 0
+    if grant is not None:
+        peak = await peak_seats_for_month(
+            session, license_id=grant.id, year=year, month=month,
+        )
+
+    seats = await _load_open_seats(
+        session, current_grant_id=grant.id if grant is not None else None,
+    )
+
+    license_section = LicenseReportLicense(
+        effective_state=state,
+        license_id=grant.license_id if grant is not None else None,
+        licensee_id=grant.licensee_id if grant is not None else None,
+        licensee_name=grant.licensee_name if grant is not None else None,
+        tier=grant.tier if grant is not None else None,
+        source=grant.source if grant is not None else None,
+        valid_from=grant.valid_from if grant is not None else None,
+        valid_until=grant.valid_until if grant is not None else None,
+        grace_days=grant.grace_days if grant is not None else 0,
+        capacity=capacity,
+        days_remaining=_days_remaining(state, grant, now),
+        over_capacity_by=over_capacity_by,
+    )
+
+    return LicenseReport(
+        license=license_section,
+        usage=LicenseReportUsage(
+            occupied=occupied,
+            free=free,
+            peak=peak,
+            year=year,
+            month=month,
+            timezone="UTC",
+        ),
+        seats=seats,
+    )

@@ -1357,6 +1357,58 @@ class DeviceDecommissionResponse(BaseModel):
     anomaly: bool = False
 
 
+class LicenseReportLicenseOut(BaseModel):
+    """License section of the license report."""
+
+    effective_state: str
+    license_id: str | None = None
+    licensee_id: str | None = None
+    licensee_name: str | None = None
+    tier: str | None = None
+    source: str | None = None
+    valid_from: datetime | None = None
+    valid_until: datetime | None = None
+    grace_days: int = 0
+    capacity: int = 0
+    days_remaining: int | None = None
+    over_capacity_by: int = 0
+
+
+class LicenseReportUsageOut(BaseModel):
+    """Usage section of the license report."""
+
+    occupied: int = 0
+    free: int = 0
+    peak: int = 0
+    year: int = 0
+    month: int = 0
+    timezone: str = "UTC"
+
+
+class LicenseReportSeatOut(BaseModel):
+    """A currently-open seat with its device + authoritative store fields."""
+
+    seat_id: str
+    license_id: str
+    device_id: str
+    device_code: str
+    device_status: str
+    reserved_at: datetime
+    last_heartbeat_at: datetime | None = None
+    store_id: str | None = None
+    store_code: str | None = None
+    store_name: str | None = None
+    anomaly_flags: list[str] = []
+
+
+class LicenseReportOut(BaseModel):
+    """Read-only license report (no secrets, no advertiser/commerce data)."""
+
+    license: LicenseReportLicenseOut
+    usage: LicenseReportUsageOut
+    seats: list[LicenseReportSeatOut] = []
+
+
 # ---------------------------------------------------------------------------
 # S-071 — Emergency Override
 # ---------------------------------------------------------------------------

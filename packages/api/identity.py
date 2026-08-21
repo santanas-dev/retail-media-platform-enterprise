@@ -26,6 +26,7 @@ from packages.api.identity_routes.emergency import router as emergency_router
 from packages.api.identity_routes.advertiser_applications import router as advertiser_applications_router
 from packages.api.identity_routes.briefs import router as briefs_router
 from packages.api.identity_routes.commerce import router as commerce_router
+from packages.api.identity_routes.licenses import router as licenses_router
 
 # Backward-compatible re-exports for test patches.
 # Tests patch ``packages.api.identity.repository.XXX`` — ``repository`` must be
@@ -48,3 +49,4 @@ router.include_router(emergency_router)
 router.include_router(advertiser_applications_router)
 router.include_router(briefs_router)
 router.include_router(commerce_router)
+router.include_router(licenses_router)

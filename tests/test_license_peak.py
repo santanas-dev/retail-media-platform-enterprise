@@ -5,7 +5,7 @@ the 10-case matrix from SCOPE E. The DB-query path (``peak_seats_for_month``)
 is proven separately in ``tests/behavioral/test_license_decommission.py``.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -106,3 +106,59 @@ def test_month_bounds_december_rollover():
     start, next_start = _month_bounds(2026, 12, UTC)
     assert start == datetime(2026, 12, 1, tzinfo=UTC)
     assert next_start == datetime(2027, 1, 1, tzinfo=UTC)
+
+
+# ── days_remaining (SCOPE B — 001A4) ────────────────────────────────────────
+
+from packages.domain.licensing_repository import _days_remaining  # noqa: E402
+
+
+class _MockGrant:
+    def __init__(self, valid_until=None, grace_days=0):
+        self.valid_until = valid_until
+        self.grace_days = grace_days
+
+
+_NOW = datetime(2026, 8, 1, 12, 0, 0, tzinfo=UTC)
+
+
+def test_days_remaining_missing_is_none():
+    assert _days_remaining("missing", None, _NOW) is None
+
+
+def test_days_remaining_expired_zero():
+    assert _days_remaining("expired", _MockGrant(), _NOW) == 0
+
+
+def test_days_remaining_revoked_zero():
+    assert _days_remaining("revoked", _MockGrant(), _NOW) == 0
+
+
+def test_days_remaining_perpetual_is_none():
+    assert _days_remaining("active", _MockGrant(valid_until=None), _NOW) is None
+
+
+def test_days_remaining_active_ceils_up():
+    g = _MockGrant(valid_until=_NOW + timedelta(days=3, hours=5))
+    assert _days_remaining("active", g, _NOW) == 4  # ceil(3.208) = 4
+
+
+def test_days_remaining_active_exact_days():
+    g = _MockGrant(valid_until=_NOW + timedelta(days=2))
+    assert _days_remaining("active", g, _NOW) == 2
+
+
+def test_days_remaining_active_past_is_zero():
+    g = _MockGrant(valid_until=_NOW - timedelta(days=1))
+    assert _days_remaining("active", g, _NOW) == 0
+
+
+def test_days_remaining_grace_uses_deadline():
+    g = _MockGrant(valid_until=_NOW - timedelta(hours=1), grace_days=2)
+    # deadline = now + 2 days - 1 hour → ceil(1.958) = 2
+    assert _days_remaining("grace", g, _NOW) == 2
+
+
+def test_days_remaining_grace_expired_zero():
+    g = _MockGrant(valid_until=_NOW - timedelta(days=3), grace_days=2)
+    assert _days_remaining("grace", g, _NOW) == 0
