@@ -1,8 +1,8 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-20 (EPIC-L-SEAT-LEDGER-001A2-FU — current grant outranks historical revoked)
+**Last updated:** 2026-08-21 (UI-SMOKE-STABILITY-004B — production-bundle smoke harness)
 
-**Next Active Workstream:** EPIC-L-SEAT-LEDGER-001A3 (decommission/release + exact monthly peak)
+**Next Active Workstream:** UI-SMOKE-STABILITY-004B (production-bundle smoke harness — prove 3×38/38 CI determinism)
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `19be38c` (EPIC-L-SEAT-LEDGER-001A2-FU — current-over-revoked selector)
@@ -45,7 +45,9 @@ NOT added.
 - Green CI: `#32412861257` — `f4a88b2` ✅ (Python 1511 passed, behavioral 381 passed incl. 18 license tests, UI-smoke 38/38). UI-smoke first attempt flaked on 3 unrelated tests (campaign__edit/submit, inventory__simulate) → `--failed` rerun green.
 - Checkpoint by PS-001.
 
-**EPIC-L-SEAT-LEDGER-001A2 ✅** — Transactional enrollment choke-point + concurrency proof.
+**EPIC-L-SEAT-LEDGER-001A2 🟠** — Transactional enrollment choke-point + concurrency proof.
+Implementation/behavioral proof complete; full closure gate pending
+UI-SMOKE-STABILITY-004 (deterministic 38/38 CI).
 
 As-built (per design freeze §"Layer 1 Seat Ledger Design Freeze", decision #4):
 - Single choke-point `packages/domain/licensing_service.py`:
@@ -94,7 +96,8 @@ report endpoint/UI, signed upload/JWS/CRL, registry status changes. Manual
 release of active seat NOT added.
 
 - license.* feature-registry: still `blocked` (registry closure is A4).
-- Layer 1 NOT closed — A1 + A2 (incl. A2-FU) done. Next: 001A3.
+- Layer 1 NOT closed — A1 + A2 (incl. A2-FU) implementation/behavioral proof
+  done. A2 full closure gate pending UI-SMOKE-STABILITY-004. Next: 001A3 (NOT started).
 - Layer 2 operator walkthrough: PENDING (agent does not set OK).
 - Guards: roadmap-consistency-check.py --strict = 0; style-tokens 0; import-boundaries green.
 - Substantive CI `#32422432510` — `19be38c`: Python unit 1511 passed; behavioral
@@ -106,6 +109,27 @@ release of active seat NOT added.
   gate is the authoritative proof for this change. Row-lock tamper red CI:
   `#32419994031`.
 - Checkpoint by PS-001.
+
+**UI-SMOKE-STABILITY-004 🟠** — Deterministic 38/38 CI smoke (in progress; 004B
+switches the smoke job from Vite dev/HMR to a production bundle).
+
+Root causes fixed so far (4 substantive commits):
+- `ed8cf22` collision-safe server user code (`username[:8]` → `ix_users_code` 500).
+- `4d783b0` smoke-user cleanup (fail-closed, `smoke`/`selogin` prefix only, FK-safe)
+  + inline-login → shared `login_as_break_glass_admin` + `campaign__edit`
+  leave-`/campaigns/new` + commerce tariff by-code (not `index=1`) + emergency
+  `to_have_text` (exact, not substring).
+- `7fe0947` creative-upload-primary mount wait in campaign activate/pause/reject.
+- `a6b8c6a` submit readiness 30s (5 tests) + audit-event poll + advertiser
+  approve retry.
+
+Status: local proof GREEN (10 affected tests 10/10, sequences 10/10, full subset
+38/38 ×2, guards 0). CI NOT yet 3×38/38 on one SHA — 9 distinct tests failed
+across 9 runs (systemic slow-runner timing: `networkidle`-as-completion + tight
+timeouts + shared backend state). 004B tests the hypothesis that Vite dev/HMR
+lazy-transform is the systemic source.
+
+Layer 1 NOT closed. A3 NOT started. Registry `license.*` still `blocked`.
 
 **UI-SMOKE-FLAKE-003 ✅** — Stabilize `commerce__tariff_manage` navigation race.
 

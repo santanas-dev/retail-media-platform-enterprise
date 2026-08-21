@@ -356,22 +356,25 @@ jobs:
             >/dev/null 2>&1 || true
           echo "MinIO configured."
           mc ls local/ 2>/dev/null || true
-      - name: 🔍 DIAGNOSTIC — write build marker + log source state
+      - name: Write build marker (both apps)
         run: |
-          echo "=== VITE-CI-STALENESS-001 diagnostics ==="
+          SHORT=$(git rev-parse --short HEAD)
           echo "Git HEAD: $(git rev-parse HEAD)"
-          echo "Git short: $(git rev-parse --short HEAD)"
-          echo "CampaignDetailPage.tsx md5: $(md5sum apps/admin-web/src/pages/CampaignDetailPage.tsx)"
-          echo "campaigns.ts md5: $(md5sum apps/admin-web/src/api/campaigns.ts)"
-          mkdir -p apps/admin-web/public
-          git rev-parse --short HEAD > apps/admin-web/public/build-marker.txt
-          echo "build-marker written: $(cat apps/admin-web/public/build-marker.txt)"
-      - name: Start admin-web (vite dev)
+          mkdir -p apps/admin-web/public apps/advertiser-web/public
+          printf '%s' "$SHORT" > apps/admin-web/public/build-marker.txt
+          printf '%s' "$SHORT" > apps/advertiser-web/public/build-marker.txt
+          echo "build-marker written: $SHORT"
+      - name: Build admin-web (production bundle)
+        working-directory: apps/admin-web
+        run: npm run build  # tsc --noEmit && vite build — blocks on TS/build failure
+      - name: Build advertiser-web (production bundle)
+        working-directory: apps/advertiser-web
+        run: npm run build
+      - name: Start admin-web (vite preview — production bundle)
         working-directory: apps/admin-web
         run: |
-          nohup npx vite --port 3000 --host 0.0.0.0 > /tmp/admin-web.log 2>&1 &
+          nohup npx vite preview --host 0.0.0.0 --port 3000 --strictPort > /tmp/admin-web.log 2>&1 &
           echo "admin-web PID: $!"
-          # Wait for ready
           for i in $(seq 1 30); do
             if curl -sf http://localhost:3000/login >/dev/null 2>&1; then
               echo "admin-web ready."
@@ -380,22 +383,27 @@ jobs:
             echo "Waiting for admin-web... ($i/30)"
             sleep 2
           done
-          # 🔍 DIAGNOSTIC: verify served marker
-          echo "=== VITE SERVED MARKER ==="
+          # Verify the served bundle matches the checkout SHA (no stale build).
+          EXPECTED=$(cat public/build-marker.txt)
           SERVED=$(curl -sf http://localhost:3000/build-marker.txt 2>/dev/null || echo "FETCH_FAILED")
-          echo "Served marker: '$SERVED'"
-          echo "Expected:      '$(cat public/build-marker.txt)'"
-          if [ "$SERVED" = "$(cat public/build-marker.txt)" ]; then
-            echo "✅ MARKER MATCH — Vite serves current checkout"
-          else
-            echo "❌ MARKER MISMATCH — Vite serves STALE content!"
-            echo "=== Vite log (last 20 lines) ==="
+          echo "Served marker: '$SERVED'  Expected: '$EXPECTED'"
+          test "$SERVED" = "$EXPECTED" || { echo "❌ MARKER MISMATCH"; tail -20 /tmp/admin-web.log; exit 1; }
+          # SPA fallback: a direct client route must return index.html (not 404).
+          curl -sf http://localhost:3000/campaigns/example-id >/dev/null \
+            && echo "SPA fallback OK (/campaigns/example-id)" \
+            || { echo "❌ SPA fallback failed"; tail -20 /tmp/admin-web.log; exit 1; }
+          # API proxy: /api must reach control-api, NOT return the SPA index.html.
+          API_RESP=$(curl -s http://localhost:3000/api/v1/identity/users)
+          if echo "$API_RESP" | grep -qi '<html\|id="root"\|<!doctype'; then
+            echo "❌ API proxy broken — /api returned SPA index.html"
             tail -20 /tmp/admin-web.log
+            exit 1
           fi
-      - name: Start advertiser-web (vite dev)
+          echo "API proxy OK: $(echo "$API_RESP" | head -c 80)"
+      - name: Start advertiser-web (vite preview — production bundle)
         working-directory: apps/advertiser-web
         run: |
-          nohup npx vite --port 3001 --host 0.0.0.0 > /tmp/advertiser-web.log 2>&1 &
+          nohup npx vite preview --host 0.0.0.0 --port 3001 --strictPort > /tmp/advertiser-web.log 2>&1 &
           echo "advertiser-web PID: $!"
           for i in $(seq 1 30); do
             if curl -sf http://localhost:3001/login >/dev/null 2>&1; then
@@ -405,6 +413,10 @@ jobs:
             echo "Waiting for advertiser-web... ($i/30)"
             sleep 2
           done
+          EXPECTED=$(cat public/build-marker.txt)
+          SERVED=$(curl -sf http://localhost:3001/build-marker.txt 2>/dev/null || echo "FETCH_FAILED")
+          echo "Served marker: '$SERVED'  Expected: '$EXPECTED'"
+          test "$SERVED" = "$EXPECTED" || { echo "❌ MARKER MISMATCH"; tail -20 /tmp/advertiser-web.log; exit 1; }
       - name: Install Playwright browser
         run: python3 -m playwright install chromium
       - name: Run UI-smoke tests (P0 subset)
@@ -418,6 +430,10 @@ jobs:
           DESELECTED=$((TOTAL_FUNCS - SELECTED))
           echo "Smoke functions: total=${TOTAL_FUNCS}, selected=${SELECTED}, deselected=${DESELECTED}"
           UI_SMOKE_RUN=1 python3 -m pytest tests/ui-smoke -v --tb=long \
+            --tracing=retain-on-failure \
+            --screenshot=only-on-failure \
+            --video=retain-on-failure \
+            --output=/tmp/test-results \
             -k "${K_EXPR}" \
             2>&1 | tee /tmp/ui-smoke-output.txt
           PYTEST_EXIT=${PIPESTATUS[0]}
@@ -435,6 +451,17 @@ jobs:
           tail -200 /tmp/admin-web.log 2>/dev/null || echo "(no logs)"
           echo "=== advertiser-web logs ==="
           tail -200 /tmp/advertiser-web.log 2>/dev/null || echo "(no logs)"
+      - name: Upload UI-smoke artifacts (traces/screenshots/videos/logs)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-smoke-artifacts
+          path: |
+            /tmp/test-results/
+            /tmp/control-api.log
+            /tmp/admin-web.log
+            /tmp/advertiser-web.log
+          if-no-files-found: ignore
 
   docker-compose:
     name: Docker Compose Config Validation

@@ -49,5 +49,8 @@ node_modules/
 frontend/dist/
 frontend/build/
 
+# Frontend build artifacts (written by CI smoke job, not source)
+apps/*/public/build-marker.txt
+
 # Infra
 infra/data/
