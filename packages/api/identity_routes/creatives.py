@@ -93,7 +93,13 @@ async def create_creative_asset_endpoint(
         headers={"source_service": "control-api"},
     )
     asset = await repository.get_creative_asset(db, asset_id)
-    return _serialize_creative_asset(asset)
+    response = _serialize_creative_asset(asset)
+    # Commit BEFORE returning: get_db's `session.begin()` commits only on
+    # teardown (after the response is sent), so without an explicit commit the
+    # client's immediate upload-intent request can hit a 404 "Creative asset
+    # not found" on slow CI. Serialize first, then commit, then return.
+    await db.commit()
+    return response
 
 
 # ---------------------------------------------------------------------------

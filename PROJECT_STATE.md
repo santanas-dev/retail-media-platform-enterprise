@@ -126,8 +126,18 @@ Root causes fixed so far (4 substantive commits):
 Status: local proof GREEN (10 affected tests 10/10, sequences 10/10, full subset
 38/38 ×2, guards 0). CI NOT yet 3×38/38 on one SHA — 9 distinct tests failed
 across 9 runs (systemic slow-runner timing: `networkidle`-as-completion + tight
-timeouts + shared backend state). 004B tests the hypothesis that Vite dev/HMR
-lazy-transform is the systemic source.
+timeouts + shared backend state).
+
+**004B result (production bundle):** the ui-smoke job now builds both apps
+(`npm run build`) and serves via `vite preview` (explicit `preview.proxy`), with
+failure artifacts (trace/screenshot/video + logs). Findings: (1) production
+bundle is ~17% faster than dev/HMR but does NOT eliminate the flake; (2)
+concurrency amplifies failures — 4 concurrent runs → 5-6 failures/run, a lone
+run → 0-1 failure/run; (3) new fail-fast diagnostic surfaced a real backend
+race: `create_creative_asset_endpoint` returns before `db.commit()` (relies on
+`get_db` teardown commit after the response), so the immediate upload-intent
+hits `Creative asset not found` (404). Decision deferred per SCOPE E:
+state-wait refactor vs isolated shards vs larger runner.
 
 Layer 1 NOT closed. A3 NOT started. Registry `license.*` still `blocked`.
 
