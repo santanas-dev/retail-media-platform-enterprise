@@ -1,12 +1,12 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-21 (ROADMAP-RELEASE-SYNC-002 — roadmap truth + owner release decision prep)
+**Last updated:** 2026-08-21 (EPIC-L-SEAT-LEDGER-001A3 — decommission → seat release + exact monthly peak)
 
-**Next Active Workstream:** OWNER-RELEASE-DECISION-002 (R4 checkpoint / pilot / KSO — решение владельца)
+**Next Active Workstream:** EPIC-L-SEAT-LEDGER-001A4 (report API + registry/import-boundaries closure)
 
 **Repository Checkpoint (PS-001):**
-- Payload SHA: `4411561` (UI-SMOKE-STABILITY-004 — production-bundle smoke + creative commit + concurrency group; 3×38/38)
-- State/Docs SHA: `4411561` (last substantive code; ROADMAP-RELEASE-SYNC-002 is a docs-only closure on top)
+- Payload SHA: `bf846e1` (EPIC-L-SEAT-LEDGER-001A3 — decommission + peak)
+- State/Docs SHA: `bf846e1` (EPIC-L-SEAT-LEDGER-001A3)
 
 **ROADMAP-RELEASE-SYNC-002 ✅** — Roadmap truth sync + owner release decision prep.
 
@@ -149,6 +149,81 @@ release of active seat NOT added.
   incl. `self__login`; journeys do not touch the license selector). Behavioral
   gate is the authoritative proof for this change. Row-lock tamper red CI:
   `#32419994031`.
+- Checkpoint by PS-001.
+
+**EPIC-L-SEAT-LEDGER-001A3 ✅** — Decommission → seat release + exact monthly peak.
+
+As-built (per design freeze §"Layer 1 Seat Ledger Design Freeze", decisions #5/#6):
+- Single decommission choke-point `packages/domain/licensing_service.py`:
+  `decommission_device(session, device_id, changed_by, reason, now)` in ONE
+  transaction: (1) server-set `app.rmp_is_admin` RLS context; (2)
+  `SELECT … FOR UPDATE` on `physical_devices` (concurrent decommissions of one
+  device serialize on this row); (3) status check — `inactive` → idempotent
+  no-op, anything other than `active`/`inactive` → `INVALID_TRANSITION` (409);
+  (4) `active → inactive` + release the single open seat (`released_at = now`) +
+  one `DeviceStatusHistory` row (`old_status/new_status/changed_at/reason/
+  source="decommission"` + `changed_by` in `details_json`); (5) an active device
+  without an open seat is still decommissioned and reported `seat_released=false`
+  + `anomaly=true` (reconciliation anomaly — not a 500, no fabricated history).
+- `POST /devices/{device_id}/decommission` (identity route) — requires
+  `devices.manage` (system_admin/security_admin), accepts `reason`, returns
+  `status/seat_released/released_at/transitioned/anomaly`; 404 missing, 409
+  invalid transition, no SQL/GUC leakage. Seat release is ONLY a side effect of
+  the confirmed transition — no separate manual seat-release endpoint, no
+  reactivation (inactive → active).
+- `devices.manage` added to the production seed (`apps/control-api/seed.py`),
+  granted to system_admin + security_admin only (never advertiser/operator/
+  analyst). It was already used by `create_device_code` but never seeded.
+- Exact monthly peak `packages/domain/licensing_repository.py`:
+  `peak_seats_for_month(session, license_id, year, month, timezone=UTC) -> int`.
+  Half-open policy: calendar month `[month_start, next_month_start)` UTC; seat
+  interval `[reserved_at, released_at)`; open seat occupied through
+  `next_month_start`; `released_at == month_start` excluded; `reserved_at ==
+  next_month_start` excluded; straddling interval counted from month start;
+  same-timestamp events grouped ends-before-starts (no false peak from a
+  release+reserve at one instant). Result = exact max of concurrently open
+  intervals (sweep-line), NOT current count / daily snapshot. Query restricted
+  to `license_id` + month-overlapping intervals (never full seat history).
+- Soft enforcement: license state (expired/revoked/missing) is NOT consulted by
+  decommission — it is device lifecycle, not enrollment; an active device never
+  loses its seat from expiry/revocation/over-cap; player/heartbeat/manifest/PoP
+  untouched.
+- No new migration (schema already had `device_status_history` +
+  `license_seats.released_at`) — alembic heads stays 1 (034).
+
+Proof:
+- Unit exact-peak matrix `tests/test_license_peak.py` (17 tests) — overlap,
+  sequential, month-start/next-month boundaries, open interval, release+reserve
+  same-instant, empty, invalid year/month, December rollover.
+- Behavioral `tests/behavioral/test_license_decommission.py` (13 tests) under
+  `retail_media_app` NOBYPASSRLS — transition + history + `changed_by`,
+  idempotent repeat, cap=1 release → re-enroll through the A2 choke-point,
+  expired/revoked/missing never blocks, active-without-seat anomaly,
+  unauthorized 403, ledger hidden without admin context, concurrent decommission
+  (one transition/history/release via FOR UPDATE), exact peak on real intervals.
+- Existing A1/A2/FU license tests stay green — 46 behavioral license tests local
+  (33 A1/A2/FU + 13 A3); CI behavioral gate green.
+- Green CI `#32511602631` — `bf846e1` ✅ (Python unit incl. 17 peak, behavioral
+  incl. 13 A3, import-boundaries, style-tokens, roadmap, UI-smoke 38/38).
+- Tamper proof red CI `#32511818898` — branch `epic-l-a3-tamper` (deleted): seat
+  release disabled + peak→current-count → 7 deterministic failures —
+  `test_onboard_then_decommission_releases_seat`, `test_repeat_decommission_
+  idempotent`, `test_cap1_release_then_new_device_enrolls`, `test_expired_
+  revoked_license_does_not_block_decommission`, `test_concurrent_decommission_
+  single_transition` (release) + `test_exact_peak_real_intervals_and_boundaries`
+  (`0 == 3`), `test_exact_peak_release_reserve_same_instant_no_false_peak`
+  (`0 == 1`) (peak). UI-smoke unaffected. develop has no tamper.
+
+Not done in A3 (deferred to A4): report endpoint / device-seat listing,
+reconciliation report expansion, import-boundaries licensing rule, feature
+status changes, license UI/upload/JWS/CRL (Layer 2), reactivation, manual seat
+release.
+- Registry `license.seat_release` remains `blocked` (registry closure is A4);
+  counts unchanged (58/49/9).
+- OWNER-RELEASE-DECISION-002: Option B confirmed by owner — A3 → A4 →
+  R4-READINESS-001.
+- Layer 1 NOT closed — A1 + A2 (+FU) + A3 done. Next: 001A4.
+- Layer 2 operator walkthrough: PENDING (agent does not set OK).
 - Checkpoint by PS-001.
 
 **UI-SMOKE-STABILITY-004 ✅** — Deterministic 38/38 CI smoke.

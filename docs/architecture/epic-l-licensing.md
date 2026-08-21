@@ -141,8 +141,8 @@ the current tree (commit `1b0452c`).
 
 - **001A1 ✅** — schema/migration + dev-ingest fixture + repository read model.
 - **001A2 ✅** — transactional enrollment choke-point + concurrency proof.
-- **001A3** — decommission/release + exact monthly peak. ← NEXT
-- **001A4** — report API + registry/import-boundaries + full behavioral matrix.
+- **001A3 ✅** — decommission/release + exact monthly peak.
+- **001A4** — report API + registry/import-boundaries + full behavioral matrix. ← NEXT
 - **EPIC-L-SIGNED-LICENSE-002** — only after full Layer 1 closure.
 
 ### 001A1 implementation notes (as-built)
@@ -206,6 +206,35 @@ the current tree (commit `1b0452c`).
 - A2 does NOT: decommission/release, peak_seats_for_month, report endpoint/UI,
   signed upload/JWS/CRL, or feature-registry status changes. `license.*` stays
   blocked. Layer 1 is not closed — registry closure remains A4.
+
+### 001A3 implementation notes (as-built)
+
+- Single decommission choke-point `packages/domain/licensing_service.py`:
+  `decommission_device(session, device_id, changed_by, reason, now)` — server-set
+  admin RLS context, `SELECT … FOR UPDATE` on `physical_devices`, status check
+  (`inactive` idempotent; non-`active`/`inactive` → `INVALID_TRANSITION`),
+  `active → inactive` + release single open seat (`released_at = now`) + one
+  `DeviceStatusHistory` row (`changed_by` in `details_json`). Active device
+  without an open seat → decommissioned with `seat_released=false` +
+  `anomaly=true` (reconciliation anomaly, not a 500).
+- `POST /devices/{device_id}/decommission` (identity route, `devices.manage`) —
+  seat release is ONLY a side effect of the confirmed transition; no manual
+  seat-release endpoint, no reactivation. `devices.manage` added to the
+  production seed (system_admin + security_admin).
+- Exact monthly peak `peak_seats_for_month(session, license_id, year, month,
+  timezone=UTC)` in `licensing_repository.py` — half-open UTC calendar month,
+  sweep-line max of concurrently open intervals, same-timestamp events grouped
+  ends-before-starts, query restricted to `license_id` + month-overlapping
+  intervals. Decision #6 satisfied exactly (no daily snapshots).
+- Soft enforcement: license state never blocks decommission; an active device
+  never loses its seat from expiry/revocation/over-cap.
+- No new migration (schema already carried `device_status_history` +
+  `license_seats.released_at`).
+- Proof: 17 unit peak-matrix tests + 13 behavioral tests (lifecycle / idempotency
+  / cap=1 reuse / softness / 403 / RLS / concurrent decommission / exact peak).
+  Green CI `#32511602631` (`bf846e1`); tamper red CI `#32511818898`
+  (branch `epic-l-a3-tamper`, deleted) — 7 deterministic failures across
+  seat-release and peak categories.
 
 ### Layer 1 non-goals (unchanged from intake)
 
