@@ -39,6 +39,24 @@ async def health_http_server():
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
+            elif self.path == "/version":
+                from packages.version import build_version_payload
+                try:
+                    payload = build_version_payload(SERVICE_NAME)
+                    body = json_mod.dumps(payload).encode()
+                    code = 200
+                except RuntimeError as exc:
+                    payload = {
+                        "status": "degraded", "service": SERVICE_NAME,
+                        "error": str(exc),
+                    }
+                    body = json_mod.dumps(payload).encode()
+                    code = 503
+                self.send_response(code)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
             else:
                 self.send_response(404)
                 self.end_headers()

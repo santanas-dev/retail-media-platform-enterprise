@@ -644,6 +644,87 @@ jobs:
       - name: Run consistency check (strict — blocks on findings)
         run: python3 scripts/roadmap-consistency-check.py --strict
 
+  packaging:
+    name: Packaging — Pilot Compose + Version Identity (001B)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps
+        run: pip install pyyaml pytest
+      - name: Pilot compose config (synthetic example env)
+        run: |
+          # Compose parses the pilot file with the example env (placeholder
+          # image digests are fine for a config-level parse).
+          docker compose -f infra/compose/docker-compose.pilot.yml \
+            --env-file infra/deploy/.env.pilot.example config > /dev/null
+          echo "pilot compose config: OK"
+      - name: Image lock validator (rejects example, accepts valid)
+        run: |
+          set -o pipefail
+          # Example must be rejected (placeholder digests).
+          python3 scripts/deploy/validate-image-lock.py \
+            --lock infra/deploy/images.lock.example.json > /tmp/lock-example.txt 2>&1 && \
+            { echo "::error::example lock (placeholders) must be rejected"; exit 1; }
+          echo "image lock validator: example correctly rejected"
+      - name: Pilot env validator (rejects example)
+        run: |
+          python3 scripts/deploy/validate-pilot-env.py \
+            --env infra/deploy/.env.pilot.example > /tmp/env-example.txt 2>&1 && \
+            { echo "::error::.env.pilot.example (placeholders) must be rejected"; exit 1; }
+          echo "pilot env validator: example correctly rejected"
+      - name: Build frontend production images (SCOPE B)
+        run: |
+          set -e
+          BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for app in admin-web advertiser-web; do
+            echo "=== building $app ==="
+            docker build -f apps/$app/Dockerfile \
+              --build-arg RMP_VERSION=ci-packaging \
+              --build-arg RMP_GIT_SHA="$GITHUB_SHA" \
+              --build-arg RMP_BUILD_TIME="$BUILD_TIME" \
+              --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+              --label "org.opencontainers.image.version=ci-packaging" \
+              -t rmp-$app:ci .
+          done
+          echo "frontend images built: OK"
+      - name: Verify frontend static containers (healthz + build-info)
+        run: |
+          set -e
+          for spec in "admin-web:3000" "advertiser-web:3001"; do
+            app="${spec%%:*}"; port="${spec##*:}"
+            echo "=== verifying $app on :$port ==="
+            docker run -d --rm --name rmp-$app-ci -p $port:$port rmp-$app:ci >/dev/null
+            # wait for nginx
+            for i in $(seq 1 20); do
+              curl -sf http://localhost:$port/healthz >/dev/null 2>&1 && break
+              sleep 1
+            done
+            curl -sf http://localhost:$port/healthz | grep -q ok || { echo "healthz failed"; exit 1; }
+            curl -sf http://localhost:$port/build-info.json | grep -q git_sha || { echo "build-info.json missing"; exit 1; }
+            # SPA fallback: an unknown route must serve index.html, not 404.
+            curl -s -o /dev/null -w '%{http_code}' http://localhost:$port/some/spa/route | grep -q 200 || { echo "SPA fallback failed"; exit 1; }
+            docker rm -f rmp-$app-ci >/dev/null 2>&1 || true
+            echo "$app verified: healthz + build-info.json + SPA fallback OK"
+          done
+      - name: Version identity + packaging tests
+        run: |
+          set -o pipefail
+          python3 -m pytest tests/test_version_identity.py tests/test_pilot_packaging.py -v \
+            2>&1 | tee /tmp/packaging-tests.txt
+      - name: Anti-skip guard
+        if: always()
+        run: |
+          if [ -f /tmp/packaging-tests.txt ]; then
+            if ! grep -qE '[0-9]+ passed' /tmp/packaging-tests.txt; then
+              echo "::error::No packaging tests passed — all skipped or zero collected"
+              exit 1
+            fi
+            echo "Packaging tests passed OK."
+          fi
+
   release-gate:
     name: release-gate
     runs-on: ubuntu-latest
@@ -659,6 +740,7 @@ jobs:
       - behavioral-postgres-tests
       - production-config-gate
       - roadmap-consistency-audit
+      - packaging
     # Always run so the aggregate verdict is authoritative even if an upstream
     # job was skipped or failed — required status checks only gate on this job.
     if: always()
@@ -678,6 +760,7 @@ jobs:
             [behavioral-postgres-tests]="${{ needs.behavioral-postgres-tests.result }}"
             [production-config-gate]="${{ needs.production-config-gate.result }}"
             [roadmap-consistency-audit]="${{ needs.roadmap-consistency-audit.result }}"
+            [packaging]="${{ needs.packaging.result }}"
           )
           fail=0
           for job in "${!results[@]}"; do

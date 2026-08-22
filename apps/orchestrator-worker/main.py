@@ -53,6 +53,18 @@ async def health_http_server():
             if self.path == "/health/live":
                 body = json_mod.dumps({"status": "ok", "service": SERVICE_NAME}).encode()
                 code = 200
+            elif self.path == "/version":
+                from packages.version import build_version_payload
+                try:
+                    payload = build_version_payload(SERVICE_NAME)
+                    body = json_mod.dumps(payload).encode()
+                    code = 200
+                except RuntimeError as exc:
+                    body = json_mod.dumps({
+                        "status": "degraded", "service": SERVICE_NAME,
+                        "error": str(exc),
+                    }).encode()
+                    code = 503
             elif self.path == "/health/ready":
                 state = get_health_state()
                 payload = state.to_dict()
