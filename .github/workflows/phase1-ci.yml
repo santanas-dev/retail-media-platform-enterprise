@@ -19,21 +19,8 @@ on:
       - "docs/**"
       - "PROJECT_STATE.md"
   pull_request:
-    paths:
-      - "apps/control-api/**"
-      - "apps/device-gateway/**"
-      - "apps/pop-ingestor/**"
-      - "apps/orchestrator-worker/**"
-      - "apps/adapter-workers/**"
-      - "apps/admin-web/**"
-      - "apps/advertiser-web/**"
-      - "packages/**"
-      - "infra/compose/**"
-      - "tests/**"
-      - "scripts/**"
-      - ".github/workflows/**"
-      - "docs/**"
-      - "PROJECT_STATE.md"
+    branches:
+      - main
 
 jobs:
   python-check:
