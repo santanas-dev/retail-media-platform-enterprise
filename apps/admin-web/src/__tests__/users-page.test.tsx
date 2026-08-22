@@ -4,6 +4,7 @@ import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import UsersPage from "../pages/UsersPage";
 import { AuthProvider } from "../auth/AuthContext";
+import { getPermissionDescription, ALL_PERMISSION_CODES } from "../auth/permissionDescriptions";
 
 const SEED_USERS = [
   { id: "u1", code: "ADMIN", username: "admin", display_name: "Администратор", auth_provider: "ad", status: "active" },
@@ -530,5 +531,495 @@ describe("UsersPage — deactivate", () => {
     // Human-readable, no [object Object]
     const body = document.body.textContent || "";
     expect(body).not.toContain("[object Object]");
+  });
+});
+
+// ── D1: User classification tabs ──
+
+const D1_USERS = [
+  { id: "u-ad", code: "ADMIN", username: "admin", display_name: "Администратор", auth_provider: "ad", status: "active" },
+  { id: "u-bg", code: "BG", username: "breakglass", display_name: "BreakGlass", auth_provider: "local_break_glass", status: "active" },
+  { id: "u-adv1", code: "ADV1", username: "advertiser_test", display_name: "Рекламодатель Тест", auth_provider: "local_advertiser", status: "active" },
+  { id: "u-adv2", code: "ADV2", username: "adv_smoke", display_name: "Smoke Adv", auth_provider: "local_advertiser", status: "active" },
+];
+
+function mockD1Session() {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = String(input);
+    if (url.endsWith("/auth/refresh")) {
+      return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+    }
+    if (url.endsWith("/me")) {
+      return new Response(JSON.stringify({
+        sub: "u-ad", auth_provider: "ad", username: "admin", display_name: "Admin",
+        permissions: ["users.read", "users.manage", "roles.manage"],
+      }), { status: 200 });
+    }
+    if (url.includes("/users?limit=")) {
+      return new Response(JSON.stringify({ items: D1_USERS, total: 4, limit: 50, offset: 0 }), { status: 200 });
+    }
+    return new Response(JSON.stringify([]), { status: 200 });
+  });
+}
+
+describe("UsersPage — D1 tab filtering", () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it("renders tab bar with Все/Внутренние/Рекламодатели and user counts", async () => {
+    mockD1Session();
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-tab-bar")).toBeTruthy();
+    });
+
+    expect(screen.getByTestId("users-tab-all")).toBeTruthy();
+    expect(screen.getByTestId("users-tab-internal")).toBeTruthy();
+    expect(screen.getByTestId("users-tab-advertiser")).toBeTruthy();
+
+    // Count labels: 4 total, 2 internal (ad + break_glass), 2 advertiser
+    expect(screen.getByTestId("users-tab-all").textContent).toContain("4");
+    expect(screen.getByTestId("users-tab-internal").textContent).toContain("2");
+    expect(screen.getByTestId("users-tab-advertiser").textContent).toContain("2");
+  });
+
+  it("default Все tab shows all 4 users", async () => {
+    mockD1Session();
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-table-all")).toBeTruthy();
+    });
+
+    // All users visible in one table
+    expect(screen.getByText("Администратор")).toBeTruthy();
+    expect(screen.getByText("BreakGlass")).toBeTruthy();
+    expect(screen.getByText("Рекламодатель Тест")).toBeTruthy();
+    expect(screen.getByText("Smoke Adv")).toBeTruthy();
+  });
+
+  it("Внутренние tab shows only internal users", async () => {
+    const user = userEvent.setup();
+    mockD1Session();
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-tab-internal")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("users-tab-internal"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-table-internal")).toBeTruthy();
+    });
+
+    // Internal users visible
+    expect(screen.getByText("Администратор")).toBeTruthy();
+    expect(screen.getByText("BreakGlass")).toBeTruthy();
+    // Advertiser users NOT visible
+    expect(screen.queryByText("Рекламодатель Тест")).toBeNull();
+    expect(screen.queryByText("Smoke Adv")).toBeNull();
+  });
+
+  it("Рекламодатели tab shows only advertiser users", async () => {
+    const user = userEvent.setup();
+    mockD1Session();
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-tab-advertiser")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("users-tab-advertiser"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-table-advertiser")).toBeTruthy();
+    });
+
+    // Advertiser users visible
+    expect(screen.getByText("Рекламодатель Тест")).toBeTruthy();
+    expect(screen.getByText("Smoke Adv")).toBeTruthy();
+    // Internal users NOT visible
+    expect(screen.queryByText("Администратор")).toBeNull();
+    expect(screen.queryByText("BreakGlass")).toBeNull();
+  });
+
+  it("each user row has data-testid user-row-{username}", async () => {
+    mockD1Session();
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-table-all")).toBeTruthy();
+    });
+
+    for (const u of D1_USERS) {
+      expect(screen.getByTestId(`user-row-${u.username}`)).toBeTruthy();
+    }
+  });
+
+  it("each row shows provider label in data-testid user-provider-{username}", async () => {
+    mockD1Session();
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-provider-admin")).toBeTruthy();
+    });
+
+    // Internal: Active Directory, Локальный (break-glass)
+    expect(screen.getByTestId("user-provider-admin").textContent).toContain("Active Directory");
+    expect(screen.getByTestId("user-provider-breakglass").textContent).toContain("break-glass");
+    // Advertiser: Локальный (рекламодатель)
+    expect(screen.getByTestId("user-provider-advertiser_test").textContent).toContain("рекламодатель");
+  });
+
+  it("empty state shows when internal tab has no users", async () => {
+    const user = userEvent.setup();
+    // Mock with only advertiser users
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (url.endsWith("/me")) {
+        return new Response(JSON.stringify({
+          sub: "u-ad", auth_provider: "ad", username: "admin", display_name: "Admin",
+          permissions: ["users.read", "users.manage"],
+        }), { status: 200 });
+      }
+      if (url.includes("/users?limit=")) {
+        return new Response(JSON.stringify({
+          items: [{ id: "u-adv1", username: "adv_only", display_name: "Adv Only", auth_provider: "local_advertiser", status: "active" }],
+          total: 1, limit: 50, offset: 0,
+        }), { status: 200 });
+      }
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-tab-internal")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("users-tab-internal"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-empty-internal")).toBeTruthy();
+    });
+    expect(screen.getByTestId("users-empty-internal").textContent).toContain("Нет внутренних пользователей");
+  });
+
+  it("empty state shows when advertiser tab has no users", async () => {
+    const user = userEvent.setup();
+    // Mock with only internal users
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (url.endsWith("/me")) {
+        return new Response(JSON.stringify({
+          sub: "u-ad", auth_provider: "ad", username: "admin", display_name: "Admin",
+          permissions: ["users.read", "users.manage"],
+        }), { status: 200 });
+      }
+      if (url.includes("/users?limit=")) {
+        return new Response(JSON.stringify({
+          items: [{ id: "u-ad", username: "admin", display_name: "Admin", auth_provider: "ad", status: "active" }],
+          total: 1, limit: 50, offset: 0,
+        }), { status: 200 });
+      }
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-tab-advertiser")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("users-tab-advertiser"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-empty-advertiser")).toBeTruthy();
+    });
+    expect(screen.getByTestId("users-empty-advertiser").textContent).toContain("Нет пользователей рекламодателей");
+  });
+
+  it("existing action buttons (roles/deactivate/reset) render on internal tab", async () => {
+    const user = userEvent.setup();
+    mockD1Session();
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-tab-internal")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("users-tab-internal"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("users-table-internal")).toBeTruthy();
+    });
+
+    // Role buttons visible (roles.manage granted)
+    const roleBtns = screen.getAllByTestId("user-roles-open");
+    expect(roleBtns.length).toBeGreaterThanOrEqual(1);
+
+    // Deactivate button for active internal user
+    expect(screen.getByTestId("user-deactivate-open-u-bg")).toBeTruthy();
+
+    // Reset button for local_break_glass user
+    expect(screen.getByTestId("user-reset-password-open-u-bg")).toBeTruthy();
+  });
+});
+
+// ── D2: Permission descriptions ──
+
+describe("UsersPage — D2 permission descriptions", () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it("permission catalog renders in role management panel", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (url.endsWith("/me")) {
+        return new Response(JSON.stringify({
+          sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin",
+          permissions: ["users.read", "users.manage", "roles.manage"],
+        }), { status: 200 });
+      }
+      if (url.includes("/users?limit=")) {
+        return new Response(JSON.stringify({
+          items: [{ id: "u1", username: "admin", display_name: "Admin", auth_provider: "ad", status: "active" }],
+          total: 1, limit: 50, offset: 0,
+        }), { status: 200 });
+      }
+      if (url.match(/\/users\/u1$/)) {
+        return new Response(JSON.stringify({
+          id: "u1", username: "admin", display_name: "Admin", auth_provider: "ad", status: "active",
+          must_change_password: false, roles: [
+            { id: "ur1", role_id: "r1", role_code: "system_admin", role_name: "Системный администратор", scope_type: null, scope_id: null },
+          ],
+        }), { status: 200 });
+      }
+      if (url.endsWith("/roles")) {
+        return new Response(JSON.stringify([
+          { id: "r1", code: "system_admin", name: "Системный администратор", description: "", is_system: true },
+        ]), { status: 200 });
+      }
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-roles-open")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("user-roles-open"));
+
+    // Wait for role panel
+    await waitFor(() => {
+      expect(screen.getByTestId("user-roles-panel")).toBeTruthy();
+    });
+
+    // Permission catalog visible
+    expect(screen.getByTestId("permission-catalog")).toBeTruthy();
+
+    // Count label
+    expect(screen.getByText(new RegExp(`Список прав \\(${ALL_PERMISSION_CODES.length}\\)`))).toBeTruthy();
+  });
+
+  it("known permission shows human-readable label + description", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (url.endsWith("/me")) {
+        return new Response(JSON.stringify({
+          sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin",
+          permissions: ["users.read", "users.manage", "roles.manage"],
+        }), { status: 200 });
+      }
+      if (url.includes("/users?limit=")) {
+        return new Response(JSON.stringify({
+          items: [{ id: "u1", username: "admin", display_name: "Admin", auth_provider: "ad", status: "active" }],
+          total: 1, limit: 50, offset: 0,
+        }), { status: 200 });
+      }
+      if (url.match(/\/users\/u1$/)) {
+        return new Response(JSON.stringify({
+          id: "u1", username: "admin", display_name: "Admin", auth_provider: "ad", status: "active",
+          must_change_password: false, roles: [],
+        }), { status: 200 });
+      }
+      if (url.endsWith("/roles")) {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-roles-open")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("user-roles-open"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("permission-catalog")).toBeTruthy();
+    });
+
+    // Check users.manage — code stored as "users-manage"
+    const safeCode = "users-manage";
+    expect(screen.getByTestId(`permission-item-${safeCode}`)).toBeTruthy();
+    expect(screen.getByTestId(`permission-label-${safeCode}`).textContent).toBe("Управление пользователями");
+    expect(screen.getByTestId(`permission-code-${safeCode}`).textContent).toContain("users.manage");
+    expect(screen.getByTestId(`permission-description-${safeCode}`).textContent).toContain("деактивировать");
+
+    // Check campaigns.manage
+    const safeCampaign = "campaigns-manage";
+    expect(screen.getByTestId(`permission-label-${safeCampaign}`).textContent).toBe("Управление кампаниями");
+    expect(screen.getByTestId(`permission-description-${safeCampaign}`).textContent).toContain("флайты");
+  });
+
+  it("unknown permission fallback shows code as label + placeholder description", () => {
+    const desc = getPermissionDescription("fake.unknown.permission");
+    expect(desc.name).toBe("fake.unknown.permission");
+    expect(desc.code).toBe("fake.unknown.permission");
+    expect(desc.description).toBe("Описание права пока не задано");
+  });
+
+  it("all registered permissions have non-empty name and description", () => {
+    for (const code of ALL_PERMISSION_CODES) {
+      const desc = getPermissionDescription(code);
+      expect(desc.name).toBeTruthy();
+      expect(desc.name.length).toBeGreaterThan(0);
+      expect(desc.description).toBeTruthy();
+      expect(desc.description.length).toBeGreaterThan(5);
+      // No raw [object Object]
+      expect(desc.description).not.toContain("[object Object]");
+    }
+    // Check count matches seed
+    expect(ALL_PERMISSION_CODES.length).toBeGreaterThanOrEqual(20);
+  });
+
+  it("role code is still displayed in monospace next to role name", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (url.endsWith("/me")) {
+        return new Response(JSON.stringify({
+          sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin",
+          permissions: ["users.read", "users.manage", "roles.manage"],
+        }), { status: 200 });
+      }
+      if (url.includes("/users?limit=")) {
+        return new Response(JSON.stringify({
+          items: [{ id: "u1", username: "admin", display_name: "Admin", auth_provider: "ad", status: "active" }],
+          total: 1, limit: 50, offset: 0,
+        }), { status: 200 });
+      }
+      if (url.match(/\/users\/u1$/)) {
+        return new Response(JSON.stringify({
+          id: "u1", username: "admin", display_name: "Admin", auth_provider: "ad", status: "active",
+          must_change_password: false, roles: [
+            { id: "ur1", role_id: "r1", role_code: "system_admin", role_name: "Системный администратор", scope_type: null, scope_id: null },
+          ],
+        }), { status: 200 });
+      }
+      if (url.endsWith("/roles")) {
+        return new Response(JSON.stringify([
+          { id: "r1", code: "system_admin", name: "Системный администратор", description: "", is_system: true },
+        ]), { status: 200 });
+      }
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-roles-open")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("user-roles-open"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-roles-panel")).toBeTruthy();
+    });
+
+    // Role code in monospace <code> tag next to role name
+    const panel = screen.getByTestId("user-roles-panel");
+    expect(panel.textContent).toContain("system_admin");
+    expect(panel.textContent).toContain("Системный администратор");
+  });
+
+  it("assign role flow still works with permission catalog visible", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (url.endsWith("/me")) {
+        return new Response(JSON.stringify({
+          sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin",
+          permissions: ["users.read", "users.manage", "roles.manage"],
+        }), { status: 200 });
+      }
+      if (url.includes("/users?limit=")) {
+        return new Response(JSON.stringify({
+          items: [{ id: "u1", username: "admin", display_name: "Admin", auth_provider: "ad", status: "active" }],
+          total: 1, limit: 50, offset: 0,
+        }), { status: 200 });
+      }
+      if (url.match(/\/users\/u1$/)) {
+        return new Response(JSON.stringify({
+          id: "u1", username: "admin", display_name: "Admin", auth_provider: "ad", status: "active",
+          must_change_password: false, roles: [],
+        }), { status: 200 });
+      }
+      if (url.endsWith("/roles")) {
+        return new Response(JSON.stringify([
+          { id: "r1", code: "system_admin", name: "Системный администратор", description: "", is_system: true },
+          { id: "r2", code: "operator", name: "Оператор", description: "", is_system: false },
+        ]), { status: 200 });
+      }
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-roles-open")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("user-roles-open"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-roles-panel")).toBeTruthy();
+    });
+
+    // Role dropdown and save button still functional
+    expect(screen.getByTestId("user-roles-role")).toBeTruthy();
+    expect(screen.getByTestId("user-roles-save")).toBeTruthy();
+
+    // Permission catalog also visible
+    expect(screen.getByTestId("permission-catalog")).toBeTruthy();
   });
 });

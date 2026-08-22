@@ -135,7 +135,7 @@ function DefaultFallback({ error, onRefresh }: DefaultFallbackProps) {
           fontSize: "0.95rem",
           border: "1px solid #ccc",
           borderRadius: "6px",
-          background: "#fff",
+          background: "var(--rmp-bg-surface)",
           cursor: "pointer",
         }}
       >

@@ -2,6 +2,8 @@
 Identity API — Users, Roles, Permissions, and Audit Events.
 """
 
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from packages.api.dependencies import (
@@ -34,6 +36,20 @@ from packages.domain.schemas import (
 )
 
 router = APIRouter()
+
+
+def _generate_user_code(username: str) -> str:
+    """Generate a unique, server-derived user code.
+
+    The previous ``username.upper().replace(" ", "_")[:8]`` truncated to 8
+    chars, so any two usernames sharing a prefix (e.g. every ``smoke_adv_*``)
+    collided on the ``ix_users_code`` unique constraint → HTTP 500 on the
+    second create. A bounded prefix (≤32) plus an 8-hex UUID suffix keeps the
+    code ≤ 41 chars (well under the ``users.code`` String(64) limit) and unique
+    regardless of shared prefixes.
+    """
+    prefix = username.upper().replace(" ", "_")[:32]
+    return f"{prefix}-{uuid.uuid4().hex[:8]}"
 
 
 # ---------------------------------------------------------------------------
@@ -119,7 +135,6 @@ async def create_local_advertiser(
     _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("users.manage")),
 ):
-    import uuid as _uuid
     from packages.security.password import hash_password
 
     existing = await repository.find_user_by_username(db, body.username)
@@ -152,9 +167,9 @@ async def create_local_advertiser(
     if advertiser_role is None:
         raise HTTPException(status_code=500, detail="Advertiser role not found in system")
 
-    code = body.username.upper().replace(" ", "_")[:8]
+    code = _generate_user_code(body.username)
 
-    user_id = str(_uuid.uuid4())
+    user_id = str(uuid.uuid4())
     user = await repository.create_local_advertiser_user(
         db,
         user_id=user_id,

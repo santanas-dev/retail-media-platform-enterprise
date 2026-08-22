@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
+import { ThemeProvider } from "../theme/ThemeContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Layout from "../components/Layout";
 import AdvertiserApplicationsPage from "../pages/AdvertiserApplicationsPage";
@@ -51,7 +52,9 @@ function setupFetch(overrides: Record<string, unknown> = {}) {
 
 function renderPage() {
   const router = createRouter();
-  return render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+  return render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 }
 
 const MOCK_APPS = {

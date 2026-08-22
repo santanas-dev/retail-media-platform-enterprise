@@ -114,5 +114,65 @@ test("Overclaim (approval Итог=✅ without smoke)", overclaim_blocked)
 # Test 3: Clean
 test("Clean workbook → 0 findings", lambda wb: None, expect_violation=False)
 
+# Test 4 (Direction C): Orphan smoke — remove smoke ref from registry
+REGISTRY_ORIG = REPO_ROOT / "docs" / "product" / "feature-registry.yaml"
+
+
+def run_guard_direct():
+    """Run guard directly (no tamper) — for registry tamper tests."""
+    result = subprocess.run(
+        [sys.executable, str(GUARD_SCRIPT)],
+        capture_output=True, text=True, timeout=30,
+    )
+    return result.stdout
+
+
+def test_registry_tamper(name, tamper_fn, expect_violation=True):
+    """Tamper registry, run guard, restore."""
+    global passed, failed
+    backup = str(REGISTRY_ORIG) + ".bak"
+    shutil.copy2(REGISTRY_ORIG, backup)
+    try:
+        tamper_fn()
+        stdout = run_guard_direct()
+        clean = "0 violations" in stdout
+
+        if expect_violation and not clean:
+            print(f"  ✅ PASS: {name}")
+            passed += 1
+        elif not expect_violation and clean:
+            print(f"  ✅ PASS: {name} (clean)")
+            passed += 1
+        else:
+            print(f"  ❌ FAIL: {name}")
+            print(f"     Expected: {'violation' if expect_violation else 'clean'}")
+            print(f"     Got: {'clean' if clean else 'violations found'}")
+            failed += 1
+    finally:
+        shutil.copy2(backup, REGISTRY_ORIG)
+        os.remove(backup)
+
+
+def orphan_brand_smoke():
+    """Remove smoke reference from advertiser.brand_crud."""
+    with open(REGISTRY_ORIG) as f:
+        content = f.read()
+    # Change the smoke field to a non-existent name
+    tampered = content.replace(
+        "smoke: test_uismoke__advertiser__brand_crud",
+        "smoke: test_uismoke__advertiser__brand_crud_NONEXISTENT"
+    )
+    if tampered == content:
+        raise RuntimeError("Failed to find smoke reference to tamper")
+    with open(REGISTRY_ORIG, "w") as f:
+        f.write(tampered)
+
+
+test_registry_tamper(
+    "Direction C: orphan smoke → SMOKE-ORPHAN detected",
+    orphan_brand_smoke,
+    expect_violation=True,
+)
+
 print(f"\n=== Results: {passed} passed, {failed} failed ===")
 sys.exit(0 if failed == 0 else 1)

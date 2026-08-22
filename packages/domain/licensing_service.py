@@ -1,0 +1,584 @@
+"""
+EPIC-L — Licensing enrollment choke-point (Layer 1, task 001A2).
+
+Single transactional boundary between new device enrollment and the seat
+ledger. The device_onboard route calls exactly ONE method here
+(:func:`authorize_and_reserve_enrollment`) — there are no scattered license
+checks in the route or in ``repository.py``.
+
+Design freeze is authoritative:
+docs/architecture/epic-l-licensing.md §"Layer 1 Seat Ledger Design Freeze".
+
+Contract:
+- The RLS context (``app.rmp_is_admin``) is set by THIS server code, never by
+  a client parameter. The onboarding endpoint is unauthenticated (device_code),
+  so the choke-point deliberately elevates to service/admin context for the
+  single transaction to read the license grant + seat ledger.
+- The effective grant is read with ``SELECT ... FOR UPDATE`` so concurrent
+  enrollments for the same installation serialize on one grant row. A bare
+  ``COUNT(*)`` before INSERT is NOT used as the capacity guarantee.
+- On any denial the caller aborts the transaction; the route reverts the
+  onboarding-code claim and returns HTTP 409 (see SCOPE C of the task).
+- Effective state (active/grace/expired/revoked/missing) is computed from
+  dates via the A1 read model — never from a stored mutable status.
+- Soft enforcement: denial only blocks NEW enrollment. It never changes the
+  status of already-active devices, releases their seats, or touches
+  heartbeat/device-auth/player/manifest/PoP paths.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Awaitable, Callable
+
+from sqlalchemy import func, select, text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from packages.domain.licensing import LicenseGrant, LicenseSeat
+from packages.domain.licensing_repository import (
+    ACTIVE,
+    EXPIRED,
+    GRACE,
+    MISSING,
+    REVOKED,
+    capacity_of,
+    compute_effective_state,
+    count_occupied_seats,
+    effective_grant_query,
+    free_of,
+    get_effective_license,
+)
+from packages.domain.models import DeviceStatusHistory, PhysicalDevice
+
+# Stable denial codes (SCOPE C). These are the ONLY codes this layer emits.
+DENIAL_MESSAGES = {
+    "LICENSE_MISSING": "Лицензия не найдена. Обратитесь к оператору платформы.",
+    "LICENSE_REVOKED": "Лицензия отозвана. Обратитесь к оператору платформы.",
+    "LICENSE_EXPIRED": "Срок действия лицензии истёк. Обратитесь к оператору платформы.",
+}
+
+# Effective state → denial code mapping (missing/revoked/expired only; grace is
+# allowed, active is allowed).
+_STATE_DENIAL_CODE = {
+    MISSING: "LICENSE_MISSING",
+    REVOKED: "LICENSE_REVOKED",
+    EXPIRED: "LICENSE_EXPIRED",
+}
+
+
+@dataclass
+class EnrollmentDecision:
+    """Result of the enrollment choke-point.
+
+    ``allowed=False`` carries a stable ``code`` + Russian ``message`` for the
+    route to surface as HTTP 409. ``allowed=True`` carries the created device
+    and reserved seat; ``state``/``in_grace`` reflect the computed effective
+    state so grace can be surfaced in the success response/audit.
+    """
+
+    allowed: bool
+    code: str | None = None
+    message: str | None = None
+    state: str | None = None
+    in_grace: bool = False
+    grant: "LicenseGrant | None" = None
+    device: "PhysicalDevice | None" = None
+    seat: "LicenseSeat | None" = None
+    capacity: int = 0
+    occupied: int = 0
+    free: int = 0
+
+    @classmethod
+    def denied(cls, code: str, *, state: str | None, capacity: int = 0,
+               occupied: int = 0) -> "EnrollmentDecision":
+        msg = DENIAL_MESSAGES.get(code, "Регистрация устройства отклонена.")
+        return cls(
+            allowed=False,
+            code=code,
+            message=msg,
+            state=state,
+            capacity=capacity,
+            occupied=occupied,
+            free=free_of(capacity, occupied),
+        )
+
+    @classmethod
+    def seat_limit(cls, *, state: str, capacity: int, occupied: int) -> "EnrollmentDecision":
+        return cls(
+            allowed=False,
+            code="LICENSE_SEAT_LIMIT",
+            message=(
+                f"Достигнут лимит {capacity} устройств. "
+                "Обратитесь к оператору платформы."
+            ),
+            state=state,
+            capacity=capacity,
+            occupied=occupied,
+            free=0,
+        )
+
+
+@dataclass
+class ReconciliationResult:
+    """Result of the grandfather reconciliation pass."""
+
+    scanned_active: int
+    created_seats: int
+    overage: bool = False
+
+
+async def set_licensing_admin_context(session: AsyncSession) -> None:
+    """Set the transaction-local service/admin RLS context (server-set).
+
+    This is the sanctioned elevation for the licensing choke-point: the
+    license tables are operator/service scope (RLS = app.rmp_is_admin), and the
+    onboarding endpoint is unauthenticated. The context is transaction-local
+    (``set_config(..., true)``) and dies with the transaction.
+    """
+    await session.execute(
+        text("SELECT set_config('app.rmp_is_admin', 'true', true)")
+    )
+
+
+async def lock_current_grant(session: AsyncSession) -> "LicenseGrant | None":
+    """Return the single effective grant, locked with ``SELECT ... FOR UPDATE``.
+
+    Priority is status-based (see
+    :func:`licensing_repository.effective_grant_query`): the 'current' grant
+    outranks any 'revoked' grant regardless of ``issued_at``; 'revoked' is
+    chosen only when no 'current' exists. All enrollments for this installation
+    serialize on this one row. Under NOBYPASSRLS the caller must already have
+    set the admin context (the RLS policy admits the SELECT and the row lock is
+    held until commit/rollback).
+    """
+    result = await session.execute(effective_grant_query(lock=True))
+    return result.scalar_one_or_none()
+
+
+async def reserve_seat(
+    session: AsyncSession,
+    *,
+    grant_id: str,
+    device_id: str,
+    now: datetime,
+) -> "LicenseSeat":
+    """Reserve an open seat for a device inside the current transaction.
+
+    ``grant_id`` is the internal ``license_grants.id`` (the FK target), NOT the
+    business ``license_id`` string. The partial unique index
+    ``uq_license_seats_open_per_device`` rejects a second open seat for the
+    same device; a unique violation rolls the whole transaction back.
+    """
+    seat = LicenseSeat(
+        license_id=grant_id,
+        device_id=device_id,
+        reserved_at=now,
+    )
+    session.add(seat)
+    await session.flush()
+    return seat
+
+
+async def authorize_and_reserve_enrollment(
+    session: AsyncSession,
+    *,
+    create_device: Callable[[], Awaitable["PhysicalDevice"]],
+    now: datetime,
+) -> EnrollmentDecision:
+    """Single enrollment choke-point.
+
+    In one DB transaction this:
+      1. sets the transaction-local service/admin RLS context (server-set),
+      2. locks the single current grant with SELECT ... FOR UPDATE,
+      3. computes the effective state (active/grace/expired/revoked/missing),
+      4. counts occupied seats (open seats on active devices) post-lock,
+      5. enforces capacity (occupied < max_devices + overage_allowance),
+      6. mints the device via the injected ``create_device`` factory,
+      7. reserves a seat for the device.
+
+    Any denial returns ``EnrollmentDecision(allowed=False)`` with the stable
+    code + Russian message; the caller aborts the transaction. Device creation
+    is injected so the route keeps ``repository.create_physical_device_onboard``
+    as the single source of device-minting truth.
+    """
+    # 1. Server-set RLS context — not from client parameters.
+    await set_licensing_admin_context(session)
+
+    # 2. Row lock: serialize all enrollments for this installation.
+    grant = await lock_current_grant(session)
+
+    # 3. Effective state from dates, not status.
+    state = compute_effective_state(grant, now)
+
+    denial_code = _STATE_DENIAL_CODE.get(state)
+    if denial_code is not None:
+        return EnrollmentDecision.denied(denial_code, state=state)
+
+    # grant is guaranteed non-None here: MISSING is the only state produced by
+    # a None grant, and it was already denied above.
+    assert grant is not None
+    in_grace = state == GRACE
+
+    # 4. Occupied seats (post-lock).
+    occupied = await count_occupied_seats(session)
+    capacity = capacity_of(grant)  # grant is non-None here (state is active/grace)
+
+    # 5. Capacity check.
+    if occupied >= capacity:
+        return EnrollmentDecision.seat_limit(
+            state=state, capacity=capacity, occupied=occupied,
+        )
+
+    # 6. Mint device (in the same transaction).
+    device = await create_device()
+    await session.flush()
+
+    # 7. Reserve the seat.
+    seat = await reserve_seat(
+        session, grant_id=grant.id, device_id=device.id, now=now,
+    )
+
+    return EnrollmentDecision(
+        allowed=True,
+        state=state,
+        in_grace=in_grace,
+        grant=grant,
+        device=device,
+        seat=seat,
+        capacity=capacity,
+        occupied=occupied + 1,
+        free=free_of(capacity, occupied + 1),
+    )
+
+
+async def reconcile_existing_fleet(
+    session: AsyncSession,
+    *,
+    now: datetime,
+) -> ReconciliationResult:
+    """Grandfather existing active devices (SCOPE B #3).
+
+    Idempotently creates one open seat for every ``physical_devices`` row whose
+    status is 'active' and that has no open seat yet. Existing active devices
+    are seated even if the fleet already exceeds the current capacity (that
+    state is reported as overage and only blocks NEW enrollment). Inactive /
+    unregistered devices are never seated. Re-running creates no duplicates
+    (the partial unique index plus the outer-join filter are both idempotent).
+    """
+    await set_licensing_admin_context(session)
+
+    grant = await lock_current_grant(session)
+    if grant is None:
+        return ReconciliationResult(scanned_active=0, created_seats=0)
+
+    missing = await session.execute(
+        select(PhysicalDevice.id)
+        .outerjoin(
+            LicenseSeat,
+            (LicenseSeat.device_id == PhysicalDevice.id)
+            & (LicenseSeat.released_at.is_(None)),
+        )
+        .where(PhysicalDevice.status == "active")
+        .where(LicenseSeat.id.is_(None))
+    )
+    device_ids = list(missing.scalars().all())
+
+    created = 0
+    for device_id in device_ids:
+        session.add(LicenseSeat(
+            license_id=grant.id,
+            device_id=device_id,
+            reserved_at=now,
+        ))
+        created += 1
+    await session.flush()
+
+    occupied = await count_occupied_seats(session)
+    return ReconciliationResult(
+        scanned_active=len(device_ids),
+        created_seats=created,
+        overage=occupied > capacity_of(grant),
+    )
+
+
+@dataclass
+class DecommissionResult:
+    """Result of the decommission choke-point (active → inactive + release).
+
+    - ``transitioned=True``: an ``active → inactive`` transition happened, the
+      device's open seat (if any) was released, and one ``DeviceStatusHistory``
+      row was written.
+    - ``transitioned=False`` with ``error is None``: the device was already
+      ``inactive`` — idempotent success, nothing changed.
+    - ``transitioned=False`` with ``error="INVALID_TRANSITION"``: the device is
+      in an unsupported status (e.g. ``unregistered``/``error``) — the caller
+      maps this to HTTP 409.
+    - ``anomaly=True``: an ``active`` device had no open seat; decommission is
+      still allowed (``status → inactive``) but ``seat_released=False`` and the
+      caller must surface the reconciliation anomaly rather than a 500.
+    """
+
+    device_id: str
+    status: str
+    transitioned: bool
+    seat_released: bool
+    released_at: datetime | None
+    anomaly: bool = False
+    error: str | None = None
+    message: str | None = None
+
+
+DECOMMISSION_ERROR_MESSAGES = {
+    "INVALID_TRANSITION": "Невозможно вывести устройство из текущего статуса.",
+}
+
+
+async def decommission_device(
+    session: AsyncSession,
+    *,
+    device_id: str,
+    changed_by: str,
+    reason: str,
+    now: datetime,
+) -> DecommissionResult | None:
+    """Single decommission choke-point (Layer 1, task 001A3).
+
+    In one DB transaction this:
+      1. sets the transaction-local service/admin RLS context (server-set),
+      2. locks the device row with ``SELECT ... FOR UPDATE`` (concurrent
+         decommissions of the same device serialize on this row),
+      3. checks the status: ``inactive`` → idempotent no-op; anything other
+         than ``active``/``inactive`` → ``INVALID_TRANSITION`` (409),
+      4. for ``active``: ``status → inactive``, releases the single open seat
+         (``released_at = now``), and writes one ``DeviceStatusHistory`` row
+         (``old_status/new_status/changed_at/reason/source`` + ``changed_by``
+         in ``details_json``),
+      5. if the active device has no open seat it is still decommissioned and
+         ``seat_released=False`` + ``anomaly=True`` is reported (reconciliation
+         anomaly, not an HTTP 500; no fabricated back-dated seat history).
+
+    Returns ``None`` when the device does not exist (caller → 404). The commit
+    is performed by the calling transaction (``get_db``'s ``session.begin``) —
+    this function never commits. Soft enforcement: license state
+    (expired/revoked/missing) is NOT consulted here — decommission is a device
+    lifecycle operation, not an enrollment, and must never be blocked by the
+    license state.
+    """
+    # 1. Server-set RLS context — license tables are admin-only RLS.
+    await set_licensing_admin_context(session)
+
+    # 2. Row lock: serialize concurrent decommissions of the same device.
+    result = await session.execute(
+        select(PhysicalDevice)
+        .where(PhysicalDevice.id == device_id)
+        .with_for_update()
+    )
+    device = result.scalar_one_or_none()
+    if device is None:
+        return None
+
+    # 3. Idempotent repeat decommission.
+    if device.status == "inactive":
+        return DecommissionResult(
+            device_id=device_id,
+            status="inactive",
+            transitioned=False,
+            seat_released=False,
+            released_at=None,
+        )
+
+    # 4. Unsupported status → controlled 409.
+    if device.status != "active":
+        return DecommissionResult(
+            device_id=device_id,
+            status=device.status,
+            transitioned=False,
+            seat_released=False,
+            released_at=None,
+            error="INVALID_TRANSITION",
+            message=DECOMMISSION_ERROR_MESSAGES["INVALID_TRANSITION"],
+        )
+
+    # 5. active → inactive.
+    old_status = device.status
+    device.status = "inactive"
+
+    # 6. Release the single open seat, if present.
+    seat_result = await session.execute(
+        select(LicenseSeat)
+        .where(LicenseSeat.device_id == device_id)
+        .where(LicenseSeat.released_at.is_(None))
+    )
+    open_seat = seat_result.scalar_one_or_none()
+
+    seat_released = False
+    released_at = None
+    anomaly = False
+    if open_seat is not None:
+        open_seat.released_at = now
+        seat_released = True
+        released_at = now
+    else:
+        anomaly = True  # active device without an open seat — reconciliation anomaly
+
+    # 7. Write the authoritative status-history row.
+    session.add(DeviceStatusHistory(
+        physical_device_id=device_id,
+        old_status=old_status,
+        new_status="inactive",
+        changed_at=now,
+        reason=reason,
+        source="decommission",
+        details_json={"changed_by": changed_by},
+    ))
+
+    return DecommissionResult(
+        device_id=device_id,
+        status="inactive",
+        transitioned=True,
+        seat_released=seat_released,
+        released_at=released_at,
+        anomaly=anomaly,
+    )
+
+
+@dataclass
+class ReconciliationFinding:
+    """A single detected drift in the seat ledger."""
+
+    code: str
+    severity: str  # "error" | "warning"
+    message: str
+    device_id: str | None = None
+    seat_id: str | None = None
+
+
+@dataclass
+class ReconciliationReport:
+    """Read-only drift report. ``consistent`` is True only with zero findings."""
+
+    consistent: bool
+    counts: dict
+    findings: list[ReconciliationFinding] = field(default_factory=list)
+
+
+async def get_reconciliation_report(
+    session: AsyncSession,
+    *,
+    now: datetime,
+) -> ReconciliationReport:
+    """Read-only reconciliation drift detection (Layer 1, task 001A4).
+
+    Detects, but never fixes:
+      - ``current_grant_missing`` — no effective grant (error);
+      - ``over_capacity`` — occupied open seats exceed capacity (error);
+      - ``active_device_without_seat`` — active device has no open seat (error);
+      - ``inactive_device_with_seat`` — inactive/unregistered device still holds
+        an open seat (error);
+      - ``seat_under_noncurrent_grant`` — open seat reserved under a
+        historical/non-current grant (error);
+      - ``occupied_mapping_mismatch`` — open seats on active devices != active
+        device count (warning).
+
+    Sets the server-side admin RLS context. Read-only — performs no writes and
+    no repair. The caller commits nothing; the report is used by the DRY-RUN
+    CLI (default) and the reconciliation endpoint.
+    """
+    await set_licensing_admin_context(session)
+
+    findings: list[ReconciliationFinding] = []
+
+    grant = await get_effective_license(session)
+    capacity = capacity_of(grant) if grant is not None else 0
+    current_grant_id = grant.id if grant is not None else None
+
+    if grant is None:
+        findings.append(ReconciliationFinding(
+            code="current_grant_missing", severity="error",
+            message="Effective license grant not found.",
+        ))
+
+    occupied = await count_occupied_seats(session)
+    if grant is not None and occupied > capacity:
+        findings.append(ReconciliationFinding(
+            code="over_capacity", severity="error",
+            message=f"Occupied {occupied} exceeds capacity {capacity}.",
+        ))
+
+    # Active devices without an open seat.
+    active_without_seat = await session.execute(
+        select(PhysicalDevice.id)
+        .outerjoin(
+            LicenseSeat,
+            (LicenseSeat.device_id == PhysicalDevice.id)
+            & (LicenseSeat.released_at.is_(None)),
+        )
+        .where(PhysicalDevice.status == "active")
+        .where(LicenseSeat.id.is_(None))
+    )
+    for device_id in active_without_seat.scalars().all():
+        findings.append(ReconciliationFinding(
+            code="active_device_without_seat", severity="error",
+            message="Active device has no open seat.", device_id=device_id,
+        ))
+
+    # Inactive/unregistered devices still holding an open seat.
+    inactive_with_seat = await session.execute(
+        select(PhysicalDevice.id, LicenseSeat.id)
+        .join(LicenseSeat, LicenseSeat.device_id == PhysicalDevice.id)
+        .where(LicenseSeat.released_at.is_(None))
+        .where(PhysicalDevice.status != "active")
+    )
+    for device_id, seat_id in inactive_with_seat.all():
+        findings.append(ReconciliationFinding(
+            code="inactive_device_with_seat", severity="error",
+            message="Inactive device still holds an open seat.",
+            device_id=device_id, seat_id=seat_id,
+        ))
+
+    # Open seats reserved under a non-current (historical) grant.
+    if current_grant_id is not None:
+        noncurrent = await session.execute(
+            select(LicenseSeat.id, LicenseSeat.device_id)
+            .where(LicenseSeat.released_at.is_(None))
+            .where(LicenseSeat.license_id != current_grant_id)
+        )
+        for seat_id, device_id in noncurrent.all():
+            findings.append(ReconciliationFinding(
+                code="seat_under_noncurrent_grant", severity="error",
+                message="Open seat reserved under a non-current grant.",
+                device_id=device_id, seat_id=seat_id,
+            ))
+
+    active_count = await session.scalar(
+        select(func.count()).select_from(PhysicalDevice)
+        .where(PhysicalDevice.status == "active")
+    ) or 0
+    open_seats_total = await session.scalar(
+        select(func.count()).select_from(LicenseSeat)
+        .where(LicenseSeat.released_at.is_(None))
+    ) or 0
+
+    # Ledger occupancy vs expected active-device mapping (summary).
+    if active_count != occupied:
+        findings.append(ReconciliationFinding(
+            code="occupied_mapping_mismatch", severity="warning",
+            message=(
+                f"Open seats on active devices ({occupied}) != active device "
+                f"count ({active_count})."
+            ),
+        ))
+
+    return ReconciliationReport(
+        consistent=len(findings) == 0,
+        counts={
+            "active_devices": active_count,
+            "open_seats": open_seats_total,
+            "occupied": occupied,
+            "capacity": capacity,
+            "over_capacity_by": max(occupied - capacity, 0),
+            "finding_count": len(findings),
+        },
+        findings=findings,
+    )

@@ -6,6 +6,7 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
+import { ThemeProvider } from "../theme/ThemeContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Layout from "../components/Layout";
 import DeviceHealthPage from "../pages/DeviceHealthPage";
@@ -145,7 +146,9 @@ function setupFetchError(status: number, message: string) {
 function renderDevicePage() {
   const router = createDeviceRouter();
   return render(<RouterProvider router={router} />, {
-    wrapper: ({ children }) => <AuthProvider>{children}</AuthProvider>,
+    wrapper: ({ children }) => <ThemeProvider>
+      <AuthProvider>{children}</AuthProvider>
+    </ThemeProvider>,
   });
 }
 

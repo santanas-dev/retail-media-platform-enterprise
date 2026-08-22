@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { api, ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { getPermissionDescription, ALL_PERMISSION_CODES } from "../auth/permissionDescriptions";
 import type {
   UserOut,
   UserDetailOut,
@@ -17,6 +18,118 @@ interface UsersPageState {
   error: string | null;
   selectedUser: UserDetailOut | null;
   actionError: string | null;
+}
+
+// ── Reusable users table component ──
+
+interface UsersTableProps {
+  users: UserOut[];
+  tableStyle: React.CSSProperties;
+  thStyle: React.CSSProperties;
+  tdStyle: React.CSSProperties;
+  btnStyle: React.CSSProperties;
+  dangerBtn: React.CSSProperties;
+  canManageRoles: boolean;
+  canManageUsers: boolean;
+  providerLabel: (p: string) => string;
+  statusBadge: (status: string) => React.ReactNode;
+  openRoleManagement: (userId: string) => void;
+  openDeactivate: (userId: string, userName: string) => void;
+  handleActivate: (userId: string) => void;
+  openReset: (userId: string) => void;
+  tableTestId: string;
+}
+
+function UsersTable({
+  users,
+  tableStyle,
+  thStyle,
+  tdStyle,
+  btnStyle,
+  dangerBtn,
+  canManageRoles,
+  canManageUsers,
+  providerLabel,
+  statusBadge,
+  openRoleManagement,
+  openDeactivate,
+  handleActivate,
+  openReset,
+  tableTestId,
+}: UsersTableProps) {
+  return (
+    <table style={tableStyle} data-testid={tableTestId}>
+      <thead>
+        <tr>
+          <th style={thStyle}>Пользователь</th>
+          <th style={thStyle}>Провайдер</th>
+          <th style={thStyle}>Статус</th>
+          <th style={thStyle}>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {users.map((u) => (
+          <tr key={u.id} data-testid={`user-row-${u.username}`}>
+            <td style={tdStyle}>
+              <strong>{u.display_name}</strong>
+              <br />
+              <span style={{ color: "var(--rmp-text-muted)", fontSize: "0.8rem" }}>
+                {u.username}
+              </span>
+            </td>
+            <td style={tdStyle} data-testid={`user-provider-${u.username}`}>
+              {providerLabel(u.auth_provider)}
+            </td>
+            <td style={tdStyle} data-testid={`user-status-${u.id}`}>
+              {statusBadge(u.status)}
+            </td>
+            <td style={tdStyle}>
+              {canManageRoles && (
+                <button
+                  type="button"
+                  data-testid="user-roles-open"
+                  onClick={() => openRoleManagement(u.id)}
+                  style={btnStyle}
+                >
+                  Роли
+                </button>
+              )}
+              {canManageUsers &&
+                (u.status === "active" ? (
+                  <button
+                    type="button"
+                    style={dangerBtn}
+                    data-testid={`user-deactivate-open-${u.id}`}
+                    onClick={() => openDeactivate(u.id, u.username)}
+                  >
+                    Деактивировать
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    style={btnStyle}
+                    data-testid={`user-activate-open-${u.id}`}
+                    onClick={() => handleActivate(u.id)}
+                  >
+                    Активировать
+                  </button>
+                ))}
+              {u.auth_provider.startsWith("local_") && (
+                <button
+                  type="button"
+                  style={btnStyle}
+                  onClick={() => openReset(u.id)}
+                  data-testid={`user-reset-password-open-${u.id}`}
+                >
+                  Сбросить пароль
+                </button>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 }
 
 export default function UsersPage() {
@@ -72,6 +185,9 @@ export default function UsersPage() {
     message: string;
     success: boolean;
   } | null>(null);
+
+  // User classification tab
+  const [userTab, setUserTab] = useState<"all" | "internal" | "advertiser">("all");
 
   // Role management
   const [rolesOpen, setRolesOpen] = useState(false);
@@ -318,29 +434,29 @@ export default function UsersPage() {
   const thStyle: React.CSSProperties = {
     textAlign: "left",
     padding: "0.5rem",
-    borderBottom: "2px solid #e2e8f0",
-    color: "#475569",
+    borderBottom: "2px solid var(--rmp-border)",
+    color: "var(--rmp-gray-600)",
     fontWeight: 600,
   };
   const tdStyle: React.CSSProperties = {
     padding: "0.5rem",
-    borderBottom: "1px solid #e2e8f0",
+    borderBottom: "1px solid var(--rmp-border)",
     verticalAlign: "top",
   };
   const btnStyle: React.CSSProperties = {
     padding: "0.25rem 0.5rem",
     fontSize: "0.75rem",
-    border: "1px solid #cbd5e1",
+    border: "1px solid var(--rmp-border-strong)",
     borderRadius: 4,
-    background: "#fff",
+    background: "var(--rmp-bg-surface)",
     cursor: "pointer",
     marginRight: "0.25rem",
     marginBottom: "0.25rem",
   };
   const dangerBtn: React.CSSProperties = {
     ...btnStyle,
-    color: "#dc2626",
-    borderColor: "#fca5a5",
+    color: "var(--rmp-danger-600)",
+    borderColor: "var(--rmp-danger-300)",
   };
   const badge: React.CSSProperties = {
     display: "inline-block",
@@ -353,7 +469,7 @@ export default function UsersPage() {
   const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: "0.375rem 0.5rem",
-    border: "1px solid #cbd5e1",
+    border: "1px solid var(--rmp-border-strong)",
     borderRadius: 4,
     fontSize: "0.875rem",
     boxSizing: "border-box",
@@ -362,7 +478,7 @@ export default function UsersPage() {
   const labelStyle: React.CSSProperties = {
     display: "block",
     fontSize: "0.8rem",
-    color: "#475569",
+    color: "var(--rmp-gray-600)",
     marginBottom: "0.25rem",
   };
 
@@ -374,8 +490,8 @@ export default function UsersPage() {
       <span
         style={{
           ...badge,
-          background: active ? "#dcfce7" : "#fee2e2",
-          color: active ? "#166534" : "#991b1b",
+          background: active ? "var(--rmp-success-100)" : "var(--rmp-danger-100)",
+          color: active ? "var(--rmp-success-800)" : "var(--rmp-danger-800)",
         }}
       >
         {active ? "Активен" : "Неактивен"}
@@ -390,6 +506,40 @@ export default function UsersPage() {
       ad: "Active Directory",
     };
     return map[p] ?? p;
+  };
+
+  // ── User classification (by auth_provider) ──
+
+  const internalUsers = state.users.filter(
+    (u) => u.auth_provider === "ad" || u.auth_provider === "local_break_glass",
+  );
+  const advertiserUsers = state.users.filter(
+    (u) => u.auth_provider === "local_advertiser",
+  );
+
+  const tabUsers =
+    userTab === "internal"
+      ? internalUsers
+      : userTab === "advertiser"
+        ? advertiserUsers
+        : state.users;
+
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    padding: "0.5rem 1rem",
+    fontSize: "0.875rem",
+    border: "none",
+    borderBottom: active ? "2px solid var(--rmp-primary-400)" : "2px solid transparent",
+    background: "transparent",
+    cursor: "pointer",
+    color: active ? "var(--rmp-primary-700)" : "var(--rmp-text-secondary)",
+    fontWeight: active ? 600 : 400,
+  });
+
+  const tabBarStyle: React.CSSProperties = {
+    display: "flex",
+    gap: "0",
+    borderBottom: "1px solid var(--rmp-border)",
+    marginBottom: "1rem",
   };
 
   if (state.loading) {
@@ -416,10 +566,10 @@ export default function UsersPage() {
       </div>
 
       {state.error && (
-        <p style={{ color: "#dc2626", marginBottom: "1rem" }}>{state.error}</p>
+        <p style={{ color: "var(--rmp-danger-600)", marginBottom: "1rem" }}>{state.error}</p>
       )}
       {state.actionError && (
-        <p style={{ color: "#dc2626", marginBottom: "0.5rem" }}>
+        <p style={{ color: "var(--rmp-danger-600)", marginBottom: "0.5rem" }}>
           {state.actionError}
         </p>
       )}
@@ -428,8 +578,8 @@ export default function UsersPage() {
       {createOpen && (
         <div
           style={{
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
+            background: "var(--rmp-bg-page)",
+            border: "1px solid var(--rmp-border)",
             borderRadius: 8,
             padding: "1rem",
             marginBottom: "1rem",
@@ -528,8 +678,8 @@ export default function UsersPage() {
                 marginTop: "0.75rem",
                 padding: "0.5rem",
                 background: createResult.one_time_password
-                  ? "#fef3c7"
-                  : "#fee2e2",
+                  ? "var(--rmp-warning-100)"
+                  : "var(--rmp-danger-100)",
                 borderRadius: 4,
                 fontSize: "0.8rem",
               }}
@@ -554,8 +704,8 @@ export default function UsersPage() {
       {resetOpen && (
         <div
           style={{
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
+            background: "var(--rmp-bg-page)",
+            border: "1px solid var(--rmp-border)",
             borderRadius: 8,
             padding: "1rem",
             marginBottom: "1rem",
@@ -630,8 +780,8 @@ export default function UsersPage() {
                 marginTop: "0.75rem",
                 padding: "0.5rem",
                 background: resetResult.one_time_password
-                  ? "#fef3c7"
-                  : "#fee2e2",
+                  ? "var(--rmp-warning-100)"
+                  : "var(--rmp-danger-100)",
                 borderRadius: 4,
                 fontSize: "0.8rem",
               }}
@@ -657,8 +807,8 @@ export default function UsersPage() {
         <div
           data-testid="user-roles-panel"
           style={{
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
+            background: "var(--rmp-bg-page)",
+            border: "1px solid var(--rmp-border)",
             borderRadius: 8,
             padding: "1rem",
             marginBottom: "1rem",
@@ -673,7 +823,7 @@ export default function UsersPage() {
           <div style={{ marginBottom: "0.75rem" }}>
             <strong>Текущие роли:</strong>
             {state.selectedUser.roles.length === 0 && (
-              <p style={{ color: "#94a3b8", margin: "0.25rem 0" }}>
+              <p style={{ color: "var(--rmp-text-muted)", margin: "0.25rem 0" }}>
                 Нет назначенных ролей
               </p>
             )}
@@ -683,9 +833,10 @@ export default function UsersPage() {
                   key={r.id}
                   style={{ marginBottom: "0.25rem", fontSize: "0.85rem" }}
                 >
-                  <strong>{r.role_name}</strong> ({r.role_code})
+                  <strong>{r.role_name}</strong>{" "}
+                  <code style={{ fontSize: "0.8rem", color: "var(--rmp-text-secondary)" }}>({r.role_code})</code>
                   {r.scope_type && (
-                    <span style={{ color: "#64748b" }}>
+                    <span style={{ color: "var(--rmp-text-secondary)" }}>
                       {" "}
                       — scope: {r.scope_type}/{r.scope_id?.slice(0, 8)}…
                     </span>
@@ -710,11 +861,75 @@ export default function UsersPage() {
             </ul>
           </div>
 
+          {/* Permission catalog (D2) */}
+          <div
+            style={{
+              marginBottom: "0.75rem",
+              borderTop: "1px solid var(--rmp-border)",
+              paddingTop: "0.75rem",
+            }}
+            data-testid="permission-catalog"
+          >
+            <strong style={{ fontSize: "0.85rem" }}>
+              Список прав ({ALL_PERMISSION_CODES.length}):
+            </strong>
+            <ul
+              style={{
+                margin: "0.5rem 0 0 0",
+                paddingLeft: "1.25rem",
+                maxHeight: 300,
+                overflowY: "auto",
+              }}
+            >
+              {ALL_PERMISSION_CODES.map((code) => {
+                const desc = getPermissionDescription(code);
+                const safeCode = code.replace(/\./g, "-");
+                return (
+                  <li
+                    key={code}
+                    data-testid={`permission-item-${safeCode}`}
+                    style={{
+                      marginBottom: "0.5rem",
+                      fontSize: "0.8rem",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    <span
+                      data-testid={`permission-label-${safeCode}`}
+                      style={{ fontWeight: 600 }}
+                    >
+                      {desc.name}
+                    </span>{" "}
+                    <code
+                      data-testid={`permission-code-${safeCode}`}
+                      style={{
+                        fontSize: "0.7rem",
+                        color: "var(--rmp-text-muted)",
+                        background: "var(--rmp-gray-100)",
+                        padding: "0 4px",
+                        borderRadius: 2,
+                      }}
+                    >
+                      {code}
+                    </code>
+                    <br />
+                    <span
+                      data-testid={`permission-description-${safeCode}`}
+                      style={{ color: "var(--rmp-gray-600)", fontSize: "0.75rem" }}
+                    >
+                      {desc.description}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
           {/* Assign new role */}
           {canManageRoles && (
             <div
               style={{
-                borderTop: "1px solid #e2e8f0",
+                borderTop: "1px solid var(--rmp-border)",
                 paddingTop: "0.75rem",
               }}
             >
@@ -722,7 +937,7 @@ export default function UsersPage() {
                 Назначить роль:
               </strong>
               {roleAssignError && (
-                <p style={{ color: "#dc2626", fontSize: "0.8rem", margin: "0.25rem 0" }}>
+                <p style={{ color: "var(--rmp-danger-600)", fontSize: "0.8rem", margin: "0.25rem 0" }}>
                   {roleAssignError}
                 </p>
               )}
@@ -784,15 +999,15 @@ export default function UsersPage() {
       {deactivateOpen && (
         <div
           style={{
-            background: "#fef2f2",
-            border: "1px solid #fca5a5",
+            background: "var(--rmp-danger-50)",
+            border: "1px solid var(--rmp-danger-300)",
             borderRadius: 8,
             padding: "1rem",
             marginBottom: "1rem",
             maxWidth: 420,
           }}
         >
-          <h3 style={{ color: "#dc2626" }}>Деактивировать пользователя</h3>
+          <h3 style={{ color: "var(--rmp-danger-600)" }}>Деактивировать пользователя</h3>
           <p>
             Вы собираетесь деактивировать пользователя{" "}
             <strong>{deactivateUsername}</strong>. Все активные сессии будут
@@ -832,7 +1047,7 @@ export default function UsersPage() {
               style={{
                 marginTop: "0.75rem",
                 padding: "0.5rem",
-                background: deactivateResult.success ? "#dcfce7" : "#fee2e2",
+                background: deactivateResult.success ? "var(--rmp-success-100)" : "var(--rmp-danger-100)",
                 borderRadius: 4,
                 fontSize: "0.8rem",
               }}
@@ -843,80 +1058,119 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* ── Users table ── */}
-      <table style={tableStyle}>
-        <thead>
-          <tr>
-            <th style={thStyle}>Пользователь</th>
-            <th style={thStyle}>Провайдер</th>
-            <th style={thStyle}>Статус</th>
-            <th style={thStyle}>Действия</th>
-          </tr>
-        </thead>
-        <tbody>
-          {state.users.map((u) => (
-            <tr key={u.id}>
-              <td style={tdStyle}>
-                <strong>{u.display_name}</strong>
-                <br />
-                <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>
-                  {u.username}
-                </span>
-              </td>
-              <td style={tdStyle}>{providerLabel(u.auth_provider)}</td>
-              <td style={tdStyle} data-testid={`user-status-${u.id}`}>{statusBadge(u.status)}</td>
-              <td style={tdStyle}>
-                {canManageRoles && (
-                  <button
-                    type="button"
-                    data-testid="user-roles-open"
-                    onClick={() => openRoleManagement(u.id)}
-                    style={btnStyle}
-                  >
-                    Роли
-                  </button>
-                )}
-                {canManageUsers && (
-                  u.status === "active" ? (
-                    <button
-                      type="button"
-                      style={dangerBtn}
-                      data-testid={`user-deactivate-open-${u.id}`}
-                      onClick={() => openDeactivate(u.id, u.username)}
-                    >
-                      Деактивировать
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      style={btnStyle}
-                      data-testid={`user-activate-open-${u.id}`}
-                      onClick={() => handleActivate(u.id)}
-                    >
-                      Активировать
-                    </button>
-                  )
-                )}
-                {u.auth_provider.startsWith("local_") && (
-                  <button
-                    type="button"
-                    style={btnStyle}
-                    onClick={() => openReset(u.id)}
-                    data-testid={`user-reset-password-open-${u.id}`}
-                  >
-                    Сбросить пароль
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* ── User classification tabs ── */}
+      <div style={tabBarStyle} data-testid="users-tab-bar">
+        <button
+          type="button"
+          data-testid="users-tab-all"
+          style={tabStyle(userTab === "all")}
+          onClick={() => setUserTab("all")}
+        >
+          Все ({state.users.length})
+        </button>
+        <button
+          type="button"
+          data-testid="users-tab-internal"
+          style={tabStyle(userTab === "internal")}
+          onClick={() => setUserTab("internal")}
+        >
+          Внутренние ({internalUsers.length})
+        </button>
+        <button
+          type="button"
+          data-testid="users-tab-advertiser"
+          style={tabStyle(userTab === "advertiser")}
+          onClick={() => setUserTab("advertiser")}
+        >
+          Рекламодатели ({advertiserUsers.length})
+        </button>
+      </div>
 
-      {state.users.length === 0 && !state.loading && (
-        <p style={{ color: "#94a3b8", marginTop: "1rem" }}>
-          Нет пользователей.
-        </p>
+      {/* All users table */}
+      {userTab === "all" && (
+        <div data-testid="users-section-all">
+          {tabUsers.length === 0 ? (
+            <p data-testid="users-empty-all" style={{ color: "var(--rmp-text-muted)", marginTop: "1rem" }}>
+              Нет пользователей.
+            </p>
+          ) : (
+            <UsersTable
+              users={tabUsers}
+              tableStyle={tableStyle}
+              thStyle={thStyle}
+              tdStyle={tdStyle}
+              btnStyle={btnStyle}
+              dangerBtn={dangerBtn}
+              canManageRoles={canManageRoles}
+              canManageUsers={canManageUsers}
+              providerLabel={providerLabel}
+              statusBadge={statusBadge}
+              openRoleManagement={openRoleManagement}
+              openDeactivate={openDeactivate}
+              handleActivate={handleActivate}
+              openReset={openReset}
+              tableTestId="users-table-all"
+            />
+          )}
+        </div>
+      )}
+
+      {/* Internal users table */}
+      {userTab === "internal" && (
+        <div data-testid="users-section-internal">
+          {tabUsers.length === 0 ? (
+            <p data-testid="users-empty-internal" style={{ color: "var(--rmp-text-muted)", marginTop: "1rem" }}>
+              Нет внутренних пользователей.
+            </p>
+          ) : (
+            <UsersTable
+              users={tabUsers}
+              tableStyle={tableStyle}
+              thStyle={thStyle}
+              tdStyle={tdStyle}
+              btnStyle={btnStyle}
+              dangerBtn={dangerBtn}
+              canManageRoles={canManageRoles}
+              canManageUsers={canManageUsers}
+              providerLabel={providerLabel}
+              statusBadge={statusBadge}
+              openRoleManagement={openRoleManagement}
+              openDeactivate={openDeactivate}
+              handleActivate={handleActivate}
+              openReset={openReset}
+              tableTestId="users-table-internal"
+            />
+          )}
+        </div>
+      )}
+
+      {/* Advertiser users table */}
+      {userTab === "advertiser" && (
+        <div data-testid="users-section-advertiser">
+          {tabUsers.length === 0 ? (
+            <p data-testid="users-empty-advertiser" style={{ color: "var(--rmp-text-muted)", marginTop: "1rem" }}>
+              Нет пользователей рекламодателей.
+            </p>
+          ) : (
+            <UsersTable
+              users={tabUsers}
+              tableStyle={tableStyle}
+              thStyle={thStyle}
+              tdStyle={tdStyle}
+              btnStyle={btnStyle}
+              dangerBtn={dangerBtn}
+              canManageRoles={canManageRoles}
+              canManageUsers={canManageUsers}
+              providerLabel={providerLabel}
+              statusBadge={statusBadge}
+              openRoleManagement={openRoleManagement}
+              openDeactivate={openDeactivate}
+              handleActivate={handleActivate}
+              openReset={openReset}
+              tableTestId="users-table-advertiser"
+            />
+          )}
+        </div>
       )}
     </div>
   );

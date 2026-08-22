@@ -9,7 +9,7 @@ if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
 from playwright.sync_api import Page, expect
-from conftest import BASE_URL
+from conftest import BASE_URL, login_as_break_glass_admin
 
 
 def test_uismoke__inventory__rule_create(smoke_page: Page) -> None:
@@ -17,12 +17,7 @@ def test_uismoke__inventory__rule_create(smoke_page: Page) -> None:
     import time; t0 = time.time()
 
     # ── Login as break_glass_admin (has inventory.manage) ──
-    page.select_option("#login-provider", "local_break_glass")
-    page.fill("#login-username", "break_glass_admin")
-    page.fill("#login-password", "break-glass-dev-only")
-    page.click('button[type="submit"]')
-    page.wait_for_url("**/campaigns", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    login_as_break_glass_admin(page)
     print(f"[{time.time()-t0:.1f}s] Logged in")
 
     # ── Navigate to Inventory → Rules tab ──
@@ -33,7 +28,9 @@ def test_uismoke__inventory__rule_create(smoke_page: Page) -> None:
     # Click "Правила" tab
     page.locator("button", has=page.locator("text=Правила")).click()
     page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1000)
+    page.wait_for_timeout(1500)
+    # Verify tab content loaded
+    expect(page.locator('[data-testid="inventory-rule-create-open"]')).to_be_visible(timeout=10000)
     print(f"[{time.time()-t0:.1f}s] Rules tab loaded")
 
     # ── Click "+ Создать" ──

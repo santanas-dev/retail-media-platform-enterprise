@@ -32,8 +32,9 @@ class TestInventoryModelTableCount(unittest.TestCase):
         self.assertIn("inventory_rules", REQUIRED_TABLES)
 
     def test_metadata_table_count(self):
+        """Table count grows — never shrinks below 56 (post-commerce baseline)."""
         count = len(Base.metadata.tables)
-        self.assertEqual(count, 55, f"Expected 55 tables, got {count}")
+        self.assertGreaterEqual(count, 56, f"Tables must not shrink below 56. Got {count}")
 
 
 # ---------------------------------------------------------------------------

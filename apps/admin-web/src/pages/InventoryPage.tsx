@@ -883,14 +883,14 @@ function RulesTab() {
         </h2>
         {canManage && (
           <button onClick={openCreate} data-testid="inventory-rule-create-open"
-            style={{ padding: "0.3rem 0.8rem", fontSize: "0.8rem", background: "var(--rmp-gray-800)", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" }}>
+            style={{ padding: "0.3rem 0.8rem", fontSize: "0.8rem", background: "var(--rmp-gray-800)", color: "var(--rmp-text-inverse)", border: "none", borderRadius: 4, cursor: "pointer" }}>
             + Создать
           </button>
         )}
       </div>
 
       {formSuccess && (
-        <div data-testid="inventory-rule-success" style={{ padding: "0.5rem 1rem", background: "#dcfce7", borderRadius: 4, marginBottom: "1rem", fontSize: "0.85rem", color: "#166534" }}>
+        <div data-testid="inventory-rule-success" style={{ padding: "0.5rem 1rem", background: "var(--rmp-success-100)", borderRadius: 4, marginBottom: "1rem", fontSize: "0.85rem", color: "var(--rmp-success-800)" }}>
           {formSuccess}
         </div>
       )}
@@ -947,9 +947,9 @@ function RulesTab() {
 
       {/* ── Create/Edit modal ── */}
       {showForm && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+        <div style={{ position: "fixed", inset: 0, background: "var(--rmp-overlay-backdrop)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
           <form onSubmit={handleSave} data-testid="inventory-rule-form"
-            style={{ background: "#fff", borderRadius: 8, padding: "1.5rem", width: 480, maxHeight: "90vh", overflow: "auto" }}>
+            style={{ background: "var(--rmp-bg-surface)", borderRadius: 8, padding: "1.5rem", width: 480, maxHeight: "90vh", overflow: "auto" }}>
             <h3 style={{ margin: "0 0 1rem" }}>{editId ? "Редактировать правило" : "Создать правило"}</h3>
 
             <label style={lbl}>Тип правила</label>
@@ -1014,7 +1014,7 @@ function RulesTab() {
               <button type="button" onClick={() => setShowForm(false)} style={{ ...btn, background: "var(--rmp-gray-200)", color: "var(--rmp-text-primary)" }}>
                 Отмена
               </button>
-              <button type="submit" disabled={saving} data-testid="inventory-rule-submit" style={{ ...btn, background: "var(--rmp-gray-800)", color: "#fff", opacity: saving ? 0.6 : 1 }}>
+              <button type="submit" disabled={saving} data-testid="inventory-rule-submit" style={{ ...btn, background: "var(--rmp-gray-800)", color: "var(--rmp-text-inverse)", opacity: saving ? 0.6 : 1 }}>
                 {saving ? "Сохранение..." : editId ? "Сохранить" : "Создать"}
               </button>
             </div>
@@ -1029,6 +1029,6 @@ const th: React.CSSProperties = { textAlign: "left", padding: "0.4rem 0.5rem", f
 const td: React.CSSProperties = { padding: "0.4rem 0.5rem", whiteSpace: "nowrap" };
 const lbl: React.CSSProperties = { display: "block", fontSize: "0.75rem", fontWeight: 600, marginTop: "0.6rem", marginBottom: "0.15rem" };
 const inp: React.CSSProperties = { width: "100%", padding: "0.3rem 0.5rem", fontSize: "0.8rem", border: "1px solid var(--rmp-border-strong)", borderRadius: 4, boxSizing: "border-box" };
-const sel: React.CSSProperties = { ...inp, background: "#fff" };
+const sel: React.CSSProperties = { ...inp, background: "var(--rmp-bg-surface)" };
 const btn: React.CSSProperties = { padding: "0.3rem 0.8rem", fontSize: "0.8rem", border: "none", borderRadius: 4, cursor: "pointer" };
 const actBtn: React.CSSProperties = { padding: "0.1rem 0.4rem", fontSize: "0.7rem", border: "1px solid var(--rmp-border-strong)", borderRadius: 3, background: "transparent", cursor: "pointer" };

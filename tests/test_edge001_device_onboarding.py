@@ -18,13 +18,15 @@ from packages.domain.schemas import DeviceOnboardRequest, DeviceOnboardResponse
 
 
 class TestDeviceOnboardSuccess(unittest.IsolatedAsyncioTestCase):
+    @patch("packages.domain.licensing_service.authorize_and_reserve_enrollment", new_callable=AsyncMock)
     @patch("packages.api.device_routes.onboard.repository.claim_onboarding_code", new_callable=AsyncMock)
     @patch("packages.api.device_routes.onboard.repository.get_device_by_fingerprint", new_callable=AsyncMock)
     @patch("packages.api.device_routes.onboard.repository.get_onboarding_code", new_callable=AsyncMock)
     @patch("packages.api.device_routes.onboard.repository.create_physical_device_onboard", new_callable=AsyncMock)
     @patch("packages.api.device_routes.onboard.repository.bind_code_to_device", new_callable=AsyncMock)
-    async def test_onboard_new_device_success(self, mock_bind, mock_create, mock_get_code, mock_dev, mock_claim):
+    async def test_onboard_new_device_success(self, mock_bind, mock_create, mock_get_code, mock_dev, mock_claim, mock_authorize):
         from packages.api.device_routes.onboard import device_onboard
+        from packages.domain.licensing_service import EnrollmentDecision
 
         mock_claim.return_value = True  # atomic claim succeeds
 
@@ -42,12 +44,20 @@ class TestDeviceOnboardSuccess(unittest.IsolatedAsyncioTestCase):
         mock_device.status = "active"
         mock_create.return_value = mock_device
 
+        # The licensing choke-point is mocked at the service boundary — the
+        # unit test proves the route wiring, not the seat ledger (that is
+        # covered by behavioral tests under NOBYPASSRLS).
+        mock_authorize.return_value = EnrollmentDecision(
+            allowed=True, state="active", device=mock_device,
+        )
+
         resp = await device_onboard(
             DeviceOnboardRequest(device_code="valid-code-123", hardware_fingerprint="fp-new-1234"),
             db=AsyncMock(),
         )
         self.assertEqual(resp.device_id, "dev-new-001")
         self.assertEqual(resp.status, "active")
+        self.assertEqual(resp.license_state, "active")
         self.assertIsNotNone(resp.access_token)
 
 

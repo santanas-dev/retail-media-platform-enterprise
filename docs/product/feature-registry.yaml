@@ -163,6 +163,22 @@ features:
     roles: [system_admin]
     status: reachable
 
+  - id: user.split_internal_advertiser
+    frontend: admin-web
+    name: Разделить пользователей на внутренних и рекламодателей
+    route: /login
+    path:
+      - login (system_admin)
+      - Пользователи → вкладки Все/Внутренние/Рекламодатели
+      - Внутренние — только ad/break-glass
+      - Рекламодатели — только local_advertiser + провайдер
+      - UUID read-only invariant
+    smoke: test_uismoke__user__split_internal_advertiser
+    priority: P1
+    roles: [system_admin]
+    status: reachable
+    gap: ""
+
   - id: advertiser.create_org
     frontend: admin-web
     name: Создать организацию рекламодателя (managed)
@@ -285,6 +301,58 @@ features:
       - login (campaign_manager)
       - Рекламодатели → организация
     smoke: test_uismoke__advertiser__view
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: reachable
+    gap: ""
+
+  - id: advertiser.contact_crud
+    frontend: admin-web
+    name: Управление контактами рекламодателя (создание, редактирование, привязка к учётной записи)
+    route: /login
+    path:
+      - login (system_admin или campaign_manager)
+      - Рекламодатели → организация → вкладка Контакты → создать/редактировать
+    smoke: test_uismoke__advertiser__contact_crud
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: reachable
+    gap: ""
+
+  - id: advertiser.brand_crud
+    frontend: admin-web
+    name: Управление брендами рекламодателя (создание, редактирование)
+    route: /login
+    path:
+      - login (system_admin или campaign_manager)
+      - Рекламодатели → организация → вкладка Бренды → создать/редактировать
+    smoke: test_uismoke__advertiser__brand_crud
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: reachable
+    gap: ""
+
+  - id: advertiser.contract_crud
+    frontend: admin-web
+    name: Договоры рекламодателя — создание, редактирование, PDF upload
+    route: /login
+    path:
+      - login (system_admin или campaign_manager)
+      - Рекламодатели → организация → вкладка Договоры → создать → выбрать PDF → загрузить
+    smoke: test_uismoke__advertiser__contract_pdf_upload
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: reachable
+    gap: ""
+
+  - id: advertiser.legal_requisites
+    frontend: admin-web
+    name: Юридические реквизиты рекламодателя (заполнение, редактирование)
+    route: /login
+    path:
+      - login (system_admin или campaign_manager)
+      - Рекламодатели → организация → вкладка Реквизиты → заполнить/редактировать → сохранить
+    smoke: test_uismoke__advertiser__legal_requisites
     priority: P1
     roles: [system_admin, campaign_manager]
     status: reachable
@@ -558,27 +626,178 @@ features:
   - id: campaign.complete
     frontend: service
     name: Автоматическое завершение кампании по концу рейса
+    route: POST /campaigns/{id}/complete, POST /campaigns/complete-expired
+    path: packages/domain/repository.py (complete_campaign, complete_expired_campaigns)
+    smoke: n/a (service feature, no UI journey)
+    priority: P1
+    roles: [service, operator]
+    status: reachable
+    gap: "LIFECYCLE-COMPLETE-001-FU: real DB proof. 7 behavioral tests green. Orchestrator-worker maintenance tick (5 min). CampaignStatusHistory verified. Idempotency proven."
+
+  # ═══════════════════════════════════════════════════════════════
+  # EPIC-L — Licensing (Layer 1 reachable; Layer 2 blocked)
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: license.enforce
+    frontend: service
+    name: Enforcement лицензии при device enrollment
+    route: POST /device/onboard (enrollment choke-point)
+    path: packages/domain/licensing_service.py (authorize_and_reserve_enrollment)
+    smoke: test_license_enrollment.py (13 behavioral tests)
+    priority: P1
+    roles: [service]
+    status: reachable
+    gap: ""
+
+  - id: license.seat_release
+    frontend: service
+    name: Освобождение лицензионного seat при decommission
+    route: POST /devices/{device_id}/decommission
+    path: packages/domain/licensing_service.py (decommission_device)
+    smoke: test_license_decommission.py (13 behavioral tests)
+    priority: P1
+    roles: [service]
+    status: reachable
+    gap: ""
+
+  - id: license.report
+    frontend: service
+    name: Отчёт по лицензии (занятые/свободные seats + пик)
+    route: GET /licenses/report?year&month
+    path: packages/api/identity_routes/licenses.py (get_license_report)
+    smoke: test_license_report.py (16 behavioral tests)
+    priority: P1
+    roles: [service, system_admin, security_admin]
+    status: reachable
+    gap: ""
+
+  - id: license.view
+    frontend: service
+    name: Просмотр активных лицензий (UI)
     route: n/a
     path: n/a
     smoke: n/a
     priority: P1
     roles: [service]
     status: blocked
-    gap: "Системный переход active→completed. Логика не реализована — deferred."
+    gap: "Layer 2 (signed-license/UI) — не реализован."
+
+  - id: license.upload
+    frontend: service
+    name: Загрузка/установка лицензионного файла
+    route: n/a
+    path: n/a
+    smoke: n/a
+    priority: P1
+    roles: [service]
+    status: blocked
+    gap: "Layer 2 (signed-license/JWS/CRL + UI upload) — не реализован."
+
+  # ═══════════════════════════════════════════════════════════════
+  # COMMERCE-CONTUR2 — Commercial inventory sales engine (MVP closed)
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: commerce.order_create
+    frontend: admin-web
+    name: Создание коммерческого заказа
+    route: "/commerce/tariffs (tab: Заказы)"
+    path: apps/admin-web/src/pages/CommerceOrdersTab.tsx
+    smoke: test_uismoke__commerce__order_create
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: reachable
+    note: "COMMERCE-CONTUR2-001A3b — order create + lines/total + status transitions smoke green."
+
+  - id: commerce.tariff_manage
+    frontend: admin-web
+    name: Управление тарифами и прайс-листами
+    route: /commerce/tariffs
+    path: apps/admin-web/src/pages/CommerceTariffsPage.tsx
+    smoke: test_uismoke__commerce__tariff_manage
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: reachable
+    note: "COMMERCE-CONTUR2-001A3a — UI + smoke green (tariff CRUD + price items). Price items reachable via same smoke."
+
+  - id: commerce.offer_generate
+    frontend: admin-web
+    name: Генерация коммерческого предложения (draft→offered)
+    route: "/commerce/tariffs (tab: Заказы)"
+    path: apps/admin-web/src/pages/CommerceOrdersTab.tsx
+    smoke: test_uismoke__commerce__order_create
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: reachable
+    note: "COMMERCE-CONTUR2-001A3b — draft→offered status transition proof via shared smoke."
+
+  - id: commerce.booking
+    frontend: admin-web
+    name: Бронирование (offered→booked)
+    route: "/commerce/tariffs (tab: Заказы)"
+    path: apps/admin-web/src/pages/CommerceOrdersTab.tsx
+    smoke: test_uismoke__commerce__order_create
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: reachable
+    note: "COMMERCE-CONTUR2-001A3b — offered→booked transition proof via shared smoke."
+
+  - id: commerce.payment_status
+    frontend: admin-web
+    name: Статус оплаты заказа
+    route: "/commerce/tariffs (tab: Заказы)"
+    path: apps/admin-web/src/pages/CommerceOrdersTab.tsx
+    smoke: test_uismoke__commerce__order_create
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: reachable
+    note: "COMMERCE-CONTUR2-001A3b — payment update proof via shared smoke."
+
+  - id: commerce.order_close
+    frontend: admin-web
+    name: Закрытие заказа (terminal)
+    route: "/commerce/tariffs (tab: Заказы)"
+    path: apps/admin-web/src/pages/CommerceOrdersTab.tsx
+    smoke: test_uismoke__commerce__order_create
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: reachable
+    note: "COMMERCE-CONTUR2-001A3c — booked→confirmed→closed smoke proof via shared test."
+
+  - id: commerce.price_list_manage
+    frontend: admin-web
+    name: Управление версиями прайс-листов
+    route: n/a
+    path: n/a
+    smoke: test_uismoke__commerce__tariff_manage
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: reachable
+    note: "COMMERCE-CONTUR2-001A3a — proven via shared tariff smoke (price items CRUD)."
+
+  - id: system.theme_switch
+    frontend: admin-web
+    name: Переключение темы (light/dark)
+    route: sidebar footer toggle
+    path: apps/admin-web/src/components/Layout.tsx
+    smoke: test_uismoke__system__theme_switch
+    priority: P2
+    roles: [system_admin, campaign_manager, security_admin, ops_operator, moderator, approver, analyst]
+    status: reachable
+    note: "THEME-SWITCH-001B — dark theme tokens + accessible toggle, persists across reload."
 
   # ═══════════════════════════════════════════════════════════════
   # Summary counts (auto-generated — do not edit manually)
   # ═══════════════════════════════════════════════════════════════
-  #   total: 40
+  #   total: 58
   # by status:
-  #   reachable: 35 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, advertiser.create_org, advertiser.view, inventory.simulate, advertiser.invite, adsettings.configure, adsettings.test, audit.view, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, device.health_view, observability, user.reset_password, user.deactivate, inventory.rule_create)
-  #   blocked:     5 (self.report_view, self.campaign_create, playlist.build, backup.restore, campaign.complete)
+  #   reachable: 52 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, user.split_internal_advertiser, advertiser.create_org, advertiser.view, advertiser.contact_crud, advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites, inventory.simulate, advertiser.invite, adsettings.configure, adsettings.test, audit.view, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, campaign.complete, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, device.health_view, observability, user.reset_password, user.deactivate, inventory.rule_create, commerce.tariff_manage, commerce.price_list_manage, commerce.order_create, commerce.offer_generate, commerce.booking, commerce.payment_status, commerce.order_close, system.theme_switch, license.enforce, license.seat_release, license.report)
+  #   blocked:      6 (self.report_view, self.campaign_create, playlist.build, backup.restore, license.view, license.upload)
   # by frontend:
-  #   admin-web:      26
+  #   admin-web:      39
   #   advertiser-web:  5
   #   public:          1
-  #   service:         8
+  #   service:        13
   # by priority:
   #   P0: 20
-  #   P1: 19
-  #   P2:  1
+  #   P1: 36
+  #   P2:  2

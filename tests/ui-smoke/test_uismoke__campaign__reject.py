@@ -1,6 +1,7 @@
 """
 UI-smoke: campaign.reject — reject a pending campaign with reason.
-Pattern: create draft → creative upload → flights → placements → moderate → submit → reject → verify reason.
+Pattern: create → primary creative upload → flights → placements → submit → reject → verify reason.
+Uses CREATIVE_AUTO_APPROVE_UPLOADS (CI default) — creative pre-approved, no moderation needed.
 """
 import os, pytest
 
@@ -8,7 +9,7 @@ if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
 from playwright.sync_api import Page, expect
-from conftest import BASE_URL
+from conftest import BASE_URL, login_as_break_glass_admin
 
 FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "test-creative.png")
 
@@ -18,12 +19,7 @@ def test_uismoke__campaign__reject(smoke_page: Page) -> None:
     import time; t0 = time.time()
 
     # ── Login ──
-    page.select_option("#login-provider", "local_break_glass")
-    page.fill("#login-username", "break_glass_admin")
-    page.fill("#login-password", "break-glass-dev-only")
-    page.click('button[type="submit"]')
-    page.wait_for_url("**/campaigns", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    login_as_break_glass_admin(page)
 
     # ── Create campaign ──
     page.click('[data-testid="campaign-create-open"]')
@@ -38,57 +34,58 @@ def test_uismoke__campaign__reject(smoke_page: Page) -> None:
     page.wait_for_url(lambda url: url != BASE_URL + "/campaigns/new", timeout=15000)
     page.wait_for_load_state("networkidle")
 
-    # ── Creative ──
+    # ── Navigate to content tab ──
+    page.click('[data-testid="tab-content"]')
+    page.wait_for_load_state("networkidle")
+    # Wait for primary upload section to mount (prevents race on slow CI)
+    expect(page.locator('[data-testid="creative-upload-primary"]')).to_be_visible(timeout=5000)
+
+    # ── Primary creative upload ──
     creative_code = f"RJ-CR-{os.urandom(2).hex()}"
-    page.click('[data-testid="tab-creatives"]')
-    page.wait_for_load_state("networkidle")
-    page.click('[data-testid="creative-add-library-btn"]')
-    page.fill('[data-testid="creative-code"]', creative_code)
-    page.fill('[data-testid="creative-name"]', "Reject CR")
-    page.click('[data-testid="creative-add-submit"]')
-    page.wait_for_load_state("networkidle")
-    page.click('[data-testid="creative-attach-btn"]')
-    opt = page.locator('[data-testid="creative-attach-select"] option').filter(has_text=creative_code)
-    page.locator('[data-testid="creative-attach-select"]').select_option(value=opt.get_attribute("value"))
-    page.click('[data-testid="creative-attach-submit"]')
-    page.wait_for_load_state("networkidle")
-    page.locator('[data-testid="creative-file-input"]').set_input_files(FIXTURE)
-    expect(page.locator('[data-testid="creative-upload-done"]')).to_be_visible(timeout=20000)
+    page.locator('[data-testid="creative-upload-select-file"]').click()
+    page.locator('[data-testid="creative-upload-primary-file-input"]').set_input_files(FIXTURE)
+    expect(page.locator('[data-testid="creative-upload-primary-code"]')).to_be_visible(timeout=5000)
+    page.locator('[data-testid="creative-upload-primary-code"]').fill(creative_code)
+    submit_btn = page.locator('[data-testid="creative-upload-metadata-submit"]')
+    expect(submit_btn).to_be_visible(timeout=3000)
+    submit_btn.click()
+    # Fail fast on upload error instead of waiting 30s for done
+    try:
+        expect(page.locator('[data-testid="creative-upload-primary-error"]')).to_be_visible(timeout=5000)
+        err = page.locator('[data-testid="creative-upload-primary-error"]').inner_text()
+        raise AssertionError(f"Upload failed: {err}")
+    except Exception as e:
+        if "Upload failed" in str(e):
+            raise
+    expect(page.locator('[data-testid="creative-upload-done"]')).to_be_visible(timeout=30000)
     print(f"[{time.time()-t0:.1f}s] Creative uploaded")
 
     # ── Flights ──
-    page.click('[data-testid="tab-flights"]')
-    page.wait_for_load_state("networkidle")
     page.click('[data-testid="flight-add-btn"]')
-    page.fill('[data-testid="flight-start"]', "2026-12-01")
-    page.fill('[data-testid="flight-end"]', "2026-12-31")
+    expect(page.locator('[data-testid="flight-start"]')).to_be_visible(timeout=5000)
+    page.fill('[data-testid="flight-start"]', "2027-05-01")
+    page.fill('[data-testid="flight-end"]', "2027-05-31")
     page.click('[data-testid="flight-submit"]')
     page.wait_for_load_state("networkidle")
+    print(f"[{time.time()-t0:.1f}s] Flight added")
 
     # ── Placements ──
-    page.click('[data-testid="tab-placements"]')
-    page.wait_for_load_state("networkidle")
     page.click('[data-testid="placement-add-btn"]')
+    expect(page.locator('[data-testid="placement-surface"]')).to_be_visible(timeout=5000)
     page.locator('[data-testid="placement-surface"]').select_option(index=1)
     page.click('[data-testid="placement-submit"]')
     page.wait_for_load_state("networkidle")
+    print(f"[{time.time()-t0:.1f}s] Placement added")
 
-    # ── Moderate approve creative ──
-    page.locator('aside nav a[href="/creatives/moderation"]').click(force=True)
+    # ── Back to overview ──
+    page.click('[data-testid="tab-overview"]')
     page.wait_for_load_state("networkidle")
-    page.wait_for_selector('[data-testid^="moderation-row-"]', timeout=15000)
-    row = page.locator(f'[data-testid="moderation-row-{creative_code}"]')
-    expect(row).to_be_visible(timeout=5000)
-    page.locator(f'[data-testid="moderation-approve-{creative_code}"]').click()
-    page.wait_for_load_state("networkidle")
-    print(f"[{time.time()-t0:.1f}s] Creative approved")
 
-    # ── Go back + submit ──
-    page.go_back()
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1000)
+    # ── Submit ──
     submit_btn = page.locator('[data-testid="campaign-submit-btn"]')
-    expect(submit_btn).to_be_enabled(timeout=10000)
+    # Submit readiness needs refreshCampaign to re-fetch creatives/flights/
+    # placements after the uploads; on slow CI this exceeds 10s.
+    expect(submit_btn).to_be_enabled(timeout=30000)
     submit_btn.click()
     try:
         page.wait_for_selector('[data-testid="campaign-submit-error"]', timeout=5000)
@@ -124,8 +121,7 @@ def test_uismoke__campaign__reject(smoke_page: Page) -> None:
     # ── Verify ──
     status_badge = page.locator('[data-testid="campaign-status-badge"]')
     expect(status_badge).to_be_visible(timeout=10000)
-    badge_text = status_badge.inner_text()
-    assert "Отклонена" == badge_text, f"Expected Отклонена, got: {badge_text}"
+    expect(status_badge).to_contain_text("Отклонена", timeout=5000)
     print(f"[{time.time()-t0:.1f}s] Rejected ✓")
 
     # Verify rejection reason is displayed

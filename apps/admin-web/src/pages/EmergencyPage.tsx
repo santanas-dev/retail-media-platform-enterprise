@@ -4,20 +4,20 @@ import { api, ApiError, type EmergencyStatusOut } from "../api/client";
 const styles = {
   page: { fontFamily: "system-ui, sans-serif" },
   h1: { fontSize: "1.5rem", fontWeight: 600, margin: "0 0 1rem" },
-  card: { padding: "1.5rem", borderRadius: 8, background: "#fff", border: "1px solid #e2e8f0", marginBottom: "1.5rem" },
-  statusActive: { display: "inline-block", padding: "0.25rem 0.75rem", borderRadius: 9999, fontSize: "0.85rem", fontWeight: 700, background: "#fef2f2", color: "#991b1b" },
-  statusInactive: { display: "inline-block", padding: "0.25rem 0.75rem", borderRadius: 9999, fontSize: "0.85rem", fontWeight: 700, background: "#f0fdf4", color: "#166534" },
-  warning: { padding: "1rem", marginBottom: "1rem", borderRadius: 6, background: "#fef2f2", border: "2px solid #dc2626", color: "#991b1b" },
-  label: { display: "block", fontSize: "0.85rem", color: "#64748b", marginBottom: "0.25rem" },
-  value: { fontSize: "1rem", color: "#0f172a", marginBottom: "0.75rem" },
+  card: { padding: "1.5rem", borderRadius: 8, background: "var(--rmp-bg-surface)", border: "1px solid var(--rmp-border)", marginBottom: "1.5rem" },
+  statusActive: { display: "inline-block", padding: "0.25rem 0.75rem", borderRadius: 9999, fontSize: "0.85rem", fontWeight: 700, background: "var(--rmp-danger-50)", color: "var(--rmp-danger-800)" },
+  statusInactive: { display: "inline-block", padding: "0.25rem 0.75rem", borderRadius: 9999, fontSize: "0.85rem", fontWeight: 700, background: "var(--rmp-success-50)", color: "var(--rmp-success-800)" },
+  warning: { padding: "1rem", marginBottom: "1rem", borderRadius: 6, background: "var(--rmp-danger-50)", border: "2px solid var(--rmp-danger-600)", color: "var(--rmp-danger-800)" },
+  label: { display: "block", fontSize: "0.85rem", color: "var(--rmp-text-secondary)", marginBottom: "0.25rem" },
+  value: { fontSize: "1rem", color: "var(--rmp-text-primary)", marginBottom: "0.75rem" },
   form: { display: "flex", flexDirection: "column" as const, gap: "0.75rem", maxWidth: 400 },
-  textarea: { width: "100%", minHeight: 80, padding: "0.5rem", border: "1px solid #cbd5e1", borderRadius: 4, fontSize: "0.9rem", resize: "vertical" as const },
-  btnDanger: { padding: "0.6rem 1.2rem", border: "none", borderRadius: 6, background: "#dc2626", color: "#fff", fontWeight: 600, cursor: "pointer", fontSize: "0.9rem" },
-  btnSecondary: { padding: "0.5rem 1rem", border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", cursor: "pointer", fontSize: "0.85rem" },
-  loading: { padding: "2rem", textAlign: "center" as const, color: "#94a3b8" },
-  error: { padding: "1rem", color: "#991b1b", background: "#fef2f2", borderRadius: 6, marginBottom: "1rem" },
-  success: { padding: "1rem", color: "#166534", background: "#f0fdf4", borderRadius: 6, marginBottom: "1rem" },
-  meta: { fontSize: "0.8rem", color: "#94a3b8", marginTop: "0.5rem" },
+  textarea: { width: "100%", minHeight: 80, padding: "0.5rem", border: "1px solid var(--rmp-border-strong)", borderRadius: 4, fontSize: "0.9rem", resize: "vertical" as const },
+  btnDanger: { padding: "0.6rem 1.2rem", border: "none", borderRadius: 6, background: "var(--rmp-danger-600)", color: "var(--rmp-text-inverse)", fontWeight: 600, cursor: "pointer", fontSize: "0.9rem" },
+  btnSecondary: { padding: "0.5rem 1rem", border: "1px solid var(--rmp-border-strong)", borderRadius: 4, background: "var(--rmp-bg-surface)", cursor: "pointer", fontSize: "0.85rem" },
+  loading: { padding: "2rem", textAlign: "center" as const, color: "var(--rmp-text-muted)" },
+  error: { padding: "1rem", color: "var(--rmp-danger-800)", background: "var(--rmp-danger-50)", borderRadius: 6, marginBottom: "1rem" },
+  success: { padding: "1rem", color: "var(--rmp-success-800)", background: "var(--rmp-success-50)", borderRadius: 6, marginBottom: "1rem" },
+  meta: { fontSize: "0.8rem", color: "var(--rmp-text-muted)", marginTop: "0.5rem" },
   confirmRow: { display: "flex", gap: "0.5rem", alignItems: "center" },
 };
 
@@ -159,7 +159,7 @@ export default function EmergencyPage() {
               />
               {confirmMode === "activate" ? (
                 <div style={styles.confirmRow}>
-                  <span style={{ color: "#991b1b", fontWeight: 600 }}>Подтвердите активацию:</span>
+                  <span style={{ color: "var(--rmp-danger-800)", fontWeight: 600 }}>Подтвердите активацию:</span>
                   <button style={styles.btnDanger} disabled={!reason.trim()} onClick={handleActivate} data-testid="emergency-confirm-activate">
                     Да, активировать
                   </button>
@@ -193,8 +193,8 @@ export default function EmergencyPage() {
               />
               {confirmMode === "deactivate" ? (
                 <div style={styles.confirmRow}>
-                  <span style={{ color: "#166534", fontWeight: 600 }}>Подтвердите деактивацию:</span>
-                  <button style={{ ...styles.btnDanger, background: "#16a34a" }} disabled={!reason.trim()} onClick={handleDeactivate} data-testid="emergency-confirm-deactivate">
+                  <span style={{ color: "var(--rmp-success-800)", fontWeight: 600 }}>Подтвердите деактивацию:</span>
+                  <button style={{ ...styles.btnDanger, background: "var(--rmp-success-600)" }} disabled={!reason.trim()} onClick={handleDeactivate} data-testid="emergency-confirm-deactivate">
                     Да, деактивировать
                   </button>
                   <button style={styles.btnSecondary} onClick={() => { setConfirmMode(null); setReason(""); }}>
@@ -203,7 +203,7 @@ export default function EmergencyPage() {
                 </div>
               ) : (
                 <button
-                  style={{ ...styles.btnDanger, background: "#16a34a", marginTop: "0.5rem" }}
+                  style={{ ...styles.btnDanger, background: "var(--rmp-success-600)", marginTop: "0.5rem" }}
                   disabled={!reason.trim()}
                   onClick={() => setConfirmMode("deactivate")}
                   data-testid="emergency-deactivate-btn"

@@ -35,6 +35,8 @@ from packages.domain.models import (
     UserRole,
 )
 
+from packages.domain import CampaignStatus, validate_transition
+
 
 async def list_users(
     session: AsyncSession,
@@ -194,13 +196,90 @@ async def get_advertiser_organization(
     return result.scalar_one_or_none()
 
 
+async def generate_advertiser_org_code(session: AsyncSession) -> str:
+    """Generate a unique, readable advertiser organization code.
+
+    Pattern: ADV-YYYY-NNNN (e.g. ADV-2026-0001).
+    Deterministic server-side; does not depend on client clock.
+    Retries on race-condition collisions (max 5 attempts).
+    """
+    import datetime as dt
+
+    year = dt.date.today().year
+    prefix = f"ADV-{year}-"
+    max_attempts = 5
+
+    # Find the highest existing code for this year (once, outside loop)
+    result = await session.execute(
+        select(AdvertiserOrganization.code)
+        .where(AdvertiserOrganization.code.like(f"{prefix}%"))
+        .order_by(AdvertiserOrganization.code.desc())
+        .limit(1)
+    )
+    last_code = result.scalar_one_or_none()
+    if last_code:
+        try:
+            next_num = int(last_code[len(prefix):]) + 1
+        except (ValueError, IndexError):
+            next_num = 1
+    else:
+        next_num = 1
+
+    for _ in range(max_attempts):
+        candidate = f"{prefix}{next_num:04d}"
+
+        # Verify uniqueness by checking if code exists (belt-and-suspenders)
+        exists_result = await session.execute(
+            select(AdvertiserOrganization.id).where(
+                AdvertiserOrganization.code == candidate
+            ).limit(1)
+        )
+        if exists_result.scalar_one_or_none() is None:
+            return candidate
+
+        # Collision — the candidate already exists; try next number
+        next_num += 1
+
+    raise RuntimeError(
+        f"Failed to generate unique advertiser code after {max_attempts} attempts"
+    )
+
+
 async def create_advertiser_organization(
-    session: AsyncSession, *, code: str, legal_name: str, display_name: str
+    session: AsyncSession, *, code: str | None = None,
+    legal_name: str, display_name: str
 ) -> AdvertiserOrganization:
-    """Create a new advertiser organization."""
+    """Create a new advertiser organization.
+
+    If code is None, a server-generated unique code is used.
+    If an explicit code collides with an existing one, an IntegrityError
+    is raised (HTTP 409/422 expected at the route layer).
+    """
+    if code is None:
+        code = await generate_advertiser_org_code(session)
+
     org = AdvertiserOrganization(
         code=code, legal_name=legal_name, display_name=display_name,
     )
+    session.add(org)
+    await session.flush()
+    return org
+
+
+async def update_advertiser_organization_requisites(
+    session: AsyncSession, org_id: str, **fields: str | None
+) -> AdvertiserOrganization | None:
+    """Update legal requisites fields on an advertiser organization.
+
+    Returns the updated org, or None if not found.
+    Only sets provided fields; leaves others unchanged.
+    """
+    org = await get_advertiser_organization(session, org_id)
+    if org is None:
+        return None
+    for key, value in fields.items():
+        if hasattr(org, key):
+            setattr(org, key, value)
     session.add(org)
     await session.flush()
     return org
@@ -213,6 +292,52 @@ async def list_advertiser_brands(
     stmt = select(AdvertiserBrand).order_by(AdvertiserBrand.code)
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def create_advertiser_brand(
+    session: AsyncSession,
+    advertiser_organization_id: str,
+    code: str,
+    name: str,
+    description: str | None = None,
+) -> AdvertiserBrand:
+    brand = AdvertiserBrand(
+        advertiser_organization_id=advertiser_organization_id,
+        code=code,
+        name=name,
+        description=description,
+        status="active",
+    )
+    session.add(brand)
+    await session.flush()
+    return brand
+
+
+async def update_advertiser_brand(
+    session: AsyncSession,
+    brand_id: str,
+    advertiser_organization_id: str,
+    code: str | None = None,
+    name: str | None = None,
+    description: str | None = None,
+) -> AdvertiserBrand | None:
+    stmt = select(AdvertiserBrand).where(
+        AdvertiserBrand.id == brand_id,
+        AdvertiserBrand.advertiser_organization_id == advertiser_organization_id,
+    )
+    result = await session.execute(stmt)
+    brand = result.scalar_one_or_none()
+    if not brand:
+        return None
+    if code is not None:
+        brand.code = code
+    if name is not None:
+        brand.name = name
+    if description is not None:
+        brand.description = description
+    session.add(brand)
+    await session.flush()
+    return brand
 
 
 async def list_advertiser_contracts(
@@ -269,6 +394,192 @@ async def list_advertiser_contracts_by_org(
     return list(result.scalars().all())
 
 
+async def create_advertiser_contract(
+    session: AsyncSession,
+    advertiser_organization_id: str,
+    code: str,
+    name: str,
+    contract_number: str | None = None,
+    budget_limit_amount: float | None = None,
+    budget_limit_currency: str = "RUB",
+    valid_from: datetime | None = None,
+    valid_until: datetime | None = None,
+) -> AdvertiserContract:
+    """Create a new advertiser contract (ADVERTISER-UX-001B2)."""
+    from datetime import timezone as _tz
+
+    contract = AdvertiserContract(
+        advertiser_organization_id=advertiser_organization_id,
+        code=code,
+        name=name,
+        contract_number=contract_number,
+        budget_limit_amount=budget_limit_amount,
+        budget_limit_currency=budget_limit_currency,
+        valid_from=valid_from or datetime.now(_tz.utc),
+        valid_until=valid_until,
+        status="draft",
+    )
+    session.add(contract)
+    await session.flush()
+    return contract
+
+
+async def update_advertiser_contract(
+    session: AsyncSession,
+    contract_id: str,
+    advertiser_organization_id: str,
+    code: str | None = None,
+    name: str | None = None,
+    contract_number: str | None = None,
+    budget_limit_amount: float | None = None,
+    budget_limit_currency: str | None = None,
+    valid_from: datetime | None = None,
+    valid_until: datetime | None = None,
+) -> AdvertiserContract | None:
+    """Update an existing advertiser contract (ADVERTISER-UX-001B2)."""
+    stmt = select(AdvertiserContract).where(
+        AdvertiserContract.id == contract_id,
+        AdvertiserContract.advertiser_organization_id == advertiser_organization_id,
+    )
+    result = await session.execute(stmt)
+    contract = result.scalar_one_or_none()
+    if not contract:
+        return None
+    if code is not None:
+        contract.code = code
+    if name is not None:
+        contract.name = name
+    if contract_number is not None:
+        contract.contract_number = contract_number
+    if budget_limit_amount is not None:
+        contract.budget_limit_amount = budget_limit_amount
+    if budget_limit_currency is not None:
+        contract.budget_limit_currency = budget_limit_currency
+    if valid_from is not None:
+        contract.valid_from = valid_from
+    if valid_until is not None:
+        contract.valid_until = valid_until
+    session.add(contract)
+    await session.flush()
+    return contract
+
+
+async def create_contract_upload_session(
+    session: AsyncSession,
+    contract_id: str,
+    advertiser_organization_id: str,
+    storage_bucket: str,
+    storage_key: str,
+    filename: str,
+    content_type: str,
+    content_length: int,
+    created_by: str,
+    ttl_seconds: int,
+) -> str:
+    """Create a contract_upload_sessions row. Returns session id."""
+    from packages.domain.models import ContractUploadSession
+    from datetime import timezone as _tz, timedelta
+    from uuid import uuid4
+
+    sid = str(uuid4())
+    expires_at = datetime.now(_tz.utc) + timedelta(seconds=ttl_seconds)
+    row = ContractUploadSession(
+        id=sid,
+        contract_id=contract_id,
+        advertiser_organization_id=advertiser_organization_id,
+        storage_bucket=storage_bucket,
+        storage_key=storage_key,
+        filename=filename,
+        content_type=content_type,
+        content_length=content_length,
+        expires_at=expires_at,
+        created_by=created_by,
+    )
+    session.add(row)
+    await session.flush()
+    return sid
+
+
+async def get_contract_upload_session(
+    session: AsyncSession,
+    upload_id: str,
+) -> dict | None:
+    """Get contract upload session by id. Returns dict or None."""
+    from packages.domain.models import ContractUploadSession
+    from sqlalchemy import select as sa_select
+
+    result = await session.execute(
+        sa_select(ContractUploadSession).where(
+            ContractUploadSession.id == upload_id,
+        )
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
+        return None
+    return {
+        "id": row.id,
+        "contract_id": row.contract_id,
+        "advertiser_organization_id": row.advertiser_organization_id,
+        "storage_bucket": row.storage_bucket,
+        "storage_key": row.storage_key,
+        "filename": row.filename,
+        "content_type": row.content_type,
+        "content_length": row.content_length,
+        "expires_at": row.expires_at,
+        "completed_at": row.completed_at,
+    }
+
+
+async def mark_contract_upload_complete(
+    session: AsyncSession,
+    upload_id: str,
+) -> bool:
+    """Mark contract upload session as completed. Returns True on success."""
+    from packages.domain.models import ContractUploadSession
+
+    result = await session.execute(
+        select(ContractUploadSession).where(
+            ContractUploadSession.id == upload_id,
+            ContractUploadSession.completed_at.is_(None),
+        )
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
+        return False
+    from datetime import timezone as _tz
+    row.completed_at = datetime.now(_tz.utc)
+    session.add(row)
+    await session.flush()
+    return True
+
+
+async def set_contract_file_metadata(
+    session: AsyncSession,
+    contract_id: str,
+    storage_key: str,
+    filename: str,
+    content_type: str,
+    file_size_bytes: int,
+    sha256: str,
+) -> AdvertiserContract | None:
+    """Set file metadata on an advertiser contract after successful upload."""
+    stmt = select(AdvertiserContract).where(AdvertiserContract.id == contract_id)
+    result = await session.execute(stmt)
+    contract = result.scalar_one_or_none()
+    if contract is None:
+        return None
+    contract.file_storage_key = storage_key
+    contract.file_name = filename
+    contract.file_size_bytes = file_size_bytes
+    contract.file_sha256 = sha256
+    contract.file_content_type = content_type
+    from datetime import timezone as _tz
+    contract.file_uploaded_at = datetime.now(_tz.utc)
+    session.add(contract)
+    await session.flush()
+    return contract
+
+
 async def list_advertiser_contacts_by_org(
     session: AsyncSession, org_id: str,
 ) -> list[AdvertiserContact]:
@@ -278,6 +589,125 @@ async def list_advertiser_contacts_by_org(
     ).order_by(AdvertiserContact.contact_type, AdvertiserContact.full_name)
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def create_advertiser_contact(
+    session: AsyncSession,
+    advertiser_organization_id: str,
+    full_name: str,
+    email: str,
+    phone: str | None = None,
+    title: str | None = None,
+    contact_type: str = "primary",
+    is_primary: bool = False,
+    user_id: str | None = None,
+) -> AdvertiserContact:
+    """Create a new advertiser contact (ADVERTISER-UX-001B3).
+
+    If user_id is provided, validates the user belongs to the same advertiser org.
+    """
+    if user_id is not None:
+        await _validate_user_same_org(session, user_id, advertiser_organization_id)
+
+    from datetime import timezone as _tz
+    contact = AdvertiserContact(
+        advertiser_organization_id=advertiser_organization_id,
+        full_name=full_name,
+        email=email,
+        phone=phone,
+        title=title,
+        contact_type=contact_type,
+        is_primary=is_primary,
+        user_id=user_id,
+        created_at=datetime.now(_tz.utc),
+        updated_at=datetime.now(_tz.utc),
+    )
+    session.add(contact)
+    await session.flush()
+    return contact
+
+
+async def update_advertiser_contact(
+    session: AsyncSession,
+    contact_id: str,
+    advertiser_organization_id: str,  # scope guard
+    full_name: str | None = None,
+    email: str | None = None,
+    phone: str | None = None,
+    title: str | None = None,
+    contact_type: str | None = None,
+    is_primary: bool | None = None,
+    status: str | None = None,
+    user_id: str | None = None,
+) -> AdvertiserContact | None:
+    """Update an advertiser contact (ADVERTISER-UX-001B3).
+
+    Contact must belong to the given advertiser_organization_id (cross-org guard).
+    If user_id changes, validates the user belongs to the same advertiser org.
+    """
+    stmt = select(AdvertiserContact).where(
+        AdvertiserContact.id == contact_id,
+        AdvertiserContact.advertiser_organization_id == advertiser_organization_id,
+    )
+    result = await session.execute(stmt)
+    contact = result.scalar_one_or_none()
+    if contact is None:
+        return None
+
+    if user_id is not None and user_id != contact.user_id:
+        await _validate_user_same_org(session, user_id, advertiser_organization_id)
+
+    if full_name is not None:
+        contact.full_name = full_name
+    if email is not None:
+        contact.email = email
+    if phone is not None:
+        contact.phone = phone
+    if title is not None:
+        contact.title = title
+    if contact_type is not None:
+        contact.contact_type = contact_type
+    if is_primary is not None:
+        contact.is_primary = is_primary
+    if status is not None:
+        contact.status = status
+    if user_id is not None:
+        contact.user_id = user_id
+
+    await session.flush()
+    return contact
+
+
+async def _validate_user_same_org(
+    session: AsyncSession,
+    user_id: str,
+    advertiser_organization_id: str,
+) -> None:
+    """Raise ValueError if user does not belong to the given advertiser org."""
+    from packages.domain.models import (
+        User, AdvertiserUserMembership, AdvertiserOrganization,
+    )
+
+    stmt = (
+        select(User.id)
+        .join(
+            AdvertiserUserMembership,
+            AdvertiserUserMembership.user_id == User.id,
+        )
+        .join(
+            AdvertiserOrganization,
+            AdvertiserOrganization.id == AdvertiserUserMembership.advertiser_organization_id,
+        )
+        .where(
+            User.id == user_id,
+            AdvertiserOrganization.id == advertiser_organization_id,
+            User.status == "active",
+            AdvertiserUserMembership.status == "active",
+        )
+    )
+    result = await session.execute(stmt)
+    if result.scalar_one_or_none() is None:
+        raise ValueError("User does not belong to this advertiser organization")
 
 
 async def list_advertiser_user_memberships(
@@ -545,18 +975,23 @@ async def list_campaigns_paginated(
     *,
     limit: int = 50,
     offset: int = 0,
+    campaign_id: str | None = None,
 ) -> tuple[list, int]:
     """Paginated campaign list — returns (items, total_count)."""
     from packages.domain.models import Campaign
     from sqlalchemy import func
 
+    query = select(Campaign)
+    if campaign_id:
+        query = query.where(Campaign.id == campaign_id)
+
     total_result = await session.execute(
-        select(func.count()).select_from(Campaign),
+        select(func.count()).select_from(query.subquery()),
     )
     total = total_result.scalar_one()
 
     stmt = (
-        select(Campaign)
+        query
         .order_by(Campaign.code)
         .offset(offset)
         .limit(limit)
@@ -858,7 +1293,7 @@ async def list_approval_queue(
             CampaignStatusHistory,
             Campaign.id == CampaignStatusHistory.campaign_id,
         )
-        .where(CampaignStatusHistory.new_status == "pending_approval")
+        .where(CampaignStatusHistory.new_status == CampaignStatus.PENDING_APPROVAL)
     )
 
     if status_filter != "all":
@@ -937,7 +1372,7 @@ async def list_approval_queue_paginated(
         .select_from(Campaign)
         .join(CampaignStatusHistory,
               Campaign.id == CampaignStatusHistory.campaign_id)
-        .where(CampaignStatusHistory.new_status == "pending_approval")
+        .where(CampaignStatusHistory.new_status == CampaignStatus.PENDING_APPROVAL)
     )
     if status_filter != "all":
         count_stmt = count_stmt.where(Campaign.status == status_filter)
@@ -950,7 +1385,7 @@ async def list_approval_queue_paginated(
         sa_select(Campaign.id)
         .join(CampaignStatusHistory,
               Campaign.id == CampaignStatusHistory.campaign_id)
-        .where(CampaignStatusHistory.new_status == "pending_approval")
+        .where(CampaignStatusHistory.new_status == CampaignStatus.PENDING_APPROVAL)
         .order_by(CampaignStatusHistory.changed_at.desc())
         .offset(offset)
         .limit(limit)
@@ -999,7 +1434,7 @@ async def _approval_queue_rows_by_ids(
         .outerjoin(CampaignApproval, Campaign.id == CampaignApproval.campaign_id)
         .outerjoin(CampaignStatusHistory, Campaign.id == CampaignStatusHistory.campaign_id)
         .where(Campaign.id.in_(campaign_ids))
-        .where(CampaignStatusHistory.new_status == "pending_approval")
+        .where(CampaignStatusHistory.new_status == CampaignStatus.PENDING_APPROVAL)
         .order_by(CampaignStatusHistory.changed_at.desc())
     )
 
@@ -1252,15 +1687,17 @@ async def request_campaign_approval(
     *,
     changed_by: str,
     scope_advertiser_ids: frozenset[str] | None = None,
-) -> tuple[str | None, str | None]:
-    """Request approval for a draft campaign. Returns (old_status, new_status).
+) -> tuple[str | None, str | None, str | None]:
+    """Request approval for a draft campaign. Returns (old_status, new_status, reason).
 
     Transition: draft → pending_approval.
     Validates: ≥1 flight, ≥1 placement, ≥1 creative, flights within contract window.
 
-    Returns (None, None) if campaign not found or not in draft status.
-    Returns (old, old) if validation fails (no flights/placements/creatives, or
-        flights outside contract validity window).
+    Returns (None, None, None) if campaign not found or not in draft status.
+    Returns (old, old, reason) if validation fails — reason is a human-readable
+        Russian message explaining which check failed (missing flights/placements,
+        metadata-only creatives, contract window violation, or inventory capacity).
+    Returns (old, new, None) on success.
     """
     import uuid
     from datetime import datetime, timezone as tz
@@ -1276,11 +1713,17 @@ async def request_campaign_approval(
     )
     campaign = result.scalar_one_or_none()
     if campaign is None:
-        return None, None
-    if campaign.status != "draft":
-        return None, None
+        return None, None, None
+    if campaign.status != CampaignStatus.DRAFT:
+        return None, None, None
 
     _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    # Transition guard — raises ValueError on invalid transition
+    try:
+        validate_transition(campaign.status, CampaignStatus.PENDING_APPROVAL)
+    except ValueError:
+        return None, None, None
 
     # Validation: ≥1 flight, ≥1 placement, ≥1 creative
     flight_count = await session.scalar(
@@ -1296,7 +1739,15 @@ async def request_campaign_approval(
         .where(CampaignCreative.campaign_id == campaign_id)
     )
     if not flight_count or not placements or not creatives:
-        return campaign.status, campaign.status  # validation failed
+        missing = []
+        if not flight_count:
+            missing.append("флайты")
+        if not placements:
+            missing.append("плейсменты")
+        if not creatives:
+            missing.append("креативы")
+        reason = "Кампания не готова к отправке: отсутствуют " + ", ".join(missing)
+        return campaign.status, campaign.status, reason
 
     # P1 fix: reject approval if any attached creative is metadata-only
     # (empty sha256_checksum = no real file uploaded yet)
@@ -1315,15 +1766,30 @@ async def request_campaign_approval(
         for aid, cs, st, mod_st, fsz, sk in asset_rows.fetchall():
             # S-017: full deliverability check — not just checksum
             if not is_deliverable_checksum(cs):
-                return campaign.status, campaign.status  # empty/invalid checksum
+                return campaign.status, campaign.status, (
+                    "Креатив не загружен: отсутствует файл. "
+                    "Загрузите файл через библиотеку креативов перед отправкой кампании."
+                )
             if st != "ready":
-                return campaign.status, campaign.status  # not uploaded
+                return campaign.status, campaign.status, (
+                    "Креатив не готов: статус загрузки — «%s». "
+                    "Дождитесь завершения загрузки файла." % st
+                )
             if mod_st != "approved":
-                return campaign.status, campaign.status  # not approved
+                return campaign.status, campaign.status, (
+                    "Креатив не прошёл модерацию: статус — «%s». "
+                    "Отправьте креатив на модерацию и дождитесь одобрения." % mod_st
+                )
             if fsz <= 0:
-                return campaign.status, campaign.status  # zero-size file
+                return campaign.status, campaign.status, (
+                    "Креатив повреждён: размер файла равен нулю. "
+                    "Загрузите файл заново."
+                )
             if not sk or sk == "":
-                return campaign.status, campaign.status  # no storage key
+                return campaign.status, campaign.status, (
+                    "Креатив не загружен: файл отсутствует в хранилище. "
+                    "Загрузите файл через библиотеку креативов."
+                )
 
     # Validate flight windows against contract (ADR-015 §3.5)
     contract = await session.get(AdvertiserContract, campaign.advertiser_contract_id)
@@ -1333,11 +1799,23 @@ async def request_campaign_approval(
         )
         for flight in flights_result.scalars().all():
             if flight.start_at and contract.valid_from and flight.start_at < contract.valid_from:
-                return campaign.status, campaign.status
+                return campaign.status, campaign.status, (
+                    "Дата начала флайта (%s) раньше даты начала договора (%s). "
+                    "Скорректируйте период флайта."
+                    % (flight.start_at.strftime("%d.%m.%Y"), contract.valid_from.strftime("%d.%m.%Y"))
+                )
             if flight.start_at and flight.end_at and flight.end_at < flight.start_at:
-                return campaign.status, campaign.status
+                return campaign.status, campaign.status, (
+                    "Дата окончания флайта (%s) раньше даты начала (%s). "
+                    "Проверьте период флайта."
+                    % (flight.end_at.strftime("%d.%m.%Y"), flight.start_at.strftime("%d.%m.%Y"))
+                )
             if flight.end_at and contract.valid_until and flight.end_at > contract.valid_until:
-                return campaign.status, campaign.status
+                return campaign.status, campaign.status, (
+                    "Дата окончания флайта (%s) позже даты окончания договора (%s). "
+                    "Скорректируйте период флайта."
+                    % (flight.end_at.strftime("%d.%m.%Y"), contract.valid_until.strftime("%d.%m.%Y"))
+                )
 
     now = datetime.now(tz.utc)
     old_status = campaign.status
@@ -1384,25 +1862,33 @@ async def request_campaign_approval(
                     default_total_capacity=cfg.inventory_default_slot_capacity,
                     reservation_ttl_hours=cfg.inventory_reservation_ttl_hours,
                 )
-            except ValueError:
+            except ValueError as e:
                 # Inventory unavailable — fail approval request
-                return campaign.status, campaign.status
+                err_msg = str(e)
+                # Extract capacity-related messages
+                reason = (
+                    "Невозможно забронировать инвентарь: %s. "
+                    "Проверьте доступность рекламных поверхностей на выбранные даты "
+                    "или уменьшите долю голоса (SoV)."
+                    % err_msg
+                )
+                return campaign.status, campaign.status, reason
 
-    campaign.status = "pending_approval"
+    campaign.status = CampaignStatus.PENDING_APPROVAL
     campaign.updated_at = now
 
     history = CampaignStatusHistory(
         id=str(uuid.uuid4()),
         campaign_id=campaign_id,
         old_status=old_status,
-        new_status="pending_approval",
+        new_status=CampaignStatus.PENDING_APPROVAL,
         changed_by=changed_by,
         changed_at=now,
         reason="Approval requested",
     )
     session.add(history)
 
-    return old_status, "pending_approval"
+    return old_status, CampaignStatus.PENDING_APPROVAL, None
 
 
 async def approve_campaign(
@@ -1436,10 +1922,16 @@ async def approve_campaign(
     campaign = result.scalar_one_or_none()
     if campaign is None:
         return None, None
-    if campaign.status != "pending_approval":
+    if campaign.status != CampaignStatus.PENDING_APPROVAL:
         return None, None
 
     _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    # Transition guard
+    try:
+        validate_transition(campaign.status, CampaignStatus.APPROVED)
+    except ValueError:
+        return None, None
 
     # S-038: re-verify readiness at approve time — creative moderation may have
     # changed since the original request_approval call.
@@ -1478,8 +1970,8 @@ async def approve_campaign(
         select(CampaignStatusHistory.changed_at)
         .where(
             CampaignStatusHistory.campaign_id == campaign_id,
-            CampaignStatusHistory.old_status == "draft",
-            CampaignStatusHistory.new_status == "pending_approval",
+            CampaignStatusHistory.old_status == CampaignStatus.DRAFT,
+            CampaignStatusHistory.new_status == CampaignStatus.PENDING_APPROVAL,
         )
         .order_by(CampaignStatusHistory.changed_at.desc())
         .limit(1)
@@ -1553,10 +2045,16 @@ async def reject_campaign(
     campaign = result.scalar_one_or_none()
     if campaign is None:
         return None, None
-    if campaign.status != "pending_approval":
+    if campaign.status != CampaignStatus.PENDING_APPROVAL:
         return None, None
 
     _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    # Transition guard
+    try:
+        validate_transition(campaign.status, CampaignStatus.REJECTED)
+    except ValueError:
+        return None, None
 
     # Look up the request timestamp from the draft→pending_approval transition.
     # Fail if no such transition exists (never requested approval legitimately).
@@ -1564,8 +2062,8 @@ async def reject_campaign(
         select(CampaignStatusHistory.changed_at)
         .where(
             CampaignStatusHistory.campaign_id == campaign_id,
-            CampaignStatusHistory.old_status == "draft",
-            CampaignStatusHistory.new_status == "pending_approval",
+            CampaignStatusHistory.old_status == CampaignStatus.DRAFT,
+            CampaignStatusHistory.new_status == CampaignStatus.PENDING_APPROVAL,
         )
         .order_by(CampaignStatusHistory.changed_at.desc())
         .limit(1)
@@ -1635,21 +2133,27 @@ async def activate_campaign(
     campaign = result.scalar_one_or_none()
     if campaign is None:
         return None, None
-    if campaign.status != "approved":
+    if campaign.status != CampaignStatus.APPROVED:
         return None, None
 
     _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
 
+    # Transition guard
+    try:
+        validate_transition(campaign.status, CampaignStatus.ACTIVE)
+    except ValueError:
+        return None, None
+
     now = datetime.now(tz.utc)
     old_status = campaign.status
-    campaign.status = "active"
+    campaign.status = CampaignStatus.ACTIVE
     campaign.updated_at = now
 
     history = CampaignStatusHistory(
         id=str(uuid.uuid4()),
         campaign_id=campaign_id,
         old_status=old_status,
-        new_status="active",
+        new_status=CampaignStatus.ACTIVE,
         changed_by=changed_by,
         changed_at=now,
         reason="Campaign activated",
@@ -1683,21 +2187,27 @@ async def pause_campaign(
     campaign = result.scalar_one_or_none()
     if campaign is None:
         return None, None
-    if campaign.status != "active":
+    if campaign.status != CampaignStatus.ACTIVE:
         return None, None
 
     _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
 
+    # Transition guard
+    try:
+        validate_transition(campaign.status, CampaignStatus.PAUSED)
+    except ValueError:
+        return None, None
+
     now = datetime.now(tz.utc)
     old_status = campaign.status
-    campaign.status = "paused"
+    campaign.status = CampaignStatus.PAUSED
     campaign.updated_at = now
 
     history = CampaignStatusHistory(
         id=str(uuid.uuid4()),
         campaign_id=campaign_id,
         old_status=old_status,
-        new_status="paused",
+        new_status=CampaignStatus.PAUSED,
         changed_by=changed_by,
         changed_at=now,
         reason="Campaign paused",
@@ -1705,6 +2215,132 @@ async def pause_campaign(
     session.add(history)
 
     return old_status, "paused"
+
+
+async def complete_campaign(
+    session: AsyncSession,
+    campaign_id: str,
+    *,
+    changed_by: str = "00000000-0000-0000-0000-000000000150",  # break_glass_admin (system)
+    scope_advertiser_ids: frozenset[str] | None = None,
+) -> tuple[str | None, str | None]:
+    """Complete an active campaign whose flights have all ended.
+
+    Transition: active → completed  (LIFECYCLE-COMPLETE-001).
+    Guards: only active campaigns; all flights must have end_at < now.
+    Idempotent: already completed → returns (completed, completed).
+    Creates status history entry.
+
+    Returns (old_status, new_status) or (None, None) if not found/scoped.
+    """
+    import uuid as _uuid
+    from datetime import datetime, timezone as tz
+    from packages.domain.models import (
+        Campaign, CampaignFlight, CampaignStatusHistory,
+    )
+
+    result = await session.execute(
+        select(Campaign)
+        .where(Campaign.id == campaign_id)
+        .with_for_update()
+    )
+    campaign = result.scalar_one_or_none()
+    if campaign is None:
+        return None, None
+
+    # Already completed — idempotent
+    if campaign.status == CampaignStatus.COMPLETED:
+        return CampaignStatus.COMPLETED, CampaignStatus.COMPLETED
+
+    if campaign.status != CampaignStatus.ACTIVE:
+        return None, None
+
+    _assert_org_in_scope(campaign.advertiser_organization_id, scope_advertiser_ids)
+
+    # Transition guard
+    try:
+        validate_transition(campaign.status, CampaignStatus.COMPLETED)
+    except ValueError:
+        return None, None
+
+    # Check all flights have ended
+    now = datetime.now(tz.utc)
+    flights_result = await session.execute(
+        select(CampaignFlight)
+        .where(CampaignFlight.campaign_id == campaign_id)
+    )
+    flights = flights_result.scalars().all()
+
+    if not flights:
+        return None, None  # no flights — cannot determine completion
+
+    for flight in flights:
+        if flight.end_at is None or flight.end_at >= now:
+            return None, None  # at least one flight still active or in the future
+
+    # All flights ended — complete
+    old_status = campaign.status
+    campaign.status = CampaignStatus.COMPLETED
+    campaign.updated_at = now
+
+    history = CampaignStatusHistory(
+        id=str(_uuid.uuid4()),
+        campaign_id=campaign_id,
+        old_status=old_status,
+        new_status=CampaignStatus.COMPLETED,
+        changed_by=changed_by,
+        changed_at=now,
+        reason="All flights ended — campaign completed by system",
+    )
+    session.add(history)
+
+    return old_status, CampaignStatus.COMPLETED
+
+
+async def complete_expired_campaigns(
+    session: AsyncSession,
+    *,
+    changed_by: str = "00000000-0000-0000-0000-000000000150",  # break_glass_admin (system)
+) -> list[str]:
+    """Find all active campaigns with expired flights and complete them.
+
+    Returns list of campaign IDs that were completed.
+    Safe to call periodically — idempotent, no duplicates.
+    """
+    from datetime import datetime, timezone as tz
+    from packages.domain.models import Campaign, CampaignFlight
+
+    now = datetime.now(tz.utc)
+
+    # Find active campaigns where ALL flights have ended
+    # Strategy: find campaigns with flights, exclude those with any future flight
+    future_flight_campaigns = (
+        select(CampaignFlight.campaign_id)
+        .where(CampaignFlight.end_at >= now)
+        .distinct()
+    )
+
+    result = await session.execute(
+        select(Campaign.id)
+        .where(
+            Campaign.status == CampaignStatus.ACTIVE,
+            Campaign.id.in_(
+                select(CampaignFlight.campaign_id).distinct()
+            ),
+            Campaign.id.notin_(future_flight_campaigns),
+        )
+    )
+    candidate_ids = [row[0] for row in result.fetchall()]
+
+    completed_ids: list[str] = []
+    for cid in candidate_ids:
+        old, new = await complete_campaign(
+            session, cid, changed_by=changed_by,
+        )
+        if old is not None and new == CampaignStatus.COMPLETED:
+            completed_ids.append(cid)
+
+    return completed_ids
 
 
 # ---------------------------------------------------------------------------
@@ -3781,6 +4417,7 @@ async def create_advertiser_from_application(
         status="active",
     )
     session.add(org)
+    await session.flush()  # populate org.id (default=_new_uuid runs at flush)
     return org.id
 
 
@@ -3810,7 +4447,7 @@ async def create_advertiser_invite(
 
     # Expire any existing pending invites for this application
     stmt = (
-        sa_update(AdvertiserInvite)
+        update(AdvertiserInvite)
         .where(
             AdvertiserInvite.advertiser_application_id == advertiser_application_id,
             AdvertiserInvite.status == "pending",
@@ -3876,8 +4513,11 @@ async def accept_advertiser_invite(
     from datetime import timezone
     from packages.domain.models import AdvertiserInvite
     from packages.security.password import hash_password
+    from sqlalchemy import text
 
     # SELECT ... FOR UPDATE — row-level lock prevents concurrent double-accept
+    # Bypass RLS: public endpoint, token IS the auth — no scope context available
+    await session.execute(text("SET LOCAL app.rmp_is_admin = 'true'"))
     stmt = (
         select(AdvertiserInvite)
         .where(AdvertiserInvite.token == token)

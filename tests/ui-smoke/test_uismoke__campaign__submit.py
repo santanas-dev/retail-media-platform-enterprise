@@ -8,7 +8,7 @@ if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
 from playwright.sync_api import Page, expect
-from conftest import BASE_URL
+from conftest import BASE_URL, login_as_break_glass_admin
 
 FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "test-creative.png")
 
@@ -18,12 +18,7 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     import time; t0 = time.time()
 
     # ── Login ──
-    page.select_option("#login-provider", "local_break_glass")
-    page.fill("#login-username", "break_glass_admin")
-    page.fill("#login-password", "break-glass-dev-only")
-    page.click('button[type="submit"]')
-    page.wait_for_url("**/campaigns", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    login_as_break_glass_admin(page)
 
     # ── Create campaign ──
     page.click('[data-testid="campaign-create-open"]')
@@ -38,7 +33,22 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     page.wait_for_url(lambda url: url != BASE_URL + "/campaigns/new", timeout=15000)
     page.wait_for_load_state("networkidle")
 
-    # ── CAMPAIGN-UX-001B: Step 0 — Verify checklist on Overview ──
+    # ── CAMPAIGN-UX-001B: Step 0 — Dismiss guided banner if present ──
+    # CAMPAIGN-UX-002D added a guided banner after campaign creation.
+    # CampaignCreatePage passes state: { guided: true } → initialTab="content"
+    # Banner renders async — wait briefly for it to appear before checking
+    dismiss_btn = page.locator('[data-testid="campaign-created-dismiss"]')
+    try:
+        expect(dismiss_btn).to_be_visible(timeout=3000)
+        dismiss_btn.click()
+        page.wait_for_timeout(500)
+    except Exception:
+        pass  # banner may not have appeared (rare)
+    # Switch to Overview tab — guidedFromCreate sets initialTab="content"
+    page.click('[data-testid="tab-overview"]')
+    page.wait_for_load_state("networkidle")
+
+    # ── Step 1 — Verify checklist on Overview ──
     checklist = page.locator('[data-testid="campaign-readiness-checklist"]')
     expect(checklist).to_be_visible(timeout=5000)
     # All three items should show missing
@@ -57,8 +67,8 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     # Should now be on flights tab
     expect(page.locator('[data-testid="flight-add-btn"]')).to_be_visible(timeout=5000)
     page.click('[data-testid="flight-add-btn"]')
-    page.fill('[data-testid="flight-start"]', "2026-08-01")
-    page.fill('[data-testid="flight-end"]', "2026-08-31")
+    page.fill('[data-testid="flight-start"]', "2027-03-01")
+    page.fill('[data-testid="flight-end"]', "2027-03-31")
     page.click('[data-testid="flight-submit"]')
     page.wait_for_load_state("networkidle")
 
@@ -93,15 +103,26 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     creative_code = f"SUB-CR-{os.urandom(2).hex()}"
     page.locator('[data-testid="readiness-creative-action"]').click()
     page.wait_for_load_state("networkidle")
-    expect(page.locator('[data-testid="tab-creatives"]')).to_be_visible(timeout=5000)
+    expect(page.locator('[data-testid="tab-content"]')).to_be_visible(timeout=5000)
 
     # Use primary upload path
+    expect(page.locator('[data-testid="creative-upload-primary"]')).to_be_visible(timeout=5000)
     page.locator('[data-testid="creative-upload-select-file"]').click()
     page.locator('[data-testid="creative-upload-primary-file-input"]').set_input_files(FIXTURE)
     expect(page.locator('[data-testid="creative-upload-primary-code"]')).to_be_visible(timeout=5000)
     page.locator('[data-testid="creative-upload-primary-code"]').fill("")
     page.locator('[data-testid="creative-upload-primary-code"]').fill(creative_code)
-    page.locator('[data-testid="creative-upload-metadata-submit"]').click()
+    submit_btn = page.locator('[data-testid="creative-upload-metadata-submit"]')
+    expect(submit_btn).to_be_visible(timeout=3000)
+    submit_btn.click()
+    # Fail fast on upload error
+    try:
+        expect(page.locator('[data-testid="creative-upload-primary-error"]')).to_be_visible(timeout=5000)
+        err = page.locator('[data-testid="creative-upload-primary-error"]').inner_text()
+        raise AssertionError(f"Upload failed: {err}")
+    except Exception as e:
+        if "Upload failed" in str(e):
+            raise
     expect(page.locator('[data-testid="creative-upload-done"]')).to_be_visible(timeout=30000)
 
     # Return to Overview
@@ -120,7 +141,9 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
 
     # ── Submit — button enabled ──
     submit_btn = page.locator('[data-testid="campaign-submit-btn"]')
-    expect(submit_btn).to_be_enabled(timeout=10000)
+    # Submit readiness needs refreshCampaign to re-fetch creatives/flights/
+    # placements after the uploads; on slow CI this exceeds 10s.
+    expect(submit_btn).to_be_enabled(timeout=30000)
     submit_btn.click()
     try:
         page.wait_for_selector('[data-testid="campaign-submit-error"]', timeout=5000)
@@ -140,5 +163,10 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
 
     page.reload()
     page.wait_for_load_state("networkidle")
-    assert "На согласовании" in page.locator('[data-testid="campaign-status-badge"]').inner_text()
+    # After reload, wait for campaign detail to render
+    page.wait_for_selector("h2", state="visible", timeout=15000)
+    page.wait_for_timeout(1000)  # let React finish
+    status_badge = page.locator('[data-testid="campaign-status-badge"]')
+    expect(status_badge).to_be_visible(timeout=20000)
+    expect(status_badge).to_contain_text("На согласовании", timeout=5000)
     print(f"[{time.time()-t0:.1f}s] Reload ✓ — DONE")

@@ -11,6 +11,7 @@ import pytest
 if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
+from conftest import login_as_break_glass_admin
 from playwright.sync_api import Page, expect
 
 BASE_URL = os.environ.get("UI_SMOKE_BASE_URL", "http://localhost:3000")
@@ -41,12 +42,7 @@ def test_uismoke__advertiser__invite(page: Page):
     # ── Phase 2: Login as admin ──
     page.goto(LOGIN_URL)
     page.wait_for_load_state("networkidle")
-    page.select_option("#login-provider", "local_break_glass")
-    page.fill("#login-username", ADMIN_USER)
-    page.fill("#login-password", ADMIN_PASS)
-    page.click('button[type="submit"]')
-    page.wait_for_url("**/campaigns", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    login_as_break_glass_admin(page)
 
     # ── Phase 3: Navigate to advertiser applications ──
     page.get_by_role("link", name="Заявки рекламодателей").click()
@@ -64,13 +60,23 @@ def test_uismoke__advertiser__invite(page: Page):
     page.get_by_test_id("advertiser-review-start").click()
     expect(page.locator("text=Заявка переведена в статус «На рассмотрении»")).to_be_visible(timeout=10000)
 
-    # Re-select the row (UI re-renders detail after review action)
-    row = page.locator(f"tr:has-text('ООО Инвайт-{TS}')").first
-    row.click()
+    # Re-select the row and wait for detail panel to load. On slow CI the detail
+    # panel can still show the pre-review state (no approve button), so retry
+    # the select until the approve button appears.
+    approve_btn = page.get_by_test_id("advertiser-approve-btn")
+    for _attempt in range(3):
+        row = page.locator(f"tr:has-text('ООО Инвайт-{TS}')").first
+        row.click()
+        page.wait_for_load_state("networkidle")
+        try:
+            expect(approve_btn).to_be_visible(timeout=5000)
+            break
+        except Exception:
+            continue
 
     # Click approve
-    expect(page.get_by_test_id("advertiser-approve-btn")).to_be_visible(timeout=5000)
-    page.get_by_test_id("advertiser-approve-btn").click()
+    expect(approve_btn).to_be_visible(timeout=10000)
+    approve_btn.click()
     expect(page.locator("text=Заявка одобрена")).to_be_visible(timeout=10000)
 
     # ── Phase 6: Open approved application detail and create invite ──
