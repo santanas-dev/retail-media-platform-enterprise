@@ -1,0 +1,49 @@
+# CI UI-smoke subset — single source of truth for the -k expression in CI workflow.
+# One smoke function name per line (domain__action).
+# Lines starting with # are comments. Empty lines ignored.
+# Total in this file + deselected = total smoke functions on disk.
+#
+# All 38 smoke functions are CI-enforced (SUBSET-SSOT-001).
+# No deselected smokes.
+#
+# If you add a smoke function to tests/ui-smoke/ and want it in CI, add it here.
+# The roadmap-consistency-check.py guard verifies every reachable UI feature's
+# smoke is listed here.
+adsettings__configure
+adsettings__test
+advertiser__application_review
+advertiser__apply
+advertiser__brand_crud
+advertiser__contact_crud
+advertiser__contract_pdf_upload
+advertiser__create_org
+advertiser__invite
+advertiser__legal_requisites
+advertiser__view
+audit__view
+campaign__activate
+campaign__approve
+campaign__create
+campaign__edit
+campaign__pause
+campaign__reject
+campaign__submit
+commerce__order_create
+commerce__tariff_manage
+creative__moderate_approve
+creative__moderate_reject
+creative__upload
+device__health_view
+emergency__activate
+emergency__deactivate
+inventory__rule_create
+inventory__simulate
+self__apply_or_brief
+self__campaign_view
+self__login
+system__theme_switch
+user__assign_roles
+user__create_advertiser
+user__deactivate
+user__reset_password
+user__split_internal_advertiser

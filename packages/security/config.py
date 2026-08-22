@@ -91,6 +91,10 @@ class SecurityConfig:
     })
     creative_upload_url_ttl_seconds: int = 300  # 5 minutes
     creative_auto_approve_uploads: bool = False  # manual moderation by default
+    # Contract PDF storage (ADVERTISER-UX-001B2)
+    contract_storage_bucket: str = "retail-media-contracts"
+    contract_max_file_size_bytes: int = 10_485_760  # 10 MB
+    contract_upload_url_ttl_seconds: int = 300  # 5 minutes
     minio_internal_endpoint: str = ""
     minio_public_endpoint: str = ""
     minio_access_key: str = ""
@@ -151,6 +155,14 @@ class SecurityConfig:
             self.creative_auto_approve_uploads = True
         elif auto_approve_env.lower() in ("false", "0", "no"):
             self.creative_auto_approve_uploads = False
+        # Contract storage (ADVERTISER-UX-001B2)
+        self.contract_storage_bucket = os.environ.get("CONTRACT_STORAGE_BUCKET", self.contract_storage_bucket)
+        contract_max_env = os.environ.get("CONTRACT_MAX_FILE_SIZE_BYTES", "")
+        if contract_max_env:
+            self.contract_max_file_size_bytes = int(contract_max_env)
+        contract_ttl_env = os.environ.get("CONTRACT_UPLOAD_URL_TTL_SECONDS", "")
+        if contract_ttl_env:
+            self.contract_upload_url_ttl_seconds = int(contract_ttl_env)
         ttl_env = os.environ.get("CREATIVE_UPLOAD_URL_TTL_SECONDS", "")
         if ttl_env:
             self.creative_upload_url_ttl_seconds = int(ttl_env)

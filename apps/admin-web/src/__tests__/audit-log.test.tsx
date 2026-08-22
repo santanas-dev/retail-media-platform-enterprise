@@ -6,6 +6,7 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
+import { ThemeProvider } from "../theme/ThemeContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Layout from "../components/Layout";
 import AuditLogPage from "../pages/AuditLogPage";
@@ -80,9 +81,11 @@ function renderAuditPage(auditEvents: unknown[]) {
 
   const router = createAuditRouter();
   return render(
-    <AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
       <RouterProvider router={router} />
-    </AuthProvider>,
+    </AuthProvider>
+    </ThemeProvider>,
   );
 }
 
@@ -181,9 +184,11 @@ describe("audit log page", () => {
 
     const router = createAuditRouter();
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     await waitFor(() => {

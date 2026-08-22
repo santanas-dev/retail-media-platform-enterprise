@@ -279,19 +279,35 @@ against the running enterprise backend (device-gateway + control-api):
 
 ---
 
-## 6. Recommendation: R3 First, Then PLAYER-001B
+## 6. Outcome: PLAYER-001B Completed, KSO-ENV-001 Required
 
-**Sequence:**
+**Sequence (actual):**
 1. ✅ PRODUCT-READINESS-001 (business readiness)
 2. ✅ PLAYER-001A (this audit)
-3. → **R3** — merge develop→main, tag v0.10.0-preplayer-business-ready, CI green
-4. → **PLAYER-001B** — ~580 lines of fresh code + 267 lines imported retry_backoff
+3. ✅ R3 — v0.10.0-preplayer-business-ready (96b5159, CI 35/35)
+4. ✅ PLAYER-001B-FU — thin enterprise KSO contract client, full live loop proof closed (CI #30368381545, 35/35)
+5. ⏸️ **PLAYER-001C / media scheduler / playback loop — DEFERRED**
+6. → **KSO-ENV-001** — real Sherman-J/KSO environment audit BEFORE any kiosk/scheduler code
 
-**Rationale:** R3 freezes the stable pre-player baseline. If PLAYER-001B introduces any issues, we can revert to R3.
+**Rationale:** PLAYER-001B-FU proved the platform contracts work (signed manifest, heartbeat, PoP). Building a scheduler in a vacuum without real hardware data is wasteful. KSO-ENV-001 gathers real OS, Chromium/kiosk, autostart, storage, network, codecs, and update-model data before the first line of kiosk code.
+
+## 7. Real KSO Dependency (pre-KSO-ENV-001 checklist)
+
+Before any kiosk, scheduler, or media playback implementation, KSO-ENV-001 must determine:
+
+- **OS / version:** Sherman-J Linux distribution, kernel, package manager
+- **Chromium / kiosk:** installed version, kiosk-mode availability, `--kiosk` flags, GPU
+- **Autostart:** systemd user service, `~/.config/autostart/`, or equivalent
+- **Filesystem / cache paths:** writable partitions, `$HOME`, `/tmp`, `/var/cache`
+- **Device credentials storage:** secure path for device JWT / secrets
+- **Network recovery:** WiFi/Ethernet reconnect, captive portal handling
+- **Codecs / media support:** H.264, VP9, WebP, animation formats
+- **Logs / observability:** syslog, journald, or custom log path
+- **Update / install path:** how software is deployed (apt, tarball, USB, OTA)
 
 ---
 
-## 7. Source Paths (Proof of Inspection)
+## 8. Source Paths (Proof of Inspection)
 
 ### Old Repo (santanas-dev/retail-media-platform, commit 41e3398)
 
@@ -319,4 +335,19 @@ packages/domain/pop_ingestion.py       — PoP validation pipeline
 packages/domain/repository.py          — Manifest assembly, onboarding
 ```
 
-Source inventory complete: `rg -l "manifest_client\|heartbeat_client\|device_auth\|pop_sender\|retry_backoff\|token_state" /home/cobalt/retail-media-platform/apps/` confirmed all files exist and were inspected.
+Source inventory complete: `rg -l "manifest_client\\|heartbeat_client\\|device_auth\\|pop_sender\\|retry_backoff\\|token_state" /home/cobalt/retail-media-platform/apps/` confirmed all files exist and were inspected.
+
+---
+
+## EPIC-L-000 — Licensing Seat-Hook Note
+
+**Added:** 2026-07-30 (EPIC-L canon intake).
+
+Future real device enrollment (KSO/player) MUST include a license seat-hook at the enrollment boundary:
+- Mint stable device identity
+- Reserve a license seat (seat-month model)
+
+Retrofit after deployed fleet is expensive — the hook must exist before real enrollment goes live.
+Counting/enforcement may be deferred, but the identity/seat reservation boundary is required.
+
+See: `docs/architecture/epic-l-licensing.md`, `docs/product/user-journeys.md` §EPIC-L.

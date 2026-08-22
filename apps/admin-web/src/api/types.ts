@@ -119,6 +119,19 @@ export interface AdvertiserBrandOut {
   status: string;
 }
 
+export interface AdvertiserBrandCreate {
+  advertiser_organization_id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+}
+
+export interface AdvertiserBrandUpdate {
+  code?: string | null;
+  name?: string | null;
+  description?: string | null;
+}
+
 // ── Advertiser Contract ──
 
 export interface AdvertiserContractOut {
@@ -133,6 +146,60 @@ export interface AdvertiserContractOut {
   valid_until: string | null;
   status: string;
   terms_url: string | null;
+  // ADVERTISER-UX-001B2 — file metadata
+  file_storage_key: string | null;
+  file_name: string | null;
+  file_size_bytes: number | null;
+  file_sha256: string | null;
+  file_content_type: string | null;
+  file_uploaded_at: string | null;
+}
+
+export interface AdvertiserContractCreate {
+  advertiser_organization_id: string;
+  code: string;
+  name: string;
+  contract_number?: string | null;
+  budget_limit_amount?: number | null;
+  budget_limit_currency?: string;
+  valid_from?: string | null;
+  valid_until?: string | null;
+}
+
+export interface AdvertiserContractUpdate {
+  code?: string | null;
+  name?: string | null;
+  contract_number?: string | null;
+  budget_limit_amount?: number | null;
+  budget_limit_currency?: string | null;
+  valid_from?: string | null;
+  valid_until?: string | null;
+}
+
+// ADVERTISER-UX-001B2 — contract PDF upload
+
+export interface ContractUploadIntentRequest {
+  filename: string;
+  content_type: string;
+  content_length: number;
+}
+
+export interface ContractUploadIntentResponse {
+  upload_id: string;
+  upload_url: string;
+  method: string;
+  headers: Record<string, string>;
+  expires_at: string;
+}
+
+export interface ContractUploadCompleteRequest {
+  upload_id: string;
+}
+
+export interface ContractUploadCompleteResponse {
+  contract_id: string;
+  sha256_checksum: string;
+  file_size_bytes: number;
 }
 
 // ── Advertiser Contact ──
@@ -140,12 +207,36 @@ export interface AdvertiserContractOut {
 export interface AdvertiserContactOut {
   id: string;
   advertiser_organization_id: string;
+  user_id: string | null;
   contact_type: string;
   full_name: string;
   email: string;
   phone: string | null;
+  title: string | null;
   is_primary: boolean;
   status: string;
+}
+
+export interface AdvertiserContactCreate {
+  advertiser_organization_id: string;
+  full_name: string;
+  email: string;
+  phone?: string | null;
+  title?: string | null;
+  contact_type?: string;
+  is_primary?: boolean;
+  user_id?: string | null;
+}
+
+export interface AdvertiserContactUpdate {
+  full_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  title?: string | null;
+  contact_type?: string | null;
+  is_primary?: boolean | null;
+  status?: string | null;
+  user_id?: string | null;
 }
 
 // ── Advertiser User Membership ──
@@ -173,6 +264,37 @@ export interface AdvertiserOrganizationDetailOut {
   status: string;
   created_at: string | null;
   updated_at: string | null;
+  // ADVERTISER-UX-001A1 — legal requisites (nullable for existing orgs)
+  legal_entity_type: string | null;
+  legal_form: string | null;
+  legal_form_other: string | null;
+  inn: string | null;
+  legal_address: string | null;
+  settlement_account: string | null;
+  correspondent_account: string | null;
+  bik: string | null;
+  bank_name: string | null;
+  kpp: string | null;
+  ogrn: string | null;
+  ogrnip: string | null;
+}
+
+// ── ADVERTISER-UX-001A2 — Legal requisites form ──
+
+export interface AdvertiserLegalRequisitesUpdate {
+  legal_entity_type: string;
+  legal_form: string;
+  legal_form_other?: string | null;
+  legal_name: string;
+  inn: string;
+  legal_address: string;
+  settlement_account: string;
+  correspondent_account: string;
+  bik: string;
+  bank_name: string;
+  kpp?: string | null;
+  ogrn?: string | null;
+  ogrnip?: string | null;
 }
 
 // ── Campaign Approval ──
@@ -796,4 +918,100 @@ export interface AssignRoleResponse {
   scope_type: string | null;
   scope_id: string | null;
   message: string;
+}
+
+// ── Commerce ──
+
+export interface CommerceTariffVersionOut {
+  id: string;
+  code: string;
+  name: string;
+  status: string;
+  valid_from: string;
+  valid_to: string | null;
+  currency: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface CommerceTariffVersionCreate {
+  code: string;
+  name: string;
+  valid_from: string;
+  valid_to?: string | null;
+  currency?: string;
+}
+
+export interface CommerceTariffVersionUpdate {
+  name?: string;
+  status?: string;
+  valid_from?: string;
+  valid_to?: string | null;
+}
+
+export interface CommercePriceItemOut {
+  id: string;
+  tariff_version_id: string;
+  surface_id: string;
+  billing_unit: string;
+  unit_price_amount: number;
+  currency: string;
+  created_at: string | null;
+}
+
+export interface CommercePriceItemCreate {
+  surface_id: string;
+  unit_price_amount: number;
+  billing_unit?: string;
+  currency?: string;
+}
+
+export interface CommercePriceItemUpdate {
+  unit_price_amount?: number;
+  billing_unit?: string;
+}
+
+// ── Commerce Orders ──
+
+export interface CommerceOrderLineOut {
+  id: string;
+  order_id: string;
+  surface_id: string;
+  date_from: string;
+  date_to: string;
+  quantity_days: number;
+  unit_price_amount: number;
+  line_amount: number;
+}
+
+export interface CommerceOrderLineCreate {
+  surface_id: string;
+  date_from: string;
+  date_to: string;
+}
+
+export interface CommerceOrderOut {
+  id: string;
+  advertiser_organization_id: string;
+  code: string;
+  status: string;
+  payment_status: string;
+  tariff_version_id: string | null;
+  total_amount: number | null;
+  currency: string;
+  created_at: string | null;
+  updated_at: string | null;
+  lines: CommerceOrderLineOut[];
+}
+
+export interface CommerceOrderCreate {
+  advertiser_organization_id: string;
+  tariff_version_id?: string | null;
+  currency?: string;
+  lines: CommerceOrderLineCreate[];
+}
+
+export interface CommerceOrderUpdate {
+  new_status?: string;
+  payment_status?: string;
 }

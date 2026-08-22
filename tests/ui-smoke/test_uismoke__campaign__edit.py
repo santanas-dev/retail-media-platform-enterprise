@@ -18,6 +18,7 @@ import pytest
 if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
+from conftest import login_as_break_glass_admin
 from playwright.sync_api import Page, expect
 
 ADMIN_URL = os.environ.get("UI_SMOKE_BASE_URL", "http://localhost:3000")
@@ -37,12 +38,7 @@ def test_uismoke__campaign__edit(page: Page):
     # ═══════════════════════════════════════════════════════════
     page.goto(LOGIN_URL)
     page.wait_for_load_state("networkidle")
-    page.select_option("#login-provider", "local_break_glass")
-    page.fill("#login-username", BG_USERNAME)
-    page.fill("#login-password", BG_PASSWORD)
-    page.click('button[type="submit"]')
-    page.wait_for_url(f"{ADMIN_URL}/campaigns", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    login_as_break_glass_admin(page)
 
     # ═══════════════════════════════════════════════════════════
     # Phase 2: Create campaign draft
@@ -59,15 +55,20 @@ def test_uismoke__campaign__edit(page: Page):
     page.fill("#c-code", CAMPAIGN_CODE)
     page.fill("#c-name", CAMPAIGN_NAME)
     page.click('button[type="submit"]')
-    # Redirect to campaign detail
-    page.wait_for_url("**/campaigns/**", timeout=15000)
+    # Redirect to campaign detail — leave /campaigns/new (the create form).
+    # `**/campaigns/**` also matches /campaigns/new, so it does NOT prove the
+    # draft was created; require the URL to contain /campaigns but not /campaigns/new.
+    page.wait_for_url(
+        lambda url: "/campaigns/new" not in url and "/campaigns" in url,
+        timeout=15000,
+    )
     page.wait_for_load_state("networkidle")
 
     # ═══════════════════════════════════════════════════════════
     # Phase 3: Add a flight
     # ═══════════════════════════════════════════════════════════
-    expect(page.get_by_test_id("tab-flights")).to_be_visible(timeout=5000)
-    page.get_by_test_id("tab-flights").click()
+    expect(page.get_by_test_id("tab-content")).to_be_visible(timeout=5000)
+    page.get_by_test_id("tab-content").click()
     page.wait_for_load_state("networkidle")
 
     expect(page.get_by_test_id("flight-add-btn")).to_be_visible(timeout=5000)
@@ -81,15 +82,16 @@ def test_uismoke__campaign__edit(page: Page):
     page.get_by_test_id("flight-submit").click()
     page.wait_for_load_state("networkidle")
 
-    # Flight should appear in table — verify date-year is visible (Russian locale)
-    expect(page.locator("table")).to_be_visible(timeout=5000)
-    table_text = page.locator("table").inner_text()
+    # Flight should appear in table — scope to flights section (002C: merged tab)
+    flights_table = page.locator('[data-testid="content-flights-section"] table')
+    expect(flights_table).to_be_visible(timeout=5000)
+    table_text = flights_table.inner_text()
     assert "2026" in table_text, f"Flight not found in table: {table_text}"
 
     # ═══════════════════════════════════════════════════════════
     # Phase 4: Add a placement
     # ═══════════════════════════════════════════════════════════
-    page.get_by_test_id("tab-placements").click()
+    page.get_by_test_id("tab-content").click()
     page.wait_for_load_state("networkidle")
 
     expect(page.get_by_test_id("placement-add-btn")).to_be_visible(timeout=5000)
@@ -107,5 +109,5 @@ def test_uismoke__campaign__edit(page: Page):
         surface_select.select_option(index=1)
         page.get_by_test_id("placement-submit").click()
         page.wait_for_load_state("networkidle")
-        # Placement should appear in table
-        expect(page.locator("table")).to_be_visible(timeout=5000)
+        # Placement should appear in table — scope to placements section (002C)
+        expect(page.locator('[data-testid="content-placements-section"] table')).to_be_visible(timeout=5000)

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
+import { ThemeProvider } from "../theme/ThemeContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Layout from "../components/Layout";
 import InventoryPage from "../pages/InventoryPage";
@@ -174,7 +175,9 @@ function setupFetch(
 function renderInventory(overrides?: Parameters<typeof setupFetch>[0]) {
   setupFetch(overrides);
   const router = createInventoryRouter();
-  return render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+  return render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 }
 
 beforeEach(() => { vi.restoreAllMocks(); });
@@ -291,7 +294,9 @@ describe("InventoryPage — Rules CRUD", () => {
     });
 
     const router = createInventoryRouter();
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Правила")).toBeDefined(); });
     await userEvent.click(screen.getByText("Правила"));
@@ -354,7 +359,9 @@ describe("InventoryPage — Rules CRUD", () => {
     });
 
     const router = createInventoryRouter();
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Правила")).toBeDefined(); });
     await userEvent.click(screen.getByText("Правила"));
@@ -561,7 +568,9 @@ describe("InventoryPage — permission-filtered menu", () => {
     });
 
     const router = createInventoryRouter();
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => {
       const navLinks = screen.getAllByText("Инвентарь");
@@ -601,7 +610,9 @@ describe("InventoryPage — permission-filtered menu", () => {
       ],
       { initialEntries: ["/"] },
     );
-    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("ЦУР")).toBeDefined(); });
     // "Инвентарь" should NOT be in the nav
@@ -613,7 +624,9 @@ describe("InventoryPage — no storage secrets", () => {
   it("does not render storage_bucket or storage_key in any output", async () => {
     setupFetch({});
     const router = createInventoryRouter();
-    const { container } = render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+    const { container } = render(<ThemeProvider>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>);
 
     await waitFor(() => { expect(screen.getByText("Каталог")).toBeDefined(); });
 

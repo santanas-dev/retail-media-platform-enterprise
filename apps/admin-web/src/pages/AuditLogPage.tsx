@@ -23,29 +23,29 @@ const styles = {
   page: { fontFamily: "system-ui, sans-serif" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" },
   h1: { fontSize: "1.5rem", fontWeight: 600, margin: 0 },
-  table: { width: "100%", borderCollapse: "collapse" as const, fontSize: "0.85rem", background: "#fff" },
-  th: { textAlign: "left" as const, padding: "0.5rem", borderBottom: "2px solid #e2e8f0", color: "#64748b", fontWeight: 600, whiteSpace: "nowrap" as const },
-  td: { padding: "0.5rem", borderBottom: "1px solid #e2e8f0", verticalAlign: "top" as const },
-  mono: { fontFamily: "monospace", fontSize: "0.8rem", color: "#334155" },
+  table: { width: "100%", borderCollapse: "collapse" as const, fontSize: "0.85rem", background: "var(--rmp-bg-surface)" },
+  th: { textAlign: "left" as const, padding: "0.5rem", borderBottom: "2px solid var(--rmp-border)", color: "var(--rmp-text-secondary)", fontWeight: 600, whiteSpace: "nowrap" as const },
+  td: { padding: "0.5rem", borderBottom: "1px solid var(--rmp-border)", verticalAlign: "top" as const },
+  mono: { fontFamily: "monospace", fontSize: "0.8rem", color: "var(--rmp-gray-700)" },
   actionPill: (action: string): React.CSSProperties => ({
     display: "inline-block",
     padding: "0.1rem 0.4rem",
     borderRadius: 4,
     fontSize: "0.75rem",
     fontWeight: 600,
-    background: action.includes("failure") || action.includes("blocked") ? "#fef2f2"
-               : action.includes("success") || action.includes("login") ? "#f0fdf4"
-               : "#f1f5f9",
-    color: action.includes("failure") || action.includes("blocked") ? "#991b1b"
-          : action.includes("success") || action.includes("login") ? "#166534"
-          : "#334155",
+    background: action.includes("failure") || action.includes("blocked") ? "var(--rmp-danger-50)"
+               : action.includes("success") || action.includes("login") ? "var(--rmp-success-50)"
+               : "var(--rmp-gray-100)",
+    color: action.includes("failure") || action.includes("blocked") ? "var(--rmp-danger-800)"
+          : action.includes("success") || action.includes("login") ? "var(--rmp-success-800)"
+          : "var(--rmp-gray-700)",
   }),
   pagination: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem", fontSize: "0.85rem" },
-  btn: { padding: "0.3rem 0.7rem", border: "1px solid #cbd5e1", borderRadius: 4, background: "#fff", cursor: "pointer", fontSize: "0.85rem" },
-  loading: { padding: "2rem", textAlign: "center" as const, color: "#94a3b8" },
-  error: { padding: "1rem", color: "#991b1b", background: "#fef2f2", borderRadius: 6 },
-  empty: { padding: "2rem", textAlign: "center" as const, color: "#94a3b8" },
-  details: { fontSize: "0.78rem", color: "#475569", wordBreak: "break-all" as const },
+  btn: { padding: "0.3rem 0.7rem", border: "1px solid var(--rmp-border-strong)", borderRadius: 4, background: "var(--rmp-bg-surface)", cursor: "pointer", fontSize: "0.85rem" },
+  loading: { padding: "2rem", textAlign: "center" as const, color: "var(--rmp-text-muted)" },
+  error: { padding: "1rem", color: "var(--rmp-danger-800)", background: "var(--rmp-danger-50)", borderRadius: 6 },
+  empty: { padding: "2rem", textAlign: "center" as const, color: "var(--rmp-text-muted)" },
+  details: { fontSize: "0.78rem", color: "var(--rmp-gray-600)", wordBreak: "break-all" as const },
 };
 
 export default function AuditLogPage() {

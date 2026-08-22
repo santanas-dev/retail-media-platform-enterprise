@@ -260,7 +260,7 @@ class TestMetadataOnlyBlocksApproval:
                 f"Expected 422 for metadata-only creative, got {resp.status_code}: {resp.text}"
             )
             detail = resp.json().get("detail", "")
-            assert "Metadata-only" in detail or "uploaded files" in detail, (
+            assert "Креатив не загружен" in detail or "отсутствует файл" in detail, (
                 f"Missing metadata-only rejection message in: {detail}"
             )
 

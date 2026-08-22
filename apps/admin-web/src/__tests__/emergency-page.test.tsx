@@ -6,6 +6,7 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
+import { ThemeProvider } from "../theme/ThemeContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Layout from "../components/Layout";
 import EmergencyPage from "../pages/EmergencyPage";
@@ -93,9 +94,11 @@ function renderEmergencyPage(statusResponse: unknown) {
 
   const router = createEmergencyRouter();
   return render(
-    <AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
       <RouterProvider router={router} />
-    </AuthProvider>,
+    </AuthProvider>
+    </ThemeProvider>,
   );
 }
 
@@ -332,9 +335,11 @@ describe("emergency page — error handling", () => {
 
     const router = createEmergencyRouter();
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     await waitFor(() => {
@@ -394,9 +399,11 @@ describe("emergency page — permission denied", () => {
 
     const router = createEmergencyRouter();
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     await waitFor(() => {
@@ -686,9 +693,11 @@ describe("emergency page — conflict errors", () => {
 
     const router = createEmergencyRouter();
     render(
+      <ThemeProvider>
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>,
+      </AuthProvider>
+    </ThemeProvider>,
     );
 
     await waitFor(() => {

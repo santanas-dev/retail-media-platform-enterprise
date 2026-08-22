@@ -6,6 +6,7 @@ import {
   RouterProvider,
 } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
+import { ThemeProvider } from "../theme/ThemeContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Layout from "../components/Layout";
 import LoginPage from "../pages/LoginPage";
@@ -30,9 +31,11 @@ function createAuthRouter(initialRoute: string) {
 
 function renderWithAuth(initialRoute = "/") {
   return render(
-    <AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
       <RouterProvider router={createAuthRouter(initialRoute)} />
-    </AuthProvider>,
+    </AuthProvider>
+    </ThemeProvider>,
   );
 }
 

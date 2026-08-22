@@ -9,7 +9,7 @@ No secret/password fields exposed.
 from datetime import date as date_type, datetime
 from typing import Any, Generic, Literal, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -266,8 +266,11 @@ class MeResponse(BaseModel):
 
 
 class AdvertiserOrganizationCreate(BaseModel):
-    """Create a new advertiser organization (admin)."""
-    code: str = Field(..., min_length=1, max_length=64)
+    """Create a new advertiser organization (admin).
+
+    Code is optional — server generates a unique readable code when omitted.
+    """
+    code: str | None = Field(default=None, min_length=1, max_length=64)
     legal_name: str = Field(..., min_length=1, max_length=255)
     display_name: str = Field(..., min_length=1, max_length=255)
 
@@ -281,6 +284,103 @@ class AdvertiserOrganizationOut(BaseModel):
     legal_name: str
     display_name: str
     status: str
+
+
+# ---------------------------------------------------------------------------
+# ADVERTISER-UX-001A1 — Legal requisites
+# ---------------------------------------------------------------------------
+
+
+def _normalize_digits(value: str | None) -> str | None:
+    """Remove spaces and dashes from a digit string."""
+    if value is None:
+        return None
+    return value.translate(str.maketrans("", "", " -"))
+
+
+class AdvertiserLegalRequisites(BaseModel):
+    """Legal requisites with cross-field validation (A1 approved). Checksum NOT blocking."""
+
+    legal_entity_type: Literal["legal_entity", "individual_entrepreneur"]
+    legal_form: Literal["ooo", "ao", "pao", "ip", "other"]
+    legal_form_other: str | None = None
+    legal_name: str = Field(..., min_length=1)
+    inn: str
+    legal_address: str = Field(..., min_length=1)
+    settlement_account: str
+    correspondent_account: str
+    bik: str
+    bank_name: str = Field(..., min_length=1)
+    kpp: str | None = None
+    ogrn: str | None = None
+    ogrnip: str | None = None
+
+    @field_validator("inn", "settlement_account", "correspondent_account", "bik", "kpp", "ogrn", "ogrnip", mode="before")
+    @classmethod
+    def _normalize(cls, value: str | None) -> str | None:
+        return _normalize_digits(value)
+
+    @field_validator("legal_name", "legal_address", "bank_name", mode="before")
+    @classmethod
+    def _trim(cls, value: str) -> str:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("legal_form_other", mode="before")
+    @classmethod
+    def _trim_other(cls, value: str | None) -> str | None:
+        return value.strip() if isinstance(value, str) and value.strip() else None
+
+    @model_validator(mode="after")
+    def _validate_lengths(self):
+        """Cross-field length validation (checksum is NOT implemented in A1)."""
+        is_le = self.legal_entity_type == "legal_entity"
+        is_ie = self.legal_entity_type == "individual_entrepreneur"
+
+        # INN: 10 for LE, 12 for IE
+        if is_le and self.inn and len(self.inn) != 10:
+            raise ValueError(f"inn must be 10 digits for legal_entity, got {len(self.inn)}")
+        if is_ie and self.inn and len(self.inn) != 12:
+            raise ValueError(f"inn must be 12 digits for individual_entrepreneur, got {len(self.inn)}")
+
+        # KPP: 9 digits, required for LE, forbidden for IE
+        if is_le and self.kpp and len(self.kpp) != 9:
+            raise ValueError(f"kpp must be 9 digits, got {len(self.kpp)}")
+        if is_ie and self.kpp:
+            raise ValueError("kpp is not allowed for individual_entrepreneur")
+
+        # OGRN: 13 digits, required for LE, forbidden for IE
+        if is_le and self.ogrn and len(self.ogrn) != 13:
+            raise ValueError(f"ogrn must be 13 digits, got {len(self.ogrn)}")
+        if is_ie and self.ogrn:
+            raise ValueError("ogrn is not allowed for individual_entrepreneur")
+
+        # OGRNIP: 15 digits, required for IE, forbidden for LE
+        if is_ie and self.ogrnip and len(self.ogrnip) != 15:
+            raise ValueError(f"ogrnip must be 15 digits, got {len(self.ogrnip)}")
+        if is_le and self.ogrnip:
+            raise ValueError("ogrnip is not allowed for legal_entity")
+
+        # BIK: 9 digits
+        if self.bik and len(self.bik) != 9:
+            raise ValueError(f"bik must be 9 digits, got {len(self.bik)}")
+
+        # Settlement account: 20 digits
+        if self.settlement_account and len(self.settlement_account) != 20:
+            raise ValueError(f"settlement_account must be 20 digits, got {len(self.settlement_account)}")
+
+        # Correspondent account: 20 digits
+        if self.correspondent_account and len(self.correspondent_account) != 20:
+            raise ValueError(f"correspondent_account must be 20 digits, got {len(self.correspondent_account)}")
+
+        # legal_form_other required for other
+        if self.legal_form == "other" and not (self.legal_form_other and self.legal_form_other.strip()):
+            raise ValueError("legal_form_other is required when legal_form is 'other'")
+
+        return self
+
+
+class AdvertiserLegalRequisitesUpdate(AdvertiserLegalRequisites):
+    """Update variant — same validation, used in PUT endpoint."""
 
 
 # ---------------------------------------------------------------------------
@@ -299,6 +399,21 @@ class AdvertiserBrandOut(BaseModel):
     status: str
 
 
+class AdvertiserBrandCreate(BaseModel):
+    """Create a new brand for an advertiser organization."""
+    advertiser_organization_id: str
+    code: str = Field(max_length=64)
+    name: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+
+
+class AdvertiserBrandUpdate(BaseModel):
+    """Update an existing brand."""
+    code: str | None = Field(default=None, max_length=64)
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+
+
 class AdvertiserContractOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -314,6 +429,68 @@ class AdvertiserContractOut(BaseModel):
     status: str
     terms_url: str | None = None
 
+    # File metadata (ADVERTISER-UX-001B2)
+    file_storage_key: str | None = None
+    file_name: str | None = None
+    file_size_bytes: int | None = None
+    file_sha256: str | None = None
+    file_content_type: str | None = None
+    file_uploaded_at: datetime | None = None
+
+
+class AdvertiserContractCreate(BaseModel):
+    """Create a new advertiser contract. File is uploaded separately via upload-intent."""
+    advertiser_organization_id: str = Field(..., min_length=1)
+    code: str = Field(..., min_length=1, max_length=64)
+    name: str = Field(..., min_length=1, max_length=255)
+    contract_number: str | None = Field(None, max_length=128)
+    budget_limit_amount: float | None = None
+    budget_limit_currency: str = "RUB"
+    valid_from: datetime | None = None
+    valid_until: datetime | None = None
+
+
+class AdvertiserContractUpdate(BaseModel):
+    """Update an existing advertiser contract. All fields optional."""
+    code: str | None = Field(None, min_length=1, max_length=64)
+    name: str | None = Field(None, min_length=1, max_length=255)
+    contract_number: str | None = Field(None, max_length=128)
+    budget_limit_amount: float | None = None
+    budget_limit_currency: str | None = None
+    valid_from: datetime | None = None
+    valid_until: datetime | None = None
+
+
+# Contract PDF upload (ADVERTISER-UX-001B2)
+
+
+class ContractUploadIntentRequest(BaseModel):
+    """Request a presigned upload URL for a contract PDF."""
+    filename: str = Field(..., min_length=1, max_length=255)
+    content_type: str = Field(..., min_length=1, max_length=64)
+    content_length: int = Field(..., gt=0)
+
+
+class ContractUploadIntentResponse(BaseModel):
+    """Response with presigned PUT URL — browser uploads directly to MinIO."""
+    upload_id: str
+    upload_url: str
+    method: str = "PUT"
+    headers: dict[str, str] = Field(default_factory=dict)
+    expires_at: str
+
+
+class ContractUploadCompleteRequest(BaseModel):
+    """Confirm upload completion by upload session ID."""
+    upload_id: str = Field(..., min_length=1, max_length=36)
+
+
+class ContractUploadCompleteResponse(BaseModel):
+    """Response after server computes SHA-256 from MinIO object."""
+    contract_id: str
+    sha256_checksum: str
+    file_size_bytes: int
+
 
 class AdvertiserContactOut(BaseModel):
     """Public contact — PII-gated by permission check in router.
@@ -324,12 +501,42 @@ class AdvertiserContactOut(BaseModel):
 
     id: str
     advertiser_organization_id: str
+    user_id: str | None = None
     contact_type: str
     full_name: str
     email: str
     phone: str | None = None
+    title: str | None = None
     is_primary: bool
     status: str
+
+    # ── Linked user display fields (populated from JOIN or post-query) ──
+    linked_user_login: str | None = None
+    linked_user_email: str | None = None
+
+
+class AdvertiserContactCreate(BaseModel):
+    """Schema for creating an advertiser contact (ADVERTISER-UX-001B3)."""
+    advertiser_organization_id: str
+    full_name: str = Field(..., min_length=1)
+    email: str = Field(..., min_length=1)
+    phone: str | None = None
+    title: str | None = None
+    contact_type: str = "primary"
+    is_primary: bool = False
+    user_id: str | None = None  # optional link to existing advertiser user
+
+
+class AdvertiserContactUpdate(BaseModel):
+    """Schema for updating an advertiser contact — all fields optional."""
+    full_name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    title: str | None = None
+    contact_type: str | None = None
+    is_primary: bool | None = None
+    status: str | None = None
+    user_id: str | None = None  # None means no change; "" means unlink
 
 
 class AdvertiserUserMembershipOut(BaseModel):
@@ -349,7 +556,7 @@ class AdvertiserUserMembershipOut(BaseModel):
 
 
 class AdvertiserOrganizationDetailOut(BaseModel):
-    """Organization detail — enriched with timestamps + counts."""
+    """Organization detail — enriched with timestamps + counts + legal requisites."""
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -359,6 +566,20 @@ class AdvertiserOrganizationDetailOut(BaseModel):
     status: str
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+    # Legal requisites (ADVERTISER-UX-001A1) — nullable for existing orgs without requisites
+    legal_entity_type: str | None = None
+    legal_form: str | None = None
+    legal_form_other: str | None = None
+    inn: str | None = None
+    legal_address: str | None = None
+    settlement_account: str | None = None
+    correspondent_account: str | None = None
+    bik: str | None = None
+    bank_name: str | None = None
+    kpp: str | None = None
+    ogrn: str | None = None
+    ogrnip: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -1012,12 +1233,18 @@ class DeviceOnboardRequest(BaseModel):
 
 
 class DeviceOnboardResponse(BaseModel):
-    """Successful onboarding — returns device identity + access token."""
+    """Successful onboarding — returns device identity + access token.
+
+    ``license_state`` (additive, default None) reflects the computed effective
+    license state at enrollment time (``active`` or ``grace``) so soft
+    enforcement can surface grace without a breaking contract change.
+    """
 
     device_id: str
     status: str
     access_token: str
     token_type: str = "bearer"
+    license_state: str | None = None
 
 
 class DeviceCodeCreateRequest(BaseModel):
@@ -1105,6 +1332,81 @@ class PaginatedDevices(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class DeviceDecommissionRequest(BaseModel):
+    """Admin request to decommission a device (active → inactive)."""
+
+    reason: str = Field(default="", max_length=255)
+
+
+class DeviceDecommissionResponse(BaseModel):
+    """Decommission result — device status + seat-release outcome.
+
+    ``transitioned`` is True when an ``active → inactive`` transition happened;
+    False when the device was already ``inactive`` (idempotent). ``anomaly`` is
+    True when an active device had no open seat (reconciliation anomaly) —
+    decommission still succeeds but ``seat_released=False``.
+    """
+
+    device_id: str
+    status: str
+    seat_released: bool
+    released_at: datetime | None = None
+    transitioned: bool = True
+    anomaly: bool = False
+
+
+class LicenseReportLicenseOut(BaseModel):
+    """License section of the license report."""
+
+    effective_state: str
+    license_id: str | None = None
+    licensee_id: str | None = None
+    licensee_name: str | None = None
+    tier: str | None = None
+    source: str | None = None
+    valid_from: datetime | None = None
+    valid_until: datetime | None = None
+    grace_days: int = 0
+    capacity: int = 0
+    days_remaining: int | None = None
+    over_capacity_by: int = 0
+
+
+class LicenseReportUsageOut(BaseModel):
+    """Usage section of the license report."""
+
+    occupied: int = 0
+    free: int = 0
+    peak: int = 0
+    year: int = 0
+    month: int = 0
+    timezone: str = "UTC"
+
+
+class LicenseReportSeatOut(BaseModel):
+    """A currently-open seat with its device + authoritative store fields."""
+
+    seat_id: str
+    license_id: str
+    device_id: str
+    device_code: str
+    device_status: str
+    reserved_at: datetime
+    last_heartbeat_at: datetime | None = None
+    store_id: str | None = None
+    store_code: str | None = None
+    store_name: str | None = None
+    anomaly_flags: list[str] = []
+
+
+class LicenseReportOut(BaseModel):
+    """Read-only license report (no secrets, no advertiser/commerce data)."""
+
+    license: LicenseReportLicenseOut
+    usage: LicenseReportUsageOut
+    seats: list[LicenseReportSeatOut] = []
 
 
 # ---------------------------------------------------------------------------
@@ -1490,3 +1792,146 @@ class InventorySimulationResponse(BaseModel):
     placements: list[InventorySimulationPlacementResult] = Field(default_factory=list)
     blocking_count: int = 0
     warning_count: int = 0
+
+
+# ── Commerce Contour 2 (COMMERCE-CONTUR2-001A1) ──
+
+
+class CommerceTariffVersionCreate(BaseModel):
+    code: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=255)
+    valid_from: date_type
+    valid_to: date_type | None = None
+    currency: str = Field(default="RUB", min_length=3, max_length=3)
+
+
+class CommerceTariffVersionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    code: str
+    name: str
+    status: str
+    valid_from: date_type
+    valid_to: date_type | None = None
+    currency: str
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class CommercePriceItemCreate(BaseModel):
+    surface_id: str
+    billing_unit: str = "surface_day"
+    unit_price_amount: float = Field(gt=0)
+    currency: str = Field(default="RUB", min_length=3, max_length=3)
+
+
+class CommercePriceItemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    tariff_version_id: str
+    surface_id: str
+    billing_unit: str
+    unit_price_amount: float
+    currency: str
+    created_at: datetime | None = None
+
+
+class CommerceOrderLineCreate(BaseModel):
+    surface_id: str
+    date_from: date_type
+    date_to: date_type
+    # Client-supplied quantity_days is IGNORED for pricing (COMMERCE-PRICING-001).
+    # Server derives quantity_days = (date_to - date_from).days + 1 (inclusive).
+    # Field retained for backward compatibility only.
+    quantity_days: int = Field(default=0, ge=0)
+    unit_price_amount: float = Field(default=0.0, ge=0)
+    line_amount: float = Field(default=0.0, ge=0)
+
+    @model_validator(mode="after")
+    def _validate_date_range(self) -> "CommerceOrderLineCreate":
+        if self.date_to < self.date_from:
+            raise ValueError("date_to must be >= date_from")
+        return self
+
+
+class CommerceOrderLineOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    order_id: str
+    surface_id: str
+    date_from: date_type
+    date_to: date_type
+    quantity_days: int
+    unit_price_amount: float
+    line_amount: float
+
+
+class CommerceOrderCreate(BaseModel):
+    advertiser_organization_id: str
+    tariff_version_id: str | None = None
+    currency: str = Field(default="RUB", min_length=3, max_length=3)
+    lines: list[CommerceOrderLineCreate] = Field(min_length=1)
+
+
+class CommerceOrderOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    advertiser_organization_id: str
+    code: str
+    status: str
+    payment_status: str
+    tariff_version_id: str | None = None
+    total_amount: float | None = None
+    currency: str
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    lines: list[CommerceOrderLineOut] = Field(default_factory=list)
+
+
+class CommerceQuoteRequest(BaseModel):
+    """Input for calculate_order_quote — pricing choke-point."""
+    tariff_version_id: str
+    advertiser_organization_id: str
+    lines: list[CommerceOrderLineCreate] = Field(min_length=1)
+
+
+class CommerceQuoteLine(BaseModel):
+    surface_id: str
+    date_from: date_type
+    date_to: date_type
+    quantity_days: int
+    unit_price_amount: float
+    line_amount: float
+    error: str | None = None
+
+
+class CommerceQuoteResponse(BaseModel):
+    tariff_version_id: str
+    currency: str
+    lines: list[CommerceQuoteLine] = Field(default_factory=list)
+    total_amount: float = 0.0
+    errors: list[str] = Field(default_factory=list)
+
+
+# ── Commerce PATCH schemas ──
+
+
+class CommerceTariffVersionUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    status: str | None = None
+    valid_from: date_type | None = None
+    valid_to: date_type | None = None
+
+
+class CommercePriceItemUpdate(BaseModel):
+    unit_price_amount: float | None = Field(default=None, gt=0)
+    billing_unit: str | None = None
+
+
+class CommerceOrderUpdate(BaseModel):
+    new_status: str | None = None
+    payment_status: str | None = None

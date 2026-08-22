@@ -11,6 +11,7 @@ Usage:
 Exit: 0 if clean, 1 if violations found.
 """
 
+import ast
 import re
 import sys
 from pathlib import Path
@@ -99,6 +100,86 @@ def find_python_files(directory: Path) -> list[Path]:
     )
 
 
+# ---------------------------------------------------------------------------
+# Licensing boundary (EPIC-L-SEAT-LEDGER-001A4 SCOPE E) — AST-based
+# ---------------------------------------------------------------------------
+
+def _docstring_constant_ids(tree: ast.Module) -> set[int]:
+    """Return ``id()`` of Constant nodes that are module/class/function docstrings."""
+    ids: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            body = getattr(node, "body", [])
+            if body and isinstance(body[0], ast.Expr):
+                val = body[0].value
+                if isinstance(val, ast.Constant) and isinstance(val.value, str):
+                    ids.add(id(val))
+    return ids
+
+
+def scan_licensing_boundary(
+    filepath: Path,
+    allowed_models: list[str],
+    forbidden_imports: list[str],
+    forbidden_literals: list[str],
+) -> list[str]:
+    """Scan a licensing file for boundary violations.
+
+    Checks:
+      1. ``from packages.domain.models import X`` — every ``X`` must be in the
+         explicit ``allowed_models`` allowlist (models.py is monolithic).
+      2. imports of forbidden modules (commerce / advertiser).
+      3. string literals (excluding docstrings) referencing forbidden table
+         prefixes (``commerce_*`` / ``advertiser_*``).
+    """
+    violations: list[str] = []
+    rel = filepath.relative_to(REPO_ROOT)
+    try:
+        tree = ast.parse(filepath.read_text())
+    except SyntaxError:
+        return violations
+
+    docstring_ids = _docstring_constant_ids(tree)
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if module == "packages.domain.models":
+                for alias in node.names:
+                    if alias.name not in allowed_models:
+                        violations.append(
+                            f"  {rel}:{node.lineno}: imports disallowed models "
+                            f"symbol '{alias.name}'"
+                        )
+            for pattern in forbidden_imports:
+                if re.search(pattern, module):
+                    violations.append(
+                        f"  {rel}:{node.lineno}: imports forbidden module "
+                        f"'{module}' (matches '{pattern}')"
+                    )
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                for pattern in forbidden_imports:
+                    if re.search(pattern, alias.name):
+                        violations.append(
+                            f"  {rel}:{node.lineno}: imports forbidden module "
+                            f"'{alias.name}' (matches '{pattern}')"
+                        )
+        elif (
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and id(node) not in docstring_ids
+        ):
+            for literal in forbidden_literals:
+                if literal in node.value:
+                    violations.append(
+                        f"  {rel}:{node.lineno}: references forbidden table/"
+                        f"literal '{literal}'"
+                    )
+
+    return violations
+
+
 def main():
     quiet = "--quiet" in sys.argv
 
@@ -144,6 +225,34 @@ def main():
             print()
         elif not quiet:
             print(f"[{label}] PASS ({len(py_files)} file(s))")
+
+    # ── Licensing boundary rules (EPIC-L-SEAT-LEDGER-001A4) ──
+    for lb in config.get("licensing_boundary", []):
+        file_list = lb.get("files", [])
+        allowed_models = lb.get("allowed_models", [])
+        forbidden_imports = lb.get("forbidden_imports", [])
+        forbidden_literals = lb.get("forbidden_literals", [])
+
+        if not file_list:
+            continue
+
+        violations = []
+        for file_rel in file_list:
+            filepath = REPO_ROOT / file_rel
+            if not filepath.exists():
+                continue
+            violations.extend(scan_licensing_boundary(
+                filepath, allowed_models, forbidden_imports, forbidden_literals,
+            ))
+
+        if violations:
+            total_violations += len(violations)
+            print(f"[licensing-boundary] FAIL — {len(violations)} violation(s):")
+            for v in violations:
+                print(v)
+            print()
+        elif not quiet:
+            print(f"[licensing-boundary] PASS ({len(file_list)} file(s))")
 
     if total_violations > 0:
         print(f"\n{total_violations} import boundary violation(s) total.")

@@ -155,7 +155,7 @@ export default function CampaignListPage() {
           onClick={() => navigate("/campaigns/new")}
           style={{
             padding: "0.5rem 1rem", fontSize: "var(--rmp-font-size-base)",
-            background: "var(--rmp-primary-600)", color: "#fff",
+            background: "var(--rmp-primary-600)", color: "var(--rmp-text-inverse)",
             border: "none", borderRadius: "var(--rmp-radius-sm)",
             cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
           }}

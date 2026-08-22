@@ -341,6 +341,18 @@ def _setup_sql(ph):
         SELECT 1 FROM role_permissions
         WHERE role_id=r.id AND permission_id=p.id
       )
+    -- EPIC-L A4: license.read permission + system_admin grant
+    ; INSERT INTO permissions (id, code, name) VALUES
+      ('00000000-0000-0000-0000-000000000124','license.read','Просмотр лицензии')
+      ON CONFLICT (code) DO NOTHING
+    ; INSERT INTO role_permissions (id,role_id,permission_id)
+      SELECT 'rp-beh-sa-licread',r.id,p.id
+      FROM roles r CROSS JOIN permissions p
+      WHERE r.code='system_admin' AND p.code='license.read'
+      AND NOT EXISTS (
+        SELECT 1 FROM role_permissions
+        WHERE role_id=r.id AND permission_id=p.id
+      )
     """
 
 

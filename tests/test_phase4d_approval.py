@@ -149,9 +149,9 @@ class TestApprovalRepositoryFunctions(unittest.TestCase):
             "packages", "domain", "repository.py",
         )
         content = open(repo_path).read()
-        # Should query CampaignStatusHistory for the request transition
-        self.assertIn("CampaignStatusHistory.old_status == \"draft\"", content)
-        self.assertIn("CampaignStatusHistory.new_status == \"pending_approval\"", content)
+        # Should query CampaignStatusHistory for the request transition (now using enum)
+        self.assertIn("CampaignStatusHistory.old_status == CampaignStatus.DRAFT", content)
+        self.assertIn("CampaignStatusHistory.new_status == CampaignStatus.PENDING_APPROVAL", content)
         # requested_at should NOT be set to "now" — it comes from the query
         self.assertIn("requested_at=requested_at", content)
         # Verify the function uses the looked-up timestamp variable
@@ -167,7 +167,7 @@ class TestApprovalRepositoryFunctions(unittest.TestCase):
         # reject_campaign also uses CampaignStatusHistory lookup
         # (count occurrences — should be 2: one in approve, one in reject)
         self.assertGreaterEqual(
-            content.count("CampaignStatusHistory.old_status == \"draft\""),
+            content.count("CampaignStatusHistory.old_status == CampaignStatus.DRAFT"),
             2,
             "Both approve_campaign and reject_campaign should look up request timestamp"
         )
@@ -182,6 +182,34 @@ class TestApprovalRepositoryFunctions(unittest.TestCase):
         self.assertIn("AdvertiserContract", content)
         self.assertIn("valid_from", content)
         self.assertIn("valid_until", content)
+
+    def test_error_discrimination_inventory_capacity(self):
+        """SUBMIT-VALIDATION-CI-002-FU — capacity overbooking → inventory error,
+        NOT metadata-only creative.  Verifies the except ValueError block in
+        request_campaign_approval produces a reason about inventory/capacity."""
+        repo_path = os.path.join(
+            os.path.dirname(__file__), "..",
+            "packages", "domain", "repository.py",
+        )
+        content = open(repo_path).read()
+        # The ValueError catch must produce inventory-related wording
+        self.assertIn("Невозможно забронировать инвентарь", content)
+        # Must NOT flatten into metadata-only wording
+        self.assertNotIn(
+            'return campaign.status, campaign.status  # inventory',
+            content,
+        )
+
+    def test_error_discrimination_metadata_only(self):
+        """SUBMIT-VALIDATION-CI-002-FU — metadata-only creative still returns
+        a creative-specific rejection, not a generic/inventory message."""
+        repo_path = os.path.join(
+            os.path.dirname(__file__), "..",
+            "packages", "domain", "repository.py",
+        )
+        content = open(repo_path).read()
+        # The checksum check must produce creative-related wording
+        self.assertIn("Креатив не загружен: отсутствует файл", content)
 
 
 if __name__ == "__main__":

@@ -350,3 +350,530 @@ self.login / self.campaign_view / self.report_view + свои smoke.
 **M6 — Self-service (P2).** advertiser-web: полное самозаведение кампаний рекламодателем.
 
 **Правило по всем вехам:** ни один журней вехи не «Готово» без зелёного deep-smoke.
+
+---
+
+## 6. PRODUCT-READINESS-PROGRAM-001 — программа доводки до реального пилота
+
+**Версия:** 1.0 · 2026-07-28 · владелец: продукт
+
+**Цель:** настоящий пилот на 1 КСО — не seed/script flow, а живой рекламодатель
+проводит кампанию от онбординга до отчёта.
+
+**Фокус:** онбординг реального рекламодателя (юр-реквизиты, бренды, договоры,
+автоматическое присвоение кода, пользователи, UX кампании).
+
+**Статус программы:** каноническая рамка зафиксирована. Реализация эпиков
+начинается только после owner/legal approval соответствующего draft.
+
+### Эпики
+
+| Эпик | Название | Статус |
+|------|----------|--------|
+| EPIC-A | Юридические реквизиты рекламодателя | ✅ Approved for A1 (ADVERTISER-UX-001A0); A1 implementation unblocked |
+| EPIC-B | Бренды / договоры / контакты | Запланирован |
+| EPIC-C | Wizard + автоматическое присвоение кода | Запланирован |
+| EPIC-D | Пользователи и права — UX | D1 ✅ (split); D2 ✅ (permission descriptions registry); operator walkthrough PENDING |
+| EPIC-E | UX кампании (attach, flight, placement, dashboard) | #3 ✅ closed as CAMPAIGN-UX-002A; #2B ✅ (merge Dashboard/Reporting tabs); остальные запланированы |
+
+> Фактический статус — из `PROJECT_STATE.md` + `feature-registry.yaml`.
+> Брифинг PRODUCT-READINESS-PROGRAM-001 задаёт направление; часть статусов в нём
+> могла устареть относительно текущего `develop`.
+
+---
+
+### 6.0 ADVERTISER-UX-001D1 — Users split internal vs advertiser + UUID invariant
+
+**Статус:** ✅ smoke green, vitest 273/273, CI pending.
+**Next:** ADVERTISER-UX-001D2 — permission descriptions.
+
+**Happy-path (5 шагов):**
+1. Оператор заходит в «Пользователи» → видит три вкладки: Все (N), Внутренние (N), Рекламодатели (N).
+2. Вкладка «Внутренние» — только ad/break-glass пользователи; `advertiser_test` не виден.
+3. Вкладка «Рекламодатели» — только local_advertiser; провайдер «Локальный (рекламодатель)»; `break_glass_admin` не виден.
+4. Кнопка «+ Создать рекламодателя» → форма без поля UUID/id пользователя (только username, display_name, org_id).
+5. Reload → вкладки на месте, таблица грузится.
+
+**Data-testid:** `users-tab-bar`, `users-tab-{all,internal,advertiser}`, `users-table-{all,internal,advertiser}`, `users-{section,empty}-{all,internal,advertiser}`, `user-row-{username}`, `user-provider-{username}`.
+
+---
+
+### 6.0b ADVERTISER-UX-001D2 — Permission descriptions registry
+
+**Статус:** ✅ smoke green, vitest 279/279, CI pending.
+**Next:** CAMPAIGN-UX-002B или по выбору владельца.
+
+**Источник описаний:** `apps/admin-web/src/auth/permissionDescriptions.ts` — frontend-реестр (24 permission). Выбран потому что backend `permissions.description` пуст в seed, а поднимать backend-миграцию ради описаний избыточно для D2.
+
+**Happy-path (4 шага):**
+1. Оператор → «Пользователи» → «Роли» на любом пользователе.
+2. В панели управления ролями — секция «Список прав (24)» с permission code + label + description.
+3. Каждое право: жирный label, моноширинный code, серая description-подстрока.
+4. Неизвестный permission падает безопасно: label = code, description = «Описание права пока не задано».
+
+**Data-testid:** `permission-catalog`, `permission-item-{safeCode}`, `permission-label-{safeCode}`, `permission-code-{safeCode}`, `permission-description-{safeCode}`.
+
+---
+
+### 6.0c CAMPAIGN-UX-002B — Merge duplicate Dashboard/Reporting tabs
+
+**Статус:** ✅ vitest 279/279, UI tabs confirmed (aria snapshot proof), CI pending.
+**Next:** CAMPAIGN-UX-002C — merge flights/placements/creatives into «Наполнение».
+
+**Happy-path (3 шага):**
+1. Оператор открывает карточку кампании → видит 5 вкладок: Обзор, Флайты, Плейсменты, Креативы, Дашборд.
+2. Вкладка «Отчётность» отсутствует (удалена как дубликат Дашборда).
+3. Дашборд содержит: План/Факт, По дням, По поверхностям/географии, Здоровье устройств.
+
+**Data-testid:** `campaign-dashboard`, `campaign-dashboard-empty-pop`.
+
+---
+
+### 6.0d CAMPAIGN-UX-002C — Merge Flights/Placements/Creatives into «Наполнение»
+
+**Статус:** ✅ Vitest 282/282, UI-smoke campaign.edit/submit/upload/inventory/creative green. Три секции в одном табе.
+**Next:** CAMPAIGN-UX-002D — campaign create/fill wizard.
+
+**Happy-path (3 шага):**
+1. Оператор открывает карточку кампании → видит 3 вкладки: Обзор, Наполнение, Дашборд.
+2. Вкладка «Наполнение» содержит три секции на одном экране: Рейсы, Плейсменты, Креативы.
+3. Readiness checklist на Обзоре ведёт в нужную секцию внутри «Наполнения» (скролл-фокус).
+
+**Data-testid:** `tab-content` (таб), `content-panel`, `content-readiness-summary`, `content-flights-section`, `content-placements-section`, `content-creatives-section`.
+
+---
+
+### 6.0e CAMPAIGN-UX-002D — Guided create-to-fill flow
+
+**Статус:** ✅ Vitest 288/288. Баннер, CTA, content-next-step. Без переписывания wizard.
+**Next:** KSO-ENV-001 или по выбору владельца.
+
+**Happy-path (4 шага):**
+1. Оператор создаёт кампанию → редирект с `?start=content`.
+2. Кампания открывается на вкладке «Наполнение», баннер: «Кампания создана. Добавьте рейс, размещение и креатив».
+3. На Обзоре — кнопка «Начать наполнение» для незаполненного draft.
+4. В «Наполнении» — `content-next-step` показывает конкретное действие (Добавьте рейс → Добавьте размещение → Загрузите креатив → Можно отправить).
+
+**Data-testid:** `campaign-created-next-step`, `campaign-start-filling-btn`, `content-next-step`.
+
+### 6.1 ADVERTISER-UX-001A0 — Legal requisites draft for owner/legal approval
+
+**Статус:** ✅ Approved for ADVERTISER-UX-001A1 migration/backend implementation by owner on 2026-07-28.
+**A1 backend:** ✅ Implemented — migration 029, PUT /advertiser-organizations/{id}/legal-requisites, Pydantic cross-field validation. UI pending (A2).
+**A2 UI:** ✅ Implemented — admin-web tab «Реквизиты», edit form with LE/IE toggle, save, display, reload persistence. UI-smoke green.
+
+#### Поля
+
+**Общие (для всех типов):**
+
+| Поле | Тип | Обязательное | Примечание |
+|------|-----|:---:|------------|
+| `legal_entity_type` | enum `legal_entity` \| `individual_entrepreneur` | ✅ | |
+| `legal_form` | enum: ООО / АО / ПАО / ИП / другое | ✅ | |
+| `legal_form_other` | string | только если `legal_form = другое` | Свободный текст |
+| `legal_name` | string | ✅ | Наименование |
+| `inn` | string (10 или 12 цифр) | ✅ | 10 — юрлицо, 12 — ИП |
+| `legal_address` | string | ✅ | Юридический адрес |
+| `settlement_account` | string (20 цифр) | ✅ | Расчётный счёт |
+| `correspondent_account` | string (20 цифр) | ✅ | Корреспондентский счёт |
+| `bik` | string (9 цифр) | ✅ | БИК |
+| `bank_name` | string | ✅ | Наименование банка |
+
+**Только для `legal_entity`:**
+
+| Поле | Тип | Обязательное | Примечание |
+|------|-----|:---:|------------|
+| `kpp` | string (9 цифр) | ✅ (только юрлицо) | |
+| `ogrn` | string (13 цифр) | ✅ (только юрлицо) | |
+
+**Только для `individual_entrepreneur`:**
+
+| Поле | Тип | Обязательное | Примечание |
+|------|-----|:---:|------------|
+| `ogrnip` | string (15 цифр) | ✅ (только ИП) | |
+
+#### Валидация (approved for A1)
+
+- `inn`: 10 цифр для `legal_entity`, 12 цифр для `individual_entrepreneur`
+- `kpp`: 9 цифр, required только для `legal_entity`
+- `ogrn`: 13 цифр, required только для `legal_entity`
+- `ogrnip`: 15 цифр, required только для `individual_entrepreneur`
+- `bik`: 9 цифр
+- `settlement_account`: 20 цифр
+- `correspondent_account`: 20 цифр
+- `legal_name`, `legal_address`, `bank_name`: non-empty
+- `legal_form_other`: required только когда `legal_form = other`
+- Нормализация: удалить пробелы/дефисы из цифровых полей перед валидацией
+- Контрольные суммы (checksum): **NOT blocking in A1** — deferred debt
+
+#### Deferred technical/product debt
+
+1. **Checksum validation** — ИНН/ОГРН/ОГРНИП + bank/account key validation.
+2. **Full requisites change history/versioning** — аудит изменений реквизитов.
+3. **Operator/legal verification workflow** — процесс подтверждения реквизитов оператором/юристом после ввода.
+
+#### Предлагаемый порядок задач
+
+```
+ADVERTISER-UX-001A1 — Schema + backend (после approval)
+ADVERTISER-UX-001A2 — UI + smoke ✅ (FU: display completeness + real smoke proof)
+ADVERTISER-UX-001B1 — Brands CRUD ✅ (backend + UI + smoke)
+ADVERTISER-UX-001B2 — Contracts CRUD + PDF upload ✅ (backend + UI + smoke)
+ADVERTISER-UX-001B3 — Contacts CRUD + user link
+ADVERTISER-UX-001C1 — Server-side auto-code generation
+ADVERTISER-UX-001C2 — Advertiser create wizard
+ADVERTISER-UX-001D1 — Users: split internal vs advertiser roles in UI
+ADVERTISER-UX-001D2 — Permission descriptions + UUID invariant
+KSO-ENV-001 — KSO player environment setup
+```
+
+### ADVERTISER-UX-001B2 — Contracts CRUD + PDF upload
+
+**Статус:** ✅ Реализован. Backend 12/12, vitest 4/4, UI-smoke green.
+
+**Journey:** `advertiser.contract_pdf_upload` — break-glass admin загружает PDF-договор для рекламодателя.
+
+**Happy-path (9 шагов):**
+1. Логин → 2. Advertisers (sidebar) → 3. Выбрать ADV-001 → 4. Вкладка «Договоры»
+→ 5. «Добавить договор» → 6. «Выбрать PDF» → 7. «Загрузить»
+→ 8. Имя файла в строке договора → 9. Перезагрузка: данные на месте.
+
+**Smoke:** `test_uismoke__advertiser__contract_pdf_upload` — GREEN (1 passed, 1.96s).
+Доказательство: contract metadata created, PDF selected through visible UI,
+upload intent → PUT → complete-upload успешен, строка показывает номер/название/имя PDF,
+reload persistence.
+
+**Backend:** 12 тестов (create/update/upload-intent schema + repo create/update/cross-org).
+**Frontend:** 4 vitest-теста (render, empty state, section data-testid, file name+size).
+**Миграция:** 030 — `advertiser_contracts` file metadata (5 nullable columns) + `contract_upload_sessions`.
+
+**Operator walkthrough:** PENDING.
+
+---
+
+### ADVERTISER-UX-001C2 — Advertiser create wizard
+
+**Статус:** ✅ Реализован. Vitest 10/10, backend 15/15, UI-smoke green (5.83s).
+
+**Journey:** `advertiser.create_org` — break-glass admin создаёт рекламодателя через пошаговый мастер с авто-кодом, юр-реквизитами, контактом и подтверждением.
+
+**Happy-path (11 шагов):**
+1. Логин → 2. Advertisers (sidebar) → 3. «Создать рекламодателя»
+→ 4. Основное: название + отображаемое имя + код авто → «Далее»
+→ 5. Реквизиты: тип, форма, ИНН, **юридический адрес**, банк, БИК, р/с → «Далее»
+→ 6. Контакты: ФИО + email → «Далее»
+→ 7. Подтверждение: саммари (код, организация, ИНН, банк, контакт) → «Открыть карточку»
+→ 8. Детальная карточка открыта → 9. Reload: persistence.
+
+**ADVERTISER-UX-001C2-FU:** Legal address is real operator input — placeholder «—» removed.
+Operator must type legal address. Client-side validation: «Укажите юридический адрес».
+
+**Smoke:** `test_uismoke__advertiser__create_org` — GREEN (5.70s).
+Доказательство: wizard visible → main → legal (real address filled) → contact → confirm → summary includes auto-code → card opens → reload persistence.
+
+**Operator walkthrough:** PENDING.
+
+---
+
+## EPIC-L — Platform/Device Licensing
+
+**Status:** Layer 1 complete (A1–A4: seat ledger, enrollment enforcement, decommission release, report API + reconciliation). Layer 2 (signed `.lic` / UI) pending.
+
+**Owner gate §08:** Approved 2026-07-30.
+
+### Core Decisions
+
+| Decision | Value |
+|----------|-------|
+| Licensee | Оператор (отдельная сущность, НЕ рекламодатель) |
+| Enforcement | Мягкий (soft): playing screen не гаснет; блокируется только new enrollment сверх лимита/после expiry; expired/over-cap → alert + status |
+| Unit | seat-month: активное = устройство держит seat; НЕ по показу/PoP; метрика = monthly peak occupied seats |
+| Contour separation | Контур 1 (license) и Контур 2 (advertiser billing) строго разделены. License domain may read device identity/enrollment; must NOT depend on advertiser-commercial billing |
+
+### Money Contours
+
+| # | Контур | Стороны | Статус |
+|---|--------|---------|--------|
+| 1 | Лицензирование платформы/устройств | Оператор/licensee → вендор | EPIC-L |
+| 2 | Коммерческий учёт размещений | Рекламодатель → оператор | v2.6 (deferred) |
+
+**Rule:** Контур 1 и Контур 2 не смешивать в таблицах, сервисах, UI. Общая точка — только device identity / enrollment.
+
+### License Payload — Approved Fields
+
+```
+license_id, licensee{id,name}, tier, issued_at, valid_from,
+valid_until (nullable), max_devices, overage_allowance, grace_days,
+features[], installation_binding, nonce, schema_version,
+kid (in JWS header)
+```
+
+**Format:** signed `.lic` (JWS/JWT, EdDSA/ed25519, offline verification).
+Public key in platform; private key vendor-side only.
+
+### Seat-Hook Requirement
+
+Future real device enrollment MUST mint stable device identity and reserve a license seat.
+Retrofit after deployed fleet is expensive.
+PLAYER/KSO implementation must not create enrollable devices without this hook.
+Counting/enforcement may come later, but identity/seat hook is required at enrollment boundary.
+See: `docs/architecture/epic-l-licensing.md`.
+
+### Feature IDs
+
+| ID | Status |
+|----|--------|
+| license.enforce | reachable (service, enrollment choke-point) |
+| license.seat_release | reachable (service, decommission release) |
+| license.report | reachable (service, `GET /licenses/report`) |
+| license.view | blocked (Layer 2 UI) |
+| license.upload | blocked (Layer 2 signed upload) |
+
+### Non-Goals (explicit)
+
+- No signed `.lic` issuer implementation
+- No offline Ed25519 verification / kid / CRL (Layer 2)
+- No UI for licensing
+- No player code changes
+- No advertiser billing
+
+### Layer 1 design freeze (EPIC-L-SEAT-LEDGER-001A0)
+
+**Status:** Discovery + decisions recorded against current `origin/develop`.
+No migrations/models/API/UI. Feature IDs remain `blocked`.
+
+The eight Layer 1 decisions (single effective grant; seat↔device identity with
+atomic re-bind on grant replacement; 409 enforcement codes
+`LICENSE_MISSING`/`LICENSE_SEAT_LIMIT`/`LICENSE_EXPIRED`; atomic
+capacity+create+reserve with row lock; active device always holds seat;
+exact monthly peak over `reserved_at <= t < released_at`; effective state
+computed from dates not `status`; licensing↔commerce contour isolation) are
+recorded in `docs/architecture/epic-l-licensing.md` §"Layer 1 — Seat Ledger
+Design Freeze". Task slicing 001A1→001A4 + EPIC-L-SIGNED-LICENSE-002 is
+frozen there. Layer 2 operator walkthrough stays PENDING.
+
+### Layer 1 implementation (EPIC-L-SEAT-LEDGER-001A1) ✅
+
+**Status:** A1 done — schema/migration + dev-ingest fixture + read model.
+Feature IDs remain `blocked` (no enforcement/user behavior yet).
+
+- Migration `034_license_seat_ledger.py` (license_grants + license_seats,
+  ENABLE+FORCE RLS admin-context, single-current + single-open-seat partial
+  unique indexes, CHECK constraints, FK RESTRICT history preservation).
+- ORM `packages/domain/licensing.py`; read model
+  `packages/domain/licensing_repository.py`; dev-ingest
+  `scripts/dev/license-dev-ingest.py` (fail-closed, idempotent).
+- Behavioral proof 18 tests under retail_media_app NOBYPASSRLS.
+- Deferred to A2/A3/A4: enrollment choke-point, decommission/release, peak,
+  report API, signed upload. Next: 001A2.
+
+### Layer 1 implementation (EPIC-L-SEAT-LEDGER-001A2) ✅
+
+**Status:** A2 done — transactional enrollment choke-point + concurrency proof.
+Feature IDs remain `blocked` (registry closure is A4).
+
+- Single choke-point `authorize_and_reserve_enrollment` in
+  `packages/domain/licensing_service.py`: one DB transaction does server-set
+  RLS context → `SELECT … FOR UPDATE` on the effective grant → effective state
+  from dates → occupied-seat count post-lock → capacity check → device mint →
+  seat reserve. `POST /device/onboard` calls exactly this method.
+- Single effective-grant selector `effective_grant_query(lock=…)` in
+  `packages/domain/licensing_repository.py`, shared by the read model and the
+  FOR UPDATE path: 'current' outranks any 'revoked' grant regardless of
+  `issued_at`; 'revoked' is chosen only when no 'current' exists; `issued_at
+  DESC` breaks ties only within one status (A2-FU fix).
+- 409 denials `LICENSE_MISSING`/`LICENSE_REVOKED`/`LICENSE_EXPIRED`/
+  `LICENSE_SEAT_LIMIT`; grace allowed and surfaced as `license_state`. Soft
+  enforcement — only NEW enrollment is blocked.
+- Grandfather reconciliation `reconcile_existing_fleet` +
+  `scripts/dev/license-reconcile-seats.py` (idempotent, over-cap preserved).
+- Behavioral proof 13 tests under `retail_media_app` NOBYPASSRLS, incl.
+  deterministic last-seat concurrency (FOR UPDATE) proof, plus A2-FU
+  current-over-revoked regression tests (read model + enrollment).
+- Deferred to A3/A4: decommission/release, peak, report API, signed upload.
+  Next: 001A3.
+
+---
+
+## COMMERCE-CONTUR2-001 — Commercial Inventory Sales Engine
+
+**Контур 2:** рекламодатель → оператор. Продажа рекламного инвентаря, коммерческий учёт, статус оплаты.
+
+### Границы (строгое разделение)
+
+| Контур | Стороны | Предмет | Статус |
+|--------|---------|---------|--------|
+| Контур 1 / EPIC-L | оператор → вендор | лицензия устройств/платформы | canon intake only |
+| Контур 2 / Commerce | рекламодатель → оператор | продажа рекламного инвентаря | **этот эпик** |
+
+**Запрещено:**
+- Сшивать таблицы/сервисы/UI между контурами.
+- Общая точка с EPIC-L отсутствует.
+- Общая точка с устройствами — только через будущие показы/PoP, не в MVP commerce.
+
+**Not:**
+- Not a payment gateway (no acquiring, no платёжный шлюз).
+- Not EDI/ЭДО.
+- Not license billing.
+
+**Uses existing:**
+- Inventory reservations (S-079)
+- `placement_basis`
+- Advertiser contracts
+- Campaigns/briefs
+
+**Не дублирует inventory.**
+
+---
+
+### Decision Matrix — Owner Approved (2026-07-31)
+
+**approved for COMMERCE-CONTUR2-001A1 schema/RLS/pricing implementation by owner on 2026-07-31**
+**A1 STATUS: ✅ backend foundation done** (CI #30991448734, SHA 95bb0ad).
+- Migration 032 applied (4 commerce tables).
+- Pricing choke-point `calculate_order_quote()` implemented (15/15 tests).
+- No UI — all commerce feature IDs remain blocked.
+- Next → A2: API endpoints, RLS enforcement, order CRUD.
+
+**A2 STATUS: ✅ API/RLS foundation done** (SHA eeae6f3, CI #30996275725 backend green).
+- 11 commerce endpoints: tariff/price CRUD, quote, order CRUD + status PATCH.
+- Status transition guard: draft→offered→booked→confirmed→closed/cancelled.
+- 4 seed permissions, 51 combined tests, guard 0.
+- No UI — commerce feature IDs remain blocked.
+- Next → A3a: admin UI for tariff/price management.
+
+**A3a STATUS: ✅ admin UI done** (SHA ab7a901, CI #30998309408, commerce smoke green).
+- CommerceTariffsPage: tariffs tab (CRUD) + prices tab (CRUD per tariff).
+- Nav: «Коммерция» → /commerce/tariffs (permission: commerce.tariff_read).
+- Vitest: 7/7, admin-web: 321/321 (no regressions).
+- UI-smoke: test_uismoke__commerce__tariff_manage — create tariff + price item + reload.
+- Feature-registry: commerce.tariff_manage + commerce.price_list_manage → reachable (43/57).
+- Operator walkthrough: PENDING.
+- Next → A3b: admin UI for order CRUD + status management.
+
+**A3b STATUS: ✅ admin order UI done** (SHA 43b09e3, CI #578 green).
+- CommerceOrdersTab: order list + create + detail + status/payment management.
+- Create order: org_id + tariff_id + surface_id + dates → backend quote → lines + total.
+- Status transitions: draft→offered→booked (UI proof). Payment: select → update persistence.
+- Vitest: 8/8, admin-web: 329/329.
+- UI-smoke: test_uismoke__commerce__order_create (create + offered + booked + payment + reload).
+- Feature-registry: +4 commerce → reachable (47/57).
+- Operator walkthrough: PENDING.
+- Next → A3c: commerce.order_close smoke proof.
+
+**A3c STATUS: ✅ order_close smoke proof** (SHA 40d28c9, CI #579 green).
+- UI-smoke extended: booked→confirmed→closed + reload persistence + terminal check.
+- Closed orders have no transition buttons — smoke-verified.
+- Vitest: +2 close tests, admin-web: 331/331.
+- Feature-registry: commerce.order_close → reachable (48/57). All 7 commerce features reachable.
+- Operator walkthrough: PENDING.
+- Next → Commerce Contour 2 MVP closed.
+
+**COMMERCE-PRICING-001 ✅** — Server-derived `quantity_days`, no silent zero-priced orders.
+- Policy: `quantity_days = (date_to - date_from).days + 1` (inclusive). Order total
+  is server-derived from date range × unit price — the client `quantity_days` field
+  is ignored for pricing (retained in DTO for backward compatibility only).
+- Validation: `date_to >= date_from` (else 422); derived `quantity_days >= 1` (never 0).
+- Backend tests: derive_quantity_days (1-day/multi-day/never-zero/date-range-error),
+  calculate_order_quote (one-day, multi-day, client-zero-days-ignored),
+  create_order without quantity_days → non-zero total.
+- UI-smoke: order create asserts non-zero total, `line_amount = unit_price × days`,
+  and reload persistence preserves the same total.
+
+| # | Decision | Approved value | Status |
+|---|----------|---------------|--------|
+| 1 | billing_unit | `surface_day` — рассчитывается до player/PoP, совместим с бронированием инвентаря до показа | ✅ approved |
+| 2 | payment_handling | `status_only` — без acquiring, без платёжного шлюза, внешний billing/EDI | ✅ approved |
+| 3 | tariff_versioning | `yes` — версии прайс-листов; завершённые заказы/кампании не пересчитываются задним числом | ✅ approved |
+| 4 | discounts_in_mvp | `no` — отложено до следующей итерации | ✅ approved |
+| 5a | order_status | `draft → offered → booked → confirmed → closed → cancelled` | ✅ approved |
+| 5b | payment_status | `not_required → unpaid → partial → paid → overdue` | ✅ approved |
+
+### Non-Goals (explicit)
+
+- No payment gateway (no acquiring, no платёжный шлюз)
+- No EDI/ЭДО
+- No discounts in MVP
+- No retroactive repricing (завершённые заказы не пересчитываются)
+- No Contour 1 / EPIC-L merge
+- No feature statuses reachable until A1 implementation
+
+---
+
+**Commerce Contour 2 MVP closed.** All 7 commerce feature IDs reachable (48/57 total registry).
+Operator walkthrough PENDING.
+
+**COMMERCE-UX-001 ✅ (UX hardening).** UUID/text inputs replaced with human-readable selects/autocomplete:
+- Price form: surface select (store_code + store_name) replaced surface_id text input.
+- Order form: advertiser select (code + display/legal_name), tariff select (code + name + status),
+  surface select — replaced org_id/tariff_id/surface_id text inputs.
+- All payloads still send IDs; operator no longer copies UUIDs by hand.
+- Backend: reused existing `/inventory/surfaces`, `/advertiser-organizations`, `/commerce/tariffs` list endpoints — no new backend work.
+- CI green (CI #585). Vitest: 345/345. Commerce smokes green. Guard 0.
+
+---
+
+### Draft Field Matrix (not implementation — for owner review)
+
+**Order:**
+- `order_id`, `advertiser_organization_id`, `advertiser_contract_id`
+- `campaign_id` (nullable, или link table позже)
+- `placement_basis`
+- `status` (draft/offered/booked/confirmed/closed/cancelled)
+- `payment_status` (not_required/unpaid/partial/paid/overdue)
+- `currency`, `amount_net`, `amount_gross` (optional/deferred)
+- `price_snapshot_json`
+- `valid_until` / `offer_valid_until`
+- `created_at`, `updated_at`, `closed_at`
+
+**Price List:**
+- `price_list_id`, `name`, `currency`
+- `valid_from`, `valid_until` (nullable)
+- `version`, `status` (draft/active/archived)
+
+**Tariff:**
+- `tariff_id`, `price_list_id`, `billing_unit`
+- `scope_type`, `scope_id` (nullable)
+- `unit_price`, `currency`
+- `valid_from`, `valid_until` (inherited or explicit)
+- `status`
+
+**Offer:**
+- `offer_id`, `order_id`
+- `calculated_at`, `amount`, `currency`
+- `price_snapshot_json`, `valid_until`
+- `status`
+
+**Booking:**
+- `order_id` / `offer_id`
+- Links to existing inventory reservations (S-079)
+- No duplicate inventory tables
+
+---
+
+### MVP Task Graph
+
+```
+A0 — canon intake + owner decisions (этот этап) ✅
+ │
+ ├─ A1 — schema/RLS/pricing choke-point
+ ├─ A2 — tariff/price-list admin UI
+ ├─ A3 — order create/card + payment status
+ ├─ A4 — offer generation with price snapshot
+ ├─ A5 — booking via existing reservations
+ └─ A6 — close order + no-retro-reprice proof
+```
+
+A1 unblocked by owner on 2026-07-31. A2–A6 blocked pending A1 completion.
+
+### Feature IDs (all reachable)
+
+| ID | Status |
+|----|--------|
+| commerce.order_create | reachable |
+| commerce.tariff_manage | reachable |
+| commerce.offer_generate | reachable |
+| commerce.booking | reachable |
+| commerce.payment_status | reachable |
+| commerce.order_close | reachable |
+| commerce.price_list_manage | reachable |

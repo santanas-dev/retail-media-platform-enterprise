@@ -282,3 +282,101 @@ describe("UsersPage — create advertiser flow", () => {
     expect(screen.getByText(/Username already taken/)).toBeTruthy();
   });
 });
+
+// ── D1: UUID invariant ──
+
+describe("UsersPage — D1 UUID invariant", () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it("create advertiser form has no user id/uuid editable field", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (url.endsWith("/me")) {
+        return new Response(JSON.stringify({
+          sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin",
+          permissions: ["users.read", "users.manage"],
+        }), { status: 200 });
+      }
+      if (url.includes("/users?")) {
+        return new Response(JSON.stringify({ items: SEED_USERS, total: 2, limit: 50, offset: 0 }), { status: 200 });
+      }
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-create-advertiser-open")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("user-create-advertiser-open"));
+
+    // Form visible
+    expect(screen.getByTestId("user-create-advertiser-username")).toBeTruthy();
+
+    // No id/uuid field for the user
+    expect(screen.queryByTestId("user-create-advertiser-id")).toBeNull();
+    expect(screen.queryByTestId("user-create-advertiser-uuid")).toBeNull();
+    expect(screen.queryByPlaceholderText(/UUID пользователя/i)).toBeNull();
+    expect(screen.queryByPlaceholderText(/user.*id/i)).toBeNull();
+  });
+
+  it("create advertiser API payload does not include user id/uuid", async () => {
+    const user = userEvent.setup();
+    let createBody: Record<string, unknown> = {};
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ access_token: "t", token_type: "Bearer", expires_in: 1800 }), { status: 200 });
+      }
+      if (url.endsWith("/me")) {
+        return new Response(JSON.stringify({
+          sub: "u1", auth_provider: "ad", username: "admin", display_name: "Admin",
+          permissions: ["users.read", "users.manage"],
+        }), { status: 200 });
+      }
+      if (url.endsWith("/users/local-advertiser")) {
+        createBody = JSON.parse(String(init?.body || "{}"));
+        return new Response(JSON.stringify({
+          user_id: "new-uuid-123",
+          username: "test_adv",
+          display_name: "Test",
+          one_time_password: "ABCD1234EFGH5678",
+          message: "Created",
+        }), { status: 201 });
+      }
+      if (url.includes("/users?")) {
+        return new Response(JSON.stringify({ items: SEED_USERS, total: 2, limit: 50, offset: 0 }), { status: 200 });
+      }
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+
+    const router = createRouter();
+    render(<AuthProvider><RouterProvider router={router} /></AuthProvider>);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-create-advertiser-open")).toBeTruthy();
+    });
+    await user.click(screen.getByTestId("user-create-advertiser-open"));
+
+    await user.type(screen.getByTestId("user-create-advertiser-username"), "test_adv");
+    await user.type(screen.getByTestId("user-create-advertiser-display-name"), "Test");
+    await user.type(screen.getByTestId("user-create-advertiser-org-id"), "00000000-0000-4000-a000-000000000002");
+    await user.click(screen.getByTestId("user-create-advertiser-submit"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user-create-advertiser-result")).toBeTruthy();
+    });
+
+    // Payload must NOT contain id/uuid for the user
+    expect(createBody).not.toHaveProperty("id");
+    expect(createBody).not.toHaveProperty("uuid");
+    expect(createBody).not.toHaveProperty("user_id");
+  });
+});

@@ -78,3 +78,33 @@ forbidden = [
     "^backend(\\.|$)",
     "^kso(\\.|$)",
 ]
+
+# ── Licensing boundary (EPIC-L-SEAT-LEDGER-001A4 SCOPE E) ──────────────────
+# Licensing modules may only import licensing modules, device/enrollment
+# identity, and shared DB/security/schema helpers. They must never reach into
+# commerce_* or advertiser-commercial code/tables.
+[[licensing_boundary]]
+files = [
+    "packages/domain/licensing.py",
+    "packages/domain/licensing_repository.py",
+    "packages/domain/licensing_service.py",
+    "packages/api/identity_routes/licenses.py",
+]
+# models.py is monolithic — allow only the explicitly-listed device/status
+# symbols licensing is permitted to read (never a blanket-ban of models.py).
+allowed_models = [
+    "Base",
+    "_new_uuid",
+    "_utcnow",
+    "PhysicalDevice",
+    "DeviceStatusHistory",
+    "Store",
+]
+forbidden_imports = [
+    "commerce",
+    "advertiser",
+]
+forbidden_literals = [
+    "commerce_",
+    "advertiser_",
+]

@@ -42,6 +42,9 @@ def test_uismoke__user__assign_roles(smoke_page):
     """
     page = smoke_page
 
+    import time
+    t0 = time.time()
+
     # Step 1: login (only page.goto(/login) is in conftest fixture)
     login_as_break_glass_admin(page)
 
@@ -102,6 +105,15 @@ def test_uismoke__user__assign_roles(smoke_page):
     # Verify the panel is still visible
     panel = page.locator('[data-testid="user-roles-panel"]')
     assert panel.is_visible(), "Role panel should remain visible after saving"
+
+    # D2: Verify permission catalog is visible with descriptions
+    catalog = page.locator('[data-testid="permission-catalog"]')
+    assert catalog.is_visible(), "Permission catalog not visible"
+    catalog_text = catalog.inner_text()
+    assert "Список прав" in catalog_text, f"Catalog header missing: {catalog_text[:100]}"
+    assert "users.manage" in catalog_text, f"'users.manage' not in catalog: {catalog_text[:200]}"
+    assert "Управление пользователями" in catalog_text, f"users.manage label missing: {catalog_text[:200]}"
+    print(f"[{time.time()-t0:.1f}s] Permission catalog: visible, {len(catalog_text)} chars ✓")
 
     # Verify the TARGET_ROLE_CODE appears in the current roles list
     role_items = panel.locator("ul li")

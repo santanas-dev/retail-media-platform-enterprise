@@ -28,7 +28,25 @@ export class ApiError extends Error {
   constructor(status: number, body: unknown) {
     const detail =
       typeof body === "object" && body !== null && "detail" in body
-        ? String((body as Record<string, unknown>).detail)
+        ? (() => {
+            const d = (body as Record<string, unknown>).detail;
+            // FastAPI 422: detail is an array of validation errors
+            if (Array.isArray(d) && d.length > 0) {
+              // Keep raw array in body for formatApiError to process;
+              // use a safe summary as message for basic consumers
+              const first = d[0] as Record<string, unknown> | undefined;
+              const field = first && Array.isArray(first.loc) ? first.loc[first.loc.length - 1] : undefined;
+              const msg = first && typeof first.msg === "string" ? first.msg : "";
+              return field && msg ? `${field}: ${msg}` : `Ошибка валидации (${d.length} пол.)`;
+            }
+            if (typeof d === "string") return d;
+            if (typeof d === "object" && d !== null) {
+              const obj = d as Record<string, unknown>;
+              if (typeof obj.msg === "string") return obj.msg;
+              if (typeof obj.message === "string") return obj.message;
+            }
+            return String(d);
+          })()
         : `HTTP ${status}`;
     super(detail);
     this.name = "ApiError";

@@ -66,11 +66,12 @@ router = APIRouter()
 async def list_campaigns(
     db=Depends(get_db),
     pagination: PaginationParams = Depends(get_pagination_params),
+    campaign_id: str | None = Query(None, description="Filter by campaign ID"),
     _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
     items, total = await repository.list_campaigns_paginated(
-        db, limit=pagination.limit, offset=pagination.offset,
+        db, limit=pagination.limit, offset=pagination.offset, campaign_id=campaign_id,
     )
     return PaginatedResponse(
         items=[_serialize_campaign(item) for item in items],
@@ -290,7 +291,7 @@ async def request_approval_endpoint(
 ):
     user_id = claims["sub"]
     try:
-        old_status, new_status = await repository.request_campaign_approval(
+        old_status, new_status, reason = await repository.request_campaign_approval(
             db,
             campaign_id,
             changed_by=user_id,
@@ -304,9 +305,13 @@ async def request_approval_endpoint(
             detail="Campaign not found or not in draft status",
         )
     if old_status == new_status:
+        detail = reason or (
+            "Кампания не готова к отправке. Проверьте заполнение флайтов, "
+            "плейсментов и креативов."
+        )
         raise HTTPException(
             status_code=422,
-            detail="Campaign validation failed: ensure at least one flight, one placement, and one creative with uploaded files exist. Metadata-only creatives (no file uploaded) cannot be approved.",
+            detail=detail,
         )
     await repository.enqueue_outbox_event(
         db,
@@ -561,6 +566,91 @@ async def pause_endpoint(
         old_status=old_status,
         new_status=new_status,
     )
+
+
+@router.post("/campaigns/{campaign_id}/complete",
+             response_model=CampaignApprovalResponse)
+async def complete_endpoint(
+    campaign_id: str,
+    db=Depends(get_db),
+    claims: dict = Depends(get_current_active_user),
+    scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    _rls=Depends(set_rls_context),
+):
+    """Complete an active campaign (LIFECYCLE-COMPLETE-001).
+
+    Transition: active → completed. All flights must be expired.
+    Idempotent: already completed → 200 with existing status.
+    """
+    user_id = claims["sub"]
+    try:
+        old_status, new_status = await repository.complete_campaign(
+            db,
+            campaign_id,
+            changed_by=user_id,
+            scope_advertiser_ids=_scope_ids(scope),
+        )
+    except ScopeError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    if old_status is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Campaign not found, not active, or flights not all expired",
+        )
+    # Idempotent response for already-completed
+    if old_status == new_status:
+        return CampaignApprovalResponse(
+            message="Campaign already completed",
+            campaign_id=campaign_id,
+            old_status=old_status,
+            new_status=new_status,
+        )
+    from packages.domain.repository import create_audit_event
+    await create_audit_event(
+        db,
+        actor_user_id=user_id,
+        action="campaign.completed",
+        target_type="campaign",
+        target_id=campaign_id,
+        details={
+            "old_status": old_status,
+            "new_status": new_status,
+        },
+    )
+    await repository.enqueue_outbox_event(
+        db,
+        event_type="campaign.completed",
+        aggregate_type="campaign",
+        aggregate_id=campaign_id,
+        payload={
+            "campaign_id": campaign_id,
+            "old_status": old_status,
+            "new_status": new_status,
+        },
+        headers={"source_service": "control-api"},
+    )
+    return CampaignApprovalResponse(
+        message="Campaign completed — all flights ended",
+        campaign_id=campaign_id,
+        old_status=old_status,
+        new_status=new_status,
+    )
+
+
+@router.post("/campaigns/complete-expired",
+             response_model=dict)
+async def complete_expired_endpoint(
+    db=Depends(get_db),
+    _claims: dict = Depends(require_permission("campaigns.manage")),
+    _rls=Depends(set_rls_context),
+):
+    """Complete all active campaigns with expired flights.
+
+    Safe to call periodically — idempotent, no duplicates.
+    Returns count of completed campaigns.
+    """
+    completed = await repository.complete_expired_campaigns(db)
+    return {"completed": len(completed), "campaign_ids": completed}
 
 
 # ---------------------------------------------------------------------------

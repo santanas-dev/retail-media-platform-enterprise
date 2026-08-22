@@ -25,8 +25,14 @@ import type {
   AdvertiserOrganizationOut,
   AdvertiserOrganizationDetailOut,
   AdvertiserBrandOut,
+  AdvertiserBrandCreate,
+  AdvertiserBrandUpdate,
   AdvertiserContractOut,
+  AdvertiserContractCreate,
+  AdvertiserContractUpdate,
   AdvertiserContactOut,
+  AdvertiserContactCreate,
+  AdvertiserContactUpdate,
   AdvertiserUserMembershipOut,
   CampaignApprovalOut,
   CampaignApprovalResponse,
@@ -38,6 +44,7 @@ import type {
   ClusterOut,
   StoreOut,
   DisplaySurfaceRefOut,
+  InventorySurfaceOut,
   CampaignRejectRequest,
   CampaignCreativeAttachRequest,
   PaginatedResponse,
@@ -52,6 +59,11 @@ import type {
   InventoryRuleUpdate,
   CampaignInventoryReservationsResponse,
   InventorySimulationResponse,
+  AdvertiserLegalRequisitesUpdate,
+  ContractUploadIntentRequest,
+  ContractUploadIntentResponse,
+  ContractUploadCompleteRequest,
+  ContractUploadCompleteResponse,
 } from "./types";
 
 // ── Campaigns ──
@@ -60,18 +72,19 @@ import type {
 export function listCampaigns(
   limit = 50,
   offset = 0,
+  campaignId?: string,
 ): Promise<PaginatedResponse<CampaignOut>> {
   const params = new URLSearchParams();
   params.set("limit", String(limit));
   params.set("offset", String(offset));
+  if (campaignId) params.set("campaign_id", campaignId);
   return api.get<PaginatedResponse<CampaignOut>>(`/campaigns?${params}`);
 }
 
-/** Get a single campaign by ID — fetches from first page and filters client-side.
- *  Temporary: will be replaced by dedicated detail endpoint (S-XXX). */
+/** Get a single campaign by ID — server-side filter via campaign_id query param. */
 export async function getCampaign(id: string): Promise<CampaignOut | null> {
-  const page = await listCampaigns(200, 0);
-  return page.items.find((c) => c.id === id) ?? null;
+  const page = await listCampaigns(1, 0, id);
+  return page.items[0] ?? null;
 }
 
 /** Create a draft campaign. Returns the created campaign with its ID. */
@@ -131,7 +144,7 @@ export function listAdvertisers(): Promise<AdvertiserOrganizationOut[]> {
 }
 
 export function createAdvertiserOrganization(body: {
-  code: string;
+  code?: string | null;
   legal_name: string;
   display_name: string;
 }): Promise<AdvertiserOrganizationOut> {
@@ -140,6 +153,23 @@ export function createAdvertiserOrganization(body: {
 
 export function listBrands(): Promise<AdvertiserBrandOut[]> {
   return api.get<AdvertiserBrandOut[]>("/advertiser-brands");
+}
+
+export function createAdvertiserBrand(
+  body: AdvertiserBrandCreate,
+): Promise<AdvertiserBrandOut> {
+  return api.post<AdvertiserBrandOut>("/advertiser-brands", body);
+}
+
+export function updateAdvertiserBrand(
+  brandId: string,
+  advertiserOrganizationId: string,
+  body: AdvertiserBrandUpdate,
+): Promise<AdvertiserBrandOut> {
+  return api.patch<AdvertiserBrandOut>(
+    `/advertiser-brands/${brandId}?advertiser_organization_id=${advertiserOrganizationId}`,
+    body,
+  );
 }
 
 export function listContracts(): Promise<AdvertiserContractOut[]> {
@@ -152,6 +182,18 @@ export function getAdvertiserDetail(orgId: string): Promise<AdvertiserOrganizati
   return api.get<AdvertiserOrganizationDetailOut>(`/advertiser-organizations/${orgId}`);
 }
 
+// ── ADVERTISER-UX-001A2 — Legal requisites ──
+
+export function updateAdvertiserLegalRequisites(
+  orgId: string,
+  body: AdvertiserLegalRequisitesUpdate,
+): Promise<AdvertiserOrganizationDetailOut> {
+  return api.put<AdvertiserOrganizationDetailOut>(
+    `/advertiser-organizations/${orgId}/legal-requisites`,
+    body,
+  );
+}
+
 export function listBrandsByOrg(orgId: string): Promise<AdvertiserBrandOut[]> {
   return api.get<AdvertiserBrandOut[]>(`/advertiser-brands-by-org?advertiser_organization_id=${orgId}`);
 }
@@ -160,8 +202,62 @@ export function listContractsByOrg(orgId: string): Promise<AdvertiserContractOut
   return api.get<AdvertiserContractOut[]>(`/advertiser-contracts-by-org?advertiser_organization_id=${orgId}`);
 }
 
+// ── ADVERTISER-UX-001B2 — Contract CRUD + PDF upload ──
+
+export function createAdvertiserContract(
+  body: AdvertiserContractCreate,
+): Promise<AdvertiserContractOut> {
+  return api.post<AdvertiserContractOut>("/advertiser-contracts", body);
+}
+
+export function updateAdvertiserContract(
+  contractId: string,
+  advertiserOrganizationId: string,
+  body: AdvertiserContractUpdate,
+): Promise<AdvertiserContractOut> {
+  return api.patch<AdvertiserContractOut>(
+    `/advertiser-contracts/${contractId}?advertiser_organization_id=${advertiserOrganizationId}`,
+    body,
+  );
+}
+
+export function createContractUploadIntent(
+  contractId: string,
+  body: ContractUploadIntentRequest,
+): Promise<ContractUploadIntentResponse> {
+  return api.post<ContractUploadIntentResponse>(
+    `/advertiser-contracts/${contractId}/upload-intent`,
+    body,
+  );
+}
+
+export function completeContractUpload(
+  contractId: string,
+  body: ContractUploadCompleteRequest,
+): Promise<ContractUploadCompleteResponse> {
+  return api.post<ContractUploadCompleteResponse>(
+    `/advertiser-contracts/${contractId}/complete-upload`,
+    body,
+  );
+}
+
 export function listContactsByOrg(orgId: string): Promise<AdvertiserContactOut[]> {
   return api.get<AdvertiserContactOut[]>(`/advertiser-contacts-by-org?advertiser_organization_id=${orgId}`);
+}
+
+export function createAdvertiserContact(body: AdvertiserContactCreate): Promise<AdvertiserContactOut> {
+  return api.post<AdvertiserContactOut>("/advertiser-contacts", body);
+}
+
+export function updateAdvertiserContact(
+  contactId: string,
+  advertiserOrganizationId: string,
+  body: AdvertiserContactUpdate,
+): Promise<AdvertiserContactOut> {
+  return api.patch<AdvertiserContactOut>(
+    `/advertiser-contacts/${contactId}?advertiser_organization_id=${advertiserOrganizationId}`,
+    body,
+  );
 }
 
 export function listMemberships(orgId: string): Promise<AdvertiserUserMembershipOut[]> {
@@ -353,6 +449,12 @@ export function listStores(): Promise<StoreOut[]> {
 
 export function listDisplaySurfaces(): Promise<DisplaySurfaceRefOut[]> {
   return api.get<DisplaySurfaceRefOut[]>("/display-surfaces");
+}
+
+export function listInventorySurfaces(): Promise<InventorySurfaceOut[]> {
+  return api
+    .get<PaginatedResponse<InventorySurfaceOut>>("/inventory/surfaces")
+    .then((r) => r.items);
 }
 
 // ── S-017: Creative Upload (presigned URL flow) ──

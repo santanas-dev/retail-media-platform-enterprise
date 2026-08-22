@@ -40,6 +40,15 @@ async def lifespan(app: FastAPI):
     except Exception:
         logger.exception("Failed to create database engine — service will start degraded")
         _engine = None
+    # Ensure MinIO buckets exist (best-effort, non-blocking)
+    try:
+        from packages.services.storage import get_storage_service
+        storage = get_storage_service()
+        await storage.async_ensure_bucket()
+        await storage.async_ensure_contract_bucket()
+        logger.info("MinIO buckets verified")
+    except Exception:
+        logger.warning("MinIO bucket verification failed — upload endpoints may be unavailable")
     yield
     if _engine:
         await _engine.dispose()

@@ -41,6 +41,8 @@ SEED_PERM_IDS = {
     "organization.read": "00000000-0000-0000-0000-000000000105",
     "channels.read":   "00000000-0000-0000-0000-000000000106",
     "devices.read":    "00000000-0000-0000-0000-000000000107",
+    "devices.manage":  "00000000-0000-0000-0000-000000000123",
+    "license.read":    "00000000-0000-0000-0000-000000000124",
     "emergency.read":  "00000000-0000-0000-0000-000000000115",
     "emergency.manage":"00000000-0000-0000-0000-000000000116",
     "advertiser_applications.read":  "00000000-0000-0000-0000-00000000011b",
@@ -56,6 +58,10 @@ SEED_PERM_IDS = {
     "creatives.moderate": "00000000-0000-0000-0000-000000000117",
     "inventory.read":    "00000000-0000-0000-0000-000000000118",
     "inventory.manage":  "00000000-0000-0000-0000-000000000119",
+    "commerce.tariff_read":  "00000000-0000-0000-0000-00000000011f",
+    "commerce.tariff_manage": "00000000-0000-0000-0000-000000000120",
+    "commerce.order_read":  "00000000-0000-0000-0000-000000000121",
+    "commerce.order_manage": "00000000-0000-0000-0000-000000000122",
 }
 SEED_ADV_ROLE_ID = "00000000-0000-0000-0000-000000000114"
 SEED_ADV_USER_ROLE_ID = "00000000-0000-0000-0000-000000000204"
@@ -251,6 +257,14 @@ VALUES ('{SEED_PERM_IDS["devices.read"]}', 'devices.read', 'Просмотр у�
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["devices.manage"]}', 'devices.manage', 'Управление устройствами')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["license.read"]}', 'license.read', 'Просмотр лицензии')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
 VALUES ('{SEED_PERM_IDS["emergency.read"]}', 'emergency.read', 'Просмотр аварийного режима')
 ON CONFLICT (code) DO NOTHING;
 
@@ -308,6 +322,22 @@ ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO permissions (id, code, name)
 VALUES ('{SEED_PERM_IDS["inventory.manage"]}', 'inventory.manage', 'Управление инвентарём')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["commerce.tariff_read"]}', 'commerce.tariff_read', 'Просмотр коммерческих тарифов')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["commerce.tariff_manage"]}', 'commerce.tariff_manage', 'Управление коммерческими тарифами')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["commerce.order_read"]}', 'commerce.order_read', 'Просмотр коммерческих заказов')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["commerce.order_manage"]}', 'commerce.order_manage', 'Управление коммерческими заказами')
 ON CONFLICT (code) DO NOTHING;
 
 -- Roles
@@ -373,6 +403,14 @@ VALUES ('{_rp(127)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["device
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(262)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["devices.manage"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(264)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["license.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(162)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["emergency.read"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
@@ -432,6 +470,23 @@ INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(220)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["inventory.manage"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
+-- system_admin: commerce permissions
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(256)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["commerce.tariff_read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(257)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["commerce.tariff_manage"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(258)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["commerce.order_read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(259)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["commerce.order_manage"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
 -- security_admin: users.read, users.manage, roles.read, roles.manage, audit.read
 INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(131)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["users.read"]}')
@@ -489,6 +544,14 @@ INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(222)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["inventory.manage"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(263)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["devices.manage"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(265)}', '{SEED_ROLE_IDS["security_admin"]}', '{SEED_PERM_IDS["license.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
 
 -- operator: organization.read, channels.read, devices.read
 INSERT INTO role_permissions (id, role_id, permission_id)
@@ -509,6 +572,15 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(213)}', '{SEED_ROLE_IDS["operator"]}', '{SEED_PERM_IDS["campaigns.read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- operator: commerce read permissions
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(260)}', '{SEED_ROLE_IDS["operator"]}', '{SEED_PERM_IDS["commerce.tariff_read"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(261)}', '{SEED_ROLE_IDS["operator"]}', '{SEED_PERM_IDS["commerce.order_read"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 

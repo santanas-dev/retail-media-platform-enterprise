@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { AuthProvider } from "../auth/AuthContext";
+import { ThemeProvider } from "../theme/ThemeContext";
 import { useAuth } from "../auth/AuthContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Layout from "../components/Layout";
@@ -32,9 +33,11 @@ function createRouter() {
 function renderPage() {
   const router = createRouter();
   return render(
-    <AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
       <RouterProvider router={router} />
-    </AuthProvider>,
+    </AuthProvider>
+    </ThemeProvider>,
   );
 }
 
@@ -277,22 +280,93 @@ describe("AdvertisersPage", () => {
       expect(screen.getByTestId("advertiser-create-open")).toBeInTheDocument();
     });
 
-    // Click create button → fill → save
+    // Click create button → wizard opens
     await userEvent.click(screen.getByTestId("advertiser-create-open"));
-    await userEvent.type(screen.getByTestId("advertiser-create-code"), "NEW01");
-    await userEvent.type(screen.getByTestId("advertiser-create-legal-name"), "ООО Новый");
-    await userEvent.type(screen.getByTestId("advertiser-create-display-name"), "Новый");
-    await userEvent.click(screen.getByTestId("advertiser-create-save"));
 
-    // Modal closes after save
+    // Wizard is visible
+    expect(screen.getByTestId("advertiser-wizard")).toBeInTheDocument();
+
+    // Main step: fill fields
+    expect(screen.getByTestId("advertiser-wizard-step-main")).toBeInTheDocument();
+    await userEvent.type(screen.getByTestId("advertiser-wizard-name"), "ООО Новый");
+    // There's also a display_name field
+    const displayInput = screen.getByTestId("advertiser-wizard-display-name");
+    await userEvent.type(displayInput, "Новый");
+
+    // Click Next → triggers API create
+    await userEvent.click(screen.getByTestId("advertiser-wizard-next"));
+
+    // Wizard should advance to next step (or close on finish)
     await waitFor(() => {
-      expect(screen.queryByTestId("advertiser-create-code")).not.toBeInTheDocument();
+      // After create succeeds, step advances to legal
+      expect(screen.queryByTestId("advertiser-wizard-step-legal-active")).toBeInTheDocument();
     });
 
-    // POST was called with correct body
+    // POST was called with correct body (code omitted — auto-generated)
     expect(postBody).not.toBeNull();
-    expect(postBody.code).toBe("NEW01");
+    expect(postBody.code).toBeUndefined();  // no code sent — server generates
     expect(postBody.legal_name).toBe("ООО Новый");
     expect(postBody.display_name).toBe("Новый");
+  });
+
+  it("wizard legal step sends real legal_address, not placeholder", async () => {
+    let postBody: any = null;
+    let legalPutBody: any = null;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input: any, init?: any) => {
+      const url = typeof input === "string" ? input : input.url;
+      if (url.includes("/me")) {
+        return new Response(JSON.stringify({ id: "u-1", username: "admin", display_name: "Admin", sub: "u-1", auth_provider: "local", permissions: defaultPermissions }), { status: 200 });
+      }
+      if (url.includes("/refresh")) {
+        return new Response(JSON.stringify({ access_token: "tok", token_type: "bearer" }), { status: 200 });
+      }
+      if (url.includes("/advertiser-organizations") && init?.method === "POST") {
+        postBody = JSON.parse(init.body);
+        return new Response(JSON.stringify({ id: "org-new", code: "ADV-2026-0001", legal_name: "ООО Новый", display_name: "Новый", status: "active" }), { status: 201 });
+      }
+      if (url.includes("/legal-requisites") && init?.method === "PUT") {
+        legalPutBody = JSON.parse(init.body);
+        return new Response(JSON.stringify({ id: "org-new", code: "ADV-2026-0001", status: "active" }), { status: 200 });
+      }
+      if (url.endsWith("/advertiser-organizations")) {
+        return new Response(JSON.stringify([{ id: "org-new", code: "ADV-2026-0001", legal_name: "ООО Новый", display_name: "Новый", status: "active" }]), { status: 200 });
+      }
+      if (url.includes("/advertiser-brands") || url.includes("/advertiser-contracts")) {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+      return new Response(JSON.stringify([]), { status: 200 });
+    });
+
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId("advertiser-create-open")).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByTestId("advertiser-create-open"));
+
+    await userEvent.type(screen.getByTestId("advertiser-wizard-name"), "ООО Новый");
+    await userEvent.type(screen.getByTestId("advertiser-wizard-display-name"), "Новый");
+    await userEvent.click(screen.getByTestId("advertiser-wizard-next"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("advertiser-wizard-step-legal-active")).toBeInTheDocument();
+    });
+
+    const addressInput = screen.getByTestId("advertiser-wizard-legal-address");
+    expect(addressInput).toBeInTheDocument();
+
+    await userEvent.type(screen.getByTestId("advertiser-wizard-legal-inn"), "7700000000");
+    await userEvent.type(addressInput, "г. Москва, ул. Тверская, д. 1");
+    await userEvent.type(screen.getByTestId("advertiser-wizard-legal-bank"), "ПАО Сбербанк");
+    await userEvent.type(screen.getByTestId("advertiser-wizard-legal-bik"), "044525225");
+    await userEvent.type(screen.getByTestId("advertiser-wizard-legal-settlement"), "40702810000000000001");
+    await userEvent.click(screen.getByTestId("advertiser-wizard-next"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("advertiser-wizard-step-contact-contract")).toBeInTheDocument();
+    });
+
+    expect(legalPutBody).not.toBeNull();
+    expect(legalPutBody.legal_address).toBe("г. Москва, ул. Тверская, д. 1");
+    expect(legalPutBody.legal_address).not.toBe("—");
   });
 });

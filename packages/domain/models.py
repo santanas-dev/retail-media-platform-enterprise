@@ -56,6 +56,10 @@ __all__ = [
     "AdvertiserBrand",
     "AdvertiserContract",
     "AdvertiserContact",
+    "CommerceTariffVersion",
+    "CommercePriceItem",
+    "CommerceOrder",
+    "CommerceOrderLine",
     "LocalCredential",
     "RefreshSession",
     "LoginAttempt",
@@ -593,6 +597,20 @@ class AdvertiserOrganization(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
 
+    # Legal requisites (ADVERTISER-UX-001A1) — all nullable to preserve existing orgs
+    legal_entity_type = Column(String(32), nullable=True)
+    legal_form = Column(String(32), nullable=True)
+    legal_form_other = Column(String(255), nullable=True)
+    inn = Column(String(32), nullable=True)
+    legal_address = Column(Text, nullable=True)
+    settlement_account = Column(String(32), nullable=True)
+    correspondent_account = Column(String(32), nullable=True)
+    bik = Column(String(16), nullable=True)
+    bank_name = Column(String(255), nullable=True)
+    kpp = Column(String(16), nullable=True)
+    ogrn = Column(String(32), nullable=True)
+    ogrnip = Column(String(32), nullable=True)
+
     memberships = relationship("AdvertiserUserMembership", back_populates="organization")
 
 
@@ -657,6 +675,14 @@ class AdvertiserContract(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
 
+    # File metadata (ADVERTISER-UX-001B2) — nullable for existing contracts
+    file_storage_key = Column(String(512), nullable=True)
+    file_name = Column(String(255), nullable=True)
+    file_size_bytes = Column(BigInteger, nullable=True)
+    file_sha256 = Column(String(64), nullable=True)
+    file_content_type = Column(String(64), nullable=True)
+    file_uploaded_at = Column(DateTime(timezone=True), nullable=True)
+
 
 class AdvertiserContact(Base):
     __tablename__ = "advertiser_contacts"
@@ -671,10 +697,14 @@ class AdvertiserContact(Base):
     advertiser_organization_id = Column(
         String(36), ForeignKey("advertiser_organizations.id"), nullable=False, index=True,
     )
+    user_id = Column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True,
+    )
     contact_type = Column(String(32), nullable=False, default="primary")
     full_name = Column(String(255), nullable=False)
     email = Column(String(255), nullable=False)
     phone = Column(String(32), nullable=True)
+    title = Column(String(255), nullable=True)
     is_primary = Column(Boolean, nullable=False, default=False)
     status = Column(String(32), nullable=False, default="active")
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
@@ -1225,6 +1255,39 @@ class CreativeUploadSession(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
 
 
+class ContractUploadSession(Base):
+    """Upload session for advertiser contract PDF files (ADVERTISER-UX-001B2).
+
+    Mirrors CreativeUploadSession pattern but scoped to contracts,
+    not creative assets. No auto-approval — file is attached directly
+    on complete-upload.
+    """
+
+    __tablename__ = "contract_upload_sessions"
+    __table_args__ = (
+        CheckConstraint("content_length > 0",
+                        name="ck_cotus_content_length_positive"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    contract_id = Column(
+        String(36), ForeignKey("advertiser_contracts.id"), nullable=False, index=True,
+    )
+    advertiser_organization_id = Column(
+        String(36), ForeignKey("advertiser_organizations.id"), nullable=False, index=True,
+    )
+    storage_bucket = Column(String(128), nullable=False)
+    storage_key = Column(String(512), nullable=False)
+    filename = Column(String(255), nullable=False)
+    content_type = Column(String(64), nullable=False)
+    content_length = Column(BigInteger, nullable=False)
+    sha256_checksum = Column(String(64), nullable=True)
+    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+
 # ---------------------------------------------------------------------------
 # Inventory Domain (v0.7 Foundation — S-077)
 # ---------------------------------------------------------------------------
@@ -1353,6 +1416,111 @@ class InventoryRule(Base):
     updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
 
 
+# ---------------------------------------------------------------------------
+# Commerce Contour 2 (COMMERCE-CONTUR2-001A1)
+# ---------------------------------------------------------------------------
+
+
+class CommerceTariffVersion(Base):
+    """Tariff version — pricing container scoped to a validity period."""
+
+    __tablename__ = "commerce_tariff_versions"
+    __table_args__ = (
+        Index("ix_commerce_tariff_versions_status", "status"),
+        Index("ix_commerce_tariff_versions_valid", "valid_from", "valid_to"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    code = Column(String(64), nullable=False, unique=True, index=True)
+    name = Column(String(255), nullable=False)
+    status = Column(String(32), nullable=False, default="draft")
+    valid_from = Column(Date, nullable=False)
+    valid_to = Column(Date, nullable=True)
+    currency = Column(String(3), nullable=False, default="RUB")
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+    price_items = relationship("CommercePriceItem", back_populates="tariff_version")
+
+
+class CommercePriceItem(Base):
+    """Price line inside a tariff version — scoped to a surface or surface group."""
+
+    __tablename__ = "commerce_price_items"
+    __table_args__ = (
+        Index("ix_commerce_price_items_tariff", "tariff_version_id"),
+        UniqueConstraint("tariff_version_id", "surface_id",
+                         name="uq_price_item_tariff_surface"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    tariff_version_id = Column(
+        String(36), ForeignKey("commerce_tariff_versions.id"), nullable=False, index=True,
+    )
+    surface_id = Column(
+        String(36), ForeignKey("display_surfaces.id"), nullable=False, index=True,
+    )
+    billing_unit = Column(String(32), nullable=False, default="surface_day")
+    unit_price_amount = Column(Numeric(12, 2), nullable=False)
+    currency = Column(String(3), nullable=False, default="RUB")
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+    tariff_version = relationship("CommerceTariffVersion", back_populates="price_items")
+
+
+class CommerceOrder(Base):
+    """Commerce order — advertiser purchases inventory from operator."""
+
+    __tablename__ = "commerce_orders"
+    __table_args__ = (
+        Index("ix_commerce_orders_org", "advertiser_organization_id"),
+        Index("ix_commerce_orders_status", "status"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    advertiser_organization_id = Column(
+        String(36), ForeignKey("advertiser_organizations.id"), nullable=False, index=True,
+    )
+    code = Column(String(64), nullable=False, unique=True, index=True)
+    status = Column(String(32), nullable=False, default="draft")
+    payment_status = Column(String(32), nullable=False, default="not_required")
+    tariff_version_id = Column(
+        String(36), ForeignKey("commerce_tariff_versions.id"), nullable=True, index=True,
+    )
+    total_amount = Column(Numeric(14, 2), nullable=True)
+    currency = Column(String(3), nullable=False, default="RUB")
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+
+    lines = relationship("CommerceOrderLine", back_populates="order")
+
+
+class CommerceOrderLine(Base):
+    """Single line item in a commerce order."""
+
+    __tablename__ = "commerce_order_lines"
+    __table_args__ = (
+        Index("ix_commerce_order_lines_order", "order_id"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    order_id = Column(
+        String(36), ForeignKey("commerce_orders.id"), nullable=False, index=True,
+    )
+    surface_id = Column(
+        String(36), ForeignKey("display_surfaces.id"), nullable=False, index=True,
+    )
+    date_from = Column(Date, nullable=False)
+    date_to = Column(Date, nullable=False)
+    quantity_days = Column(Integer, nullable=False)
+    unit_price_amount = Column(Numeric(12, 2), nullable=False)
+    line_amount = Column(Numeric(14, 2), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    order = relationship("CommerceOrder", back_populates="lines")
+
+
 REQUIRED_TABLES = frozenset({
     "retailers",
     "branches", "clusters", "stores",
@@ -1376,6 +1544,7 @@ REQUIRED_TABLES = frozenset({
     "pop_dedup_index",
     "pop_ingestion_batches",
     "creative_upload_sessions",
+    "contract_upload_sessions",
     "inventory_slots",
     "inventory_bookings",
     "inventory_rules",
@@ -1384,4 +1553,14 @@ REQUIRED_TABLES = frozenset({
     "campaign_briefs",
     "device_onboarding_codes",
     "ad_settings",
+    "commerce_tariff_versions", "commerce_price_items",
+    "commerce_orders", "commerce_order_lines",
+    "license_grants", "license_seats",
 })
+
+
+# Register licensing models on Base.metadata. Imported last (plain `import`,
+# not `from`) so the licensing module can `from packages.domain.models import
+# Base` without a circular-import failure regardless of which module is
+# imported first.
+from packages.domain import licensing as _licensing  # noqa: E402,F401

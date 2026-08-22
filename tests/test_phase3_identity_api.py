@@ -1375,13 +1375,23 @@ class TestAdvertiserOrganizationCreate(AuthzMixin, unittest.TestCase):
         })
         self.assertEqual(resp.status_code, 403)
 
-    def test_requires_code_field(self):
+    def test_code_is_optional(self):
+        """Code field is now optional — server auto-generates when omitted."""
         self._setup_authz(perms={"advertisers.manage", "organization.read"})
+        from packages.domain.models import AdvertiserOrganization
+        org = AdvertiserOrganization(
+            id="org-new", code="AUTO-GEN-01", legal_name="ООО Новый",
+            display_name="Новый", status="active",
+        )
+        mock_create, mock_audit = self._mock_create(return_org=org)
         resp = self._post("/api/v1/identity/advertiser-organizations", json_data={
             "legal_name": "ООО Новый",
             "display_name": "Новый",
         })
-        self.assertEqual(resp.status_code, 422)
+        self.assertEqual(resp.status_code, 201)
+        # Verify repository was called with code=None (auto-generate)
+        call_kwargs = mock_create.call_args.kwargs
+        self.assertIsNone(call_kwargs["code"])
 
     def test_requires_legal_name_field(self):
         self._setup_authz(perms={"advertisers.manage", "organization.read"})
@@ -1420,7 +1430,8 @@ class TestAdvertiserOrganizationCreate(AuthzMixin, unittest.TestCase):
         self.assertEqual(call_kwargs.get("target_type"), "advertiser_organization")
         self.assertEqual(call_kwargs.get("target_id"), "org-new")
 
-    def test_duplicate_code_returns_500(self):
+    def test_duplicate_code_returns_409(self):
+        """Duplicate explicit code now returns 409 Conflict (001C1)."""
         self._setup_authz(perms={"advertisers.manage", "organization.read"})
         from sqlalchemy.exc import IntegrityError
         self._mock_create(side_effect=IntegrityError(
@@ -1428,14 +1439,12 @@ class TestAdvertiserOrganizationCreate(AuthzMixin, unittest.TestCase):
             params={},
             orig=Exception(),
         ))
-        # IntegrityError is unhandled → FastAPI returns 500
-        # Honest: not yet a 409, documented as known gap
-        with self.assertRaises(Exception):
-            self._post("/api/v1/identity/advertiser-organizations", json_data={
-                "code": "EXISTING",
-                "legal_name": "Дубль",
-                "display_name": "Дубль",
-            })
+        resp = self._post("/api/v1/identity/advertiser-organizations", json_data={
+            "code": "EXISTING",
+            "legal_name": "Дубль",
+            "display_name": "Дубль",
+        })
+        self.assertEqual(resp.status_code, 409)
 
 
 if __name__ == "__main__":
