@@ -53,6 +53,11 @@ async def health_http_server():
             if self.path == "/health/live":
                 body = json_mod.dumps({"status": "ok", "service": SERVICE_NAME}).encode()
                 code = 200
+            elif self.path == "/health/ready":
+                state = get_health_state()
+                payload = state.to_dict()
+                body = json_mod.dumps(payload).encode()
+                code = 200 if payload["status"] == "ok" else 503
             elif self.path == "/version":
                 from packages.version import build_version_payload
                 try:
@@ -65,11 +70,6 @@ async def health_http_server():
                         "error": str(exc),
                     }).encode()
                     code = 503
-            elif self.path == "/health/ready":
-                state = get_health_state()
-                payload = state.to_dict()
-                body = json_mod.dumps(payload).encode()
-                code = 200 if payload["status"] == "ok" else 503
             else:
                 self.send_response(404)
                 self.end_headers()
