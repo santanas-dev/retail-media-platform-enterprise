@@ -1,12 +1,25 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-22 (R4-RELEASE-001 — v0.11.0-pilot-control-plane RELEASED)
+**Last updated:** 2026-08-22 (PILOT-DEPLOYMENT-READINESS-001A — target discovery + deployment design)
 
-**Next Active Workstream:** owner decision → **PILOT-DEPLOYMENT-READINESS-001** (pilot deploy prep) либо **KSO-ENV-001** (KSO real-player env). НЕ auto-deploy.
+**Next Active Workstream:** **001B** (deployment packaging — version endpoint + image pinning) — не зависит от owner inputs; затем owner-input blocker → 001C/001D/001E.
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `e130207` (main — R4 release merge; tag `v0.11.0-pilot-control-plane`)
-- State/Docs SHA: `ba116ba` (develop — canon closure on top of release sync)
+- State/Docs SHA: `8abae65` (develop — 001A deployment design canon)
+
+**PILOT-DEPLOYMENT-READINESS-001A ✅** — Pilot target discovery + deployment design (docs/audit only; deploy НЕ выполнялся, к серверу не подключались).
+
+- **Verdict: NEEDS OWNER INPUT.** Код/конфиг достаточны для начала packaging, но нет целевого host/DNS/TLS/секретов → нельзя ни спроектировать точный manifest, ни preflight.
+- Inventory: 6 инфра-сервисов (postgres/redis/nats/minio + clickhouse deferred + observability) и 6 app-сервисов (control-api, device-gateway, orchestrator-worker, pop-ingestor, mock-adapter, admin-web). **advertiser-web отсутствует в compose.**
+- Gaps (блокеры packaging): нет image pinning/digests (`minio:latest` плавающий), нет version endpoint (`/health/live` без tag/SHA), нет restart policy на runtime-сервисах, нет reverse-proxy/TLS конфигурации, dev-credentials в `phase1.yml`, pop-ingestor зависит от исключённого ClickHouse, advertiser-web не в compose.
+- Data safety: PG backup (pg_dump custom) + MinIO backup (SHA-256 manifest) есть; Redis disposable; restore drill обязателен (`backup.restore` остаётся blocked); schema downgrade 034→028 lossy → restore-from-backup как основной DB rollback.
+- Owner inputs: host/IP, OS/Docker версии, DNS, TLS termination, firewall/VPN, SMTP/AD/MinIO, backup/monitoring destination, secret storage, maintenance window, оператор, доступность реального КСО. **Ничего не выдумано.**
+- Doc: `docs/runbook/pilot-deployment-readiness.md` (topology, runbook draft, acceptance criteria, gap matrix).
+- Slicing: 001B (packaging) → 001C (restore drill) → 001D (host preflight) → 001E (controlled deploy); KSO-ENV-001 отдельно, только с реальным КСО.
+- Feature statuses НЕ менялись. Deployed production SHA = UNKNOWN/NOT TRACKED.
+- Next → **001B** (не блокируется owner inputs), затем owner-input blocker.
+- Checkpoint by PS-001.
 
 **R4-RELEASE-001 ✅** — v0.11.0-pilot-control-plane RELEASED (prerelease/pilot checkpoint, НЕ production).
 
