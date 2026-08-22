@@ -1,20 +1,21 @@
-# Release Notes — Draft (R4 pilot/control-plane)
+# Release Notes — v0.11.0-pilot-control-plane (Release Candidate)
 
-> **Status: DRAFT** — подготовлено в R4-READINESS-001 (evidence-based audit).
-> Тег **НЕ создан**. Merge в main **НЕ выполнен**. Production-ready **НЕ заявляется**.
+> **Status: RELEASE CANDIDATE** — подготовлено в R4-RELEASE-001.
+> Prerelease/pilot software checkpoint. **НЕ production deployment.**
 
-**Proposed version/tag:** `v0.11.0-pilot-control-plane`
-(альтернатива: `v0.11.0-rc1`)
+**Version/tag:** `v0.11.0-pilot-control-plane`
 
-**Candidate SHA:** `c14dd3e` (develop, 2026-08-21) — включает UI-SMOKE-STABILITY-004,
-EPIC-L A1–A4 (Layer 1), Commerce Contour 2, advertiser onboarding, theme/tokens.
+**Release SHA (develop):** `a4b3f2b` — включает UI-SMOKE-STABILITY-004,
+EPIC-L A1–A4 (Layer 1), Commerce Contour 2, advertiser onboarding, theme/tokens,
+REPO-GOVERNANCE-001 (release-gate + rulesets).
 
 ---
 
-## Что вошло после R3 (main `96b5159` → candidate `c14dd3e`)
+## Что вошло после R3 (main `96b5159` → develop `a4b3f2b`)
 
 - **204 commits**, **199 файлов** (+24 460 / −1 436).
 - **6 migrations** (029–034), линейная цепочка, один head.
+- **Feature registry:** **58 total / 52 reachable / 6 blocked** (на R3 было 40/35/5).
 
 ## Migrations 029–034
 
@@ -27,9 +28,9 @@ EPIC-L A1–A4 (Layer 1), Commerce Contour 2, advertiser onboarding, theme/token
 | 033 | Commerce RLS (ENABLE + FORCE) |
 | 034 | License seat ledger tables + RLS (ENABLE + FORCE) |
 
-## Feature-результаты (17 стали reachable после R3)
+## Feature-результаты (52/58 reachable)
 
-Программно пересчитано: **58 total / 52 reachable / 6 blocked** (на R3 было 40/35/5).
+Программно пересчитано: **58 total / 52 reachable / 6 blocked**.
 
 - **Commerce Contour 2 (7):** tariff_manage, price_list_manage, order_create,
   offer_generate, booking, payment_status, order_close.
@@ -46,7 +47,7 @@ EPIC-L A1–A4 (Layer 1), Commerce Contour 2, advertiser onboarding, theme/token
   reconciliation.
 - **Advertiser onboarding UX** — legal/brand/contract/contact, приглашения, RLS.
 - **CI truth / stability** — UI-SMOKE-STABILITY-004: production bundle smoke,
-  concurrency group, 3×38/38.
+  concurrency group, 3×38/38; release-gate aggregate job + branch/tag rulesets.
 - **Theme / tokens** — dark theme + semantic tokens (`data-theme="dark"`).
 - **Campaign completion** — автоматическое завершение по концу рейса.
 - **EPIC-L Layer 1** — unsigned dev-ingest licensing: seat ledger, enrollment
@@ -61,15 +62,26 @@ EPIC-L A1–A4 (Layer 1), Commerce Contour 2, advertiser onboarding, theme/token
 - **FORCE ROW LEVEL SECURITY** на `commerce_*` (033) и `license_*` (034):
   `retail_media_app` обязан выставлять RLS-контекст (`app.rmp_is_admin`). Без него
   эти таблицы пусты — by design (DB-level backstop).
+- **Branch governance:** main требует PR + `release-gate`; develop/tags защищены
+  от force-push/delete; `v*` tags immutable, owner-only creation.
+
+## НЕ включено (явно)
+
+- **Real KSO player** — KSO client это hardware-independent контракт, не настоящий player; KSO proof отсутствует.
+- `self.report_view` (PoP/player path) — blocked.
+- `self.campaign_create` (deferred P2) — blocked.
+- `playlist.build` (service-deferred) — blocked.
+- `backup.restore` (нет restore drill) — blocked.
+- `license.view` / `license.upload` (Layer 2 signed-license/UI) — blocked.
+- **Signed `.lic` / offline crypto** — Layer 2 (JWS/Ed25519, kid/CRL, offline verify) не реализовано.
+- **CD / production deployment** — не выполнялось.
+- **Operator walkthrough** — PENDING (не подтверждён оператором).
 
 ## Известные ограничения
 
-- 6 blocked feature IDs: `self.report_view` (PoP/player path), `self.campaign_create`
-  (deferred P2), `playlist.build` (service-deferred), `backup.restore` (нет restore
-  drill), `license.view` / `license.upload` (Layer 2 signed-license/UI).
-- EPIC-L Layer 1 = **unsigned** dev-ingest; signed `.lic` (JWS/Ed25519, kid/CRL,
-  offline verify) — Layer 2, не реализовано.
-- KSO client — hardware-independent контракт, **не** реальный player; KSO proof отсутствует.
+- 6 blocked feature IDs: `self.report_view`, `self.campaign_create`,
+  `playlist.build`, `backup.restore`, `license.view`, `license.upload`.
+- EPIC-L Layer 1 = **unsigned** dev-ingest; signed `.lic` — Layer 2, не реализовано.
 - CD workflow отсутствует; deployed production SHA не отслеживается.
 - Operator walkthrough — PENDING.
 
@@ -81,3 +93,8 @@ EPIC-L A1–A4 (Layer 1), Commerce Contour 2, advertiser onboarding, theme/token
 - **Schema-downgrade (034→028) — lossy** для commerce/license данных. Если после R4
   записаны бизнес-данные, downgrade их удалит → обязательный **restore-from-backup**
   (но `backup.restore` остаётся blocked до реального restore drill).
+
+## Deployment truth
+
+> This release has not been deployed to production.
+> Production deployed SHA remains UNKNOWN/NOT TRACKED.
