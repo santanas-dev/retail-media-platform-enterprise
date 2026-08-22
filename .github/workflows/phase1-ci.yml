@@ -29,6 +29,11 @@ on:
       - "apps/advertiser-web/**"
       - "packages/**"
       - "infra/compose/**"
+      - "tests/**"
+      - "scripts/**"
+      - ".github/workflows/**"
+      - "docs/**"
+      - "PROJECT_STATE.md"
 
 jobs:
   python-check:
@@ -649,3 +654,53 @@ jobs:
         run: pip install openpyxl pyyaml
       - name: Run consistency check (strict — blocks on findings)
         run: python3 scripts/roadmap-consistency-check.py --strict
+
+  release-gate:
+    name: Release Gate — aggregate of all quality gates
+    runs-on: ubuntu-latest
+    needs:
+      - python-check
+      - python-tests
+      - import-boundaries
+      - style-tokens
+      - json-schema
+      - frontend
+      - ui-smoke
+      - docker-compose
+      - behavioral-postgres-tests
+      - production-config-gate
+      - roadmap-consistency-audit
+    # Always run so the aggregate verdict is authoritative even if an upstream
+    # job was skipped or failed — required status checks only gate on this job.
+    if: always()
+    steps:
+      - name: Verify all quality gates passed
+        run: |
+          set -uo pipefail
+          declare -A results=(
+            [python-check]="${{ needs.python-check.result }}"
+            [python-tests]="${{ needs.python-tests.result }}"
+            [import-boundaries]="${{ needs.import-boundaries.result }}"
+            [style-tokens]="${{ needs.style-tokens.result }}"
+            [json-schema]="${{ needs.json-schema.result }}"
+            [frontend]="${{ needs.frontend.result }}"
+            [ui-smoke]="${{ needs.ui-smoke.result }}"
+            [docker-compose]="${{ needs.docker-compose.result }}"
+            [behavioral-postgres-tests]="${{ needs.behavioral-postgres-tests.result }}"
+            [production-config-gate]="${{ needs.production-config-gate.result }}"
+            [roadmap-consistency-audit]="${{ needs.roadmap-consistency-audit.result }}"
+          )
+          fail=0
+          for job in "${!results[@]}"; do
+            if [ "${results[$job]}" = "success" ]; then
+              echo "OK   $job = success"
+            else
+              echo "FAIL $job = ${results[$job]}"
+              fail=1
+            fi
+          done
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::release-gate FAILED — one or more quality gates did not pass"
+            exit 1
+          fi
+          echo "release-gate: all quality gates passed"
