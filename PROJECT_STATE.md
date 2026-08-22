@@ -1,12 +1,28 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-21 (R4-READINESS-001 — release readiness audit, candidate `c14dd3e`)
+**Last updated:** 2026-08-22 (R4-RELEASE-001 — v0.11.0-pilot-control-plane RELEASED)
 
-**Next Active Workstream:** R4-RELEASE-001 (release branch → merge → tag) — условно, после включения branch protection (governance blocker)
+**Next Active Workstream:** owner decision → **PILOT-DEPLOYMENT-READINESS-001** (pilot deploy prep) либо **KSO-ENV-001** (KSO real-player env). НЕ auto-deploy.
 
 **Repository Checkpoint (PS-001):**
-- Payload SHA: `8637b1d` (EPIC-L-SEAT-LEDGER-001A4 — Layer 1 closure, last substantive code)
-- State/Docs SHA: `c14dd3e` (R4 release candidate — A4 closure; audit docs on top)
+- Payload SHA: `e130207` (main — R4 release merge; tag `v0.11.0-pilot-control-plane`)
+- State/Docs SHA: `ba116ba` (develop — canon closure on top of release sync)
+
+**R4-RELEASE-001 ✅** — v0.11.0-pilot-control-plane RELEASED (prerelease/pilot checkpoint, НЕ production).
+
+- **main release SHA:** `e130207` (merge commit, 2026-08-22). PR #2 merged via protected PR.
+- **PR URL:** https://github.com/santanas-dev/retail-media-platform-enterprise/pull/2
+- **PR CI:** `#32562799315` ✅ (UI-smoke 38/38, release-gate success)
+- **Post-merge main CI:** `#32563176404` ✅ (UI-smoke 38/38, release-gate success, 0 failed jobs)
+- **Tag:** `v0.11.0-pilot-control-plane` (annotated) → `e130207`; immutable (owner-only creation + no update/delete rulesets).
+- **GitHub Release:** https://github.com/santanas-dev/retail-media-platform-enterprise/releases/tag/v0.11.0-pilot-control-plane (prerelease: true, draft: false)
+- **Registry:** 58 total / 52 reachable / 6 blocked.
+- **Deployed production SHA = UNKNOWN/NOT TRACKED.** Pilot deployment = NOT PERFORMED. Production = NO-GO.
+- Release branch `release/v0.11.0-pilot-control-plane` удалён; main/develop синхронизированы по release history.
+- Root-cause note: первый PR run упал из-за double-run contention (push + pull_request оба гоняли полный UI-smoke pipeline на одном SHA) — исправлено в CI (`branches-ignore: release/**` на push-триггере), повторный PR run зелёный.
+- Feature statuses НЕ менялись.
+- Next → **PILOT-DEPLOYMENT-READINESS-001** либо **KSO-ENV-001** (owner decision).
+- Checkpoint by PS-001.
 
 **R4-READINESS-001 ✅** — Release readiness audit (evidence-based; merge/tag/deploy НЕ выполнялись).
 
