@@ -3,6 +3,8 @@ name: Phase 1 — Quality Gates
 on:
   workflow_dispatch:
   push:
+    branches-ignore:
+      - "release/**"
     paths:
       - "apps/control-api/**"
       - "apps/device-gateway/**"
