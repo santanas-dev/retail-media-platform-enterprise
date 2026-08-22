@@ -1,25 +1,33 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-22 (PILOT-DEPLOYMENT-READINESS-001A — target discovery + deployment design)
+**Last updated:** 2026-08-22 (PILOT-DEPLOYMENT-READINESS-001B — packaging + immutable identity)
 
-**Next Active Workstream:** **001B** (deployment packaging — version endpoint + image pinning) — не зависит от owner inputs; затем owner-input blocker → 001C/001D/001E.
+**Next Active Workstream:** **001C** (backup + restore drill) — затем packaging patch release → 001D/001E.
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `e130207` (main — R4 release merge; tag `v0.11.0-pilot-control-plane`)
-- State/Docs SHA: `8abae65` (develop — 001A deployment design canon)
+- State/Docs SHA: `2f79c7e` (develop — 001B packaging substantive)
+
+**PILOT-DEPLOYMENT-READINESS-001B ✅** — Production-like packaging + immutable identity (packaging only; NO deploy/tag/main-merge).
+
+- Pilot compose `infra/compose/docker-compose.pilot.yml` (отдельно от dev phase1): no build/source-mount/latest, restart unless-stopped, healthchecks, service_healthy/completed deps, NOBYPASSRLS app runtime, owner-credential migration one-shot, SEED_DEV_CREDENTIALS + LICENSE_DEV_INGEST disabled. **advertiser-web присутствует.** clickhouse/pop-ingestor/mock-adapter исключены (нет доказанной pilot-функции).
+- Frontend prod-контейнеры (admin-web + advertiser-web): multi-stage node build → nginx static serve, SPA fallback, `/healthz` + `/build-info.json`.
+- Image lock manifest + validator (`scripts/deploy/validate-image-lock.py`): блокирует latest/empty-digest/mutable-tag/mixed-SHA/service-mismatch. `.example` + генератор (`build-images.sh --push`). **Никакие digest не выдуманы.**
+- Version identity: `GET /version` (control-api/device-gateway/orchestrator-worker/pop-ingestor) + frontend `build-info.json`; `packages/version.py` env-injected, fail-closed в pilot/prod, dev fallback `dev`/`unknown`.
+- `.env.pilot.example` + `validate-pilot-env.py` (rejects minioadmin/dev-secrets/SEED_DEV_CREDENTIALS/weak keys).
+- `build-images.sh`: reproducible, clean-tree, OCI labels, no push без `--push`.
+- CI job `packaging` в release-gate (compose config, lock/env validators, frontend image build+verify, 41 новых тестов).
+- R4 `e130207` **неизменен** (тег не создавался/не перемещался). 001B substantive SHA `2f79c7e` — после R4, потребует patch release после 001C.
+- Deployed production SHA = UNKNOWN/NOT TRACKED. Production = NO-GO. `backup.restore` остаётся blocked.
+- Feature statuses НЕ менялись.
+- Next → **001C** (restore drill), затем packaging patch release → 001D/001E.
+- Checkpoint by PS-001.
 
 **PILOT-DEPLOYMENT-READINESS-001A ✅** — Pilot target discovery + deployment design (docs/audit only; deploy НЕ выполнялся, к серверу не подключались).
 
-- **Verdict: NEEDS OWNER INPUT.** Код/конфиг достаточны для начала packaging, но нет целевого host/DNS/TLS/секретов → нельзя ни спроектировать точный manifest, ни preflight.
-- Inventory: 6 инфра-сервисов (postgres/redis/nats/minio + clickhouse deferred + observability) и 6 app-сервисов (control-api, device-gateway, orchestrator-worker, pop-ingestor, mock-adapter, admin-web). **advertiser-web отсутствует в compose.**
-- Gaps (блокеры packaging): нет image pinning/digests (`minio:latest` плавающий), нет version endpoint (`/health/live` без tag/SHA), нет restart policy на runtime-сервисах, нет reverse-proxy/TLS конфигурации, dev-credentials в `phase1.yml`, pop-ingestor зависит от исключённого ClickHouse, advertiser-web не в compose.
-- Data safety: PG backup (pg_dump custom) + MinIO backup (SHA-256 manifest) есть; Redis disposable; restore drill обязателен (`backup.restore` остаётся blocked); schema downgrade 034→028 lossy → restore-from-backup как основной DB rollback.
-- Owner inputs: host/IP, OS/Docker версии, DNS, TLS termination, firewall/VPN, SMTP/AD/MinIO, backup/monitoring destination, secret storage, maintenance window, оператор, доступность реального КСО. **Ничего не выдумано.**
-- Doc: `docs/runbook/pilot-deployment-readiness.md` (topology, runbook draft, acceptance criteria, gap matrix).
-- Slicing: 001B (packaging) → 001C (restore drill) → 001D (host preflight) → 001E (controlled deploy); KSO-ENV-001 отдельно, только с реальным КСО.
-- Feature statuses НЕ менялись. Deployed production SHA = UNKNOWN/NOT TRACKED.
-- Next → **001B** (не блокируется owner inputs), затем owner-input blocker.
-- Checkpoint by PS-001.
+- **Verdict (тогда): NEEDS OWNER INPUT.** Owner inputs всё ещё открыты (host/IP, DNS, TLS, firewall, SMTP/AD, backup/monitoring destination, secret storage, оператор, реальное КСО).
+- Inventory: 6 инфра-сервисов + 6 app-сервисов; **advertiser-web отсутствовал в compose** (исправлено в 001B).
+- Doc: `docs/runbook/pilot-deployment-readiness.md` (topology, runbook draft, acceptance, gap matrix).
 
 **R4-RELEASE-001 ✅** — v0.11.0-pilot-control-plane RELEASED (prerelease/pilot checkpoint, НЕ production).
 
