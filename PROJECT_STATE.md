@@ -1,12 +1,29 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-22 (PILOT-DEPLOYMENT-READINESS-001B — packaging + immutable identity)
+**Last updated:** 2026-08-23 (PILOT-DEPLOYMENT-READINESS-001C-FU — backup/restore drill CI-proof)
 
-**Next Active Workstream:** **001C** (backup + restore drill) — затем packaging patch release → 001D/001E.
+**Next Active Workstream:** **PILOT-PACKAGING-RELEASE-001** (новый immutable patch prerelease после 001C) → 001D/001E.
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `e130207` (main — R4 release merge; tag `v0.11.0-pilot-control-plane`)
-- State/Docs SHA: `2f79c7e` (develop — 001B packaging substantive)
+- State/Docs SHA: `e0ec2b9` (develop — 001C-FU substantive) → closure commit ниже
+
+**PILOT-DEPLOYMENT-READINESS-001C-FU ✅** — Automated backup + isolated restore drill (CI-proof).
+
+- Substantive SHA: `e0ec2b9` (scripts + compose + tests + CI; без canon/reachable-overclaim).
+- Green CI: `#32638204275` ✅ (backup-restore-drill success, release-gate success, UI-smoke 38/38, behavioral green, guards 0).
+- Tamper red CI: `#32638571105` ❌ (сломан source==target guard → Python Unit Tests + Backup/Restore Drill + release-gate red). Ветка `tamper-proof-001c` удалена, develop возвращён на `e0ec2b9`.
+- **NATS classification:** `excluded_replayable` — JetStream включён (`-js`), durable stream `RMP` + consumer `rmp-campaign-consumer`, но авторитетный источник истины — PostgreSQL `outbox_events` (пишется первым, публикуется с `Nats-Msg-Id=event_id` dedup); полное восстановление через идемпотентный provisioning + outbox replay. Redis = `excluded_disposable`. Записано в manifest `components` с reason + recovery_procedure; тест запрещает молча забыть компонент.
+- **Quiescence enforcement:** production/pilot backup без доказанного maintenance/writers-stopped отклоняется ДО создания backup (fail-closed); manifest несёт `quiescence.{mode,evidence,verified_at}`.
+- Manifest v1.1: SHA/version, Alembic head, dump+object SHA-256, row counts, consistency_mode=quiesced, encryption state, RPO, классификация каждого stateful component. Без секретов.
+- Изолированный drill: отдельные project/volumes/networks/ports (src 15432/19000, tgt 15433/19001); source≠target guard; non-empty target отказ; cleanup по точному project name через trap; без публичных CI artifacts.
+- Verification: 16 behavioral (row counts, UUIDs, money exact, license peak, histories, PDF/creative SHA, RLS NOBYPASSRLS, cross-org, /version, sequence continuity) + 27 negative matrix — зелёные локально и в CI.
+- `backup.restore` → **reachable** (58/53/5). Pilot host restore drill всё равно требуется перед реальным деплоем.
+- operator walkthrough: N/A (инфра-дрилл, не UI journey).
+- R4 `e130207` **неизменен**. 001B+001C после R4 → нужен новый immutable patch prerelease.
+- Deployed production SHA = UNKNOWN/NOT TRACKED. Pilot deployment = NOT PERFORMED. Production = NO-GO.
+- Next → **PILOT-PACKAGING-RELEASE-001**.
+- Checkpoint by PS-001.
 
 **PILOT-DEPLOYMENT-READINESS-001B ✅** — Production-like packaging + immutable identity (packaging only; NO deploy/tag/main-merge).
 
