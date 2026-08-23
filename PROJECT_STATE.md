@@ -1,12 +1,29 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-23 (PILOT-DEPLOYMENT-READINESS-001C-FU — backup/restore drill CI-proof)
+**Last updated:** 2026-08-23 (PILOT-PACKAGING-RELEASE-001 — v0.11.1-pilot-packaging released)
 
-**Next Active Workstream:** **PILOT-PACKAGING-RELEASE-001** (новый immutable patch prerelease после 001C) → 001D/001E.
+**Next Active Workstream:** **IMAGE-REGISTRY-OWNER-INPUT** (утвердить container registry + push-доступ) → затем **PILOT-DEPLOYMENT-READINESS-001D** (host preflight) → 001E.
 
 **Repository Checkpoint (PS-001):**
-- Payload SHA: `e130207` (main — R4 release merge; tag `v0.11.0-pilot-control-plane`)
-- State/Docs SHA: `e0ec2b9` (develop — 001C-FU substantive) → closure commit ниже
+- Payload SHA: `90c4bb1` (main — v0.11.1-pilot-packaging release merge; tag `v0.11.1-pilot-packaging`)
+- State/Docs SHA: `90c4bb1` (develop — release merge) → canon closure commit ниже
+
+**PILOT-PACKAGING-RELEASE-001 ✅** — v0.11.1-pilot-packaging RELEASED (post-R4 source/packaging prerelease, НЕ deployment).
+
+- **PR URL:** https://github.com/santanas-dev/retail-media-platform-enterprise/pull/3 (release/v0.11.1-pilot-packaging → main, protected, no bypass).
+- **PR CI:** `#32648602502` — first attempt ❌ (transient `advertiser__invite` flake, 37/38 → approve-btn timeout), rerun ✅ (UI-smoke 38/38, release-gate success, packaging success, backup-restore-drill success).
+- **Main release SHA:** `90c4bb1a9c7d1b2d5dbf6bef180d942dd5336275` (merge commit, 2026-08-23).
+- **Post-merge main CI:** `#32649412029` ✅ (40 jobs, 0 failures; UI-smoke 38/38; behavioral 431 passed; release-gate/packaging/backup-restore-drill green — first attempt, no rerun).
+- **Tag:** `v0.11.1-pilot-packaging` (annotated `0481aa5f`) → peel `90c4bb1`; immutable (owner-only creation). R4 tag `v0.11.0-pilot-control-plane` (`b1251575` → `e130207`) **не изменён**.
+- **GitHub Release:** https://github.com/santanas-dev/retail-media-platform-enterprise/releases/tag/v0.11.1-pilot-packaging (prerelease: true, draft: false).
+- **Содержимое:** 001B packaging (pilot compose, `/version`+build-info, prod frontend containers, image-lock+env validators) + 001C quiesced PG+MinIO backup + isolated restore drill + NATS/Redis classification + blocking packaging/backup-restore jobs в release-gate.
+- **Registry:** 58 total / 53 reachable / 5 blocked (`backup.restore` reachable). Feature statuses НЕ менялись.
+- **Image publication:** **NOT BUILT** — утверждённый container registry отсутствует → `IMAGE-REGISTRY-OWNER-INPUT`. `images.lock.example.json` = только `REPLACE_WITH_*` placeholders. GHCR/иной registry не выбирался самостоятельно. Никаких deployable-image-bundle утверждений.
+- **operator walkthrough:** N/A (infra release, не UI journey).
+- **Deployed production SHA = UNKNOWN/NOT TRACKED.** Pilot deployment = NOT PERFORMED. Production = NO-GO.
+- Release branch `release/v0.11.1-pilot-packaging` удалён; develop fast-forwarded к main (`90c4bb1`); tamper branches отсутствуют.
+- Next → **IMAGE-REGISTRY-OWNER-INPUT** (если digests готовы → 001D) или сразу 001D.
+- Checkpoint by PS-001.
 
 **PILOT-DEPLOYMENT-READINESS-001C-FU ✅** — Automated backup + isolated restore drill (CI-proof).
 

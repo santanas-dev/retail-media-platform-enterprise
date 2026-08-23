@@ -5,7 +5,7 @@
 
 **Version/tag:** `v0.11.1-pilot-packaging`
 
-**Release SHA (main):** `__MAIN_SHA__` (заполняется после merge; см. SCOPE D)
+**Release SHA (main):** `90c4bb1a9c7d1b2d5dbf6bef180d942dd5336275` (merge commit, PR #3)
 
 ---
 
