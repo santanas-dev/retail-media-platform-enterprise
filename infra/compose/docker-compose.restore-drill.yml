@@ -1,0 +1,102 @@
+# Retail Media Platform — Isolated Restore Drill (001C SCOPE E/H)
+#
+# Defines TWO fully isolated contours in one compose project:
+#   - source: PostgreSQL + MinIO (backed up, never restored into)
+#   - target: PostgreSQL + MinIO (restore destination, disposable)
+#
+# Isolation is enforced by:
+#   - distinct service hostnames (src-postgres vs tgt-postgres, etc.)
+#   - distinct ports (5432/9000 vs 5433/9001)
+#   - distinct named volumes
+#   - distinct networks (source-net / target-net)
+#
+# The orchestrators (quiesced_backup.py, isolated_restore.py) additionally
+# refuse source==target by DSN/endpoint identity. No build:, no source bind
+# mounts, no latest, synthetic test-only secrets only.
+#
+# Run (CI/local):
+#   docker compose -f infra/compose/docker-compose.restore-drill.yml up -d
+
+name: rmp-restore-drill
+
+services:
+  # ── SOURCE contour ────────────────────────────────────────────────────────
+  src-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: retail_media_owner
+      POSTGRES_PASSWORD: drill_src_owner_pw_0123456789
+      POSTGRES_DB: retail_media_platform
+    ports:
+      - "15432:5432"
+    volumes:
+      - src_pg_data:/var/lib/postgresql/data
+    networks: [source-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U retail_media_owner -d retail_media_platform"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  src-minio:
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: drill_src_minio_admin
+      MINIO_ROOT_PASSWORD: drill_src_minio_pw_0123456789
+    ports:
+      - "19000:9000"
+    volumes:
+      - src_minio_data:/data
+    networks: [source-net]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── TARGET contour (disposable restore destination) ──────────────────────
+  tgt-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: retail_media_owner
+      POSTGRES_PASSWORD: drill_tgt_owner_pw_0123456789
+      POSTGRES_DB: retail_media_platform
+    ports:
+      - "15433:5433"
+    command: ["postgres", "-p", "5433"]
+    volumes:
+      - tgt_pg_data:/var/lib/postgresql/data
+    networks: [target-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U retail_media_owner -p 5433 -d retail_media_platform"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  tgt-minio:
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    command: server /data --console-address ":9002"
+    environment:
+      MINIO_ROOT_USER: drill_tgt_minio_admin
+      MINIO_ROOT_PASSWORD: drill_tgt_minio_pw_0123456789
+    ports:
+      - "19001:9000"
+    volumes:
+      - tgt_minio_data:/data
+    networks: [target-net]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+networks:
+  source-net:
+  target-net:
+
+volumes:
+  src_pg_data:
+  src_minio_data:
+  tgt_pg_data:
+  tgt_minio_data:

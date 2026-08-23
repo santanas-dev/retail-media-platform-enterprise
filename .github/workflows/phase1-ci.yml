@@ -644,6 +644,26 @@ jobs:
       - name: Run consistency check (strict — blocks on findings)
         run: python3 scripts/roadmap-consistency-check.py --strict
 
+  backup-restore-drill:
+    name: Backup / Restore Drill — 001C (blocking)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps
+        run: |
+          pip install sqlalchemy alembic asyncpg fastapi uvicorn httpx pytest bcrypt \
+            PyJWT psycopg2-binary greenlet ldap3 minio nats-py jsonschema pyyaml \
+            pytest-asyncio redis
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+      - name: Run isolated backup + restore drill
+        run: |
+          set -o pipefail
+          bash scripts/ci/backup-restore-drill.sh 2>&1 | tee /tmp/drill-output.txt
+        timeout-minutes: 20
+
   packaging:
     name: Packaging — Pilot Compose + Version Identity (001B)
     runs-on: ubuntu-latest
@@ -741,6 +761,7 @@ jobs:
       - production-config-gate
       - roadmap-consistency-audit
       - packaging
+      - backup-restore-drill
     # Always run so the aggregate verdict is authoritative even if an upstream
     # job was skipped or failed — required status checks only gate on this job.
     if: always()
@@ -761,6 +782,7 @@ jobs:
             [production-config-gate]="${{ needs.production-config-gate.result }}"
             [roadmap-consistency-audit]="${{ needs.roadmap-consistency-audit.result }}"
             [packaging]="${{ needs.packaging.result }}"
+            [backup-restore-drill]="${{ needs.backup-restore-drill.result }}"
           )
           fail=0
           for job in "${!results[@]}"; do

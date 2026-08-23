@@ -605,12 +605,12 @@ features:
     frontend: service
     name: Резервное копирование и восстановление
     route: n/a
-    path: n/a
+    path: scripts/backup/quiesced_backup.py, scripts/restore/isolated_restore.py
     smoke: n/a
     priority: P1
     roles: [service]
     status: blocked
-    gap: "Бэкап-скрипты есть; автоматизированный restore-тест не реализован."
+    gap: "Инструменты и drill готовы, но зелёный GitHub CI (backup-restore-drill в release-gate) ещё не подтверждён."
 
   - id: observability
     frontend: service
