@@ -58,6 +58,18 @@ async def health_http_server():
                 payload = state.to_dict()
                 body = json_mod.dumps(payload).encode()
                 code = 200 if payload["status"] == "ok" else 503
+            elif self.path == "/version":
+                from packages.version import build_version_payload
+                try:
+                    payload = build_version_payload(SERVICE_NAME)
+                    body = json_mod.dumps(payload).encode()
+                    code = 200
+                except RuntimeError as exc:
+                    body = json_mod.dumps({
+                        "status": "degraded", "service": SERVICE_NAME,
+                        "error": str(exc),
+                    }).encode()
+                    code = 503
             else:
                 self.send_response(404)
                 self.end_headers()

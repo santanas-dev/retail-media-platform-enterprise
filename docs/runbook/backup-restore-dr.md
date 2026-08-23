@@ -218,3 +218,32 @@ python -m pytest tests/integration/test_backup_restore.py -v
 - Интеграционный тест: `tests/integration/test_backup_restore.py`
 - Production gaps: `docs/product/production-gaps-triage.md`
 - Стабилизационный трекер: `docs/architecture/stabilization-tracker.md`
+
+## 11. Quiesced backup + isolated restore drill (001C-FU)
+
+Автоматизированный drill закрывает `backup.restore` как reachable (service).
+
+**Оркестраторы (переиспользуют компонентные скрипты):**
+- `scripts/backup/quiesced_backup.py` — quiesced backup: quiescence gate → PG dump → MinIO multi-bucket → row counts → unified manifest (v1.1) → verify → resume.
+- `scripts/restore/isolated_restore.py` — isolated restore: manifest+checksum verify → source≠target guard → non-empty target guard → PG restore → MinIO restore → alembic head check.
+- `scripts/backup/backup_manifest.py` — unified manifest (schema, validation, secret-scan, component classification, quiescence evidence).
+- `scripts/backup/seed_representative_data.py` — детерминированный 19-табличный датасет + MinIO объекты.
+
+**NATS / JetStream классификация (001C-FU SCOPE 1):** `excluded_replayable`.
+JetStream включён (`nats-server -js`), durable stream `RMP` + consumer `rmp-campaign-consumer` создаются идемпотентно (`NATS_AUTO_PROVISION=true`). Но авторитетный источник истины — PostgreSQL `outbox_events`: каждое событие пишется в outbox ПЕРВЫМ, затем публикуется в JetStream с `Nats-Msg-Id=event_id` (dedup). Полное восстановление: start NATS → `provision_campaign_delivery()` → outbox relay replays pending (dedup-safe). См. `docs/runbook/nats-backup-restore.md`. Redis = `excluded_disposable` (cache, не источник истины).
+
+**Quiescence enforcement (SCOPE 2):** production/pilot backup без доказанного maintenance/writers-stopped отклоняется ДО создания backup (fail-closed). manifest несёт `quiescence.{mode,evidence,verified_at}`.
+
+**Изоляция (SCOPE E):** source/target в отдельных контурах (project/volumes/networks/ports src 15432/19000, tgt 15433/19001). Cleanup только по точному compose project name через `trap cleanup EXIT`; source volumes никогда не очищаются; backup artifacts не публикуются как публичные CI artifacts.
+
+**CI (SCOPE H):** job `backup-restore-drill` — blocking, в `release-gate`, 20-минутный таймаут, `set -o pipefail`. Порядок: migrate+seed → quiesced backup → isolated restore → app role NOBYPASSRLS → control-api → verification (16 behavioral) → negative matrix (27).
+
+**Negative matrix (SCOPE G):** corrupted dump / tampered checksum / missing object / swapped content / source==target / non-empty target / wrong alembic head / BYPASSRLS app role / missing component / production-no-encryption — все fail-closed.
+
+**Production backup encryption** остаётся обязательным owner input; в drill — честный `encryption.enabled=false` (ephemeral, не production).
+
+## 12. 001C-FU CI proof
+
+- Green: `#32638204275` (backup-restore-drill + release-gate + UI-smoke 38/38 success).
+- Tamper red: `#32638571105` (source==target guard ослаблен → drill + release-gate red), ветка удалена.
+- `backup.restore` → reachable (58/53/5). Pilot host restore drill перед реальным деплоем — по-прежнему обязателен.

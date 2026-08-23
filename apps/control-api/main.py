@@ -118,6 +118,26 @@ async def health_live():
     return {"status": "ok", "service": SERVICE_NAME}
 
 
+@app.get("/version")
+async def version():
+    """Immutable version identity (PILOT-DEPLOYMENT-READINESS-001B).
+
+    Values injected at build/deploy time via RMP_VERSION / RMP_GIT_SHA /
+    RMP_BUILD_TIME / RMP_SCHEMA_HEAD.  Fail-closed in production/pilot:
+    missing metadata → 503.  Never returns secrets or env dump.
+    """
+    from packages.version import build_version_payload
+
+    try:
+        return build_version_payload(SERVICE_NAME)
+    except RuntimeError as exc:
+        return JSONResponse(
+            content={"status": "degraded", "service": SERVICE_NAME,
+                     "error": str(exc)},
+            status_code=503,
+        )
+
+
 @app.get("/health/ready")
 async def health_ready():
     """Readiness: can the service serve traffic?

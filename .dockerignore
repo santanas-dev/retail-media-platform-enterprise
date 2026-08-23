@@ -1,0 +1,34 @@
+# Docker build context exclusions (PILOT-DEPLOYMENT-READINESS-001B).
+# Keep image builds reproducible and free of local artifacts.
+
+# VCS
+.git
+.gitignore
+
+# Node build artifacts / local state
+**/node_modules
+**/dist
+**/.vite
+**/coverage
+
+# Python artifacts
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+*.egg-info
+
+# Local env / secrets — never bake into images
+.env
+.env.*
+!.env.pilot.example
+**/.env
+**/*.env
+
+# Local Hermes / agent scratch
+.hermes/
+
+# OS / editor cruft
+.DS_Store
+*.swp

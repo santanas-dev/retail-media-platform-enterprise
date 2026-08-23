@@ -1,12 +1,66 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-21 (R4-READINESS-001 — release readiness audit, candidate `c14dd3e`)
+**Last updated:** 2026-08-23 (PILOT-DEPLOYMENT-READINESS-001C-FU — backup/restore drill CI-proof)
 
-**Next Active Workstream:** R4-RELEASE-001 (release branch → merge → tag) — условно, после включения branch protection (governance blocker)
+**Next Active Workstream:** **PILOT-PACKAGING-RELEASE-001** (новый immutable patch prerelease после 001C) → 001D/001E.
 
 **Repository Checkpoint (PS-001):**
-- Payload SHA: `8637b1d` (EPIC-L-SEAT-LEDGER-001A4 — Layer 1 closure, last substantive code)
-- State/Docs SHA: `c14dd3e` (R4 release candidate — A4 closure; audit docs on top)
+- Payload SHA: `e130207` (main — R4 release merge; tag `v0.11.0-pilot-control-plane`)
+- State/Docs SHA: `e0ec2b9` (develop — 001C-FU substantive) → closure commit ниже
+
+**PILOT-DEPLOYMENT-READINESS-001C-FU ✅** — Automated backup + isolated restore drill (CI-proof).
+
+- Substantive SHA: `e0ec2b9` (scripts + compose + tests + CI; без canon/reachable-overclaim).
+- Green CI: `#32638204275` ✅ (backup-restore-drill success, release-gate success, UI-smoke 38/38, behavioral green, guards 0).
+- Tamper red CI: `#32638571105` ❌ (сломан source==target guard → Python Unit Tests + Backup/Restore Drill + release-gate red). Ветка `tamper-proof-001c` удалена, develop возвращён на `e0ec2b9`.
+- **NATS classification:** `excluded_replayable` — JetStream включён (`-js`), durable stream `RMP` + consumer `rmp-campaign-consumer`, но авторитетный источник истины — PostgreSQL `outbox_events` (пишется первым, публикуется с `Nats-Msg-Id=event_id` dedup); полное восстановление через идемпотентный provisioning + outbox replay. Redis = `excluded_disposable`. Записано в manifest `components` с reason + recovery_procedure; тест запрещает молча забыть компонент.
+- **Quiescence enforcement:** production/pilot backup без доказанного maintenance/writers-stopped отклоняется ДО создания backup (fail-closed); manifest несёт `quiescence.{mode,evidence,verified_at}`.
+- Manifest v1.1: SHA/version, Alembic head, dump+object SHA-256, row counts, consistency_mode=quiesced, encryption state, RPO, классификация каждого stateful component. Без секретов.
+- Изолированный drill: отдельные project/volumes/networks/ports (src 15432/19000, tgt 15433/19001); source≠target guard; non-empty target отказ; cleanup по точному project name через trap; без публичных CI artifacts.
+- Verification: 16 behavioral (row counts, UUIDs, money exact, license peak, histories, PDF/creative SHA, RLS NOBYPASSRLS, cross-org, /version, sequence continuity) + 27 negative matrix — зелёные локально и в CI.
+- `backup.restore` → **reachable** (58/53/5). Pilot host restore drill всё равно требуется перед реальным деплоем.
+- operator walkthrough: N/A (инфра-дрилл, не UI journey).
+- R4 `e130207` **неизменен**. 001B+001C после R4 → нужен новый immutable patch prerelease.
+- Deployed production SHA = UNKNOWN/NOT TRACKED. Pilot deployment = NOT PERFORMED. Production = NO-GO.
+- Next → **PILOT-PACKAGING-RELEASE-001**.
+- Checkpoint by PS-001.
+
+**PILOT-DEPLOYMENT-READINESS-001B ✅** — Production-like packaging + immutable identity (packaging only; NO deploy/tag/main-merge).
+
+- Pilot compose `infra/compose/docker-compose.pilot.yml` (отдельно от dev phase1): no build/source-mount/latest, restart unless-stopped, healthchecks, service_healthy/completed deps, NOBYPASSRLS app runtime, owner-credential migration one-shot, SEED_DEV_CREDENTIALS + LICENSE_DEV_INGEST disabled. **advertiser-web присутствует.** clickhouse/pop-ingestor/mock-adapter исключены (нет доказанной pilot-функции).
+- Frontend prod-контейнеры (admin-web + advertiser-web): multi-stage node build → nginx static serve, SPA fallback, `/healthz` + `/build-info.json`.
+- Image lock manifest + validator (`scripts/deploy/validate-image-lock.py`): блокирует latest/empty-digest/mutable-tag/mixed-SHA/service-mismatch. `.example` + генератор (`build-images.sh --push`). **Никакие digest не выдуманы.**
+- Version identity: `GET /version` (control-api/device-gateway/orchestrator-worker/pop-ingestor) + frontend `build-info.json`; `packages/version.py` env-injected, fail-closed в pilot/prod, dev fallback `dev`/`unknown`.
+- `.env.pilot.example` + `validate-pilot-env.py` (rejects minioadmin/dev-secrets/SEED_DEV_CREDENTIALS/weak keys).
+- `build-images.sh`: reproducible, clean-tree, OCI labels, no push без `--push`.
+- CI job `packaging` в release-gate (compose config, lock/env validators, frontend image build+verify, 41 новых тестов).
+- R4 `e130207` **неизменен** (тег не создавался/не перемещался). 001B substantive SHA `2f79c7e` — после R4, потребует patch release после 001C.
+- Deployed production SHA = UNKNOWN/NOT TRACKED. Production = NO-GO. `backup.restore` остаётся blocked.
+- Feature statuses НЕ менялись.
+- Next → **001C** (restore drill), затем packaging patch release → 001D/001E.
+- Checkpoint by PS-001.
+
+**PILOT-DEPLOYMENT-READINESS-001A ✅** — Pilot target discovery + deployment design (docs/audit only; deploy НЕ выполнялся, к серверу не подключались).
+
+- **Verdict (тогда): NEEDS OWNER INPUT.** Owner inputs всё ещё открыты (host/IP, DNS, TLS, firewall, SMTP/AD, backup/monitoring destination, secret storage, оператор, реальное КСО).
+- Inventory: 6 инфра-сервисов + 6 app-сервисов; **advertiser-web отсутствовал в compose** (исправлено в 001B).
+- Doc: `docs/runbook/pilot-deployment-readiness.md` (topology, runbook draft, acceptance, gap matrix).
+
+**R4-RELEASE-001 ✅** — v0.11.0-pilot-control-plane RELEASED (prerelease/pilot checkpoint, НЕ production).
+
+- **main release SHA:** `e130207` (merge commit, 2026-08-22). PR #2 merged via protected PR.
+- **PR URL:** https://github.com/santanas-dev/retail-media-platform-enterprise/pull/2
+- **PR CI:** `#32562799315` ✅ (UI-smoke 38/38, release-gate success)
+- **Post-merge main CI:** `#32563176404` ✅ (UI-smoke 38/38, release-gate success, 0 failed jobs)
+- **Tag:** `v0.11.0-pilot-control-plane` (annotated) → `e130207`; immutable (owner-only creation + no update/delete rulesets).
+- **GitHub Release:** https://github.com/santanas-dev/retail-media-platform-enterprise/releases/tag/v0.11.0-pilot-control-plane (prerelease: true, draft: false)
+- **Registry:** 58 total / 52 reachable / 6 blocked.
+- **Deployed production SHA = UNKNOWN/NOT TRACKED.** Pilot deployment = NOT PERFORMED. Production = NO-GO.
+- Release branch `release/v0.11.0-pilot-control-plane` удалён; main/develop синхронизированы по release history.
+- Root-cause note: первый PR run упал из-за double-run contention (push + pull_request оба гоняли полный UI-smoke pipeline на одном SHA) — исправлено в CI (`branches-ignore: release/**` на push-триггере), повторный PR run зелёный.
+- Feature statuses НЕ менялись.
+- Next → **PILOT-DEPLOYMENT-READINESS-001** либо **KSO-ENV-001** (owner decision).
+- Checkpoint by PS-001.
 
 **R4-READINESS-001 ✅** — Release readiness audit (evidence-based; merge/tag/deploy НЕ выполнялись).
 
