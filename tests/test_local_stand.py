@@ -614,3 +614,46 @@ def test_tool_does_not_persist_plaintext():
     assert "write_text(password" not in src and "open(" not in src.replace("read_text", "")
     assert "getpass" in src
     assert "del password" in src
+
+
+# --- FU2: pilot compose omits MANIFEST_SIGNING_KEY for control-api -----------
+#
+# docker-compose.pilot.yml passes MANIFEST_SIGNING_KEY to device-gateway and
+# orchestrator-worker but not to control-api. verify-pilot-run.sh runs with
+# ENVIRONMENT=dev, where the production validator is skipped, so CI never saw
+# it. Under ENVIRONMENT=staging/production control-api refuses to boot. The
+# stand runs as staging, so the overlay supplies the variable.
+
+def test_pilot_compose_still_omits_manifest_key_for_control_api():
+    """Guards the reason the overlay carries this variable.
+
+    If the pilot compose is fixed, this test fails on purpose: remove the
+    workaround from the overlay instead of keeping a silent duplicate.
+    """
+    pilot = yaml.safe_load(PILOT.read_text())
+    env = (pilot["services"]["control-api"] or {}).get("environment", {}) or {}
+    keys = set(env) if isinstance(env, dict) else {e.split("=", 1)[0] for e in env}
+    assert "MANIFEST_SIGNING_KEY" not in keys, (
+        "pilot compose now sets MANIFEST_SIGNING_KEY for control-api - "
+        "drop the workaround from docker-compose.local-stand.yml")
+
+
+def test_overlay_supplies_manifest_key_to_control_api():
+    doc = yaml.safe_load(OVERLAY.read_text())
+    env = doc["services"]["control-api"]["environment"]
+    assert env["MANIFEST_SIGNING_KEY"] == "${MANIFEST_SIGNING_KEY}"
+
+
+def test_manifest_key_is_required_by_staging_validator():
+    cfg = (REPO_ROOT / "packages" / "security" / "config.py").read_text()
+    assert "MANIFEST_SIGNING_KEY must be set in production/staging" in cfg
+
+
+def test_services_needing_manifest_key_all_receive_it():
+    pilot = yaml.safe_load(PILOT.read_text())
+    overlay = yaml.safe_load(OVERLAY.read_text())
+    for svc in ("device-gateway", "orchestrator-worker"):
+        assert "MANIFEST_SIGNING_KEY" in (pilot["services"][svc]["environment"] or {}), svc
+    merged = dict((pilot["services"]["control-api"] or {}).get("environment", {}) or {})
+    merged.update(overlay["services"]["control-api"]["environment"])
+    assert "MANIFEST_SIGNING_KEY" in merged

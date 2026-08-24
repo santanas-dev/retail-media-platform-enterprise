@@ -27,6 +27,17 @@ name: rmp-local-stand
 
 services:
   control-api:
+    environment:
+      # DEFECT WORKAROUND (LOCAL-DEV-STAND-001-FU2), not a relaxation.
+      # docker-compose.pilot.yml passes MANIFEST_SIGNING_KEY to device-gateway
+      # and orchestrator-worker but NOT to control-api. With ENVIRONMENT=dev
+      # (what scripts/ci/verify-pilot-run.sh uses) the production validator is
+      # skipped, so CI never noticed. With ENVIRONMENT=staging/production
+      # control-api refuses to boot:
+      #   ValueError: MANIFEST_SIGNING_KEY must be set in production/staging
+      # The stand runs as staging, so it supplies the variable here. The proper
+      # fix belongs in the pilot compose and needs an owner decision.
+      MANIFEST_SIGNING_KEY: ${MANIFEST_SIGNING_KEY}
     ports:
       - "${STAND_BIND_ADDR}:8000:8000"
 
