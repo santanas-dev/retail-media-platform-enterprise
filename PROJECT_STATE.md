@@ -1,12 +1,30 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-24 (IMAGE-REGISTRY-001-PRIVATE-REMEDIATION — private `rmp-pilot` namespace)
+**Last updated:** 2026-08-24 (CLAUDE-CODE-HANDOFF-001 — implementation handoff to Claude Code)
 
 **Next Active Workstream:** **PILOT-DEPLOYMENT-READINESS-001D** (host preflight + read-only GHCR pull credential) → 001E.
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `8ad0228` (main — PR #8 private namespace + label fix; tag `v0.11.1-pilot-packaging` → `90c4bb1` неизменен)
-- State/Docs SHA: `16a574a` (develop — merge main + canon closure ниже)
+- State/Docs SHA: `35432ea` (develop — CLAUDE-CODE-HANDOFF-001 governance commit: CLAUDE.md + .claude/settings.json + AGENTS.md + NAS runbook status). Payload SHA unchanged — no product code touched.
+
+**CLAUDE-CODE-HANDOFF-001 ✅** — Controlled implementation handoff to Claude Code (governance/docs only; NO product change).
+
+- **Agent roles:** **Claude Code = sole implementation agent.** **Codex = architect/reviewer.** **Hermes = RETIRED.** Human owner = final approver for architecture, external actions, merge, release, deployment.
+- **Substantive commit:** `35432ea` — `CLAUDE.md`, `.claude/settings.json`, `AGENTS.md`, `docs/runbook/nas-mirror-sync.md`.
+- **`CLAUDE.md` (new, root):** operating contract — truth priority (newest owner instruction → Git/code/tests/CI → PROJECT_STATE → feature-registry → roadmap/architecture/runbooks → auto-memory), contradiction = STOP, Done = proven behavior, RLS proof under `retail_media_app` NOBYPASSRLS, state-based UI waits, ban on skip/xfail/deselect/weakened assertions/continue-on-error/pipeline masking, CI commands from `phase1-ci.yml` with pipefail, git/external-action limits, secret handling, report format. No volatile SHAs/counts/CI IDs recorded in it by design.
+- **`.claude/settings.json` (new, shared project permissions):** `defaultMode: default`; read-only git/gh allowlist; deny-list covering `~/.ssh/**`, `~/.config/gh/**`, `gh auth token`, `git reset --hard`, `git clean`, force-push, branch/tag deletion, `gh repo/release delete`, destructive docker. No `acceptEdits`, no `bypassPermissions`, no dangerously-skip-permissions.
+- **`AGENTS.md` reconciliation (governance only):** added Governance section (roles, agent auto-memory = **non-canonical context**, precedence per `CLAUDE.md`); `Required Hermes Skills` → `Agent Skills` (Hermes list marked historical/non-binding, disciplines retained); `Hermes Memory Rules` → `Agent Memory Rules` (credential-storage ban preserved). **All technical invariants preserved** — Done Gate (incl. operator-walkthrough-human-only), ADR precedence, Protected Boundaries, Architecture/Editing/Verification/Reporting rules unchanged. No Hermes memory imported.
+- **GitHub access:** SSH remote + `gh` operational as `santanas-dev` (repo admin/push). **Credentials are NOT stored in the repository** — no token, key, or `hosts.yml` content read, printed, or committed.
+- **NAS mirror: PENDING / UNVERIFIED.** Read-only probes on host `claude`: user crontab empty, `~/.hermes/scripts/nas-mirror-sync.sh` absent (`~/.hermes/` does not exist), `/mnt/asustor-project` not mounted, no systemd timers. The former cron `c0687f5ced4d` ran on the retired Hermes host (`cobalt`) — **not claimed to have never existed**, only unverifiable now. Automation owner = human/infrastructure owner, not an AI agent. Nothing executed; cron unchanged. Runbook carries a CURRENT STATUS block; procedure below it marked historical/legacy. Historical NAS-SYNC-OWNER-001 / CONSOLIDATE-CANON-001D/001E records left intact.
+- **Guards (local, run on the committed tree):** `python3 -m json.tool .claude/settings.json` ✅ exit 0 · `roadmap-consistency-check.py --strict` ✅ 0 violations (58 registry / 38 smoke / 57 roadmap rows) · `check-style-tokens.py --strict` ✅ 0 violations · `check-import-boundaries.py` ✅ all 9 boundaries clean · `git diff --check` ✅ · `git diff --cached --check` ✅.
+- **CI:** NOT ASSERTED at time of writing — closure commit pushed after this line; run recorded only after a real `gh run watch` result. **No CI-green claim is made here.**
+- **Product code / tests / workflows / registry / roadmap / release assets: UNCHANGED.** Feature registry unchanged (58 total / 53 reachable / 5 blocked, recomputed programmatically). No counts or statuses altered.
+- **Deployment NOT PERFORMED. Deployed SHA = UNKNOWN/NOT TRACKED. Pilot NOT DEPLOYED. Production NO-GO.**
+- **PILOT-DEPLOYMENT-READINESS-001D: NOT STARTED** (remains next candidate; no branch, no work).
+- **operator walkthrough:** N/A (governance/docs handoff, not a UI journey).
+- Next → **PILOT-DEPLOYMENT-READINESS-001D** (owner-gated; not started).
+- Checkpoint by PS-001.
 
 **IMAGE-REGISTRY-001 ✅** — GHCR pilot image bundle published (immutable, digest-only; NOT deployment).
 
@@ -1313,9 +1331,12 @@ ROADMAP-DONE-GATE-001-FU ✅ **RESOLVED** — stale-тексты убраны, c
 |---------|-------------|----------------|------|
 | develop | d6e5684 | d6e5684 | SUBSET-SSOT-001 — CI smoke subset SSOT, guard membership, CI #31106505209 ✅ |
 | main    | 96b5159     | —               | R3 ✅ RELEASED — v0.10.0-preplayer-business-ready, CI #30354973869 ✅ |
-| NAS mirror (ASUSTOR) | pending | — | Hermes cron sync every 3 min |
+| NAS mirror (ASUSTOR) | pending | — | sync automation PENDING / UNVERIFIED (CLAUDE-CODE-HANDOFF-001) |
 
-> **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale. Hermes owns mirror sync freshness via cron c0687f5ced4d every 3 minutes.
+> **Rule:** GitHub `origin/develop` is the sole git-source-of-truth. NAS/ASUSTOR is a mirror — it may be stale.
+> Mirror sync freshness is **PENDING / UNVERIFIED** and is owned by the human/infrastructure owner, not an AI agent
+> (CLAUDE-CODE-HANDOFF-001). The former cron `c0687f5ced4d` ran on the retired Hermes host; see
+> `docs/runbook/nas-mirror-sync.md` for the verified current status.
 > PROJECT_STATE is canonical for task status and records the last verified payload/state
 > checkpoints; it must not pretend to self-reference its own commit SHA. The Payload SHA
 > is the last substantive commit whose result was verified (code, tests, CI). The State/Docs
@@ -2125,4 +2146,7 @@ PLAYER-IMPORT остаётся deferred, не next.
 - `main` = stable releases, `develop` = active integration
 - Protected: `.env`, Docker/deploy scripts, destructive migrations
 - RLS on all tenant-scoped tables, NOBYPASSRLS enforced
-- Only Hermes pushes to GitHub; NAS = mirror synced from origin via Hermes cron c0687f5ced4d every 3 min
+- Pushes to GitHub happen only inside an owner-approved task (Claude Code = sole
+  implementation agent; Hermes retired — CLAUDE-CODE-HANDOFF-001)
+- NAS = mirror of origin; sync automation **PENDING / UNVERIFIED**, owned by the
+  human/infrastructure owner (see `docs/runbook/nas-mirror-sync.md`)
