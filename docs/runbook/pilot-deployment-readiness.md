@@ -278,3 +278,20 @@ image pinning)** — он не зависит от owner inputs и может б
 - Next → **001B** (packaging, не зависит от owner) затем owner-input blocker.
 
 Feature statuses НЕ меняются. Guard = 0, CI green, tree clean.
+
+---
+
+## IMAGE-REGISTRY-001 — GHCR pilot image bundle (published, 2026-08-24)
+
+Pilot images are published to `ghcr.io/santanas-dev/retail-media-platform-enterprise`
+(5 packages, linux/amd64, digest-only, tags `v0.11.1-pilot-packaging` + `sha-90c4bb1a`).
+Release lock + SHA256SUMS attached to the v0.11.1-pilot-packaging GitHub Release.
+Clean pull/run proof green (`#32705196866`, `#32705945575`), tamper red (`#32705787433`).
+
+**Pending owner action:** packages are PUBLIC (repo is public; no API to change visibility).
+Set each to **Private** via GitHub web UI (Packages → <pkg> → Package settings → Danger zone →
+Change package visibility → Private). Required before 001D (read-only pull credential).
+
+Discovered pilot-compose gaps fixed/staged in IMAGE-REGISTRY-001:
+- nats healthcheck (fixed: `wget /healthz`), publish upload `--repo`, db-migrate exit-code check.
+- app-role creation gap → `infra/compose/create-app-role.py` STAGED (needs next image/release).
