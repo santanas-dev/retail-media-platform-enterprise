@@ -1,12 +1,12 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-24 (IMAGE-REGISTRY-001 — GHCR pilot image bundle published)
+**Last updated:** 2026-08-24 (IMAGE-REGISTRY-001-PRIVATE-REMEDIATION — private `rmp-pilot` namespace)
 
-**Next Active Workstream:** owner action — set 5 GHCR packages **private** (web UI, no API) → **PILOT-DEPLOYMENT-READINESS-001D** (host preflight + read-only GHCR pull credential) → 001E.
+**Next Active Workstream:** **PILOT-DEPLOYMENT-READINESS-001D** (host preflight + read-only GHCR pull credential) → 001E.
 
 **Repository Checkpoint (PS-001):**
-- Payload SHA: `d1a2f54` (main — IMAGE-REGISTRY-001 enablement + fixes; tag `v0.11.1-pilot-packaging` → `90c4bb1` неизменен)
-- State/Docs SHA: `d1a2f54` (develop — synced to main) → canon closure commit ниже
+- Payload SHA: `8ad0228` (main — PR #8 private namespace + label fix; tag `v0.11.1-pilot-packaging` → `90c4bb1` неизменен)
+- State/Docs SHA: `16a574a` (develop — merge main + canon closure ниже)
 
 **IMAGE-REGISTRY-001 ✅** — GHCR pilot image bundle published (immutable, digest-only; NOT deployment).
 
@@ -16,13 +16,28 @@
 - **Tamper red:** `#32705787433` ❌ — tampered control-api digest → `manifest unknown` на image verification. Tamper branch `tamper-proof-registry-001` удалён; release asset не изменён.
 - **Lock:** `images.v0.11.1-pilot-packaging.lock.json` (schema 1.1, platform linux/amd64, compose mapping db-migrate→control-api, SBOM/provenance attested). Checksum `e4e26004a0a22c4cc02592298da0c3022829ede131fdf4a655363ed9e349f8a4`. Приложен к GitHub Release + SHA256SUMS.
 - **Digests (GHCR `ghcr.io/santanas-dev/retail-media-platform-enterprise/<service>@sha256:…`, tags `v0.11.1-pilot-packaging` + `sha-90c4bb1a`, no `latest`):** control-api `3a51ca2d…f8408f23`, device-gateway `bd63ba04…fdfb97f`, orchestrator-worker `a938a769…bcfc8c`, admin-web `e44aab44…447f55c3`, advertiser-web `08a50d5b…d80bbfe`.
-- **Package visibility: PUBLIC (gap).** Пакеты созданы public (repo public + GITHUB_TOKEN push). API для смены visibility отсутствует (REST PATCH 404, GraphQL нет mutation) → **owner action**: в web UI (Packages → each package → Settings → Danger zone → Change visibility → Private). До этого "anonymous pull denied" не выполняется.
+- **Package visibility: PUBLIC (gap) — resolved in PRIVATE-REMEDIATION.** Пакеты созданы public (repo-linked к public репо + `org.opencontainers.image.source` label). Выяснено: **public→private НЕОБРАТИМО** (официальная документация GitHub), API смены visibility нет. Исправлено перепубликацией в private namespace `rmp-pilot` (см. ниже).
 - **Discovered defects (fixes):** (1) pilot compose не создавал `retail_media_app` (init-db.sql dev-only, pilot запрещает bind-mounts) → STAGED fix `infra/compose/create-app-role.py` (нужен новый image/release); verify провижионит роль вручную. (2) nats healthcheck `nats server check connection` → `nats` CLI нет в образе → исправлен на `wget /healthz`. (3) publish upload `--repo`. (4) `docker compose wait` → `docker inspect` exit code.
 - **Platform:** linux/amd64 (single-arch; arm64/multi-arch НЕ заявлен).
 - **R4 tag `v0.11.0-pilot-control-plane` (`e130207`) и R4.1 tag `v0.11.1-pilot-packaging` (`90c4bb1`) НЕ изменены.** Новый tag/release не создавался.
 - **Feature registry:** без изменений (58/53/5). operator walkthrough: N/A.
 - **Deployment NOT PERFORMED. Deployed SHA = UNKNOWN/NOT TRACKED. Pilot NOT DEPLOYED. Production NO-GO.**
-- Next → set packages private (owner) → **001D** (host preflight + read-only GHCR pull credential).
+- Next → resolved by **IMAGE-REGISTRY-001-PRIVATE-REMEDIATION** (below).
+- Checkpoint by PS-001.
+
+**IMAGE-REGISTRY-001-PRIVATE-REMEDIATION ✅** — Pilot images republished to private `rmp-pilot` namespace (public→private необратимо).
+
+- **Root cause:** пакеты были в `ghcr.io/santanas-dev/retail-media-platform-enterprise/<svc>` (repo-linked к PUBLIC репо) + label `org.opencontainers.image.source` → GHCR auto-link → public. GitHub: **public→private необратимо** (официальная документация); API смены visibility нет (REST 404).
+- **Fix:** новый namespace `ghcr.io/santanas-dev/rmp-pilot/<svc>` (не repo-linked → private по умолчанию) + убрать `org.opencontainers.image.source` → `org.opencontainers.image.url` (release URL). Provenance сохранена в lock (`oci.source` + `oci.revision`).
+- **PR #8** (`f2e753c` → main `8ad0228`): REGISTRY→rmp-pilot + label swap (8 файлов: оба workflow, verify-pilot-run.sh, build-images.sh, generate_release_lock.py, test, lock/env examples).
+- **Canary `rmp-pilot/visibility-probe`:** private, not repo-linked, anonymous pull denied, authenticated pull success. Временный — удаление только по owner approval.
+- **Publish green:** `#32719830315` ✅ (2m22s) — 5 образов → rmp-pilot, lock + SHA256SUMS загружены в release.
+- **Verify green (clean pull/run proof):** `#32720242833` ✅ (5m29s) — 5 digest refs, control-api/device-gateway `/version` OK, admin-web/advertiser-web build-info OK, `retail_media_app` NOBYPASSRLS (`rolbypassrls=f`), `VERIFY-PILOT-RUN PASSED`.
+- **Pull verification:** anonymous → denied ×5; authenticated digest pull → success ×5.
+- **Digests (private GHCR `ghcr.io/santanas-dev/rmp-pilot/<service>@sha256:…`, tags `v0.11.1-pilot-packaging` + `sha-90c4bb1a`, no `latest`):** control-api `913ff37d…`, device-gateway `83325ece…`, orchestrator-worker `089ff59d…`, admin-web `164cd532…`, advertiser-web `a7e5c905…`.
+- **Старые public packages (`retail-media-platform-enterprise/<svc>`):** SUPERSEDED, НЕ удалены (deletion — отдельный owner-approved action). `visibility-probe` оставлен private/temporary.
+- **Deployment NOT PERFORMED. Deployed SHA = UNKNOWN/NOT TRACKED. Pilot NOT DEPLOYED. Production NO-GO.**
+- Next → **PILOT-DEPLOYMENT-READINESS-001D** (host preflight + read-only GHCR pull credential + DNS/TLS/storage/backup destinations).
 - Checkpoint by PS-001.
 
 **PILOT-PACKAGING-RELEASE-001 ✅** — v0.11.1-pilot-packaging RELEASED (post-R4 source/packaging prerelease, НЕ deployment).

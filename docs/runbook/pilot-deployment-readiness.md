@@ -281,16 +281,21 @@ Feature statuses НЕ меняются. Guard = 0, CI green, tree clean.
 
 ---
 
-## IMAGE-REGISTRY-001 — GHCR pilot image bundle (published, 2026-08-24)
+## IMAGE-REGISTRY-001 — GHCR pilot image bundle (private `rmp-pilot`, 2026-08-24)
 
-Pilot images are published to `ghcr.io/santanas-dev/retail-media-platform-enterprise`
+Pilot images are published to the **private** namespace `ghcr.io/santanas-dev/rmp-pilot`
 (5 packages, linux/amd64, digest-only, tags `v0.11.1-pilot-packaging` + `sha-90c4bb1a`).
 Release lock + SHA256SUMS attached to the v0.11.1-pilot-packaging GitHub Release.
-Clean pull/run proof green (`#32705196866`, `#32705945575`), tamper red (`#32705787433`).
 
-**Pending owner action:** packages are PUBLIC (repo is public; no API to change visibility).
-Set each to **Private** via GitHub web UI (Packages → <pkg> → Package settings → Danger zone →
-Change package visibility → Private). Required before 001D (read-only pull credential).
+**PRIVATE-REMEDIATION:** the original packages (`ghcr.io/santanas-dev/retail-media-platform-enterprise/<svc>`)
+became PUBLIC (repo-linked to the public repo + `org.opencontainers.image.source` label → GHCR auto-link).
+GitHub: **public→private is irreversible**; there is no API to change visibility. Fixed by republishing to
+the non-repo-linked `rmp-pilot` namespace and dropping the source label (→ `org.opencontainers.image.url`).
+Provenance is preserved in the lock (`oci.source` + `oci.revision`).
+
+Green proof: publish `#32719830315` ✅ + clean pull/run proof `#32720242833` ✅
+(5 digest refs, version identity OK, `retail_media_app` NOBYPASSRLS). Anonymous pull denied ×5,
+authenticated digest pull success ×5. Old public packages = SUPERSEDED (not deleted; owner-approved action).
 
 Discovered pilot-compose gaps fixed/staged in IMAGE-REGISTRY-001:
 - nats healthcheck (fixed: `wget /healthz`), publish upload `--repo`, db-migrate exit-code check.
