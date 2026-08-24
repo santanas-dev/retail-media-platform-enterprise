@@ -767,7 +767,7 @@ jobs:
         run: |
           set -o pipefail
           python3 -m pytest tests/test_version_identity.py tests/test_pilot_packaging.py \
-            tests/test_pilot_host_preflight.py -v \
+            tests/test_pilot_host_preflight.py tests/test_local_stand.py -v \
             2>&1 | tee /tmp/packaging-tests.txt
       - name: Anti-skip guard
         if: always()

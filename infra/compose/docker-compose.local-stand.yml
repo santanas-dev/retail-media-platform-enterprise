@@ -1,0 +1,40 @@
+# Retail Media Platform — LOCAL DEV/QA STAND overlay (LOCAL-DEV-STAND-001).
+#
+# Overlay on top of docker-compose.pilot.yml. It does NOT relax the pilot
+# profile: images stay digest-pinned, no build:, no source mounts, no mutable
+# tags, dev seeding and dev ingest stay disabled.
+#
+# What this overlay changes, and only this:
+#   - binds the published UI/API ports to an explicit host address
+#     (${STAND_BIND_ADDR}) instead of every interface;
+#   - keeps device-gateway reachable from the host only (loopback), because the
+#     stand is for manual UI/API checking, not for real KSO devices.
+#
+# Infrastructure (postgres / redis / minio / nats) publishes NO host ports in
+# docker-compose.pilot.yml and this overlay deliberately adds none.
+#
+# THIS IS NOT A PILOT AND NOT PRODUCTION:
+#   - data is disposable, there is no backup;
+#   - traffic is plain HTTP on a trusted LAN — this is NOT production-safe TLS.
+#
+# Usage is via scripts/deploy/local_stand.py, which always passes both files.
+
+name: rmp-local-stand
+
+services:
+  control-api:
+    ports:
+      - "${STAND_BIND_ADDR}:8000:8000"
+
+  device-gateway:
+    # Host-only: not exposed to the LAN. Manual checks reach it from the host.
+    ports:
+      - "127.0.0.1:8001:8001"
+
+  admin-web:
+    ports:
+      - "${STAND_BIND_ADDR}:3000:3000"
+
+  advertiser-web:
+    ports:
+      - "${STAND_BIND_ADDR}:3001:3001"
