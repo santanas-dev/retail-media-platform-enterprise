@@ -186,5 +186,5 @@ jobs:
           LOCK="images.${{ inputs.release_tag }}.lock.json"
           cp "/tmp/${LOCK}" "${LOCK}"
           cp /tmp/SHA256SUMS SHA256SUMS
-          gh release upload "${{ inputs.release_tag }}" "${LOCK}" SHA256SUMS --clobber
+          gh release upload "${{ inputs.release_tag }}" "${LOCK}" SHA256SUMS --clobber --repo "${{ github.repository }}"
           echo "attached ${LOCK} + SHA256SUMS to release ${{ inputs.release_tag }}"
