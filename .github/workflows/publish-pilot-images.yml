@@ -1,0 +1,190 @@
+name: Publish Pilot Images (GHCR)
+
+# IMAGE-REGISTRY-001 — immutable pilot image publication.
+#
+# Manual (workflow_dispatch) only. Builds the 5 first-party pilot images from
+# an immutable annotated release tag and publishes them to the private GHCR
+# registry at ghcr.io/santanas-dev/retail-media-platform-enterprise.
+#
+# Never tags `latest`/`develop`/`main`. Runtime references are digest-only.
+# Uses GITHUB_TOKEN (no PAT, no stored registry password).
+#
+# Two checkouts: `release` (build source = immutable tag) and `tooling` (main,
+# which carries the publish/verify scripts). The workflow lives on main but
+# builds strictly from the release tag — no new tag/release is created.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (annotated, e.g. v0.11.1-pilot-packaging)'
+        required: true
+        type: string
+      expected_sha:
+        description: 'Expected peeled commit SHA (40 hex)'
+        required: true
+        type: string
+      confirmation:
+        description: 'Type PUBLISH to confirm publication'
+        required: true
+        type: string
+
+permissions:
+  contents: write   # upload release assets (lock + checksums)
+  packages: write   # push to GHCR
+
+jobs:
+  publish:
+    name: Publish pilot images
+    runs-on: ubuntu-latest
+    env:
+      REGISTRY: ghcr.io/santanas-dev/retail-media-platform-enterprise
+    steps:
+      - name: Enforce confirmation
+        run: |
+          if [[ "${{ inputs.confirmation }}" != "PUBLISH" ]]; then
+            echo "::error::confirmation must be exactly 'PUBLISH' (got '${{ inputs.confirmation }}')"
+            exit 1
+          fi
+
+      - name: Refuse mutable tags
+        run: |
+          case "${{ inputs.release_tag }}" in
+            latest|develop|main|master|dev)
+              echo "::error::mutable tag '${{ inputs.release_tag }}' is not allowed" ;;
+              exit 1 ;;
+          esac
+
+      - name: Checkout release tag (build source)
+        uses: actions/checkout@v4
+        with:
+          ref: "refs/tags/${{ inputs.release_tag }}"
+          fetch-depth: 0
+          path: release
+
+      - name: Checkout main (tooling)
+        uses: actions/checkout@v4
+        with:
+          path: tooling
+
+      - name: Preflight — annotated tag + peeled SHA
+        working-directory: release
+        run: |
+          set -euo pipefail
+          TAG_OBJ="$(git rev-parse "refs/tags/${{ inputs.release_tag }}")"
+          PEEL="$(git rev-parse "refs/tags/${{ inputs.release_tag }}^{}")"
+          python3 ../tooling/scripts/deploy/release_preflight.py \
+            --tag-object "$TAG_OBJ" --peel "$PEEL" \
+            --expected "${{ inputs.expected_sha }}" --is-tag true
+
+      - name: Verify release-gate green for release SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          SHA="${{ inputs.expected_sha }}"
+          CONCLUSION="$(gh api "repos/${{ github.repository }}/commits/${SHA}/check-runs" \
+            --jq '[.check_runs[] | select(.name=="release-gate") | .conclusion] | unique | join(",")')"
+          echo "release-gate conclusion(s) for ${SHA}: '${CONCLUSION}'"
+          if [[ "${CONCLUSION}" != "success" ]]; then
+            echo "::error::release-gate is not successful for ${SHA} (got '${CONCLUSION}')"
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build & push images (digest-only)
+        working-directory: release
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${RELEASE_SHA:0:8}"
+          BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          declare -a BUILDS=(
+            "control-api|infra/compose/Dockerfile.service|SERVICE_NAME=control-api;SERVICE_MODULE=apps.control-api.main;SERVICE_PORT=8000"
+            "device-gateway|infra/compose/Dockerfile.service|SERVICE_NAME=device-gateway;SERVICE_MODULE=apps.device-gateway.main;SERVICE_PORT=8001"
+            "orchestrator-worker|infra/compose/Dockerfile.service|SERVICE_NAME=orchestrator-worker;SERVICE_MODULE=apps.orchestrator-worker.main;SERVICE_PORT=8003"
+            "admin-web|apps/admin-web/Dockerfile|"
+            "advertiser-web|apps/advertiser-web/Dockerfile|"
+          )
+
+          echo '{}' > /tmp/digests.json
+          for entry in "${BUILDS[@]}"; do
+            IFS='|' read -r name dockerfile argspec <<< "$entry"
+            echo ""
+            echo "--- Building ${name} ---"
+            BUILD_ARGS=(
+              --build-arg "RMP_VERSION=${RELEASE_TAG}"
+              --build-arg "RMP_GIT_SHA=${RELEASE_SHA}"
+              --build-arg "RMP_BUILD_TIME=${BUILD_TIME}"
+            )
+            if [[ -n "$argspec" ]]; then
+              IFS=';' read -ra PAIRS <<< "$argspec"
+              for pair in "${PAIRS[@]}"; do
+                BUILD_ARGS+=(--build-arg "$pair")
+              done
+            fi
+
+            docker buildx build \
+              --platform linux/amd64 \
+              --push \
+              --provenance=true \
+              --sbom=true \
+              -f "$dockerfile" \
+              -t "${REGISTRY}/${name}:${RELEASE_TAG}" \
+              -t "${REGISTRY}/${name}:sha-${SHORT_SHA}" \
+              --label "org.opencontainers.image.source=https://github.com/santanas-dev/retail-media-platform-enterprise" \
+              --label "org.opencontainers.image.revision=${RELEASE_SHA}" \
+              --label "org.opencontainers.image.version=${RELEASE_TAG}" \
+              --label "org.opencontainers.image.created=${BUILD_TIME}" \
+              --metadata-file "/tmp/meta-${name}.json" \
+              "${BUILD_ARGS[@]}" \
+              .
+
+            DIGEST="$(python3 -c "import json;print(json.load(open('/tmp/meta-${name}.json'))['containerimage.digest'])")"
+            echo "  ${name} → ${DIGEST}"
+            python3 -c "import json;d=json.load(open('/tmp/digests.json'));d['${name}']='${DIGEST}';json.dump(d,open('/tmp/digests.json','w'))"
+          done
+
+          echo ""
+          echo "=== digests collected ==="
+          cat /tmp/digests.json
+
+      - name: Generate release lock + checksums
+        working-directory: tooling
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          python3 scripts/deploy/generate_release_lock.py \
+            --release-tag "${RELEASE_TAG}" \
+            --sha "${RELEASE_SHA}" \
+            --platform linux/amd64 \
+            --registry "$REGISTRY" \
+            --digests-file /tmp/digests.json \
+            --sbom attested --provenance attested \
+            --out "/tmp/images.${RELEASE_TAG}.lock.json" \
+            --checksums-out /tmp/SHA256SUMS
+
+      - name: Verify release lock (sanity gate)
+        working-directory: tooling
+        run: |
+          python3 scripts/deploy/verify_release_lock.py --lock "/tmp/images.${{ inputs.release_tag }}.lock.json"
+
+      - name: Upload lock + checksums to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          LOCK="images.${{ inputs.release_tag }}.lock.json"
+          cp "/tmp/${LOCK}" "${LOCK}"
+          cp /tmp/SHA256SUMS SHA256SUMS
+          gh release upload "${{ inputs.release_tag }}" "${LOCK}" SHA256SUMS --clobber
+          echo "attached ${LOCK} + SHA256SUMS to release ${{ inputs.release_tag }}"

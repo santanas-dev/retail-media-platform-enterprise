@@ -1,0 +1,91 @@
+name: Verify Pilot Images (GHCR)
+
+# IMAGE-REGISTRY-001 — clean pull/run proof for published pilot images.
+#
+# Manual (workflow_dispatch) only. Downloads the release lock, verifies its
+# checksum + schema, pulls every image strictly by digest, and spins up an
+# isolated ephemeral pilot compose from those digests to prove the published
+# images actually run (healthchecks, version identity, NOBYPASSRLS).
+#
+# The optional `lock_url` input is a TEST hook (tamper proof): it overrides the
+# lock source and skips the SHA256SUMS check so a tampered digest reaches the
+# pull step — which must then fail. It cannot make a wrong lock pass.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag (e.g. v0.11.1-pilot-packaging)'
+        required: true
+        type: string
+      lock_url:
+        description: 'Optional lock override URL (tamper testing only)'
+        required: false
+        type: string
+
+permissions:
+  contents: read   # checkout + download release assets
+  packages: read   # pull from GHCR
+
+jobs:
+  verify:
+    name: Verify pilot images
+    runs-on: ubuntu-latest
+    env:
+      REGISTRY: ghcr.io/santanas-dev/retail-media-platform-enterprise
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download release lock + checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ -n "${{ inputs.lock_url }}" ]]; then
+            echo "lock_url override (tamper test) — fetching ${{ inputs.lock_url }}"
+            curl -fsSL "${{ inputs.lock_url }}" -o "images.${{ inputs.release_tag }}.lock.json"
+            echo "SKIP_CHECKSUM=1" >> "$GITHUB_ENV"
+          else
+            gh release download "${{ inputs.release_tag }}" \
+              --pattern "images.${{ inputs.release_tag }}.lock.json" \
+              --pattern "SHA256SUMS"
+            echo "SKIP_CHECKSUM=0" >> "$GITHUB_ENV"
+          fi
+
+      - name: Verify lock checksum
+        run: |
+          if [[ "$SKIP_CHECKSUM" == "1" ]]; then
+            echo "checksum skipped (lock_url override)"
+            exit 0
+          fi
+          sha256sum -c SHA256SUMS
+
+      - name: Verify lock schema + invariants
+        run: |
+          python3 scripts/deploy/verify_release_lock.py \
+            --lock "images.${{ inputs.release_tag }}.lock.json"
+
+      - name: Login to GHCR
+        run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Pull all images by digest
+        run: |
+          set -euo pipefail
+          python3 - "images.${{ inputs.release_tag }}.lock.json" > /tmp/pull-list.txt <<'PY'
+          import json, sys
+          lock = json.load(open(sys.argv[1]))
+          for img in lock["images"]:
+              print(f"{img['repository']}@{img['image_digest']}")
+          PY
+          cat /tmp/pull-list.txt
+          while read -r ref; do
+            echo "--- pulling ${ref} ---"
+            docker pull "${ref}"
+          done < /tmp/pull-list.txt
+
+      - name: Ephemeral run proof
+        run: |
+          bash scripts/ci/verify-pilot-run.sh \
+            "images.${{ inputs.release_tag }}.lock.json" \
+            "${{ inputs.release_tag }}" \
+            "$(python3 -c "import json; print(json.load(open('images.${{ inputs.release_tag }}.lock.json'))['release']['git_sha'])")"
