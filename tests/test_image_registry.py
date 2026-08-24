@@ -23,7 +23,7 @@ import verify_release_lock as verifier  # noqa: E402
 
 RELEASE_TAG = "v0.11.1-pilot-packaging"
 RELEASE_SHA = "90c4bb1a9c7d1b2d5dbf6bef180d942dd5336275"
-REGISTRY = "ghcr.io/santanas-dev/retail-media-platform-enterprise"
+REGISTRY = "ghcr.io/santanas-dev/rmp-pilot"
 
 GOOD_DIGESTS = {
     "control-api": "sha256:" + "a" * 64,

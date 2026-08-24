@@ -32,7 +32,7 @@ jobs:
     name: Verify pilot images
     runs-on: ubuntu-latest
     env:
-      REGISTRY: ghcr.io/santanas-dev/retail-media-platform-enterprise
+      REGISTRY: ghcr.io/santanas-dev/rmp-pilot
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -13,7 +13,7 @@
 #   scripts/deploy/build-images.sh [--version V] [--sha S] [--push] [--registry R]
 #
 #   --push       push to registry (requires docker login) and emit images.lock.json
-#   --registry R registry prefix (default: ghcr.io/santanas-dev/retail-media-platform-enterprise)
+#   --registry R registry prefix (default: ghcr.io/santanas-dev/rmp-pilot)
 #
 # Without --push: builds locally and prints image IDs (no digest push, no lock write).
 # Never uses `latest`.
@@ -26,7 +26,7 @@ cd "$REPO_ROOT"
 VERSION="${VERSION:-}"
 GIT_SHA="${GIT_SHA:-}"
 PUSH=false
-REGISTRY="${REGISTRY:-ghcr.io/santanas-dev/retail-media-platform-enterprise}"
+REGISTRY="${REGISTRY:-ghcr.io/santanas-dev/rmp-pilot}"
 BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 while [[ $# -gt 0 ]]; do
@@ -94,7 +94,7 @@ build_image() {
     -t "$ref" \
     --label "org.opencontainers.image.revision=${GIT_SHA}" \
     --label "org.opencontainers.image.version=${VERSION}" \
-    --label "org.opencontainers.image.source=https://github.com/santanas-dev/retail-media-platform-enterprise" \
+    --label "org.opencontainers.image.url=https://github.com/santanas-dev/retail-media-platform-enterprise/releases/tag/${VERSION}" \
     --label "org.opencontainers.image.created=${BUILD_TIME}" \
     "${build_args[@]}" \
     .
@@ -140,7 +140,7 @@ lock_path = sys.argv[1]
 version, sha, build_time = sys.argv[2], sys.argv[3], sys.argv[4]
 digests = sys.argv[5:10]
 services = ["control-api", "device-gateway", "orchestrator-worker", "admin-web", "advertiser-web"]
-registry = "ghcr.io/santanas-dev/retail-media-platform-enterprise"
+registry = "ghcr.io/santanas-dev/rmp-pilot"
 images = []
 for s, d in zip(services, digests):
     # d is "sha256:<hex>" from the push digest, or "sha256:<id>" fallback

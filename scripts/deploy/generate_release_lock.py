@@ -9,7 +9,7 @@ Usage:
         --release-tag v0.11.1-pilot-packaging \\
         --sha 90c4bb1a9c7d1b2d5dbf6bef180d942dd5336275 \\
         --platform linux/amd64 \\
-        --registry ghcr.io/santanas-dev/retail-media-platform-enterprise \\
+        --registry ghcr.io/santanas-dev/rmp-pilot \\
         --digests-file /tmp/digests.json \\
         --sbom attested --provenance attested \\
         --out images.v0.11.1-pilot-packaging.lock.json \\
@@ -27,7 +27,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-REGISTRY = "ghcr.io/santanas-dev/retail-media-platform-enterprise"
+REGISTRY = "ghcr.io/santanas-dev/rmp-pilot"
 SERVICES = [
     "control-api",
     "device-gateway",
