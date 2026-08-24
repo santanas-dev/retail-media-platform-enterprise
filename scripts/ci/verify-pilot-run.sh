@@ -47,7 +47,7 @@ sys.exit(1)
 PY
 }
 
-REGISTRY="ghcr.io/santanas-dev/retail-media-platform-enterprise"
+REGISTRY="ghcr.io/santanas-dev/rmp-pilot"
 CA_D=$(digest_of control-api)
 DG_D=$(digest_of device-gateway)
 OW_D=$(digest_of orchestrator-worker)

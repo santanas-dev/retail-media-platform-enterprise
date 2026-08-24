@@ -4,7 +4,9 @@ name: Publish Pilot Images (GHCR)
 #
 # Manual (workflow_dispatch) only. Builds the 5 first-party pilot images from
 # an immutable annotated release tag and publishes them to the private GHCR
-# registry at ghcr.io/santanas-dev/retail-media-platform-enterprise.
+# registry at ghcr.io/santanas-dev/rmp-pilot (non-repo-linked namespace).
+# NOTE: no `org.opencontainers.image.source` label — GHCR auto-links packages
+# with that label to the (public) source repo and makes them public.
 #
 # Never tags `latest`/`develop`/`main`. Runtime references are digest-only.
 # Uses GITHUB_TOKEN (no PAT, no stored registry password).
@@ -38,7 +40,7 @@ jobs:
     name: Publish pilot images
     runs-on: ubuntu-latest
     env:
-      REGISTRY: ghcr.io/santanas-dev/retail-media-platform-enterprise
+      REGISTRY: ghcr.io/santanas-dev/rmp-pilot
     steps:
       - name: Enforce confirmation
         run: |
@@ -141,7 +143,7 @@ jobs:
               -f "$dockerfile" \
               -t "${REGISTRY}/${name}:${RELEASE_TAG}" \
               -t "${REGISTRY}/${name}:sha-${SHORT_SHA}" \
-              --label "org.opencontainers.image.source=https://github.com/santanas-dev/retail-media-platform-enterprise" \
+              --label "org.opencontainers.image.url=https://github.com/santanas-dev/retail-media-platform-enterprise/releases/tag/${RELEASE_TAG}" \
               --label "org.opencontainers.image.revision=${RELEASE_SHA}" \
               --label "org.opencontainers.image.version=${RELEASE_TAG}" \
               --label "org.opencontainers.image.created=${BUILD_TIME}" \

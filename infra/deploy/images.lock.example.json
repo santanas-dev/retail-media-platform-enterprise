@@ -8,7 +8,7 @@
   "images": [
     {
       "service": "control-api",
-      "repository": "ghcr.io/santanas-dev/retail-media-platform-enterprise/control-api",
+      "repository": "ghcr.io/santanas-dev/rmp-pilot/control-api",
       "version": "v0.11.0-pilot-control-plane",
       "git_sha": "e13020768c7cc1c2358ff03713baf32fc6ae409c",
       "image_digest": "sha256:REPLACE_WITH_REAL_DIGEST",
@@ -17,7 +17,7 @@
     },
     {
       "service": "device-gateway",
-      "repository": "ghcr.io/santanas-dev/retail-media-platform-enterprise/device-gateway",
+      "repository": "ghcr.io/santanas-dev/rmp-pilot/device-gateway",
       "version": "v0.11.0-pilot-control-plane",
       "git_sha": "e13020768c7cc1c2358ff03713baf32fc6ae409c",
       "image_digest": "sha256:REPLACE_WITH_REAL_DIGEST",
@@ -26,7 +26,7 @@
     },
     {
       "service": "orchestrator-worker",
-      "repository": "ghcr.io/santanas-dev/retail-media-platform-enterprise/orchestrator-worker",
+      "repository": "ghcr.io/santanas-dev/rmp-pilot/orchestrator-worker",
       "version": "v0.11.0-pilot-control-plane",
       "git_sha": "e13020768c7cc1c2358ff03713baf32fc6ae409c",
       "image_digest": "sha256:REPLACE_WITH_REAL_DIGEST",
@@ -35,7 +35,7 @@
     },
     {
       "service": "admin-web",
-      "repository": "ghcr.io/santanas-dev/retail-media-platform-enterprise/admin-web",
+      "repository": "ghcr.io/santanas-dev/rmp-pilot/admin-web",
       "version": "v0.11.0-pilot-control-plane",
       "git_sha": "e13020768c7cc1c2358ff03713baf32fc6ae409c",
       "image_digest": "sha256:REPLACE_WITH_REAL_DIGEST",
@@ -44,7 +44,7 @@
     },
     {
       "service": "advertiser-web",
-      "repository": "ghcr.io/santanas-dev/retail-media-platform-enterprise/advertiser-web",
+      "repository": "ghcr.io/santanas-dev/rmp-pilot/advertiser-web",
       "version": "v0.11.0-pilot-control-plane",
       "git_sha": "e13020768c7cc1c2358ff03713baf32fc6ae409c",
       "image_digest": "sha256:REPLACE_WITH_REAL_DIGEST",
