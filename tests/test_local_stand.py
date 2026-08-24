@@ -316,11 +316,17 @@ def test_rollback_restores_image_env(tmp_path, monkeypatch):
 
 # --- overlay safety ----------------------------------------------------------
 
-def test_overlay_publishes_only_ui_api_ports():
+def test_overlay_publishes_only_ui_api_and_object_ports():
+    """Exactly the ports a browser needs: the two UIs, the API, the S3 endpoint.
+
+    MinIO's S3 API is published deliberately - browser upload uses presigned
+    URLs and cannot work without a reachable object endpoint. Its console and
+    every datastore stay unpublished.
+    """
     doc = yaml.safe_load(OVERLAY.read_text())
-    published = {s: spec.get("ports", []) for s, spec in doc["services"].items()}
-    assert set(published) == {"control-api", "device-gateway", "admin-web", "advertiser-web"}
-    for infra in ("postgres", "redis", "minio", "nats"):
+    assert set(doc["services"]) == {
+        "control-api", "device-gateway", "admin-web", "advertiser-web", "minio"}
+    for infra in ("postgres", "redis", "nats"):
         assert infra not in doc["services"], f"{infra} must not be published by the overlay"
 
 
@@ -352,3 +358,259 @@ def test_overlay_documents_disposable_and_not_tls_safe():
     text = OVERLAY.read_text().lower()
     assert "disposable" in text and "no backup" in text
     assert "not production-safe tls" in text
+
+
+# --- FU: MinIO bindings + browser-upload endpoint ----------------------------
+
+def test_minio_api_published_on_bind_address_only():
+    doc = yaml.safe_load(OVERLAY.read_text())
+    ports = doc["services"]["minio"]["ports"]
+    assert ports == ["${STAND_BIND_ADDR}:9000:9000"], ports
+
+
+def test_minio_console_9001_is_not_published():
+    doc = yaml.safe_load(OVERLAY.read_text())
+    for svc, spec in doc["services"].items():
+        for mapping in (spec or {}).get("ports", []) or []:
+            assert not str(mapping).endswith(":9001") and ":9001:" not in str(mapping), \
+                f"MinIO console must not be published ({svc}: {mapping})"
+
+
+@pytest.mark.parametrize("infra", ["postgres", "redis", "nats"])
+def test_datastores_are_never_published(infra):
+    overlay = yaml.safe_load(OVERLAY.read_text())
+    pilot = yaml.safe_load(PILOT.read_text())
+    assert infra not in overlay["services"], f"{infra} must not be published by the overlay"
+    assert not (pilot["services"][infra] or {}).get("ports"), \
+        f"{infra} must not publish host ports"
+
+
+BIND = "192.168.110.81"
+
+
+def _stand_env(**over):
+    env = {
+        "MINIO_PUBLIC_ENDPOINT": f"http://{BIND}:9000",
+        "CORS_ALLOWED_ORIGINS": f"http://{BIND}:3000,http://{BIND}:3001",
+    }
+    env.update(over)
+    return env
+
+
+def test_valid_stand_env_has_no_problems():
+    assert ls.validate_stand_env(_stand_env(), BIND) == []
+
+
+@pytest.mark.parametrize("endpoint", [
+    "", "http://localhost:9000", "http://127.0.0.1:9000", "minio:9000",
+    "http://minio:9000", f"{BIND}:9000",
+])
+def test_unreachable_minio_endpoint_rejected(endpoint):
+    problems = ls.validate_stand_env(_stand_env(MINIO_PUBLIC_ENDPOINT=endpoint), BIND)
+    assert problems, f"{endpoint!r} should be rejected"
+
+
+def test_minio_endpoint_must_match_bind_address():
+    problems = ls.validate_stand_env(
+        _stand_env(MINIO_PUBLIC_ENDPOINT="http://10.0.0.9:9000"), BIND)
+    assert any("bind address" in p for p in problems)
+
+
+@pytest.mark.parametrize("cors", [
+    "", f"http://{BIND}:3000", f"http://{BIND}:3001", "http://localhost:3000",
+])
+def test_incomplete_cors_rejected(cors):
+    problems = ls.validate_stand_env(_stand_env(CORS_ALLOWED_ORIGINS=cors), BIND)
+    assert any("CORS" in p for p in problems)
+
+
+def test_wildcard_cors_rejected():
+    problems = ls.validate_stand_env(_stand_env(CORS_ALLOWED_ORIGINS="*"), BIND)
+    assert any("wildcard" in p for p in problems)
+
+
+def test_start_refuses_invalid_stand_env(tmp_path, monkeypatch):
+    monkeypatch.setattr(ls, "read_env", lambda: _stand_env(MINIO_PUBLIC_ENDPOINT="http://minio:9000"))
+    with pytest.raises(SystemExit):
+        ls.cmd_start(_Args(bind=BIND))
+
+
+# --- FU: bootstrap-admin tool -------------------------------------------------
+
+BOOTSTRAP = REPO_ROOT / "scripts" / "deploy" / "local_stand_bootstrap_admin.py"
+
+
+def _load_bootstrap():
+    spec = importlib.util.spec_from_file_location("local_stand_bootstrap_admin", BOOTSTRAP)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+ba = _load_bootstrap()
+
+
+def test_bcrypt_contract_matches_product_seed():
+    seed = (REPO_ROOT / "apps" / "control-api" / "seed.py").read_text()
+    assert "rounds=12" in seed, "product seed no longer uses 12 rounds"
+    assert ba.BCRYPT_ROUNDS == 12
+    assert ba.HASH_ALGORITHM == "bcrypt"
+    assert ba.CREDENTIAL_TYPE == "local_break_glass"
+    assert ba.DEFAULT_USERNAME == "break_glass_admin"
+
+
+def test_refuses_without_explicit_local_stand_flag():
+    with pytest.raises(SystemExit):
+        ba.assert_local_stand(False)
+
+
+def test_refuses_when_deploy_record_is_not_the_stand(tmp_path, monkeypatch):
+    rec = tmp_path / "deploy-record.json"
+    rec.write_text(json.dumps({"stand": "pilot", "project": "rmp-pilot"}))
+    monkeypatch.setattr(ba, "RECORD", rec)
+    with pytest.raises(SystemExit):
+        ba.assert_local_stand(True)
+
+
+def test_refuses_when_project_not_running(tmp_path, monkeypatch):
+    monkeypatch.setattr(ba, "RECORD", tmp_path / "absent.json")
+    monkeypatch.setattr(ba, "run", lambda cmd, **kw: _P(0, ""))   # empty ps output
+    with pytest.raises(SystemExit):
+        ba.assert_local_stand(True)
+
+
+def test_accepts_when_record_and_project_are_the_stand(tmp_path, monkeypatch):
+    rec = tmp_path / "deploy-record.json"
+    rec.write_text(json.dumps({"stand": ba.STAND_KIND, "project": ba.PROJECT}))
+    monkeypatch.setattr(ba, "RECORD", rec)
+    monkeypatch.setattr(ba, "run", lambda cmd, **kw: _P(0, '{"Name":"x"}'))
+    ba.assert_local_stand(True)          # must not raise
+
+
+def test_password_never_passed_on_a_command_line(monkeypatch):
+    captured = {}
+
+    def fake_compose(*args, stdin=None, check=True):
+        captured["args"] = args
+        captured["stdin"] = stdin
+        return _P(0, "$2b$12$" + "x" * 53)
+
+    monkeypatch.setattr(ba, "compose", fake_compose)
+    secret = "correct horse battery staple"
+    ba.hash_password(secret)
+    assert secret not in " ".join(captured["args"]), "plaintext leaked into argv"
+    assert captured["stdin"].strip() == secret, "password must travel on stdin"
+
+
+def test_hash_failure_is_fail_closed(monkeypatch):
+    monkeypatch.setattr(ba, "compose", lambda *a, **k: _P(0, "not-a-hash"))
+    with pytest.raises(SystemExit):
+        ba.hash_password("whatever")
+
+
+def test_prompt_requires_a_tty(monkeypatch):
+    monkeypatch.setattr(ba.sys.stdin, "isatty", lambda: False)
+    with pytest.raises(SystemExit):
+        ba.prompt_password()
+
+
+def _tty(monkeypatch, first, second=None):
+    monkeypatch.setattr(ba.sys.stdin, "isatty", lambda: True)
+    answers = iter([first, second if second is not None else first])
+    monkeypatch.setattr(ba.getpass, "getpass", lambda prompt="": next(answers))
+
+
+def test_mismatched_passwords_rejected(monkeypatch):
+    _tty(monkeypatch, "averylongpassword1", "averylongpassword2")
+    with pytest.raises(SystemExit):
+        ba.prompt_password()
+
+
+def test_short_password_rejected(monkeypatch):
+    _tty(monkeypatch, "short")
+    with pytest.raises(SystemExit):
+        ba.prompt_password()
+
+
+@pytest.mark.parametrize("pw", sorted(ba.FORBIDDEN_PASSWORDS))
+def test_known_dev_passwords_rejected(monkeypatch, pw):
+    _tty(monkeypatch, pw + "xxxxxxxxxxxx" if len(pw) < 12 else pw)
+    if len(pw) >= ba.MIN_PASSWORD_LEN:
+        with pytest.raises(SystemExit):
+            ba.prompt_password()
+
+
+def test_accepts_a_strong_password(monkeypatch):
+    _tty(monkeypatch, "a-perfectly-fine-stand-password")
+    assert ba.prompt_password() == "a-perfectly-fine-stand-password"
+
+
+def _bootstrap_harness(monkeypatch, existing: bool):
+    calls = []
+
+    def fake_psql(env, sql, tuples_only=True):
+        calls.append(sql)
+        if sql.startswith("SELECT id FROM users"):
+            return "11111111-1111-1111-1111-111111111111"
+        if sql.startswith("SELECT 1 FROM local_credentials"):
+            return "1" if existing else ""
+        if sql.startswith("SELECT status"):
+            return "active|bcrypt"
+        return ""
+
+    monkeypatch.setattr(ba, "_psql", fake_psql)
+    return calls
+
+
+def test_creates_credential_when_absent(monkeypatch):
+    calls = _bootstrap_harness(monkeypatch, existing=False)
+    assert ba.bootstrap({}, "break_glass_admin", "$2b$12$hash") == "created"
+    assert any(c.startswith("INSERT INTO local_credentials") for c in calls)
+    assert not any(c.startswith("UPDATE local_credentials") for c in calls)
+
+
+def test_rotates_credential_when_present(monkeypatch):
+    calls = _bootstrap_harness(monkeypatch, existing=True)
+    assert ba.bootstrap({}, "break_glass_admin", "$2b$12$hash") == "rotated"
+    assert any(c.startswith("UPDATE local_credentials") for c in calls)
+    assert not any(c.startswith("INSERT INTO local_credentials") for c in calls)
+
+
+def test_bootstrap_is_idempotent_end_state(monkeypatch):
+    """Running twice converges on the same active bcrypt credential."""
+    for existing in (False, True):
+        calls = _bootstrap_harness(monkeypatch, existing=existing)
+        ba.bootstrap({}, "break_glass_admin", "$2b$12$hash")
+        applied = [c for c in calls if c.startswith(("INSERT", "UPDATE"))]
+        assert len(applied) == 1
+        assert "status='active'" in applied[0] or "'active'" in applied[0]
+        assert "bcrypt" in applied[0]
+
+
+def test_missing_user_is_fail_closed(monkeypatch):
+    monkeypatch.setattr(ba, "_psql", lambda env, sql, tuples_only=True: "")
+    with pytest.raises(SystemExit):
+        ba.bootstrap({}, "nobody", "$2b$12$hash")
+
+
+def test_verification_failure_is_fail_closed(monkeypatch):
+    def fake_psql(env, sql, tuples_only=True):
+        if sql.startswith("SELECT id FROM users"):
+            return "uid"
+        if sql.startswith("SELECT 1 FROM local_credentials"):
+            return ""
+        if sql.startswith("SELECT status"):
+            return "disabled|bcrypt"
+        return ""
+    monkeypatch.setattr(ba, "_psql", fake_psql)
+    with pytest.raises(SystemExit):
+        ba.bootstrap({}, "break_glass_admin", "$2b$12$hash")
+
+
+def test_tool_does_not_persist_plaintext():
+    src = BOOTSTRAP.read_text()
+    assert "write_text(password" not in src and "open(" not in src.replace("read_text", "")
+    assert "getpass" in src
+    assert "del password" in src

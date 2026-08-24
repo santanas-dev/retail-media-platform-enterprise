@@ -199,6 +199,43 @@ def write_env_images(refs: dict[str, str]) -> None:
     ENV_FILE.chmod(0o600)
 
 
+def validate_stand_env(env: dict, bind: str) -> list[str]:
+    """Stand-specific env rules on top of validate-pilot-env.py.
+
+    Browser-side upload uses presigned URLs, so the object endpoint the browser
+    is handed must be the address the browser can actually reach, and the API
+    must allow the two stand origins. Getting either wrong makes creative and
+    contract upload fail in the browser while every backend check still passes.
+    """
+    problems: list[str] = []
+
+    endpoint = env.get("MINIO_PUBLIC_ENDPOINT", "")
+    if not endpoint:
+        problems.append("MINIO_PUBLIC_ENDPOINT is empty")
+    else:
+        if bind not in endpoint:
+            problems.append(
+                f"MINIO_PUBLIC_ENDPOINT ({endpoint}) must point at the published "
+                f"bind address {bind}:9000, otherwise browser upload cannot reach it")
+        if not endpoint.startswith(("http://", "https://")):
+            problems.append(f"MINIO_PUBLIC_ENDPOINT must include a scheme: {endpoint}")
+        if any(h in endpoint for h in ("localhost", "127.0.0.1", "minio:9000")):
+            problems.append(
+                f"MINIO_PUBLIC_ENDPOINT ({endpoint}) is host-internal; the browser "
+                f"cannot resolve it")
+
+    cors = env.get("CORS_ALLOWED_ORIGINS", "")
+    required = {f"http://{bind}:3000", f"http://{bind}:3001"}
+    present = {o.strip() for o in cors.split(",") if o.strip()}
+    missing = required - present
+    if missing:
+        problems.append(f"CORS_ALLOWED_ORIGINS missing stand origins: {sorted(missing)}")
+    if "*" in present:
+        problems.append("CORS_ALLOWED_ORIGINS must not contain a wildcard")
+
+    return problems
+
+
 # --- deploy record -----------------------------------------------------------
 
 def write_record(lock: dict) -> dict:
@@ -396,6 +433,9 @@ def _bring_up(env: dict) -> None:
 
 def cmd_start(args) -> int:
     env = read_env()
+    env_problems = validate_stand_env(env, args.bind)
+    if env_problems:
+        fail("stand env invalid: " + "; ".join(env_problems))
     if not LOCK_CURRENT.exists():
         fail(f"no lock deployed yet: {LOCK_CURRENT} (use 'update --lock ...')")
     lock = verify_lock(LOCK_CURRENT, None)
