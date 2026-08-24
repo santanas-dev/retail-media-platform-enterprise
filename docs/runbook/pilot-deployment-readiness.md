@@ -260,7 +260,7 @@ image pinning)** — он не зависит от owner inputs и может б
 |------|-----------|-------------|
 | **001B** | Packaging: version endpoint, image pinning (tag+digest), restart policy, advertiser-web/admin-web static build, prod env-file шаблон, deploy-record шаблон | ничем (можно сразу) |
 | **001C** | Backup + restore drill на отдельной БД/хосте (PG + MinIO) | target host/DB (owner) |
-| **001D** | Pilot host preflight (OS, Docker, DNS, firewall, TLS) | owner inputs |
+| **001D** | Pilot host preflight (OS, Docker, DNS, firewall, TLS) — **TOOLING READY / HOST PROOF PENDING**, см. `docs/runbook/pilot-host-preflight.md` | owner inputs |
 | **001E** | Controlled pilot deployment (по runbook §6) | 001B+001C+001D |
 | **KSO-ENV-001** | Только с реальным КСО (player/hardware) | owner: доступно ли КСО |
 
@@ -280,6 +280,20 @@ image pinning)** — он не зависит от owner inputs и может б
 Feature statuses НЕ меняются. Guard = 0, CI green, tree clean.
 
 ---
+
+## 001D — Pilot host preflight (TOOLING READY / HOST PROOF PENDING, 2026-08-24)
+
+Fail-closed read-only preflight: `scripts/deploy/pilot_host_preflight.py`
+(exit 0 GO / 2 NEEDS_OWNER_INPUT / 1 FAIL). Никакого deployment: нет `compose up`,
+миграций, restore, seed и image pull — registry проверяется manifest inspection.
+Пороги, которых нет в репозитории (CPU/RAM/disk, версии Docker/Compose,
+DNS/TLS/backup/monitoring), берутся из owner-файла; отсутствующее значение даёт
+NEEDS_OWNER_INPUT, а не выдуманный порог.
+
+**Полный runbook, owner-input gate (15 пунктов) и read-only command plan для
+реального хоста: `docs/runbook/pilot-host-preflight.md`.**
+
+Host proof не выполнялся: доступа к pilot-host нет. 001D НЕ DONE, 001E НЕ начат.
 
 ## IMAGE-REGISTRY-001 — GHCR pilot image bundle (private `rmp-pilot`, 2026-08-24)
 

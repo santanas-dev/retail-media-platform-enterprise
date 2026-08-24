@@ -104,6 +104,15 @@ Never read, print, echo, copy, or summarize `~/.ssh/**`,
 `~/.config/gh/hosts.yml`, `gh auth token`, `.env` files with real values, or any
 credential. Report auth state as identity and scope only.
 
+## Communication
+
+- User-facing communication is Russian by default unless the owner requests
+  another language.
+- Progress updates and final reports are concise and decision-oriented.
+- Default final report: status, changes, verification, blockers, next step.
+- Do not paste full logs or large tables unless explicitly requested.
+- Distinguish DONE, PENDING and BLOCKED without overclaim.
+
 ## Reporting
 
 Every task report states:

@@ -1,12 +1,29 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-24 (CLAUDE-CODE-HANDOFF-001 — implementation handoff to Claude Code)
+**Last updated:** 2026-08-24 (PILOT-DEPLOYMENT-READINESS-001D — preflight tooling ready, host proof pending)
 
-**Next Active Workstream:** **PILOT-DEPLOYMENT-READINESS-001D** (host preflight + read-only GHCR pull credential) → 001E.
+**Next Active Workstream:** **PILOT-DEPLOYMENT-READINESS-001D** — tooling готов; ожидаются owner inputs + approved read-only real-host preflight → 001E.
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `8ad0228` (main — PR #8 private namespace + label fix; tag `v0.11.1-pilot-packaging` → `90c4bb1` неизменен)
-- State/Docs SHA: `35432ea` (develop — CLAUDE-CODE-HANDOFF-001 governance commit: CLAUDE.md + .claude/settings.json + AGENTS.md + NAS runbook status). Payload SHA unchanged — no product code touched.
+- State/Docs SHA: `785f70f` (develop — 001D preflight tooling + packaging gate; CI `#32752657166` attempt 2 ✅). Payload SHA unchanged — продуктовый код не менялся.
+
+**PILOT-DEPLOYMENT-READINESS-001D — TOOLING READY / HOST PROOF PENDING** (НЕ DONE).
+
+- **Substantive commit:** `785f70f` — `scripts/deploy/pilot_host_preflight.py` (fail-closed read-only preflight, exit 0 GO / 2 NEEDS_OWNER_INPUT / 1 FAIL), `tests/test_pilot_host_preflight.py`, `infra/deploy/host-requirements.example.json`, packaging-gate в `phase1-ci.yml`, `.gitignore`.
+- **Никакого deployment.** Инструмент не выполняет `compose up`, миграции, restore, seed и image pull; registry проверяется только manifest inspection. AST-guard в тестах запрещает deployment-глаголы.
+- **Пороги не выдуманы.** Репозиторий документирует platform (linux/amd64), порты 8000/8001/3000/3001, 5 сервисов, private namespace `rmp-pilot`, 34 env-имени — их инструмент выводит сам. CPU/RAM/disk и версии Docker/Compose в репозитории НЕ документированы → берутся из owner-файла, отсутствие значения = NEEDS_OWNER_INPUT.
+- **Secret-leak gap закрыт:** `infra/deploy/.env.pilot`, `images.lock.json`, `host-requirements.json` не были в `.gitignore` (шаблоны `.env*` их не покрывали). Добавлены; `*.example` остаются трекуемыми.
+- **CI `#32752657166`** (head `785f70f`): **attempt 1 ❌ red** — `test_uismoke__advertiser__invite` (`advertiser-approve-btn` timeout) + `test_uismoke__emergency__deactivate`, 2 failed / 36 passed → release-gate red. **attempt 2 ✅ green** (rerun только failed jobs, 40/40 success, UI-Smoke + release-gate green). Классифицировано как **transient UI-smoke failures**; это НЕ доказательство отсутствия флаки — сигнатура `advertiser__invite`/approve-btn уже фиксировалась ранее, `emergency__deactivate` наблюдался впервые. Отдельная задача UI-SMOKE-FLAKE не закрыта.
+- **Tamper red proof `#32752825402`** — `Report.verdict()` сломан на unconditional GO → step `Host preflight fail-closed contract (001D)` ❌, Unit Tests ❌, release-gate ❌. Tamper branch `tamper-proof-preflight-001d` (`113c62e`) удалён local+remote; в develop не входит.
+- **Tests:** 48 focused (`test_pilot_host_preflight.py`) ✅, 89 packaging (version identity + pilot packaging + preflight) ✅. Guards: roadmap --strict 0 ✅, style-tokens 0 ✅, import-boundaries 9/9 ✅, `git diff --check` ✅.
+- **Host proof: PENDING.** Реального pilot-host нет; SSH не выполнялся. Owner inputs (15 пунктов) и точный read-only command plan — в `docs/runbook/pilot-host-preflight.md` (здесь не дублируются).
+- **Feature registry без изменений: 58 total / 53 reachable / 5 blocked.** Statuses не менялись.
+- **Deployment NOT PERFORMED. Deployed SHA = UNKNOWN/NOT TRACKED. Pilot NOT DEPLOYED. Production NO-GO.**
+- **PILOT-DEPLOYMENT-READINESS-001E: NOT STARTED.**
+- **operator walkthrough:** N/A (infra tooling, не UI journey).
+- Next → owner inputs + approved read-only real-host preflight; 001E только после host verdict GO.
+- Checkpoint by PS-001.
 
 **CLAUDE-CODE-HANDOFF-001 ✅** — Controlled implementation handoff to Claude Code (governance/docs only; NO product change).
 
