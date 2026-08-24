@@ -124,24 +124,38 @@ templates with placeholders only; `infra/deploy/.env.pilot`,
 **Before any SSH to the pilot host, the owner must approve the exact command
 plan.** The agent does not connect on its own initiative.
 
-### 5.1 Proposed read-only plan
+### 5.1 Read-only plan
 
-Copy the tool and the templates to the host, then run it. Nothing else.
+Stage with the helper, then run. Nothing else.
 
 ```bash
-# 1. copy tool + templates (no secrets leave the host)
-scp scripts/deploy/pilot_host_preflight.py \
-    scripts/deploy/validate-image-lock.py \
-    scripts/deploy/validate-pilot-env.py \
-    <user>@<host>:/tmp/rmp-preflight/
+# 1. stage the preflight set (creates dirs + copies files only)
+python3 scripts/deploy/stage_preflight.py --remote <host> \
+    --requirements infra/deploy/host-requirements.json
 
 # 2. run read-only, machine-readable
-ssh <user>@<host> 'python3 /tmp/rmp-preflight/pilot_host_preflight.py \
+ssh <host> 'python3 /tmp/rmp-preflight/scripts/deploy/pilot_host_preflight.py \
     --json \
-    --requirements /etc/rmp/host-requirements.json \
+    --requirements /tmp/rmp-preflight/infra/deploy/host-requirements.json \
     --env /etc/rmp/.env.pilot \
     --lock /etc/rmp/images.lock.json'
 ```
+
+`scripts/deploy/stage_preflight.py` is the **single source of truth** for the
+staging layout (`--list` prints it), so this runbook and the actual copy cannot
+drift apart. Use `--dest <dir>` to stage locally instead of over ssh.
+
+> **Staging defect fixed (001D-FU1).** This section previously documented a
+> **flat** `scp` of the three scripts into `/tmp/rmp-preflight/`.
+> `pilot_host_preflight.py` derives `REPO_ROOT` as `parents[2]` of its own path,
+> so a flat copy resolved `REPO_ROOT` *outside* the staging tree: the pilot
+> compose was not found and the run reported
+> `compose.config FAIL: pilot compose missing` — a **false FAIL**, not an honest
+> verdict. Observed on the real host on 2026-08-24, then reproduced locally.
+> The layout must stay repository-relative (`scripts/deploy/`, `infra/compose/`,
+> `infra/deploy/`); the helper guarantees it and
+> `tests/test_pilot_host_preflight.py` guards it. Verdict logic and fail-closed
+> behaviour were not changed.
 
 ### 5.2 Metadata collected
 
