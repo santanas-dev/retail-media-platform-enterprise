@@ -24,6 +24,12 @@ Thumbs.db
 .env.*.local
 *.secret
 
+# Pilot host secrets — installed on the target host only, never committed.
+# The *.example templates ARE committed (placeholders only).
+infra/deploy/.env.pilot
+infra/deploy/images.lock.json
+infra/deploy/host-requirements.json
+
 # Sidecar agent — local filled config files (templates with placeholders ARE committed)
 apps/kso_sidecar_agent/config/agent_config.json
 apps/kso_sidecar_agent/config/device_secret.dev

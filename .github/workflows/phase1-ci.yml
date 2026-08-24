@@ -729,10 +729,45 @@ jobs:
             docker rm -f rmp-$app-ci >/dev/null 2>&1 || true
             echo "$app verified: healthz + build-info.json + SPA fallback OK"
           done
+      - name: Host preflight fail-closed contract (001D)
+        run: |
+          set -o pipefail
+          # The shipped example requirements are all-null owner input, and no
+          # .env.pilot / images.lock.json exists in the repo, so the tool must
+          # refuse to say GO.  Exit 0 (GO) here would mean the gate is broken.
+          set +e
+          python3 scripts/deploy/pilot_host_preflight.py \
+            --requirements infra/deploy/host-requirements.example.json \
+            --skip-registry > /tmp/preflight.txt 2>&1
+          rc=$?
+          set -e
+          echo "preflight exit=$rc"
+          if [ "$rc" -eq 0 ]; then
+            echo "::error::preflight returned GO without owner input — fail-closed contract broken"
+            exit 1
+          fi
+          if [ "$rc" -ne 1 ] && [ "$rc" -ne 2 ]; then
+            echo "::error::preflight returned unexpected exit code $rc (expected 1 FAIL or 2 NEEDS_OWNER_INPUT)"
+            exit 1
+          fi
+          grep -q 'VERDICT:' /tmp/preflight.txt || { echo "::error::no verdict emitted"; exit 1; }
+          # JSON output must parse and must never claim a deployment happened.
+          python3 scripts/deploy/pilot_host_preflight.py --json \
+            --requirements infra/deploy/host-requirements.example.json \
+            --skip-registry > /tmp/preflight.json 2>&1 || true
+          python3 -c "
+          import json,sys
+          d=json.load(open('/tmp/preflight.json'))
+          assert d['deployment_performed'] is False, 'tool must never report a deployment'
+          assert d['verdict'] in ('GO','NEEDS_OWNER_INPUT','FAIL'), d['verdict']
+          print('preflight JSON contract OK:', d['verdict'])
+          "
+
       - name: Version identity + packaging tests
         run: |
           set -o pipefail
-          python3 -m pytest tests/test_version_identity.py tests/test_pilot_packaging.py -v \
+          python3 -m pytest tests/test_version_identity.py tests/test_pilot_packaging.py \
+            tests/test_pilot_host_preflight.py -v \
             2>&1 | tee /tmp/packaging-tests.txt
       - name: Anti-skip guard
         if: always()

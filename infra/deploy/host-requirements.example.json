@@ -1,0 +1,32 @@
+{
+  "$comment": [
+    "Pilot host requirements — PILOT-DEPLOYMENT-READINESS-001D.",
+    "OWNER INPUT REQUIRED. Every null below is a value the repository does NOT",
+    "document; the preflight tool reports NEEDS_OWNER_INPUT for each null rather",
+    "than assuming a threshold. Copy to host-requirements.json and fill in.",
+    "Values that ARE documented in the repo (platform, ports, services, registry)",
+    "are derived by the tool itself and are not configurable here."
+  ],
+  "min_cpu_cores": null,
+  "min_memory_gb": null,
+  "min_disk_free_gb": null,
+  "min_backup_disk_free_gb": null,
+  "min_docker_engine_version": null,
+  "min_compose_version": null,
+  "persistent_data_root": null,
+  "backup_destination": null,
+  "dns_names": {
+    "admin_web": null,
+    "advertiser_web": null,
+    "control_api": null,
+    "device_gateway": null
+  },
+  "tls": {
+    "termination": null,
+    "certificate_owner": null
+  },
+  "monitoring_destination": null,
+  "secret_storage_mechanism": null,
+  "maintenance_window": null,
+  "rollback_operator": null
+}
