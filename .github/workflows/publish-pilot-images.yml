@@ -51,8 +51,9 @@ jobs:
         run: |
           case "${{ inputs.release_tag }}" in
             latest|develop|main|master|dev)
-              echo "::error::mutable tag '${{ inputs.release_tag }}' is not allowed" ;;
-              exit 1 ;;
+              echo "::error::mutable tag '${{ inputs.release_tag }}' is not allowed"
+              exit 1
+              ;;
           esac
 
       - name: Checkout release tag (build source)
