@@ -4,7 +4,42 @@
 NAS/ASUSTOR at `\\192.168.110.118\project\retail-media-platform-enterprise`
 is a mirror — it may be stale.
 
-## Architecture: Hermes-Owned Mirror Sync
+## ⚠️ CURRENT STATUS — PENDING / UNVERIFIED (CLAUDE-CODE-HANDOFF-001)
+
+**Read this before following any procedure below.**
+
+The automation described in this runbook belonged to the **former Hermes host
+(`cobalt`)**. Hermes is retired. This was a real, previously operating setup —
+this notice does **not** claim the former cron never existed; it records that the
+automation is not present on, and cannot be verified from, the current host.
+
+Verified read-only on the current Claude host (`claude`), 2026-08-24:
+
+| Probe | Result |
+|---|---|
+| user `crontab -l` | **empty** — no cron jobs (0 bytes, exit 0) |
+| `~/.hermes/scripts/nas-mirror-sync.sh` | **absent** (`~/.hermes/` does not exist) |
+| `/mnt/asustor-project` | **not mounted** — the path does not exist |
+| systemd timers matching nas/mirror | none |
+
+Consequences:
+
+- **Current mirror freshness = PENDING / UNVERIFIED.** Do not claim the mirror is
+  synced, fresh, or verified, and do not quote any sync interval.
+- **Automation owner = human / infrastructure owner, not an AI agent.** No agent
+  owns mirror freshness. Re-provisioning the cron, the mount, and the credentials
+  is an owner task.
+- **Everything below this block is historical / legacy procedure**, retained for
+  re-provisioning reference. It becomes current again only after the owner
+  re-provisions the automation *and* proof is recorded.
+- **Nothing was executed and no cron was modified** while recording this status —
+  the checks above were read-only.
+
+Unchanged and still binding: GitHub `origin/develop` remains the sole
+git-source-of-truth, the NAS is a mirror only, and mirror state never blocks DONE
+(GitHub + CI green is sufficient).
+
+## Architecture: Hermes-Owned Mirror Sync (historical)
 
 ```
 GitHub (origin/develop)

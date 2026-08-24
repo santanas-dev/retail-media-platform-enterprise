@@ -8,6 +8,28 @@ features.
 
 Stabilization comes before new functionality.
 
+## Governance
+
+- **Human owner** — owner and final approver. Architecture, external actions,
+  merge, release, and deployment require explicit owner approval.
+- **Codex** — architect / reviewer. Produces design and audit input; does not
+  implement.
+- **Claude Code** — sole implementation agent for this repository.
+- **Hermes — retired.** Hermes-specific skills, Hermes memory, and Hermes-owned
+  automation referenced below are historical and are **not active requirements**.
+  Do not act on them and do not re-enable them without an owner instruction.
+- **Auto-memory of any agent is non-canonical context.** It never overrides
+  repository code, tests, CI, or canon, and is never evidence for a status claim.
+- Precedence follows `CLAUDE.md`: newest owner instruction → Git / code / tests /
+  CI → `PROJECT_STATE.md` → `docs/product/feature-registry.yaml` →
+  roadmap / architecture / runbooks → auto-memory. A contradiction between
+  sources means **STOP**.
+
+Hermes retirement is a governance change only. Every technical invariant in this
+contract — Done Gate, RLS/security rules, verification and test rules, release
+and protected-boundary rules — remains in force regardless of which agent
+executes it.
+
 ## Sources of Truth (единый индекс)
 
 Единственный авторитетный перечень. При конфликте — верхний уровень побеждает нижний.
@@ -112,16 +134,23 @@ Stabilization comes before new functionality.
 
 - **NAS mirror** (`\\192.168.110.118\project\…`, локальный mount `/mnt/asustor-project/`) — зеркало GitHub, может быть stale.
   - **GitHub `origin/develop` — единственная git-истина.** NAS — зеркало, не авторский источник.
-  - **Hermes owns mirror sync freshness.** Cron job `c0687f5ced4d` (script `nas-mirror-sync.sh`) синхронизирует NAS каждые 3 минуты через CIFS mount.
+  - **Mirror sync — host automation, owner-managed, НЕ agent-owned.** Ранее
+    задокументированный Hermes cron (`c0687f5ced4d`, `nas-mirror-sync.sh`) исполнялся
+    на хосте Hermes, а не в этом репозитории. Hermes retired → freshness зеркала
+    не принадлежит ни одному агенту.
+  - **Freshness guarantee: PENDING / UNVERIFIED.** На момент CLAUDE-CODE-HANDOFF-001-FU
+    sync не подтверждён с рабочего хоста: user crontab пуст, `nas-mirror-sync.sh`
+    в репозитории отсутствует, `/mnt/asustor-project/` не примонтирован.
+    Не утверждать, что sync работает, и не заявлять интервал синхронизации.
   - **Агенты НЕ пишут «NAS synced/verified» без проверки:** NAS HEAD == origin/develop.
     Проверять: `git -C /mnt/asustor-project/retail-media-platform-enterprise rev-parse HEAD` против `git ls-remote origin refs/heads/develop`.
-  - **santa2 relay DEPRECATED** — заменён на Hermes-owned sync (NAS-SYNC-OWNER-001).
+  - **santa2 relay DEPRECATED** (NAS-SYNC-OWNER-001).
   - **Mirror-check pending — допустимо.** После пуша ожидаемое состояние:
-    «mirror pending — Hermes cron syncs every 3 min». Зеркало не блокирует DONE:
-    GitHub + CI green достаточно. Статус зеркала отслеживается в PROJECT_STATE
-    Repository Checkpoint.
+    `mirror pending`. Зеркало не блокирует DONE: GitHub + CI green достаточно.
+    Статус зеркала отслеживается в PROJECT_STATE Repository Checkpoint.
   - **Mount unavailable — честный статус.** Если `/mnt/asustor-project/` не примонтирован,
-    статус: `pending | mount unavailable`. Не `verified`. Оператор отвечает за mount; Hermes за sync.
+    статус: `pending | mount unavailable`. Не `verified`. Оператор отвечает и за mount,
+    и за sync automation.
 - **`for-agents/`** на NAS — **DEPRECATED staging.** Все файлы оттуда перенесены
   в `docs/product/` репозитория. `for-agents/` не является авторитетным источником;
   агенты читают только git-репо.
@@ -185,33 +214,39 @@ For new features, write a mini-design first and wait for explicit approval.
 For bug fixes, do root-cause analysis first and include the failing condition in
 the test or verification.
 
-## Required Hermes Skills
+## Agent Skills
 
-Load these skills for this project work:
+**Historical (Hermes, retired).** This project previously required Hermes skills
+(`retail-media-platform`, `critical-assessment`, `systematic-debugging`,
+`project-audit`, `retail-media-platform-backend`, `retail-media-platform-portal`,
+`portal-qa-testing`, `backend-api-hardening`). These are **not active
+requirements** and must not be treated as blocking prerequisites.
 
-- `retail-media-platform`
-- `critical-assessment`
-- `systematic-debugging` for bugs, regressions, failing tests, runtime issues
-- `project-audit` for audits and stabilization
-- `retail-media-platform-backend` for backend changes
-- `retail-media-platform-portal` and `portal-qa-testing` for portal changes
-- `backend-api-hardening` for auth, RBAC, RLS, safe projection, audit, or API work
+The engineering disciplines they encoded remain expected of the implementation
+agent: systematic debugging with root-cause analysis, critical assessment of
+claims, audit rigour, and backend/auth/RBAC/RLS hardening.
 
 Do not use offensive/security-hunt skills for normal product development unless
 the user explicitly asks for a security test or pentest task.
 
-## Hermes Memory Rules
+## Agent Memory Rules
 
-Use Hermes memory only for durable project facts:
+**Agent auto-memory is non-canonical context.** It ranks below repository
+code/tests/CI and canon, never overrides them, and is never evidence for a status
+claim — verify against the repository before acting on it. Hermes memory is
+retired and is not imported into this project or into `CLAUDE.md`.
+
+Durable project facts belong in canon (`PROJECT_STATE.md`, ADRs, runbooks), not
+in agent memory:
 
 - architecture decisions and approved product constraints;
 - stable commands, ports, paths, and operational pitfalls;
 - current stabilization priorities and verified baseline facts.
 
 Never store API keys, tokens, passwords, cookies, raw customer data, temporary
-logs, or unverified test counts in `MEMORY.md` or `USER.md`. Credentials belong
-in protected environment files or secret storage. If a memory fact becomes
-wrong, replace it instead of adding a contradictory entry.
+logs, or unverified test counts in agent memory. Credentials belong in protected
+environment files or secret storage. If a memory fact becomes wrong, replace it
+instead of adding a contradictory entry.
 
 ## Protected Boundaries
 
