@@ -20,7 +20,7 @@ import pytest
 if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
-from conftest import login_as_break_glass_admin
+from conftest import login_as_break_glass_admin, wait_settled
 from playwright.sync_api import Page, expect
 
 ADMIN_URL = os.environ.get("UI_SMOKE_BASE_URL", "http://localhost:3000")
@@ -46,7 +46,7 @@ def test_uismoke__self__login(page: Page):
     # Phase 1: Create application via public form (admin-web :3000)
     # ═══════════════════════════════════════════════════════════
     page.goto(PUBLIC_URL)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     expect(page.get_by_test_id("advertiser-apply-company-name")).to_be_visible()
 
     page.get_by_test_id("advertiser-apply-company-name").fill(f"ООО Логин-{TS}")
@@ -62,12 +62,12 @@ def test_uismoke__self__login(page: Page):
     # Phase 2: Admin login → review → approve → create invite (admin-web :3000)
     # ═══════════════════════════════════════════════════════════
     page.goto(LOGIN_URL)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     login_as_break_glass_admin(page)
 
     # Navigate to applications
     page.get_by_role("link", name="Заявки рекламодателей").click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     expect(page.get_by_test_id("advertiser-applications-table")).to_be_visible(timeout=10000)
 
     # Find and click our application
@@ -92,7 +92,7 @@ def test_uismoke__self__login(page: Page):
     # Wait for invite panel to stabilise (fetchInvite runs async in useEffect)
     # before clicking — otherwise stale null invite from useEffect races with
     # the create-invite API call and clears success message
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     expect(page.get_by_test_id("advertiser-invite-create")).to_be_visible(timeout=10000)
     page.get_by_test_id("advertiser-invite-create").click()
 
@@ -109,7 +109,7 @@ def test_uismoke__self__login(page: Page):
     # ═══════════════════════════════════════════════════════════
     accept_url = f"{ADVERTISER_URL}/accept-invite/{invite_token}"
     page.goto(accept_url)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     expect(page.locator("text=Принять приглашение")).to_be_visible(timeout=10000)
     page.get_by_test_id("accept-invite-password").fill(APP_PASS)
@@ -121,7 +121,7 @@ def test_uismoke__self__login(page: Page):
     # Click "Перейти к входу"
     page.get_by_test_id("accept-invite-go-to-login").click()
     page.wait_for_url("**/login", timeout=10000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # ═══════════════════════════════════════════════════════════
     # Phase 4: Login as advertiser in advertiser-web (:3001)
@@ -132,7 +132,7 @@ def test_uismoke__self__login(page: Page):
     page.click('button[type="submit"]')
 
     # Should land on campaigns or some protected page
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # ═══════════════════════════════════════════════════════════
     # Phase 5: Verify dashboard — logged in, advertiser role

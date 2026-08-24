@@ -14,7 +14,7 @@ Run with:  UI_SMOKE_RUN=1 pytest tests/ui-smoke/test_uismoke__user__assign_roles
 """
 
 import pytest
-from conftest import login_as_break_glass_admin
+from conftest import login_as_break_glass_admin, wait_settled
 
 # The role we assign — must exist in seed (operator role, code="operator")
 TARGET_ROLE_CODE = "operator"
@@ -26,7 +26,7 @@ def navigate_to_users(page):
     users_link = page.locator('aside nav a[href="/users"]')
     users_link.click(force=True)
     page.wait_for_url("**/users", timeout=5000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
 
 def test_uismoke__user__assign_roles(smoke_page):
@@ -100,7 +100,7 @@ def test_uismoke__user__assign_roles(smoke_page):
     save_btn.click()
 
     # Step 7: wait for detail to reload — verify the assigned role appears
-    page.wait_for_timeout(800)
+    wait_settled(page)
 
     # Verify the panel is still visible
     panel = page.locator('[data-testid="user-roles-panel"]')

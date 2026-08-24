@@ -6,6 +6,7 @@ No playwright imports at module level — they happen conditionally.
 """
 
 import os
+import time
 
 _RUN_SMOKE = bool(os.environ.get("UI_SMOKE_RUN", ""))
 
@@ -29,6 +30,7 @@ if not _RUN_SMOKE:
     submit_campaign_form = _stub
     verify_campaign_created = _stub
     unique_suffix = _stub
+    wait_settled = _stub
 
 else:
     import pytest
@@ -102,11 +104,101 @@ else:
         total = sum(counts.values())
         print(f"[smoke-cleanup] removed {total} smoke-owned rows: {counts}")
 
+    # Readiness barrier lives in _settle.py so the contract proof can import it
+    # without the database fixtures below. Re-exported for the smoke tests.
+    from _settle import (  # noqa: E402
+        SettleTimeout,
+        SETTLE_TIMEOUT_MS,
+        _INFLIGHT_INIT_JS,
+        wait_settled,
+    )
+
     @pytest.fixture
     def smoke_page(page: Page) -> Page:
         page.goto(LOGIN_URL)
-        page.wait_for_load_state("networkidle")
+        wait_settled(page)
         return page
+
+    # --- failure-only diagnostics -------------------------------------------
+    # Emitted only when a test fails, so a green run stays quiet. Prints host
+    # load, service health and what the browser was actually looking at, which
+    # is what distinguishes "the app never rendered" from "the runner stalled".
+    # Never prints environment values, tokens or credentials.
+
+    def _diag_host() -> list[str]:
+        out = []
+        try:
+            out.append(f"load: {open('/proc/loadavg').read().strip()}")
+        except Exception:
+            pass
+        try:
+            mem = {}
+            for line in open("/proc/meminfo"):
+                k, _, v = line.partition(":")
+                if k in ("MemTotal", "MemAvailable"):
+                    mem[k] = v.strip()
+            out.append(f"mem: total={mem.get('MemTotal')} available={mem.get('MemAvailable')}")
+        except Exception:
+            pass
+        out.append(f"cpus: {os.cpu_count()}")
+        return out
+
+    def _diag_health() -> list[str]:
+        import urllib.request
+        out = []
+        for name, url in (("control-api", "http://localhost:8000/health/live"),
+                          ("admin-web", f"{BASE_URL}/login")):
+            try:
+                started = time.time()
+                with urllib.request.urlopen(url, timeout=5) as r:
+                    out.append(f"{name}: HTTP {r.status} in {int((time.time()-started)*1000)}ms")
+            except Exception as e:
+                out.append(f"{name}: unreachable ({type(e).__name__})")
+        return out
+
+    @pytest.hookimpl(hookwrapper=True, tryfirst=True)
+    def pytest_runtest_makereport(item, call):
+        outcome = yield
+        report = outcome.get_result()
+        if report.when != "call" or not report.failed:
+            return
+        page_obj = item.funcargs.get("page") or item.funcargs.get("smoke_page")
+        lines = ["", "=== UI-SMOKE FAILURE DIAGNOSTICS ==="]
+        lines += _diag_host()
+        lines += _diag_health()
+        if page_obj is not None:
+            try:
+                lines.append(f"url: {page_obj.url}")
+                lines.append(f"title: {page_obj.title()}")
+                containers = page_obj.eval_on_selector_all(
+                    "[data-testid]",
+                    "els => els.filter(e => e.offsetParent !== null)"
+                    "        .slice(0, 12).map(e => e.getAttribute('data-testid'))",
+                )
+                lines.append(f"visible data-testids (first 12): {containers}")
+            except Exception as e:
+                lines.append(f"page state unavailable: {type(e).__name__}")
+        errors = getattr(item, "_smoke_console_errors", None)
+        if errors:
+            lines.append(f"console errors ({len(errors)}): {errors[:5]}")
+        lines.append("=== END DIAGNOSTICS ===")
+        print("\n".join(lines))
+
+    @pytest.fixture(autouse=True)
+    def _install_inflight_counter(page: Page):
+        """Install the in-flight counter before any navigation."""
+        page.add_init_script(_INFLIGHT_INIT_JS)
+        yield
+
+    @pytest.fixture(autouse=True)
+    def _capture_console(request, page: Page):
+        """Collect console/page errors so failures can report them."""
+        errors: list[str] = []
+        page.on("console", lambda m: errors.append(f"{m.type}: {m.text[:200]}")
+                if m.type == "error" else None)
+        page.on("pageerror", lambda e: errors.append(f"pageerror: {str(e)[:200]}"))
+        request.node._smoke_console_errors = errors
+        yield
 
     def login_as_break_glass_admin(page: Page) -> None:
         page.select_option("#login-provider", "local_break_glass")

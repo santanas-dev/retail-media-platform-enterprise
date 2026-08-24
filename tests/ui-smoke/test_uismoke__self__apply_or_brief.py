@@ -15,6 +15,7 @@ import pytest
 if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
+from conftest import wait_settled
 from playwright.sync_api import Page, expect
 
 ADVERTISER_URL = os.environ.get(
@@ -34,7 +35,7 @@ def test_uismoke__self__apply_or_brief(page: Page):
     # Phase 1: Login as advertiser
     # ═══════════════════════════════════════════════════════════
     page.goto(ADV_LOGIN_URL)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # Select local_advertiser provider if present, or just fill fields
     provider_select = page.locator("#login-provider")
@@ -46,7 +47,7 @@ def test_uismoke__self__apply_or_brief(page: Page):
     page.click('button[type="submit"]')
     # Login redirects to /campaigns (default) or /dashboard
     page.wait_for_url(f"{ADVERTISER_URL}/campaigns", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # ═══════════════════════════════════════════════════════════
     # Phase 2: Navigate to Briefs
@@ -55,7 +56,7 @@ def test_uismoke__self__apply_or_brief(page: Page):
     expect(nav_briefs).to_be_visible(timeout=5000)
     nav_briefs.click()
     page.wait_for_url(f"{ADVERTISER_URL}/briefs", timeout=10000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # ═══════════════════════════════════════════════════════════
     # Phase 3: Create new brief
@@ -64,7 +65,7 @@ def test_uismoke__self__apply_or_brief(page: Page):
     expect(create_btn).to_be_visible(timeout=5000)
     create_btn.click()
     page.wait_for_url(f"{ADVERTISER_URL}/briefs/new", timeout=10000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # ═══════════════════════════════════════════════════════════
     # Phase 4: Fill form
@@ -85,7 +86,7 @@ def test_uismoke__self__apply_or_brief(page: Page):
 
     # After submit, redirected to brief detail page
     page.wait_for_url(f"{ADVERTISER_URL}/briefs/**", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # ═══════════════════════════════════════════════════════════
     # Phase 6: Verify brief is visible with submitted status

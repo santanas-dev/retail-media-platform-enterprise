@@ -13,6 +13,7 @@ import pytest
 if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
+from conftest import wait_settled
 from playwright.sync_api import Page, expect
 
 ADMIN_URL = os.environ.get("UI_SMOKE_BASE_URL", "http://localhost:3000")
@@ -35,7 +36,7 @@ def test_uismoke__self__campaign_view(page: Page):
     # ═══════════════════════════════════════════════════════════
 
     page.goto(f"{ADVERTISER_URL}/login")
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     expect(page.locator("#login-username")).to_be_visible(timeout=10000)
 
     page.fill("#login-username", ADV_USERNAME)
@@ -43,7 +44,7 @@ def test_uismoke__self__campaign_view(page: Page):
     page.click('button[type="submit"]')
 
     # Login redirects to /campaigns (advertiser default landing)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # ═══════════════════════════════════════════════════════════
     # Phase 2: Verify campaign list is visible with seed campaign
@@ -69,7 +70,7 @@ def test_uismoke__self__campaign_view(page: Page):
     # ═══════════════════════════════════════════════════════════
 
     campaign_row.click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     expect(page.get_by_test_id("self-campaign-detail")).to_be_visible(timeout=10000)
     expect(page.get_by_test_id("self-campaign-detail-status")).to_be_visible()
@@ -80,7 +81,7 @@ def test_uismoke__self__campaign_view(page: Page):
     # ═══════════════════════════════════════════════════════════
 
     page.goto(f"{ADVERTISER_URL}/campaigns")
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     expect(page.get_by_test_id("self-campaign-list")).to_be_visible(timeout=10000)
     expect(page.get_by_test_id(f"self-campaign-row-{SEED_CAMPAIGN_CODE}")).to_be_visible(timeout=10000)

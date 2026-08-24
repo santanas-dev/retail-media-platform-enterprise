@@ -9,7 +9,7 @@ if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
 from playwright.sync_api import Page, expect
-from conftest import BASE_URL, login_as_break_glass_admin
+from conftest import BASE_URL, login_as_break_glass_admin, wait_settled
 
 FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "test-creative.png")
 
@@ -32,11 +32,11 @@ def test_uismoke__campaign__approve(smoke_page: Page) -> None:
     page.fill("#c-budget", "100000")
     page.click('button:has-text("Создать черновик")')
     page.wait_for_url(lambda url: url != BASE_URL + "/campaigns/new", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # ── Navigate to content tab ──
     page.click('[data-testid="tab-content"]')
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     # Wait for primary upload section to mount (prevents race on slow CI)
     expect(page.locator('[data-testid="creative-upload-primary"]')).to_be_visible(timeout=5000)
 
@@ -66,7 +66,7 @@ def test_uismoke__campaign__approve(smoke_page: Page) -> None:
     page.fill('[data-testid="flight-start"]', "2027-04-01")
     page.fill('[data-testid="flight-end"]', "2027-04-30")
     page.click('[data-testid="flight-submit"]')
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     print(f"[{time.time()-t0:.1f}s] Flight added")
 
     # ── Placements ──
@@ -74,12 +74,12 @@ def test_uismoke__campaign__approve(smoke_page: Page) -> None:
     expect(page.locator('[data-testid="placement-surface"]')).to_be_visible(timeout=5000)
     page.locator('[data-testid="placement-surface"]').select_option(index=1)
     page.click('[data-testid="placement-submit"]')
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     print(f"[{time.time()-t0:.1f}s] Placement added")
 
     # ── Back to overview ──
     page.click('[data-testid="tab-overview"]')
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # ── Submit ──
     submit_btn = page.locator('[data-testid="campaign-submit-btn"]')
@@ -94,7 +94,7 @@ def test_uismoke__campaign__approve(smoke_page: Page) -> None:
     except Exception as e:
         if "Submit failed" in str(e):
             raise
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     status_badge = page.locator('[data-testid="campaign-status-badge"]')
     expect(status_badge).to_be_visible(timeout=10000)
     assert "На согласовании" in status_badge.inner_text()
@@ -112,7 +112,7 @@ def test_uismoke__campaign__approve(smoke_page: Page) -> None:
     except Exception as e:
         if "Approve failed" in str(e):
             raise
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     status_badge = page.locator('[data-testid="campaign-status-badge"]')
     expect(status_badge).to_be_visible(timeout=10000)
     expect(status_badge).to_contain_text("Согласована", timeout=5000)
@@ -120,10 +120,10 @@ def test_uismoke__campaign__approve(smoke_page: Page) -> None:
 
     # ── Reload persistence ──
     page.reload()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     # After reload, wait for campaign detail to render
     page.wait_for_selector("h2", state="visible", timeout=15000)
-    page.wait_for_timeout(1000)  # let React finish
+    wait_settled(page)  # let React finish
     status_badge = page.locator('[data-testid="campaign-status-badge"]')
     expect(status_badge).to_be_visible(timeout=20000)
     expect(status_badge).to_contain_text("Согласована", timeout=5000)

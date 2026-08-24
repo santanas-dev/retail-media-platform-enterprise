@@ -14,6 +14,7 @@ if not os.environ.get("UI_SMOKE_RUN"):
 
 from playwright.sync_api import Page, expect
 from conftest import (
+    wait_settled,
     BASE_URL,
     LOGIN_URL,
     login_as_break_glass_admin,
@@ -36,7 +37,7 @@ def _create_draft_campaign(page: Page) -> str:
 
     page.click('button:has-text("Создать черновик")')
     page.wait_for_url(lambda url: url != BASE_URL + "/campaigns/new", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     url = page.url
     return url.rstrip("/").split("/")[-1]
@@ -47,7 +48,7 @@ def _add_creative_to_library(page: Page, code: str) -> None:
     tab = page.locator('[data-testid="tab-content"]')
     expect(tab).to_be_visible(timeout=5000)
     tab.click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     add_lib = page.locator('[data-testid="creative-add-library-btn"]')
     expect(add_lib).to_be_visible(timeout=3000)
@@ -56,7 +57,7 @@ def _add_creative_to_library(page: Page, code: str) -> None:
     page.fill('[data-testid="creative-code"]', code)
     page.fill('[data-testid="creative-name"]', "Mod Approve Smoke")
     page.click('[data-testid="creative-add-submit"]')
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
 
 def _navigate_to_moderation(page: Page) -> None:
@@ -64,7 +65,7 @@ def _navigate_to_moderation(page: Page) -> None:
     mod_link = page.locator('aside nav a[href="/creatives/moderation"]')
     expect(mod_link).to_be_visible(timeout=5000)
     mod_link.click(force=True)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
 
 def test_uismoke__creative__moderate_approve(smoke_page: Page) -> None:
@@ -97,12 +98,12 @@ def test_uismoke__creative__moderate_approve(smoke_page: Page) -> None:
     approve_btn.click()
 
     # ── Wait for reload (list refreshes after approve) ──
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # ── Switch to "Одобрены" filter to verify persistence ──
     approved_filter = page.locator('[data-testid="moderation-filter-approved"]')
     approved_filter.click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # ── Verify status is now "Одобрен" ──
     row_after = page.locator(f'[data-testid="moderation-row-{creative_code}"]')
@@ -115,12 +116,12 @@ def test_uismoke__creative__moderate_approve(smoke_page: Page) -> None:
 
     # ── Reload to verify persistence ──
     page.reload()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # After reload, filter resets to "pending_review" — switch back to "approved"
     approved_filter2 = page.locator('[data-testid="moderation-filter-approved"]')
     approved_filter2.click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     row_reload = page.locator(f'[data-testid="moderation-row-{creative_code}"]')
     expect(row_reload).to_be_visible(timeout=10000)

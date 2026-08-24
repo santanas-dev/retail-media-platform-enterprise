@@ -19,7 +19,7 @@ all arbitrary `wait_for_timeout` sleeps.
 """
 import time
 import pytest
-from conftest import login_as_break_glass_admin, unique_suffix
+from conftest import login_as_break_glass_admin, unique_suffix, wait_settled
 
 SEED_SURFACE_ID = "00000000-0000-0000-0000-000000000031"
 
@@ -135,7 +135,7 @@ def test_uismoke__commerce__tariff_manage(smoke_page):
 
     # 8. Reload persistence check — both tariff and price item
     page.reload()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     page.wait_for_selector(
         '[data-testid="commerce-tariffs-page"]', state="visible", timeout=10000
     )

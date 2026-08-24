@@ -8,7 +8,7 @@ if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
 from playwright.sync_api import Page, expect
-from conftest import BASE_URL, login_as_break_glass_admin
+from conftest import BASE_URL, login_as_break_glass_admin, wait_settled
 
 
 def test_uismoke__emergency__deactivate(smoke_page: Page) -> None:
@@ -20,7 +20,7 @@ def test_uismoke__emergency__deactivate(smoke_page: Page) -> None:
 
     # ── Navigate to Emergency page ──
     page.locator('aside nav a[href="/emergency"]').click(force=True)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # ── Ensure active (activate if inactive) ──
     status_el = page.locator('[data-testid="emergency-status"]')
@@ -47,7 +47,7 @@ def test_uismoke__emergency__deactivate(smoke_page: Page) -> None:
     # ── Deactivate ──
     # Reload page to get clean React state after any prior activation
     page.reload()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     expect(page.locator('[data-testid="emergency-status"]')).to_have_text("АКТИВЕН", timeout=10000)
     reason_input = page.locator('[data-testid="emergency-reason-input"]')
     reason_input.fill("Работы завершены — smoke test")
@@ -79,6 +79,6 @@ def test_uismoke__emergency__deactivate(smoke_page: Page) -> None:
 
     # ── Reload: persistence ──
     page.reload()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     expect(page.locator('[data-testid="emergency-status"]')).to_have_text("НЕ АКТИВЕН", timeout=10000)
     print(f"[{time.time()-t0:.1f}s] Reload — inactive persists ✓ — DONE")

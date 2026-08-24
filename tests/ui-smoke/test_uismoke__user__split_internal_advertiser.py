@@ -21,7 +21,7 @@ if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
 from playwright.sync_api import Page, expect
-from conftest import BASE_URL, login_as_break_glass_admin
+from conftest import BASE_URL, login_as_break_glass_admin, wait_settled
 
 
 def navigate_to_users(page: Page) -> None:
@@ -29,7 +29,7 @@ def navigate_to_users(page: Page) -> None:
     users_link = page.locator('aside nav a[href="/users"]')
     users_link.click(force=True)
     page.wait_for_url("**/users", timeout=5000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
 
 def test_uismoke__user__split_internal_advertiser(smoke_page: Page) -> None:
@@ -77,8 +77,8 @@ def test_uismoke__user__split_internal_advertiser(smoke_page: Page) -> None:
 
     # ── Step 4: Internal tab ──
     tab_internal.click()
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(500)
+    wait_settled(page)
+    wait_settled(page)
 
     internal_table = page.locator('[data-testid="users-table-internal"]')
     expect(internal_table).to_be_visible(timeout=5000)
@@ -104,8 +104,8 @@ def test_uismoke__user__split_internal_advertiser(smoke_page: Page) -> None:
 
     # ── Step 5: Advertiser tab ──
     tab_advertiser.click()
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(500)
+    wait_settled(page)
+    wait_settled(page)
 
     advertiser_table = page.locator('[data-testid="users-table-advertiser"]')
     expect(advertiser_table).to_be_visible(timeout=5000)
@@ -135,8 +135,8 @@ def test_uismoke__user__split_internal_advertiser(smoke_page: Page) -> None:
     # ── Step 6: UUID invariant ──
     # Go back to Все tab to find the create button
     tab_all.click()
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(300)
+    wait_settled(page)
+    wait_settled(page)
 
     create_btn = page.locator('[data-testid="user-create-advertiser-open"]')
     expect(create_btn).to_be_visible(timeout=5000)
@@ -162,7 +162,7 @@ def test_uismoke__user__split_internal_advertiser(smoke_page: Page) -> None:
 
     # ── Step 7: Reload persistence ──
     page.locator('aside nav a[href="/campaigns"]').click(force=True)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     navigate_to_users(page)
 
     # Tab bar still visible after reload

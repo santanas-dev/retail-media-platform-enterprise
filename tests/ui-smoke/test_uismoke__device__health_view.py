@@ -6,7 +6,7 @@ Verifies: operator logs in, opens Devices page, sees KSO-001 with health fields.
 import os
 import pytest
 from playwright.sync_api import Page, expect
-from conftest import login_as_break_glass_admin
+from conftest import login_as_break_glass_admin, wait_settled
 
 pytestmark = pytest.mark.skipif(
     not os.environ.get("UI_SMOKE_RUN"),
@@ -22,7 +22,7 @@ BG_PASSWORD = os.environ.get("UI_SMOKE_BG_PASSWORD", "break-glass-dev-only")
 def _login(page: Page) -> None:
     """Login as break-glass admin (has devices.read)."""
     page.goto(LOGIN_URL)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     login_as_break_glass_admin(page)
 
 
@@ -36,7 +36,7 @@ def test_uismoke__device__health_view(page: Page) -> None:
     # Navigate to Devices page via sidebar
     devices_link = page.locator('aside nav a[href="/devices"]')
     devices_link.click(force=True)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # 1. Page-level data-testid
     page_header = page.locator('[data-testid="device-health-page"]')

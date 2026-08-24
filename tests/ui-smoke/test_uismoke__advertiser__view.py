@@ -14,7 +14,7 @@ DETERMINISTIC:
 Run:  UI_SMOKE_RUN=1 pytest tests/ui-smoke/test_uismoke__advertiser__view.py -v
 """
 
-from conftest import login_as_break_glass_admin
+from conftest import login_as_break_glass_admin, wait_settled
 
 # Seed org ADV-001 — must exist in seed
 TARGET_ORG_CODE = "ADV-001"
@@ -27,7 +27,7 @@ def navigate_to_advertisers(page):
     link = page.locator('aside nav a[href="/advertisers"]')
     link.click(force=True)
     page.wait_for_url("**/advertisers", timeout=5000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
 
 def test_uismoke__advertiser__view(smoke_page):
@@ -102,7 +102,7 @@ def test_uismoke__advertiser__view(smoke_page):
     users_tab.click()
 
     # Wait for users tab content — either empty state or user list
-    page.wait_for_timeout(500)
+    wait_settled(page)
 
     has_users = page.locator('[data-testid="advertiser-detail-users"]')
     has_empty = page.locator('[data-testid="advertiser-detail-users-empty"]')

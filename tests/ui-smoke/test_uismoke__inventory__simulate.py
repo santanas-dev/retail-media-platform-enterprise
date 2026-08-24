@@ -14,6 +14,7 @@ if not os.environ.get("UI_SMOKE_RUN"):
 
 from playwright.sync_api import Page, expect
 from conftest import (
+    wait_settled,
     BASE_URL,
     login_as_break_glass_admin,
     click_create_campaign_button,
@@ -35,7 +36,7 @@ def _create_draft_campaign(page: Page) -> str:
 
     page.click('button:has-text("Создать черновик")')
     page.wait_for_url(lambda url: url != BASE_URL + "/campaigns/new", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     url = page.url
     return url.rstrip("/").split("/")[-1]
@@ -46,7 +47,7 @@ def _add_flight(page: Page, start: str, end: str) -> None:
     tab = page.locator('[data-testid="tab-content"]')
     expect(tab).to_be_visible(timeout=5000)
     tab.click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     add_btn = page.locator('[data-testid="flight-add-btn"]')
     expect(add_btn).to_be_visible(timeout=3000)
@@ -55,7 +56,7 @@ def _add_flight(page: Page, start: str, end: str) -> None:
     page.fill('[data-testid="flight-start"]', start)
     page.fill('[data-testid="flight-end"]', end)
     page.click('[data-testid="flight-submit"]')
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
 
 def _add_placement(page: Page) -> None:
@@ -63,7 +64,7 @@ def _add_placement(page: Page) -> None:
     tab = page.locator('[data-testid="tab-content"]')
     expect(tab).to_be_visible(timeout=5000)
     tab.click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     add_btn = page.locator('[data-testid="placement-add-btn"]')
     expect(add_btn).to_be_visible(timeout=3000)
@@ -74,7 +75,7 @@ def _add_placement(page: Page) -> None:
     surface_select.select_option(index=1)
 
     page.click('[data-testid="placement-submit"]')
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
 
 def _add_creative_to_library(page: Page, code: str) -> None:
@@ -82,7 +83,7 @@ def _add_creative_to_library(page: Page, code: str) -> None:
     tab = page.locator('[data-testid="tab-content"]')
     expect(tab).to_be_visible(timeout=5000)
     tab.click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     add_lib = page.locator('[data-testid="creative-add-library-btn"]')
     expect(add_lib).to_be_visible(timeout=3000)
@@ -91,7 +92,7 @@ def _add_creative_to_library(page: Page, code: str) -> None:
     page.fill('[data-testid="creative-code"]', code)
     page.fill('[data-testid="creative-name"]', "Sim Creative")
     page.click('[data-testid="creative-add-submit"]')
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     attach_btn = page.locator('[data-testid="creative-attach-btn"]')
     expect(attach_btn).to_be_visible(timeout=3000)
@@ -105,7 +106,7 @@ def _add_creative_to_library(page: Page, code: str) -> None:
     page.locator('[data-testid="creative-attach-select"]').select_option(value=option_value)
 
     page.click('[data-testid="creative-attach-submit"]')
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
 
 def test_uismoke__inventory__simulate(smoke_page: Page) -> None:
@@ -124,7 +125,7 @@ def test_uismoke__inventory__simulate(smoke_page: Page) -> None:
     overview_tab = page.locator('[data-testid="tab-overview"]')
     expect(overview_tab).to_be_visible(timeout=5000)
     overview_tab.click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # ── Click "🧪 Симуляция" ──
     simulate_btn = page.locator('[data-testid="simulate-btn"]')

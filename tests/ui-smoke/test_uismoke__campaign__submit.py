@@ -8,7 +8,7 @@ if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
 from playwright.sync_api import Page, expect
-from conftest import BASE_URL, login_as_break_glass_admin
+from conftest import BASE_URL, login_as_break_glass_admin, wait_settled
 
 FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "test-creative.png")
 
@@ -31,7 +31,7 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     page.fill("#c-budget", "100000")
     page.click('button:has-text("Создать черновик")')
     page.wait_for_url(lambda url: url != BASE_URL + "/campaigns/new", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # ── CAMPAIGN-UX-001B: Step 0 — Dismiss guided banner if present ──
     # CAMPAIGN-UX-002D added a guided banner after campaign creation.
@@ -41,12 +41,12 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     try:
         expect(dismiss_btn).to_be_visible(timeout=3000)
         dismiss_btn.click()
-        page.wait_for_timeout(500)
+        wait_settled(page)
     except Exception:
         pass  # banner may not have appeared (rare)
     # Switch to Overview tab — guidedFromCreate sets initialTab="content"
     page.click('[data-testid="tab-overview"]')
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # ── Step 1 — Verify checklist on Overview ──
     checklist = page.locator('[data-testid="campaign-readiness-checklist"]')
@@ -63,18 +63,18 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
 
     # ── Use checklist action: flight ──
     page.locator('[data-testid="readiness-flight-action"]').click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     # Should now be on flights tab
     expect(page.locator('[data-testid="flight-add-btn"]')).to_be_visible(timeout=5000)
     page.click('[data-testid="flight-add-btn"]')
     page.fill('[data-testid="flight-start"]', "2027-03-01")
     page.fill('[data-testid="flight-end"]', "2027-03-31")
     page.click('[data-testid="flight-submit"]')
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # Return to Overview
     page.click('button:has-text("Обзор")')
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     # Wait for flight status to update (refreshFlights is async)
     page.wait_for_function(
         "document.querySelector('[data-testid=\"readiness-flight-status\"]')?.textContent === '✅'",
@@ -84,15 +84,15 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
 
     # ── Use checklist action: placement ──
     page.locator('[data-testid="readiness-placement-action"]').click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     expect(page.locator('[data-testid="placement-add-btn"]')).to_be_visible(timeout=5000)
     page.click('[data-testid="placement-add-btn"]')
     page.locator('[data-testid="placement-surface"]').select_option(index=1)
     page.click('[data-testid="placement-submit"]')
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     page.click('button:has-text("Обзор")')
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     page.wait_for_function(
         "document.querySelector('[data-testid=\"readiness-placement-status\"]')?.textContent === '✅'",
         timeout=10000,
@@ -102,7 +102,7 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     # ── Use checklist action: creative ──
     creative_code = f"SUB-CR-{os.urandom(2).hex()}"
     page.locator('[data-testid="readiness-creative-action"]').click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     expect(page.locator('[data-testid="tab-content"]')).to_be_visible(timeout=5000)
 
     # Use primary upload path
@@ -127,7 +127,7 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
 
     # Return to Overview
     page.click('button:has-text("Обзор")')
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     page.wait_for_function(
         "document.querySelector('[data-testid=\"readiness-creative-status\"]')?.textContent === '✅'",
         timeout=15000,
@@ -152,7 +152,7 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     except Exception as e:
         if "Submit failed" in str(e):
             raise
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     print(f"[{time.time()-t0:.1f}s] Submit done")
 
     # ── Verify ──
@@ -162,10 +162,10 @@ def test_uismoke__campaign__submit(smoke_page: Page) -> None:
     print(f"[{time.time()-t0:.1f}s] Status ✓")
 
     page.reload()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     # After reload, wait for campaign detail to render
     page.wait_for_selector("h2", state="visible", timeout=15000)
-    page.wait_for_timeout(1000)  # let React finish
+    wait_settled(page)  # let React finish
     status_badge = page.locator('[data-testid="campaign-status-badge"]')
     expect(status_badge).to_be_visible(timeout=20000)
     expect(status_badge).to_contain_text("На согласовании", timeout=5000)

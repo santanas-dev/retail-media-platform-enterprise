@@ -11,7 +11,7 @@ import pytest
 if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
-from conftest import login_as_break_glass_admin
+from conftest import login_as_break_glass_admin, wait_settled
 from playwright.sync_api import Page, expect
 
 BASE_URL = os.environ.get("UI_SMOKE_BASE_URL", "http://localhost:3000")
@@ -27,7 +27,7 @@ def test_uismoke__advertiser__invite(page: Page):
 
     # ── Phase 1: Create application via public form ──
     page.goto(PUBLIC_URL)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     expect(page.get_by_test_id("advertiser-apply-company-name")).to_be_visible()
 
     page.get_by_test_id("advertiser-apply-company-name").fill(f"ООО Инвайт-{TS}")
@@ -41,12 +41,12 @@ def test_uismoke__advertiser__invite(page: Page):
 
     # ── Phase 2: Login as admin ──
     page.goto(LOGIN_URL)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     login_as_break_glass_admin(page)
 
     # ── Phase 3: Navigate to advertiser applications ──
     page.get_by_role("link", name="Заявки рекламодателей").click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     table = page.get_by_test_id("advertiser-applications-table")
     expect(table).to_be_visible(timeout=10000)
@@ -67,7 +67,7 @@ def test_uismoke__advertiser__invite(page: Page):
     for _attempt in range(3):
         row = page.locator(f"tr:has-text('ООО Инвайт-{TS}')").first
         row.click()
-        page.wait_for_load_state("networkidle")
+        wait_settled(page)
         try:
             expect(approve_btn).to_be_visible(timeout=5000)
             break

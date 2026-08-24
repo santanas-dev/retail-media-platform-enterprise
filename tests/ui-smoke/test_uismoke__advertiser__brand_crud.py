@@ -6,14 +6,14 @@ Happy-path: login → Рекламодатели → select ADV-001 → Брен
 Only /login via page.goto(); all navigation via clicks.
 """
 import pytest
-from conftest import login_as_break_glass_admin, unique_suffix
+from conftest import login_as_break_glass_admin, unique_suffix, wait_settled
 
 
 def _navigate_to_advertisers(page):
     link = page.locator('aside nav a[href="/advertisers"]')
     link.click(force=True)
     page.wait_for_url("**/advertisers", timeout=8000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
 
 def test_uismoke__advertiser__brand_crud(smoke_page):
@@ -90,7 +90,7 @@ def test_uismoke__advertiser__brand_crud(smoke_page):
     # Reload persistence via sidebar navigation
     page.locator('aside nav a[href="/advertisers"]').click(force=True)
     page.wait_for_url("**/advertisers", timeout=8000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # Re-open detail
     row = page.locator('[data-testid="advertiser-org-row"]').first

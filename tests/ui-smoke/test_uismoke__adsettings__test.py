@@ -9,7 +9,7 @@ if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
 from playwright.sync_api import Page, expect
-from conftest import BASE_URL, login_as_break_glass_admin
+from conftest import BASE_URL, login_as_break_glass_admin, wait_settled
 
 
 def test_uismoke__adsettings__test(smoke_page: Page) -> None:
@@ -22,7 +22,7 @@ def test_uismoke__adsettings__test(smoke_page: Page) -> None:
 
     # ── Navigate to AD Settings ──
     page.locator('aside nav a[href="/settings/ad"]').click(force=True)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     expect(page.locator('[data-testid="adsettings-page"]')).to_be_visible(timeout=10000)
     print(f"[{time.time()-t0:.1f}s] AD settings page visible")
 
@@ -62,8 +62,8 @@ def test_uismoke__adsettings__test(smoke_page: Page) -> None:
 
     # ── Persistence: navigate away and back ──
     page.locator('aside nav a[href="/campaigns"]').click(force=True)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     page.locator('aside nav a[href="/settings/ad"]').click(force=True)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     expect(page.locator('[data-testid="adsettings-page"]')).to_be_visible(timeout=10000)
     print(f"[{time.time()-t0:.1f}s] Persistence OK")

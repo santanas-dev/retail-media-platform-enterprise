@@ -19,7 +19,7 @@ import re
 import time
 import pytest
 from playwright.sync_api import expect
-from conftest import login_as_break_glass_admin, unique_suffix
+from conftest import login_as_break_glass_admin, unique_suffix, wait_settled
 
 SEED_ADV_ORG_ID = "00000000-0000-0000-0000-000000000200"
 SEED_SURFACE_ID = "00000000-0000-0000-0000-000000000031"
@@ -51,7 +51,7 @@ def test_uismoke__commerce__order_create(smoke_page):
     page.fill('[data-testid="commerce-tariff-code"]', tariff_code)
     page.fill('[data-testid="commerce-tariff-name"]', f"Тариф для заказа {tariff_code}")
     page.locator('[data-testid="commerce-tariff-submit"]').click()
-    page.wait_for_timeout(1000)
+    wait_settled(page)
     page.wait_for_selector(f'text={tariff_code}', timeout=8000)
 
     # Get tariff ID from row data-testid
@@ -61,9 +61,9 @@ def test_uismoke__commerce__order_create(smoke_page):
 
     # 2. Create price item for this tariff (needed for order pricing)
     tariff_row.click()
-    page.wait_for_timeout(300)
+    wait_settled(page)
     page.locator('button:has-text("Прайс-листы")').click()
-    page.wait_for_timeout(500)
+    wait_settled(page)
     page.wait_for_selector('[data-testid="commerce-price-item-create-open"]', timeout=5000)
     page.locator('[data-testid="commerce-price-item-create-open"]').click()
     page.wait_for_selector('[data-testid="commerce-price-item-form"]', timeout=5000)
@@ -74,21 +74,21 @@ def test_uismoke__commerce__order_create(smoke_page):
     page.select_option('[data-testid="commerce-price-item-surface"]', index=1)
     page.fill('[data-testid="commerce-price-item-unit-price"]', "200")
     page.locator('[data-testid="commerce-price-item-submit"]').click()
-    page.wait_for_timeout(1000)
+    wait_settled(page)
     page.wait_for_selector('text=surface_day', timeout=5000)
 
     # 3a. Activate tariff (required for order creation)
     page.locator('button:has-text("Тарифы")').click()
-    page.wait_for_timeout(300)
+    wait_settled(page)
     page.locator(f'[data-testid^="commerce-tariff-row-"]:has-text("{tariff_code}") button:has-text("Изменить")').click()
     page.wait_for_selector('[data-testid="commerce-tariff-form"]', timeout=5000)
     page.select_option('[data-testid="commerce-tariff-status"]', "active")
     page.locator('[data-testid="commerce-tariff-submit"]').click()
-    page.wait_for_timeout(1000)
+    wait_settled(page)
 
     # 3b. Switch to Заказы tab
     page.locator('button:has-text("Заказы")').click()
-    page.wait_for_timeout(500)
+    wait_settled(page)
 
     # 4. Create order
     page.wait_for_selector('[data-testid="commerce-order-create-open"]', timeout=5000)
@@ -127,7 +127,7 @@ def test_uismoke__commerce__order_create(smoke_page):
     # dates pre-filled: today → today+7
 
     page.locator('[data-testid="commerce-order-submit"]').click()
-    page.wait_for_timeout(1500)
+    wait_settled(page)
 
     # Check for error message
     error_locator = page.locator('[data-testid="commerce-order-error"]')
@@ -153,7 +153,7 @@ def test_uismoke__commerce__order_create(smoke_page):
 
     # 6. Click order row to see detail
     order_row.click()
-    page.wait_for_timeout(500)
+    wait_settled(page)
     page.wait_for_selector('[data-testid="commerce-order-detail"]', timeout=5000)
     page.wait_for_selector('[data-testid="commerce-order-lines-table"]', timeout=5000)
 
@@ -174,37 +174,37 @@ def test_uismoke__commerce__order_create(smoke_page):
 
     # 7. Transition: draft → offered
     page.locator('[data-testid="commerce-order-transition-offered"]').click()
-    page.wait_for_timeout(1000)
+    wait_settled(page)
     page.wait_for_selector('text=Предложен', timeout=5000)
 
     # 8. Transition: offered → booked
     page.locator('[data-testid="commerce-order-transition-booked"]').click()
-    page.wait_for_timeout(1000)
+    wait_settled(page)
     page.wait_for_selector('text=Забронирован', timeout=5000)
 
     # 8b. Transition: booked → confirmed
     page.locator('[data-testid="commerce-order-transition-confirmed"]').click()
-    page.wait_for_timeout(1000)
+    wait_settled(page)
     page.wait_for_selector('text=Подтверждён', timeout=5000)
 
     # 8c. Transition: confirmed → closed (A3c — order_close proof)
     page.locator('[data-testid="commerce-order-transition-closed"]').click()
-    page.wait_for_timeout(1000)
+    wait_settled(page)
     page.wait_for_selector('text=Закрыт', timeout=5000)
 
     # 9. Update payment status
     page.select_option('[data-testid="commerce-order-payment-select"]', "paid")
-    page.wait_for_timeout(1500)
+    wait_settled(page)
     page.wait_for_selector('[data-testid="commerce-order-payment-status"]:has-text("Оплачен")', timeout=10000)
 
     # 10. Reload persistence — verify order stays closed
     page.reload()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     page.wait_for_selector('h1', timeout=10000)
 
     # Switch to Заказы and verify order survived as closed
     page.locator('button:has-text("Заказы")').click()
-    page.wait_for_timeout(500)
+    wait_settled(page)
     page.wait_for_selector('[data-testid="commerce-orders-table"]', timeout=8000)
     page.wait_for_selector('text=Закрыт', timeout=5000)
 
@@ -220,7 +220,7 @@ def test_uismoke__commerce__order_create(smoke_page):
 
     # Click order row to expand detail (selectedOrder resets on reload)
     reload_row.click()
-    page.wait_for_timeout(500)
+    wait_settled(page)
     page.wait_for_selector('[data-testid="commerce-order-detail"]', timeout=5000)
     page.wait_for_selector('[data-testid="commerce-order-payment-status"]:has-text("Оплачен")', timeout=5000)
 

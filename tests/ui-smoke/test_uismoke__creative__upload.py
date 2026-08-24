@@ -14,6 +14,7 @@ if not os.environ.get("UI_SMOKE_RUN"):
 
 from playwright.sync_api import Page, expect
 from conftest import (
+    wait_settled,
     BASE_URL,
     login_as_break_glass_admin,
     click_create_campaign_button,
@@ -36,7 +37,7 @@ def _create_draft_campaign(page: Page) -> str:
     page.click('button:has-text("Создать черновик")')
     # Wait for navigation away from /campaigns/new
     page.wait_for_url(lambda url: url != BASE_URL + "/campaigns/new", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     url = page.url
     return url.rstrip("/").split("/")[-1]
@@ -60,7 +61,7 @@ def test_uismoke__creative__upload(smoke_page: Page) -> None:
     tab_creatives = page.locator('[data-testid="tab-content"]')
     expect(tab_creatives).to_be_visible(timeout=5000)
     tab_creatives.click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # ── Step 2: Verify primary upload CTA is visible ──
     primary_section = page.locator('[data-testid="creative-upload-primary"]')
@@ -118,12 +119,12 @@ def test_uismoke__creative__upload(smoke_page: Page) -> None:
 
     # ── Step 7: Reload persistence ──
     page.reload()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     # Re-open creatives tab after reload
     tab_creatives = page.locator('[data-testid="tab-content"]')
     expect(tab_creatives).to_be_visible(timeout=5000)
     tab_creatives.click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # Verify persisted: status still «Готов» after reload
     page_content = page.content()

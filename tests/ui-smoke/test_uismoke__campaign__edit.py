@@ -18,7 +18,7 @@ import pytest
 if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
-from conftest import login_as_break_glass_admin
+from conftest import login_as_break_glass_admin, wait_settled
 from playwright.sync_api import Page, expect
 
 ADMIN_URL = os.environ.get("UI_SMOKE_BASE_URL", "http://localhost:3000")
@@ -37,7 +37,7 @@ def test_uismoke__campaign__edit(page: Page):
     # Phase 1: Login as break-glass admin
     # ═══════════════════════════════════════════════════════════
     page.goto(LOGIN_URL)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     login_as_break_glass_admin(page)
 
     # ═══════════════════════════════════════════════════════════
@@ -46,11 +46,11 @@ def test_uismoke__campaign__edit(page: Page):
     expect(page.get_by_test_id("campaign-create-open")).to_be_visible(timeout=5000)
     page.get_by_test_id("campaign-create-open").click()
     page.wait_for_url("**/campaigns/new", timeout=10000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # Select organization first (contract dropdown depends on it)
     page.select_option("#c-org", index=1)
-    page.wait_for_timeout(500)  # let contract list populate
+    wait_settled(page)  # let contract list populate
     page.select_option("#c-contract", index=1)
     page.fill("#c-code", CAMPAIGN_CODE)
     page.fill("#c-name", CAMPAIGN_NAME)
@@ -62,14 +62,14 @@ def test_uismoke__campaign__edit(page: Page):
         lambda url: "/campaigns/new" not in url and "/campaigns" in url,
         timeout=15000,
     )
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # ═══════════════════════════════════════════════════════════
     # Phase 3: Add a flight
     # ═══════════════════════════════════════════════════════════
     expect(page.get_by_test_id("tab-content")).to_be_visible(timeout=5000)
     page.get_by_test_id("tab-content").click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     expect(page.get_by_test_id("flight-add-btn")).to_be_visible(timeout=5000)
     page.get_by_test_id("flight-add-btn").click()
@@ -80,7 +80,7 @@ def test_uismoke__campaign__edit(page: Page):
     page.get_by_test_id("flight-start").fill(today)
     page.get_by_test_id("flight-end").fill(tomorrow)
     page.get_by_test_id("flight-submit").click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # Flight should appear in table — scope to flights section (002C: merged tab)
     flights_table = page.locator('[data-testid="content-flights-section"] table')
@@ -92,7 +92,7 @@ def test_uismoke__campaign__edit(page: Page):
     # Phase 4: Add a placement
     # ═══════════════════════════════════════════════════════════
     page.get_by_test_id("tab-content").click()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     expect(page.get_by_test_id("placement-add-btn")).to_be_visible(timeout=5000)
     page.get_by_test_id("placement-add-btn").click()
@@ -108,6 +108,6 @@ def test_uismoke__campaign__edit(page: Page):
         # Select first non-placeholder option
         surface_select.select_option(index=1)
         page.get_by_test_id("placement-submit").click()
-        page.wait_for_load_state("networkidle")
+        wait_settled(page)
         # Placement should appear in table — scope to placements section (002C)
         expect(page.locator('[data-testid="content-placements-section"] table')).to_be_visible(timeout=5000)

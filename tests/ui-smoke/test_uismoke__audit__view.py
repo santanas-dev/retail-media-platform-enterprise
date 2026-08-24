@@ -8,7 +8,7 @@ if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
 from playwright.sync_api import Page, expect
-from conftest import BASE_URL, login_as_break_glass_admin
+from conftest import BASE_URL, login_as_break_glass_admin, wait_settled
 
 API_URL = "http://localhost:8000/api/v1/identity"
 
@@ -56,7 +56,7 @@ def test_uismoke__audit__view(smoke_page: Page) -> None:
 
     # ── Navigate to Audit page ──
     page.locator('aside nav a[href="/audit"]').click(force=True)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # Verify page structure
     expect(page.locator('[data-testid="audit-page"]')).to_be_visible(timeout=10000)
@@ -81,7 +81,7 @@ def test_uismoke__audit__view(smoke_page: Page) -> None:
         if found:
             break
         page.reload()
-        page.wait_for_load_state("networkidle")
+        wait_settled(page)
         expect(page.locator('[data-testid="audit-table"]')).to_be_visible(timeout=10000)
 
     assert found, "Expected emergency.deactivated audit event not found"
@@ -114,9 +114,9 @@ def test_uismoke__audit__view(smoke_page: Page) -> None:
 
     # ── Persistence: navigate away and back ──
     page.locator('aside nav a[href="/campaigns"]').click(force=True)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     page.locator('aside nav a[href="/audit"]').click(force=True)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     expect(page.locator(f'[data-testid="audit-action-{event_id}"]')).to_be_visible(timeout=10000)
     print(f"[{time.time()-t0:.1f}s] Event persists after navigation ✓ — DONE")

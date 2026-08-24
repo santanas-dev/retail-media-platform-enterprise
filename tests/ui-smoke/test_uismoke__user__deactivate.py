@@ -9,7 +9,7 @@ if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
 from playwright.sync_api import Page, expect
-from conftest import BASE_URL, login_as_break_glass_admin
+from conftest import BASE_URL, login_as_break_glass_admin, wait_settled
 
 
 def test_uismoke__user__deactivate(smoke_page: Page) -> None:
@@ -22,8 +22,8 @@ def test_uismoke__user__deactivate(smoke_page: Page) -> None:
 
     # ── Navigate to Users ──
     page.locator('aside nav a[href="/users"]').click(force=True)
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1000)
+    wait_settled(page)
+    wait_settled(page)
 
     # ── Create throwaway user ──
     unique_id = str(uuid.uuid4())[:8]
@@ -36,12 +36,13 @@ def test_uismoke__user__deactivate(smoke_page: Page) -> None:
     page.locator('[data-testid="user-create-advertiser-display-name"]').fill("Smoke Deact Test")
     page.locator('[data-testid="user-create-advertiser-org-id"]').fill("00000000-0000-0000-0000-000000000200")
     page.locator('[data-testid="user-create-advertiser-submit"]').click()
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1000)
+    wait_settled(page)
+    wait_settled(page)
 
     # Verify creation and extract OTP from DOM
     result = page.locator('[data-testid="user-create-advertiser-result"]')
-    result_text = result.inner_text() if result.count() > 0 else ""
+    expect(result).to_be_visible(timeout=15000)
+    result_text = result.inner_text()
     print(f"[{time.time()-t0:.1f}s] Create result: {result_text[:200]}")
     assert "500" not in result_text, f"Create failed: {result_text}"
 
@@ -59,10 +60,10 @@ def test_uismoke__user__deactivate(smoke_page: Page) -> None:
 
     # ── Navigate away and back to refresh the list ──
     page.locator('aside nav a[href="/campaigns"]').click(force=True)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     page.locator('aside nav a[href="/users"]').click(force=True)
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1000)
+    wait_settled(page)
+    wait_settled(page)
 
     # ── Find the throwaway user row ──
     target_row = page.locator("tr", has=page.locator(f"text={smoke_username}"))
@@ -77,14 +78,14 @@ def test_uismoke__user__deactivate(smoke_page: Page) -> None:
     deact_btn = target_row.locator('[data-testid^="user-deactivate-open-"]')
     expect(deact_btn).to_be_visible(timeout=5000)
     deact_btn.click()
-    page.wait_for_timeout(500)
+    wait_settled(page)
 
     # Confirm deactivation
     confirm_btn = page.locator('[data-testid="user-deactivate-confirm"]')
     expect(confirm_btn).to_be_visible(timeout=5000)
     confirm_btn.click()
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1000)
+    wait_settled(page)
+    wait_settled(page)
 
     # Verify success
     success = page.locator('[data-testid="user-deactivate-success"]')
@@ -102,10 +103,10 @@ def test_uismoke__user__deactivate(smoke_page: Page) -> None:
 
     # ── Persistence: reload page, verify still inactive ──
     page.locator('aside nav a[href="/campaigns"]').click(force=True)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     page.locator('aside nav a[href="/users"]').click(force=True)
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1000)
+    wait_settled(page)
+    wait_settled(page)
 
     target_row = page.locator("tr", has=page.locator(f"text={smoke_username}"))
     expect(target_row).to_be_visible(timeout=10000)
@@ -117,14 +118,26 @@ def test_uismoke__user__deactivate(smoke_page: Page) -> None:
     # Logout first
     page.locator("button", has=page.locator("text=Выход")).click(force=True)
     page.wait_for_url("**/login", timeout=10000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # Attempt login as deactivated user
     page.select_option("#login-provider", "local_advertiser")
     page.fill("#login-username", smoke_username)
     page.fill("#login-password", otp)
-    page.click('button[type="submit"]')
-    page.wait_for_timeout(3000)
+    # A deactivated user must be REJECTED. Waiting for the DOM to settle would
+    # prove nothing here - the assertion below is negative, so the barrier has
+    # to be the login response itself. This is strictly stronger than the
+    # arbitrary sleep it replaces: it proves the backend answered and refused.
+    with page.expect_response(
+        lambda r: "/api/v1/auth/login" in r.url and r.request.method == "POST",
+        timeout=15000,
+    ) as login_response:
+        page.click('button[type="submit"]')
+    status = login_response.value.status
+    assert status >= 400, (
+        f"deactivated user login returned {status}; expected a rejection"
+    )
+    wait_settled(page)
 
     # Should see error or stay on login page (not redirected to campaigns)
     current_url = page.url

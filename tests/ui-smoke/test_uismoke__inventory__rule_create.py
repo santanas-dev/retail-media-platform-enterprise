@@ -9,7 +9,7 @@ if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
 from playwright.sync_api import Page, expect
-from conftest import BASE_URL, login_as_break_glass_admin
+from conftest import BASE_URL, login_as_break_glass_admin, wait_settled
 
 
 def test_uismoke__inventory__rule_create(smoke_page: Page) -> None:
@@ -22,13 +22,13 @@ def test_uismoke__inventory__rule_create(smoke_page: Page) -> None:
 
     # ── Navigate to Inventory → Rules tab ──
     page.locator('aside nav a[href="/inventory"]').click(force=True)
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1000)
+    wait_settled(page)
+    wait_settled(page)
 
     # Click "Правила" tab
     page.locator("button", has=page.locator("text=Правила")).click()
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1500)
+    wait_settled(page)
+    wait_settled(page)
     # Verify tab content loaded
     expect(page.locator('[data-testid="inventory-rule-create-open"]')).to_be_visible(timeout=10000)
     print(f"[{time.time()-t0:.1f}s] Rules tab loaded")
@@ -37,7 +37,7 @@ def test_uismoke__inventory__rule_create(smoke_page: Page) -> None:
     create_btn = page.locator('[data-testid="inventory-rule-create-open"]')
     expect(create_btn).to_be_visible(timeout=5000)
     create_btn.click()
-    page.wait_for_timeout(500)
+    wait_settled(page)
 
     # ── Fill form: max_sov, global, priority=17, SOV=35%, future dates ──
     page.select_option('[data-testid="inventory-rule-type"]', "max_sov")
@@ -49,8 +49,8 @@ def test_uismoke__inventory__rule_create(smoke_page: Page) -> None:
 
     # ── Submit ──
     page.click('[data-testid="inventory-rule-submit"]')
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1000)
+    wait_settled(page)
+    wait_settled(page)
 
     # ── Verify success banner ──
     success = page.locator('[data-testid="inventory-rule-success"]')
@@ -98,12 +98,12 @@ def test_uismoke__inventory__rule_create(smoke_page: Page) -> None:
 
     # ── Persistence: reload page, verify row still present ──
     page.locator('aside nav a[href="/campaigns"]').click(force=True)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     page.locator('aside nav a[href="/inventory"]').click(force=True)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     page.locator("button", has=page.locator("text=Правила")).click()
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(1000)
+    wait_settled(page)
+    wait_settled(page)
 
     persisted_row = page.locator(f'[data-testid="inventory-rule-row-{row_key}"]')
     expect(persisted_row).to_be_visible(timeout=10000)

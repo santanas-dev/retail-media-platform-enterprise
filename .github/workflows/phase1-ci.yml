@@ -419,6 +419,17 @@ jobs:
           test "$SERVED" = "$EXPECTED" || { echo "❌ MARKER MISMATCH"; tail -20 /tmp/advertiser-web.log; exit 1; }
       - name: Install Playwright browser
         run: python3 -m playwright install chromium
+      - name: Readiness-barrier contract tests (UI-SMOKE-STABILITY-005)
+        run: |
+          set -o pipefail
+          # Browser-only, no product stack: proves wait_settled waits for
+          # in-flight requests and the render they trigger, fails closed on a
+          # never-quiet DOM, and that no smoke file regressed to networkidle,
+          # arbitrary sleeps, or calling the barrier without importing it.
+          UI_SMOKE_RUN=1 python3 -m pytest tests/ui-contract -v 2>&1 | tee /tmp/ui-contract.txt
+          grep -qE '[0-9]+ passed' /tmp/ui-contract.txt || {
+            echo "::error::contract tests collected nothing"; exit 1; }
+
       - name: Run UI-smoke tests (P0 subset)
         run: |
           set -o pipefail

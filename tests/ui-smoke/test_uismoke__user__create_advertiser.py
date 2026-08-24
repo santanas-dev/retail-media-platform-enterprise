@@ -16,7 +16,7 @@ Run with:  UI_SMOKE_RUN=1 pytest tests/ui-smoke/test_uismoke__user__create_adver
 
 import secrets
 
-from conftest import login_as_break_glass_admin
+from conftest import login_as_break_glass_admin, wait_settled
 
 # Seed advertiser organization — must exist in seed (ООО «Рекламный Альянс», ADV-001)
 TARGET_ORG_ID = "00000000-0000-0000-0000-000000000200"
@@ -31,7 +31,7 @@ def navigate_to_users(page):
     users_link = page.locator('aside nav a[href="/users"]')
     users_link.click(force=True)
     page.wait_for_url("**/users", timeout=5000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
 
 def test_uismoke__user__create_advertiser(smoke_page):

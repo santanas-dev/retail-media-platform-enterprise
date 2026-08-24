@@ -8,6 +8,7 @@ import pytest
 if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
+from conftest import wait_settled
 from playwright.sync_api import Page, expect
 
 
@@ -38,7 +39,7 @@ def test_uismoke__system__theme_switch(smoke_page: Page) -> None:
 
     # 5. Reload and assert persistence
     page.reload()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     # After reload, login again (session cookie survived)
     # Wait for layout to render
     page.wait_for_selector("aside nav", state="visible", timeout=15000)
@@ -52,6 +53,6 @@ def test_uismoke__system__theme_switch(smoke_page: Page) -> None:
 
     # 7. Reload and assert light persisted
     page.reload()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
     page.wait_for_selector("aside nav", state="visible", timeout=15000)
     expect(page.locator("html")).to_have_attribute("data-theme", "light")

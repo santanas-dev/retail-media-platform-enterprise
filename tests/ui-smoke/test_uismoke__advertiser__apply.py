@@ -8,6 +8,7 @@ import pytest
 if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
+from conftest import wait_settled
 from playwright.sync_api import Page, expect
 
 # Must match conftest BASE_URL (admin-web :3000)
@@ -21,7 +22,7 @@ def test_uismoke__advertiser__apply(page: Page):
     """Public user submits advertiser application form without auth."""
     # 1. Open public entry route
     page.goto(APPLY_URL)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # 2. Verify form is visible (public, no login redirect)
     expect(page.get_by_test_id("advertiser-apply-company-name")).to_be_visible()

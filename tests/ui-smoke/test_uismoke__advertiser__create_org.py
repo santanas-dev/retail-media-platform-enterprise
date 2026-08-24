@@ -11,7 +11,7 @@ import random
 import string
 import time
 import pytest
-from conftest import login_as_break_glass_admin
+from conftest import login_as_break_glass_admin, wait_settled
 
 
 def _random_suffix():
@@ -29,7 +29,7 @@ def navigate_to_advertisers(page):
     link = page.locator('aside nav a[href="/advertisers"]')
     link.click(force=True)
     page.wait_for_url("**/advertisers", timeout=5000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
 
 def test_uismoke__advertiser__create_org(smoke_page):
@@ -80,7 +80,7 @@ def test_uismoke__advertiser__create_org(smoke_page):
     page.locator('[data-testid="advertiser-wizard-next"]').click()
 
     # Debug: wait a bit and check what's visible
-    page.wait_for_timeout(2000)
+    wait_settled(page)
     # Check for error first
     err_el = page.locator('[data-testid="advertiser-wizard-error"]')
     if err_el.count() > 0 and err_el.is_visible():
@@ -115,7 +115,7 @@ def test_uismoke__advertiser__create_org(smoke_page):
     page.wait_for_selector('[data-testid="advertiser-detail-panel"]', state="visible", timeout=10000)
 
     # Verify org display name visible
-    page.wait_for_timeout(1000)
+    wait_settled(page)
     assert ORG_DISPLAY in page.inner_text("body"), (
         f"Expected display name '{ORG_DISPLAY}' on page after wizard"
     )
@@ -135,7 +135,7 @@ def test_uismoke__advertiser__create_org(smoke_page):
 
     page.locator('aside nav a[href="/advertisers"]').click(force=True)
     page.wait_for_url("**/advertisers", timeout=5000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # Re-open the org
     rows = page.locator('[data-testid="advertiser-org-row"]')
@@ -148,6 +148,6 @@ def test_uismoke__advertiser__create_org(smoke_page):
 
     # Check legal tab for requisites
     page.locator('[data-testid="advertiser-tab-реквизиты"]').click()
-    page.wait_for_timeout(1000)
+    wait_settled(page)
     body = page.inner_text("body")
     assert "7700000000" in body, "INN should persist after reload"

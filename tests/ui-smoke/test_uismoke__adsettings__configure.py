@@ -15,7 +15,7 @@ Run with:  UI_SMOKE_RUN=1 pytest tests/ui-smoke/test_uismoke__adsettings__config
 """
 
 import pytest
-from conftest import login_as_break_glass_admin
+from conftest import login_as_break_glass_admin, wait_settled
 
 
 def navigate_to_ad_settings(page):
@@ -23,7 +23,7 @@ def navigate_to_ad_settings(page):
     link = page.locator('aside nav a[href="/settings/ad"]')
     link.click(force=True)
     page.wait_for_url("**/settings/ad", timeout=5000)
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
 
 def test_uismoke__adsettings__configure(smoke_page):
@@ -82,7 +82,7 @@ def test_uismoke__adsettings__configure(smoke_page):
 
     # Step 8: reload page and verify persistence
     page.reload()
-    page.wait_for_load_state("networkidle")
+    wait_settled(page)
 
     # Step 9: verify saved values
     # Check details card shows saved server_url
