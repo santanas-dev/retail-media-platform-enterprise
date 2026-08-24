@@ -662,3 +662,101 @@ def test_tool_only_uses_readonly_docker_subcommands():
     for cmd in _command_literals():
         if len(cmd) > 2 and cmd[0] == "docker" and cmd[1] == "compose":
             assert "up" not in cmd and "down" not in cmd, f"compose lifecycle verb: {cmd}"
+
+
+# --- 15. staging layout regression (001D-FU1) ---------------------------------
+#
+# pilot_host_preflight.py derives REPO_ROOT as parents[2] of its own path.  The
+# runbook originally documented a FLAT scp, which put the tool at
+# <stage>/pilot_host_preflight.py -> REPO_ROOT resolved outside the staging tree,
+# the pilot compose was not found, and the run ended in a FALSE FAIL.
+# scripts/deploy/stage_preflight.py is now the single source of the layout.
+
+STAGER = REPO_ROOT / "scripts" / "deploy" / "stage_preflight.py"
+
+
+def _load_stager():
+    spec = importlib.util.spec_from_file_location("stage_preflight", STAGER)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+sp = _load_stager()
+
+
+def test_staging_layout_is_repository_relative():
+    assert "scripts/deploy/pilot_host_preflight.py" in sp.STAGE_FILES
+    assert "infra/compose/docker-compose.pilot.yml" in sp.STAGE_FILES
+    for rel in sp.STAGE_FILES:
+        assert "/" in rel, f"{rel} would be staged flat, breaking REPO_ROOT"
+        assert (REPO_ROOT / rel).exists(), f"staged file missing from repo: {rel}"
+
+
+def test_entrypoint_depth_makes_stage_root_the_repo_root():
+    # parents[2] of <stage>/scripts/deploy/tool.py must be <stage>
+    assert Path(sp.ENTRYPOINT).parts[:2] == ("scripts", "deploy")
+    assert len(Path(sp.ENTRYPOINT).parts) == 3
+
+
+def test_stage_preserves_paths_and_compose_is_found(tmp_path):
+    dest = tmp_path / "stage"
+    sp.stage(dest)
+    tool = dest / sp.ENTRYPOINT
+    compose = dest / "infra/compose/docker-compose.pilot.yml"
+    assert tool.exists() and compose.exists()
+    # the resolution rule the tool itself uses
+    assert tool.resolve().parents[2] == dest.resolve()
+    assert (tool.resolve().parents[2] / "infra/compose/docker-compose.pilot.yml").exists()
+
+
+def test_staged_tree_yields_compose_safety_pass_not_false_fail(host, tmp_path, monkeypatch):
+    """The documented staging layout must find compose and PASS the safety check."""
+    dest = tmp_path / "stage"
+    sp.stage(dest)
+    host.compose = str(dest / "infra/compose/docker-compose.pilot.yml")
+    rep = pf.build_report(host)
+    st = _statuses(rep)
+    assert st["compose.safety"] == pf.PASS
+    assert st["compose.config"] != pf.FAIL
+    assert not any(c.id.startswith("compose") and c.status == pf.FAIL for c in rep.checks)
+
+
+def test_flat_layout_would_lose_compose(tmp_path):
+    """Documents the defect the stager prevents: flat copy breaks REPO_ROOT."""
+    flat = tmp_path / "flat"
+    flat.mkdir()
+    shutil_copy = __import__("shutil").copy2
+    shutil_copy(REPO_ROOT / sp.ENTRYPOINT, flat / "pilot_host_preflight.py")
+    staged_tool = flat / "pilot_host_preflight.py"
+    derived_root = staged_tool.resolve().parents[2]
+    assert not (derived_root / "infra/compose/docker-compose.pilot.yml").exists(), (
+        "flat layout unexpectedly resolved compose; the regression guard is meaningless"
+    )
+
+
+def test_stage_rejects_missing_requirements(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        sp.stage(tmp_path / "s", requirements=tmp_path / "nope.json")
+
+
+def test_stage_includes_requirements_at_expected_path(tmp_path):
+    req = tmp_path / "req.json"
+    req.write_text("{}")
+    dest = tmp_path / "stage"
+    sp.stage(dest, requirements=req)
+    assert (dest / sp.REQUIREMENTS_TARGET).exists()
+
+
+def test_stager_never_executes_the_preflight():
+    import ast as _ast
+    src = STAGER.read_text()
+    for node in _ast.walk(_ast.parse(src)):
+        if isinstance(node, _ast.List):
+            parts = [e.value for e in node.elts
+                     if isinstance(e, _ast.Constant) and isinstance(e.value, str)]
+            if parts and parts[0] in ("docker", "alembic"):
+                raise AssertionError(f"stager must not run {parts}")
+    assert "compose up" not in src.replace("no compose up", "")
