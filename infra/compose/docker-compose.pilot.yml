@@ -70,7 +70,7 @@ services:
     volumes:
       - nats_jetstream:/data
     healthcheck:
-      test: ["CMD-SHELL", "nats server check connection --server nats://localhost:4222"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8222/healthz || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 5
