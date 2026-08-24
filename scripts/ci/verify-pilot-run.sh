@@ -131,9 +131,18 @@ echo "app role ${APP_USER} provisioned (NOBYPASSRLS)"
 docker compose -p "$PROJECT" -f "$COMPOSE" --env-file "$ENV_FILE" up -d
 
 echo "waiting for db-migrate to complete..."
-docker compose -p "$PROJECT" -f "$COMPOSE" --env-file "$ENV_FILE" wait db-migrate >/dev/null 2>&1 || {
-  echo "FAIL: db-migrate did not complete successfully"; docker compose -p "$PROJECT" -f "$COMPOSE" --env-file "$ENV_FILE" logs db-migrate; exit 1;
-}
+for i in $(seq 1 120); do
+  state=$(docker inspect --format '{{.State.Status}}' "${PROJECT}-db-migrate-1" 2>/dev/null || echo "missing")
+  [[ "$state" == "exited" ]] && break
+  sleep 2
+done
+DB_MIGRATE_EXIT=$(docker inspect --format '{{.State.ExitCode}}' "${PROJECT}-db-migrate-1" 2>/dev/null || echo "missing")
+if [[ "$DB_MIGRATE_EXIT" != "0" ]]; then
+  echo "FAIL: db-migrate exit code=${DB_MIGRATE_EXIT}"
+  docker compose -p "$PROJECT" -f "$COMPOSE" --env-file "$ENV_FILE" logs db-migrate
+  exit 1
+fi
+echo "db-migrate completed (exit 0)"
 
 echo "waiting for services healthy..."
 for i in $(seq 1 90); do
