@@ -17,6 +17,33 @@ def _bool_env(name: str, default: bool = False) -> bool:
     return default
 
 
+def _is_private_http_origin(origin: str) -> bool:
+    """True for an http:// origin on loopback or an RFC1918 address.
+
+    Used to gate the local-stand cookie exception: a stand that is only
+    reachable on a trusted private network may serve the refresh cookie over
+    HTTP; anything routable must not.
+    """
+    import ipaddress
+    from urllib.parse import urlsplit
+
+    parts = urlsplit(origin.strip())
+    if parts.scheme != "http" or not parts.hostname:
+        return False
+    host = parts.hostname
+    if host in ("localhost", "127.0.0.1", "::1"):
+        return True
+    try:
+        addr = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    # 0.0.0.0 and :: classify as "private" but are wildcards, not destinations:
+    # an origin bound to them is reachable from every interface.
+    if addr.is_unspecified:
+        return False
+    return addr.is_private or addr.is_loopback
+
+
 def _is_dev() -> bool:
     """Heuristic: dev environment if common dev indicators are present."""
     env = os.environ.get("ENVIRONMENT", "").lower()
@@ -68,6 +95,12 @@ class SecurityConfig:
     refresh_token_cookie_name: str = "refresh_token"
     refresh_token_cookie_secure: bool = True  # overridden to False in dev
     refresh_token_cookie_samesite: str = "strict"
+    # LOCAL-STAND-COOKIE-001: a disposable local DEV/QA stand runs as staging on
+    # plain HTTP over a private LAN, where the browser drops a Secure cookie and
+    # the session cannot survive a reload. This narrow, fail-closed exception
+    # lets that one deployment serve the refresh cookie without Secure.
+    # HttpOnly, SameSite, lifetime and the refresh logic are unchanged.
+    local_stand_mode: bool = False
     refresh_token_cookie_path: str = "/api/v1/auth"
 
     # Audit
@@ -168,6 +201,13 @@ class SecurityConfig:
             self.creative_upload_url_ttl_seconds = int(ttl_env)
         # Load manifest signing key from env (S-021)
         self.manifest_signing_key = os.environ.get("MANIFEST_SIGNING_KEY", self.manifest_signing_key)
+
+        # LOCAL-STAND-COOKIE-001 - explicit, defaults preserve production
+        # behaviour: Secure stays on unless every gate below is satisfied.
+        self.local_stand_mode = _bool_env("LOCAL_STAND_MODE", self.local_stand_mode)
+        self.refresh_token_cookie_secure = _bool_env(
+            "REFRESH_TOKEN_COOKIE_SECURE", self.refresh_token_cookie_secure
+        )
         # Load AD settings from env (S-034)
         ad_enabled_env = os.environ.get("AD_ENABLED", "").lower()
         if ad_enabled_env in ("true", "1", "yes"):
@@ -205,6 +245,7 @@ class SecurityConfig:
         if self.dev_mode:
             self._validate_dev()
         else:
+            self._validate_local_stand_cookie()
             self._validate_production()
 
     def _validate_dev(self) -> None:
@@ -227,6 +268,42 @@ class SecurityConfig:
         self._validate_cors()
         # S-021a: dev mode — allow empty manifest key, but warn if weak
         self._validate_manifest_signing_dev()
+
+    def _validate_local_stand_cookie(self) -> None:
+        """Fail closed unless the whole local-stand gate is satisfied.
+
+        Refusing to boot is deliberate: silently re-enabling Secure would hide
+        a misconfiguration, and silently honouring the request on a routable
+        address would expose the refresh cookie in clear text.
+        """
+        if self.refresh_token_cookie_secure:
+            return  # nothing to gate - Secure is on
+
+        reasons: list[str] = []
+        env = os.environ.get("ENVIRONMENT", "").lower()
+        if env != "staging":
+            reasons.append(f"ENVIRONMENT must be 'staging' (got '{env or 'unset'}')")
+        if not self.local_stand_mode:
+            reasons.append("LOCAL_STAND_MODE must be true")
+        if _bool_env("SEED_DEV_CREDENTIALS", False):
+            reasons.append("SEED_DEV_CREDENTIALS must be false")
+        if not self.cors_allowed_origins:
+            reasons.append("CORS_ALLOWED_ORIGINS must list the stand origins")
+        for origin in self.cors_allowed_origins:
+            if origin.strip() == "*":
+                reasons.append("CORS_ALLOWED_ORIGINS must not contain a wildcard")
+            elif not _is_private_http_origin(origin):
+                reasons.append(
+                    f"CORS origin '{origin}' is not an http:// loopback/RFC1918 "
+                    f"address; an insecure refresh cookie is only allowed on a "
+                    f"private network")
+
+        if reasons:
+            raise ValueError(
+                "REFRESH_TOKEN_COOKIE_SECURE=false is only allowed for the local "
+                "DEV/QA stand and every condition must hold: "
+                + "; ".join(reasons)
+            )
 
     def _validate_production(self) -> None:
         """Production mode: require strong secrets, explicit CORS, non-local infra."""

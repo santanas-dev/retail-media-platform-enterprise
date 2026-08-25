@@ -38,6 +38,14 @@ services:
       # The stand runs as staging, so it supplies the variable here. The proper
       # fix belongs in the pilot compose and needs an owner decision.
       MANIFEST_SIGNING_KEY: ${MANIFEST_SIGNING_KEY}
+      # LOCAL-STAND-COOKIE-001: this stand is plain HTTP on a private LAN, where
+      # the browser drops a Secure cookie and the session cannot survive a
+      # reload. control-api fails closed unless ENVIRONMENT=staging,
+      # LOCAL_STAND_MODE=true, SEED_DEV_CREDENTIALS=false and every CORS origin
+      # is an http:// loopback/RFC1918 address. HttpOnly and SameSite are
+      # unchanged; the pilot profile and production defaults keep Secure=true.
+      LOCAL_STAND_MODE: "true"
+      REFRESH_TOKEN_COOKIE_SECURE: "false"
     # !override REPLACES the pilot list instead of merging with it. Without it
     # Compose CONCATENATES both lists, so the service gets the pilot's 0.0.0.0
     # mapping AND this one: the second bind fails with "address already in use",
