@@ -1,12 +1,32 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-24 (PILOT-DEPLOYMENT-READINESS-001D — preflight tooling ready, host proof pending)
+**Last updated:** 2026-08-25 (LOCAL-DEV-STAND-001 ✅ OPERATIONAL — disposable LAN DEV/QA stand)
 
-**Next Active Workstream:** **PILOT-DEPLOYMENT-READINESS-001D** — tooling готов; ожидаются owner inputs + approved read-only real-host preflight → 001E.
+**Next Active Workstream:** **ROADMAP-REBASE-003** — актуализация технической, бизнес- и UX-дорожной карты (без новой feature-разработки).
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `8ad0228` (main — PR #8 private namespace + label fix; tag `v0.11.1-pilot-packaging` → `90c4bb1` неизменен)
-- State/Docs SHA: `785f70f` (develop — 001D preflight tooling + packaging gate; CI `#32752657166` attempt 2 ✅). Payload SHA unchanged — продуктовый код не менялся.
+- State/Docs SHA: `0908c91` (develop — LOCAL-DEV-STAND-001 stand tooling). Stand bundle SHA `4635e72`. Payload SHA `8ad0228` unchanged — pilot/production release не менялся.
+
+**LOCAL-DEV-STAND-001 ✅ OPERATIONAL** — disposable LOCAL DEV/QA stand на rmp-pilot. **Это НЕ pilot и НЕ production.**
+
+- **URL:** admin `http://192.168.110.81:3000` · advertiser `http://192.168.110.81:3001` · API `http://192.168.110.81:8000/version` · MinIO S3 `http://192.168.110.81:9000` · device-gateway только с хоста `127.0.0.1:8001`. **Plain HTTP в доверенной LAN — это НЕ production-safe TLS.**
+- **Source SHA:** `4635e7252a8a7c98a3554d44dc8c31b9d1b3490e` (`stand-4635e72`). Lock checksum `2084e6e31a4177b91cc1a4a66c7d3ff6cd0ba34529540721512374b14246dd24`.
+- **Пять private digest (`ghcr.io/santanas-dev/rmp-pilot/<svc>`, теги `stand-4635e72` + `sha-4635e72`, без `latest`):** control-api `sha256:f0efedbf4b82…`, device-gateway `sha256:97c1410f773f…`, orchestrator-worker `sha256:8e5775d12d29…`, admin-web `sha256:26605ef938d0…`, advertiser-web `sha256:20615730a779…`. Единый SHA, mixed lock отсутствует. Visibility **private** ×5, anonymous pull denied ×5, authenticated digest pull ×5.
+- **Данные disposable, backup не требуется.** Обновление сохранило данные: campaigns 13 / creatives 11 / contracts 4 / users 2 (совпало с baseline), три volume целы.
+- **Команды:** `local_stand.py start|stop|status|logs|update|reset --confirm rmp-local-stand`; `update` принимает lock только digest-only и с проверенной checksum, сохраняет предыдущий lock и автоматически откатывается — откат подтверждён на практике трижды.
+- **GHCR:** на хосте оставлен постоянный read-only credential для периодических обновлений (`~/.docker` 700, `config.json` 600, owner santa).
+- **Секреты:** password-file contract — `/home/santa2/.config/rmp-local-stand/admin-password` (вне репозитория, 600); инструменты принимают только ПУТЬ (`--password-file` / `STAND_PASSWORD_FILE` / `UI_SMOKE_BG_PASSWORD_FILE` / `--password-stdin`), значение не проходит через argv, environment, логи, отчёты и git.
+- **LOCAL-STAND-COOKIE-001 (scoped product change):** `REFRESH_TOKEN_COOKIE_SECURE` и `LOCAL_STAND_MODE`, дефолты сохраняют production-поведение. `Secure=false` только при одновременном ENVIRONMENT=staging + LOCAL_STAND_MODE=true + SEED_DEV_CREDENTIALS=false + все CORS origins — http на loopback/RFC1918 без wildcard; иначе startup **fail-closed**. HttpOnly/SameSite/lifetime/refresh не менялись. Подтверждено на стенде: cookie `refresh_token` Secure=false, SameSite=Strict; reload сохраняет сессию.
+- **Browser proof (реальный Chromium против стенда):** `creative__upload` **3/3**, `campaign__create` и `advertiser__contract_pdf_upload` — 10/10, login+reload ✅. **Полный набор из четырёх smoke — НЕ 3/3, фактически 8/10.** Нестабилен только `self__login` (`advertiser-invite-token`) — **PENDING/BLOCKED**, относится к UI-SMOKE-STABILITY-005, требует отдельного расследования бизнес-journey. Тест НЕ удалён, НЕ skip/xfail, НЕ ослаблен.
+- **MinIO proof:** объекты существуют по ключам из БД — creative `test-creative.png` 69 B (совпадает с `file_size_bytes` в БД), contract `test-contract.pdf`; SHA-256 содержимого вычислены; 24 creative + 14 contract объектов; persistence после reload подтверждена.
+- **Найдено и исправлено по ходу (всё в deployment tooling, не в образах):** отсутствие reverse proxy для same-origin `/api` (образы по дизайну ожидают его от 001D); `MINIO_PUBLIC_ENDPOINT` со схемой (SDK: `path in endpoint is not allowed`); MinIO 403 из-за несуществующего пользователя под сгенерированные ключи; `must_change_password=None` → 500; конкатенация списков `ports` при merge compose (дубли + скрытый `0.0.0.0`); healthcheck фронтендов по `localhost` → IPv6; в `build-images.sh` фронтенды не собирались вовсе и тег ставился полным SHA; version identity не следовала за lock; nginx-резолв upstream один раз при старте → 502; диагностика терялась при откате.
+- **CI:** candidate-публикация опиралась на `#32835750809` (`9a4855a`) — red **только** по UI-SMOKE-STABILITY-005 при 12 зелёных релевантных gates (Unit Tests, Behavioral PostgreSQL, Packaging 001B, Import Boundaries, Roadmap, Style Tokens, Production Config, Backup/Restore, JSON Schema, Docker Compose, оба Frontend). Итоговый tooling-коммит `0908c91` — CI `#32841948901` **✅ success, attempt 1, 40/40, без rerun**. Это candidate-публикация для стенда, **не** pilot/production release.
+- **v0.11.1-pilot-packaging, main, Release assets, package visibility и старые версии — не изменялись.** Registry statuses не менялись: **58 total / 53 reachable / 5 blocked**.
+- **Pilot NOT DEPLOYED. Production NO-GO. Deployed production SHA = UNKNOWN/NOT TRACKED.**
+- **operator walkthrough:** PENDING (ставит только человек).
+- Next → **ROADMAP-REBASE-003**.
+- Checkpoint by PS-001.
 
 **PILOT-DEPLOYMENT-READINESS-001D — TOOLING READY / HOST PROOF PENDING** (НЕ DONE).
 
