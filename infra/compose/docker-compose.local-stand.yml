@@ -70,8 +70,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    ports: !override
-      - "${STAND_BIND_ADDR}:3000:3000"
+    # Not published directly any more: stand-proxy fronts it so that
+    # same-origin /api/v1/* reaches control-api (see stand-proxy below).
+    ports: !override []
 
   advertiser-web:
     healthcheck:
@@ -79,11 +80,71 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    ports: !override
-      - "${STAND_BIND_ADDR}:3001:3001"
+    ports: !override []
 
   minio:
     # S3 API only. The browser performs presigned PUT/GET against this address,
     # so MINIO_PUBLIC_ENDPOINT must resolve to it. Console (9001) stays unpublished.
     ports:
       - "${STAND_BIND_ADDR}:9000:9000"
+
+  # ---------------------------------------------------------------------------
+  # Reverse proxy (LOCAL-DEV-STAND-001-FU6)
+  #
+  # The frontend images serve the SPA only. Their own nginx config says so:
+  #   "It does NOT do TLS or host-level reverse proxying - that is 001D.
+  #    The frontend calls the backend via same-origin /api/v1/* paths, which the
+  #    pilot reverse proxy (001D) routes to control-api."
+  #
+  # That reverse proxy does not exist yet - 001D stopped at host preflight and
+  # TLS termination is still owner input. Without it the SPA's /api/v1/* calls
+  # are answered by its OWN nginx with index.html, so login silently never
+  # reaches control-api. Observed on the stand: zero POST /api/v1/auth/* in the
+  # control-api log while the browser got HTTP 200 + HTML.
+  #
+  # This is the stand's own component, not a change to the pilot profile, and it
+  # is plain HTTP on a trusted LAN - explicitly NOT production-safe TLS.
+  # ---------------------------------------------------------------------------
+  stand-proxy:
+    image: nginx:1.27-alpine
+    depends_on:
+      control-api:
+        condition: service_healthy
+      admin-web:
+        condition: service_healthy
+      advertiser-web:
+        condition: service_healthy
+    environment:
+      NGINX_CONF: |
+        server {
+          listen 3000;
+          location /api/ { proxy_pass http://control-api:8000;
+            proxy_set_header Host $$host;
+            proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $$scheme;
+            client_max_body_size 64m; }
+          location / { proxy_pass http://admin-web:3000;
+            proxy_set_header Host $$host; }
+        }
+        server {
+          listen 3001;
+          location /api/ { proxy_pass http://control-api:8000;
+            proxy_set_header Host $$host;
+            proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $$scheme;
+            client_max_body_size 64m; }
+          location / { proxy_pass http://advertiser-web:3001;
+            proxy_set_header Host $$host; }
+        }
+    command: >
+      sh -c "printf '%s' \"$$NGINX_CONF\" > /etc/nginx/conf.d/default.conf &&
+             nginx -t && exec nginx -g 'daemon off;'"
+    ports:
+      - "${STAND_BIND_ADDR}:3000:3000"
+      - "${STAND_BIND_ADDR}:3001:3001"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped

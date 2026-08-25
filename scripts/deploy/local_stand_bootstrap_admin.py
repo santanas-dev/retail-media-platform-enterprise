@@ -33,6 +33,8 @@ from __future__ import annotations
 import argparse
 import getpass
 import json
+import os
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -47,7 +49,7 @@ PROJECT = "rmp-local-stand"
 STAND_KIND = "local-dev-stand"
 
 DEFAULT_USERNAME = "break_glass_admin"
-CREDENTIAL_TYPE = "local_break_glass"
+CREDENTIAL_TYPE = "local_break_glass"   # fallback when auth_provider is unset
 HASH_ALGORITHM = "bcrypt"
 BCRYPT_ROUNDS = 12                      # must match apps/control-api/seed.py
 MIN_PASSWORD_LEN = 12
@@ -110,6 +112,40 @@ def assert_local_stand(explicit: bool) -> None:
         fail(f"project {PROJECT} is not running; start the stand first")
 
 
+def read_password_file(path: Path) -> str:
+    """Read the stand password from an owner-managed file outside the repo.
+
+    Only the PATH ever travels through argv or the environment - never the
+    value. The file must be a regular, owner-only file.
+    """
+    if not path.exists():
+        fail(f"password file not found: {path}")
+    if path.is_symlink():
+        fail(f"password file must not be a symlink: {path}")
+    if not path.is_file():
+        fail(f"password file is not a regular file: {path}")
+    mode = path.stat().st_mode
+    if mode & (stat.S_IRWXG | stat.S_IRWXO):
+        fail(f"password file {path} is group/other accessible "
+             f"({stat.filemode(mode)}); expected 0600")
+    value = path.read_text().strip("\n")
+    if not value:
+        fail(f"password file {path} is empty")
+    return value
+
+
+def read_password_stdin() -> str:
+    """Read the password from stdin - used when driving this over ssh.
+
+    Keeps the secret off the remote filesystem entirely: it exists only in this
+    process's memory on the stand host.
+    """
+    value = sys.stdin.readline().strip("\n")
+    if not value:
+        fail("no password received on stdin")
+    return value
+
+
 def prompt_password() -> str:
     """Read the password twice from a TTY. Never echoed, never stored."""
     if not sys.stdin.isatty():
@@ -159,6 +195,12 @@ def bootstrap(env: dict, username: str, password_hash: str) -> str:
     if not user_id:
         fail(f"user {username!r} not found - run migrations and seed first")
 
+    # Match the credential type to the user's own auth_provider. Seeding a
+    # break-glass credential onto an advertiser would be wrong, and a mismatch
+    # is what the login endpoint checks.
+    provider = _psql(env, f"SELECT auth_provider FROM users WHERE id='{user_id}'")
+    credential_type = provider if provider.startswith("local_") else CREDENTIAL_TYPE
+
     existing = _psql(
         env, f"SELECT 1 FROM local_credentials WHERE user_id='{user_id}'")
 
@@ -176,7 +218,7 @@ def bootstrap(env: dict, username: str, password_hash: str) -> str:
             "INSERT INTO local_credentials "
             "(id, user_id, credential_type, password_hash, "
             " password_hash_algorithm, must_change_password, status) "
-            f"VALUES (gen_random_uuid(), '{user_id}', '{CREDENTIAL_TYPE}', "
+            f"VALUES (gen_random_uuid(), '{user_id}', '{credential_type}', "
             f"'{password_hash}', '{HASH_ALGORITHM}', false, 'active');"
         )
         action = "created"
@@ -198,12 +240,34 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--local-stand", action="store_true",
                         help="required: acknowledge this targets the local stand")
     parser.add_argument("--username", default=DEFAULT_USERNAME)
+    parser.add_argument(
+        "--password-file", default=os.environ.get("STAND_PASSWORD_FILE"),
+        help="path to the owner-managed password file (the PATH, never the value)")
+    parser.add_argument(
+        "--password-stdin", action="store_true",
+        help="read the password from stdin (for ssh); keeps it off the remote disk")
+    parser.add_argument(
+        "--random-password", action="store_true",
+        help="generate a throwaway password instead of prompting. Only for "
+             "service accounts nobody logs in as: the product returns None for "
+             "must_change_password when a user has no credential row, which "
+             "makes AdvertiserUserMembershipOut fail validation with a 500.")
     args = parser.parse_args(argv)
 
     assert_local_stand(args.local_stand)
     env = read_env()
 
-    password = prompt_password()
+    if args.random_password:
+        import secrets as _secrets
+        password = _secrets.token_urlsafe(24)
+        print(f"generating a throwaway password for '{args.username}' "
+              f"(not printed, not stored - nobody is expected to log in as it)")
+    elif args.password_stdin:
+        password = read_password_stdin()
+    elif args.password_file:
+        password = read_password_file(Path(args.password_file))
+    else:
+        password = prompt_password()
     try:
         digest = hash_password(password)
     finally:

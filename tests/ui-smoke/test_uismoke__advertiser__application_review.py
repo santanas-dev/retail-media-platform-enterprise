@@ -10,14 +10,14 @@ import pytest
 if not os.environ.get("UI_SMOKE_RUN"):
     pytest.skip("UI_SMOKE_RUN not set", allow_module_level=True)
 
-from conftest import login_as_break_glass_admin, wait_settled
+from conftest import bg_password, login_as_break_glass_admin, wait_settled
 from playwright.sync_api import Page, expect
 
 BASE_URL = os.environ.get("UI_SMOKE_BASE_URL", "http://localhost:3000")
 LOGIN_URL = f"{BASE_URL}/login"
 PUBLIC_URL = f"{BASE_URL}/become-advertiser"
 ADMIN_USER = os.environ.get("UI_SMOKE_BG_USERNAME", "break_glass_admin")
-ADMIN_PASS = os.environ.get("UI_SMOKE_BG_PASSWORD", "break-glass-dev-only")
+ADMIN_PASS = bg_password()
 
 
 def test_uismoke__advertiser__application_review(page: Page):

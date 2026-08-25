@@ -343,9 +343,14 @@ def test_overlay_publishes_only_ui_api_and_object_ports():
     """
     doc = load_overlay()
     assert set(doc["services"]) == {
-        "control-api", "device-gateway", "admin-web", "advertiser-web", "minio"}
+        "control-api", "device-gateway", "admin-web", "advertiser-web",
+        "minio", "stand-proxy"}
     for infra in ("postgres", "redis", "nats"):
         assert infra not in doc["services"], f"{infra} must not be published by the overlay"
+    # The two portals are fronted by stand-proxy, so they publish nothing.
+    for fe in ("admin-web", "advertiser-web"):
+        assert not (doc["services"][fe].get("ports") or []), \
+            f"{fe} must not publish directly; stand-proxy fronts it"
 
 
 def test_overlay_binds_to_explicit_address_not_all_interfaces():
@@ -408,7 +413,7 @@ BIND = "192.168.110.81"
 
 def _stand_env(**over):
     env = {
-        "MINIO_PUBLIC_ENDPOINT": f"http://{BIND}:9000",
+        "MINIO_PUBLIC_ENDPOINT": f"{BIND}:9000",
         "CORS_ALLOWED_ORIGINS": f"http://{BIND}:3000,http://{BIND}:3001",
     }
     env.update(over)
@@ -420,17 +425,28 @@ def test_valid_stand_env_has_no_problems():
 
 
 @pytest.mark.parametrize("endpoint", [
-    "", "http://localhost:9000", "http://127.0.0.1:9000", "minio:9000",
-    "http://minio:9000", f"{BIND}:9000",
+    "",                              # unset
+    "localhost:9000",                # host-internal
+    "127.0.0.1:9000",                # host-internal
+    "minio:9000",                    # container-internal
+    f"http://{BIND}:9000",           # scheme: MinIO SDK raises on it
+    f"https://{BIND}:9000",          # scheme
+    f"{BIND}:9000/bucket",           # path: MinIO SDK raises on it
 ])
-def test_unreachable_minio_endpoint_rejected(endpoint):
+def test_unreachable_or_invalid_minio_endpoint_rejected(endpoint):
     problems = ls.validate_stand_env(_stand_env(MINIO_PUBLIC_ENDPOINT=endpoint), BIND)
     assert problems, f"{endpoint!r} should be rejected"
 
 
+def test_minio_endpoint_scheme_is_rejected_with_sdk_reason():
+    problems = ls.validate_stand_env(
+        _stand_env(MINIO_PUBLIC_ENDPOINT=f"http://{BIND}:9000"), BIND)
+    assert any("scheme" in p for p in problems), problems
+
+
 def test_minio_endpoint_must_match_bind_address():
     problems = ls.validate_stand_env(
-        _stand_env(MINIO_PUBLIC_ENDPOINT="http://10.0.0.9:9000"), BIND)
+        _stand_env(MINIO_PUBLIC_ENDPOINT="10.0.0.9:9000"), BIND)
     assert any("bind address" in p for p in problems)
 
 
@@ -448,7 +464,7 @@ def test_wildcard_cors_rejected():
 
 
 def test_start_refuses_invalid_stand_env(tmp_path, monkeypatch):
-    monkeypatch.setattr(ls, "read_env", lambda: _stand_env(MINIO_PUBLIC_ENDPOINT="http://minio:9000"))
+    monkeypatch.setattr(ls, "read_env", lambda: _stand_env(MINIO_PUBLIC_ENDPOINT="minio:9000"))
     with pytest.raises(SystemExit):
         ls.cmd_start(_Args(bind=BIND))
 

@@ -213,13 +213,22 @@ def validate_stand_env(env: dict, bind: str) -> list[str]:
     if not endpoint:
         problems.append("MINIO_PUBLIC_ENDPOINT is empty")
     else:
-        if bind not in endpoint:
+        # The MinIO SDK parses this as host[:port] and rejects a scheme or path
+        # outright ("path in endpoint is not allowed"), which surfaces as a 500
+        # on every presigned-URL request. Observed on the stand.
+        if endpoint.startswith(("http://", "https://")):
+            problems.append(
+                f"MINIO_PUBLIC_ENDPOINT ({endpoint}) must NOT include a scheme - "
+                f"the MinIO SDK rejects it; use host:port and set MINIO_SECURE")
+        if "/" in endpoint:
+            problems.append(
+                f"MINIO_PUBLIC_ENDPOINT ({endpoint}) must not contain a path")
+        host = endpoint.split(":", 1)[0]
+        if host != bind:
             problems.append(
                 f"MINIO_PUBLIC_ENDPOINT ({endpoint}) must point at the published "
                 f"bind address {bind}:9000, otherwise browser upload cannot reach it")
-        if not endpoint.startswith(("http://", "https://")):
-            problems.append(f"MINIO_PUBLIC_ENDPOINT must include a scheme: {endpoint}")
-        if any(h in endpoint for h in ("localhost", "127.0.0.1", "minio:9000")):
+        if host in ("localhost", "127.0.0.1", "minio"):
             problems.append(
                 f"MINIO_PUBLIC_ENDPOINT ({endpoint}) is host-internal; the browser "
                 f"cannot resolve it")

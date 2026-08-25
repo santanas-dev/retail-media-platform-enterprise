@@ -6,7 +6,7 @@ Verifies: operator logs in, opens Devices page, sees KSO-001 with health fields.
 import os
 import pytest
 from playwright.sync_api import Page, expect
-from conftest import login_as_break_glass_admin, wait_settled
+from conftest import bg_password, login_as_break_glass_admin, wait_settled
 
 pytestmark = pytest.mark.skipif(
     not os.environ.get("UI_SMOKE_RUN"),
@@ -16,7 +16,7 @@ pytestmark = pytest.mark.skipif(
 BASE_URL = os.environ.get("UI_SMOKE_BASE_URL", "http://localhost:3000")
 LOGIN_URL = f"{BASE_URL}/login"
 BG_USERNAME = os.environ.get("UI_SMOKE_BG_USERNAME", "break_glass_admin")
-BG_PASSWORD = os.environ.get("UI_SMOKE_BG_PASSWORD", "break-glass-dev-only")
+BG_PASSWORD = bg_password()
 
 
 def _login(page: Page) -> None:

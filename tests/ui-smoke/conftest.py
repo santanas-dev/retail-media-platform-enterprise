@@ -31,6 +31,7 @@ if not _RUN_SMOKE:
     verify_campaign_created = _stub
     unique_suffix = _stub
     wait_settled = _stub
+    bg_password = _stub
 
 else:
     import pytest
@@ -39,9 +40,38 @@ else:
     BASE_URL = os.environ.get("UI_SMOKE_BASE_URL", "http://localhost:3000")
     LOGIN_URL = f"{BASE_URL}/login"
     BG_USERNAME = os.environ.get("UI_SMOKE_BG_USERNAME", "break_glass_admin")
-    BG_PASSWORD = os.environ.get(
-        "UI_SMOKE_BG_PASSWORD", "break-glass-dev-only"
-    )
+    def _read_password_file(path: str) -> str:
+        """Read a password from an owner-managed file.
+
+        Against a real stand the secret must not travel through the
+        environment, so only the PATH is passed in
+        (UI_SMOKE_BG_PASSWORD_FILE) and the value is read here.
+        """
+        import stat as _stat
+        from pathlib import Path as _Path
+
+        p = _Path(path)
+        if p.is_symlink() or not p.is_file():
+            raise RuntimeError(f"password file must be a regular file: {path}")
+        if p.stat().st_mode & (_stat.S_IRWXG | _stat.S_IRWXO):
+            raise RuntimeError(f"password file {path} is group/other accessible")
+        value = p.read_text().strip("\n")
+        if not value:
+            raise RuntimeError(f"password file {path} is empty")
+        return value
+
+    def bg_password() -> str:
+        """Single source for the admin password used by the smoke suite.
+
+        Prefers UI_SMOKE_BG_PASSWORD_FILE (a PATH) so the secret never travels
+        through the environment; falls back to the dev default for CI.
+        """
+        path = os.environ.get("UI_SMOKE_BG_PASSWORD_FILE")
+        if path:
+            return _read_password_file(path)
+        return os.environ.get("UI_SMOKE_BG_PASSWORD", "break-glass-dev-only")
+
+    BG_PASSWORD = bg_password()
 
     @pytest.fixture(scope="session")
     def browser_context_args(browser_context_args: dict) -> dict:
