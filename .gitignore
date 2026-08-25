@@ -60,3 +60,6 @@ apps/*/public/build-marker.txt
 
 # Infra
 infra/data/
+
+# Stand bundle checksum — regenerated per publish, not canon.
+infra/deploy/SHA256SUMS.stand

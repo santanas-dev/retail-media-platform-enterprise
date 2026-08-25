@@ -114,7 +114,8 @@ services:
   # is plain HTTP on a trusted LAN - explicitly NOT production-safe TLS.
   # ---------------------------------------------------------------------------
   stand-proxy:
-    image: nginx:1.27-alpine
+    # Pinned by digest: the stand must not silently change proxy build.
+    image: nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
     depends_on:
       control-api:
         condition: service_healthy
@@ -124,24 +125,34 @@ services:
         condition: service_healthy
     environment:
       NGINX_CONF: |
+        # Docker's embedded DNS with a short TTL, and upstreams addressed
+        # through variables: nginx resolves a literal proxy_pass name ONCE at
+        # startup, so after `local_stand update` recreates the app containers
+        # their new IPs were never picked up and every request returned 502.
+        resolver 127.0.0.11 valid=10s ipv6=off;
         server {
           listen 3000;
-          location /api/ { proxy_pass http://control-api:8000;
+          location = /proxy-health { return 200 "ok\n"; }
+          set $$api http://control-api:8000;
+          set $$adminweb http://admin-web:3000;
+          location /api/ { proxy_pass $$api$$request_uri;
             proxy_set_header Host $$host;
             proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $$scheme;
             client_max_body_size 64m; }
-          location / { proxy_pass http://admin-web:3000;
+          location / { proxy_pass $$adminweb;
             proxy_set_header Host $$host; }
         }
         server {
           listen 3001;
-          location /api/ { proxy_pass http://control-api:8000;
+          set $$api2 http://control-api:8000;
+          set $$advweb http://advertiser-web:3001;
+          location /api/ { proxy_pass $$api2$$request_uri;
             proxy_set_header Host $$host;
             proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $$scheme;
             client_max_body_size 64m; }
-          location / { proxy_pass http://advertiser-web:3001;
+          location / { proxy_pass $$advweb;
             proxy_set_header Host $$host; }
         }
     command: >
@@ -151,7 +162,9 @@ services:
       - "${STAND_BIND_ADDR}:3000:3000"
       - "${STAND_BIND_ADDR}:3001:3001"
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/healthz || exit 1"]
+      # Probes the proxy itself, not an upstream: a failing app must show up as
+      # that app being unhealthy, not as the proxy disappearing.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/proxy-health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

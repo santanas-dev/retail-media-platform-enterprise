@@ -181,8 +181,26 @@ def read_env() -> dict[str, str]:
     return env
 
 
+def version_identity(lock: dict) -> dict[str, str]:
+    """Version identity the deployed images must report.
+
+    The images read RMP_VERSION/RMP_GIT_SHA from the environment, so switching
+    the lock without switching these leaves /version advertising the previous
+    release - which is exactly what the identity check is meant to catch, and
+    what made the first successful pull still fail verification.
+    """
+    rel = lock.get("release") or {}
+    identity = {}
+    version = rel.get("version") or rel.get("tag")
+    if version:
+        identity["RMP_VERSION"] = version
+    if rel.get("git_sha"):
+        identity["RMP_GIT_SHA"] = rel["git_sha"]
+    return identity
+
+
 def write_env_images(refs: dict[str, str]) -> None:
-    """Rewrite only the five image lines; every other value is left untouched."""
+    """Rewrite only the given keys; every other value is left untouched."""
     lines = ENV_FILE.read_text().splitlines()
     out, seen = [], set()
     for line in lines:
@@ -274,6 +292,110 @@ def save_previous() -> None:
         shutil.copy2(LOCK_CURRENT, LOCK_PREVIOUS)
     if RECORD_CURRENT.exists():
         shutil.copy2(RECORD_CURRENT, RECORD_PREVIOUS)
+
+
+# --- failure diagnostics -----------------------------------------------------
+
+# Secret-shaped values are stripped before anything is written: an env value is
+# only ever reported as present/absent, never printed.
+# Names that LOOK secret-shaped but are booleans/labels worth seeing: hiding
+# REFRESH_TOKEN_COOKIE_SECURE would redact the very flag a cookie-gate failure
+# needs. Matched first so the generic rule below cannot swallow them.
+_NON_SECRET_KEYS = (
+    "REFRESH_TOKEN_COOKIE_SECURE",
+    "REFRESH_TOKEN_COOKIE_SAMESITE",
+    "REFRESH_TOKEN_COOKIE_NAME",
+    "REFRESH_TOKEN_COOKIE_PATH",
+    "LOCAL_STAND_MODE",
+    "SEED_DEV_CREDENTIALS",
+    "METRICS_AUTH_TOKEN_REQUIRED",
+)
+_NON_SECRET_RE = re.compile(
+    r"(?i)^(?:" + "|".join(_NON_SECRET_KEYS) + r")\s*[=:]")
+
+_SECRET_RE = re.compile(
+    r"(?i)((?:password|secret|token|key|dsn)[\w-]*\s*[=:]\s*)(\S+)")
+_URL_PW_RE = re.compile(r"(://[^:/@\s]+:)([^@/\s]+)(@)")
+
+# Env names whose PRESENCE (not value) matters for the local-stand cookie gate.
+_GATE_KEYS = ("LOCAL_STAND_MODE", "REFRESH_TOKEN_COOKIE_SECURE",
+              "ENVIRONMENT", "SEED_DEV_CREDENTIALS", "CORS_ALLOWED_ORIGINS")
+
+
+def _sanitize(text: str) -> str:
+    """Redact secret values, but keep the diagnostic flags readable."""
+    lines = []
+    for line in (text or "").splitlines():
+        if _NON_SECRET_RE.match(line.strip()):
+            lines.append(line)          # a boolean/label, not a credential
+            continue
+        out = _SECRET_RE.sub(r"\1<redacted>", line)
+        lines.append(_URL_PW_RE.sub(r"\1<redacted>\3", out))
+    return "\n".join(lines)
+
+
+def collect_diagnostics(dest: Path) -> Path:
+    """Capture why an update failed - BEFORE anything is torn down.
+
+    A rollback removes the failed containers, taking their logs with them, so
+    this must run first or the evidence is gone. Everything written here is
+    sanitized; no secret value is recorded.
+    """
+    dest.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    report = dest / f"update-failure-{stamp}.txt"
+    chunks: list[str] = [f"=== local-stand update failure {stamp} ==="]
+
+    def _add(title: str, body: str) -> None:
+        chunks.append(f"\n--- {title} ---\n{_sanitize(body).strip()}")
+
+    p = compose("config", capture=True, check=False)
+    _add("resolved compose config (sanitized)", p.stdout or p.stderr)
+
+    p = compose("ps", "-a", capture=True, check=False)
+    _add("compose ps -a", p.stdout or p.stderr)
+
+    p = run(["docker", "ps", "-a", "--filter",
+             f"label=com.docker.compose.project={PROJECT}",
+             "--format", "{{.Names}}|{{.State}}|{{.Status}}"],
+            capture=True, check=False)
+    rows = [r for r in (p.stdout or "").splitlines() if r.strip()]
+    _add("container states", "\n".join(rows))
+
+    for row in rows:
+        name = row.split("|", 1)[0]
+        insp = run(["docker", "inspect", "--format",
+                    "state={{.State.Status}} exit={{.State.ExitCode}} "
+                    "health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} "
+                    "image={{.Image}}", name], capture=True, check=False)
+        state = (insp.stdout or "").strip()
+        _add(f"inspect {name}", state)
+
+        if "exit=0" not in state or "health=unhealthy" in state:
+            logs = run(["docker", "logs", "--tail", "120", name],
+                       capture=True, check=False)
+            _add(f"logs {name} (sanitized, last 120)",
+                 (logs.stdout or "") + (logs.stderr or ""))
+
+        env = run(["docker", "inspect", "--format",
+                   "{{range .Config.Env}}{{println .}}{{end}}", name],
+                  capture=True, check=False)
+        present = []
+        for line in (env.stdout or "").splitlines():
+            key = line.split("=", 1)[0]
+            if key in _GATE_KEYS:
+                # ENVIRONMENT and the two flags are not secrets; the rest is
+                # reported as presence only.
+                if key in ("ENVIRONMENT", "LOCAL_STAND_MODE",
+                           "REFRESH_TOKEN_COOKIE_SECURE", "SEED_DEV_CREDENTIALS"):
+                    present.append(line)
+                else:
+                    present.append(f"{key}=<set>")
+        _add(f"gate env {name}", "\n".join(present) or "(none of the gate keys set)")
+
+    report.write_text("\n".join(chunks) + "\n")
+    report.chmod(0o600)
+    return report
 
 
 # --- health ------------------------------------------------------------------
@@ -448,7 +570,7 @@ def cmd_start(args) -> int:
     if not LOCK_CURRENT.exists():
         fail(f"no lock deployed yet: {LOCK_CURRENT} (use 'update --lock ...')")
     lock = verify_lock(LOCK_CURRENT, None)
-    write_env_images(image_refs(lock))
+    write_env_images({**image_refs(lock), **version_identity(lock)})
     _bring_up(env)
 
     ok, unhealthy = wait_healthy()
@@ -517,7 +639,7 @@ def cmd_update(args) -> int:
 
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     shutil.copy2(new_lock_path, LOCK_CURRENT)
-    write_env_images(image_refs(new_lock))
+    write_env_images({**image_refs(new_lock), **version_identity(new_lock)})
 
     print("=== applying update ===")
     try:
@@ -532,12 +654,18 @@ def cmd_update(args) -> int:
             raise RuntimeError("; ".join(problems))
     except (RuntimeError, SystemExit) as e:
         print(f"\nUPDATE FAILED: {e}", file=sys.stderr)
+        # Evidence first: rollback deletes the failed containers and their logs.
+        try:
+            report = collect_diagnostics(STATE_DIR / "diagnostics")
+            print(f"diagnostics written: {report}", file=sys.stderr)
+        except Exception as diag_err:            # never mask the real failure
+            print(f"diagnostics collection failed: {diag_err}", file=sys.stderr)
         if not had_previous:
             fail("no previous lock to roll back to; stand left stopped")
         print("=== rolling back to previous lock ===")
         shutil.copy2(LOCK_PREVIOUS, LOCK_CURRENT)
         prev = verify_lock(LOCK_CURRENT, None)
-        write_env_images(image_refs(prev))
+        write_env_images({**image_refs(prev), **version_identity(prev)})
         _bring_up(env)
         ok, unhealthy = wait_healthy()
         if RECORD_PREVIOUS.exists():

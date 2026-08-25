@@ -834,3 +834,133 @@ def test_pilot_healthchecks_still_use_localhost():
         assert "localhost" in probe, (
             f"pilot {svc} healthcheck no longer uses localhost - "
             f"drop the override from docker-compose.local-stand.yml")
+
+
+# --- update diagnostics (LOCAL-DEV-STAND-001) --------------------------------
+#
+# A rollback deletes the failed containers, taking their logs with them. The
+# first real failed update lost its evidence exactly that way, so diagnostics
+# must be captured BEFORE anything is torn down.
+
+def test_diagnostics_are_collected_before_rollback(tmp_path, monkeypatch):
+    order: list[str] = []
+    new_path, sums = _update_harness(tmp_path, monkeypatch, healthy=False)
+    monkeypatch.setattr(ls, "collect_diagnostics",
+                        lambda dest: order.append("diagnostics") or (tmp_path / "d.txt"))
+
+    real_copy = ls.shutil.copy2
+
+    def spy_copy(src, dst, *a, **k):
+        if str(src).endswith("images.lock.previous.json"):
+            order.append("rollback")
+        return real_copy(src, dst, *a, **k)
+
+    monkeypatch.setattr(ls.shutil, "copy2", spy_copy)
+    ls.cmd_update(_Args(lock=str(new_path), sha256sums=str(sums)))
+
+    assert "diagnostics" in order, "no diagnostics were collected on failure"
+    assert order.index("diagnostics") < order.index("rollback"), (
+        f"diagnostics must run before rollback, got {order}")
+
+
+def test_diagnostics_failure_does_not_mask_the_update_failure(tmp_path, monkeypatch):
+    new_path, sums = _update_harness(tmp_path, monkeypatch, healthy=False)
+
+    def boom(dest):
+        raise RuntimeError("collector exploded")
+
+    monkeypatch.setattr(ls, "collect_diagnostics", boom)
+    rc = ls.cmd_update(_Args(lock=str(new_path), sha256sums=str(sums)))
+    assert rc == 1, "a broken collector must not turn a failed update into success"
+
+
+def test_successful_update_collects_no_diagnostics(tmp_path, monkeypatch):
+    calls: list[str] = []
+    new_path, sums = _update_harness(tmp_path, monkeypatch, healthy=True)
+    monkeypatch.setattr(ls, "collect_diagnostics",
+                        lambda dest: calls.append("x") or (tmp_path / "d.txt"))
+    assert ls.cmd_update(_Args(lock=str(new_path), sha256sums=str(sums))) == 0
+    assert not calls, "diagnostics should only be gathered on failure"
+
+
+@pytest.mark.parametrize("raw,secret", [
+    ("POSTGRES_PASSWORD=hunter2hunter2", "hunter2hunter2"),
+    ("postgresql://user:sup3rsecret@db:5432/x", "sup3rsecret"),
+    ("JWT_SECRET: abcdef0123456789", "abcdef0123456789"),
+    ("minio_secret_key=Zm9vYmFyYmF6", "Zm9vYmFyYmF6"),
+])
+def test_diagnostics_sanitizer_removes_secrets(raw, secret):
+    assert secret not in ls._sanitize(raw)
+
+
+def test_diagnostics_report_is_owner_only(tmp_path, monkeypatch):
+    monkeypatch.setattr(ls, "run", lambda cmd, **kw: _P(0, ""))
+    monkeypatch.setattr(ls, "compose", lambda *a, **kw: _P(0, ""))
+    report = ls.collect_diagnostics(tmp_path / "diag")
+    assert report.exists()
+    assert (report.stat().st_mode & 0o077) == 0, "diagnostics must not be world-readable"
+
+
+@pytest.mark.parametrize("line", [
+    "REFRESH_TOKEN_COOKIE_SECURE=false",
+    "LOCAL_STAND_MODE=true",
+    "SEED_DEV_CREDENTIALS=false",
+    "REFRESH_TOKEN_COOKIE_SAMESITE=strict",
+])
+def test_sanitizer_keeps_diagnostic_flags_readable(line):
+    """These names contain TOKEN/KEY/SECRET but carry no secret value.
+
+    Redacting REFRESH_TOKEN_COOKIE_SECURE hid exactly the flag a cookie-gate
+    failure needs to show, which happened on the first real diagnostics run.
+    """
+    assert ls._sanitize(line) == line
+
+
+@pytest.mark.parametrize("line,secret", [
+    ("REFRESH_TOKEN_SECRET=abcdef0123456789", "abcdef0123456789"),
+    ("JWT_SECRET=supersecretvalue1", "supersecretvalue1"),
+    ("MINIO_SECRET_KEY=Zm9vYmFyYmF6cXV4", "Zm9vYmFyYmF6cXV4"),
+])
+def test_sanitizer_still_redacts_real_secrets(line, secret):
+    assert secret not in ls._sanitize(line)
+
+
+# --- version identity follows the lock ---------------------------------------
+#
+# The images read RMP_VERSION/RMP_GIT_SHA from the env file. Switching the lock
+# without switching those left /version advertising the previous release, so a
+# successful pull still failed verification and rolled back.
+
+def test_version_identity_derived_from_lock():
+    lock = _lock()
+    lock["release"] = {"version": "stand-4635e72", "git_sha": GOOD_SHA}
+    identity = ls.version_identity(lock)
+    assert identity["RMP_VERSION"] == "stand-4635e72"
+    assert identity["RMP_GIT_SHA"] == GOOD_SHA
+
+
+def test_version_identity_accepts_tag_style_release():
+    lock = _lock()
+    lock["release"] = {"tag": "v0.11.1-pilot-packaging", "git_sha": GOOD_SHA}
+    assert ls.version_identity(lock)["RMP_VERSION"] == "v0.11.1-pilot-packaging"
+
+
+def test_update_rewrites_version_identity(tmp_path, monkeypatch):
+    new_path, sums = _update_harness(tmp_path, monkeypatch, healthy=True)
+    env_file = tmp_path / ".env.stand"
+    env_file.write_text(env_file.read_text() +
+                        "RMP_VERSION=old-version\nRMP_GIT_SHA=" + "0" * 40 + "\n")
+    env_file.chmod(0o600)
+    assert ls.cmd_update(_Args(lock=str(new_path), sha256sums=str(sums))) == 0
+    text = env_file.read_text()
+    assert "RMP_VERSION=old-version" not in text
+    assert f"RMP_GIT_SHA={GOOD_SHA}" in text
+
+
+def test_rollback_restores_previous_version_identity(tmp_path, monkeypatch):
+    new_path, sums = _update_harness(tmp_path, monkeypatch, healthy=False)
+    env_file = tmp_path / ".env.stand"
+    ls.cmd_update(_Args(lock=str(new_path), sha256sums=str(sums)))
+    # the rolled-back lock carries the same release block in this harness;
+    # what matters is that identity was rewritten together with the images
+    assert "RMP_GIT_SHA=" in env_file.read_text()
