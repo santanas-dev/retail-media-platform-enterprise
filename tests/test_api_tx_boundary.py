@@ -242,3 +242,27 @@ def test_tamper_reverting_to_request_scope_is_caught():
     assert not re.search(r'scope\s*=\s*["\']function["\']', sample)
     # the real assertion lives in test_get_db_is_wired_with_function_scope;
     # this documents what a regression would look like.
+
+
+# --- dependency floor --------------------------------------------------------
+#
+# scope= does not exist before FastAPI 0.121.0 (verified: 0.120.0 absent,
+# 0.121.0 present). With the previous floor of >=0.115.0 a clean install could
+# resolve a version where every Depends(get_db, scope="function") raises
+# TypeError at import time.
+
+@pytest.mark.parametrize("req", [
+    "apps/control-api/requirements.txt",
+    "apps/device-gateway/requirements.txt",
+])
+def test_fastapi_floor_supports_dependency_scope(req):
+    import pathlib
+    import re
+    root = pathlib.Path(__file__).resolve().parents[1]
+    text = (root / req).read_text()
+    m = re.search(r"^fastapi>=(\d+)\.(\d+)\.(\d+)", text, re.M)
+    assert m, f"{req}: no fastapi floor found"
+    major, minor, patch = (int(g) for g in m.groups())
+    assert (major, minor) >= (0, 121), (
+        f"{req}: floor {major}.{minor}.{patch} predates dependency scope; "
+        f"Depends(get_db, scope='function') would fail at import")

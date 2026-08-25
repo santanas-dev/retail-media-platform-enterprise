@@ -1,4 +1,8 @@
-fastapi>=0.115.0
+# API-TX-BOUNDARY-001: Depends(..., scope="function") is required so a 2xx
+# mutation means the write is committed. That parameter first exists in
+# 0.121.0 - verified against 0.120.0 (absent) and 0.121.0 (present) - so the
+# floor cannot stay at 0.115.0 or the app raises TypeError at import time.
+fastapi>=0.121.0
 uvicorn[standard]>=0.34.0
 # Packages required by device-gateway service
 sqlalchemy[asyncio]>=2.0.0
