@@ -1,8 +1,13 @@
 # Программа до-пилотных бизнес-журнеев (КСО, ручной проход)
 
-> **Канон для Codex/Hermes.** Источник истины по статусам — `docs/product/feature-registry.yaml` + зелёный UI-smoke; эта программа задаёт ПОРЯДОК закрытия.
-> Обновлено 2026-08-21 (ROADMAP-RELEASE-SYNC-002 — release decision prep). Wave 1–6: ✅ COMPLETE.
-> Текущие counts (feature-registry.yaml): **58 total / 52 reachable / 6 blocked** (admin-web 39, advertiser-web 5, public 1, service 13).
+> **Историческая программа до-пилотных волн 1–6 (✅ COMPLETE).** Источник истины по статусам —
+> `docs/product/feature-registry.yaml` + зелёный UI-smoke.
+> **Актуальная последовательность работ и матрица зрелости — в `docs/product/roadmap.md`**
+> (ROADMAP-REBASE-003); этот документ сохраняется как история закрытия волн 1–6 и больше
+> не задаёт текущий порядок.
+> Обновлено 2026-08-25 (ROADMAP-REBASE-003).
+> Актуальные counts (feature-registry.yaml, посчитано программно): **58 total / 53 reachable / 5 blocked**
+> (admin-web 39, advertiser-web 5, public 1, service 13).
 > После R3 (main 96b5159, 2026-07-28) закрыты: Commerce Contour 2 (7 reachable), advertiser onboarding (legal/brand/contract/contact), system.theme_switch, campaign.complete, RLS/pricing hardening, CI truth/stability (UI-SMOKE-STABILITY-004), EPIC-L Layer 1 (A1+A2+A3+A4 → license.enforce/seat_release/report reachable).
 
 ## Цель и принцип
@@ -75,7 +80,7 @@ R2 выпущен: main b5dd3b3, tag v0.9.0-prepilot-wave1, CI #29937353570.
 
 ### Readiness statement (ROADMAP-RELEASE-SYNC-002)
 
-Текущая база: **58 total / 49 reachable / 9 blocked**. `reachable` = зелёный UI-smoke (UI-фичи) или зелёный behavioral proof (service-фичи). Это **«функция достижима»**, а НЕ «pilot-ready» и НЕ «production-ready» — три разных понятия (см. ниже).
+База на момент написания раздела: 58 total / 49 reachable / 9 blocked. **Актуально (ROADMAP-REBASE-003): 58 total / 53 reachable / 5 blocked.** `reachable` = зелёный UI-smoke (UI-фичи) или зелёный behavioral proof (service-фичи). Это **«функция достижима»**, а НЕ «pilot-ready» и НЕ «production-ready» — три разных понятия (см. ниже).
 
 - ✅ **Admin-web (managed):** 39 фич reachable — кампании (create/edit/submit/approve/reject/activate/pause/complete), креативы (upload/moderate), инвентарь (simulate/rule_create), пользователи/роли, рекламодатели (организации + бренды + договоры + контакты + юр-реквизиты), AD-настройки, аудит, устройства, emergency, коммерция (тарифы/заказы/бронирование/оплата), тема (light/dark).
 - ✅ **Public:** заявка рекламодателя reachable (1/1).

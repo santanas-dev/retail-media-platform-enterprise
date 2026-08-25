@@ -1,12 +1,28 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-25 (LOCAL-DEV-STAND-001 ✅ OPERATIONAL — disposable LAN DEV/QA stand)
+**Last updated:** 2026-08-25 (ROADMAP-REBASE-003 — единая техническая/бизнес/UX-карта)
 
-**Next Active Workstream:** **ROADMAP-REBASE-003** — актуализация технической, бизнес- и UX-дорожной карты (без новой feature-разработки).
+**Next Active Workstream:** **OWNER-ROADMAP-DECISION-003** — решения владельца по 5 пунктам decision matrix (`docs/product/roadmap.md`). Разработка не начинается до решения.
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `8ad0228` (main — PR #8 private namespace + label fix; tag `v0.11.1-pilot-packaging` → `90c4bb1` неизменен)
 - State/Docs SHA: `0908c91` (develop — LOCAL-DEV-STAND-001 stand tooling). Stand bundle SHA `4635e72`. Payload SHA `8ad0228` unchanged — pilot/production release не менялся.
+
+**ROADMAP-REBASE-003 ✅** — единая техническая, бизнесовая и UX-дорожная карта (docs/governance only; product code, миграции, API, UI и поведение тестов НЕ менялись).
+
+- **Канонический roadmap-документ:** `docs/product/roadmap.md` — матрица зрелости всех **58** функций, технические направления, бизнес-карта по ролям, UX backlog, волны и проценты. **Функциональный SSOT статуса остаётся `feature-registry.yaml`** (reachable/blocked) — новый документ его не переопределяет; он добавляет разрез зрелости, которого схема registry не хранит. `pre-pilot-journey-plan.md` переведён в статус истории волн 1–6 и больше не задаёт текущий порядок.
+- **Ключевое различение зафиксировано:** `reachable` ≠ `walkthrough` ≠ `pilot-ready` ≠ `production-ready`.
+- **Посчитано программно, не скопировано:** 58 всего · 53 reachable · 5 blocked · 43 закреплены UI-smoke в блокирующем гейте · 10 service-функций без UI-journey · **4** journey проверены реальным браузером на стенде · operator walkthrough **0 (PENDING у всех)** · pilot-ready **0** · production-ready **0**.
+- **Stale counts исправлены:** `pre-pilot-journey-plan.md` заявлял «52 reachable / 6 blocked» и «49 reachable / 9 blocked» при фактических 53/5. Исторические записи в PROJECT_STATE не переписывались.
+- **Проценты (методика раздельная, единый процент намеренно не выводится):** функциональная реализация **91%** (53/58) · CI-закрепление **74%** (43/58) · стенд OPERATIONAL, browser-verified **9%** (4/43) · business journey completeness **~60%** · UX maturity **низкая** (9 дефектов, 4 high) · pilot readiness **~25%** · production readiness **0% NO-GO**. **53/58 ≠ 91% готовности продукта.**
+- **UX-аудит стенда (агентский, read-only, 16 экранов, продуктовые данные не создавались):** 9 дефектов — 4 high (`aria-label` в настройках AD, отсутствие фильтров в «Кампаниях» и «Журнале аудита», advertiser-web без аудита). Узкий viewport 390px дефектов не показал. **EPIC-кандидат `PORTAL-UX-POLISH` заведён, НЕ начат и НЕ завершён.** **operator walkthrough остаётся PENDING — ставит только человек.**
+- **Долги не замаскированы:** UI-SMOKE-STABILITY-005 **BLOCKED** (P0) · `self__login` **PENDING/BLOCKED** · PILOT-DEPLOYMENT-READINESS-001D **HOST PROOF PENDING** (P0, 15 owner inputs) · реального КСО нет · signed-license Layer 2 не реализован · production deployment отсутствует.
+- **Пять blocked объяснены:** `self.report_view`, `self.campaign_create` (Wave 2) · `playlist.build`, `license.view`, `license.upload` (Wave 3).
+- **Волны:** Wave 0 стабильность/truth → Wave 1 walkthrough + UX → Wave 2 недостающие бизнес-функции → Wave 3 KSO/player + signed licensing → Wave 4 pilot deployment → Wave 5 production hardening. Без календарных дат.
+- **Registry statuses НЕ менялись:** 58 / 53 reachable / 5 blocked. Guards: roadmap --strict 0 ✅, style-tokens 0 ✅, import-boundaries ✅.
+- **Local stand и production truth разделены:** стенд `stand-4635e72` OPERATIONAL (LOCAL DEV/QA, HTTP LAN-only, disposable) ≠ repository HEAD ≠ pilot ≠ production. **Pilot NOT DEPLOYED. Production NO-GO. Deployed production SHA = UNKNOWN/NOT TRACKED.**
+- Next → **OWNER-ROADMAP-DECISION-003** (5 решений владельца).
+- Checkpoint by PS-001.
 
 **LOCAL-DEV-STAND-001 ✅ OPERATIONAL** — disposable LOCAL DEV/QA stand на rmp-pilot. **Это НЕ pilot и НЕ production.**
 
