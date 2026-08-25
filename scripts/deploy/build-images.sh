@@ -69,14 +69,19 @@ declare -a SERVICES=(
   "control-api|apps.control-api.main|8000|infra/compose/Dockerfile.service|control-api"
   "device-gateway|apps.device-gateway.main|8001|infra/compose/Dockerfile.service|device-gateway"
   "orchestrator-worker|apps.orchestrator-worker.main|8003|infra/compose/Dockerfile.service|orchestrator-worker"
-  "admin-web||||apps/admin-web/Dockerfile|admin-web"
-  "advertiser-web||||apps/advertiser-web/Dockerfile|advertiser-web"
+  "admin-web|||apps/admin-web/Dockerfile|admin-web"
+  "advertiser-web|||apps/advertiser-web/Dockerfile|advertiser-web"
 )
 
 build_image() {
   local name="$1" module="$2" port="$3" dockerfile="$4" short="$5"
   local image="${REGISTRY}/${name}"
-  local ref="${image}:${GIT_SHA}"
+  # Primary tag is VERSION (e.g. stand-9a4855a); a short sha- tag is pushed
+  # alongside it so a build is addressable both ways. Both are immutable and
+  # neither is `latest`. Tagging with the full 40-char SHA (the previous
+  # behaviour) matched neither the release convention nor the stand one.
+  local ref="${image}:${VERSION}"
+  local sha_ref="${image}:sha-${GIT_SHA:0:7}"
 
   echo ""
   echo "--- Building ${name} (${ref}) ---"
@@ -92,6 +97,7 @@ build_image() {
   docker build \
     -f "$dockerfile" \
     -t "$ref" \
+    -t "$sha_ref" \
     --label "org.opencontainers.image.revision=${GIT_SHA}" \
     --label "org.opencontainers.image.version=${VERSION}" \
     --label "org.opencontainers.image.url=https://github.com/santanas-dev/retail-media-platform-enterprise/releases/tag/${VERSION}" \
@@ -105,6 +111,7 @@ build_image() {
 
   if [[ "$PUSH" == "true" ]]; then
     docker push "$ref"
+    docker push "$sha_ref"
     local digest
     digest="$(docker image inspect --format '{{index .RepoDigests 0}}' "$ref")"
     echo "  digest=${digest}"

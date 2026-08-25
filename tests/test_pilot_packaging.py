@@ -285,3 +285,42 @@ def _valid_env() -> dict:
         "SEED_DEV_CREDENTIALS": "false",
         "LICENSE_DEV_INGEST_ENABLED": "false",
     }
+
+
+# --- build-images.sh service table (LOCAL-DEV-STAND-001) ----------------------
+#
+# The frontend rows carried one separator too many, so `dockerfile` parsed as
+# the empty string and `docker build -f ""` failed with "open Dockerfile: no
+# such file". The two frontend images therefore could never be built by this
+# script. Guarded here because the failure is silent until a real publish.
+
+class TestBuildImagesServiceTable:
+    def _entries(self) -> list[list[str]]:
+        import re
+        src = (REPO_ROOT / "scripts" / "deploy" / "build-images.sh").read_text()
+        block = re.search(r"declare -a SERVICES=\((.*?)\n\)", src, re.S).group(1)
+        rows = []
+        for line in block.strip().splitlines():
+            entry = line.strip().strip('"')
+            if entry:
+                rows.append(entry.split("|"))
+        return rows
+
+    def test_every_row_has_exactly_five_fields(self):
+        for row in self._entries():
+            assert len(row) == 5, f"{row[0]}: {len(row)} fields, expected 5 -> {row}"
+
+    def test_every_dockerfile_field_is_populated_and_exists(self):
+        for name, _module, _port, dockerfile, _short in self._entries():
+            assert dockerfile, f"{name}: dockerfile field is empty"
+            assert (REPO_ROOT / dockerfile).is_file(), f"{name}: missing {dockerfile}"
+
+    def test_all_five_pilot_services_are_covered(self):
+        names = {row[0] for row in self._entries()}
+        assert names == set(PILOT_SERVICES), names
+
+    def test_tags_are_immutable_and_never_latest(self):
+        src = (REPO_ROOT / "scripts" / "deploy" / "build-images.sh").read_text()
+        assert ":latest" not in src
+        assert 'ref="${image}:${VERSION}"' in src
+        assert 'sha_ref="${image}:sha-${GIT_SHA:0:7}"' in src
