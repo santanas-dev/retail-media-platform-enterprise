@@ -222,7 +222,7 @@ class TestManifestCompleteness:
         assert m["source"]["git_sha"]
         assert m["source"]["version"]
         # schema + integrity
-        assert m["postgres"]["alembic_head"] == "034"
+        assert m["postgres"]["alembic_head"] == "035"
         assert len(m["postgres"]["dump_sha256"]) == 64
         assert isinstance(m["postgres"]["row_counts"], dict) and m["postgres"]["row_counts"]
         # consistency + encryption + rpo
