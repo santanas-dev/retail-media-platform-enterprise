@@ -206,6 +206,12 @@ export interface MeResponse {
   display_name: string;
   permissions?: string[];
   must_change_password?: boolean;
+  /**
+   * Set only for advertiser-cabinet identities (a user with an advertiser
+   * scope).  Operators have no advertiser organisation, so this doubles as
+   * the "wrong portal" signal — see ProtectedRoute.
+   */
+  advertiser_organization_id?: string | null;
 }
 
 // ── Audit ──
