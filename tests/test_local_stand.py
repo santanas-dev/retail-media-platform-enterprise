@@ -21,6 +21,24 @@ OVERLAY = REPO_ROOT / "infra" / "compose" / "docker-compose.local-stand.yml"
 PILOT = REPO_ROOT / "infra" / "compose" / "docker-compose.pilot.yml"
 
 
+class _ComposeLoader(yaml.SafeLoader):
+    """Compose tags (!override, !reset) are not plain YAML - teach the loader."""
+
+
+_ComposeLoader.add_constructor(
+    "!override",
+    lambda loader, node: loader.construct_sequence(node)
+    if isinstance(node, yaml.SequenceNode) else loader.construct_object(node),
+)
+_ComposeLoader.add_constructor("!reset", lambda loader, node: None)
+
+
+def load_overlay() -> dict:
+    """Parse the stand overlay, preserving Compose merge tags."""
+    return yaml.load(OVERLAY.read_text(), Loader=_ComposeLoader)
+
+
+
 def _load():
     spec = importlib.util.spec_from_file_location("local_stand", TOOL)
     mod = importlib.util.module_from_spec(spec)
@@ -59,7 +77,7 @@ def _write(tmp_path: Path, lock: dict, name="images.lock.json") -> Path:
 
 def test_project_name_is_fixed_and_unique():
     assert ls.PROJECT == "rmp-local-stand"
-    assert yaml.safe_load(OVERLAY.read_text())["name"] == ls.PROJECT
+    assert load_overlay()["name"] == ls.PROJECT
     # must not collide with the pilot project or the CI verify project
     assert ls.PROJECT != yaml.safe_load(PILOT.read_text())["name"]
     assert not ls.PROJECT.startswith("rmp-verify")
@@ -323,7 +341,7 @@ def test_overlay_publishes_only_ui_api_and_object_ports():
     URLs and cannot work without a reachable object endpoint. Its console and
     every datastore stay unpublished.
     """
-    doc = yaml.safe_load(OVERLAY.read_text())
+    doc = load_overlay()
     assert set(doc["services"]) == {
         "control-api", "device-gateway", "admin-web", "advertiser-web", "minio"}
     for infra in ("postgres", "redis", "nats"):
@@ -331,7 +349,7 @@ def test_overlay_publishes_only_ui_api_and_object_ports():
 
 
 def test_overlay_binds_to_explicit_address_not_all_interfaces():
-    doc = yaml.safe_load(OVERLAY.read_text())
+    doc = load_overlay()
     for svc in ("control-api", "admin-web", "advertiser-web"):
         for mapping in doc["services"][svc]["ports"]:
             assert mapping.startswith("${STAND_BIND_ADDR}:"), (svc, mapping)
@@ -347,7 +365,7 @@ def test_pilot_compose_does_not_publish_infrastructure():
 
 
 def test_overlay_adds_no_build_or_bind_mounts():
-    doc = yaml.safe_load(OVERLAY.read_text())
+    doc = load_overlay()
     for name, spec in doc["services"].items():
         assert "build" not in (spec or {}), name
         for vol in (spec or {}).get("volumes", []) or []:
@@ -363,13 +381,13 @@ def test_overlay_documents_disposable_and_not_tls_safe():
 # --- FU: MinIO bindings + browser-upload endpoint ----------------------------
 
 def test_minio_api_published_on_bind_address_only():
-    doc = yaml.safe_load(OVERLAY.read_text())
+    doc = load_overlay()
     ports = doc["services"]["minio"]["ports"]
     assert ports == ["${STAND_BIND_ADDR}:9000:9000"], ports
 
 
 def test_minio_console_9001_is_not_published():
-    doc = yaml.safe_load(OVERLAY.read_text())
+    doc = load_overlay()
     for svc, spec in doc["services"].items():
         for mapping in (spec or {}).get("ports", []) or []:
             assert not str(mapping).endswith(":9001") and ":9001:" not in str(mapping), \
@@ -378,7 +396,7 @@ def test_minio_console_9001_is_not_published():
 
 @pytest.mark.parametrize("infra", ["postgres", "redis", "nats"])
 def test_datastores_are_never_published(infra):
-    overlay = yaml.safe_load(OVERLAY.read_text())
+    overlay = load_overlay()
     pilot = yaml.safe_load(PILOT.read_text())
     assert infra not in overlay["services"], f"{infra} must not be published by the overlay"
     assert not (pilot["services"][infra] or {}).get("ports"), \
@@ -639,7 +657,7 @@ def test_pilot_compose_still_omits_manifest_key_for_control_api():
 
 
 def test_overlay_supplies_manifest_key_to_control_api():
-    doc = yaml.safe_load(OVERLAY.read_text())
+    doc = load_overlay()
     env = doc["services"]["control-api"]["environment"]
     assert env["MANIFEST_SIGNING_KEY"] == "${MANIFEST_SIGNING_KEY}"
 
@@ -651,9 +669,152 @@ def test_manifest_key_is_required_by_staging_validator():
 
 def test_services_needing_manifest_key_all_receive_it():
     pilot = yaml.safe_load(PILOT.read_text())
-    overlay = yaml.safe_load(OVERLAY.read_text())
+    overlay = load_overlay()
     for svc in ("device-gateway", "orchestrator-worker"):
         assert "MANIFEST_SIGNING_KEY" in (pilot["services"][svc]["environment"] or {}), svc
     merged = dict((pilot["services"]["control-api"] or {}).get("environment", {}) or {})
     merged.update(overlay["services"]["control-api"]["environment"])
     assert "MANIFEST_SIGNING_KEY" in merged
+
+
+# --- FU3: pilot compose omits CORS_ALLOWED_ORIGINS for device-gateway --------
+#
+# Same class as the MANIFEST_SIGNING_KEY gap: the shared security validator
+# requires an explicit CORS list under staging/production, but the pilot compose
+# only passes it to control-api. On the real host device-gateway entered a
+# restart loop. The stand overlay supplies it.
+
+def test_pilot_compose_still_omits_cors_for_device_gateway():
+    """Guards the reason the overlay carries this variable; fails once fixed."""
+    pilot = yaml.safe_load(PILOT.read_text())
+    env = (pilot["services"]["device-gateway"] or {}).get("environment", {}) or {}
+    keys = set(env) if isinstance(env, dict) else {e.split("=", 1)[0] for e in env}
+    assert "CORS_ALLOWED_ORIGINS" not in keys, (
+        "pilot compose now sets CORS_ALLOWED_ORIGINS for device-gateway - "
+        "drop the workaround from docker-compose.local-stand.yml")
+
+
+def test_overlay_supplies_cors_to_device_gateway():
+    doc = load_overlay()
+    env = doc["services"]["device-gateway"]["environment"]
+    assert env["CORS_ALLOWED_ORIGINS"] == "${CORS_ALLOWED_ORIGINS}"
+
+
+def test_cors_is_required_by_staging_validator():
+    cfg = (REPO_ROOT / "packages" / "security" / "config.py").read_text()
+    assert "CORS_ALLOWED_ORIGINS must be set to an explicit list in production" in cfg
+
+
+def test_every_service_the_validator_gates_gets_its_variables():
+    """control-api and device-gateway must end up with both gated variables."""
+    pilot = yaml.safe_load(PILOT.read_text())
+    overlay = load_overlay()
+    for svc in ("control-api", "device-gateway"):
+        merged = dict((pilot["services"][svc] or {}).get("environment", {}) or {})
+        merged.update((overlay["services"].get(svc) or {}).get("environment", {}) or {})
+        assert "MANIFEST_SIGNING_KEY" in merged, svc
+        assert "CORS_ALLOWED_ORIGINS" in merged, svc
+
+
+# --- FU4: Compose concatenates port lists across files ------------------------
+#
+# Merging two compose files CONCATENATES their `ports` lists. Without !override
+# each service ended up with the pilot's 0.0.0.0 mapping AND the stand's
+# address-scoped one: the second bind failed with "address already in use", and
+# the 0.0.0.0 mapping would have published the stand on every interface. Both
+# were observed on the real host.
+
+def _overlay_raw() -> str:
+    return OVERLAY.read_text()
+
+
+def test_overlay_overrides_ports_it_redefines():
+    """Any service whose ports the pilot also defines must use !override."""
+    pilot = yaml.safe_load(PILOT.read_text())
+    raw = _overlay_raw()
+    for svc in ("control-api", "device-gateway", "admin-web", "advertiser-web"):
+        assert (pilot["services"][svc] or {}).get("ports"), \
+            f"{svc}: pilot no longer defines ports - revisit the override"
+        block = raw.split(f"\n  {svc}:", 1)[1].split("\n  ", 1)[0] if f"\n  {svc}:" in raw else ""
+        # locate this service's own ports declaration
+        start = raw.index(f"\n  {svc}:")
+        nxt = raw.find("\n  ", start + len(f"\n  {svc}:"))
+        while nxt != -1 and raw[nxt:nxt + 4] == "\n   ":
+            nxt = raw.find("\n  ", nxt + 1)
+        section = raw[start:] if nxt == -1 else raw[start:nxt]
+        assert "ports: !override" in section, (
+            f"{svc}: ports must use !override or Compose will concatenate the "
+            f"pilot list and the bind will collide")
+
+
+def test_minio_needs_no_override():
+    """minio publishes nothing in the pilot file, so a plain list is correct."""
+    pilot = yaml.safe_load(PILOT.read_text())
+    assert not (pilot["services"]["minio"] or {}).get("ports")
+
+
+def _merged_ports() -> dict:
+    """Merge the two files the way Compose does: concatenate port lists."""
+    class _L(yaml.SafeLoader):
+        pass
+
+    def _override(loader, node):
+        seq = loader.construct_sequence(node)
+        return {"__override__": seq}
+
+    _L.add_constructor("!override", _override)
+    pilot = yaml.safe_load(PILOT.read_text())
+    overlay = yaml.load(_overlay_raw(), Loader=_L)
+
+    merged = {}
+    for svc, spec in overlay["services"].items():
+        base = list((pilot["services"].get(svc) or {}).get("ports", []) or [])
+        own = (spec or {}).get("ports")
+        if isinstance(own, dict) and "__override__" in own:
+            merged[svc] = list(own["__override__"])
+        else:
+            merged[svc] = base + list(own or [])
+    return merged
+
+
+def test_no_service_ends_up_with_duplicate_published_ports():
+    for svc, ports in _merged_ports().items():
+        published = [str(p).split(":")[-2] for p in ports if str(p).count(":") >= 2]
+        assert len(published) == len(set(published)), \
+            f"{svc}: duplicate published port after merge -> {ports}"
+
+
+def test_no_service_publishes_on_all_interfaces():
+    for svc, ports in _merged_ports().items():
+        for mapping in ports:
+            assert str(mapping).count(":") >= 2, \
+                f"{svc}: '{mapping}' has no host address - it would bind 0.0.0.0"
+            host = str(mapping).rsplit(":", 2)[0]
+            assert host not in ("", "0.0.0.0", "::"), \
+                f"{svc}: '{mapping}' publishes on every interface"
+
+
+# --- FU5: frontend healthchecks resolve localhost to IPv6 ---------------------
+#
+# /etc/hosts in these images maps localhost to both 127.0.0.1 and ::1. wget
+# tries IPv6 first, nginx listens on IPv4 only, so the pilot probe reported
+# "connection refused" while the site served fine from the LAN.
+
+@pytest.mark.parametrize("svc,port", [("admin-web", 3000), ("advertiser-web", 3001)])
+def test_overlay_healthcheck_avoids_localhost_ambiguity(svc, port):
+    doc = load_overlay()
+    test = doc["services"][svc]["healthcheck"]["test"]
+    probe = test[-1] if isinstance(test, list) else str(test)
+    assert f"127.0.0.1:{port}" in probe, f"{svc}: probe must pin IPv4"
+    assert "localhost" not in probe, (
+        f"{svc}: localhost resolves to ::1 first; nginx listens on IPv4 only")
+
+
+def test_pilot_healthchecks_still_use_localhost():
+    """Guards the reason the overlay overrides them; fails once pilot is fixed."""
+    pilot = yaml.safe_load(PILOT.read_text())
+    for svc in ("admin-web", "advertiser-web"):
+        probe = pilot["services"][svc]["healthcheck"]["test"][-1]
+        assert "localhost" in probe, (
+            f"pilot {svc} healthcheck no longer uses localhost - "
+            f"drop the override from docker-compose.local-stand.yml")

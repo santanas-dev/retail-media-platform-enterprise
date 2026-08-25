@@ -38,20 +38,48 @@ services:
       # The stand runs as staging, so it supplies the variable here. The proper
       # fix belongs in the pilot compose and needs an owner decision.
       MANIFEST_SIGNING_KEY: ${MANIFEST_SIGNING_KEY}
-    ports:
+    # !override REPLACES the pilot list instead of merging with it. Without it
+    # Compose CONCATENATES both lists, so the service gets the pilot's 0.0.0.0
+    # mapping AND this one: the second bind fails with "address already in use",
+    # and the 0.0.0.0 mapping would expose the stand on every interface rather
+    # than the intended address. Observed on the real host (FU4).
+    ports: !override
       - "${STAND_BIND_ADDR}:8000:8000"
 
   device-gateway:
+    environment:
+      # DEFECT WORKAROUND (FU3), same class as the control-api one above:
+      # docker-compose.pilot.yml passes CORS_ALLOWED_ORIGINS to control-api but
+      # NOT to device-gateway. Under ENVIRONMENT=staging/production the shared
+      # validator refuses to boot:
+      #   ValueError: CORS_ALLOWED_ORIGINS must be set to an explicit list in production
+      # Observed on the real host: device-gateway sat in a restart loop.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
     # Host-only: not exposed to the LAN. Manual checks reach it from the host.
-    ports:
+    ports: !override
       - "127.0.0.1:8001:8001"
 
   admin-web:
-    ports:
+    # DEFECT WORKAROUND (FU5): the pilot healthcheck probes localhost, which
+    # /etc/hosts maps to BOTH 127.0.0.1 and ::1. wget tries IPv6 first and nginx
+    # listens on IPv4 only, so the probe gets "connection refused" while the site
+    # serves fine from the LAN. Observed on the real host: both frontends sat
+    # unhealthy while curl returned "ok". Pinning to 127.0.0.1 removes it.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports: !override
       - "${STAND_BIND_ADDR}:3000:3000"
 
   advertiser-web:
-    ports:
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3001/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports: !override
       - "${STAND_BIND_ADDR}:3001:3001"
 
   minio:
