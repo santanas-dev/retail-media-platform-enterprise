@@ -94,6 +94,30 @@ def _q(conn, sql: str):
         return cur.fetchone()
 
 
+
+def _repo_alembic_head() -> str:
+    """The single head revision of the repo's alembic migrations.
+
+    Read from the migration files rather than by importing alembic, so the
+    drill has no dependency on an alembic config or a live database.
+    """
+    import re
+
+    versions = REPO_ROOT / "apps" / "control-api" / "alembic" / "versions"
+    revisions, down_revisions = set(), set()
+    for f in versions.glob("*.py"):
+        text = f.read_text()
+        rev = re.search(r'^revision(?::\s*str)?\s*=\s*"([^"]+)"', text, re.M)
+        down = re.search(r'^down_revision(?::[^=]+)?\s*=\s*"([^"]+)"', text, re.M)
+        if rev:
+            revisions.add(rev.group(1))
+        if down:
+            down_revisions.add(down.group(1))
+    heads = revisions - down_revisions
+    assert len(heads) == 1, f"expected exactly one alembic head, got {sorted(heads)}"
+    return heads.pop()
+
+
 class TestRestoredDataFidelity:
     def test_alembic_head_matches(self, ctx):
         actual = _q(ctx["owner"], "SELECT version_num FROM alembic_version;")[0]
@@ -222,7 +246,12 @@ class TestManifestCompleteness:
         assert m["source"]["git_sha"]
         assert m["source"]["version"]
         # schema + integrity
-        assert m["postgres"]["alembic_head"] == "035"
+        # The manifest must name the head the source tree actually has.
+        # Pinning a literal here went stale on every migration (035, 036 …) and
+        # each time the drill failed for a reason that had nothing to do with
+        # backup fidelity. Deriving it keeps the assertion strict — a manifest
+        # written at the wrong revision still fails — without the churn.
+        assert m["postgres"]["alembic_head"] == _repo_alembic_head()
         assert len(m["postgres"]["dump_sha256"]) == 64
         assert isinstance(m["postgres"]["row_counts"], dict) and m["postgres"]["row_counts"]
         # consistency + encryption + rpo
