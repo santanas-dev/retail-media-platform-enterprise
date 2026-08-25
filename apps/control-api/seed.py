@@ -62,6 +62,9 @@ SEED_PERM_IDS = {
     "commerce.tariff_manage": "00000000-0000-0000-0000-000000000120",
     "commerce.order_read":  "00000000-0000-0000-0000-000000000121",
     "commerce.order_manage": "00000000-0000-0000-0000-000000000122",
+    # CAMPAIGN-PERMISSION-SPLIT-001: advertiser self-service brief writes.
+    # Deliberately NOT campaigns.manage — that one is operator-only.
+    "campaign_briefs.manage": "00000000-0000-0000-0000-000000000125",
 }
 SEED_ADV_ROLE_ID = "00000000-0000-0000-0000-000000000114"
 SEED_ADV_USER_ROLE_ID = "00000000-0000-0000-0000-000000000204"
@@ -308,6 +311,13 @@ INSERT INTO permissions (id, code, name)
 VALUES ('{SEED_PERM_IDS["campaigns.approve"]}', 'campaigns.approve', 'Согласование кампаний')
 ON CONFLICT (code) DO NOTHING;
 
+-- CAMPAIGN-PERMISSION-SPLIT-001: advertiser self-service brief writes
+-- (create draft / edit draft / submit). Disjoint from campaigns.manage.
+INSERT INTO permissions (id, code, name)
+VALUES ('{SEED_PERM_IDS["campaign_briefs.manage"]}', 'campaign_briefs.manage',
+        'Подача и правка брифов рекламодателем')
+ON CONFLICT (code) DO NOTHING;
+
 INSERT INTO permissions (id, code, name)
 VALUES ('{SEED_PERM_IDS["creatives.read"]}', 'creatives.read', 'Просмотр креативов')
 ON CONFLICT (code) DO NOTHING;
@@ -448,6 +458,10 @@ ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(206)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["campaigns.manage"]}')
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+INSERT INTO role_permissions (id, role_id, permission_id)
+VALUES ('{_rp(266)}', '{SEED_ROLE_IDS["system_admin"]}', '{SEED_PERM_IDS["campaign_briefs.manage"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
@@ -609,7 +623,15 @@ INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(154)}', '{SEED_ROLE_IDS["analyst"]}', '{SEED_PERM_IDS["devices.read"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
--- advertiser: organization.read, advertisers.read, advertisers.contacts.read, campaigns.read, campaigns.manage, creatives.read
+-- advertiser: organization.read, advertisers.read, advertisers.contacts.read,
+-- campaigns.read, campaign_briefs.manage, creatives.read
+--
+-- CAMPAIGN-PERMISSION-SPLIT-001: the advertiser role deliberately does NOT
+-- hold campaigns.manage. That permission opens operator campaign create,
+-- edit and lifecycle; the cabinet's own write surface is the brief flow, which
+-- runs on campaign_briefs.manage. Migration 036 removes the old grant from
+-- installations that already have it — do not re-add it here, or every
+-- db-migrate run would hand it straight back.
 INSERT INTO role_permissions (id, role_id, permission_id)
 VALUES ('{_rp(250)}', '{SEED_ROLE_IDS["advertiser"]}', '{SEED_PERM_IDS["organization.read"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
@@ -627,7 +649,7 @@ VALUES ('{_rp(253)}', '{SEED_ROLE_IDS["advertiser"]}', '{SEED_PERM_IDS["campaign
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
-VALUES ('{_rp(254)}', '{SEED_ROLE_IDS["advertiser"]}', '{SEED_PERM_IDS["campaigns.manage"]}')
+VALUES ('{_rp(267)}', '{SEED_ROLE_IDS["advertiser"]}', '{SEED_PERM_IDS["campaign_briefs.manage"]}')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 INSERT INTO role_permissions (id, role_id, permission_id)
@@ -802,7 +824,7 @@ async def seed() -> None:
                   "LOCAL_CREDENTIALS_OVERRIDE (future).")
     await engine.dispose()
     print("Seed complete: 1 branch → 1 cluster → 1 store → 1 KSO device → 1 surface "
-          "+ 16 permissions, 5 roles (incl advertiser), campaign role-permissions, 1 break-glass admin, "
+          "+ 17 permissions, 5 roles (incl advertiser), campaign role-permissions, 1 break-glass admin, "
           "1 advertiser org + 1 advertiser user (with advertiser role + scoped assignment), 2 brands, 1 contract, 2 contacts, "
           "1 campaign + 1 flight + 1 creative + 1 placement + 1 status history")
 

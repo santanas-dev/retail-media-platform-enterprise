@@ -15,6 +15,7 @@ import type {
 } from "../api/types";
 import { statusLabel, statusColor, surfaceLabel, mediaTypeLabel, timezoneLabel } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
+import { CAMPAIGNS_MANAGE, hasPermission } from "../auth/permissions";
 
 // ── Helpers ──
 
@@ -55,7 +56,10 @@ function budgetLabel(amount: number | null, currency: string): string {
 
 export default function CampaignDetailPage() {
   const { id: campaignId } = useParams<{ id: string }>();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  // CAMPAIGN-PERMISSION-SPLIT-001: edit, creative attach and submit are
+  // operator campaign management. An advertiser keeps the read-only view.
+  const canManageCampaigns = hasPermission(user, CAMPAIGNS_MANAGE);
   const navigate = useNavigate();
 
   const [campaign, setCampaign] = useState<CampaignOut | null>(null);
@@ -249,7 +253,7 @@ export default function CampaignDetailPage() {
         >
           {statusLabel(campaign.status)}
         </span>
-        {campaign.status === "draft" && !editing && (
+        {canManageCampaigns && campaign.status === "draft" && !editing && (
           <button
             type="button"
             onClick={() => setEditing(true)}
@@ -269,7 +273,7 @@ export default function CampaignDetailPage() {
       </div>
 
       {/* ── Readiness panel + submit (draft only) ── */}
-      {campaign.status === "draft" && !editing && (
+      {canManageCampaigns && campaign.status === "draft" && !editing && (
         <ReadinessPanel
           flightsCount={flights.length}
           placementsCount={placements.length}
@@ -444,7 +448,7 @@ export default function CampaignDetailPage() {
             </tbody>
           </table>
         )}
-        {campaign.status === "draft" && !editing && (
+        {canManageCampaigns && campaign.status === "draft" && !editing && (
           <div style={{ marginTop: "0.75rem" }}>
             <button
               type="button"

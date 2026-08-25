@@ -1,12 +1,23 @@
 import { useState, useCallback } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { CAMPAIGNS_MANAGE, hasPermission } from "../auth/permissions";
 import s from "./Layout.module.css";
 
-const NAV_ITEMS = [
+type NavItem = {
+  to: string;
+  label: string;
+  testid?: string;
+  disabled?: boolean;
+  /** Hide the item unless the user holds this permission. */
+  permission?: string;
+};
+
+const NAV_ITEMS: NavItem[] = [
   { to: "/dashboard", label: "Кабинет" },
   { to: "/campaigns", label: "Кампании", testid: "nav-campaigns" },
-  { to: "/creatives", label: "Креативы" },
+  // CAMPAIGN-PERMISSION-SPLIT-001: creative upload is operator-only.
+  { to: "/creatives", label: "Креативы", permission: CAMPAIGNS_MANAGE },
   { to: "/briefs", label: "Заявки", testid: "nav-briefs" },
   { to: "/documents", label: "Документы", disabled: true },
   { to: "/support", label: "Поддержка", disabled: true },
@@ -19,6 +30,12 @@ export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+
+  // Hide what the signed-in user provably cannot use. The API is still
+  // the boundary — this only avoids offering a guaranteed 403.
+  const navItems = NAV_ITEMS.filter(
+    (item) => !item.permission || hasPermission(user, item.permission),
+  );
 
   if (loading) {
     return <div className={s.loading}>Загрузка...</div>;
@@ -52,7 +69,7 @@ export default function Layout() {
       <aside className={sidebarCls}>
         <div className={s.logo}>Кабинет рекламодателя</div>
         <nav className={s.nav}>
-          {NAV_ITEMS.map((item) =>
+          {navItems.map((item) =>
             item.disabled ? (
               <span
                 key={item.to}

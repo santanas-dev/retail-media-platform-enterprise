@@ -3,6 +3,20 @@ Identity API — Campaign Briefs / Placement Requests (BP-004).
 
 Advertiser-scoped: list, detail, create draft, update draft, submit.
 Status lifecycle: draft → submitted.
+
+CAMPAIGN-PERMISSION-SPLIT-001 — why the writes here use their own permission:
+
+``campaigns.manage`` is the operator permission: it opens campaign create,
+edit, lifecycle (activate/pause/complete/archive), flights, placements,
+creative attachment and creative-asset upload — 17 endpoints an advertiser
+must never reach.  The three brief writes below are the advertiser's own
+self-service surface, so they carry ``campaign_briefs.manage`` instead.  The
+two permissions are disjoint: no role needs both to do its job, and the
+advertiser role holds only the brief one.
+
+The split is by route and permission, never by inspecting the payload or the
+caller's shape, and there is no conditional bypass inside ``campaigns.manage``.
+Reads stay on ``campaigns.read`` — RLS decides which rows are visible.
 """
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -81,7 +95,7 @@ async def create_brief(
     body: CampaignBriefCreateRequest,
     db=Depends(get_db, scope="function"),
     user=Depends(get_current_active_user),
-    scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    scope=Depends(require_scoped_permission("campaign_briefs.manage", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
     scope_ids = _scope_ids(scope)
@@ -120,7 +134,7 @@ async def update_brief(
     body: CampaignBriefUpdateRequest,
     db=Depends(get_db, scope="function"),
     _user=Depends(get_current_active_user),
-    scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    scope=Depends(require_scoped_permission("campaign_briefs.manage", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
     scope_ids = _scope_ids(scope)
@@ -158,7 +172,7 @@ async def submit_brief(
     brief_id: str,
     db=Depends(get_db, scope="function"),
     _user=Depends(get_current_active_user),
-    scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
+    scope=Depends(require_scoped_permission("campaign_briefs.manage", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
     scope_ids = _scope_ids(scope)

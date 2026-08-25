@@ -79,6 +79,10 @@ USER_IDS = {
     "advertiser": "beh-av-00000000000000000004",
     "secoff":     "beh-so-00000000000000000005",
     "analyst":    "beh-an-00000000000000000006",
+    # CAMPAIGN-PERMISSION-SPLIT-001: an actor scoped to ADV-001 that legitimately
+    # holds campaigns.manage — the operator side of the split. The advertiser
+    # user deliberately no longer has it.
+    "campaign_mgr": "beh-cm-00000000000000007",
 }
 
 # Phase 4.3b — PoP persistence fixture IDs
@@ -163,7 +167,8 @@ def _setup_sql(ph):
       ('{u["disabled"]}','BEH-DS','beh-disabled','beh-ds@t.local','Beh DS','local_advertiser','disabled'),
       ('{u["advertiser"]}','BEH-AV','beh-advertiser','beh-av@t.local','Beh AV','local_advertiser','active'),
       ('{u["secoff"]}','BEH-SO','beh-secoff','beh-so@t.local','Beh SO','local_advertiser','active'),
-      ('{u["analyst"]}','BEH-AN','beh-analyst','beh-an@t.local','Beh AN','local_advertiser','active')
+      ('{u["analyst"]}','BEH-AN','beh-analyst','beh-an@t.local','Beh AN','local_advertiser','active'),
+      ('{u["campaign_mgr"]}','BEH-CM','beh-campaign-mgr','beh-cm@t.local','Beh CM','local_advertiser','active')
     -- Phase 4.1c: clean up campaign data referencing behavioral users
     ; DELETE FROM outbox_events WHERE aggregate_id IN (
         SELECT id FROM campaigns WHERE created_by LIKE 'beh-%'
@@ -216,6 +221,25 @@ def _setup_sql(ph):
       SELECT 'ur-beh-so','{u["secoff"]}',id FROM roles WHERE code='security_admin'
     ; INSERT INTO user_roles (id,user_id,role_id)
       SELECT 'ur-beh-an','{u["analyst"]}',id FROM roles WHERE code='analyst'
+    -- CAMPAIGN-PERMISSION-SPLIT-001: a fixture-only role that models the
+    -- operator side of the split — campaign management, scoped to one
+    -- advertiser org. It exists so the campaign-composition suites keep an
+    -- actor that MAY manage campaigns without handing that power back to the
+    -- advertiser role. Not part of the product role model.
+    ; INSERT INTO roles (id,code,name,description,is_system)
+      SELECT '00000000-0000-0000-0000-000000000126','beh_campaign_manager',
+             'Behavioural campaign manager','Fixture-only scoped campaign manager',false
+      WHERE NOT EXISTS (SELECT 1 FROM roles WHERE code='beh_campaign_manager')
+    ; INSERT INTO role_permissions (id,role_id,permission_id)
+      SELECT 'rp-beh-cm-'||p.code, '00000000-0000-0000-0000-000000000126', p.id
+      FROM permissions p
+      WHERE p.code IN ('campaigns.manage','campaigns.read','creatives.read',
+                       'advertisers.read','organization.read')
+      ON CONFLICT (role_id, permission_id) DO NOTHING
+    ; INSERT INTO user_roles (id,user_id,role_id,scope_type,scope_id)
+      SELECT 'ur-beh-cm','{u["campaign_mgr"]}',id,'advertiser',
+             '00000000-0000-0000-0000-000000000200'
+      FROM roles WHERE code='beh_campaign_manager'
     -- Ensure advertiser role exists (not in seed)
     ; INSERT INTO roles (id,code,name,description,is_system)
       SELECT '00000000-0000-0000-0000-000000000114','advertiser','Advertiser','Advertiser cabinet user',false
@@ -317,18 +341,28 @@ def _setup_sql(ph):
         SELECT 1 FROM role_permissions
         WHERE role_id=r.id AND permission_id=p.id
       )
-    -- Phase 4.2: campaign.manage permission + advertiser role grant
+    -- Phase 4.2: campaigns.manage must exist for the operator roles.
     ; INSERT INTO permissions (id, code, name) VALUES
       ('00000000-0000-0000-0000-00000000010d','campaigns.manage','Управление кампаниями')
       ON CONFLICT (code) DO NOTHING
+    -- CAMPAIGN-PERMISSION-SPLIT-001: the advertiser role gets the brief
+    -- permission, NOT campaigns.manage. This fixture used to grant the operator
+    -- permission here, which would quietly undo migration 036 for every
+    -- behavioural run and hide the very regression the suite must catch.
+    ; INSERT INTO permissions (id, code, name) VALUES
+      ('00000000-0000-0000-0000-000000000125','campaign_briefs.manage','Подача и правка брифов рекламодателем')
+      ON CONFLICT (code) DO NOTHING
     ; INSERT INTO role_permissions (id,role_id,permission_id)
-      SELECT 'rp-beh-adv-campmg','00000000-0000-0000-0000-000000000114',id
-      FROM permissions WHERE code='campaigns.manage'
+      SELECT 'rp-beh-adv-briefmg','00000000-0000-0000-0000-000000000114',id
+      FROM permissions WHERE code='campaign_briefs.manage'
       AND NOT EXISTS (
         SELECT 1 FROM role_permissions
         WHERE role_id='00000000-0000-0000-0000-000000000114'
-        AND permission_id=(SELECT id FROM permissions WHERE code='campaigns.manage')
+        AND permission_id=(SELECT id FROM permissions WHERE code='campaign_briefs.manage')
       )
+    ; DELETE FROM role_permissions rp USING roles r, permissions p
+      WHERE rp.role_id=r.id AND rp.permission_id=p.id
+        AND r.code='advertiser' AND p.code='campaigns.manage'
     -- EDGE-001: devices.manage permission + system_admin grant
     ; INSERT INTO permissions (id, code, name) VALUES
       ('00000000-0000-0000-0000-000000000110','devices.manage','Управление устройствами')

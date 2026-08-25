@@ -26,10 +26,22 @@ export class ApiError extends Error {
   body: unknown;
 
   constructor(status: number, body: unknown) {
-    const detail =
+    // The API returns either a plain string detail or the structured
+    // {code, message} shape used by the permission and scope guards.
+    // Stringifying the object gave "[object Object]" on every 403, which is
+    // what a refused advertiser action used to show (CAMPAIGN-PERMISSION-SPLIT-001).
+    const raw =
       typeof body === "object" && body !== null && "detail" in body
-        ? String((body as Record<string, unknown>).detail)
-        : `HTTP ${status}`;
+        ? (body as Record<string, unknown>).detail
+        : undefined;
+    let detail: string;
+    if (typeof raw === "string") {
+      detail = raw;
+    } else if (typeof raw === "object" && raw !== null && "message" in raw) {
+      detail = String((raw as Record<string, unknown>).message);
+    } else {
+      detail = `HTTP ${status}`;
+    }
     super(detail);
     this.name = "ApiError";
     this.status = status;

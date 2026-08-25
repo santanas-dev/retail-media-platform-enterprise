@@ -5,6 +5,14 @@ Phase 4.2: tenant isolation (P1 fixes).
 Tests: create, update, archive with outbox, transaction safety, permissions,
 cross-org isolation, brand/contract org validation.
 Requires: RUN_BEHAVIORAL_TESTS=1, migrations applied, seed run.
+
+
+CAMPAIGN-PERMISSION-SPLIT-001: the scoped actor here is ``campaign_mgr`` —
+a user scoped to ADV-001 whose role holds ``campaigns.manage``. The
+``advertiser`` role no longer carries that permission, so using it here
+would turn every case below into a permission-denied assertion and stop
+proving anything about scope or RLS. The advertiser-is-refused case has
+its own file: tests/behavioral/test_campaign_permission_split_001.py.
 """
 
 import asyncio
@@ -238,7 +246,7 @@ class TestCreateCampaignTenantIsolation:
         """Scoped advertiser (ADV-001) blocked from creating for ADV-002.
         Under NOBYPASSRLS, contract validation (422) fires before scope check
         because the scoped user cannot see ADV-002 contracts via RLS."""
-        token = self._token_for(user_ids, "advertiser")
+        token = self._token_for(user_ids, "campaign_mgr")
         resp = client.post(
             "/api/v1/identity/campaigns",
             json={
@@ -255,7 +263,7 @@ class TestCreateCampaignTenantIsolation:
 
     def test_scoped_advertiser_cannot_use_cross_org_brand(self, client, user_ids):
         """Scoped advertiser (ADV-001) cannot create campaign with ADV-002 brand."""
-        token = self._token_for(user_ids, "advertiser")
+        token = self._token_for(user_ids, "campaign_mgr")
         resp = client.post(
             "/api/v1/identity/campaigns",
             json={
@@ -271,7 +279,7 @@ class TestCreateCampaignTenantIsolation:
 
     def test_scoped_advertiser_cannot_use_cross_org_contract(self, client, user_ids):
         """Scoped advertiser (ADV-001) cannot create campaign with ADV-002 contract."""
-        token = self._token_for(user_ids, "advertiser")
+        token = self._token_for(user_ids, "campaign_mgr")
         resp = client.post(
             "/api/v1/identity/campaigns",
             json={
@@ -286,7 +294,7 @@ class TestCreateCampaignTenantIsolation:
 
     def test_scoped_advertiser_can_create_for_own_org(self, client, user_ids):
         """Scoped advertiser (ADV-001) CAN create campaign for ADV-001."""
-        token = self._token_for(user_ids, "advertiser")
+        token = self._token_for(user_ids, "campaign_mgr")
         resp = client.post(
             "/api/v1/identity/campaigns",
             json={
@@ -381,7 +389,7 @@ class TestCreateCampaignTenantIsolation:
     def test_wrong_org_rejection_does_not_write_outbox(self, client, user_ids):
         """P2: rejection → no campaign, no outbox event.
         Under NOBYPASSRLS, contract validation (422) may fire before scope check."""
-        token = self._token_for(user_ids, "advertiser")
+        token = self._token_for(user_ids, "campaign_mgr")
         resp = client.post(
             "/api/v1/identity/campaigns",
             json={
@@ -536,7 +544,7 @@ class TestUpdateArchiveTenantIsolation:
         )
 
         # Scoped advertiser tries to PATCH it
-        scoped_token = _token(user_ids["advertiser"])
+        scoped_token = _token(user_ids["campaign_mgr"])
         resp = client.patch(
             f"/api/v1/identity/campaigns/{cid}",
             json={"name": "Hijack Attempt"},
@@ -555,7 +563,7 @@ class TestUpdateArchiveTenantIsolation:
             org_id=ADV2_ORG_ID, contract_id=ADV2_CONTRACT_ID,
         )
 
-        scoped_token = _token(user_ids["advertiser"])
+        scoped_token = _token(user_ids["campaign_mgr"])
         resp = client.post(
             f"/api/v1/identity/campaigns/{cid}/archive",
             headers=_auth(scoped_token),
@@ -683,7 +691,7 @@ class TestRLSWriteEnforcement:
 
     def test_scoped_advertiser_creates_in_own_org_rls_pass(self, client, user_ids):
         """Scoped advertiser creates campaign in own org — RLS allows."""
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         resp = client.post(
             "/api/v1/identity/campaigns",
             json={
@@ -701,7 +709,7 @@ class TestRLSWriteEnforcement:
 
         Under NOBYPASSRLS, contract validation (422) fires first because
         the scoped user cannot see foreign contracts via RLS."""
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         # ADV2_ORG_ID is not in the advertiser's scope
         resp = client.post(
             "/api/v1/identity/campaigns",
@@ -719,7 +727,7 @@ class TestRLSWriteEnforcement:
 
     def test_no_outbox_on_rejected_write(self, client, user_ids):
         """Rejected campaign create must not leave outbox rows."""
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         resp = client.post(
             "/api/v1/identity/campaigns",
             json={
@@ -752,7 +760,7 @@ class TestCampaignSetupFlights:
 
     def test_create_flight_on_draft_campaign(self, client, user_ids):
         """Advertiser creates a flight on their own draft campaign."""
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         # Create a draft campaign first
         resp = client.post(
             "/api/v1/identity/campaigns",
@@ -787,7 +795,7 @@ class TestCampaignSetupFlights:
         assert rows[0][0] >= 1, "Outbox event not written for flight creation"
 
     def test_update_flight(self, client, user_ids):
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         resp = client.post(
             "/api/v1/identity/campaigns",
             json={
@@ -819,7 +827,7 @@ class TestCampaignSetupFlights:
 
     def test_cross_org_flight_create_rejected(self, client, user_ids):
         """Advertiser cannot create a flight on another org's campaign."""
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         # Advertiser is scoped to ADV1; trying with ADV2 org should fail
         resp = client.post(
             "/api/v1/identity/campaigns",
@@ -838,7 +846,7 @@ class TestCampaignSetupFlights:
 
     def test_flight_on_non_draft_campaign_rejected(self, client, user_ids):
         """Cannot add flight to a non-draft campaign."""
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         # Create + approve a campaign first
         resp = client.post(
             "/api/v1/identity/campaigns",
@@ -912,7 +920,7 @@ class TestCampaignFlightValidation:
         return resp.json()["id"]
 
     def test_create_start_after_end_returns_422(self, client, user_ids):
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         cid = self._create_campaign(client, token, "BEH-FL-VAL01", "Flight Val 1")
         resp = client.post(
             f"/api/v1/identity/campaigns/{cid}/flights",
@@ -930,7 +938,7 @@ class TestCampaignFlightValidation:
         assert rows[0][0] == 0, "Outbox written for invalid flight"
 
     def test_update_start_after_end_returns_422(self, client, user_ids):
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         cid = self._create_campaign(client, token, "BEH-FL-VAL02", "Flight Val 2")
         resp = client.post(
             f"/api/v1/identity/campaigns/{cid}/flights",
@@ -964,7 +972,7 @@ class TestCampaignFlightValidation:
 
     def test_create_before_contract_valid_from_returns_422(self, client, user_ids):
         """ADV1 contract valid_from = 2026-01-01. Flight start before that should fail."""
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         cid = self._create_campaign(client, token, "BEH-FL-VAL03", "Flight Val 3")
         resp = client.post(
             f"/api/v1/identity/campaigns/{cid}/flights",
@@ -984,7 +992,7 @@ class TestCampaignFlightValidation:
         assert rows[0][0] == 0, "Outbox written for invalid flight"
 
     def test_valid_flight_within_contract_window_ok(self, client, user_ids):
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         cid = self._create_campaign(client, token, "BEH-FL-VAL04", "Flight Val 4")
         resp = client.post(
             f"/api/v1/identity/campaigns/{cid}/flights",
@@ -998,7 +1006,7 @@ class TestCampaignFlightValidation:
 
     def test_open_ended_contract_accepts_future_flight(self, client, user_ids):
         """ADV1 contract has no valid_until (NULL) — any future end_at is OK."""
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         cid = self._create_campaign(client, token, "BEH-FL-VAL05", "Flight Val 5")
         resp = client.post(
             f"/api/v1/identity/campaigns/{cid}/flights",
@@ -1014,7 +1022,7 @@ class TestCampaignFlightValidation:
 
     def test_create_after_finite_valid_until_returns_422(self, client, user_ids):
         """Contract with finite valid_until blocks flights past that date."""
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         contract_id = "beh-ctr-finite-0000000000000001"
 
         # Insert temporary contract with finite valid_until (cleaned by conftest)
@@ -1071,7 +1079,7 @@ class TestCampaignSetupPlacements:
     """Placement create/update behavioral tests."""
 
     def test_create_placement_store_target(self, client, user_ids):
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         resp = client.post(
             "/api/v1/identity/campaigns",
             json={
@@ -1101,7 +1109,7 @@ class TestCampaignSetupPlacements:
         assert rows[0][0] >= 1
 
     def test_placement_no_target_rejected(self, client, user_ids):
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         resp = client.post(
             "/api/v1/identity/campaigns",
             json={
@@ -1125,7 +1133,7 @@ class TestCampaignSetupPlacements:
         )
 
     def test_cross_org_placement_rejected(self, client, user_ids):
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         resp = client.post(
             "/api/v1/identity/campaigns",
             json={
@@ -1145,7 +1153,7 @@ class TestCampaignSetupCreatives:
     """Creative asset create + attach behavioral tests."""
 
     def test_create_creative_on_draft(self, client, user_ids):
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         resp = client.post(
             "/api/v1/identity/campaigns",
             json={
@@ -1203,7 +1211,7 @@ class TestCampaignSetupCreatives:
         adv2_campaign_id = resp.json()["id"]
 
         # Advertiser (scoped to ADV1) tries to attach creative to ADV2 campaign
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
         resp = client.post(
             f"/api/v1/identity/campaigns/{adv2_campaign_id}/creatives",
             json={
@@ -1241,7 +1249,7 @@ class TestCampaignFullPilotSetup:
     """End-to-end campaign setup: create → flight → placement → creative → request approval."""
 
     def test_full_pilot_setup_flow(self, client, user_ids):
-        token = _token(user_ids["advertiser"])
+        token = _token(user_ids["campaign_mgr"])
 
         # 1. Create campaign
         resp = client.post(

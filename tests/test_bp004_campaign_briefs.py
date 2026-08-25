@@ -142,8 +142,10 @@ def _scoped_create_setup(test_case, app):
             user_id="u-1",
             is_admin=False,
             role_codes={"advertiser"},
-            global_permissions={"campaigns.manage"},
-            all_permissions={"campaigns.manage"},
+            # CAMPAIGN-PERMISSION-SPLIT-001: brief writes moved off the
+            # operator permission; the advertiser role carries this one.
+            global_permissions={"campaign_briefs.manage"},
+            all_permissions={"campaign_briefs.manage"},
             advertiser_scope_ids={"org-a"},
         )
 
@@ -162,7 +164,7 @@ class TestBriefCreate(AuthzMixin, unittest.TestCase):
         new_callable=AsyncMock,
     )
     def test_create_draft_success(self, mock_get, mock_create):
-        self._setup_authz(perms={"campaigns.manage"})
+        self._setup_authz(perms={"campaign_briefs.manage"})
         app = _get_app()
         _scoped_create_setup(self, app)
         mock_create.return_value = "brief-new"
@@ -189,7 +191,7 @@ class TestBriefCreate(AuthzMixin, unittest.TestCase):
         new_callable=AsyncMock,
     )
     def test_create_rejects_empty_title(self, mock_get, mock_create):
-        self._setup_authz(perms={"campaigns.manage"})
+        self._setup_authz(perms={"campaign_briefs.manage"})
         app = _get_app()
         _scoped_create_setup(self, app)
         client = TestClient(app)
@@ -226,7 +228,7 @@ class TestBriefUpdate(AuthzMixin, unittest.TestCase):
     )
     def test_update_draft_success(self, mock_update):
         mock_update.return_value = _mock_brief(title="Обновлённый заголовок")
-        self._setup_authz(perms={"campaigns.manage"})
+        self._setup_authz(perms={"campaign_briefs.manage"})
         client = TestClient(_get_app())
         resp = client.patch(
             "/api/v1/identity/campaign-briefs/brief-001",
@@ -244,7 +246,7 @@ class TestBriefUpdate(AuthzMixin, unittest.TestCase):
         mock_update.side_effect = ValueError(
             "Cannot update brief in status: submitted"
         )
-        self._setup_authz(perms={"campaigns.manage"})
+        self._setup_authz(perms={"campaign_briefs.manage"})
         client = TestClient(_get_app())
         resp = client.patch(
             "/api/v1/identity/campaign-briefs/brief-001",
@@ -260,7 +262,7 @@ class TestBriefUpdate(AuthzMixin, unittest.TestCase):
     )
     def test_update_404(self, mock_update):
         mock_update.return_value = None
-        self._setup_authz(perms={"campaigns.manage"})
+        self._setup_authz(perms={"campaign_briefs.manage"})
         client = TestClient(_get_app())
         resp = client.patch(
             "/api/v1/identity/campaign-briefs/brief-999",
@@ -281,7 +283,7 @@ class TestBriefSubmit(AuthzMixin, unittest.TestCase):
     )
     def test_submit_success(self, mock_submit):
         mock_submit.return_value = _mock_brief(status="submitted")
-        self._setup_authz(perms={"campaigns.manage"})
+        self._setup_authz(perms={"campaign_briefs.manage"})
         client = TestClient(_get_app())
         resp = client.post(
             "/api/v1/identity/campaign-briefs/brief-001/submit",
@@ -298,7 +300,7 @@ class TestBriefSubmit(AuthzMixin, unittest.TestCase):
         mock_submit.side_effect = ValueError(
             "Cannot submit brief in status: submitted"
         )
-        self._setup_authz(perms={"campaigns.manage"})
+        self._setup_authz(perms={"campaign_briefs.manage"})
         client = TestClient(_get_app())
         resp = client.post(
             "/api/v1/identity/campaign-briefs/brief-001/submit",
@@ -312,7 +314,7 @@ class TestBriefSubmit(AuthzMixin, unittest.TestCase):
     )
     def test_submit_404(self, mock_submit):
         mock_submit.return_value = None
-        self._setup_authz(perms={"campaigns.manage"})
+        self._setup_authz(perms={"campaign_briefs.manage"})
         client = TestClient(_get_app())
         resp = client.post(
             "/api/v1/identity/campaign-briefs/brief-999/submit",

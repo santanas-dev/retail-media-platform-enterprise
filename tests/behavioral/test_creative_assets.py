@@ -170,9 +170,14 @@ class TestCreateCreativeAssetBehavioral:
             assert forbidden not in data, f"Response must not contain '{forbidden}'"
 
     def test_cross_org_create_rejected(self, client, user_ids):
-        """Advertiser-scoped user cannot create an asset in another org."""
-        # 'advertiser' user is scoped to ADV1_ORG_ID (200)
-        token = _token(user_ids["advertiser"])
+        """A scoped user cannot create an asset in another org.
+
+        CAMPAIGN-PERMISSION-SPLIT-001: the actor is ``campaign_mgr`` (scoped to
+        ADV-001, holds campaigns.manage). The advertiser role no longer holds
+        that permission, so using it here would assert 403 and stop proving
+        anything about cross-org scope.
+        """
+        token = _token(user_ids["campaign_mgr"])
         resp = client.post(
             "/api/v1/identity/creative-assets",
             json={

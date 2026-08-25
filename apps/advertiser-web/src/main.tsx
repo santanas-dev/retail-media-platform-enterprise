@@ -3,6 +3,8 @@ import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import RequirePermission from "./components/RequirePermission";
+import { CAMPAIGNS_MANAGE } from "./auth/permissions";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import Layout from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
@@ -85,9 +87,23 @@ const router = createBrowserRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: "dashboard", element: <DashboardPage /> },
       { path: "campaigns", element: <CampaignListPage /> },
-      { path: "campaigns/new", element: <CampaignCreatePage /> },
+      {
+        path: "campaigns/new",
+        element: (
+          <RequirePermission permission={CAMPAIGNS_MANAGE}>
+            <CampaignCreatePage />
+          </RequirePermission>
+        ),
+      },
       { path: "campaigns/:id", element: <CampaignDetailPage /> },
-      { path: "creatives", element: <CreativeLibraryPage /> },
+      {
+        path: "creatives",
+        element: (
+          <RequirePermission permission={CAMPAIGNS_MANAGE}>
+            <CreativeLibraryPage />
+          </RequirePermission>
+        ),
+      },
       { path: "briefs", element: <BriefListPage /> },
       { path: "briefs/new", element: <BriefCreatePage /> },
       { path: "briefs/:id", element: <BriefDetailPage /> },

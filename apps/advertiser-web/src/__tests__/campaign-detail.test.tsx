@@ -12,7 +12,11 @@ vi.mock("../api/client", () => ({
   api: {
     get: (...args: unknown[]) => mockGet(...args),
     login: vi.fn(), logout: vi.fn().mockResolvedValue(undefined),
-    getMe: vi.fn().mockResolvedValue({ sub: "u1", auth_provider: "local_advertiser", username: "a", display_name: "A" }),
+    // CAMPAIGN-PERMISSION-SPLIT-001: these cases cover the page's behaviour for
+    // an actor that MAY manage campaigns, so the fixture says so explicitly.
+    // The advertiser-without-the-permission case is covered in
+    // campaign-permission-split.test.tsx.
+    getMe: vi.fn().mockResolvedValue({ sub: "u1", auth_provider: "local_advertiser", username: "a", display_name: "A", permissions: ["campaigns.read", "campaigns.manage"] }),
     post: (...args: unknown[]) => mockPost(...args), patch: vi.fn(), del: vi.fn(),
     refresh: vi.fn().mockResolvedValue({ access_token: "t", token_type: "Bearer", expires_in: 1800 }),
   },
