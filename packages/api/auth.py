@@ -18,6 +18,7 @@ from packages.api.dependencies import (
     get_current_user,
     get_db,
     get_refresh_token,
+    set_rls_context,
 )
 from packages.domain import repository
 from packages.auth.schemas import AuthFailure, AuthSuccess
@@ -237,6 +238,7 @@ async def logout(
 async def me(
     claims: dict = Depends(get_current_active_user),
     db=Depends(get_db, scope="function"),
+    _rls=Depends(set_rls_context),
 ):
     """Return current-user profile from DB (not JWT claims).
 
@@ -244,6 +246,13 @@ async def me(
     403 if user is deactivated.
     Username, display_name, permissions, and must_change_password are
     loaded from the database — the JWT stays minimal (sub + auth_provider).
+
+    AUTHZ-CROSS-PORTAL-001: runs with the caller's RLS context.
+    ``advertiser_organizations`` has been RLS-protected since migration 020,
+    so without a context ``advertiser_organization_id`` and
+    ``advertiser_organization`` silently resolved to ``null`` for every
+    advertiser: the cabinet dashboard lost its organisation and no client
+    could tell an advertiser session apart from an operator one.
     """
     user_id = claims.get("sub", "")
     perms: list[str] = []

@@ -384,7 +384,11 @@ class TestProtectedIdentityAPI(unittest.TestCase):
         token = self._token("u-001")
 
         app = _get_app()
-        from packages.api.dependencies import get_current_active_user, get_db
+        from packages.api.dependencies import (
+            get_current_active_user,
+            get_db,
+            set_rls_context,
+        )
 
         async def _mock_active_user():
             return {
@@ -396,6 +400,14 @@ class TestProtectedIdentityAPI(unittest.TestCase):
 
         app.dependency_overrides[get_current_active_user] = _mock_active_user
         app.dependency_overrides[get_db] = lambda: _async_gen(AsyncMock())
+        # AUTHZ-CROSS-PORTAL-001: /auth/me now resolves the advertiser org
+        # under the caller's RLS context.  The DB here is a mock, so the
+        # context setter is stubbed out — this test covers the response
+        # shape, not RLS (tests/behavioral covers that against PostgreSQL).
+        async def _noop_rls():
+            return None
+
+        app.dependency_overrides[set_rls_context] = _noop_rls
 
         class _MockUserDB:
             username = "testuser"
@@ -440,7 +452,11 @@ class TestProtectedIdentityAPI(unittest.TestCase):
         token = self._token("u-002")
 
         app = _get_app()
-        from packages.api.dependencies import get_current_active_user, get_db
+        from packages.api.dependencies import (
+            get_current_active_user,
+            get_db,
+            set_rls_context,
+        )
 
         async def _mock_active_user():
             return {
@@ -452,6 +468,14 @@ class TestProtectedIdentityAPI(unittest.TestCase):
 
         app.dependency_overrides[get_current_active_user] = _mock_active_user
         app.dependency_overrides[get_db] = lambda: _async_gen(AsyncMock())
+        # AUTHZ-CROSS-PORTAL-001: /auth/me now resolves the advertiser org
+        # under the caller's RLS context.  The DB here is a mock, so the
+        # context setter is stubbed out — this test covers the response
+        # shape, not RLS (tests/behavioral covers that against PostgreSQL).
+        async def _noop_rls():
+            return None
+
+        app.dependency_overrides[set_rls_context] = _noop_rls
 
         class _MockUserDB:
             username = "noperms"
@@ -491,13 +515,25 @@ class TestProtectedIdentityAPI(unittest.TestCase):
         token = self._token("u-001")
 
         app = _get_app()
-        from packages.api.dependencies import get_current_active_user, get_db
+        from packages.api.dependencies import (
+            get_current_active_user,
+            get_db,
+            set_rls_context,
+        )
 
         async def _mock_active_user():
             return {"sub": "u-001", "auth_provider": "local_advertiser"}
 
         app.dependency_overrides[get_current_active_user] = _mock_active_user
         app.dependency_overrides[get_db] = lambda: _async_gen(AsyncMock())
+        # AUTHZ-CROSS-PORTAL-001: /auth/me now resolves the advertiser org
+        # under the caller's RLS context.  The DB here is a mock, so the
+        # context setter is stubbed out — this test covers the response
+        # shape, not RLS (tests/behavioral covers that against PostgreSQL).
+        async def _noop_rls():
+            return None
+
+        app.dependency_overrides[set_rls_context] = _noop_rls
 
         class _MockUserDB:
             username = "u"
