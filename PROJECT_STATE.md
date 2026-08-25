@@ -1,12 +1,25 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-25 (UI-SMOKE-STABILITY-005 ✅ — транзакционная граница API)
+**Last updated:** 2026-08-25 (PORTAL-UX-POLISH-001A0 — UX baseline живых порталов)
 
-**Next Active Workstream:** **PORTAL-UX-POLISH-001A0** (Wave 1, UX-first по OWNER-ROADMAP-DECISION-003). Утверждённый порядок — в `docs/product/roadmap.md`.
+**Next Active Workstream:** **OWNER-UX-DECISION-001** — два решения владельца блокируют нарезку (учётная запись рекламодателя для аудита кабинета; порядок A1 относительно A2/A3). Детали — в `docs/product/roadmap.md`.
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `8ad0228` (main — PR #8 private namespace + label fix; tag `v0.11.1-pilot-packaging` → `90c4bb1` неизменен)
 - State/Docs SHA: `0908c91` (develop — LOCAL-DEV-STAND-001 stand tooling). Stand bundle SHA `4635e72`. Payload SHA `8ad0228` unchanged — pilot/production release не менялся.
+
+**PORTAL-UX-POLISH-001A0 ✅** — UX baseline живых порталов (discovery/docs only; product code, CSS, API, миграции и поведение тестов НЕ менялись).
+
+- **Инвентарь маршрутов:** admin-web **17**, advertiser-web **15**. Проверено реальным браузером против стенда `stand-4635e72`: 21 экран — все 15 пунктов меню admin + карточка кампании + форма создания, плюс viewport-варианты 1440/1280/390, тёмная тема и две публичные страницы advertiser-web.
+- **Ограничение зафиксировано честно:** кабинет рекламодателя (13 из 15 маршрутов) **не проверен** — у `advertiser_test` служебный случайный пароль, интерактивной учётной записи нет. Это блокирует и аудит, и ручной проход кабинета.
+- **Backlog:** 11 findings — **4 High** (нет поиска/сортировки в больших таблицах; сайдбар занимает 220px из 390 и обрезает контент; подписи полей не связаны программно на 6 экранах; advertiser-web без какой-либо проверки), 5 Medium, 2 Low. Каждый с route, viewport, шагами и фактическим результатом. Канонический backlog — в `docs/product/roadmap.md`, прежняя секция **заменена**, второго конкурирующего списка нет.
+- **Согласование прежних 9 findings:** подтверждено 5, уточнено 3 (метки — шире и по другой причине; «нет фильтра в Кампаниях» — фильтры-чипы по статусу есть, отсутствуют поиск и сортировка; advertiser-web — установлен масштаб и причина), объединён 1, **устарел 1** (узкий viewport: переполнения документа нет, но сайдбар съедает 56% ширины — переклассифицирован в PORTAL-UX-002).
+- **Разделено намеренно:** учёт функций (13 маршрутов advertiser-web вне registry; `self.campaign_create` `blocked` при существующем маршруте `campaigns/new`) — **не UX-дефект**; отсутствие проверочной учётной записи — отсутствующая возможность; `401 /auth/refresh` до входа — ожидаемое поведение, не дефект.
+- **Нарезка A1–A7** с scope, routes, acceptance, Vitest/UI-smoke ожиданиями и риском. Рекомендуемый порядок по ценности и риску: **A3 → A2 → A4 → A6 → A1 → A5 → A7** (A1 намеренно после точечных задач — у него наибольший blast radius; A5 заблокирован учётной записью).
+- **Чеклист ручного прохода:** 17 journeys на ~30–45 минут, статусы **PENDING**, заполняет только владелец/аудитор. **Rule 8 соблюдён — агент walkthrough не подтверждает.**
+- **Registry statuses/counts НЕ менялись:** 58 / 53 reachable / 5 blocked. Стенд не изменялся. Pilot NOT DEPLOYED, production NO-GO, deployed SHA UNKNOWN, operator walkthrough PENDING.
+- Next → **OWNER-UX-DECISION-001**.
+- Checkpoint by PS-001.
 
 **UI-SMOKE-STABILITY-005 ✅** — остаточная нестабильность UI-smoke устранена. Долг закрыт.
 
