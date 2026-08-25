@@ -135,7 +135,7 @@
 | 5 | Licensing Layer 1 / Layer 2 | Layer 1: enforce, seat_release, report | Layer 1 ✅ | **Layer 2 (signed-license JWS/CRL + UI) не реализован** → `license.view`, `license.upload` blocked | высокий | P2 |
 | 6 | KSO / player / playlist | — | — | **плеер не перенесён**, `playlist.build` blocked, реального КСО нет | высокий | P2 |
 | 7 | Security, RLS, tenant isolation | RLS на tenant-таблицах, `retail_media_app` NOBYPASSRLS, fail-closed scopes, audit | ✅ подтверждено на стенде (`rolbypassrls=f`) | RLS-proof на пилот-хосте | низкий | P1 |
-| 8 | CI, UI-smoke stability, test truth | 40 jobs, blocking release-gate, anti-skip guards, барьер `wait_settled` | — | **UI-SMOKE-STABILITY-005 BLOCKED**; `self__login` нестабилен | **высокий** | **P0** |
+| 8 | CI, UI-smoke stability, test truth | 40 jobs, blocking release-gate, anti-skip guards, барьер `wait_settled`, **транзакционная граница API (API-TX-BOUNDARY-001)** | — | ✅ **UI-SMOKE-STABILITY-005 закрыт** — 5× first-attempt green | низкий | — |
 | 9 | Local stand, pilot packaging, deployment | LOCAL-DEV-STAND-001 ✅ OPERATIONAL, immutable bundle, update+rollback | ✅ работает | **001D HOST PROOF PENDING**, 15 owner inputs, reverse proxy/TLS отсутствуют | **высокий** | **P0** |
 | 10 | Backup/restore, monitoring, secrets, TLS/CD, prod ops | backup+restore drill в CI, password-file contract, secret-гейты | стенд: backup не требуется (disposable) | TLS, CD, мониторинг прода, ротация секретов — **отсутствуют** | **высокий** | P2 |
 
@@ -175,7 +175,7 @@
 
 | Волна | Состав | Вход | Done gate | Зависимости |
 |---|---|---|---|---|
-| **Wave 0 — стабильность и truth** | UI-SMOKE-STABILITY-005, `self__login` PENDING | сейчас | 3× first-attempt green release-gate | — |
+| **Wave 0 — стабильность и truth** | ~~UI-SMOKE-STABILITY-005~~ ✅, ~~`self__login`~~ ✅ | — | **выполнено**: 5× first-attempt green release-gate на `4e4a3e5` | — |
 | **Wave 1 — walkthrough + UX** | operator walkthrough (человек), `PORTAL-UX-POLISH` (UX-001…009) | Wave 0 | `operator walkthrough: OK` в PROJECT_STATE + UX P0/P1 закрыты | стенд OPERATIONAL ✅ |
 | **Wave 2 — недостающие бизнес-функции** | `self.report_view`, `self.campaign_create` (по решению владельца), аудит advertiser-web | Wave 1 | journeys + smoke зелёные, registry обновлён с доказательством | решение по self-service |
 | **Wave 3 — KSO/player + signed licensing** | PLAYER-IMPORT, `playlist.build`, EPIC-L Layer 2 (`license.view`, `license.upload`) | Wave 2 | сквозной показ → PoP → отчёт замкнут | **реальный КСО** |

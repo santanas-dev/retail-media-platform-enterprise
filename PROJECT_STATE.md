@@ -1,12 +1,27 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-25 (OWNER-ROADMAP-DECISION-003 — решения владельца утверждены)
+**Last updated:** 2026-08-25 (UI-SMOKE-STABILITY-005 ✅ — транзакционная граница API)
 
-**Next Active Workstream:** **UI-SMOKE-STABILITY-005-FU** — закрытие BLOCKED-долга стабильности UI-smoke (Wave 0). Утверждённый порядок работ — в `docs/product/roadmap.md`.
+**Next Active Workstream:** **PORTAL-UX-POLISH-001A0** (Wave 1, UX-first по OWNER-ROADMAP-DECISION-003). Утверждённый порядок — в `docs/product/roadmap.md`.
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `8ad0228` (main — PR #8 private namespace + label fix; tag `v0.11.1-pilot-packaging` → `90c4bb1` неизменен)
 - State/Docs SHA: `0908c91` (develop — LOCAL-DEV-STAND-001 stand tooling). Stand bundle SHA `4635e72`. Payload SHA `8ad0228` unchanged — pilot/production release не менялся.
+
+**UI-SMOKE-STABILITY-005 ✅** — остаточная нестабильность UI-smoke устранена. Долг закрыт.
+
+- **Root cause (доказан, а не предположен): response-before-commit.** `packages/api/dependencies.py::get_db` отдавал сессию внутри `async with session.begin()`, поэтому коммит происходил при выходе из зависимости — а при дефолтном FastAPI `scope="request"` это **после отправки ответа**. HTTP 2xx не означал, что запись видна: SPA получала 200, немедленно делала refetch и читала до-коммитное состояние. Решающая улика — `advertiser__brand_crud`: `assert 'Смоук Бренд SMOKE-39711f3b' == 'Смоук Бренд Обновлён'`, то есть UI отрисовал значение **до собственного успешного апдейта**. `campaign__reject` падал 3 раза из 6 прогонов с `expected to be enabled / Actual: disabled` — readiness-чеклист не видел только что созданные флайт и плейсмент.
+- **Почему `wait_settled` не помогал:** барьер корректно дожидается отсутствия in-flight запросов и покоя DOM, но оба условия выполняются **внутри до-коммитного окна**. Никакое ожидание на стороне теста этот дефект не лечит.
+- **Классификация исправлена по трассам.** Изначально три теста (`advertiser__invite`, `inventory__simulate`, `commerce__tariff_manage`) были отнесены к классу navigation/page-mount по тексту ошибки. Покадровый разбор traces показал: **перехода между страницами нет ни в одном**, все три ждут элемент, зависящий от только что выполненной мутации. **Отдельного navigation-класса не существует** — все 11 падений корпуса относятся к одному классу. Класс auth/session (`401 /auth/refresh`) **не подтверждён**: встречался и в зелёных прогонах, причинной цепочки нет.
+- **Исправленный слой — продуктовый (API-TX-BOUNDARY-001).** Все **133** `Depends(get_db)` в 19 файлах переведены на `scope="function"`: зависимость завершается до отправки ответа, поэтому успешный ответ гарантирует committed read-after-write, а сбой коммита даёт 5xx вместо 2xx, которому нельзя верить. `HttpOnly`/`SameSite`/lifetime и логика refresh не менялись. Аудит поверхности: `StreamingResponse`/`BackgroundTasks` отсутствуют, единственный `begin_nested` — savepoint в pop-ingestion.
+- **Version drift устранён.** `Depends(..., scope=...)` не существует до FastAPI **0.121.0** (проверено установкой 0.120.0 — отсутствует, 0.121.0 — присутствует). Прежний floor `fastapi>=0.115.0` без верхней границы допускал установку, где все 133 call-site падают с `TypeError` на импорте, и он же породил расхождение 0.139.0 (локально) / 0.141.1 (образ стенда) / unpinned в CI. Floor поднят до `>=0.121.0` в `control-api` и `device-gateway`; обе фактические версии параметр поддерживают, неподтверждённой runtime-разницы нет. Другие зависимости не трогались.
+- **Substantive SHA:** `32948f3` (транзакционная граница + 12 контрактных тестов), `4e4a3e5` (floor + тест минимальной версии).
+- **Локальный proof:** каждый из 7 mutation-тестов 10/10 · объединённая последовательность 10/10 · три порядка (reverse/shuffle-a/shuffle-b) 10/10 · **все 11 исторически падавших одной последовательностью 10/10** · три перестановки порядка 10/10 · **полный UI-smoke 38/38 пять прогонов подряд** · прогон при ограничении 4 CPU 38/38 · integration read-after-write **40/40** немедленных чтений видят commit (повторено на чистой БД) · contract/tamper 14/14 · tamper (возврат на request-scope) → regression красный.
+- **CI: пять последовательных `workflow_dispatch` на одном SHA `4e4a3e5`, каждый attempt 1, без rerun, UI-smoke 38/38, release-gate success, 40/40 jobs:** `#32866060287` · `#32866800580` · `#32867612701` · `#32868408288` · `#32869172028`. Плюс обычный `#32854863753` (success, attempt 1) сразу после фикса.
+- **`self__login` PENDING снят:** тест входит в набор из 11, прошёл 10/10 последовательностью, 10/10 в трёх перестановках и во всех пяти полных прогонах CI. Отдельный journey доказан.
+- Registry statuses **не менялись** (58 / 53 reachable / 5 blocked). LOCAL-DEV-STAND-001 не изменялся, стенд не трогался. Pilot NOT DEPLOYED, production NO-GO, deployed SHA UNKNOWN, operator walkthrough PENDING.
+- Next → **PORTAL-UX-POLISH-001A0**.
+- Checkpoint by PS-001.
 
 **OWNER-ROADMAP-DECISION-003 ✅** — решения владельца зафиксированы (docs/governance only).
 
