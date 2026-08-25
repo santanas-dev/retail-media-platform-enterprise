@@ -25,7 +25,7 @@ router = APIRouter()
 async def submit_application(
     body: AdvertiserApplicationCreate,
     request: Request,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
 ):
     # IP-based rate limiting
     rate_key = get_rate_limit_key(request)
@@ -75,7 +75,7 @@ async def submit_application(
 async def accept_invite(
     token: str,
     body: AcceptAdvertiserInvite,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
 ):
     """Accept an advertiser invite with password. Creates user, membership, credential, scoped role."""
     from packages.domain.schemas import AdvertiserInviteOut

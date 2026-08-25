@@ -19,7 +19,25 @@ from packages.security.jwt import verify_access_token
 
 
 async def get_db():
-    """Yield an async SQLAlchemy session, auto-close on exit."""
+    """Yield an async SQLAlchemy session inside a transaction.
+
+    API-TX-BOUNDARY-001 - MUST be used as ``Depends(get_db, scope="function")``.
+
+    The transaction commits when this dependency exits. Under FastAPI's default
+    ``scope="request"`` that happens AFTER the response has been sent, so a 2xx
+    did not yet mean the write was visible: a client that re-read immediately
+    could observe pre-commit state. That is what made the UI-smoke suite flaky
+    in a way no test-side wait could fix - the SPA got 200, refetched at once and
+    rendered stale data (advertiser__brand_crud read the pre-update name).
+
+    With ``scope="function"`` the dependency finishes before the response is
+    sent, so a successful mutation response guarantees committed
+    read-after-write visibility, and a commit failure surfaces as 5xx instead of
+    a 2xx the client cannot trust.
+
+    tests/test_api_tx_boundary.py pins both the ordering contract and the fact
+    that every call site carries the scope.
+    """
     engine = get_global_engine()
     async with get_session(engine) as session:
         async with session.begin():
@@ -80,7 +98,7 @@ async def get_current_user(
 
 async def get_current_active_user(
     claims: dict = Depends(get_current_user),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
 ) -> dict:
     """Validate JWT + load user from DB, verify active status.
 
@@ -117,7 +135,7 @@ def require_permission(permission_code: str):
 
     async def enforce(
         claims: dict = Depends(get_current_active_user),
-        db=Depends(get_db),
+        db=Depends(get_db, scope="function"),
     ) -> dict:
         perms = await repository.get_user_permissions(db, claims["sub"])
         if permission_code not in perms:
@@ -140,7 +158,7 @@ def require_permission(permission_code: str):
 
 async def get_scope_context(
     claims: dict = Depends(get_current_active_user),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
 ) -> ScopeContext:
     """Resolve the current user's effective scopes from the database.
 
@@ -151,7 +169,7 @@ async def get_scope_context(
 
 
 async def set_rls_context(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     scope: ScopeContext = Depends(get_scope_context),
 ) -> None:
     """Apply RLS session variables so tenant queries are filtered.
@@ -194,7 +212,7 @@ def require_scoped_permission(permission_code: str, scope_type: str | None = Non
     """
 
     async def enforce(
-        db=Depends(get_db),
+        db=Depends(get_db, scope="function"),
         scope: ScopeContext = Depends(get_scope_context),
     ) -> ScopeContext:
         # 1. Admin bypass — unscoped admin with the permission
@@ -294,7 +312,7 @@ async def get_device_id_from_token(request: Request) -> str:
 
 async def set_device_rls_context(
     device_id: str = Depends(get_device_id_from_token),
-    session = Depends(get_db),
+    session = Depends(get_db, scope="function"),
 ) -> None:
     """Bootstrap device RLS context on the request session.
 

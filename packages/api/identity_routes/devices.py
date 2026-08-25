@@ -35,7 +35,7 @@ async def list_devices(
     status: str | None = None,
     limit: int = DEFAULT_LIMIT,
     offset: int = 0,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("devices.read")),
     _rls=Depends(set_rls_context),
 ):
@@ -54,7 +54,7 @@ async def list_devices(
 
 @router.get("/devices/summary", response_model=DeviceSummaryOut)
 async def device_summary(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("devices.read")),
     _rls=Depends(set_rls_context),
 ):
@@ -65,7 +65,7 @@ async def device_summary(
 @router.get("/devices/{device_id}", response_model=DeviceOut)
 async def get_device(
     device_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("devices.read")),
     _rls=Depends(set_rls_context),
 ):
@@ -79,7 +79,7 @@ async def get_device(
 async def decommission_device(
     device_id: str,
     body: DeviceDecommissionRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("devices.manage")),
     _rls=Depends(set_rls_context),
 ):

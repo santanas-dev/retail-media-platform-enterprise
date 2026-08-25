@@ -36,7 +36,7 @@ router = APIRouter()
 @router.post("/device/onboard", response_model=DeviceOnboardResponse)
 async def device_onboard(
     body: DeviceOnboardRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
 ):
     """Register a physical device using a one-time onboarding code.
 
@@ -127,7 +127,7 @@ async def device_onboard(
 @router.post("/identity/device-codes", response_model=DeviceCodeOut, status_code=201)
 async def create_device_code(
     body: DeviceCodeCreateRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _user: dict = Depends(get_current_active_user),
     _perm=Depends(require_permission("devices.manage")),
 ):

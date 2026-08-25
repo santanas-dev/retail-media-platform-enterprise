@@ -48,7 +48,7 @@ router = APIRouter()
 
 @router.get("/branches", response_model=list[BranchOut])
 async def list_branches(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("campaigns.read")),
     _rls=Depends(set_rls_context),
 ):
@@ -58,7 +58,7 @@ async def list_branches(
 
 @router.get("/clusters", response_model=list[ClusterOut])
 async def list_clusters(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("campaigns.read")),
     _rls=Depends(set_rls_context),
 ):
@@ -68,7 +68,7 @@ async def list_clusters(
 
 @router.get("/stores", response_model=list[StoreOut])
 async def list_stores(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("campaigns.read")),
     _rls=Depends(set_rls_context),
 ):
@@ -78,7 +78,7 @@ async def list_stores(
 
 @router.get("/display-surfaces", response_model=list[DisplaySurfaceOut])
 async def list_display_surfaces(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("campaigns.read")),
     _rls=Depends(set_rls_context),
 ):
@@ -93,7 +93,7 @@ async def list_display_surfaces(
 
 @router.get("/inventory/stores", response_model=PaginatedResponse[InventoryStoreOut])
 async def list_inventory_stores(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     pagination: PaginationParams = Depends(get_pagination_params),
     _claims: dict = Depends(require_permission("inventory.read")),
     _rls=Depends(set_rls_context),
@@ -111,7 +111,7 @@ async def list_inventory_stores(
 
 @router.get("/inventory/surfaces", response_model=PaginatedResponse[InventorySurfaceOut])
 async def list_inventory_surfaces(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     pagination: PaginationParams = Depends(get_pagination_params),
     _claims: dict = Depends(require_permission("inventory.read")),
     _rls=Depends(set_rls_context),
@@ -132,7 +132,7 @@ async def list_inventory_surfaces(
 async def patch_inventory_surface(
     surface_id: str,
     body: InventorySurfacePatchRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("inventory.manage")),
     _rls=Depends(set_rls_context),
 ):
@@ -170,7 +170,7 @@ async def patch_inventory_surface(
 )
 async def check_availability(
     body: InventoryAvailabilityRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("inventory.read")),
     _rls=Depends(set_rls_context),
 ):
@@ -213,7 +213,7 @@ async def check_availability(
              response_model=InventoryConflictCheckResponse)
 async def check_inventory_conflicts(
     body: InventoryConflictCheckRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("inventory.read")),
     _rls=Depends(set_rls_context),
 ):
@@ -253,7 +253,7 @@ async def check_inventory_conflicts(
 )
 async def suggest_alternatives(
     body: InventoryAlternativesRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("inventory.read")),
     _rls=Depends(set_rls_context),
 ):
@@ -286,7 +286,7 @@ async def suggest_alternatives(
             response_model=InventoryConflictCheckResponse)
 async def get_campaign_inventory_conflicts(
     campaign_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("inventory.read")),
     _rls=Depends(set_rls_context),
 ):
@@ -350,7 +350,7 @@ def _validate_value_json(rule_type: str, value: dict) -> None:
 
 @router.get("/inventory/rules", response_model=list[InventoryRuleOut])
 async def list_rules(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("inventory.read")),
     _rls=Depends(set_rls_context),
 ):
@@ -362,7 +362,7 @@ async def list_rules(
 @router.post("/inventory/rules", response_model=InventoryRuleOut, status_code=201)
 async def create_rule(
     body: InventoryRuleCreate,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("inventory.manage")),
     _rls=Depends(set_rls_context),
 ):
@@ -387,7 +387,7 @@ async def create_rule(
 async def update_rule(
     rule_id: str,
     body: InventoryRuleUpdate,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("inventory.manage")),
     _rls=Depends(set_rls_context),
 ):
@@ -414,7 +414,7 @@ async def update_rule(
 @router.post("/inventory/rules/{rule_id}/activate", response_model=InventoryRuleOut)
 async def activate_rule(
     rule_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("inventory.manage")),
     _rls=Depends(set_rls_context),
 ):
@@ -429,7 +429,7 @@ async def activate_rule(
 @router.post("/inventory/rules/{rule_id}/deactivate", response_model=InventoryRuleOut)
 async def deactivate_rule(
     rule_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("inventory.manage")),
     _rls=Depends(set_rls_context),
 ):
@@ -452,7 +452,7 @@ async def deactivate_rule(
 )
 async def simulate_inventory(
     body: InventorySimulationRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("inventory.read")),
     _rls=Depends(set_rls_context),
 ):

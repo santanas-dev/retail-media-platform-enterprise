@@ -26,7 +26,7 @@ router = APIRouter()
 async def license_report(
     year: int,
     month: int,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("license.read")),
     _rls=Depends(set_rls_context),
 ):

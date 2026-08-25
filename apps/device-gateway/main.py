@@ -134,7 +134,7 @@ async def get_device_id_from_token(request: Request) -> str:
 
 async def set_device_rls_context(
     device_id: str = Depends(get_device_id_from_token),
-    session: AsyncSession = Depends(get_db),
+    session: AsyncSession = Depends(get_db, scope="function"),
 ) -> None:
     """Bootstrap device RLS context on the request session.
 
@@ -291,7 +291,7 @@ async def get_latest_manifest(
     request: Request,
     device_id: str = Depends(get_device_id_from_token),
     _rls: None = Depends(set_device_rls_context),
-    session: AsyncSession = Depends(get_db),
+    session: AsyncSession = Depends(get_db, scope="function"),
 ):
     """Return the latest manifest for the authenticated device, or 404.
 
@@ -382,7 +382,7 @@ async def device_heartbeat(
     body: HeartbeatRequest,
     device_id: str = Depends(get_device_id_from_token),
     _rls: None = Depends(set_device_rls_context),
-    session: AsyncSession = Depends(get_db),
+    session: AsyncSession = Depends(get_db, scope="function"),
 ):
     """Record a device heartbeat.
 

@@ -64,7 +64,7 @@ router = APIRouter()
 
 @router.get("/campaigns", response_model=PaginatedResponse[CampaignOut])
 async def list_campaigns(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     pagination: PaginationParams = Depends(get_pagination_params),
     campaign_id: str | None = Query(None, description="Filter by campaign ID"),
     _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
@@ -83,7 +83,7 @@ async def list_campaigns(
 
 @router.get("/campaign-flights", response_model=list[CampaignFlightOut])
 async def list_campaign_flights(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -93,7 +93,7 @@ async def list_campaign_flights(
 
 @router.get("/campaign-creatives", response_model=list[CampaignCreativeOut])
 async def list_campaign_creatives(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -103,7 +103,7 @@ async def list_campaign_creatives(
 
 @router.get("/creative-assets", response_model=list[CreativeAssetOut])
 async def list_creative_assets(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("creatives.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -114,7 +114,7 @@ async def list_creative_assets(
 
 @router.get("/campaign-placements", response_model=list[CampaignPlacementOut])
 async def list_campaign_placements(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -124,7 +124,7 @@ async def list_campaign_placements(
 
 @router.get("/campaign-approvals", response_model=list[CampaignApprovalOut])
 async def list_campaign_approvals(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -134,7 +134,7 @@ async def list_campaign_approvals(
 
 @router.get("/campaign-status-history", response_model=list[CampaignStatusHistoryOut])
 async def list_campaign_status_history(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -150,7 +150,7 @@ async def list_campaign_status_history(
 @router.post("/campaigns", response_model=CampaignOut, status_code=201)
 async def create_campaign_endpoint(
     body: CampaignCreateRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -201,7 +201,7 @@ async def create_campaign_endpoint(
 async def update_campaign_endpoint(
     campaign_id: str,
     body: CampaignUpdateRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -237,7 +237,7 @@ async def update_campaign_endpoint(
 @router.post("/campaigns/{campaign_id}/archive", response_model=CampaignArchiveResponse)
 async def archive_campaign_endpoint(
     campaign_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -284,7 +284,7 @@ async def archive_campaign_endpoint(
              response_model=CampaignApprovalResponse)
 async def request_approval_endpoint(
     campaign_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -337,7 +337,7 @@ async def request_approval_endpoint(
              response_model=CampaignApprovalResponse)
 async def approve_endpoint(
     campaign_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.approve", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -395,7 +395,7 @@ async def approve_endpoint(
 async def reject_endpoint(
     campaign_id: str,
     body: CampaignRejectRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.approve", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -460,7 +460,7 @@ async def reject_endpoint(
              response_model=CampaignApprovalResponse)
 async def activate_endpoint(
     campaign_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -516,7 +516,7 @@ async def activate_endpoint(
              response_model=CampaignApprovalResponse)
 async def pause_endpoint(
     campaign_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -572,7 +572,7 @@ async def pause_endpoint(
              response_model=CampaignApprovalResponse)
 async def complete_endpoint(
     campaign_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -640,7 +640,7 @@ async def complete_endpoint(
 @router.post("/campaigns/complete-expired",
              response_model=dict)
 async def complete_expired_endpoint(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("campaigns.manage")),
     _rls=Depends(set_rls_context),
 ):
@@ -662,7 +662,7 @@ async def complete_expired_endpoint(
             response_model=PaginatedResponse[CampaignApprovalQueueItem])
 async def approval_queue_endpoint(
     status_filter: str = Query("pending_approval", alias="status"),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     pagination: PaginationParams = Depends(get_pagination_params),
     _claims: dict = Depends(require_permission("campaigns.approve")),
     _rls=Depends(set_rls_context),
@@ -698,7 +698,7 @@ async def approval_queue_endpoint(
 async def create_flight_endpoint(
     campaign_id: str,
     body: CampaignFlightCreateRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -741,7 +741,7 @@ async def update_flight_endpoint(
     campaign_id: str,
     flight_id: str,
     body: CampaignFlightUpdateRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -790,7 +790,7 @@ async def update_flight_endpoint(
 async def create_placement_endpoint(
     campaign_id: str,
     body: CampaignPlacementCreateRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -834,7 +834,7 @@ async def update_placement_endpoint(
     campaign_id: str,
     placement_id: str,
     body: CampaignPlacementUpdateRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -873,7 +873,7 @@ async def update_placement_endpoint(
 async def create_creative_endpoint(
     campaign_id: str,
     body: CampaignCreativeCreateRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -925,7 +925,7 @@ async def create_creative_endpoint(
 async def attach_creative_endpoint(
     campaign_id: str,
     body: CampaignCreativeAttachRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -968,7 +968,7 @@ async def attach_creative_endpoint(
             response_model=CampaignInventoryReservationsResponse)
 async def list_campaign_inventory_reservations(
     campaign_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("inventory.read")),
     _rls=Depends(set_rls_context),
 ):

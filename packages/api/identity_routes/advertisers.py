@@ -43,7 +43,7 @@ router = APIRouter()
 
 @router.get("/advertiser-organizations", response_model=list[AdvertiserOrganizationOut])
 async def list_advertiser_organizations(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("organization.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -54,7 +54,7 @@ async def list_advertiser_organizations(
 @router.post("/advertiser-organizations", response_model=AdvertiserOrganizationOut, status_code=201)
 async def create_advertiser_organization(
     body: AdvertiserOrganizationCreate,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
     _rls=Depends(set_rls_context),
     current_user: dict = Depends(get_current_active_user),
@@ -94,7 +94,7 @@ async def create_advertiser_organization(
 
 @router.get("/advertiser-brands", response_model=list[AdvertiserBrandOut])
 async def list_advertiser_brands(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("advertisers.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -109,7 +109,7 @@ async def list_advertiser_brands(
 
 @router.get("/advertiser-contracts", response_model=list[AdvertiserContractOut])
 async def list_advertiser_contracts(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("advertisers.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -124,7 +124,7 @@ async def list_advertiser_contracts(
 
 @router.get("/advertiser-contacts", response_model=list[AdvertiserContactOut])
 async def list_advertiser_contacts(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("advertisers.contacts.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -140,7 +140,7 @@ async def list_advertiser_contacts(
 @router.get("/advertiser-organizations/{org_id}", response_model=AdvertiserOrganizationDetailOut)
 async def get_advertiser_organization_detail(
     org_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("advertisers.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -157,7 +157,7 @@ async def get_advertiser_organization_detail(
 async def update_advertiser_organization_legal_requisites(
     org_id: str,
     body: AdvertiserLegalRequisitesUpdate,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
     _rls=Depends(set_rls_context),
     current_user: dict = Depends(get_current_active_user),
@@ -199,7 +199,7 @@ async def update_advertiser_organization_legal_requisites(
 @router.get("/advertiser-brands-by-org", response_model=list[AdvertiserBrandOut])
 async def list_advertiser_brands_by_org(
     advertiser_organization_id: str = Query(..., description="Filter by organization ID"),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("advertisers.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -210,7 +210,7 @@ async def list_advertiser_brands_by_org(
 @router.post("/advertiser-brands", response_model=AdvertiserBrandOut, status_code=201)
 async def create_advertiser_brand(
     body: AdvertiserBrandCreate,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -230,7 +230,7 @@ async def update_advertiser_brand(
     brand_id: str,
     body: AdvertiserBrandUpdate,
     advertiser_organization_id: str = Query(..., description="Scope guard: org ID"),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -251,7 +251,7 @@ async def update_advertiser_brand(
 @router.get("/advertiser-contracts-by-org", response_model=list[AdvertiserContractOut])
 async def list_advertiser_contracts_by_org(
     advertiser_organization_id: str = Query(..., description="Filter by organization ID"),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("advertisers.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -262,7 +262,7 @@ async def list_advertiser_contracts_by_org(
 @router.get("/advertiser-contacts-by-org", response_model=list[AdvertiserContactOut])
 async def list_advertiser_contacts_by_org(
     advertiser_organization_id: str = Query(..., description="Filter by organization ID"),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("advertisers.contacts.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -273,7 +273,7 @@ async def list_advertiser_contacts_by_org(
 @router.post("/advertiser-contacts", response_model=AdvertiserContactOut, status_code=201)
 async def create_advertiser_contact(
     body: AdvertiserContactCreate,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
     _rls=Depends(set_rls_context),
     current_user: dict = Depends(get_current_active_user),
@@ -311,7 +311,7 @@ async def update_advertiser_contact(
     contact_id: str,
     body: AdvertiserContactUpdate,
     advertiser_organization_id: str = Query(..., description="Scope guard: org ID"),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
     _rls=Depends(set_rls_context),
     current_user: dict = Depends(get_current_active_user),
@@ -352,7 +352,7 @@ async def update_advertiser_contact(
 @router.get("/advertiser-user-memberships", response_model=list[AdvertiserUserMembershipOut])
 async def list_advertiser_user_memberships(
     advertiser_organization_id: str = Query(..., description="Filter by organization ID"),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("advertisers.read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -368,7 +368,7 @@ async def list_advertiser_user_memberships(
 @router.post("/advertiser-contracts", response_model=AdvertiserContractOut, status_code=201)
 async def create_advertiser_contract(
     body: AdvertiserContractCreate,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -392,7 +392,7 @@ async def update_advertiser_contract(
     contract_id: str,
     body: AdvertiserContractUpdate,
     advertiser_organization_id: str = Query(..., description="Scope guard: org ID"),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -422,7 +422,7 @@ async def update_advertiser_contract(
 async def contract_upload_intent(
     contract_id: str,
     body: ContractUploadIntentRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -477,7 +477,7 @@ async def contract_upload_intent(
 async def contract_complete_upload(
     contract_id: str,
     body: ContractUploadCompleteRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("advertisers.manage", "advertiser")),
     _rls=Depends(set_rls_context),
 ):

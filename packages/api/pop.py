@@ -27,7 +27,7 @@ async def ingest_batch(
     request: Request,
     body: PopBatchRequest,
     device_id: str = Depends(get_device_id_from_token),
-    db = Depends(get_db),
+    db = Depends(get_db, scope="function"),
     _rls_ctx: None = Depends(set_device_rls_context),
 ) -> PopBatchResponse:
     """Ingest a batch of PoP events from a device.

@@ -45,7 +45,7 @@ router = APIRouter()
              response_model=CreativeAssetOut, status_code=201)
 async def create_creative_asset_endpoint(
     body: CreativeAssetCreateRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -112,7 +112,7 @@ async def create_creative_asset_endpoint(
 async def upload_intent_endpoint(
     asset_id: str,
     body: UploadIntentRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope: ScopeContext = Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -167,7 +167,7 @@ async def upload_intent_endpoint(
 async def complete_upload_endpoint(
     asset_id: str,
     body: CompleteUploadRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope: ScopeContext = Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -234,7 +234,7 @@ async def complete_upload_endpoint(
             response_model=PaginatedResponse[CreativeModerationQueueItem])
 async def moderation_queue_endpoint(
     status_filter: str = Query("pending_review", alias="moderation_status"),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     pagination: PaginationParams = Depends(get_pagination_params),
     _claims: dict = Depends(require_permission("creatives.moderate")),
     _rls=Depends(set_rls_context),
@@ -261,7 +261,7 @@ async def moderation_queue_endpoint(
              response_model=CreativeModerationResponse)
 async def approve_creative_endpoint(
     asset_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     _perm: dict = Depends(require_permission("creatives.moderate")),
     _rls=Depends(set_rls_context),
@@ -300,7 +300,7 @@ async def approve_creative_endpoint(
 async def reject_creative_endpoint(
     asset_id: str,
     body: CreativeRejectRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     _perm: dict = Depends(require_permission("creatives.moderate")),
     _rls=Depends(set_rls_context),

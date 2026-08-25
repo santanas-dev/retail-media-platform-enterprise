@@ -28,7 +28,7 @@ async def list_applications(
     status: str | None = Query(None, description="Filter by status"),
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("advertiser_applications.read")),
     _rls=Depends(set_rls_context),
 ):
@@ -47,7 +47,7 @@ async def list_applications(
 @router.get("/advertiser-applications/{application_id}", response_model=AdvertiserApplicationOut)
 async def get_application(
     application_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("advertiser_applications.read")),
     _rls=Depends(set_rls_context),
 ):
@@ -64,7 +64,7 @@ async def get_application(
 async def review_application(
     application_id: str,
     body: AdvertiserApplicationReview,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(require_permission("advertiser_applications.review")),
     _rls=Depends(set_rls_context),
 ):
@@ -121,7 +121,7 @@ async def review_application(
 @router.get("/advertiser-applications/{application_id}/invite", response_model=AdvertiserInviteOut | None)
 async def get_application_invite(
     application_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("advertiser_applications.read")),
     _rls=Depends(set_rls_context),
 ):
@@ -133,7 +133,7 @@ async def get_application_invite(
 @router.post("/advertiser-applications/{application_id}/invite", response_model=AdvertiserInviteOut, status_code=201)
 async def create_application_invite(
     application_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(require_permission("advertiser_applications.review")),
     _rls=Depends(set_rls_context),
 ):

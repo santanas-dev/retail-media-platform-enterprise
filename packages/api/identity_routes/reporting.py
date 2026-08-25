@@ -31,7 +31,7 @@ router = APIRouter()
 @router.get("/campaigns/{campaign_id}/pop/summary", response_model=CampaignPopSummaryOut)
 async def get_campaign_pop_summary(
     campaign_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     scope: ScopeContext = Depends(get_scope_context),
     _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -52,7 +52,7 @@ async def get_campaign_pop_summary(
 @router.get("/campaigns/{campaign_id}/pop/by-day", response_model=list[CampaignPopByDayOut])
 async def get_campaign_pop_by_day(
     campaign_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     scope: ScopeContext = Depends(get_scope_context),
     _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -72,7 +72,7 @@ async def get_campaign_pop_by_day(
 @router.get("/campaigns/{campaign_id}/pop/by-surface", response_model=list[CampaignPopBySurfaceOut])
 async def get_campaign_pop_by_surface(
     campaign_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     scope: ScopeContext = Depends(get_scope_context),
     _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -97,7 +97,7 @@ async def get_campaign_pop_by_surface(
 @router.get("/campaigns/{campaign_id}/pop/export")
 async def export_campaign_pop_csv(
     campaign_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     scope: ScopeContext = Depends(get_scope_context),
     _perm=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),

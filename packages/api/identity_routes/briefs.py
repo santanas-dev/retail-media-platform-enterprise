@@ -32,7 +32,7 @@ router = APIRouter()
 
 @router.get("/campaign-briefs", response_model=PaginatedResponse[CampaignBriefOut])
 async def list_briefs(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _user=Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -57,7 +57,7 @@ async def list_briefs(
 @router.get("/campaign-briefs/{brief_id}", response_model=CampaignBriefOut)
 async def get_brief(
     brief_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _user=Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.read", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -79,7 +79,7 @@ async def get_brief(
 @router.post("/campaign-briefs", response_model=CampaignBriefOut, status_code=201)
 async def create_brief(
     body: CampaignBriefCreateRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     user=Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -118,7 +118,7 @@ async def create_brief(
 async def update_brief(
     brief_id: str,
     body: CampaignBriefUpdateRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _user=Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -156,7 +156,7 @@ async def update_brief(
 @router.post("/campaign-briefs/{brief_id}/submit", response_model=CampaignBriefOut)
 async def submit_brief(
     brief_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _user=Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("campaigns.manage", "advertiser")),
     _rls=Depends(set_rls_context),

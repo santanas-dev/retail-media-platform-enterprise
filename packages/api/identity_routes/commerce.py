@@ -38,7 +38,7 @@ router = APIRouter()
 
 @router.get("/commerce/tariff-versions", response_model=list[CommerceTariffVersionOut])
 async def list_tariff_versions(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("commerce.tariff_read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -49,7 +49,7 @@ async def list_tariff_versions(
 @router.post("/commerce/tariff-versions", response_model=CommerceTariffVersionOut, status_code=201)
 async def create_tariff_version(
     body: CommerceTariffVersionCreate,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("commerce.tariff_manage", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -68,7 +68,7 @@ async def create_tariff_version(
 async def update_tariff_version(
     tariff_id: str,
     body: CommerceTariffVersionUpdate,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("commerce.tariff_manage", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -91,7 +91,7 @@ async def update_tariff_version(
 @router.get("/commerce/price-items", response_model=list[CommercePriceItemOut])
 async def list_price_items(
     tariff_version_id: str = Query(...),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("commerce.tariff_read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -103,7 +103,7 @@ async def list_price_items(
 async def create_price_item(
     body: CommercePriceItemCreate,
     tariff_version_id: str = Query(...),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("commerce.tariff_manage", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -122,7 +122,7 @@ async def create_price_item(
 async def update_price_item(
     price_item_id: str,
     body: CommercePriceItemUpdate,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("commerce.tariff_manage", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -143,7 +143,7 @@ async def update_price_item(
 @router.post("/commerce/quote", response_model=CommerceQuoteResponse)
 async def quote(
     body: CommerceQuoteRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _perm=Depends(require_scoped_permission("commerce.order_read", "advertiser")),
     _rls=Depends(set_rls_context),
 ):
@@ -184,7 +184,7 @@ def _serialize_order(order) -> CommerceOrderOut:
 
 @router.get("/commerce/orders", response_model=list[CommerceOrderOut])
 async def list_orders(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("commerce.order_read", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -196,7 +196,7 @@ async def list_orders(
 @router.post("/commerce/orders", response_model=CommerceOrderOut, status_code=201)
 async def create_order(
     body: CommerceOrderCreate,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("commerce.order_manage", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -219,7 +219,7 @@ async def create_order(
 @router.get("/commerce/orders/{order_id}", response_model=CommerceOrderOut)
 async def get_order(
     order_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("commerce.order_read", "advertiser")),
     _rls=Depends(set_rls_context),
@@ -237,7 +237,7 @@ async def get_order(
 async def update_order(
     order_id: str,
     body: CommerceOrderUpdate,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(get_current_active_user),
     scope=Depends(require_scoped_permission("commerce.order_manage", "advertiser")),
     _rls=Depends(set_rls_context),

@@ -61,7 +61,7 @@ def _generate_user_code(username: str) -> str:
 async def list_users(
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
     offset: int = Query(0, ge=0),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     scope: ScopeContext = Depends(get_scope_context),
     _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("users.read")),
@@ -78,7 +78,7 @@ async def list_users(
 @router.get("/users/{user_id}", response_model=UserDetailOut)
 async def get_user(
     user_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     scope: ScopeContext = Depends(get_scope_context),
     _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("users.read")),
@@ -130,7 +130,7 @@ async def get_user(
 )
 async def create_local_advertiser(
     body: CreateLocalAdvertiserRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     scope: ScopeContext = Depends(get_scope_context),
     _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("users.manage")),
@@ -206,7 +206,7 @@ async def create_local_advertiser(
 @router.post("/users/{user_id}/deactivate", response_model=UserStatusResponse)
 async def deactivate_user(
     user_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     scope: ScopeContext = Depends(get_scope_context),
     _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("users.manage")),
@@ -263,7 +263,7 @@ async def deactivate_user(
 @router.post("/users/{user_id}/activate", response_model=UserStatusResponse)
 async def activate_user(
     user_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     scope: ScopeContext = Depends(get_scope_context),
     _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("users.manage")),
@@ -302,7 +302,7 @@ async def activate_user(
 async def reset_password(
     user_id: str,
     body: ResetPasswordRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     scope: ScopeContext = Depends(get_scope_context),
     _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("users.manage")),
@@ -383,7 +383,7 @@ async def reset_password(
 
 @router.get("/roles", response_model=list[RoleOut])
 async def list_roles(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("roles.read")),
 ):
     items = await repository.list_roles(db)
@@ -403,7 +403,7 @@ async def list_roles(
 async def assign_role(
     user_id: str,
     body: AssignRoleRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     scope: ScopeContext = Depends(get_scope_context),
     _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("roles.manage")),
@@ -471,7 +471,7 @@ async def assign_role(
 async def remove_role(
     user_id: str,
     assignment_id: str,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     scope: ScopeContext = Depends(get_scope_context),
     _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("roles.manage")),
@@ -510,7 +510,7 @@ async def remove_role(
 
 @router.get("/permissions", response_model=list[PermissionOut])
 async def list_permissions(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("roles.read")),
 ):
     items = await repository.list_permissions(db)
@@ -526,7 +526,7 @@ async def list_permissions(
 async def list_audit_events(
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
     offset: int = Query(0, ge=0),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("audit.read")),
 ):
     items, total = await repository.list_audit_events(db, limit=limit, offset=offset)

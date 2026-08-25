@@ -85,7 +85,7 @@ async def login(
     body: LoginRequest,
     response: Response,
     request: Request,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     auth_service: AuthService = Depends(get_auth_service),
 ):
     """Authenticate user and return access token + set refresh cookie.
@@ -164,7 +164,7 @@ async def refresh(
     request: Request,
     refresh_token: str | None = Depends(get_refresh_token),
     auth_service: AuthService = Depends(get_auth_service),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
 ):
     """Rotate refresh token — issue new access + refresh, invalidate old.
 
@@ -215,7 +215,7 @@ async def logout(
     response: Response,
     refresh_token: str | None = Depends(get_refresh_token),
     auth_service: AuthService = Depends(get_auth_service),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
 ):
     """Revoke refresh session and clear cookie.
 
@@ -236,7 +236,7 @@ async def logout(
 @router.get("/me", response_model=MeResponse)
 async def me(
     claims: dict = Depends(get_current_active_user),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
 ):
     """Return current-user profile from DB (not JWT claims).
 
@@ -300,7 +300,7 @@ async def me(
 async def change_password(
     body: ChangePasswordRequest,
     claims: dict = Depends(get_current_active_user),
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
 ):
     """Change own password — only for local_advertiser / local_break_glass.
 

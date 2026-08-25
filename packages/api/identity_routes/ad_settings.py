@@ -18,7 +18,7 @@ router = APIRouter()
 
 @router.get("/auth/ad-settings", response_model=ADSettingsOut)
 async def get_ad_settings(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     scope: ScopeContext = Depends(get_scope_context),
     _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("users.manage")),
@@ -56,7 +56,7 @@ async def get_ad_settings(
 @router.put("/auth/ad-settings", response_model=ADSettingsOut)
 async def update_ad_settings(
     body: ADSettingsUpdate,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     scope: ScopeContext = Depends(get_scope_context),
     _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("users.manage")),
@@ -136,7 +136,7 @@ async def update_ad_settings(
 
 @router.post("/auth/ad-settings/test", response_model=ADTestResultOut)
 async def test_ad_connection(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     scope: ScopeContext = Depends(get_scope_context),
     _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("users.manage")),

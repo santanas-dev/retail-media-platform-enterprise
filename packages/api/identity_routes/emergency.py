@@ -26,7 +26,7 @@ def _actor_from_claims(claims: dict) -> str:
 
 @router.get("/emergency/status", response_model=EmergencyStatusOut)
 async def emergency_status(
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     _claims: dict = Depends(require_permission("emergency.read")),
     _rls=Depends(set_rls_context),
 ):
@@ -44,7 +44,7 @@ async def emergency_status(
 @router.post("/emergency/activate", response_model=EmergencyStatusOut)
 async def emergency_activate(
     body: EmergencyActivateRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(require_permission("emergency.manage")),
     _rls=Depends(set_rls_context),
 ):
@@ -90,7 +90,7 @@ async def emergency_activate(
 @router.post("/emergency/deactivate", response_model=EmergencyStatusOut)
 async def emergency_deactivate(
     body: EmergencyDeactivateRequest,
-    db=Depends(get_db),
+    db=Depends(get_db, scope="function"),
     claims: dict = Depends(require_permission("emergency.manage")),
     _rls=Depends(set_rls_context),
 ):
