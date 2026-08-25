@@ -182,15 +182,25 @@
 | **Wave 4 — pilot deployment** | 001D host proof, 001E controlled deploy | Wave 1 (мин.) | pilot GO, deployed SHA зафиксирован | 15 owner inputs, TLS/DNS |
 | **Wave 5 — production hardening** | TLS/CD, monitoring, secret rotation, backup на проде | Wave 4 | production GO | отдельное решение владельца |
 
-## Матрица решений владельца
+## Решения владельца — УТВЕРЖДЕНЫ (OWNER-ROADMAP-DECISION-003)
 
-| # | Решение | Варианты | Рекомендация агента |
-|---|---|---|---|
-| 1 | UX-first или features-first | сначала `PORTAL-UX-POLISH`; или сначала недостающие функции | **UX-first после Wave 0**: пилот проходится руками, а UX-005/006/008 напрямую мешают оператору |
-| 2 | Реальный КСО | доступен / недоступен / позже | без него Wave 3 не закрывается — нужен срок |
-| 3 | Граница pilot scope | control-plane only / включая показ | **control-plane only**: показ требует Wave 3 |
-| 4 | Обязательный уровень UI-polish | только P0-дефекты / полный EPIC | **P0+P1** (UX-001, 005, 006, 008) до пилота |
-| 5 | Срок production deployment | после Wave 4 / отложить | **отложить** до pilot GO и закрытия долга 005 |
+Рекомендации ROADMAP-REBASE-003 приняты без изменений. Это действующие рамки работ.
+
+| # | Решение | Утверждено |
+|---|---|---|
+| 1 | Стратегия | **UX-first** — после завершения Wave 0 |
+| 2 | Граница ближайшего pilot scope | **control-plane only** |
+| 3 | Реальный КСО / player / PoP | **не входит** в ближайший pilot и **не заявляется готовым** |
+| 4 | UI gate до пилота | закрыты все **High** и **P1** UX-дефекты; ключевые journeys пройдены человеком; **operator walkthrough подтверждает только владелец/аудитор** |
+| 5 | Production deployment | **без календарной даты**; только после control-plane pilot; требует реального КСО, signed licensing Layer 2 и эксплуатационного контура |
+
+### Утверждённая последовательность
+
+`UI-SMOKE-STABILITY-005` → `PORTAL-UX-POLISH` → operator walkthrough → недостающие
+business-функции → KSO/player + signed licensing → pilot → production hardening.
+
+Волны ниже сохраняются как детализация этой последовательности; при расхождении
+приоритет имеет утверждённый порядок.
 
 ## Честные проценты (методика раздельная)
 

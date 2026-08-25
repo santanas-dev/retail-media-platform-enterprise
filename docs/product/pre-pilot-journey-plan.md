@@ -3,8 +3,10 @@
 > **Историческая программа до-пилотных волн 1–6 (✅ COMPLETE).** Источник истины по статусам —
 > `docs/product/feature-registry.yaml` + зелёный UI-smoke.
 > **Актуальная последовательность работ и матрица зрелости — в `docs/product/roadmap.md`**
-> (ROADMAP-REBASE-003); этот документ сохраняется как история закрытия волн 1–6 и больше
-> не задаёт текущий порядок.
+> (ROADMAP-REBASE-003, решения владельца утверждены в OWNER-ROADMAP-DECISION-003);
+> этот документ сохраняется как история закрытия волн 1–6 и больше не задаёт текущий порядок.
+> Утверждённый порядок: UI-SMOKE-STABILITY-005 → PORTAL-UX-POLISH → operator walkthrough →
+> недостающие business-функции → KSO/player + signed licensing → pilot → production hardening.
 > Обновлено 2026-08-25 (ROADMAP-REBASE-003).
 > Актуальные counts (feature-registry.yaml, посчитано программно): **58 total / 53 reachable / 5 blocked**
 > (admin-web 39, advertiser-web 5, public 1, service 13).

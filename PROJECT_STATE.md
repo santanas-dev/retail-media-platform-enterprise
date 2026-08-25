@@ -1,12 +1,22 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-25 (ROADMAP-REBASE-003 — единая техническая/бизнес/UX-карта)
+**Last updated:** 2026-08-25 (OWNER-ROADMAP-DECISION-003 — решения владельца утверждены)
 
-**Next Active Workstream:** **OWNER-ROADMAP-DECISION-003** — решения владельца по 5 пунктам decision matrix (`docs/product/roadmap.md`). Разработка не начинается до решения.
+**Next Active Workstream:** **UI-SMOKE-STABILITY-005-FU** — закрытие BLOCKED-долга стабильности UI-smoke (Wave 0). Утверждённый порядок работ — в `docs/product/roadmap.md`.
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `8ad0228` (main — PR #8 private namespace + label fix; tag `v0.11.1-pilot-packaging` → `90c4bb1` неизменен)
 - State/Docs SHA: `0908c91` (develop — LOCAL-DEV-STAND-001 stand tooling). Stand bundle SHA `4635e72`. Payload SHA `8ad0228` unchanged — pilot/production release не менялся.
+
+**OWNER-ROADMAP-DECISION-003 ✅** — решения владельца зафиксированы (docs/governance only).
+
+- Рекомендации ROADMAP-REBASE-003 приняты **без изменений**. Decision matrix в `docs/product/roadmap.md` переведена из «рекомендаций агента» в **утверждённые рамки работ**.
+- **Утверждено:** (1) стратегия **UX-first** после Wave 0; (2) ближайший pilot scope — **control-plane only**; (3) реальный КСО/player/PoP **не входит** в ближайший pilot и **не заявляется готовым**; (4) UI gate до пилота — закрыты все **High** и **P1** UX-дефекты + ключевые journeys пройдены человеком, причём **operator walkthrough подтверждает только владелец/аудитор**; (5) production deployment — **без календарной даты**, только после control-plane pilot, требует реального КСО, signed licensing Layer 2 и эксплуатационного контура.
+- **Утверждённая последовательность:** UI-SMOKE-STABILITY-005 → PORTAL-UX-POLISH → operator walkthrough → недостающие business-функции → KSO/player + signed licensing → pilot → production hardening.
+- **Статусы не повышались:** registry без изменений (58 / 53 reachable / 5 blocked), product code / UI / API / tests / migrations не менялись. **Pilot NOT DEPLOYED. Production NO-GO. Deployed SHA = UNKNOWN/NOT TRACKED. operator walkthrough PENDING.**
+- Открытые долги без изменений: UI-SMOKE-STABILITY-005 **BLOCKED**, `self__login` **PENDING**, PILOT-DEPLOYMENT-READINESS-001D **HOST PROOF PENDING**, `PORTAL-UX-POLISH` — кандидат, не начат.
+- Next → **UI-SMOKE-STABILITY-005-FU**.
+- Checkpoint by PS-001.
 
 **ROADMAP-REBASE-003 ✅** — единая техническая, бизнесовая и UX-дорожная карта (docs/governance only; product code, миграции, API, UI и поведение тестов НЕ менялись).
 
