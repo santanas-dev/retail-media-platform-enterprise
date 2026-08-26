@@ -47,6 +47,15 @@ from pathlib import Path
 
 import yaml
 
+# openpyxl serialises XML through lxml when it is installed and through the
+# stdlib otherwise, and the two produce different bytes for identical content.
+# That is an environment difference, not a content difference — the second CI
+# run of the guard failed exactly there (lxml 6.1.1 locally, none on the runner).
+# The stdlib backend is the one that is always present, so it is the one pinned.
+# Set before openpyxl is imported anywhere in this process; render_xlsx asserts
+# it actually took effect rather than trusting it.
+os.environ["OPENPYXL_LXML"] = "False"
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 ROADMAP_YAML = Path("docs/product/roadmap.yaml")
@@ -452,8 +461,17 @@ def render_markdown(data: dict, metrics: dict) -> str:
 # --------------------------------------------------------------------------
 
 def render_xlsx(data: dict, metrics: dict) -> bytes:
+    import openpyxl.xml
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font, PatternFill
+
+    if openpyxl.xml.LXML:
+        raise RuntimeError(
+            "openpyxl сериализует XML через lxml — байты книги станут зависеть от "
+            "того, установлен ли lxml в окружении. OPENPYXL_LXML=False не подействовал: "
+            "openpyxl был импортирован до этого модуля. Импортируйте roadmap-generate "
+            "раньше любого другого потребителя openpyxl."
+        )
 
     roadmap = data["roadmap"]
     tasks = sorted_tasks(roadmap)
@@ -761,6 +779,29 @@ def self_test(root: Path) -> int:
              (w / OUT_XLSX).read_bytes() + b"\x00"), True)
     case("output tamper: проекция удалена — красно",
          lambda w: (w / OUT_MD).unlink(), True)
+
+    # Backend guard: the workbook must not change when the environment offers a
+    # different XML serialiser. Proven by generating in a subprocess that asks
+    # for lxml explicitly and comparing bytes with the in-process result.
+    with tempfile.TemporaryDirectory() as td:
+        work = _sandbox(root, Path(td))
+        script = (
+            "import importlib.util, hashlib, sys;"
+            "s=importlib.util.spec_from_file_location('g', sys.argv[1]);"
+            "g=importlib.util.module_from_spec(s); s.loader.exec_module(g);"
+            "from pathlib import Path;"
+            "sys.stdout.write(hashlib.sha256(g.generate(Path(sys.argv[2]))[g.OUT_XLSX]).hexdigest())"
+        )
+        env = dict(os.environ, OPENPYXL_LXML="True")
+        proc = subprocess.run(
+            # the sandbox holds inputs only — run THIS script against it
+            [sys.executable, "-c", script, str(Path(__file__).resolve()), str(work)],
+            capture_output=True, text=True, env=env)
+        here = hashlib.sha256(generate(work)[OUT_XLSX]).hexdigest()
+        ok = proc.returncode == 0 and proc.stdout.strip() == here
+        cases.append(("бэкенд: OPENPYXL_LXML=True не меняет байты книги", ok,
+                      [f"подпроцесс дал {proc.stdout.strip()[:16] or proc.stderr[-120:]}, "
+                       f"здесь {here[:16]}"] if not ok else []))
 
     # Packaging guard: deflate output depends on the zlib build, so a compressed
     # workbook is byte-identical only within one environment. Storing is what
