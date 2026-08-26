@@ -31,9 +31,8 @@
       "approved": 42
     },
     "by_delivery_status": {
-      "done": 7,
-      "planned": 34,
-      "verification": 1
+      "done": 8,
+      "planned": 34
     },
     "by_kind": {
       "design": 5,

@@ -374,8 +374,12 @@ tasks:
     verified_by: command
     ref: RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral/test_commerce_rls.py -q
   decision_status: approved
-  delivery_status: verification
+  delivery_status: done
   evidence_refs:
+  - kind: command
+    ref: RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral/test_commerce_rls.py -q
+    status: verified
+    note: команда из приёмки, прогнана дважды — с BEHAVIORAL_APP_DB_URL в голой и в драйверной форме, обе 9 passed
   - kind: behavioral
     ref: "RUN_BEHAVIORAL_TESTS=1 BEHAVIORAL_APP_DB_URL=postgresql://... python3 -m pytest tests/behavioral/test_commerce_rls.py tests/behavioral/test_campaign_permission_split_001.py -q"
     status: verified
@@ -388,10 +392,14 @@ tasks:
     ref: tamper — helper перестаёт нормализовать в каждую сторону
     status: verified
     note: красно обоими способами (InvalidRequestError и invalid DSN), после восстановления зелено
+  - kind: ci_run
+    ref: gh run 33006795900 — Behavioral PostgreSQL Tests success на 00d75a6
+    status: verified
+    note: 470 passed, 12 skipped — счёт совпадает с прогоном до правки
   - kind: artifact
     ref: tests/behavioral/dsn.py
     status: verified
-  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); закрывает мою находку BEHAVIORAL-ENV-CONTRACT-001. Один helper tests/behavioral/dsn.py, 12 потребителей переведены. Обе DSN-формы прошли одну команду на одноразовой БД (схема 036, роль NOBYPASSRLS, 37 таблиц FORCE RLS). Tamper-цикл красный в обе стороны. Статус verification, а не done: правка идёт в CI впервые, а я в этой сессии дважды заявлял зелёное, проверив только на своей машине.'
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); закрывает мою находку BEHAVIORAL-ENV-CONTRACT-001. Один helper tests/behavioral/dsn.py, 12 потребителей переведены. Обе DSN-формы прошли одну команду на одноразовой БД (схема 036, роль NOBYPASSRLS, 37 таблиц FORCE RLS); tamper-цикл красный в обе стороны. Подтверждено на раннере прогоном 33006795900: behavioral 470 passed — ровно столько же, сколько до правки, ни один тест не потерян и не ослаблен.'
 - id: RM-STAB-002
   kind: implementation
   stage: S

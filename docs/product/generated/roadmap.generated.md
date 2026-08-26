@@ -23,7 +23,7 @@
 | Всего задач | 42 |
 | По этапам | BT=13, E0=1, G=6, POPS=4, S=11, U=7 |
 | По типу | design=5, external=2, external-plan=1, governance=10, human=1, implementation=23 |
-| По статусу поставки | done=7, planned=34, verification=1 |
+| По статусу поставки | done=8, planned=34 |
 | Требуют owner gate | 12 |
 | С verified evidence | 8 |
 | Максимальная глубина зависимостей | 8 |
@@ -109,7 +109,7 @@
 
 | ID | Kind | Задача | Зависит от | Глубина | Поставка | Owner gate | Приёмка | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| `RM-STAB-001` | implementation | Единый контракт `BEHAVIORAL_APP_DB_URL` | `RM-ENV-001` | 1 | verification | — | обе DSN-формы проходят один targeted behavioral command через один helper [command: `RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral/test_commerce_rls.py -q`] | verified · behavioral · `RUN_BEHAVIORAL_TESTS=1 BEHAVIORAL_APP_DB_URL=postgresql://... python3 -m pytest tests/behavioral/test_commerce_rls.py tests/behavioral/test_campaign_permission_split_001.py -q`; verified · behavioral · `RUN_BEHAVIORAL_TESTS=1 BEHAVIORAL_APP_DB_URL=postgresql+asyncpg://... python3 -m pytest tests/behavioral/test_commerce_rls.py tests/behavioral/test_campaign_permission_split_001.py -q`; verified · behavioral · `tamper — helper перестаёт нормализовать в каждую сторону`; verified · artifact · `tests/behavioral/dsn.py` |
+| `RM-STAB-001` | implementation | Единый контракт `BEHAVIORAL_APP_DB_URL` | `RM-ENV-001` | 1 | done | — | обе DSN-формы проходят один targeted behavioral command через один helper [command: `RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral/test_commerce_rls.py -q`] | verified · command · `RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral/test_commerce_rls.py -q`; verified · behavioral · `RUN_BEHAVIORAL_TESTS=1 BEHAVIORAL_APP_DB_URL=postgresql://... python3 -m pytest tests/behavioral/test_commerce_rls.py tests/behavioral/test_campaign_permission_split_001.py -q`; verified · behavioral · `RUN_BEHAVIORAL_TESTS=1 BEHAVIORAL_APP_DB_URL=postgresql+asyncpg://... python3 -m pytest tests/behavioral/test_commerce_rls.py tests/behavioral/test_campaign_permission_split_001.py -q`; verified · behavioral · `tamper — helper перестаёт нормализовать в каждую сторону`; verified · ci_run · `gh run 33006795900 — Behavioral PostgreSQL Tests success на 00d75a6`; verified · artifact · `tests/behavioral/dsn.py` |
 | `RM-STAB-002` | implementation | Strict RLS context по умолчанию | `RM-STAB-001` | 2 | planned | — | admin elevation только setup [behavioral: `tests/behavioral/conftest.py::strict get_db default`] | — |
 | `RM-STAB-003` | design | Зафиксировать approved personas/retailer-scope | `RM-STAB-002` | 3 | planned | scope_decision | mini-design/ADR: persona→permissions→scope [owner] | — |
 | `RM-STAB-004` | implementation | Реализовать approved RBAC/RLS scope | `RM-STAB-003`, `RM-STAB-006` | 5 | planned | migration_application | API/portal/migration согласованы [behavioral: `tests/behavioral/test_retailer_scope_rbac.py`] | — |
