@@ -235,7 +235,7 @@ tasks:
     verified_by: ci_job
     ref: roadmap-governance-guard
   decision_status: approved
-  delivery_status: verification
+  delivery_status: done
   evidence_refs:
   - kind: command
     ref: python3 scripts/ci/roadmap-governance-guard.py
@@ -245,10 +245,14 @@ tasks:
     ref: python3 scripts/ci/roadmap-governance-guard.py --self-test
     status: verified
     note: 15/15 — красно по schema, dependencies, drift, metrics, SSOT; зелено на baseline
+  - kind: ci_run
+    ref: gh run 33000750265 — roadmap-governance-guard success на 47be5dd
+    status: verified
+    note: шесть модулей чисты, self-test 25/25 на раннере, release-gate success
   - kind: artifact
     ref: docs/architecture/rm-gov-004-roadmap-governance-guard-design-gate.md
     status: verified
-  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); статус verification по решению владельца 2026-08-26: приёмка заявлена verified_by ci_job, а job roadmap-governance-guard ни разу не запускался — ничего не закоммичено. Перевод в done только после commit/push и успешного прогона GitHub Actions; локальные проверки сохранены как evidence.'
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); приёмочный ci_job подтверждён прогоном GitHub Actions 33000750265 на 47be5dd: job roadmap-governance-guard success, шесть модулей чисты, tamper-матрица 25/25 на раннере; release-gate success. Два предыдущих прогона были красными (32999576636 — lazy-импорт jsonschema и упаковка zip; 33000138974 — сериализация XML через lxml), оба дефекта исправлены, а не обойдены.'
 - id: RM-GOV-006
   kind: governance
   stage: G
@@ -299,7 +303,7 @@ tasks:
   - kind: artifact
     ref: docs/architecture/rm-gov-005-canonical-cutover-design-gate.md
     status: verified
-  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); работа выполнена, статус verification: приёмка заявлена verified_by owner и задача несёт owner_gate canon_change — закрывается утверждением владельца на Gate G. Решения владельца 2026-08-26 по трём развилкам: проза roadmap.md вынесена в четыре документа; legacy-мутаторы перенесены в scripts/legacy с баннером QUARANTINED; job roadmap-consistency-audit удалён, его живые направления перенесены в модуль registry гейта.'
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); работа выполнена, статус verification: приёмка заявлена verified_by owner и задача несёт owner_gate canon_change — закрывается утверждением владельца на Gate G. Решения владельца 2026-08-26 по трём развилкам: проза roadmap.md вынесена в четыре документа; legacy-мутаторы перенесены в scripts/legacy с баннером QUARANTINED; job roadmap-consistency-audit удалён, его живые направления перенесены в модуль registry гейта. Условие приёмки «CI green» выполнено: прогон 33000750265 на 47be5dd завершён success, 41 job, 0 провалов, release-gate success. Остаётся owner approval на Gate G.'
   owner_gate:
     required: true
     reason: canon_change
