@@ -23,9 +23,9 @@
 | Всего задач | 42 |
 | По этапам | BT=13, E0=1, G=6, POPS=4, S=11, U=7 |
 | По типу | design=5, external=2, external-plan=1, governance=10, human=1, implementation=23 |
-| По статусу поставки | done=5, planned=36, verification=1 |
+| По статусу поставки | done=6, planned=35, verification=1 |
 | Требуют owner gate | 12 |
-| С verified evidence | 6 |
+| С verified evidence | 7 |
 | Максимальная глубина зависимостей | 8 |
 | Гейты | Gate-G, Gate-S, Gate-U |
 | Решения владельца | 15 |
@@ -95,14 +95,14 @@
 | `RM-GOV-002` | governance | Reconciliation/migration manifest | `RM-GOV-001` | 1 | done | — | disposition для 93 technical items, 13 SECTION и 57 business rows [command: `python3 scripts/ci/check-roadmap-schema.py --file docs/product/roadmap.yaml`] | verified · command · `python3 scripts/ci/roadmap-migration-counts.py`; verified · artifact · `docs/product/roadmap-migration-manifest.yaml`; verified · command · `python3 scripts/ci/check-roadmap-schema.py --file docs/product/roadmap.yaml` |
 | `RM-GOV-003` | implementation | Односторонний generator YAML + registry + evidence → Markdown/XLSX/metrics | `RM-GOV-001`, `RM-GOV-002` | 2 | done | — | deterministic generation [command: `python3 scripts/ci/roadmap-generate.py --check-clean-diff`] | verified · command · `python3 scripts/ci/roadmap-generate.py --check-clean-diff`; verified · command · `python3 scripts/ci/roadmap-generate.py --self-test`; verified · artifact · `docs/architecture/rm-gov-003-roadmap-generator-design-gate.md` |
 | `RM-GOV-004` | implementation | Структурный roadmap guard | `RM-GOV-003` | 3 | done | — | tamper matrix красная для drift/schema/dependencies/metrics/SSOT и зелёная на baseline [ci_job: `roadmap-governance-guard`] | verified · command · `python3 scripts/ci/roadmap-governance-guard.py`; verified · command · `python3 scripts/ci/roadmap-governance-guard.py --self-test`; verified · ci_run · `gh run 33000750265 — roadmap-governance-guard success на 47be5dd`; verified · artifact · `docs/architecture/rm-gov-004-roadmap-governance-guard-design-gate.md` |
-| `RM-GOV-005` | governance | Canonical cutover | `RM-GOV-003`, `RM-GOV-004`, `RM-GOV-006` | 4 | verification | canon_change | один sequencing SSOT в `AGENTS.md` [owner] | verified · command · `python3 scripts/ci/roadmap-governance-guard.py`; verified · command · `python3 scripts/ci/roadmap-governance-guard.py --self-test`; verified · artifact · `docs/architecture/rm-gov-005-canonical-cutover-design-gate.md` |
+| `RM-GOV-005` | governance | Canonical cutover | `RM-GOV-003`, `RM-GOV-004`, `RM-GOV-006` | 4 | done | canon_change | один sequencing SSOT в `AGENTS.md` [owner] | verified · command · `python3 scripts/ci/roadmap-governance-guard.py`; verified · command · `python3 scripts/ci/roadmap-governance-guard.py --self-test`; verified · ci_run · `gh run 33000750265 — release-gate success на 47be5dd`; verified · artifact · `docs/architecture/rm-gov-005-canonical-cutover-design-gate.md` |
 | `RM-GOV-006` | governance | Единое правило факта и требования | `RM-GOV-001` | 1 | done | — | approved правило §1.1 записано без конфликта в индекс/ADR-процесс [artifact: `docs/architecture/adr/ADR-020-fact-vs-requirement.md`] | verified · adr · `docs/architecture/adr/ADR-020-fact-vs-requirement.md`; verified · command · `python3 scripts/ci/roadmap-governance-guard.py --module doc`; verified · command · `python3 scripts/ci/roadmap-governance-guard.py --self-test` |
 
 ### E0 — Окружения (1)
 
 | ID | Kind | Задача | Зависит от | Глубина | Поставка | Owner gate | Приёмка | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| `RM-ENV-001` | governance | Инвентарь `.77/.81/DEV/PROD` и очистка активных ссылок | `Gate-G` | 0 | planned | scope_decision | versioned environment inventory [artifact: `docs/product/environment-inventory.yaml`] | — |
+| `RM-ENV-001` | governance | Инвентарь `.77/.81/DEV/PROD` и очистка активных ссылок | `Gate-G` | 0 | verification | scope_decision | versioned environment inventory [artifact: `docs/product/environment-inventory.yaml`] | verified · artifact · `docs/product/environment-inventory.yaml`; verified · command · `curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://192.168.110.77:3000/`; verified · command · `curl -s http://192.168.110.81:8000/version`; verified · command · `python3 scripts/ci/roadmap-governance-guard.py --module env`; verified · artifact · `docs/architecture/rm-env-001-environment-inventory-design-gate.md` |
 
 ### S — Стабилизация доказательств и границ (11) · закрывается `Gate-S`
 

@@ -149,6 +149,15 @@
               "type": "string",
               "minLength": 1
             }
+          },
+          "approved_on": {
+            "description": "Date the named approver actually closed the gate. Absent = not yet approved.",
+            "type": "string",
+            "format": "date"
+          },
+          "approval_note": {
+            "type": "string",
+            "minLength": 1
           }
         }
       }

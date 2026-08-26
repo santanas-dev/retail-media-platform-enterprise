@@ -162,6 +162,30 @@ def _semantic_findings(doc):
                     f"{'/'.join(sorted(accepted))} is present"
                 )
 
+    # an owner gate that was never granted cannot sit behind a done task
+    for t in tasks:
+        og = t.get("owner_gate") or {}
+        if og.get("required") and t.get("delivery_status") == "done" and not og.get("granted"):
+            out.append(
+                f"OWNER-GATE-UNGRANTED: {t['id']} is delivery_status=done behind an owner "
+                f"gate ({og.get('reason')}) that is not recorded as granted"
+            )
+
+    # a gate closes a stage only once its approver actually approved it
+    stage_of = {t["id"]: t.get("stage") for t in tasks}
+    for gate in doc.get("gates", []) or []:
+        if gate.get("approved_on"):
+            continue
+        closed = [t for t in tasks
+                  if stage_of.get(t["id"]) == gate.get("closes_stage")
+                  and t.get("delivery_status") == "done"
+                  and (t.get("owner_gate") or {}).get("reason") == "canon_change"]
+        for t in closed:
+            out.append(
+                f"GATE-NOT-APPROVED: {t['id']} закрыт как done, но {gate['id']} "
+                f"(approver {gate['approver']}) не имеет approved_on"
+            )
+
     # owner-verified acceptance implies a declared owner gate
     for t in tasks:
         needs_owner = any(a.get("verified_by") == "owner" for a in t.get("acceptance", []))
@@ -291,6 +315,21 @@ def _tamper_cases(base):
         {"kind": "ci_run", "ref": "gh run 1234567890", "status": "disputed"}
     ]
     cases.append(("done on ci_job acceptance with a disputed ci_run", d, "EVIDENCE-KIND"))
+
+    # An owner gate exists to stop exactly this: the work closing itself.
+    d = copy.deepcopy(base)
+    d["tasks"][1]["delivery_status"] = "done"
+    d["tasks"][1]["evidence_refs"] = [
+        {"kind": "command", "ref": "python3 scripts/ci/check-roadmap-schema.py",
+         "status": "verified"}
+    ]
+    d["tasks"][1]["acceptance"] = [
+        {"check": "canon updated", "verified_by": "command",
+         "ref": "python3 scripts/ci/check-roadmap-schema.py"}
+    ]
+    d["tasks"][1]["owner_gate"] = {"required": True, "reason": "canon_change"}
+    cases.append(("done behind an owner gate that was never granted", d,
+                  "OWNER-GATE-UNGRANTED"))
 
     d = copy.deepcopy(base)
     d["tasks"][0]["id"] = "RM-BOGUS-001"

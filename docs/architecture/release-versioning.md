@@ -343,7 +343,7 @@ git push origin :refs/tags/v0.3-advertiser-portal-foundation
 - Profile page — organisation, brands, contracts, contacts
 - Password change / must_change_password flow
 - Responsive advertiser-web layout — hamburger sidebar on narrow screens, no page overflow
-- Live LAN preview operational (http://192.168.110.77:3001)
+- Live LAN preview на `192.168.110.77` — недостижим на момент проверки RM-ENV-001 (2026-08-26); запись сохранена как состояние своего релиза
 
 #### Technical Capabilities
 

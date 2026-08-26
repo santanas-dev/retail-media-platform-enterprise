@@ -16,7 +16,7 @@
 | **Latest release** | v0.6.1-critical-hotfix (published) |
 | **Code baseline** | `00060cc` (S-059 critical hotfix, CI #29404001541 green 34/34) |
 | **Branch model** | main (stable, `00060cc`) / develop (active, `00060cc`) |
-| **Live preview** | http://192.168.110.77:3001 (advertiser-web), :3000 (admin-web) |
+| **Live preview** | `192.168.110.77` — недостижим на момент проверки (RM-ENV-001, 2026-08-26). Активный стенд: `192.168.110.81` (`stand-27dc397`). См. `docs/product/environment-inventory.yaml` |
 | **Tests** | 1006 Python unit + 255 behavioural + 71 admin-web + 68 advertiser-web = 1,400+ total |
 | **CI** | GitHub Actions — 34 jobs, all green on develop |
 

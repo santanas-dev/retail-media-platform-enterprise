@@ -116,6 +116,8 @@ gates:
   conditions:
   - Codex проверяет generator и tamper matrix
   - владелец утверждает canonical cutover
+  approved_on: '2026-08-26'
+  approval_note: принят владельцем после собственной проверки; два замечания по гейту и триаж 19 открытых пунктов закрыты до принятия
 - id: Gate-S
   closes_stage: S
   approver: codex
@@ -169,6 +171,7 @@ tasks:
   owner_gate:
     required: true
     reason: scope_decision
+    granted: true
   evidence_refs:
   - kind: command
     ref: python3 scripts/ci/check-roadmap-schema.py --self-test
@@ -290,7 +293,7 @@ tasks:
   - check: один sequencing SSOT в `AGENTS.md`
     verified_by: owner
   decision_status: approved
-  delivery_status: verification
+  delivery_status: done
   evidence_refs:
   - kind: command
     ref: python3 scripts/ci/roadmap-governance-guard.py
@@ -300,13 +303,18 @@ tasks:
     ref: python3 scripts/ci/roadmap-governance-guard.py --self-test
     status: verified
     note: 21/21 по семи измерениям
+  - kind: ci_run
+    ref: gh run 33000750265 — release-gate success на 47be5dd
+    status: verified
+    note: 41 job, 0 провалов — условие приёмки «CI green»
   - kind: artifact
     ref: docs/architecture/rm-gov-005-canonical-cutover-design-gate.md
     status: verified
-  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); работа выполнена, статус verification: приёмка заявлена verified_by owner и задача несёт owner_gate canon_change — закрывается утверждением владельца на Gate G. Решения владельца 2026-08-26 по трём развилкам: проза roadmap.md вынесена в четыре документа; legacy-мутаторы перенесены в scripts/legacy с баннером QUARANTINED; job roadmap-consistency-audit удалён, его живые направления перенесены в модуль registry гейта. Условие приёмки «CI green» выполнено: прогон 33000750265 на 47be5dd завершён success, 41 job, 0 провалов, release-gate success. Остаётся owner approval на Gate G.'
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); решения владельца по трём развилкам исполнены; условие CI green выполнено прогоном 33000750265 на 47be5dd (41 job, 0 провалов); Gate G принят владельцем 2026-08-26 после его же проверки, нашедшей ложное срабатывание детектора SUPERSEDED и устаревший текст расхождений — оба исправлены до принятия.'
   owner_gate:
     required: true
     reason: canon_change
+    granted: true
 - id: RM-ENV-001
   kind: governance
   stage: E0
@@ -318,8 +326,26 @@ tasks:
     verified_by: artifact
     ref: docs/product/environment-inventory.yaml
   decision_status: approved
-  delivery_status: planned
-  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  delivery_status: verification
+  evidence_refs:
+  - kind: artifact
+    ref: docs/product/environment-inventory.yaml
+    status: verified
+  - kind: command
+    ref: curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://192.168.110.77:3000/
+    status: verified
+    note: 000 на :3000, :3001 и :8000 — unreachable at check time
+  - kind: command
+    ref: curl -s http://192.168.110.81:8000/version
+    status: verified
+    note: stand-27dc397, git_sha 27dc397, schema_head 036, environment staging
+  - kind: command
+    ref: python3 scripts/ci/roadmap-governance-guard.py --module env
+    status: verified
+  - kind: artifact
+    ref: docs/architecture/rm-env-001-environment-inventory-design-gate.md
+    status: verified
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); инвентарь собран из собственных прогонов: .77 даёт HTTP 000 на трёх портах, .81 отдаёт stand-27dc397/schema 036 и совпадает с base.stand_baseline. Статус verification, не done: owner_gate scope_decision не выдан — решение retire или upgrade по .77 за владельцем, и приёмка прямо оставляет его владельцу.'
   owner_gate:
     required: true
     reason: scope_decision

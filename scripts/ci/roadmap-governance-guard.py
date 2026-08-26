@@ -21,6 +21,10 @@ Modules
                 OD-001) is present and stated, the declared truth order is the same
                 in AGENTS.md and CLAUDE.md, and the ADR process does not contradict
                 its own index.
+  env           RM-ENV-001 — the environment inventory is structurally sound and
+                nothing claims to be evidence without a pinned identity. Liveness
+                is deliberately NOT checked: CI has no route to that LAN, and a
+                liveness check that silently passes would be a lie.
   registry      RM-GOV-005 — delegates to scripts/roadmap-consistency-check.py.
                 Carries over the three directions that did NOT become tautological
                 when the workbook started being generated: registry field/status
@@ -494,6 +498,91 @@ def module_doc(root: Path) -> list:
 
 
 # ---------------------------------------------------------------------------
+# Module: env  (owner RM-ENV-001)
+# ---------------------------------------------------------------------------
+
+ENV_INVENTORY = Path("docs/product/environment-inventory.yaml")
+ENV_REQUIRED = ("id", "role", "title", "reachable_at_check", "evidence",
+                "evidence_scope", "identity_source", "disposition")
+# OD-007: a retired preview is described by what was OBSERVED, never by a
+# disposition nobody decided. Checked on a structured field, not on prose:
+# scanning free text cannot tell an assertion from a mention, which is how the
+# SUPERSEDED detector produced a false positive earlier in this stage.
+DISPOSITION_BY_ROLE = {
+    "retired-preview": {"unreachable-at-check-time"},
+    "stand": {"active"},
+    "portal-contour": {"active"},
+    "ci": {"active"},
+}
+
+
+def module_env(root: Path) -> list:
+    path = root / ENV_INVENTORY
+    if not path.exists():
+        return [f"env/MISSING: `{ENV_INVENTORY}` отсутствует — окружения не инвентаризованы"]
+    doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+    findings = []
+    envs = doc.get("environments") or []
+    if not envs:
+        return ["env/EMPTY: инвентарь не перечисляет ни одного окружения"]
+    if not doc.get("checked_at"):
+        findings.append("env/NO-CHECK-DATE: инвентарь не говорит, когда проверялся")
+
+    seen = set()
+    for e in envs:
+        eid = e.get("id", "<без id>")
+        if eid in seen:
+            findings.append(f"env/DUPLICATE: `{eid}` встречается дважды")
+        seen.add(eid)
+        for field in ENV_REQUIRED:
+            if field not in e:
+                findings.append(f"env/INCOMPLETE: `{eid}` без поля `{field}`")
+        # An environment is evidence only when an observation can be tied to a commit.
+        if e.get("evidence"):
+            ident = e.get("identity")
+            if eid != "github-actions" and not (ident and ident.get("git_sha")):
+                findings.append(
+                    f"env/EVIDENCE-WITHOUT-IDENTITY: `{eid}` объявлен доказательным, "
+                    f"но не несёт закреплённого git_sha — наблюдение не привязать к коммиту")
+            if not e.get("reachable_at_check"):
+                findings.append(
+                    f"env/EVIDENCE-UNREACHABLE: `{eid}` объявлен доказательным, "
+                    f"но на момент проверки был недостижим")
+        if e.get("reachable_at_check") is False and e.get("identity"):
+            findings.append(
+                f"env/UNREACHABLE-WITH-IDENTITY: `{eid}` недостижим, но несёт identity — "
+                f"идентичность недостижимого окружения не наблюдалась")
+        allowed = DISPOSITION_BY_ROLE.get(e.get("role"))
+        if allowed is not None:
+            disp = e.get("disposition")
+            if disp not in allowed:
+                findings.append(
+                    f"env/DISPOSITION: `{eid}` (role {e.get('role')}) объявляет "
+                    f"disposition={disp!r}; допустимо {sorted(allowed)}. "
+                    f"Для выведенного preview это наблюдение, а не решение — "
+                    f"retire/upgrade решает владелец")
+        if e.get("role") == "retired-preview" and not e.get("owner_decision_pending"):
+            findings.append(
+                f"env/NO-OWNER-DECISION: `{eid}` не называет, что retire/upgrade "
+                f"остаётся решением владельца")
+
+    # the stand baseline must be the one the sequencing SSOT declares
+    stand = next((e for e in envs if e.get("role") == "stand"), None)
+    roadmap = yaml.safe_load((root / ROADMAP_YAML).read_text(encoding="utf-8"))
+    declared = (roadmap.get("base") or {}).get("stand_baseline") or {}
+    if stand is None:
+        findings.append("env/NO-STAND: инвентарь не называет стенд")
+    elif declared:
+        ident = stand.get("identity") or {}
+        for field in ("git_sha", "bundle", "schema_head"):
+            if declared.get(field) and ident.get(field) != declared.get(field):
+                findings.append(
+                    f"env/BASELINE-MISMATCH: стенд заявляет {field}={ident.get(field)}, "
+                    f"`{ROADMAP_YAML}` base.stand_baseline — {declared.get(field)}")
+    return findings
+
+
+# ---------------------------------------------------------------------------
 # Module: registry  (owner RM-GOV-005)
 # ---------------------------------------------------------------------------
 
@@ -516,6 +605,7 @@ MODULES = {
     "drift": ("RM-GOV-003", module_drift),
     "metrics": ("RM-GOV-004", module_metrics),
     "doc": ("RM-GOV-006", module_doc),
+    "env": ("RM-ENV-001", module_env),
     "registry": ("RM-GOV-005", module_registry),
     "ssot": ("RM-GOV-004", module_ssot),
 }
@@ -550,7 +640,7 @@ SANDBOX_PATHS = [
     "docs/product/history/roadmap-s020-2026-07-10.xlsx",
     "docs/product/roadmap-migration-manifest.yaml",
     "tests/ui-smoke/ci-subset.txt", "PROJECT_STATE.md", "AGENTS.md", "CLAUDE.md",
-    "docs/architecture/README.md",
+    "docs/architecture/README.md", "docs/product/environment-inventory.yaml",
 ]
 SANDBOX_TREES = ["scripts/ci", "scripts/dev", "scripts/legacy", "docs/product/generated",
                  "tests/ui-smoke", "docs/architecture"]
@@ -593,6 +683,29 @@ def _fingerprint(work: Path) -> dict:
         if path.is_file() and "__pycache__" not in str(path):
             out[str(path.relative_to(work))] = hashlib.sha256(path.read_bytes()).hexdigest()
     return out
+
+
+def _set_env(work: Path, env_id: str, key: str, value):
+    """Set one field on one environment, structurally.
+
+    Text substitution here would append a duplicate YAML key and the last one
+    would win — an inert tamper that looks applied. That trap already cost this
+    stage one silently-passing fixture.
+    """
+    path = work / ENV_INVENTORY
+    doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+    for env in doc["environments"]:
+        if env["id"] == env_id:
+            env[key] = value
+            break
+    else:
+        raise AssertionError(f"фикстура устарела: окружение {env_id!r} не найдено")
+    path.write_text(yaml.safe_dump(doc, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+
+def _env_field(work: Path, env_id: str, key: str):
+    doc = yaml.safe_load((work / ENV_INVENTORY).read_text(encoding="utf-8"))
+    return next(e for e in doc["environments"] if e["id"] == env_id).get(key)
 
 
 def _deps_of(work: Path, task_id: str):
@@ -705,6 +818,29 @@ def self_test(root: Path) -> int:
     case("новый ADR вне индекса и вне объявленных исключений", "doc",
          lambda w: (w / "docs/architecture/adr/ADR-021-experimental.md").write_text(
              "# ADR-021\n\n**Status:** ACCEPTED\n", encoding="utf-8"), True)
+
+    case("окружение объявлено доказательным без закреплённого git_sha", "env",
+         lambda w: sub(w, ENV_INVENTORY,
+                       "      git_sha: 27dc39707c5c56cdfdcc4250d5aa875d3789c8dc\n", "", 1), True)
+    case("недостижимое окружение объявлено доказательным", "env",
+         lambda w: _set_env(w, "preview-77", "evidence", True), True,
+         effective=lambda w: _env_field(w, "preview-77", "evidence") is True)
+    case("контур без идентичности объявлен доказательством", "env",
+         lambda w: _set_env(w, "santa2-prod", "evidence", True), True,
+         effective=lambda w: _env_field(w, "santa2-prod", "evidence") is True)
+    case("выведенный preview объявлен мёртвым вместо наблюдения", "env",
+         lambda w: sub(w, ENV_INVENTORY,
+                       "    disposition: unreachable-at-check-time",
+                       "    disposition: decommissioned", 1), True)
+    case("baseline стенда разошёлся с sequencing SSOT", "env",
+         lambda w: sub(w, ENV_INVENTORY, "      bundle: stand-27dc397",
+                       "      bundle: stand-deadbee", 1), True)
+    # Тот же охранный кейс, что для SUPERSEDED: слово в прозе не должно
+    # превращаться в находку — правило читает структурное поле disposition.
+    case("слово «мёртв» в пояснении, а не в disposition — не находка", "env",
+         lambda w: sub(w, ENV_INVENTORY, "    owner_decision_pending:",
+                       "    prose_note: хост не называется мёртвым; это наблюдение\n"
+                       "    owner_decision_pending:", 1), False)
 
     case("registry заявляет reachable без существующего smoke", "registry",
          lambda w: sub(w, REGISTRY_YAML, "smoke: test_uismoke__campaign__create",

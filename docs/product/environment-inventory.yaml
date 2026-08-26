@@ -1,0 +1,148 @@
+# Инвентарь окружений — RM-ENV-001
+#
+# Назначение: назвать каждое окружение, его идентичность и то, что наблюдение
+# в нём ДОКАЗЫВАЕТ, а что нет. Окружение является доказательством только тогда,
+# когда наблюдение можно привязать к конкретному коммиту и схеме.
+#
+# Правится вручную. Проверяется модулем `env` гейта
+# scripts/ci/roadmap-governance-guard.py: структура, обязательные поля и правило
+# «evidence: true требует pinned identity». Живость здесь НЕ проверяется — CI не
+# имеет доступа к этой LAN, и молчаливо зелёная проверка живости была бы ложью.
+#
+# Формат `identity` совпадает с $defs/environment_identity в roadmap.schema.json.
+
+schema_version: 1
+checked_at: '2026-08-26'
+checked_by: Claude Code
+check_method: |
+  curl -s -o /dev/null -w '%{http_code}' --max-time 4 <url> для достижимости;
+  GET /version для идентичности; readlink /proc/<pid>/cwd и ps -o lstart= для
+  того, из какого дерева и с какого момента работает процесс.
+
+environments:
+
+  - id: stand-81
+    disposition: active
+    role: stand
+    title: rmp-local-stand — единственный контур, дающий доказательства
+    host: 192.168.110.81
+    endpoints:
+      admin_web: http://192.168.110.81:3000
+      advertiser_web: http://192.168.110.81:3001
+      control_api: http://192.168.110.81:8000
+    reachable_at_check: true
+    observed:
+      http_admin_web: 200
+      http_control_api_version: 200
+    identity:
+      name: rmp-local-stand
+      git_sha: 27dc39707c5c56cdfdcc4250d5aa875d3789c8dc
+      bundle: stand-27dc397
+      schema_head: '036'
+    identity_source: GET /version — сервис сам сообщает version, git_sha, schema_head, environment
+    declared_environment: staging
+    evidence: true
+    evidence_scope: |
+      Наблюдение здесь привязывается к коммиту 27dc397 и схеме 036, потому что
+      сервис сообщает их сам. Это активный baseline по OD-007.
+    notes: |
+      Совпадение проверено: base.stand_baseline в docs/product/roadmap.yaml
+      объявляет ровно этот bundle, git_sha и schema_head.
+
+  - id: preview-77
+    disposition: unreachable-at-check-time
+    role: retired-preview
+    title: Старый LAN preview S-026
+    host: 192.168.110.77
+    endpoints:
+      admin_web: http://192.168.110.77:3000
+      advertiser_web: http://192.168.110.77:3001
+      control_api: http://192.168.110.77:8000
+      device_gateway: http://192.168.110.77:8001
+    reachable_at_check: false
+    observed:
+      http_admin_web: 000
+      http_advertiser_web: 000
+      http_control_api_version: 000
+    identity: null
+    identity_source: недоступен — идентичность не наблюдалась
+    evidence: false
+    evidence_scope: |
+      Ничего не доказывает. Формулировка по OD-007 — `unreachable at check time`,
+      а НЕ «мёртв» и не «выведен из эксплуатации»: недостижимость на момент
+      проверки является наблюдением, а вывод из эксплуатации — решением владельца,
+      которое не принято.
+    owner_decision_pending: retire или upgrade — решение владельца, не агента
+    related_artifacts:
+      - infra/compose/docker-compose.preview.yml   # LAN-оверрайд под этот хост
+      - docs/runbook/local-preview.md              # runbook S-026, помечен наблюдением
+
+  - id: santa2-dev
+    disposition: active
+    role: portal-contour
+    title: DEV-портал на santa2 (ветка develop)
+    host: santa2 (localhost)
+    endpoints:
+      admin_web: http://127.0.0.1:3100
+    reachable_at_check: true
+    observed:
+      http_admin_web: 200
+    identity: null
+    identity_source: |
+      Отсутствует. Портал — Vite dev-сервер (`vite --host 0.0.0.0 --port 3100`)
+      из клона /home/santa2/contours/dev, HEAD 1b0452c (develop).
+      Обслуживающий control-api идентичность не сообщает.
+    evidence: false
+    evidence_scope: |
+      Не доказательство. Три независимые причины, каждая проверена:
+      1. Общий API. DEV и PROD обслуживает ОДИН control-api на :8000, поэтому
+         наблюдение в портале не является наблюдением стека этого контура.
+      2. API не сообщает идентичность: GET /version отдаёт
+         version=dev, git_sha=unknown, schema_head=null.
+      3. API работает из изменяемого рабочего клона
+         /home/santa2/work/retail-media-platform-enterprise, запущен
+         2026-08-25 14:26:31 без --reload. Выполняется код дерева на момент
+         старта процесса; сам клон с тех пор ушёл вперёд. Соответствия
+         наблюдения какому-либо зафиксированному SHA не существует.
+    notes: |
+      Портал собирается dev-сервером с HMR, а не production-сборкой.
+
+  - id: santa2-prod
+    disposition: active
+    role: portal-contour
+    title: PROD-портал на santa2 (ветка main)
+    host: santa2 (localhost)
+    endpoints:
+      admin_web: http://127.0.0.1:3000
+    reachable_at_check: true
+    observed:
+      http_admin_web: 200
+    identity: null
+    identity_source: |
+      Отсутствует. Портал — Vite dev-сервер (`vite --host 0.0.0.0 --port 3000`)
+      из клона /home/santa2/contours/prod, HEAD b5dd3b3 (main).
+      Обслуживающий control-api идентичность не сообщает.
+    evidence: false
+    evidence_scope: |
+      Не доказательство, по тем же трём причинам, что и santa2-dev: общий API
+      с DEV, отсутствие идентичности у API и работа API из изменяемого рабочего
+      клона. Дополнительно: несмотря на имя PROD, портал поднят Vite dev-сервером,
+      то есть это не production-сборка.
+
+  - id: github-actions
+    disposition: active
+    role: ci
+    title: GitHub Actions — Phase 1 Quality Gates
+    reachable_at_check: true
+    identity_source: |
+      Каждый прогон привязан к SHA коммита; идентичность даёт сам GitHub.
+    evidence: true
+    evidence_scope: |
+      Доказывает поведение на конкретном SHA в чистом окружении раннера.
+      Не доказывает ничего о том, что развёрнуто на любом из контуров выше.
+    last_green_run:
+      id: '33000750265'
+      git_sha: 47be5dd
+      conclusion: success
+      jobs: 41
+      failures: 0
