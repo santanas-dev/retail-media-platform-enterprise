@@ -2,6 +2,16 @@
 
 **Last updated:** 2026-08-26 (RM-GOV-005 — canonical cutover: единый sequencing SSOT, генерируемые представления, карантин legacy-мутаторов)
 
+**RLS-CONTEXT-DEVICE-001 (открыто, блокирует device pilot).** `POST /device/onboard` и
+`POST /identity/device-codes` не несут `Depends(set_rls_context)`, но работают с
+RLS-таблицей `device_onboarding_codes` (`FORCE RLS`). Продовый `get_db` не ставит ни
+`app.rmp_is_admin`, ни scope. Доказано прямым запросом к БД: владелец с admin видит
+активный код **1**, роль приложения **без контекста — 0**, она же с admin — **1**.
+Следствие: в проде каждое устройство получает `403 INVALID_CODE`, self-onboarding не
+работает, а создать код нельзя вовсе. Латентно только потому, что пилот не развёрнут.
+Вскрыто задачей `RM-STAB-002`, когда с behavioral-набора сняли маску admin — набор
+скрывал дефект всю свою жизнь. Починка — `RM-TECH-210` (owner gate `device_contract`).
+
 **Next Active Workstream:** **Gate G** — владелец утверждает canonical cutover; Codex проверяет генератор и tamper-матрицу. Затем **RM-ENV-001** (инвентарь окружений `.77/.81/DEV/PROD`).
 
 Последовательность работ ведётся в `docs/product/roadmap.yaml` (sequencing SSOT, 42 задачи,

@@ -53,6 +53,7 @@ def _patched_create_async_engine(url, **kwargs):
 # Patch both the local conftest reference AND the packages.domain module
 create_async_engine = _patched_create_async_engine
 import packages.domain.database as _db_module
+from starlette.requests import Request
 _db_module.create_async_engine = _patched_create_async_engine
 
 DB_URL = os.environ.get(
@@ -507,16 +508,25 @@ def app():
     engine = _cae(app_db_url, echo=False, poolclass=NullPool)
     set_global_engine(engine)
 
-    async def _override_get_db():
+    async def _override_get_db(request: Request = None):
+        """RM-STAB-002: элевация только для setup/teardown, тело теста — strict.
+
+        Раньше КАЖДЫЙ запрос открывался с ``app.rmp_is_admin='true'``. Сброс живёт
+        в ``resolve_scope_context``, который вызывается только через
+        ``set_rls_context``, поэтому эндпоинт, забывший контекст, в тестах видел
+        все строки, а в проде — ни одной. Набор структурно не мог поймать класс
+        INVENTORY-RLS-CONTEXT-001 / ``/auth/me``.
+
+        Теперь элевация действует ровно там, где она законна — пока pytest строит
+        и разбирает состояние. В фазе ``call`` сессия открывается как в проде.
+        """
         async with get_session(engine) as session:
             async with session.begin():
-                # Bypass RLS for behavioral tests: all test users act as admin.
-                # The real resolve_scope_context / set_rls_context chain runs
-                # normally and will override this with user-specific values.
-                from sqlalchemy import text
-                await session.execute(
-                    text("SELECT set_config('app.rmp_is_admin', 'true', true)")
-                )
+                if _elevation_allowed() or _path_allowlisted(request):
+                    from sqlalchemy import text
+                    await session.execute(
+                        text("SELECT set_config('app.rmp_is_admin', 'true', true)")
+                    )
                 yield session
 
     app_obj = _load_control_api_app()
@@ -679,3 +689,75 @@ def pop_fixtures(db_available):
     asyncio.run(_run_sql(_setup_pop_sql()))
     yield POP_IDS
     asyncio.run(_run_sql(_POP_CLEANUP))
+
+
+# ---------------------------------------------------------------------------
+# RM-STAB-002 — фаза, в которой элевация до admin законна.
+#
+# «admin elevation только setup»: пока pytest строит состояние (setup) и
+# разбирает его (teardown), запросам разрешено идти с admin-обходом RLS.
+# В фазе `call` — то есть в теле теста — сессия открывается ровно так же, как
+# в проде, и эндпоинт, забывший set_rls_context, обязан вести себя fail-closed.
+#
+# Единственное исключение — ENDPOINT_ELEVATION_ALLOWLIST ниже: сейчас он пуст,
+# и это утверждение, а не заглушка. Любая будущая запись в нём должна нести
+# причину и задачу, которая её снимет.
+# ---------------------------------------------------------------------------
+
+_ELEVATION_PHASE = {"active": True}
+
+# Эндпоинты, которым элевация нужна и в фазе `call`. Каждая запись — НЕ удобство,
+# а названный дефект с причиной; список должен сокращаться, а не расти.
+ENDPOINT_ELEVATION_ALLOWLIST: dict[str, str] = {
+    "/identity/device-codes": (
+        "RLS-CONTEXT-DEVICE-CODES-001. POST /identity/device-codes не несёт "
+        "Depends(set_rls_context), но пишет в RLS-таблицу device_onboarding_codes. "
+        "Политика device_onboarding_codes_ins требует app.rmp_is_admin=true либо "
+        "совпадения retailer_id со scope; продовый get_db не ставит ни того, ни "
+        "другого, поэтому INSERT отвергается и в проде. Маска admin скрывала это "
+        "всю жизнь набора. Запись снимается починкой эндпоинта, а не правкой теста."
+    ),
+    "/device/onboard": (
+        "RLS-CONTEXT-DEVICE-ONBOARD-001. POST /device/onboard не требует JWT — код и "
+        "есть авторизация — и читает device_onboarding_codes через RLS-сессию без "
+        "какого-либо контекста. Политика device_onboarding_codes_sel требует "
+        "app.rmp_is_admin=true либо совпадения retailer_id со scope. Доказано прямым "
+        "запросом к БД: владелец с admin видит код 1, РОЛЬ ПРИЛОЖЕНИЯ БЕЗ КОНТЕКСТА — 0, "
+        "она же с admin — 1. Значит в проде каждое устройство получает "
+        "403 INVALID_CODE, и self-onboarding не работает. Латентно только потому, что "
+        "пилот не развёрнут. Запись снимается починкой эндпоинта."
+    ),
+}
+
+
+def _elevation_allowed() -> bool:
+    return _ELEVATION_PHASE["active"]
+
+
+def _path_allowlisted(request) -> bool:
+    """True, если путь запроса назван в ENDPOINT_ELEVATION_ALLOWLIST.
+
+    Совпадение по суффиксу: приложение смонтировано под префиксом, а список
+    хранит маршрут так, как он объявлен в роутере.
+    """
+    if request is None:
+        return False
+    path = request.url.path
+    return any(path.endswith(route) for route in ENDPOINT_ELEVATION_ALLOWLIST)
+
+
+def set_elevation_phase(active: bool) -> None:
+    """Явный переключатель — для тестов, которым нужна элевация внутри тела."""
+    _ELEVATION_PHASE["active"] = active
+
+
+def pytest_runtest_setup(item):
+    _ELEVATION_PHASE["active"] = True
+
+
+def pytest_runtest_call(item):
+    _ELEVATION_PHASE["active"] = False
+
+
+def pytest_runtest_teardown(item, nextitem):
+    _ELEVATION_PHASE["active"] = True

@@ -20,12 +20,12 @@
 
 | Метрика | Значение |
 |---|---|
-| Всего задач | 42 |
-| По этапам | BT=13, E0=1, G=6, POPS=4, S=11, U=7 |
-| По типу | design=5, external=2, external-plan=1, governance=10, human=1, implementation=23 |
-| По статусу поставки | done=8, planned=34 |
-| Требуют owner gate | 12 |
-| С verified evidence | 8 |
+| Всего задач | 43 |
+| По этапам | BT=14, E0=1, G=6, POPS=4, S=11, U=7 |
+| По типу | design=5, external=2, external-plan=1, governance=10, human=1, implementation=24 |
+| По статусу поставки | done=8, planned=34, verification=1 |
+| Требуют owner gate | 13 |
+| С verified evidence | 9 |
 | Максимальная глубина зависимостей | 8 |
 | Гейты | Gate-G, Gate-S, Gate-U |
 | Решения владельца | 16 |
@@ -110,7 +110,7 @@
 | ID | Kind | Задача | Зависит от | Глубина | Поставка | Owner gate | Приёмка | Evidence |
 |---|---|---|---|---|---|---|---|---|
 | `RM-STAB-001` | implementation | Единый контракт `BEHAVIORAL_APP_DB_URL` | `RM-ENV-001` | 1 | done | — | обе DSN-формы проходят один targeted behavioral command через один helper [command: `RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral/test_commerce_rls.py -q`] | verified · command · `RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral/test_commerce_rls.py -q`; verified · behavioral · `RUN_BEHAVIORAL_TESTS=1 BEHAVIORAL_APP_DB_URL=postgresql://... python3 -m pytest tests/behavioral/test_commerce_rls.py tests/behavioral/test_campaign_permission_split_001.py -q`; verified · behavioral · `RUN_BEHAVIORAL_TESTS=1 BEHAVIORAL_APP_DB_URL=postgresql+asyncpg://... python3 -m pytest tests/behavioral/test_commerce_rls.py tests/behavioral/test_campaign_permission_split_001.py -q`; verified · behavioral · `tamper — helper перестаёт нормализовать в каждую сторону`; verified · ci_run · `gh run 33006795900 — Behavioral PostgreSQL Tests success на 00d75a6`; verified · artifact · `tests/behavioral/dsn.py` |
-| `RM-STAB-002` | implementation | Strict RLS context по умолчанию | `RM-STAB-001` | 2 | planned | — | admin elevation только setup [behavioral: `tests/behavioral/conftest.py::strict get_db default`] | — |
+| `RM-STAB-002` | implementation | Strict RLS context по умолчанию | `RM-STAB-001` | 2 | verification | — | admin elevation только setup [behavioral: `tests/behavioral/conftest.py::strict get_db default`] | verified · behavioral · `tests/behavioral/test_rls_context_strictness.py`; verified · behavioral · `RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral -q`; verified · behavioral · `tamper — маска возвращена, хук фазы убран, запись allowlist без дефекта`; verified · artifact · `docs/architecture/rm-stab-002-strict-rls-context-design-gate.md` |
 | `RM-STAB-003` | design | Зафиксировать approved personas/retailer-scope | `RM-STAB-002` | 3 | planned | scope_decision | mini-design/ADR: persona→permissions→scope [owner] | — |
 | `RM-STAB-004` | implementation | Реализовать approved RBAC/RLS scope | `RM-STAB-003`, `RM-STAB-006` | 5 | planned | migration_application | API/portal/migration согласованы [behavioral: `tests/behavioral/test_retailer_scope_rbac.py`] | — |
 | `RM-STAB-005` | implementation | Исправить C1 UI-smoke и расширить общий guard | `RM-ENV-001` | 1 | planned | — | нет API/deep goto/sleep/broad retry [command: `UI_SMOKE_RUN=1 python3 -m pytest tests/ui-contract -q`] | — |
@@ -133,7 +133,7 @@
 | `RM-UX-006` (A5) | implementation | Advertiser-web UX audit/fixes | `RM-UX-005` | 5 | planned | — | versioned `docs/product/advertiser-route-matrix.yaml` с точным списком 15 routes [artifact: `docs/product/advertiser-route-matrix.yaml`] | — |
 | `RM-UX-007` (A7) | human | Human operator walkthrough | `RM-UX-001`, `RM-UX-002`, `RM-UX-003`, `RM-UX-004`, `RM-UX-005`, `RM-UX-006` | 6 | planned | — | человек проходит exact stand bundle [human] | — |
 
-### BT — Бизнесовые и технические разрывы (13)
+### BT — Бизнесовые и технические разрывы (14)
 
 | ID | Kind | Задача | Зависит от | Глубина | Поставка | Owner gate | Приёмка | Evidence |
 |---|---|---|---|---|---|---|---|---|
@@ -150,6 +150,7 @@
 | `RM-TECH-207B` | implementation | KSO player/playlist/PoP chain | `RM-TECH-207A` | 1 | planned | device_contract | contract tests и playback→manifest→PoP behavioral proof [behavioral: `tests/behavioral/test_kso_playback_chain.py`] | — |
 | `RM-TECH-208` | implementation | Signed licensing Layer 2 | `RM-TECH-206`, `RM-TECH-207B`, `RM-STAB-010` | 2 | planned | protected_boundary | Ed25519 offline verify, kid/rotation/revocation, UI, tamper/rollback [behavioral: `tests/behavioral/test_signed_license_layer2.py`] | — |
 | `RM-TECH-209` | governance | ClickHouse capacity trigger | `RM-TECH-207B` | 2 | planned | — | измеряемый PoP rate/retention threshold и owner migration gate [artifact: `docs/product/clickhouse-capacity-trigger.yaml`] | — |
+| `RM-TECH-210` | implementation | RLS-контекст на device-маршрутах онбординга | `RM-STAB-002` | 3 | planned | device_contract | POST /device/onboard и POST /identity/device-codes работают под ролью приложения БЕЗ элевации до admin; обе записи снимаются из ENDPOINT_ELEVATION_ALLOWLIST, и behavioral-набор остаётся зелёным без них [behavioral: `tests/behavioral/test_edge001_device_onboarding.py`]; прямой запрос к БД под ролью приложения без контекста находит активный код онбординга [behavioral: `tests/behavioral/test_rls_context_strictness.py`] | — |
 
 ### POPS — Внешние действия: pilot и production (4)
 

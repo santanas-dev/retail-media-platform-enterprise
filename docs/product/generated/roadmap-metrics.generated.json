@@ -28,11 +28,12 @@
   "schema_version": 1,
   "sequencing": {
     "by_decision_status": {
-      "approved": 42
+      "approved": 43
     },
     "by_delivery_status": {
       "done": 8,
-      "planned": 34
+      "planned": 34,
+      "verification": 1
     },
     "by_kind": {
       "design": 5,
@@ -40,10 +41,10 @@
       "external-plan": 1,
       "governance": 10,
       "human": 1,
-      "implementation": 23
+      "implementation": 24
     },
     "by_stage": {
-      "BT": 13,
+      "BT": 14,
       "E0": 1,
       "G": 6,
       "POPS": 4,
@@ -57,8 +58,8 @@
     ],
     "max_dependency_depth": 8,
     "owner_decisions": 16,
-    "owner_gated": 12,
-    "tasks_total": 42,
-    "with_verified_evidence": 8
+    "owner_gated": 13,
+    "tasks_total": 43,
+    "with_verified_evidence": 9
   }
 }

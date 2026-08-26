@@ -411,8 +411,24 @@ tasks:
     verified_by: behavioral
     ref: tests/behavioral/conftest.py::strict get_db default
   decision_status: approved
-  delivery_status: planned
-  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  delivery_status: verification
+  evidence_refs:
+  - kind: behavioral
+    ref: tests/behavioral/test_rls_context_strictness.py
+    status: verified
+    note: 5 passed — фаза call не элевирована, чистая сессия fail-closed, allowlist подотчётен
+  - kind: behavioral
+    ref: "RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral -q"
+    status: verified
+    note: 470 passed, 12 skipped при strict-умолчании — счёт совпадает с прогоном до правки
+  - kind: behavioral
+    ref: tamper — маска возвращена, хук фазы убран, запись allowlist без дефекта
+    status: verified
+    note: красно по всем трём осям, после восстановления 5 passed
+  - kind: artifact
+    ref: docs/architecture/rm-stab-002-strict-rls-context-design-gate.md
+    status: verified
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); закрывает мою находку BEHAVIORAL-ADMIN-MASK-001. Элевация привязана к фазе прогона: setup и teardown элевированы, тело теста strict. Замер показал, что на маске держались 181 из 470 тестов — 148 setup, 13 teardown, 20 тел. Вскрыт продовый дефект на двух device-маршрутах; по решению владельца вынесен в отдельную задачу RM-TECH-210, обе записи allowlist названы поимённо и снимаются её починкой.'
 - id: RM-STAB-003
   kind: design
   stage: S
@@ -805,6 +821,36 @@ tasks:
   decision_status: approved
   delivery_status: planned
   notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-TECH-210
+  kind: implementation
+  stage: BT
+  title: RLS-контекст на device-маршрутах онбординга
+  dependencies:
+  - RM-STAB-002
+  acceptance:
+  - check: POST /device/onboard и POST /identity/device-codes работают под ролью приложения
+      БЕЗ элевации до admin; обе записи снимаются из ENDPOINT_ELEVATION_ALLOWLIST, и
+      behavioral-набор остаётся зелёным без них
+    verified_by: behavioral
+    ref: tests/behavioral/test_edge001_device_onboarding.py
+  - check: прямой запрос к БД под ролью приложения без контекста находит активный код
+      онбординга
+    verified_by: behavioral
+    ref: tests/behavioral/test_rls_context_strictness.py
+  decision_status: approved
+  delivery_status: planned
+  notes: 'заведена по решению владельца 2026-08-26 после того, как RM-STAB-002 вскрыл дефект.
+    RLS-CONTEXT-DEVICE-CODES-001 и RLS-CONTEXT-DEVICE-ONBOARD-001 — ни один из двух
+    маршрутов не несёт Depends(set_rls_context), при этом оба работают с RLS-таблицей
+    device_onboarding_codes. Доказано прямым запросом: владелец с admin видит код 1, роль
+    приложения без контекста — 0, она же с admin — 1. Значит в проде каждое устройство
+    получает 403 INVALID_CODE и self-onboarding не работает вовсе. Латентно только потому,
+    что пилот не развёрнут. Блокирует device pilot: RM-TECH-207B и ветку RM-PILOT.
+    Требует решения владельца по модели: онбординг неаутентифицирован, поэтому scope нельзя
+    вывести из пользователя — нужен либо явный контекст под код, либо отдельная политика.'
+  owner_gate:
+    required: true
+    reason: device_contract
 - id: RM-TECH-208
   kind: implementation
   stage: BT
