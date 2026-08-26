@@ -411,7 +411,7 @@ tasks:
     verified_by: behavioral
     ref: tests/behavioral/conftest.py::strict get_db default
   decision_status: approved
-  delivery_status: verification
+  delivery_status: done
   evidence_refs:
   - kind: behavioral
     ref: tests/behavioral/test_rls_context_strictness.py
@@ -425,10 +425,14 @@ tasks:
     ref: tamper — маска возвращена, хук фазы убран, запись allowlist без дефекта
     status: verified
     note: красно по всем трём осям, после восстановления 5 passed
+  - kind: ci_run
+    ref: gh run 33015298420 — Behavioral PostgreSQL Tests success на 1e7a2bf
+    status: verified
+    note: 475 passed при strict-умолчании; пять пинов strictness зелёные на раннере
   - kind: artifact
     ref: docs/architecture/rm-stab-002-strict-rls-context-design-gate.md
     status: verified
-  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); закрывает мою находку BEHAVIORAL-ADMIN-MASK-001. Элевация привязана к фазе прогона: setup и teardown элевированы, тело теста strict. Замер показал, что на маске держались 181 из 470 тестов — 148 setup, 13 teardown, 20 тел. Вскрыт продовый дефект на двух device-маршрутах; по решению владельца вынесен в отдельную задачу RM-TECH-210, обе записи allowlist названы поимённо и снимаются её починкой.'
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); закрывает мою находку BEHAVIORAL-ADMIN-MASK-001. Элевация привязана к фазе прогона. Замер: на маске держались 181 из 470 тестов — 148 setup, 13 teardown, 20 тел. Вскрыт продовый дефект на двух device-маршрутах, по решению владельца вынесен в RM-TECH-210. Подтверждено на раннере прогоном 33015298420: behavioral 475 passed (470 прежних + 5 новых пинов), release-gate success.'
 - id: RM-STAB-003
   kind: design
   stage: S
