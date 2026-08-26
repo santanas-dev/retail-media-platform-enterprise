@@ -1,0 +1,121 @@
+/*
+ * PORTAL-UX-001 — the toolbar that sits above a list.
+ *
+ * Search, sort, filters, a count and a reset, wrapping onto their own rows on a
+ * narrow screen instead of overflowing sideways.
+ */
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--rmp-space-3);
+  margin-bottom: var(--rmp-space-4);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rmp-space-1);
+  min-width: 0;
+}
+
+.search {
+  flex: 1 1 16rem;
+}
+
+.controlLabel {
+  font-size: var(--rmp-font-size-xs);
+  color: var(--rmp-text-secondary);
+}
+
+.input,
+.select {
+  padding: var(--rmp-space-2) var(--rmp-space-3);
+  border: 1px solid var(--rmp-border);
+  border-radius: var(--rmp-radius-sm);
+  background: var(--rmp-bg-surface);
+  color: var(--rmp-text-primary);
+  font-family: inherit;
+  font-size: var(--rmp-font-size-sm);
+  min-width: 0;
+  width: 100%;
+}
+
+.input:disabled,
+.select:disabled {
+  color: var(--rmp-text-secondary);
+  cursor: not-allowed;
+}
+
+.input:focus-visible,
+.select:focus-visible,
+.reset:focus-visible {
+  outline: 2px solid var(--rmp-focus-outline-color);
+  outline-offset: 1px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rmp-space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--rmp-space-3);
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.count {
+  font-size: var(--rmp-font-size-sm);
+  color: var(--rmp-text-secondary);
+}
+
+.scopeNote {
+  font-size: var(--rmp-font-size-xs);
+  color: var(--rmp-text-secondary);
+}
+
+.reset {
+  padding: var(--rmp-space-2) var(--rmp-space-3);
+  border: 1px solid var(--rmp-border);
+  border-radius: var(--rmp-radius-sm);
+  background: transparent;
+  color: var(--rmp-text-primary);
+  font-family: inherit;
+  font-size: var(--rmp-font-size-sm);
+  cursor: pointer;
+}
+
+.reset:disabled {
+  color: var(--rmp-text-secondary);
+  cursor: not-allowed;
+}
+
+.actions {
+  display: flex;
+  gap: var(--rmp-space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 767px) {
+  .controls {
+    align-items: stretch;
+  }
+
+  .meta {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .search {
+    flex-basis: 100%;
+  }
+}

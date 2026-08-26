@@ -1,7 +1,9 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useTheme } from "../theme/ThemeContext";
+import { useIsNarrow } from "./useIsNarrow";
+import s from "./ResponsiveShell.module.css";
 
 interface NavItem {
   to: string;
@@ -29,10 +31,35 @@ function hasAnyPermission(userPermissions: string[] | undefined, required: strin
   return required.some((p) => userPermissions.includes(p));
 }
 
+/** A menu glyph, not a word: there is no icon library in this stack and adding
+ *  one for a single glyph would be a dependency for its own sake. */
+function MenuIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" fill="none" />
+    </svg>
+  );
+}
+
+/**
+ * PORTAL-UX-002 — the operator console's application shell.
+ *
+ * Desktop is deliberately untouched: the same 220px sidebar, the same active
+ * item, the content in the same place. Below 768px the sidebar stops eating
+ * 220px of a 390px screen — which cut off the page title and the last table
+ * column — and becomes a drawer behind an overlay, closing on Escape, on the
+ * overlay and on choosing a destination, with focus returned to the trigger.
+ */
 export default function Layout() {
   const { user, loading, logout } = useAuth();
   const { theme, setTheme, availableThemes } = useTheme();
   const navigate = useNavigate();
+  const isNarrow = useIsNarrow();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const drawerRef = useRef<HTMLElement | null>(null);
+  const navId = useId();
 
   const visibleItems = useMemo(() => {
     if (!user) return [];
@@ -40,6 +67,49 @@ export default function Layout() {
       hasAnyPermission(user.permissions, item.requiredPermissions),
     );
   }, [user]);
+
+  const closeMenu = useCallback((returnFocus = true) => {
+    setMenuOpen(false);
+    if (returnFocus) triggerRef.current?.focus();
+  }, []);
+
+  // Widening the window must not leave a drawer state behind.
+  useEffect(() => {
+    if (!isNarrow) setMenuOpen(false);
+  }, [isNarrow]);
+
+  // Escape closes the drawer wherever focus happens to be.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        closeMenu();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [menuOpen, closeMenu]);
+
+  // The page behind an open drawer must not scroll away under it.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [menuOpen]);
+
+  // Focus moves into the drawer when it opens, so a keyboard user is not left
+  // behind on the trigger with an open menu they cannot reach.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const first = drawerRef.current?.querySelector<HTMLElement>(
+      'a[href], button:not([disabled])',
+    );
+    first?.focus();
+  }, [menuOpen]);
 
   if (loading) {
     return (
@@ -63,34 +133,67 @@ export default function Layout() {
     navigate("/login", { replace: true });
   }
 
+  const drawerMode = isNarrow;
+  const drawerHidden = drawerMode && !menuOpen;
+  const SidebarElement = (drawerMode ? "div" : "aside") as "div";
+  const sidebarClasses = [
+    s.sidebar,
+    drawerMode && menuOpen ? s.sidebarOpen : "",
+    drawerHidden ? s.sidebarHidden : "",
+  ].filter(Boolean).join(" ");
+
   return (
-    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "var(--rmp-font-family)" }}>
-      <aside
-        style={{
-          width: 220,
-          background: "var(--rmp-sidebar-bg)",
-          color: "var(--rmp-sidebar-text)",
-          padding: "var(--rmp-space-4) 0",
-          flexShrink: 0,
-        }}
-      >
-        <div
-          style={{
-            padding: "0 var(--rmp-space-4) var(--rmp-space-4)",
-            fontSize: "var(--rmp-font-size-base)",
-            fontWeight: 600,
-            color: "var(--rmp-text-inverse)",
-            borderBottom: "1px solid var(--rmp-gray-700)",
-            marginBottom: "var(--rmp-space-2)",
-          }}
+    <div className={s.shell}>
+      {drawerMode && (
+        <button
+          type="button"
+          ref={triggerRef}
+          className={s.menuButton}
+          data-testid="nav-menu-toggle"
+          aria-label="Меню"
+          aria-expanded={menuOpen}
+          aria-controls={navId}
+          onClick={() => setMenuOpen((open) => !open)}
         >
-          ЦУР
-        </div>
-        <nav style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+          <MenuIcon />
+          <span>Меню</span>
+        </button>
+      )}
+
+      {drawerMode && menuOpen && (
+        <button
+          type="button"
+          className={s.overlay}
+          data-testid="nav-overlay"
+          aria-label="Закрыть меню"
+          onClick={() => closeMenu()}
+        />
+      )}
+
+      {/* Desktop keeps the <aside> landmark it always had — the UI-smoke suite
+          navigates through `aside nav a[href=…]`, and this slice must not move
+          the console's furniture. In drawer mode it becomes a <div role="dialog">
+          instead: an <aside> is implicitly a complementary landmark, and axe
+          rightly refuses a dialog role on top of one. */}
+      <SidebarElement
+        id={navId}
+        ref={drawerRef as never}
+        className={sidebarClasses}
+        data-testid="nav-sidebar"
+        {...(drawerMode
+          ? { role: "dialog", "aria-modal": true, "aria-label": "Меню разделов" }
+          : {})}
+        {...(drawerHidden ? { inert: "" as unknown as boolean, "aria-hidden": true } : {})}
+      >
+        <div className={s.brand}>ЦУР</div>
+        <nav className={s.nav} aria-label="Разделы">
           {visibleItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={() => {
+                if (drawerMode) closeMenu(false);
+              }}
               style={({ isActive }) => ({
                 display: "block",
                 padding: "var(--rmp-space-2) var(--rmp-space-4)",
@@ -126,7 +229,10 @@ export default function Layout() {
               gap: "var(--rmp-space-2)",
             }}
           >
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+            <span
+              title={user?.display_name || user?.username || undefined}
+              style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}
+            >
               {user?.display_name || user?.username || "—"}
             </span>
             <div
@@ -186,15 +292,9 @@ export default function Layout() {
             </button>
           </div>
         </nav>
-      </aside>
-      <main
-        style={{
-          flex: 1,
-          padding: "var(--rmp-space-6)",
-          background: "var(--rmp-bg-page)",
-          overflow: "auto",
-        }}
-      >
+      </SidebarElement>
+
+      <main className={s.main}>
         <Outlet />
       </main>
     </div>

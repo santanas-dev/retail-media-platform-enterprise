@@ -1,0 +1,61 @@
+/*
+ * PORTAL-UX-003 — a field whose label is actually associated with its control.
+ *
+ * The error line reserves its own row height whether or not there is an error,
+ * so a failed validation does not push the rest of the form down the page.
+ */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rmp-space-1);
+  margin-bottom: var(--rmp-space-4);
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--rmp-font-size-sm);
+  font-weight: 500;
+  color: var(--rmp-text-primary);
+}
+
+.required {
+  color: var(--rmp-danger-600);
+  margin-left: 0.15rem;
+}
+
+/* Never signal a requirement or an error by colour alone. */
+.requiredNote {
+  font-weight: 400;
+  color: var(--rmp-text-secondary);
+  font-size: var(--rmp-font-size-xs);
+  margin-left: var(--rmp-space-1);
+}
+
+.control {
+  min-width: 0;
+}
+
+.help {
+  font-size: var(--rmp-font-size-xs);
+  color: var(--rmp-text-secondary);
+}
+
+.errorSlot {
+  min-height: 1.15rem;   /* reserved: the layout must not shift when an error appears */
+  font-size: var(--rmp-font-size-xs);
+  line-height: 1.15rem;
+  color: var(--rmp-danger-600);
+  display: flex;
+  align-items: center;
+  gap: var(--rmp-space-1);
+}
+
+.errorMark {
+  font-weight: 700;
+}
+
+.disabled .label,
+.disabled .help {
+  color: var(--rmp-text-secondary);
+}

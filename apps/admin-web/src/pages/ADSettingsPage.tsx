@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { api, ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import FormField from "../components/FormField";
+import PageHeader from "../components/PageHeader";
 
 interface ADSettings {
   enabled: boolean;
@@ -219,17 +221,7 @@ export default function ADSettingsPage() {
       fontSize: "0.85rem",
       color: "var(--rmp-gray-800)",
     }),
-    field: {
-      display: "flex",
-      flexDirection: "column" as const,
-      marginBottom: "0.65rem",
-    },
-    fieldLabel: {
-      fontSize: "0.8rem",
-      fontWeight: 500,
-      color: "var(--rmp-gray-600)",
-      marginBottom: "0.2rem",
-    },
+    // field / fieldLabel now live in FormField (PORTAL-UX-003).
     input: {
       padding: "0.4rem 0.55rem",
       fontSize: "0.85rem",
@@ -278,7 +270,10 @@ export default function ADSettingsPage() {
 
   return (
     <div style={styles.page} data-testid="adsettings-page">
-      <h1 style={{ margin: "0 0 1rem", fontSize: "1.25rem" }}>Настройки AD / LDAPS</h1>
+      <PageHeader
+        title="Настройки AD / LDAPS"
+        subtitle="Подключение к службе каталогов для входа сотрудников"
+      />
 
       {/* Status card */}
       <div style={styles.card}>
@@ -333,68 +328,93 @@ export default function ADSettingsPage() {
           </div>
 
           {/* Server URL */}
-          <div style={styles.field}>
-            <label style={styles.fieldLabel}>Сервер (LDAPS URL)</label>
-            <input
-              type="text"
-              value={editServerUrl}
-              onChange={(e) => setEditServerUrl(e.target.value)}
-              style={styles.input}
-              placeholder="ldaps://ad.example.com"
-              data-testid="adsettings-field-server-url"
-            />
-          </div>
+          <FormField
+            label="Сервер (LDAPS URL)"
+            help="Адрес контроллера домена, например ldaps://ad.example.com"
+          >
+            {(fieldProps) => (
+              <input
+                {...fieldProps}
+                type="text"
+                value={editServerUrl}
+                onChange={(e) => setEditServerUrl(e.target.value)}
+                style={styles.input}
+                placeholder="ldaps://ad.example.com"
+                data-testid="adsettings-field-server-url"
+              />
+            )}
+          </FormField>
 
           {/* Base DN */}
-          <div style={styles.field}>
-            <label style={styles.fieldLabel}>Base DN</label>
-            <input
-              type="text"
-              value={editBaseDn}
-              onChange={(e) => setEditBaseDn(e.target.value)}
-              style={styles.input}
-              placeholder="dc=example,dc=com"
-              data-testid="adsettings-field-base-dn"
-            />
-          </div>
+          <FormField
+            label="Base DN"
+            help="Корень каталога, от которого выполняется поиск"
+          >
+            {(fieldProps) => (
+              <input
+                {...fieldProps}
+                type="text"
+                value={editBaseDn}
+                onChange={(e) => setEditBaseDn(e.target.value)}
+                style={styles.input}
+                placeholder="dc=example,dc=com"
+                data-testid="adsettings-field-base-dn"
+              />
+            )}
+          </FormField>
 
           {/* User Search Base */}
-          <div style={styles.field}>
-            <label style={styles.fieldLabel}>User Search Base</label>
-            <input
-              type="text"
-              value={editUserSearchBase}
-              onChange={(e) => setEditUserSearchBase(e.target.value)}
-              style={styles.input}
-              placeholder="ou=users,dc=example,dc=com"
-              data-testid="adsettings-field-search-base"
-            />
-          </div>
+          <FormField
+            label="User Search Base"
+            help="Ветка каталога с учётными записями сотрудников"
+          >
+            {(fieldProps) => (
+              <input
+                {...fieldProps}
+                type="text"
+                value={editUserSearchBase}
+                onChange={(e) => setEditUserSearchBase(e.target.value)}
+                style={styles.input}
+                placeholder="ou=users,dc=example,dc=com"
+                data-testid="adsettings-field-search-base"
+              />
+            )}
+          </FormField>
 
           {/* User Search Filter */}
-          <div style={styles.field}>
-            <label style={styles.fieldLabel}>Фильтр поиска</label>
-            <input
-              type="text"
-              value={editUserSearchFilter}
-              onChange={(e) => setEditUserSearchFilter(e.target.value)}
-              style={styles.input}
-              data-testid="adsettings-field-search-filter"
-            />
-          </div>
+          <FormField
+            label="Фильтр поиска"
+            help="LDAP-фильтр; {username} подставляется при входе"
+          >
+            {(fieldProps) => (
+              <input
+                {...fieldProps}
+                type="text"
+                value={editUserSearchFilter}
+                onChange={(e) => setEditUserSearchFilter(e.target.value)}
+                style={styles.input}
+                data-testid="adsettings-field-search-filter"
+              />
+            )}
+          </FormField>
 
           {/* Bind DN */}
-          <div style={styles.field}>
-            <label style={styles.fieldLabel}>Bind DN</label>
-            <input
-              type="text"
-              value={editBindDn}
-              onChange={(e) => setEditBindDn(e.target.value)}
-              style={styles.input}
-              placeholder="cn=binduser,dc=example,dc=com"
-              data-testid="adsettings-field-bind-dn"
-            />
-          </div>
+          <FormField
+            label="Bind DN"
+            help="Служебная учётная запись; пароль задаётся только через окружение"
+          >
+            {(fieldProps) => (
+              <input
+                {...fieldProps}
+                type="text"
+                value={editBindDn}
+                onChange={(e) => setEditBindDn(e.target.value)}
+                style={styles.input}
+                placeholder="cn=binduser,dc=example,dc=com"
+                data-testid="adsettings-field-bind-dn"
+              />
+            )}
+          </FormField>
 
           {/* TLS */}
           <div style={styles.inlineRow}>
@@ -412,19 +432,24 @@ export default function ADSettingsPage() {
           </div>
 
           {/* Certificate validation */}
-          <div style={{ ...styles.field, marginTop: "0.5rem" }}>
-            <label style={styles.fieldLabel}>Проверка сертификата</label>
-            <select
-              value={editCertValidation}
-              onChange={(e) => setEditCertValidation(e.target.value)}
-              style={styles.select}
-              data-testid="adsettings-field-cert-validation"
-            >
-              <option value="required">Обязательна</option>
-              <option value="optional">Опциональна</option>
-              <option value="none">Отключена</option>
-            </select>
-          </div>
+          <FormField
+            label="Проверка сертификата"
+            help="Как проверять сертификат сервера при TLS-подключении"
+          >
+            {(fieldProps) => (
+              <select
+                {...fieldProps}
+                value={editCertValidation}
+                onChange={(e) => setEditCertValidation(e.target.value)}
+                style={styles.select}
+                data-testid="adsettings-field-cert-validation"
+              >
+                <option value="required">Обязательна</option>
+                <option value="optional">Опциональна</option>
+                <option value="none">Отключена</option>
+              </select>
+            )}
+          </FormField>
 
           {/* Save button */}
           <button

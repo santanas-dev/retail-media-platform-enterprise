@@ -1,0 +1,129 @@
+/*
+ * PORTAL-UX-002 — responsive application shell for the operator console.
+ *
+ * Desktop is unchanged on purpose: a fixed 220px sidebar next to the content.
+ * Below 768px that sidebar used to keep its 220px of a 390px screen, which cut
+ * the page title and the last table column off. There it becomes an off-canvas
+ * drawer behind an overlay, and the content gets the full width.
+ *
+ * Colours are tokens only — no raw values (THEME-GUARD-001).
+ */
+
+.shell {
+  display: flex;
+  min-height: 100vh;
+  font-family: var(--rmp-font-family);
+}
+
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--rmp-sidebar-bg);
+  color: var(--rmp-sidebar-text);
+  padding: var(--rmp-space-4) 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.brand {
+  padding: 0 var(--rmp-space-4) var(--rmp-space-4);
+  font-size: var(--rmp-font-size-base);
+  font-weight: 600;
+  color: var(--rmp-text-inverse);
+  border-bottom: 1px solid var(--rmp-gray-700);
+  margin-bottom: var(--rmp-space-2);
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.main {
+  flex: 1;
+  min-width: 0; /* a flex child must be allowed to shrink, or tables force overflow */
+  padding: var(--rmp-space-6);
+  background: var(--rmp-bg-page);
+  overflow: auto;
+}
+
+/* The trigger and the overlay exist only in the narrow layout. */
+.menuButton {
+  display: none;
+}
+
+.overlay {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .shell {
+    display: block;
+  }
+
+  .menuButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--rmp-space-2);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    width: 100%;
+    padding: var(--rmp-space-3) var(--rmp-space-4);
+    background: var(--rmp-sidebar-bg);
+    color: var(--rmp-text-inverse);
+    border: none;
+    border-bottom: 1px solid var(--rmp-gray-700);
+    font-family: inherit;
+    font-size: var(--rmp-font-size-base);
+    cursor: pointer;
+  }
+
+  .menuButton:focus-visible {
+    outline: 2px solid var(--rmp-focus-outline-color);
+    outline-offset: -2px;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    width: min(280px, 85vw);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    overflow-y: auto;
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+  }
+
+  .overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: var(--rmp-overlay-backdrop);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .main {
+    padding: var(--rmp-space-4);
+  }
+}
+
+/* A drawer that is closed must be out of the accessibility tree too, not just
+   off-screen: a screen reader should not walk a menu the operator cannot see. */
+.sidebarHidden {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
+}

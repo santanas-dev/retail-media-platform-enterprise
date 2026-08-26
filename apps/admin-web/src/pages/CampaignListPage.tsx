@@ -15,6 +15,7 @@ import type {
 } from "../api/types";
 import { statusLabel } from "../api/types";
 import PageHeader from "../components/PageHeader";
+import TableControls from "../components/TableControls";
 import StatusBadge from "../components/StatusBadge";
 import type { StatusBadgeVariant } from "../components/StatusBadge";
 
@@ -101,11 +102,37 @@ export default function CampaignListPage() {
     );
   }
 
+  // PORTAL-UX-001 — the toolbar contract on a real screen.
+  //
+  // The status chips filter only what is loaded, because /identity/campaigns is
+  // paginated and has no server-side filter. That was already true before this
+  // change; what is new is that the toolbar SAYS so instead of letting the count
+  // imply the whole collection was filtered. Text search and column sort need a
+  // server-side query and belong to A2 — a search box over one page would be a
+  // lie, so none is rendered here.
+  const loadedCount = campaigns.length;
+  const isPartial = total > loadedCount;
+  const controls = (
+    <TableControls
+      filters={<FilterChips current={statusFilter} onChange={setStatusFilter} />}
+      resultLabel={
+        statusFilter === "all"
+          ? `Показано ${loadedCount} из ${total}`
+          : `${filteredCampaigns.length} из ${loadedCount} на этой странице`
+      }
+      scopeNote={isPartial ? "Фильтр применяется к загруженной странице" : undefined}
+      onReset={() => setStatusFilter("all")}
+      canReset={statusFilter !== "all"}
+      loading={loading}
+    />
+  );
+
+
   if (filteredCampaigns.length === 0) {
     return (
       <div>
         <PageHeader title="Кампании" />
-        <FilterChips current={statusFilter} onChange={setStatusFilter} />
+        {controls}
         <div style={{ background: "var(--rmp-gray-50)", border: "1px dashed var(--rmp-border-strong)", borderRadius: "var(--rmp-radius-md)", padding: "var(--rmp-space-8)", textAlign: "center", color: "var(--rmp-text-secondary)" }}>
           <p style={{ margin: 0, fontWeight: 500 }}>
             {statusFilter === "all" ? "Нет кампаний" : "Нет кампаний с этим статусом"}
@@ -117,6 +144,7 @@ export default function CampaignListPage() {
       </div>
     );
   }
+
 
   // ── Helpers ──
 
@@ -146,25 +174,24 @@ export default function CampaignListPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-        <PageHeader title="Кампании" />
+      <PageHeader title="Кампании">
         {canCreate && (
-        <button
-          type="button"
-          data-testid="campaign-create-open"
-          onClick={() => navigate("/campaigns/new")}
-          style={{
-            padding: "0.5rem 1rem", fontSize: "var(--rmp-font-size-base)",
-            background: "var(--rmp-primary-600)", color: "var(--rmp-text-inverse)",
-            border: "none", borderRadius: "var(--rmp-radius-sm)",
-            cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
-          }}
-        >
-          Создать кампанию
-        </button>
+          <button
+            type="button"
+            data-testid="campaign-create-open"
+            onClick={() => navigate("/campaigns/new")}
+            style={{
+              padding: "0.5rem 1rem", fontSize: "var(--rmp-font-size-base)",
+              background: "var(--rmp-primary-600)", color: "var(--rmp-text-inverse)",
+              border: "none", borderRadius: "var(--rmp-radius-sm)",
+              cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
+            }}
+          >
+            Создать кампанию
+          </button>
         )}
-      </div>
-      <FilterChips current={statusFilter} onChange={setStatusFilter} />
+      </PageHeader>
+      {controls}
       <table className="rmp-table">
         <thead>
           <tr>
@@ -258,7 +285,7 @@ const FILTER_OPTIONS = [
 
 function FilterChips({ current, onChange }: { current: string; onChange: (v: string) => void }) {
   return (
-    <div style={{ display: "flex", gap: "0.35rem", marginBottom: "var(--rmp-space-3)", flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
       {FILTER_OPTIONS.map((opt) => (
         <button
           key={opt.value}
