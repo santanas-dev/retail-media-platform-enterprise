@@ -88,6 +88,8 @@ DECLARED_MUTATORS = {
         "legacy v2.6 — в карантине с RM-GOV-005, баннер QUARANTINED, не запускается",
     "scripts/legacy/fix_roadmap_qa.py":
         "legacy QA-правка по абсолютному пути чужой машины — в карантине с RM-GOV-005",
+    "scripts/ci/check-roadmap-schema.py":
+        "RM-GOV-001 — пишет только временные копии в self-test (текстовые tamper-кейсы)",
     "scripts/ci/roadmap-governance-guard.py":
         "RM-GOV-004 — этот guard; пишет только во временные песочницы self-test",
     "scripts/legacy/tamper-test-roadmap-guard.py":

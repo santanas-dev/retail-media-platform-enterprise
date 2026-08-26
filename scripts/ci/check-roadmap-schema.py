@@ -253,13 +253,44 @@ def _semantic_findings(doc):
     return out
 
 
+class _DuplicateKeyLoader(yaml.SafeLoader):
+    """SafeLoader that refuses duplicate mapping keys.
+
+    yaml.safe_load silently keeps the LAST value for a repeated key. That turned
+    a broken edit into a valid-looking document three separate times in this
+    workstream: a tamper fixture that stopped tampering, a second one, and an
+    evidence_ref whose command was replaced by a run id — each time the file
+    parsed cleanly and the validator saw nothing wrong. A duplicate key in a
+    hand-edited SSOT is always a defect, never an intention.
+    """
+
+
+def _no_duplicates(loader, node, deep=False):
+    mapping = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key in mapping:
+            raise yaml.constructor.ConstructorError(
+                None, None,
+                f"дублирующийся ключ {key!r} — YAML молча оставит последний",
+                key_node.start_mark)
+        mapping[key] = loader.construct_object(value_node, deep=deep)
+    return mapping
+
+
+_DuplicateKeyLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _no_duplicates)
+
+
 def validate(path):
     """Validate one roadmap file. Returns a list of finding strings (empty = clean)."""
     path = Path(path)
     if not path.exists():
         return [f"MISSING-FILE: {path} does not exist"]
     try:
-        doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+        doc = yaml.load(path.read_text(encoding="utf-8"), Loader=_DuplicateKeyLoader)
+    except yaml.constructor.ConstructorError as exc:
+        return [f"DUPLICATE-KEY: {exc.problem} ({exc.problem_mark})"]
     except yaml.YAMLError as exc:
         return [f"YAML: {exc}"]
     if not isinstance(doc, dict):
@@ -377,6 +408,14 @@ def _tamper_cases(base):
     return cases
 
 
+def _raw_tamper_cases(base_text):
+    """Tampers that only exist at the text level — a parsed doc cannot hold them."""
+    marker = "    decision_status: approved\n"
+    assert marker in base_text, "фикстура устарела: якорь для дубликата ключа не найден"
+    dup = base_text.replace(marker, marker + "    decision_status: rejected\n", 1)
+    return [("duplicate mapping key", dup, "DUPLICATE-KEY")]
+
+
 def _self_test():
     ok = True
     findings = validate(FIXTURE)
@@ -391,6 +430,17 @@ def _self_test():
     for label, mutated, expected in _tamper_cases(base):
         got = _schema_findings(mutated) + _semantic_findings(mutated)
         caught = any(f.startswith(expected) for f in got)
+        print(f"    tamper: {label:44} -> {'CAUGHT' if caught else 'MISSED'} ({expected})")
+        if not caught:
+            ok = False
+
+    # Text-level tampers: a parsed document cannot represent a duplicate key,
+    # so these must go through validate() on real bytes.
+    import tempfile as _tf
+    for label, text, expected in _raw_tamper_cases(FIXTURE.read_text(encoding="utf-8")):
+        tmp = Path(_tf.mkdtemp()) / "raw.yaml"
+        tmp.write_text(text, encoding="utf-8")
+        caught = any(f.startswith(expected) for f in validate(tmp))
         print(f"    tamper: {label:44} -> {'CAUGHT' if caught else 'MISSED'} ({expected})")
         if not caught:
             ok = False

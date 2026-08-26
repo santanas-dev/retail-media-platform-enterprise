@@ -328,6 +328,10 @@ tasks:
   decision_status: approved
   delivery_status: verification
   evidence_refs:
+  - kind: ci_run
+    ref: gh run 33003166965 — roadmap-governance-guard success на 9b88ae8
+    status: verified
+    note: модуль env зелёный на чистом раннере — не зависит от локальной машины
   - kind: artifact
     ref: docs/product/environment-inventory.yaml
     status: verified

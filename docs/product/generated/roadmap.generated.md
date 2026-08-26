@@ -102,7 +102,7 @@
 
 | ID | Kind | Задача | Зависит от | Глубина | Поставка | Owner gate | Приёмка | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| `RM-ENV-001` | governance | Инвентарь `.77/.81/DEV/PROD` и очистка активных ссылок | `Gate-G` | 0 | verification | scope_decision | versioned environment inventory [artifact: `docs/product/environment-inventory.yaml`] | verified · artifact · `docs/product/environment-inventory.yaml`; verified · command · `curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://192.168.110.77:3000/`; verified · command · `curl -s http://192.168.110.81:8000/version`; verified · command · `python3 scripts/ci/roadmap-governance-guard.py --module env`; verified · artifact · `docs/architecture/rm-env-001-environment-inventory-design-gate.md` |
+| `RM-ENV-001` | governance | Инвентарь `.77/.81/DEV/PROD` и очистка активных ссылок | `Gate-G` | 0 | verification | scope_decision | versioned environment inventory [artifact: `docs/product/environment-inventory.yaml`] | verified · ci_run · `gh run 33003166965 — roadmap-governance-guard success на 9b88ae8`; verified · artifact · `docs/product/environment-inventory.yaml`; verified · command · `curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://192.168.110.77:3000/`; verified · command · `curl -s http://192.168.110.81:8000/version`; verified · command · `python3 scripts/ci/roadmap-governance-guard.py --module env`; verified · artifact · `docs/architecture/rm-env-001-environment-inventory-design-gate.md` |
 
 ### S — Стабилизация доказательств и границ (11) · закрывается `Gate-S`
 
