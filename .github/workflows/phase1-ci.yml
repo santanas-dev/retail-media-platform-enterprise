@@ -651,7 +651,10 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install deps
-        run: pip install openpyxl pyyaml
+        # jsonschema is imported lazily inside check-roadmap-schema.py — a
+        # top-level import scan misses it. Verified by AST walk over every
+        # module the guard loads: jsonschema, openpyxl, pyyaml.
+        run: pip install openpyxl pyyaml jsonschema
       - name: Guard — schema, drift, metrics, doc, registry, SSOT
         run: python3 scripts/ci/roadmap-governance-guard.py
       - name: Tamper matrix — every dimension must go red on a planted defect

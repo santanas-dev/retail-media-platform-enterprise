@@ -554,10 +554,16 @@ def normalize_xlsx(raw: bytes) -> bytes:
     openpyxl stamps the current time into docProps/core.xml and into every zip
     entry header. Both are replaced with fixed values so that repeated runs on
     identical inputs produce identical bytes.
+
+    Entries are STORED, not deflated. Deflate output depends on the zlib build,
+    so a compressed workbook is byte-identical only within one environment —
+    the first CI run of this guard failed exactly there: same openpyxl 3.1.5,
+    same content, different zlib, different bytes. Storing costs ~115 KB on a
+    file that changes rarely and buys determinism that holds across machines.
     """
     src = zipfile.ZipFile(io.BytesIO(raw))
     out = io.BytesIO()
-    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as dst:
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_STORED) as dst:
         for name in sorted(src.namelist()):
             payload = src.read(name)
             if name.endswith(".xml") or name.endswith(".rels"):
@@ -567,7 +573,7 @@ def normalize_xlsx(raw: bytes) -> bytes:
                     FIXED_W3CDTF, text)
                 payload = text.encode("utf-8")
             info = zipfile.ZipInfo(name, date_time=FIXED_ZIP_DATE)
-            info.compress_type = zipfile.ZIP_DEFLATED
+            info.compress_type = zipfile.ZIP_STORED
             info.external_attr = 0o600 << 16
             dst.writestr(info, payload)
     src.close()
@@ -623,6 +629,30 @@ def snapshot(root: Path) -> dict:
     return out
 
 
+def _xlsx_entry_diff(a: bytes, b: bytes) -> str:
+    """Name what actually differs inside two workbooks.
+
+    A bare hash mismatch cannot tell a content change from a packaging change.
+    The first CI run of the guard failed on packaging (a different zlib build
+    produced different deflate output for identical content) and the message
+    gave no way to see that.
+    """
+    try:
+        za, zb = zipfile.ZipFile(io.BytesIO(a)), zipfile.ZipFile(io.BytesIO(b))
+    except zipfile.BadZipFile:
+        return "не читается как zip"
+    na, nb = set(za.namelist()), set(zb.namelist())
+    if na != nb:
+        return f"разный состав записей: только на диске {sorted(na - nb)}, только в проекции {sorted(nb - na)}"
+    changed = [n for n in sorted(na) if za.read(n) != zb.read(n)]
+    if not changed:
+        packing = sorted({za.getinfo(n).compress_type for n in na} |
+                         {zb.getinfo(n).compress_type for n in nb})
+        return (f"содержимое записей совпадает — расходится только упаковка "
+                f"(compress_type {packing}); это окружение, а не дрейф входов")
+    return f"различаются записи: {', '.join(changed)}"
+
+
 def check_clean_diff(root: Path) -> list:
     findings = []
     before = snapshot(root)
@@ -636,10 +666,13 @@ def check_clean_diff(root: Path) -> list:
             continue
         actual = target.read_bytes()
         if actual != payload:
+            detail = ""
+            if rel.suffix == ".xlsx":
+                detail = " · " + _xlsx_entry_diff(actual, payload)
             findings.append(
                 f"DRIFT: `{rel}` отличается от проекции входов "
                 f"(на диске sha256={hashlib.sha256(actual).hexdigest()[:12]}, "
-                f"сгенерировано {hashlib.sha256(payload).hexdigest()[:12]})"
+                f"сгенерировано {hashlib.sha256(payload).hexdigest()[:12]}){detail}"
             )
 
     second = generate(root)
@@ -728,6 +761,17 @@ def self_test(root: Path) -> int:
              (w / OUT_XLSX).read_bytes() + b"\x00"), True)
     case("output tamper: проекция удалена — красно",
          lambda w: (w / OUT_MD).unlink(), True)
+
+    # Packaging guard: deflate output depends on the zlib build, so a compressed
+    # workbook is byte-identical only within one environment. Storing is what
+    # makes --check-clean-diff meaningful on a CI runner.
+    with tempfile.TemporaryDirectory() as td:
+        work = _sandbox(root, Path(td))
+        book = zipfile.ZipFile(work / OUT_XLSX)
+        kinds = {book.getinfo(n).compress_type for n in book.namelist()}
+        ok = kinds == {zipfile.ZIP_STORED}
+        cases.append(("упаковка: книга хранится без сжатия (байты не зависят от zlib)",
+                      ok, [f"найдены compress_type {sorted(kinds)}"] if not ok else []))
 
     # Non-invention guard: no maturity block in input → no ladder level in output.
     with tempfile.TemporaryDirectory() as td:
