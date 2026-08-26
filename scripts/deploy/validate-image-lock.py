@@ -9,7 +9,15 @@ Enforces immutable image references.  A valid lock manifest must satisfy:
   matching the top-level ``release`` block (no mixed SHAs);
 - the service set matches the pilot compose's packaged services (exact list
   passed via ``--services`` or the default PILOT_SERVICES);
-- repository refs are not empty and do not contain ``:latest``.
+- repository refs are not empty and do not contain ``:latest``;
+- ``release.schema_head`` is present, is not a placeholder, and — when the
+  migration files are reachable — equals the single Alembic head of the source
+  tree (LOCAL-DEV-STAND-001-FU-IDENTITY-SMOKE). A branched history or a stale
+  head is rejected here rather than discovered on the stand.
+
+``release.schema_head`` is the schema the bundle EXPECTS. The head a running
+database actually carries is a separate fact, checked by local_stand.py against
+``alembic_version``; the two are compared, never conflated.
 
 Exit code 0 = valid; 1 = validation errors.  Prints a per-image summary.
 
@@ -24,6 +32,17 @@ import json
 import re
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+try:  # staged next to this file on the stand host; absent in odd contexts
+    from alembic_head import HeadResolutionError, is_placeholder, resolve_single_head
+except ImportError:  # pragma: no cover - shape-only validation then
+    HeadResolutionError = RuntimeError
+
+    def is_placeholder(value: str) -> bool:
+        return not (value or "").strip()
+
+    resolve_single_head = None  # type: ignore[assignment]
 
 # Services the pilot compose packages as first-class runtime/static services.
 # (postgres/redis/minio are infra and reference registry images directly.)
@@ -47,7 +66,7 @@ def _fail(errors: list[str], msg: str) -> None:
     errors.append(msg)
 
 
-def validate(lock: dict, services: list[str]) -> list[str]:
+def validate(lock: dict, services: list[str], migrations_dir: Path | None = None) -> list[str]:
     errors: list[str] = []
 
     if not isinstance(lock, dict):
@@ -67,6 +86,20 @@ def validate(lock: dict, services: list[str]) -> list[str]:
         _fail(errors, "release.version is missing or a placeholder")
     if not release_sha or _PLACEHOLDER_RE.search(release_sha) or len(release_sha) != 40:
         _fail(errors, "release.git_sha is missing/placeholder/not a 40-char SHA")
+
+    # Schema identity — the bundle must say which schema it expects.
+    release_head = (release.get("schema_head") or "").strip()
+    if is_placeholder(release_head):
+        _fail(errors, "release.schema_head is missing or a placeholder")
+    elif migrations_dir is not None and resolve_single_head is not None:
+        try:
+            actual = resolve_single_head(migrations_dir)
+        except HeadResolutionError as e:
+            _fail(errors, f"cannot resolve the source tree's alembic head: {e}")
+        else:
+            if release_head != actual:
+                _fail(errors, f"release.schema_head '{release_head}' is stale — "
+                              f"the source tree's single head is '{actual}'")
 
     seen_services: set[str] = set()
     seen_shas: set[str] = set()
@@ -153,6 +186,9 @@ def main() -> int:
                         help="path to lock manifest JSON")
     parser.add_argument("--services", default=None,
                         help="comma-separated service list (default: PILOT_SERVICES)")
+    parser.add_argument("--migrations-dir", default=None,
+                        help="alembic versions dir; when reachable, schema_head must "
+                             "equal its single head (default: the repo's, if present)")
     args = parser.parse_args()
 
     services = [s.strip() for s in (args.services or "").split(",") if s.strip()] \
@@ -169,9 +205,17 @@ def main() -> int:
         print(f"FAIL: lock manifest is not valid JSON: {e}", file=sys.stderr)
         return 1
 
+    if args.migrations_dir:
+        migrations_dir = Path(args.migrations_dir)
+    else:
+        default_dir = Path(__file__).resolve().parents[2] / "apps" / "control-api" / "alembic" / "versions"
+        migrations_dir = default_dir if default_dir.is_dir() else None
+
     print(f"=== Validating image lock: {lock_path} ===")
     print(f"=== Expected services: {services} ===")
-    errors = validate(lock, services)
+    if migrations_dir is None:
+        print("=== Migrations not reachable here — schema_head checked for shape only ===")
+    errors = validate(lock, services, migrations_dir)
 
     print()
     if errors:

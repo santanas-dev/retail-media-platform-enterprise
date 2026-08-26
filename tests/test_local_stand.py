@@ -58,9 +58,13 @@ def _lock(digest_suffix: str = "b" * 64, services=None, registry=None) -> dict:
     services = services or SERVICES
     reg = registry or "ghcr.io/santanas-dev/rmp-pilot"
     return {
+        # LOCAL-DEV-STAND-001-FU-IDENTITY-SMOKE: a lock must declare the schema
+        # head its bundle expects; the tool refuses one that does not.
         "release": {"tag": "v0.11.1-pilot-packaging",
                     "version": "v0.11.1-pilot-packaging",
-                    "git_sha": GOOD_SHA},
+                    "git_sha": GOOD_SHA,
+                    "schema_head": "036"},
+        "build_timestamp": "2026-08-25T20:35:34Z",
         "registry": reg,
         "images": [{"service": s, "repository": f"{reg}/{s}",
                     "image_digest": f"sha256:{digest_suffix}"} for s in services],
@@ -290,7 +294,12 @@ def _update_harness(tmp_path, monkeypatch, healthy: bool):
         return (True, [])
 
     monkeypatch.setattr(ls, "wait_healthy", _health)
-    monkeypatch.setattr(ls, "verify_identity", lambda b, t, s: [])
+    # LOCAL-DEV-STAND-001-FU-IDENTITY-SMOKE: identity verification now also
+    # takes the expected schema head and the env, so it can compare what the
+    # services advertise with what the database actually carries.
+    monkeypatch.setattr(ls, "verify_identity",
+                        lambda b, t, s, head=None, env=None: [])
+    monkeypatch.setattr(ls, "db_schema_head", lambda env: "036")
 
     old = _lock(digest_suffix="a" * 64)
     (tmp_path / "images.lock.json").write_text(json.dumps(old))
@@ -933,7 +942,8 @@ def test_sanitizer_still_redacts_real_secrets(line, secret):
 
 def test_version_identity_derived_from_lock():
     lock = _lock()
-    lock["release"] = {"version": "stand-4635e72", "git_sha": GOOD_SHA}
+    lock["release"] = {"version": "stand-4635e72", "git_sha": GOOD_SHA,
+                       "schema_head": "036"}
     identity = ls.version_identity(lock)
     assert identity["RMP_VERSION"] == "stand-4635e72"
     assert identity["RMP_GIT_SHA"] == GOOD_SHA
@@ -941,7 +951,8 @@ def test_version_identity_derived_from_lock():
 
 def test_version_identity_accepts_tag_style_release():
     lock = _lock()
-    lock["release"] = {"tag": "v0.11.1-pilot-packaging", "git_sha": GOOD_SHA}
+    lock["release"] = {"tag": "v0.11.1-pilot-packaging", "git_sha": GOOD_SHA,
+                       "schema_head": "036"}
     assert ls.version_identity(lock)["RMP_VERSION"] == "v0.11.1-pilot-packaging"
 
 

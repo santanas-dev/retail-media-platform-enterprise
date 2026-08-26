@@ -55,6 +55,7 @@ LOCK_PREVIOUS = STATE_DIR / "images.lock.previous.json"
 RECORD_CURRENT = STATE_DIR / "deploy-record.json"
 RECORD_PREVIOUS = STATE_DIR / "deploy-record.previous.json"
 
+
 SERVICES = ["control-api", "device-gateway", "orchestrator-worker",
             "admin-web", "advertiser-web"]
 
@@ -181,13 +182,31 @@ def read_env() -> dict[str, str]:
     return env
 
 
-def version_identity(lock: dict) -> dict[str, str]:
-    """Version identity the deployed images must report.
+def lock_schema_head(lock: dict) -> str:
+    """The schema head the bundle EXPECTS, as declared in its lock.
 
-    The images read RMP_VERSION/RMP_GIT_SHA from the environment, so switching
-    the lock without switching these leaves /version advertising the previous
-    release - which is exactly what the identity check is meant to catch, and
-    what made the first successful pull still fail verification.
+    Not the head a database actually carries — that is read separately from
+    alembic_version and compared against this. Conflating the two is how a
+    stand ends up advertising one schema while running another.
+    """
+    head = ((lock.get("release") or {}).get("schema_head") or "").strip()
+    if not head:
+        fail("lock does not declare release.schema_head — rebuild it with "
+             "scripts/deploy/build-images.sh (LOCAL-DEV-STAND-001-FU-IDENTITY-SMOKE)")
+    return head
+
+
+def version_identity(lock: dict) -> dict[str, str]:
+    """Every identity value the deployed images report, taken from the lock.
+
+    The images read RMP_VERSION / RMP_GIT_SHA / RMP_BUILD_TIME / RMP_SCHEMA_HEAD
+    from the environment. Switching the lock without switching ALL of them
+    leaves /version advertising the previous release. RMP_VERSION and
+    RMP_GIT_SHA were switched here from the start; RMP_SCHEMA_HEAD and
+    RMP_BUILD_TIME were not, so after each of the last two updates /version
+    reported the previous schema until someone edited .env.stand by hand. They
+    are all derived from the lock now, and hand-editing is no longer part of an
+    update.
     """
     rel = lock.get("release") or {}
     identity = {}
@@ -196,11 +215,55 @@ def version_identity(lock: dict) -> dict[str, str]:
         identity["RMP_VERSION"] = version
     if rel.get("git_sha"):
         identity["RMP_GIT_SHA"] = rel["git_sha"]
+    identity["RMP_SCHEMA_HEAD"] = lock_schema_head(lock)
+    if lock.get("build_timestamp"):
+        identity["RMP_BUILD_TIME"] = lock["build_timestamp"]
     return identity
 
 
+def env_previous_path() -> Path:
+    """Derived at call time so STATE_DIR stays the single source of truth."""
+    return STATE_DIR / "env.stand.previous"
+
+
+def backup_dir() -> Path:
+    return STATE_DIR / "backup"
+
+
+def save_env_previous() -> None:
+    """Keep the env that is being replaced, so a rollback can restore it."""
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    if ENV_FILE.exists():
+        target = env_previous_path()
+        shutil.copy2(ENV_FILE, target)
+        target.chmod(0o600)
+
+
+def restore_env_previous() -> bool:
+    """Put the saved env back. Returns False when there is nothing to restore."""
+    previous = env_previous_path()
+    if not previous.exists():
+        return False
+    _atomic_write(ENV_FILE, previous.read_text())
+    return True
+
+
+def _atomic_write(path: Path, text: str) -> None:
+    """Replace a file in one step, never leaving a half-written env behind.
+
+    An update that died between the image refs and the identity values used to
+    leave .env.stand describing two different releases at once; the temp file +
+    os.replace makes the switch all-or-nothing, and the mode is set before the
+    file is ever in place so a secret-bearing env is never briefly world-readable.
+    """
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text)
+    tmp.chmod(0o600)
+    os.replace(tmp, path)
+
+
 def write_env_images(refs: dict[str, str]) -> None:
-    """Rewrite only the given keys; every other value is left untouched."""
+    """Rewrite only the given keys, atomically; every other value is untouched."""
     lines = ENV_FILE.read_text().splitlines()
     out, seen = [], set()
     for line in lines:
@@ -213,8 +276,7 @@ def write_env_images(refs: dict[str, str]) -> None:
     for k, v in refs.items():
         if k not in seen:
             out.append(f"{k}={v}")
-    ENV_FILE.write_text("\n".join(out) + "\n")
-    ENV_FILE.chmod(0o600)
+    _atomic_write(ENV_FILE, "\n".join(out) + "\n")
 
 
 def validate_stand_env(env: dict, bind: str) -> list[str]:
@@ -276,6 +338,7 @@ def write_record(lock: dict) -> dict:
         "source_sha": rel.get("git_sha"),
         "release_tag": rel.get("tag") or rel.get("version"),
         "lock_checksum": lock.get("_checksum"),
+        "schema_head": rel.get("schema_head"),
         "image_digests": {i["service"]: i["image_digest"] for i in lock["images"]},
         "deployed_at": _now(),
         "note": "LOCAL DEV/QA STAND. Not the pilot, not production. "
@@ -435,16 +498,28 @@ def wait_healthy(timeout_s: int = 300) -> tuple[bool, list[str]]:
     return False, unhealthy
 
 
-def verify_identity(bind: str, tag: str, sha: str) -> list[str]:
-    """Check /version and build-info against the deployed lock. No retry masking."""
+def verify_identity(bind: str, tag: str, sha: str, schema_head: str | None = None,
+                   env: dict | None = None) -> list[str]:
+    """Check the deployed identity against the lock. No retry masking.
+
+    Three separate facts, deliberately not collapsed into one:
+
+    * what the services ADVERTISE — /version and the frontend build-info;
+    * what the bundle EXPECTS — the lock's release block;
+    * what the database ACTUALLY carries — alembic_version.
+
+    A service could advertise the right schema while the database sits on the
+    previous one, so the database is checked directly rather than inferred from
+    /version. Both must agree with the lock.
+    """
     problems = []
     checks = [
-        (f"http://{bind}:8000/version", "control-api", True),
-        ("http://127.0.0.1:8001/version", "device-gateway", False),
-        (f"http://{bind}:3000/build-info.json", "admin-web", True),
-        (f"http://{bind}:3001/build-info.json", "advertiser-web", True),
+        (f"http://{bind}:8000/version", "control-api", True, True),
+        ("http://127.0.0.1:8001/version", "device-gateway", False, False),
+        (f"http://{bind}:3000/build-info.json", "admin-web", True, False),
+        (f"http://{bind}:3001/build-info.json", "advertiser-web", True, False),
     ]
-    for url, name, check_tag in checks:
+    for url, name, check_tag, check_schema in checks:
         try:
             d = _http_json(url)
         except Exception as e:
@@ -454,6 +529,20 @@ def verify_identity(bind: str, tag: str, sha: str) -> list[str]:
             problems.append(f"{name}: git_sha={d.get('git_sha')} expected {sha}")
         if check_tag and d.get("version") != tag:
             problems.append(f"{name}: version={d.get('version')} expected {tag}")
+        if check_schema and schema_head and d.get("schema_head") != schema_head:
+            problems.append(
+                f"{name}: advertises schema_head={d.get('schema_head')} "
+                f"expected {schema_head}")
+
+    if schema_head and env is not None:
+        actual = db_schema_head(env)
+        if actual is None:
+            problems.append("database: alembic_version unreadable — cannot confirm "
+                            "the schema the stand is actually running")
+        elif actual != schema_head:
+            problems.append(
+                f"database: actual schema head {actual} != {schema_head} declared "
+                "by the lock")
     return problems
 
 
@@ -496,6 +585,125 @@ def provision_app_role(env: dict) -> None:
     print(f"  app role {APP_ROLE} provisioned (NOBYPASSRLS)")
 
 
+def db_schema_head(env: dict) -> str | None:
+    """The head the database ACTUALLY carries, read from alembic_version.
+
+    Returns None when the table is not there yet (a database that has never
+    been migrated), which is a legitimate state before the first start.
+    """
+    owner = env.get("POSTGRES_OWNER_USER", OWNER_ROLE)
+    db = env.get("POSTGRES_DB", DB_NAME)
+    p = compose("exec", "-T", "postgres", "psql", "-U", owner, "-d", db, "-tAc",
+                "SELECT version_num FROM alembic_version",
+                capture=True, check=False)
+    if p.returncode != 0:
+        return None
+    head = (p.stdout or "").strip()
+    return head or None
+
+
+def baseline_counts(env: dict) -> dict[str, int]:
+    """Row counts used to prove a restore put the data back.
+
+    Deliberately a small, stable set: the tables an operator would notice
+    losing. Read with the owner role because this is an evidence read, not an
+    authorisation check.
+    """
+    owner = env.get("POSTGRES_OWNER_USER", OWNER_ROLE)
+    db = env.get("POSTGRES_DB", DB_NAME)
+    tables = ("campaigns", "campaign_flights", "campaign_placements",
+              "campaign_creatives", "creative_assets", "campaign_briefs",
+              "advertiser_organizations", "advertiser_contracts", "users",
+              "user_roles", "role_permissions", "permissions")
+    sql = " UNION ALL ".join(
+        f"SELECT '{t}', count(*)::text FROM {t}" for t in tables
+    )
+    p = compose("exec", "-T", "postgres", "psql", "-U", owner, "-d", db,
+                "-tAF", "|", "-c", sql, capture=True, check=False)
+    if p.returncode != 0:
+        return {}
+    counts: dict[str, int] = {}
+    for line in (p.stdout or "").splitlines():
+        if "|" in line:
+            name, _, value = line.partition("|")
+            try:
+                counts[name.strip()] = int(value.strip())
+            except ValueError:
+                continue
+    return counts
+
+
+def wait_postgres_healthy(timeout: int = 180) -> None:
+    deadline = time.time() + timeout
+    status = "missing"
+    while time.time() < deadline:
+        p = run(["docker", "inspect", "--format", "{{.State.Health.Status}}",
+                 f"{PROJECT}-postgres-1"], capture=True, check=False)
+        status = (p.stdout or "").strip()
+        if status == "healthy":
+            return
+        time.sleep(2)
+    fail(f"postgres not healthy (status={status})")
+
+
+def dump_database(env: dict, label: str) -> tuple[Path, str]:
+    """Take a pre-update logical backup and record its checksum.
+
+    Required whenever the update changes the schema: the previous release's
+    image does not know the new revision, so ``alembic upgrade head`` in its
+    db-migrate fails with "Can't locate revision identified by <head>" and
+    putting the old images back is not, on its own, a rollback.
+
+    The dump is written inside the container and copied out with ``docker cp``
+    — piping pg_dump's custom format through a text-mode pipe would corrupt it.
+    """
+    owner = env.get("POSTGRES_OWNER_USER", OWNER_ROLE)
+    db = env.get("POSTGRES_DB", DB_NAME)
+    backups = backup_dir()
+    backups.mkdir(parents=True, exist_ok=True)
+    backups.chmod(0o700)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    out = backups / f"pre-update-{label}-{stamp}.dump"
+    inner = f"/tmp/rmp-pre-update-{stamp}.dump"
+
+    run(["docker", "exec", f"{PROJECT}-postgres-1",
+         "pg_dump", "-U", owner, "-d", db, "-Fc", "-f", inner], check=True)
+    run(["docker", "cp", f"{PROJECT}-postgres-1:{inner}", str(out)], check=True)
+    run(["docker", "exec", f"{PROJECT}-postgres-1", "rm", "-f", inner], check=False)
+
+    if not out.exists() or out.stat().st_size == 0:
+        fail("pre-update dump is empty; refusing to migrate without a way back")
+    out.chmod(0o600)
+    checksum = sha256_file(out)
+    sums = out.with_name(out.name + ".sha256")
+    sums.write_text(f"{checksum}  {out.name}\n")
+    sums.chmod(0o600)
+    return out, checksum
+
+
+def restore_database(env: dict, dump_path: Path, checksum: str) -> None:
+    """Restore the pre-update dump after verifying it is the file we wrote."""
+    if not dump_path.exists():
+        fail(f"pre-update dump missing: {dump_path}")
+    actual = sha256_file(dump_path)
+    if actual != checksum:
+        fail(f"pre-update dump checksum mismatch: expected {checksum}, got {actual}")
+    owner = env.get("POSTGRES_OWNER_USER", OWNER_ROLE)
+    db = env.get("POSTGRES_DB", DB_NAME)
+    compose("up", "-d", "postgres")
+    wait_postgres_healthy()
+    inner = "/tmp/rmp-restore.dump"
+    run(["docker", "cp", str(dump_path), f"{PROJECT}-postgres-1:{inner}"], check=True)
+    p = run(["docker", "exec", f"{PROJECT}-postgres-1",
+             "pg_restore", "-U", owner, "-d", db,
+             "--clean", "--if-exists", "--no-owner", "--exit-on-error", inner],
+            capture=True, check=False)
+    run(["docker", "exec", f"{PROJECT}-postgres-1", "rm", "-f", inner], check=False)
+    if p.returncode != 0:
+        fail("pg_restore failed; the stand is left stopped and the dump is intact "
+             f"at {dump_path}")
+
+
 def check_nobypassrls(env: dict) -> bool:
     owner = env.get("POSTGRES_OWNER_USER", OWNER_ROLE)
     db = env.get("POSTGRES_DB", DB_NAME)
@@ -527,17 +735,7 @@ def cmd_preflight(args) -> int:
 def _bring_up(env: dict) -> None:
     print("=== starting postgres ===")
     compose("up", "-d", "postgres")
-    deadline = time.time() + 180
-    status = "missing"
-    while time.time() < deadline:
-        p = run(["docker", "inspect", "--format", "{{.State.Health.Status}}",
-                 f"{PROJECT}-postgres-1"], capture=True, check=False)
-        status = (p.stdout or "").strip()
-        if status == "healthy":
-            break
-        time.sleep(2)
-    if status != "healthy":
-        fail(f"postgres not healthy (status={status})")
+    wait_postgres_healthy()
     provision_app_role(env)
 
     print("=== starting the stand ===")
@@ -570,6 +768,8 @@ def cmd_start(args) -> int:
     if not LOCK_CURRENT.exists():
         fail(f"no lock deployed yet: {LOCK_CURRENT} (use 'update --lock ...')")
     lock = verify_lock(LOCK_CURRENT, None)
+    head = lock_schema_head(lock)
+    save_env_previous()
     write_env_images({**image_refs(lock), **version_identity(lock)})
     _bring_up(env)
 
@@ -580,10 +780,10 @@ def cmd_start(args) -> int:
 
     rel = lock.get("release") or {}
     problems = verify_identity(args.bind, rel.get("tag") or rel.get("version"),
-                               rel.get("git_sha"))
+                               rel.get("git_sha"), head, env)
     if problems:
-        fail("version identity mismatch: " + "; ".join(problems))
-    print("  version identity OK")
+        fail("identity drift: " + "; ".join(problems))
+    print(f"  identity OK (version, git_sha, schema {head} advertised and in the database)")
     if not check_nobypassrls(env):
         fail(f"{APP_ROLE} does not have NOBYPASSRLS")
     print(f"  {APP_ROLE} NOBYPASSRLS confirmed")
@@ -601,16 +801,46 @@ def cmd_stop(args) -> int:
 
 
 def cmd_status(args) -> int:
+    """Report identity and fail closed on drift.
+
+    status used to print a deploy record and always exit 0, so a stand whose
+    database had drifted from its bundle still looked fine. It now compares the
+    lock, what the services advertise and what the database actually carries,
+    and exits non-zero when they disagree.
+    """
     compose("ps", check=False)
-    if RECORD_CURRENT.exists():
-        rec = json.loads(RECORD_CURRENT.read_text())
-        print(f"\nsource_sha  : {rec.get('source_sha')}")
-        print(f"release_tag : {rec.get('release_tag')}")
-        print(f"lock        : {rec.get('lock_checksum')}")
-        print(f"deployed_at : {rec.get('deployed_at')}")
-        print(f"disposable  : {rec.get('disposable')} (backup: {rec.get('backup')})")
-    else:
+    if not RECORD_CURRENT.exists():
         print("\nno deploy record yet")
+        return 0
+
+    rec = json.loads(RECORD_CURRENT.read_text())
+    print(f"\nsource_sha  : {rec.get('source_sha')}")
+    print(f"release_tag : {rec.get('release_tag')}")
+    print(f"lock        : {rec.get('lock_checksum')}")
+    print(f"schema_head : {rec.get('schema_head')} (expected by the bundle)")
+    print(f"deployed_at : {rec.get('deployed_at')}")
+    print(f"disposable  : {rec.get('disposable')} (backup: {rec.get('backup')})")
+
+    if not LOCK_CURRENT.exists():
+        print("\nno lock deployed — cannot check identity", file=sys.stderr)
+        return 1
+    lock = json.loads(LOCK_CURRENT.read_text())
+    rel = lock.get("release") or {}
+    head = (rel.get("schema_head") or "").strip()
+    if not head:
+        print("\nidentity drift: lock does not declare release.schema_head",
+              file=sys.stderr)
+        return 1
+
+    env = read_env()
+    actual = db_schema_head(env)
+    print(f"schema_head : {actual} (actually in the database)")
+    problems = verify_identity(args.bind, rel.get("tag") or rel.get("version"),
+                               rel.get("git_sha"), head, env)
+    if problems:
+        print("\nidentity drift: " + "; ".join(problems), file=sys.stderr)
+        return 1
+    print("identity OK")
     return 0
 
 
@@ -623,6 +853,20 @@ def cmd_logs(args) -> int:
 
 
 def cmd_update(args) -> int:
+    """Switch to a new lock, with a rollback that survives a schema change.
+
+    Two modes, decided by comparing the lock's declared schema head with the
+    head the database actually carries:
+
+    * schema unchanged — images, env and lock can simply be put back;
+    * schema changed — the previous release's image does not know the new
+      revision, so its db-migrate would fail with "Can't locate revision
+      identified by <head>". Restoring images alone is not a rollback, so a
+      verified pre-update dump is taken first and the rollback restores it.
+
+    A downgrade is never run automatically: the old image has no downgrade for
+    a revision it has never seen.
+    """
     env = read_env()
     new_lock_path = Path(args.lock).resolve()
     sums = Path(args.sha256sums).resolve() if args.sha256sums else None
@@ -632,9 +876,27 @@ def cmd_update(args) -> int:
 
     print("=== verifying new lock ===")
     new_lock = verify_lock(new_lock_path, sums)
+    target_head = lock_schema_head(new_lock)
 
-    print("=== saving current deploy record for rollback ===")
+    print("=== reading the schema the stand is actually running ===")
+    current_head = db_schema_head(env)
+    schema_changes = current_head != target_head
+    print(f"  actual={current_head or 'none'} target={target_head} "
+          f"({'schema CHANGES' if schema_changes else 'schema unchanged'})")
+
+    counts_before: dict[str, int] = {}
+    dump_path: Path | None = None
+    dump_sum = ""
+    if schema_changes and current_head is not None:
+        print("=== schema change: taking a verified pre-update dump ===")
+        counts_before = baseline_counts(env)
+        dump_path, dump_sum = dump_database(env, f"{current_head}-to-{target_head}")
+        print(f"  dump: {dump_path.name} sha256={dump_sum[:16]}... mode=600")
+        print(f"  baseline counts captured for {len(counts_before)} tables")
+
+    print("=== saving current deploy record, lock and env for rollback ===")
     save_previous()
+    save_env_previous()
     had_previous = LOCK_PREVIOUS.exists()
 
     STATE_DIR.mkdir(parents=True, exist_ok=True)
@@ -649,7 +911,7 @@ def cmd_update(args) -> int:
             raise RuntimeError(f"unhealthy: {', '.join(unhealthy)}")
         rel = new_lock.get("release") or {}
         problems = verify_identity(args.bind, rel.get("tag") or rel.get("version"),
-                                   rel.get("git_sha"))
+                                   rel.get("git_sha"), target_head, env)
         if problems:
             raise RuntimeError("; ".join(problems))
     except (RuntimeError, SystemExit) as e:
@@ -662,21 +924,50 @@ def cmd_update(args) -> int:
             print(f"diagnostics collection failed: {diag_err}", file=sys.stderr)
         if not had_previous:
             fail("no previous lock to roll back to; stand left stopped")
-        print("=== rolling back to previous lock ===")
+
+        print("=== rolling back ===", file=sys.stderr)
+        compose("stop", check=False)
+
+        if schema_changes and dump_path is not None:
+            print(f"  restoring the database from {dump_path.name}", file=sys.stderr)
+            restore_database(env, dump_path, dump_sum)
+
         shutil.copy2(LOCK_PREVIOUS, LOCK_CURRENT)
         prev = verify_lock(LOCK_CURRENT, None)
+        # Put the exact previous env back, then re-assert the previous lock's
+        # refs and identity on top: the saved env is only as complete as the
+        # deployment that wrote it, and a rollback must leave the stand pinned
+        # to the previous bundle either way.
+        restore_env_previous()
         write_env_images({**image_refs(prev), **version_identity(prev)})
         _bring_up(env)
         ok, unhealthy = wait_healthy()
         if RECORD_PREVIOUS.exists():
             shutil.copy2(RECORD_PREVIOUS, RECORD_CURRENT)
+
+        rolled_head = db_schema_head(env)
+        problems = []
         if not ok:
-            fail(f"rollback also unhealthy: {', '.join(unhealthy)}")
-        print("rolled back to the previous lock; stand healthy")
+            problems.append(f"services unhealthy: {', '.join(unhealthy)}")
+        if schema_changes and current_head is not None and rolled_head != current_head:
+            problems.append(f"schema head after rollback is {rolled_head}, "
+                            f"expected {current_head}")
+        if counts_before:
+            counts_after = baseline_counts(env)
+            drifted = {t: (n, counts_after.get(t))
+                       for t, n in counts_before.items() if counts_after.get(t) != n}
+            if drifted:
+                problems.append(f"row counts differ after restore: {drifted}")
+        if problems:
+            fail("ROLLBACK INCOMPLETE — " + "; ".join(problems))
+
+        print(f"rolled back to the previous lock; schema {rolled_head}; "
+              "services healthy; data verified against the pre-update counts",
+              file=sys.stderr)
         return 1
 
     write_record(new_lock)
-    print("update applied and verified")
+    print(f"update applied and verified (schema {target_head})")
     return 0
 
 

@@ -98,24 +98,14 @@ def _q(conn, sql: str):
 def _repo_alembic_head() -> str:
     """The single head revision of the repo's alembic migrations.
 
-    Read from the migration files rather than by importing alembic, so the
-    drill has no dependency on an alembic config or a live database.
+    Shared with the build and the stand tooling — one resolver, so the manifest
+    check and the bundle's declared schema head can never disagree about what
+    "the head" means (LOCAL-DEV-STAND-001-FU-IDENTITY-SMOKE).
     """
-    import re
+    sys.path.insert(0, str(REPO_ROOT / "scripts" / "deploy"))
+    from alembic_head import resolve_single_head
 
-    versions = REPO_ROOT / "apps" / "control-api" / "alembic" / "versions"
-    revisions, down_revisions = set(), set()
-    for f in versions.glob("*.py"):
-        text = f.read_text()
-        rev = re.search(r'^revision(?::\s*str)?\s*=\s*"([^"]+)"', text, re.M)
-        down = re.search(r'^down_revision(?::[^=]+)?\s*=\s*"([^"]+)"', text, re.M)
-        if rev:
-            revisions.add(rev.group(1))
-        if down:
-            down_revisions.add(down.group(1))
-    heads = revisions - down_revisions
-    assert len(heads) == 1, f"expected exactly one alembic head, got {sorted(heads)}"
-    return heads.pop()
+    return resolve_single_head(REPO_ROOT / "apps" / "control-api" / "alembic" / "versions")
 
 
 class TestRestoredDataFidelity:

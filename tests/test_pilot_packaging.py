@@ -196,7 +196,8 @@ class TestValidatorScripts:
 
     def test_image_lock_validator_accepts_valid_lock(self, tmp_path):
         lock = {
-            "release": {"version": "v0.11.0-pilot-control-plane",
+            "release": {"schema_head": "036",
+                        "version": "v0.11.0-pilot-control-plane",
                         "git_sha": "e13020768c7cc1c2358ff03713baf32fc6ae409c"},
             "build_timestamp": "2026-08-22T00:00:00Z",
             "images": [

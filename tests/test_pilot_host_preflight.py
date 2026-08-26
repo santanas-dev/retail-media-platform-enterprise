@@ -40,7 +40,8 @@ STRONG = "S" * 40  # >= _MIN_SECRET_LEN
 
 def _valid_lock() -> dict:
     return {
-        "release": {"version": "v0.11.1-pilot-packaging", "git_sha": GOOD_SHA},
+        "release": {"version": "v0.11.1-pilot-packaging", "git_sha": GOOD_SHA,
+                    "schema_head": "036"},
         "checksum": "c" * 64,
         "images": [
             {

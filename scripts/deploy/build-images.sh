@@ -141,11 +141,16 @@ done
 # --- Emit lock manifest (only with --push, so digests are real) ------------
 if [[ "$PUSH" == "true" ]]; then
   LOCK="infra/deploy/images.lock.json"
-  python3 - "$LOCK" "$VERSION" "$GIT_SHA" "$BUILD_TIME" "${RESULT[control-api]}" "${RESULT[device-gateway]}" "${RESULT[orchestrator-worker]}" "${RESULT[admin-web]}" "${RESULT[advertiser-web]}" <<'PYEOF'
+  # LOCAL-DEV-STAND-001-FU-IDENTITY-SMOKE: the bundle declares the schema head
+  # it expects, resolved from the migration files rather than typed by hand.
+  # A branched history fails here instead of shipping an ambiguous bundle.
+  SCHEMA_HEAD="$(python3 scripts/deploy/alembic_head.py)"
+  echo "  schema_head=${SCHEMA_HEAD}"
+  python3 - "$LOCK" "$VERSION" "$GIT_SHA" "$BUILD_TIME" "$SCHEMA_HEAD" "${RESULT[control-api]}" "${RESULT[device-gateway]}" "${RESULT[orchestrator-worker]}" "${RESULT[admin-web]}" "${RESULT[advertiser-web]}" <<'PYEOF'
 import json, sys
 lock_path = sys.argv[1]
-version, sha, build_time = sys.argv[2], sys.argv[3], sys.argv[4]
-digests = sys.argv[5:10]
+version, sha, build_time, schema_head = sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
+digests = sys.argv[6:11]
 services = ["control-api", "device-gateway", "orchestrator-worker", "admin-web", "advertiser-web"]
 registry = "ghcr.io/santanas-dev/rmp-pilot"
 images = []
@@ -160,7 +165,7 @@ for s, d in zip(services, digests):
         "build_timestamp": build_time,
         "source_tag": version,
     })
-lock = {"release": {"version": version, "git_sha": sha},
+lock = {"release": {"version": version, "git_sha": sha, "schema_head": schema_head},
         "build_timestamp": build_time, "images": images}
 with open(lock_path, "w") as f:
     json.dump(lock, f, indent=2)

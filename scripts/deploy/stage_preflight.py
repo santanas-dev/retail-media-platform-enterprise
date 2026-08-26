@@ -36,6 +36,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 STAGE_FILES: tuple[str, ...] = (
     "scripts/deploy/pilot_host_preflight.py",
     "scripts/deploy/validate-image-lock.py",
+    # validate-image-lock.py imports the head resolver from its own directory;
+    # without it the host would fall back to shape-only schema_head checking
+    # (LOCAL-DEV-STAND-001-FU-IDENTITY-SMOKE).
+    "scripts/deploy/alembic_head.py",
     "scripts/deploy/validate-pilot-env.py",
     "infra/compose/docker-compose.pilot.yml",
 )

@@ -791,6 +791,37 @@ jobs:
             echo "Packaging tests passed OK."
           fi
 
+  stand-rollback-drill:
+    name: Stand Rollback Drill — LOCAL-DEV-STAND-001-FU (blocking)
+    runs-on: ubuntu-latest
+    needs: [python-tests]
+    env:
+      ENVIRONMENT: dev
+      JWT_SECRET: ci-test-secret-at-least-32-chars-ok
+      MANIFEST_SIGNING_KEY: ci-manifest-signing-key-at-least-32-chars
+      RUN_STAND_ROLLBACK_DRILL: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install sqlalchemy alembic asyncpg psycopg2-binary greenlet pytest bcrypt PyJWT \
+            fastapi httpx pyyaml jsonschema minio nats-py ldap3 redis
+      - name: Run the isolated rollback drill
+        run: |
+          set -o pipefail
+          # Proves that an image-only rollback cannot survive a migration the
+          # previous image does not know, and that the dump/restore path does.
+          # Fully disposable: its own container, its own project name.
+          python3 -m pytest tests/integration/test_stand_rollback_drill.py -v --tb=short \
+            2>&1 | tee /tmp/stand-drill.txt
+          if ! grep -qE '[0-9]+ passed' /tmp/stand-drill.txt; then
+            echo "::error::Stand rollback drill collected or passed nothing"
+            exit 1
+          fi
+
   release-gate:
     name: release-gate
     runs-on: ubuntu-latest
@@ -808,6 +839,7 @@ jobs:
       - roadmap-consistency-audit
       - packaging
       - backup-restore-drill
+      - stand-rollback-drill
     # Always run so the aggregate verdict is authoritative even if an upstream
     # job was skipped or failed — required status checks only gate on this job.
     if: always()
@@ -829,6 +861,7 @@ jobs:
             [roadmap-consistency-audit]="${{ needs.roadmap-consistency-audit.result }}"
             [packaging]="${{ needs.packaging.result }}"
             [backup-restore-drill]="${{ needs.backup-restore-drill.result }}"
+            [stand-rollback-drill]="${{ needs.stand-rollback-drill.result }}"
           )
           fail=0
           for job in "${!results[@]}"; do
