@@ -714,6 +714,50 @@ def _fingerprint(work: Path) -> dict:
     return out
 
 
+def _bump_number(work: Path, rel, label: str):
+    """Изменить число, которое проекция УЖЕ содержит, не зная его заранее.
+
+    Фикстура, державшая «| Всего задач | 42 |» числом, устарела в тот момент, когда
+    очередь выросла до 43, и уронила гейт в CI. Детектор устаревания сработал верно,
+    но правильнее, чтобы фикстура не могла устареть: она читает текущее значение и
+    подменяет его на другое.
+    """
+    path = work / rel
+    text = path.read_text(encoding="utf-8")
+    m = re.search(rf"\| {re.escape(label)} \| (\d+) \|", text)
+    assert m, f"фикстура устарела: строки «{label}» нет в {rel}"
+    current = int(m.group(1))
+    path.write_text(
+        text.replace(m.group(0), f"| {label} | {current - 1} |", 1), encoding="utf-8")
+    return current
+
+
+def _count_in_metrics(work: Path, *path_keys):
+    import json as _json
+    node = _json.loads((work / METRICS_JSON).read_text(encoding="utf-8"))
+    for key in path_keys:
+        node = node[key]
+    return node
+
+
+def _triple_text(work: Path) -> str:
+    """Тройка registry в том виде, в каком её сейчас цитирует PROJECT_STATE."""
+    m = TRIPLE_RE.search((work / "PROJECT_STATE.md").read_text(encoding="utf-8"))
+    assert m, "фикстура устарела: тройки registry нет в PROJECT_STATE.md"
+    return m.group(0)
+
+
+def _bump_triple(work: Path):
+    path = work / "PROJECT_STATE.md"
+    text = path.read_text(encoding="utf-8")
+    m = TRIPLE_RE.search(text)
+    assert m, "фикстура устарела: тройки registry нет в PROJECT_STATE.md"
+    total, reach, block = (int(x) for x in m.groups())
+    path.write_text(
+        text.replace(m.group(0), f"{total} / {reach + 1} reachable / {block - 1} blocked"),
+        encoding="utf-8")
+
+
 def _set_env(work: Path, env_id: str, key: str, value):
     """Set one field on one environment, structurally.
 
@@ -801,19 +845,18 @@ def self_test(root: Path) -> int:
          lambda w: sub(w, ROADMAP_YAML, "title: Reconciliation/migration manifest",
                        "title: Reconciliation/migration manifest (tampered)", 1), True)
     case("проекция правлена руками", "drift",
-         lambda w: sub(w, GENERATED_DIR / "roadmap.generated.md",
-                       "| Всего задач | 42 |", "| Всего задач | 41 |", 1), True)
+         lambda w: _bump_number(w, GENERATED_DIR / "roadmap.generated.md", "Всего задач"), True)
 
     case("metrics.json правлен руками", "metrics",
-         lambda w: sub(w, METRICS_JSON, '"blocked": 5', '"blocked": 4', 1), True)
+         lambda w: sub(w, METRICS_JSON,
+                       f'"blocked": {_count_in_metrics(w, "features", "blocked")}',
+                       f'"blocked": {_count_in_metrics(w, "features", "blocked") - 1}', 1), True)
     case("PROJECT_STATE заявляет неверную тройку registry", "metrics",
-         lambda w: sub(w, "PROJECT_STATE.md",
-                       "58 / 53 reachable / 5 blocked",
-                       "58 / 54 reachable / 4 blocked", 1), True)
+         lambda w: _bump_triple(w), True)
     case("утверждение исчезло из канона — проверка ослепла", "metrics",
          lambda w: (w / "PROJECT_STATE.md").write_text(
              (w / "PROJECT_STATE.md").read_text(encoding="utf-8")
-             .replace("58 / 53 reachable / 5 blocked", "registry без изменений"),
+             .replace(_triple_text(w), "registry без изменений"),
              encoding="utf-8"), True)
 
     case("ADR-020 отсутствует — правило нигде не записано", "doc",

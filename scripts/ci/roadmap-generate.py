@@ -766,10 +766,21 @@ def self_test(root: Path) -> int:
              [l for l in (w / CI_SUBSET).read_text(encoding="utf-8").splitlines()
               if l.strip() and not l.strip().startswith("#")][1:]) + "\n",
              encoding="utf-8"), True)
-    case("output tamper: правка руками в Markdown — красно",
-         lambda w: (w / OUT_MD).write_text(
-             (w / OUT_MD).read_text(encoding="utf-8").replace(
-                 "| Всего задач | 42 |", "| Всего задач | 41 |"), encoding="utf-8"), True)
+    def _edit_task_count(work):
+        """Подменить число задач, не зная его заранее.
+
+        Прежняя фикстура держала «42» числом и устарела, когда очередь выросла
+        до 43 — уронив гейт в CI на строке, к самому дрейфу отношения не имеющей.
+        """
+        path = work / OUT_MD
+        text = path.read_text(encoding="utf-8")
+        m = re.search(r"\| Всего задач \| (\d+) \|", text)
+        assert m, "фикстура устарела: строки «Всего задач» нет в проекции"
+        path.write_text(
+            text.replace(m.group(0), f"| Всего задач | {int(m.group(1)) - 1} |", 1),
+            encoding="utf-8")
+
+    case("output tamper: правка руками в Markdown — красно", _edit_task_count, True)
     case("output tamper: правка руками в metrics.json — красно",
          lambda w: (w / OUT_METRICS).write_text(
              (w / OUT_METRICS).read_text(encoding="utf-8").replace(
