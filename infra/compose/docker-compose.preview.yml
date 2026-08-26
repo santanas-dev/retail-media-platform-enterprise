@@ -6,6 +6,11 @@
 #     -f infra/compose/docker-compose.preview.yml \
 #     up -d --build
 #
+# SUPERSEDED — 192.168.110.77 выведен из эксплуатации решением владельца OD-016
+# (2026-08-26). Файл сохранён как история конфигурации S-026; запускать его смысла
+# нет — хост не обслуживается. Активный контур — стенд 192.168.110.81.
+# Инвентарь окружений: docs/product/environment-inventory.yaml
+#
 # This file adds LAN-specific overrides for local preview on 192.168.110.77.
 # Do NOT merge into docker-compose.phase1.yml — that file stays production/pilot.
 #

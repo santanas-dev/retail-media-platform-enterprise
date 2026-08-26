@@ -25,6 +25,9 @@ from sqlalchemy.pool import NullPool
 from packages.security.jwt import create_access_token
 from tests.behavioral.builder import BehBuilder
 
+# RM-STAB-001: единый контракт BEHAVIORAL_APP_DB_URL
+from tests.behavioral.dsn import sqlalchemy_dsn
+
 AUTH_PROVIDER = "d" + "e" + "v" + "i" + "c" + "e"
 
 
@@ -48,13 +51,7 @@ async def _app_query(campaign_id: str, retailer_id: str) -> dict:
     from packages.domain.repository import get_campaign_pop_summary
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    app_db_url = os.environ.get(
-        "BEHAVIORAL_APP_DB_URL",
-        os.environ.get(
-            "DATABASE_URL",
-            "postgresql+asyncpg://retail_media_app:retail_media_app@localhost:5432/retail_media_platform",
-        ),
-    ).strip()
+    app_db_url = sqlalchemy_dsn().strip()
     engine = _cae(app_db_url, echo=False, poolclass=NullPool)
     async with AsyncSession(engine, expire_on_commit=False) as session:
         async with session.begin():
@@ -132,13 +129,7 @@ class TestEDGE003NoBypassRLS:
 
         # ── App-role engine (retail_media_app, NOBYPASSRLS) ──
         from packages.domain.database import set_global_engine
-        app_db_url = os.environ.get(
-            "BEHAVIORAL_APP_DB_URL",
-            os.environ.get(
-                "DATABASE_URL",
-                "postgresql+asyncpg://retail_media_app:retail_media_app@localhost:5432/retail_media_platform",
-            ),
-        ).strip()
+        app_db_url = sqlalchemy_dsn().strip()
         _engine = _cae(app_db_url, echo=False, poolclass=NullPool)
         set_global_engine(_engine)
 

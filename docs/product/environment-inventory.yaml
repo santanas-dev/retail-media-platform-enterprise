@@ -50,7 +50,7 @@ environments:
       объявляет ровно этот bundle, git_sha и schema_head.
 
   - id: preview-77
-    disposition: unreachable-at-check-time
+    disposition: decommissioned
     role: retired-preview
     title: Старый LAN preview S-026
     host: 192.168.110.77
@@ -68,11 +68,15 @@ environments:
     identity_source: недоступен — идентичность не наблюдалась
     evidence: false
     evidence_scope: |
-      Ничего не доказывает. Формулировка по OD-007 — `unreachable at check time`,
-      а НЕ «мёртв» и не «выведен из эксплуатации»: недостижимость на момент
-      проверки является наблюдением, а вывод из эксплуатации — решением владельца,
-      которое не принято.
-    owner_decision_pending: retire или upgrade — решение владельца, не агента
+      Ничего не доказывает и доказывать не будет. Наблюдение 2026-08-26: HTTP 000
+      на :3000, :3001 и :8000. Диспозиция `decommissioned` стоит здесь потому, что
+      её принял владелец (OD-016), а не потому, что хост не ответил.
+    owner_decision: OD-016
+    owner_decision_on: '2026-08-26'
+    owner_decision_text: |
+      Владелец вывел 192.168.110.77 из эксплуатации 2026-08-26. До этого решения
+      здесь стояло только наблюдение `unreachable-at-check-time`: недостижимость
+      на момент проверки агент установить может, вывод из эксплуатации — нет.
     related_artifacts:
       - infra/compose/docker-compose.preview.yml   # LAN-оверрайд под этот хост
       - docs/runbook/local-preview.md              # runbook S-026, помечен наблюдением

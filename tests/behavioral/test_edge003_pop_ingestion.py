@@ -21,6 +21,9 @@ from fastapi.testclient import TestClient
 from packages.security.jwt import create_access_token
 from tests.behavioral.builder import BehBuilder
 
+# RM-STAB-001: единый контракт BEHAVIORAL_APP_DB_URL
+from tests.behavioral.dsn import sqlalchemy_dsn
+
 AUTH_PROVIDER = "d" + "e" + "v" + "i" + "c" + "e"
 
 
@@ -83,13 +86,7 @@ class TestEDGE003PopIngestion:
         from sqlalchemy import text
         import os as _os
 
-        app_db_url = _os.environ.get(
-            "BEHAVIORAL_APP_DB_URL",
-            _os.environ.get(
-                "DATABASE_URL",
-                "postgresql+asyncpg://retail_media_app:retail_media_app@localhost:5432/retail_media_platform",
-            ),
-        ).strip()
+        app_db_url = sqlalchemy_dsn().strip()
         _engine = _cae(app_db_url, echo=False, poolclass=NullPool)
 
         async def _override_get_db():

@@ -41,6 +41,9 @@ from packages.security.config import reset_security_config
 from packages.security.jwt import create_access_token
 from packages.services.storage import reset_storage_service
 
+# RM-STAB-001: единый контракт BEHAVIORAL_APP_DB_URL
+from tests.behavioral.dsn import sqlalchemy_dsn
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -99,14 +102,7 @@ def app():
     reset_security_config()
 
     # Apply database overrides for the app role
-    app_db_url = os.environ.get("BEHAVIORAL_APP_DB_URL", "").strip() or os.environ.get(
-        "DATABASE_URL", ""
-    ).strip()
-    if not app_db_url:
-        app_db_url = (
-            "postgresql+asyncpg://retail_media_app:retail_media_app"
-            "@localhost:5432/retail_media_platform"
-        )
+    app_db_url = sqlalchemy_dsn()
     os.environ["DATABASE_URL"] = app_db_url
 
     # Load app (using the same pattern as behavioral conftest)

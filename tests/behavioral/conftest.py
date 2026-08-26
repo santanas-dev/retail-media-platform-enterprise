@@ -20,16 +20,12 @@ os.environ["JWT_SECRET"] = "behavioral-test-secret-at-least-32-chars"
 # so that DB-level RLS policies are enforced on every API request.
 # Behavioral test *fixtures* use a separate DB_URL (owner) with admin
 # bypass for setup/cleanup only.
-_APP_DB_URL = os.environ.get("BEHAVIORAL_APP_DB_URL", "").strip()
-if not _APP_DB_URL:
-    _APP_DB_URL = os.environ.get("DATABASE_URL", "").strip()
-if _APP_DB_URL:
-    os.environ["DATABASE_URL"] = _APP_DB_URL
-else:
-    os.environ["DATABASE_URL"] = (
-        "postgresql+asyncpg://retail_media_app:retail_media_app"
-        "@localhost:5432/retail_media_platform"
-    )
+# RM-STAB-001: одна переменная, один helper. BEHAVIORAL_APP_DB_URL можно задать
+# любой из двух форм — helper приведёт её к драйверной для SQLAlchemy.
+from tests.behavioral.dsn import sqlalchemy_dsn
+
+_APP_DB_URL = sqlalchemy_dsn()
+os.environ["DATABASE_URL"] = _APP_DB_URL
 
 import bcrypt
 from sqlalchemy import text

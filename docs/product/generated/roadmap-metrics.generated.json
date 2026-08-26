@@ -31,8 +31,8 @@
       "approved": 42
     },
     "by_delivery_status": {
-      "done": 6,
-      "planned": 35,
+      "done": 7,
+      "planned": 34,
       "verification": 1
     },
     "by_kind": {
@@ -57,9 +57,9 @@
       "Gate-U"
     ],
     "max_dependency_depth": 8,
-    "owner_decisions": 15,
+    "owner_decisions": 16,
     "owner_gated": 12,
     "tasks_total": 42,
-    "with_verified_evidence": 7
+    "with_verified_evidence": 8
   }
 }

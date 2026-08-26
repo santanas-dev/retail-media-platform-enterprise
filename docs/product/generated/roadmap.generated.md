@@ -23,12 +23,12 @@
 | Всего задач | 42 |
 | По этапам | BT=13, E0=1, G=6, POPS=4, S=11, U=7 |
 | По типу | design=5, external=2, external-plan=1, governance=10, human=1, implementation=23 |
-| По статусу поставки | done=6, planned=35, verification=1 |
+| По статусу поставки | done=7, planned=34, verification=1 |
 | Требуют owner gate | 12 |
-| С verified evidence | 7 |
+| С verified evidence | 8 |
 | Максимальная глубина зависимостей | 8 |
 | Гейты | Gate-G, Gate-S, Gate-U |
-| Решения владельца | 15 |
+| Решения владельца | 16 |
 
 ### Функции (из registry — функциональный SSOT)
 
@@ -76,6 +76,7 @@
 | `OD-013` | open | — | Self-service онбординг рекламодателя - сброс пароля самим пользователем и приглашения. Админский сброс и приглашение уже reachable с зелёными смоуками; self-service отсутствует. Вопрос согласуется с OD-005 (managed-first) - нужен ли self-service в первом пилоте. |
 | `OD-014` | open | — | A/B lift и attribution - материал ветки v2.6, зависит от модели арендатора (ADR-018). Вопрос - фиксируется ли как отложенное решением, по образцу ADR-019 для Channel Orchestrator, или остаётся неопределённым. |
 | `OD-015` | open | — | Операционный центр здоровья устройств. Функция device.health_view reachable и закреплена в CI; вопрос - достаточно ли этого представления для пилота или требуется отдельный операционный центр как самостоятельный объём работ. |
+| `OD-016` | approved | 2026-08-26 | 192.168.110.77 выводится из эксплуатации решением владельца 2026-08-26. Уточняет OD-007 в части .77 - формулировка «unreachable at check time» была наблюдением до решения; теперь диспозиция decommissioned. Часть OD-007 про активный baseline .81/stand-27dc397 остаётся в силе без изменений. |
 
 ## Гейты
 
@@ -102,13 +103,13 @@
 
 | ID | Kind | Задача | Зависит от | Глубина | Поставка | Owner gate | Приёмка | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| `RM-ENV-001` | governance | Инвентарь `.77/.81/DEV/PROD` и очистка активных ссылок | `Gate-G` | 0 | verification | scope_decision | versioned environment inventory [artifact: `docs/product/environment-inventory.yaml`] | verified · ci_run · `gh run 33003166965 — roadmap-governance-guard success на 9b88ae8`; verified · artifact · `docs/product/environment-inventory.yaml`; verified · command · `curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://192.168.110.77:3000/`; verified · command · `curl -s http://192.168.110.81:8000/version`; verified · command · `python3 scripts/ci/roadmap-governance-guard.py --module env`; verified · artifact · `docs/architecture/rm-env-001-environment-inventory-design-gate.md` |
+| `RM-ENV-001` | governance | Инвентарь `.77/.81/DEV/PROD` и очистка активных ссылок | `Gate-G` | 0 | done | scope_decision | versioned environment inventory [artifact: `docs/product/environment-inventory.yaml`] | verified · ci_run · `gh run 33003166965 — roadmap-governance-guard success на 9b88ae8`; verified · artifact · `docs/product/environment-inventory.yaml`; verified · command · `curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://192.168.110.77:3000/`; verified · command · `curl -s http://192.168.110.81:8000/version`; verified · command · `python3 scripts/ci/roadmap-governance-guard.py --module env`; verified · artifact · `docs/architecture/rm-env-001-environment-inventory-design-gate.md` |
 
 ### S — Стабилизация доказательств и границ (11) · закрывается `Gate-S`
 
 | ID | Kind | Задача | Зависит от | Глубина | Поставка | Owner gate | Приёмка | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| `RM-STAB-001` | implementation | Единый контракт `BEHAVIORAL_APP_DB_URL` | `RM-ENV-001` | 1 | planned | — | обе DSN-формы проходят один targeted behavioral command через один helper [command: `RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral/test_commerce_rls.py -q`] | — |
+| `RM-STAB-001` | implementation | Единый контракт `BEHAVIORAL_APP_DB_URL` | `RM-ENV-001` | 1 | verification | — | обе DSN-формы проходят один targeted behavioral command через один helper [command: `RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral/test_commerce_rls.py -q`] | verified · behavioral · `RUN_BEHAVIORAL_TESTS=1 BEHAVIORAL_APP_DB_URL=postgresql://... python3 -m pytest tests/behavioral/test_commerce_rls.py tests/behavioral/test_campaign_permission_split_001.py -q`; verified · behavioral · `RUN_BEHAVIORAL_TESTS=1 BEHAVIORAL_APP_DB_URL=postgresql+asyncpg://... python3 -m pytest tests/behavioral/test_commerce_rls.py tests/behavioral/test_campaign_permission_split_001.py -q`; verified · behavioral · `tamper — helper перестаёт нормализовать в каждую сторону`; verified · artifact · `tests/behavioral/dsn.py` |
 | `RM-STAB-002` | implementation | Strict RLS context по умолчанию | `RM-STAB-001` | 2 | planned | — | admin elevation только setup [behavioral: `tests/behavioral/conftest.py::strict get_db default`] | — |
 | `RM-STAB-003` | design | Зафиксировать approved personas/retailer-scope | `RM-STAB-002` | 3 | planned | scope_decision | mini-design/ADR: persona→permissions→scope [owner] | — |
 | `RM-STAB-004` | implementation | Реализовать approved RBAC/RLS scope | `RM-STAB-003`, `RM-STAB-006` | 5 | planned | migration_application | API/portal/migration согласованы [behavioral: `tests/behavioral/test_retailer_scope_rbac.py`] | — |

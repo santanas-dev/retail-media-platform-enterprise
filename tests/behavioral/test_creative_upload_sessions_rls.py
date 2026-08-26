@@ -15,6 +15,9 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+# RM-STAB-001: единый контракт BEHAVIORAL_APP_DB_URL
+from tests.behavioral.dsn import sqlalchemy_dsn
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -34,14 +37,7 @@ ADMIN_DB_URL = os.environ.get(
     "retail_media_platform",
 )
 
-APP_DB_URL = os.environ.get("BEHAVIORAL_APP_DB_URL", "").strip()
-if not APP_DB_URL:
-    APP_DB_URL = os.environ.get("DATABASE_URL", "").strip()
-if not APP_DB_URL:
-    APP_DB_URL = (
-        "postgresql+asyncpg://retail_media_app:retail_media_app"
-        "@localhost:5432/retail_media_platform"
-    )
+APP_DB_URL = sqlalchemy_dsn()
 
 
 async def _setup_fixtures():

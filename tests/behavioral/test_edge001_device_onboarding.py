@@ -27,6 +27,9 @@ from packages.security.config import reset_security_config
 from packages.security.jwt import create_access_token
 from tests.behavioral.conftest import _run_sql, USER_IDS
 
+# RM-STAB-001: единый контракт BEHAVIORAL_APP_DB_URL
+from tests.behavioral.dsn import raw_dsn
+
 RET_A = "beh-e001-ret-a-000000000000001"
 RET_B = "beh-e001-ret-b-000000000000001"
 STORE_A = "beh-e001-store-a-00000000000001"
@@ -370,10 +373,7 @@ class TestEDGE001RLSDirectDB:
         code_b = self._create_code(self.data["ret_b"])
 
         import asyncpg
-        APP_DB_URL = os.environ.get(
-            "BEHAVIORAL_APP_DB_URL",
-            "postgresql://retail_media_app:***@localhost:5432/retail_media_platform",
-        ).replace("***", "retail_media_app")
+        APP_DB_URL = raw_dsn()
 
         async def _prove():
             conn = await asyncpg.connect(APP_DB_URL)

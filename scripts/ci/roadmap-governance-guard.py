@@ -510,8 +510,13 @@ ENV_REQUIRED = ("id", "role", "title", "reachable_at_check", "evidence",
 # disposition nobody decided. Checked on a structured field, not on prose:
 # scanning free text cannot tell an assertion from a mention, which is how the
 # SUPERSEDED detector produced a false positive earlier in this stage.
+# `decommissioned` is a DECISION, not an observation: an agent can establish that
+# a host did not answer, never that it was taken out of service. It is therefore
+# admissible only when the inventory names an approved owner decision, and the
+# rule below checks that the decision actually exists and is approved in the SSOT.
+OWNER_DECIDED_DISPOSITIONS = {"decommissioned", "scheduled-upgrade"}
 DISPOSITION_BY_ROLE = {
-    "retired-preview": {"unreachable-at-check-time"},
+    "retired-preview": {"unreachable-at-check-time", "decommissioned", "scheduled-upgrade"},
     "stand": {"active"},
     "portal-contour": {"active"},
     "ci": {"active"},
@@ -563,7 +568,29 @@ def module_env(root: Path) -> list:
                     f"disposition={disp!r}; допустимо {sorted(allowed)}. "
                     f"Для выведенного preview это наблюдение, а не решение — "
                     f"retire/upgrade решает владелец")
-        if e.get("role") == "retired-preview" and not e.get("owner_decision_pending"):
+        disp = e.get("disposition")
+        if disp in OWNER_DECIDED_DISPOSITIONS:
+            od = e.get("owner_decision")
+            if not od:
+                findings.append(
+                    f"env/DISPOSITION-WITHOUT-DECISION: `{eid}` объявлен `{disp}` без "
+                    f"ссылки на решение владельца — это решение, а не наблюдение")
+            else:
+                roadmap_doc = yaml.safe_load((root / ROADMAP_YAML).read_text(encoding="utf-8"))
+                decisions = {d["id"]: d for d in roadmap_doc.get("owner_decisions", []) or []}
+                d = decisions.get(od)
+                if d is None:
+                    findings.append(
+                        f"env/DECISION-DANGLING: `{eid}` ссылается на `{od}`, которого нет "
+                        f"в owner_decisions `{ROADMAP_YAML}`")
+                elif d.get("status") != "approved":
+                    findings.append(
+                        f"env/DECISION-NOT-APPROVED: `{eid}` объявлен `{disp}` по `{od}`, "
+                        f"но статус решения — {d.get('status')}")
+                if not e.get("owner_decision_on"):
+                    findings.append(
+                        f"env/DECISION-NO-DATE: `{eid}` не называет дату решения `{od}`")
+        elif e.get("role") == "retired-preview" and not e.get("owner_decision_pending"):
             findings.append(
                 f"env/NO-OWNER-DECISION: `{eid}` не называет, что retire/upgrade "
                 f"остаётся решением владельца")
@@ -830,19 +857,28 @@ def self_test(root: Path) -> int:
     case("контур без идентичности объявлен доказательством", "env",
          lambda w: _set_env(w, "santa2-prod", "evidence", True), True,
          effective=lambda w: _env_field(w, "santa2-prod", "evidence") is True)
-    case("выведенный preview объявлен мёртвым вместо наблюдения", "env",
-         lambda w: sub(w, ENV_INVENTORY,
-                       "    disposition: unreachable-at-check-time",
-                       "    disposition: decommissioned", 1), True)
+    case("decommissioned без ссылки на решение владельца", "env",
+         lambda w: _set_env(w, "preview-77", "owner_decision", None), True,
+         effective=lambda w: _env_field(w, "preview-77", "owner_decision") is None)
+    case("decommissioned по решению, которого нет в SSOT", "env",
+         lambda w: _set_env(w, "preview-77", "owner_decision", "OD-999"), True,
+         effective=lambda w: _env_field(w, "preview-77", "owner_decision") == "OD-999")
+    case("decommissioned без даты решения", "env",
+         lambda w: _set_env(w, "preview-77", "owner_decision_on", None), True,
+         effective=lambda w: _env_field(w, "preview-77", "owner_decision_on") is None)
+    case("диспозиция вне допустимых для роли", "env",
+         lambda w: _set_env(w, "preview-77", "disposition", "мёртв"), True,
+         effective=lambda w: _env_field(w, "preview-77", "disposition") == "мёртв")
     case("baseline стенда разошёлся с sequencing SSOT", "env",
          lambda w: sub(w, ENV_INVENTORY, "      bundle: stand-27dc397",
                        "      bundle: stand-deadbee", 1), True)
     # Тот же охранный кейс, что для SUPERSEDED: слово в прозе не должно
     # превращаться в находку — правило читает структурное поле disposition.
     case("слово «мёртв» в пояснении, а не в disposition — не находка", "env",
-         lambda w: sub(w, ENV_INVENTORY, "    owner_decision_pending:",
-                       "    prose_note: хост не называется мёртвым; это наблюдение\n"
-                       "    owner_decision_pending:", 1), False)
+         lambda w: _set_env(w, "stand-81", "notes",
+                            "Слова «мёртв» и «выведен из эксплуатации» здесь только "
+                            "упоминаются; диспозиция задаётся полем disposition."), False,
+         effective=lambda w: "мёртв" in (_env_field(w, "stand-81", "notes") or ""))
 
     case("registry заявляет reachable без существующего smoke", "registry",
          lambda w: sub(w, REGISTRY_YAML, "smoke: test_uismoke__campaign__create",

@@ -20,6 +20,9 @@ import pytest
 
 from tests.behavioral.conftest import _run_sql
 
+# RM-STAB-001: единый контракт BEHAVIORAL_APP_DB_URL
+from tests.behavioral.dsn import raw_dsn
+
 RET_A = "beh-e002-ret-a-000000000000001"
 RET_B = "beh-e002-ret-b-000000000000001"
 STORE_A = "beh-e002-store-a-00000000000001"
@@ -107,10 +110,7 @@ class TestEDGE002RLSDirectDB:
         dev_b = self.data["device_b"]
 
         import asyncpg
-        APP_DB_URL = os.environ.get(
-            "BEHAVIORAL_APP_DB_URL",
-            "postgresql://retail_media_app:***@localhost:5432/retail_media_platform",
-        ).replace("***", "retail_media_app")
+        APP_DB_URL = raw_dsn()
 
         async def _prove():
             conn = await asyncpg.connect(APP_DB_URL)
@@ -137,10 +137,7 @@ class TestEDGE002RLSDirectDB:
         dev_b = self.data["device_b"]
 
         import asyncpg
-        APP_DB_URL = os.environ.get(
-            "BEHAVIORAL_APP_DB_URL",
-            "postgresql://retail_media_app:***@localhost:5432/retail_media_platform",
-        ).replace("***", "retail_media_app")
+        APP_DB_URL = raw_dsn()
 
         async def _prove():
             conn = await asyncpg.connect(APP_DB_URL)
@@ -165,10 +162,7 @@ class TestEDGE002RLSDirectDB:
         dev_b = self.data["device_b"]
 
         import asyncpg
-        APP_DB_URL = os.environ.get(
-            "BEHAVIORAL_APP_DB_URL",
-            "postgresql://retail_media_app:***@localhost:5432/retail_media_platform",
-        ).replace("***", "retail_media_app")
+        APP_DB_URL = raw_dsn()
 
         async def _prove():
             conn = await asyncpg.connect(APP_DB_URL)
@@ -192,10 +186,7 @@ class TestEDGE002RLSDirectDB:
         dev_b = self.data["device_b"]
 
         import asyncpg
-        APP_DB_URL = os.environ.get(
-            "BEHAVIORAL_APP_DB_URL",
-            "postgresql://retail_media_app:***@localhost:5432/retail_media_platform",
-        ).replace("***", "retail_media_app")
+        APP_DB_URL = raw_dsn()
 
         async def _prove():
             conn = await asyncpg.connect(APP_DB_URL)
@@ -222,10 +213,7 @@ class TestEDGE002RLSDirectDB:
         ret_b = self.data["ret_b"]
 
         import asyncpg
-        APP_DB_URL = os.environ.get(
-            "BEHAVIORAL_APP_DB_URL",
-            "postgresql://retail_media_app:***@localhost:5432/retail_media_platform",
-        ).replace("***", "retail_media_app")
+        APP_DB_URL = raw_dsn()
 
         async def _prove():
             conn = await asyncpg.connect(APP_DB_URL)

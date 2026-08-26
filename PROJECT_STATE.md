@@ -2372,7 +2372,13 @@ PLAYER-IMPORT остаётся deferred, не next.
 - **PostgreSQL:** Docker `rmp-phase1-postgres-1` (port 5432)
 - **App role:** `retail_media_app` (NOBYPASSRLS)
 - **Owner role:** `retail_media_owner` (fixtures)
-- **Behavioural:** `RUN_BEHAVIORAL_TESTS=1` + BEHAVIORAL_DB_URL + BEHAVIORAL_APP_DB_URL
+- **Behavioural:** `RUN_BEHAVIORAL_TESTS=1` + `BEHAVIORAL_DB_URL` (owner, для фикстур)
+  + `BEHAVIORAL_APP_DB_URL` (роль приложения, `NOBYPASSRLS`).
+  **`BEHAVIORAL_APP_DB_URL` принимает любую из двух форм** — `postgresql://` или
+  `postgresql+asyncpg://`. Приведением занимается единственный helper
+  `tests/behavioral/dsn.py` (RM-STAB-001); каждый потребитель берёт нужную ему форму.
+  До RM-STAB-001 переменная была перегружена двумя несовместимыми формами и ни одно
+  значение не удовлетворяло обеим — этот раздел вёл оператора прямо в ловушку.
 
 ## Constraints
 

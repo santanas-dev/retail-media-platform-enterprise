@@ -38,14 +38,10 @@ from packages.domain.licensing_repository import (
 )
 from tests.behavioral.builder import BehBuilder
 
-_APP_DB_URL = os.environ.get("BEHAVIORAL_APP_DB_URL", "").strip()
-if not _APP_DB_URL:
-    _APP_DB_URL = os.environ.get("DATABASE_URL", "").strip()
-if not _APP_DB_URL:
-    _APP_DB_URL = (
-        "postgresql+asyncpg://retail_media_app:retail_media_app"
-        "@localhost:5432/retail_media_platform"
-    )
+# RM-STAB-001: одна переменная, один helper, обе DSN-формы допустимы.
+from tests.behavioral.dsn import sqlalchemy_dsn
+
+_APP_DB_URL = sqlalchemy_dsn()
 
 _OWNER_DB_URL = os.environ.get("BEHAVIORAL_DB_URL", "").strip()
 if not _OWNER_DB_URL:

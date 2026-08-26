@@ -87,6 +87,15 @@ owner_decisions:
     закреплена в CI; вопрос - достаточно ли этого представления для пилота или требуется
     отдельный операционный центр как самостоятельный объём работ.
   status: open
+- id: OD-016
+  statement: 192.168.110.77 выводится из эксплуатации решением владельца 2026-08-26.
+    Уточняет OD-007 в части .77 - формулировка «unreachable at check time» была
+    наблюдением до решения; теперь диспозиция decommissioned. Часть OD-007 про активный
+    baseline .81/stand-27dc397 остаётся в силе без изменений.
+  status: approved
+  decided_on: '2026-08-26'
+  blocks:
+  - RM-ENV-001
 stages:
 - id: G
   title: Единая система roadmap
@@ -326,7 +335,7 @@ tasks:
     verified_by: artifact
     ref: docs/product/environment-inventory.yaml
   decision_status: approved
-  delivery_status: verification
+  delivery_status: done
   evidence_refs:
   - kind: ci_run
     ref: gh run 33003166965 — roadmap-governance-guard success на 9b88ae8
@@ -349,10 +358,11 @@ tasks:
   - kind: artifact
     ref: docs/architecture/rm-env-001-environment-inventory-design-gate.md
     status: verified
-  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); инвентарь собран из собственных прогонов: .77 даёт HTTP 000 на трёх портах, .81 отдаёт stand-27dc397/schema 036 и совпадает с base.stand_baseline. Статус verification, не done: owner_gate scope_decision не выдан — решение retire или upgrade по .77 за владельцем, и приёмка прямо оставляет его владельцу.'
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); инвентарь собран из собственных прогонов: .77 дал HTTP 000 на трёх портах, .81 отдаёт stand-27dc397/schema 036 и совпадает с base.stand_baseline; DEV/PROD не доказательство по трём проверенным причинам. Owner gate закрыт решением OD-016 от 2026-08-26: владелец вывел .77 из эксплуатации.'
   owner_gate:
     required: true
     reason: scope_decision
+    granted: true
 - id: RM-STAB-001
   kind: implementation
   stage: S
@@ -364,8 +374,24 @@ tasks:
     verified_by: command
     ref: RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral/test_commerce_rls.py -q
   decision_status: approved
-  delivery_status: planned
-  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  delivery_status: verification
+  evidence_refs:
+  - kind: behavioral
+    ref: "RUN_BEHAVIORAL_TESTS=1 BEHAVIORAL_APP_DB_URL=postgresql://... python3 -m pytest tests/behavioral/test_commerce_rls.py tests/behavioral/test_campaign_permission_split_001.py -q"
+    status: verified
+    note: 29 passed — голая форма DSN проходит и SQLAlchemy-, и raw-asyncpg-потребителей
+  - kind: behavioral
+    ref: "RUN_BEHAVIORAL_TESTS=1 BEHAVIORAL_APP_DB_URL=postgresql+asyncpg://... python3 -m pytest tests/behavioral/test_commerce_rls.py tests/behavioral/test_campaign_permission_split_001.py -q"
+    status: verified
+    note: 29 passed — драйверная форма даёт тот же результат
+  - kind: behavioral
+    ref: tamper — helper перестаёт нормализовать в каждую сторону
+    status: verified
+    note: красно обоими способами (InvalidRequestError и invalid DSN), после восстановления зелено
+  - kind: artifact
+    ref: tests/behavioral/dsn.py
+    status: verified
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); закрывает мою находку BEHAVIORAL-ENV-CONTRACT-001. Один helper tests/behavioral/dsn.py, 12 потребителей переведены. Обе DSN-формы прошли одну команду на одноразовой БД (схема 036, роль NOBYPASSRLS, 37 таблиц FORCE RLS). Tamper-цикл красный в обе стороны. Статус verification, а не done: правка идёт в CI впервые, а я в этой сессии дважды заявлял зелёное, проверив только на своей машине.'
 - id: RM-STAB-002
   kind: implementation
   stage: S

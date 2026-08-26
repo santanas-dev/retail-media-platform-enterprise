@@ -26,6 +26,9 @@ from packages.security.config import reset_security_config
 from packages.security.jwt import create_access_token
 from tests.behavioral.conftest import _run_sql, USER_IDS
 
+# RM-STAB-001: единый контракт BEHAVIORAL_APP_DB_URL
+from tests.behavioral.dsn import raw_dsn
+
 # The default retailer: briefs are written with the column default
 # retailer_id, so both orgs must live under it for the brief RLS
 # WITH CHECK to pass. Both orgs share it, which is what makes the
@@ -300,10 +303,7 @@ class TestCampaignPermissionSplit:
         """The grant table itself, read by the unprivileged app role."""
         import asyncpg
 
-        app_db_url = os.environ.get(
-            "BEHAVIORAL_APP_DB_URL",
-            "postgresql://retail_media_app:***@localhost:5432/retail_media_platform",
-        ).replace("***", "retail_media_app")
+        app_db_url = raw_dsn()
 
         async def _prove():
             conn = await asyncpg.connect(app_db_url)

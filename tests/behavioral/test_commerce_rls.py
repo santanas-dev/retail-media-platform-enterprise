@@ -27,14 +27,10 @@ from tests.behavioral.builder import BehBuilder
 
 # ── Helpers ─────────────────────────────────────────────────────────────
 
-_APP_DB_URL = os.environ.get("BEHAVIORAL_APP_DB_URL", "").strip()
-if not _APP_DB_URL:
-    _APP_DB_URL = os.environ.get("DATABASE_URL", "").strip()
-if not _APP_DB_URL:
-    _APP_DB_URL = (
-        "postgresql+asyncpg://retail_media_app:retail_media_app"
-        "@localhost:5432/retail_media_platform"
-    )
+# RM-STAB-001: одна переменная, один helper, обе DSN-формы допустимы.
+from tests.behavioral.dsn import sqlalchemy_dsn
+
+_APP_DB_URL = sqlalchemy_dsn()
 
 
 def _run_setup(sql: str) -> None:

@@ -38,6 +38,9 @@ from packages.security.config import reset_security_config
 from packages.security.jwt import create_access_token
 from tests.behavioral.conftest import _run_sql, USER_IDS
 
+# RM-STAB-001: единый контракт BEHAVIORAL_APP_DB_URL
+from tests.behavioral.dsn import raw_dsn
+
 RET = "axp-ret-000000000000000001"
 BRANCH = "axp-branch-0000000000000001"
 ORG_A = "axp-org-a-00000000000001"
@@ -316,10 +319,7 @@ class TestAuthzCrossPortalDerivedRLS:
         """
         import asyncpg
 
-        app_db_url = os.environ.get(
-            "BEHAVIORAL_APP_DB_URL",
-            "postgresql://retail_media_app:***@localhost:5432/retail_media_platform",
-        ).replace("***", "retail_media_app")
+        app_db_url = raw_dsn()
 
         async def _prove():
             conn = await asyncpg.connect(app_db_url)
