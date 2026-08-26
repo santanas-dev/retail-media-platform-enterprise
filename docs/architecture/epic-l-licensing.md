@@ -92,7 +92,8 @@ the current tree (commit `1b0452c`).
   blocked`, `gap: "EPIC-L canon intake only. No implementation."`. Roles `[service]`.
 - `user-journeys.md` §EPIC-L mirrors the same blocked list and non-goals.
 - CI quality gates (from `phase1-ci.yml`): Python unit tests, import-boundaries
-  (ADR-014), roadmap-consistency-audit (blocking, `--strict`), style-tokens,
+  (ADR-014), roadmap-governance-guard (blocking; заменил roadmap-consistency-audit
+  при RM-GOV-005), style-tokens,
   JSON-schema, production-config gate, behavioral PostgreSQL (ADR-008),
   UI-smoke (P0 subset, NOBYPASSRLS).
 - `scripts/ci/check-import-boundaries.py` + `import-boundaries.toml` enforce

@@ -1,0 +1,65 @@
+{
+  "base_git_sha": "2b935bb980028a3e67db51718377836bb6242da9",
+  "cross_checks": {
+    "blocked_in_registry_not_in_yaml": [],
+    "blocked_in_yaml_not_in_registry": [],
+    "smoke_declared_but_missing": []
+  },
+  "features": {
+    "blocked": 5,
+    "blocked_with_empty_gap": 0,
+    "by_frontend": {
+      "admin-web": 39,
+      "advertiser-web": 5,
+      "public": 1,
+      "service": 13
+    },
+    "ci_enforced": 43,
+    "reachable": 53,
+    "total": 58,
+    "ui_features": 45
+  },
+  "maturity": {
+    "by_level": {},
+    "declared": 0,
+    "not_declared": 58,
+    "reason": "roadmap.yaml не содержит блока `maturity`; уровни выше registry не выводимы из входов и не домысливаются генератором"
+  },
+  "schema_version": 1,
+  "sequencing": {
+    "by_decision_status": {
+      "approved": 42
+    },
+    "by_delivery_status": {
+      "done": 4,
+      "planned": 36,
+      "verification": 2
+    },
+    "by_kind": {
+      "design": 5,
+      "external": 2,
+      "external-plan": 1,
+      "governance": 10,
+      "human": 1,
+      "implementation": 23
+    },
+    "by_stage": {
+      "BT": 13,
+      "E0": 1,
+      "G": 6,
+      "POPS": 4,
+      "S": 11,
+      "U": 7
+    },
+    "gates": [
+      "Gate-G",
+      "Gate-S",
+      "Gate-U"
+    ],
+    "max_dependency_depth": 8,
+    "owner_decisions": 15,
+    "owner_gated": 12,
+    "tasks_total": 42,
+    "with_verified_evidence": 6
+  }
+}

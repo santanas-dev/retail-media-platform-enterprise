@@ -1,0 +1,182 @@
+# Fixture for scripts/ci/check-roadmap-schema.py --self-test (RM-GOV-001).
+# This is NOT the roadmap: the real docs/product/roadmap.yaml is produced by RM-GOV-002.
+# It exists only to prove the schema accepts a well-formed document and that every
+# tamper case is caught.
+schema_version: 1
+
+base:
+  git_sha: "2b935bb980028a3e67db51718377836bb6242da9"
+  generated_from: "docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)"
+  stand_baseline:
+    name: rmp-local-stand
+    git_sha: "27dc39707c5c56cdfdcc4250d5aa875d3789c8dc"
+    bundle: stand-27dc397
+    schema_head: "036"
+
+owner_decisions:
+  - id: OD-001
+    statement: >-
+      Код/тесты описывают фактическое поведение; ТЗ/ADR — требуемое. Расхождение является
+      дефектом до явного ADR.
+    status: approved
+    decided_on: "2026-08-26"
+  - id: OD-008
+    statement: MFA обязателен до production; согласование NATS с ИТ/ops — до pilot deployment.
+    status: open
+
+stages:
+  - { id: G,    title: "Единая система roadmap",            order: 0, closed_by_gate: Gate-G }
+  - { id: E0,   title: "Окружения",                          order: 1 }
+  - { id: S,    title: "Стабилизация доказательств",         order: 2, closed_by_gate: Gate-S }
+  - { id: U,    title: "Утверждённый UX-порядок",            order: 3, closed_by_gate: Gate-U }
+  - { id: BT,   title: "Бизнесовые и технические разрывы",   order: 4 }
+  - { id: POPS, title: "Внешние действия",                   order: 4 }
+
+gates:
+  - id: Gate-G
+    closes_stage: G
+    approver: owner
+    conditions:
+      - "Codex подтверждает generator и tamper matrix"
+      - "владелец утверждает canonical cutover"
+
+tasks:
+  - id: RM-GOV-001
+    kind: design
+    stage: G
+    title: "Schema/mini-design roadmap.yaml"
+    priority: P0
+    dependencies: []
+    acceptance:
+      - check: "schema validator зелёный на фикстуре и красный на каждом tamper"
+        verified_by: command
+        ref: "python3 scripts/ci/check-roadmap-schema.py --self-test"
+      - check: "владелец утверждает модель"
+        verified_by: owner
+    owner_gate:
+      required: true
+      reason: scope_decision
+    decision_status: approved
+    delivery_status: in_progress
+
+  - id: RM-GOV-002
+    kind: governance
+    stage: G
+    title: "Reconciliation/migration manifest + initial roadmap.yaml"
+    priority: P0
+    dependencies: [RM-GOV-001]
+    acceptance:
+      - check: "создан initial docs/product/roadmap.yaml без overclaim"
+        verified_by: command
+        ref: "python3 scripts/ci/check-roadmap-schema.py"
+    decision_status: approved
+    delivery_status: planned
+
+  - id: RM-STAB-002
+    kind: implementation
+    stage: S
+    title: "Strict RLS context по умолчанию"
+    priority: P1
+    dependencies: [RM-STAB-001]
+    acceptance:
+      - check: "context tamper красный, behavioral subset зелёный"
+        verified_by: behavioral
+        ref: "tests/behavioral/test_adr018_multitenancy_rls.py"
+    decision_status: approved
+    delivery_status: planned
+
+  - id: RM-STAB-001
+    kind: implementation
+    stage: S
+    title: "Единый контракт BEHAVIORAL_APP_DB_URL"
+    priority: P1
+    dependencies: [Gate-G]
+    acceptance:
+      - check: "обе DSN-формы проходят один targeted behavioral command"
+        verified_by: command
+        ref: "RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral/test_commerce_rls.py -q"
+    decision_status: approved
+    delivery_status: planned
+
+  - id: RM-BIZ-002
+    kind: implementation
+    stage: BT
+    title: "self.campaign_create в будущей ветке"
+    dependencies: []
+    acceptance:
+      - check: "journey + intended-role smoke зелёные"
+        verified_by: ui_smoke
+        ref: "tests/ui-smoke/test_uismoke__self__campaign_create.py"
+    owner_gate: { required: true, reason: scope_decision }
+    decision_status: proposed
+    delivery_status: blocked
+
+  - id: RM-BIZ-003
+    kind: implementation
+    stage: BT
+    title: "self.report_view plan/fact"
+    dependencies: []
+    acceptance:
+      - check: "реальные PoP, причины, RLS advertiser scope"
+        verified_by: behavioral
+        ref: "tests/behavioral/test_pop_reporting.py"
+    decision_status: approved
+    delivery_status: blocked
+
+  - id: RM-TECH-207B
+    kind: implementation
+    stage: BT
+    title: "KSO player/playlist/PoP chain"
+    dependencies: []
+    acceptance:
+      - check: "playback -> manifest -> PoP behavioral proof"
+        verified_by: behavioral
+        ref: "tests/behavioral/test_edge002_manifest_delivery.py"
+    owner_gate: { required: true, reason: device_contract }
+    decision_status: approved
+    delivery_status: blocked
+
+  - id: RM-TECH-208
+    kind: implementation
+    stage: BT
+    title: "Signed licensing Layer 2"
+    dependencies: []
+    acceptance:
+      - check: "Ed25519 offline verify, kid/rotation/revocation"
+        verified_by: behavioral
+        ref: "tests/behavioral/test_license_report.py"
+    owner_gate: { required: true, reason: protected_boundary }
+    decision_status: approved
+    delivery_status: blocked
+
+blocked_features:
+  - feature_id: self.campaign_create
+    unblocked_by: [RM-BIZ-002]
+    conditions:
+      - "владелец включает self-service в scope пилота (OD-005 сейчас исключает)"
+    owner_decision: OD-005
+  - feature_id: self.report_view
+    unblocked_by: [RM-BIZ-003]
+    conditions:
+      - "реальные PoP-события от плеера, а не симулятора"
+  - feature_id: playlist.build
+    unblocked_by: [RM-TECH-207B]
+    conditions:
+      - "плеер перенесён в enterprise-репозиторий и есть реальный КСО"
+  - feature_id: license.view
+    unblocked_by: [RM-TECH-208]
+    conditions:
+      - "signed-license Layer 2: offline Ed25519 verify + kid/CRL"
+  - feature_id: license.upload
+    unblocked_by: [RM-TECH-208]
+    conditions:
+      - "signed-license Layer 2: upload .lic + проверка подписи"
+
+maturity:
+  - feature_id: campaign.create
+    level: implemented
+    proof_granularity: dedicated
+    evidence_refs:
+      - kind: ui_smoke
+        ref: test_uismoke__campaign__create
+        status: verified

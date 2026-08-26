@@ -1,8 +1,16 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-26 (PORTAL-UX-POLISH-001A1a — общие UX-примитивы созданы и доказаны на двух реальных экранах)
+**Last updated:** 2026-08-26 (RM-GOV-005 — canonical cutover: единый sequencing SSOT, генерируемые представления, карантин legacy-мутаторов)
 
-**Next Active Workstream:** **PORTAL-UX-POLISH-001A3** — accessibility форм на оставшихся экранах (PORTAL-UX-003, 007) по шаблону A1a.
+**Next Active Workstream:** **Gate G** — владелец утверждает canonical cutover; Codex проверяет генератор и tamper-матрицу. Затем **RM-ENV-001** (инвентарь окружений `.77/.81/DEV/PROD`).
+
+Последовательность работ ведётся в `docs/product/roadmap.yaml` (sequencing SSOT, 42 задачи,
+утверждено владельцем 2026-08-26). Представления генерируются в `docs/product/generated/`
+и руками не правятся. Этап G: `RM-GOV-001..003` и `RM-GOV-006` закрыты; `RM-GOV-004` в
+статусе `verification` — приёмка заявлена `verified_by: ci_job`, а job
+`roadmap-governance-guard` ещё не выполнялся; `RM-GOV-005` (этот cutover) ожидает owner
+approval. **PORTAL-UX-POLISH остаётся на паузе**; его backlog вынесен из вытесненного
+roadmap в `docs/product/portal-ux-polish.md`.
 
 **Repository Checkpoint (PS-001):**
 - Payload SHA: `8ad0228` (main — PR #8 private namespace + label fix; tag `v0.11.1-pilot-packaging` → `90c4bb1` неизменен)

@@ -642,8 +642,8 @@ jobs:
       - name: Run production config gate tests
         run: python -m pytest tests/test_production_config_gate.py -v --tb=short
 
-  roadmap-consistency-audit:
-    name: Roadmap Consistency Audit — UI-TRUTH-001B (blocking)
+  roadmap-governance-guard:
+    name: Roadmap Governance Guard — RM-GOV-004 (blocking)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -652,8 +652,10 @@ jobs:
           python-version: "3.12"
       - name: Install deps
         run: pip install openpyxl pyyaml
-      - name: Run consistency check (strict — blocks on findings)
-        run: python3 scripts/roadmap-consistency-check.py --strict
+      - name: Guard — schema, drift, metrics, doc, registry, SSOT
+        run: python3 scripts/ci/roadmap-governance-guard.py
+      - name: Tamper matrix — every dimension must go red on a planted defect
+        run: python3 scripts/ci/roadmap-governance-guard.py --self-test
 
   backup-restore-drill:
     name: Backup / Restore Drill — 001C (blocking)
@@ -836,7 +838,7 @@ jobs:
       - docker-compose
       - behavioral-postgres-tests
       - production-config-gate
-      - roadmap-consistency-audit
+      - roadmap-governance-guard
       - packaging
       - backup-restore-drill
       - stand-rollback-drill
@@ -858,7 +860,7 @@ jobs:
             [docker-compose]="${{ needs.docker-compose.result }}"
             [behavioral-postgres-tests]="${{ needs.behavioral-postgres-tests.result }}"
             [production-config-gate]="${{ needs.production-config-gate.result }}"
-            [roadmap-consistency-audit]="${{ needs.roadmap-consistency-audit.result }}"
+            [roadmap-governance-guard]="${{ needs.roadmap-governance-guard.result }}"
             [packaging]="${{ needs.packaging.result }}"
             [backup-restore-drill]="${{ needs.backup-restore-drill.result }}"
             [stand-rollback-drill]="${{ needs.stand-rollback-drill.result }}"

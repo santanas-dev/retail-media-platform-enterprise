@@ -1,4 +1,22 @@
 #!/usr/bin/env python3
+"""QUARANTINED — НЕ ЗАПУСКАТЬ.
+
+Помещён в карантин canonical cutover RM-GOV-005 (2026-08-26).
+
+Скрипт перезаписывал канонический `docs/product/roadmap-s020-2026-07-10.xlsx`,
+который больше не является источником: книга сгенерирована и живёт в
+`docs/product/generated/roadmap.generated.xlsx`, а сама legacy-книга архивирована
+в `docs/product/history/`. Запуск этого скрипта восстановит ручной путь правки
+и разойдётся с SSOT.
+
+Единственный законный способ изменить представление roadmap:
+    правка входа (docs/product/roadmap.yaml или feature-registry.yaml)
+    затем python3 scripts/ci/roadmap-generate.py
+
+Файл сохранён ради истории того, как книга собиралась. Гейт
+`scripts/ci/roadmap-governance-guard.py` держит множество мутаторов замкнутым.
+"""
+
 """Update roadmap xlsx with v2.6 next-branch rows."""
 import openpyxl
 

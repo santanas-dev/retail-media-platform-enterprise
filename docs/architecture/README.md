@@ -5,7 +5,7 @@
 When decisions conflict, resolve in this order:
 
 1. **`docs/00-source-of-truth/`** — ТЗ v2.5 extraction + rewrite starting decisions
-2. **`docs/architecture/adr/ADR-001..ADR-015`** — architecture decision records (current)
+2. **`docs/architecture/adr/ADR-001..ADR-020`** — architecture decision records (current)
 3. **`docs/architecture/erd/erd-v2-5.md`** + **`docs/architecture/api/api-groups-v1.md`** — current ERD and API contracts
 4. **`docs/architecture/contracts/`** — manifest/proof event schemas
 5. **`docs/architecture/*.md` (superseded)** — historical design gates, retained for context only
@@ -31,6 +31,9 @@ When decisions conflict, resolve in this order:
 | `adr/ADR-015` | Campaign domain foundation (Phase 4.1a) |
 | `adr/ADR-016` | Campaign delivery and manifest pipeline (Phase 4.2a) |
 | `adr/ADR-017` | Proof-of-Play and reporting (Phase 4.3a) |
+| `adr/ADR-018` | Tenant model for the next branch |
+| `adr/ADR-019` | Channel Orchestrator — pragmatic deferral |
+| `adr/ADR-020` | Факт и требование: что означает расхождение |
 | `erd/erd-v2-5.md` | Current entity-relationship diagram |
 | `api/api-groups-v1.md` | Current API endpoint catalog |
 | `contracts/` | Manifest v1, proof event v1 schemas |
@@ -63,3 +66,31 @@ implement from them when they conflict with ADRs.
 | KSO migration docs (a3*) | ADR-009 | Operational migration docs from old platform; do not reflect current RBAC/RLS |
 | `h0-production-readiness-design-gate.md` | ADR-007, ADR-009 | ClickHouse deferred, RLS not yet designed |
 | Channel registry docs (b1) | ADR-003, current ERD | Operational cleanup docs from Phase B |
+| `b3-placement-design-gate.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `b4-channel-orchestrator-design-gate.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `b5-4-legacy-compatibility-analysis.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `b5-universal-manifest-schema-design-gate.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `c0-device-gateway-design-gate.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `channel-registry-cleanup-b1.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `channel-registry-compatibility-layer-b1.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `d0-inventory-planning-design-gate.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `d5-planning-api-portal-readonly-design-gate.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `device-model-reproducibility-b2-1.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `device-model-unification-b2.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `e0-kso-first-channel-design-gate.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `f0-pop-analytics-design-gate.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `g0-phase-g-roadmap-sync-design-gate.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `kso-data-migration-plan-a3.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `kso-data-migration-rollback-a3.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `kso-data-migration-validation-a3.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `kso-duplicate-mapping-a2.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `kso-manifest-export-contract.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `kso-migration-approval-checklist-a3-1.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `kso-migration-mini-design-a3-1.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `portal1-functional-completion-design-gate.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `ui1-portal-redesign-design-gate.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+| `ui2-modern-product-ui-redesign-design-gate.md` | Баннер SUPERSEDED в файле; внесён в перечень при RM-GOV-005 |
+
+Перечень сверяется с баннерами машинно: модуль `doc` гейта
+`scripts/ci/roadmap-governance-guard.py` краснеет, если документ несёт баннер
+`SUPERSEDED`, но отсутствует в таблице, либо наоборот.

@@ -50,8 +50,10 @@
 
 ## Roadmap Ownership
 
-- **Excel-файл** (`docs/product/roadmap-s020-2026-07-10.xlsx`) — канонический внешний roadmap.
-- **Hermes** обновляет статусы в roadmap.
-- **Codex** проверяет консистентность roadmap.
-- **Формат зафиксирован:** два листа (`Технический Roadmap`, `Бизнес-функции Roadmap`), те же колонки, тот же визуальный стиль.
+- **`docs/product/roadmap.yaml`** — sequencing SSOT; правится только он.
+- **`docs/product/generated/roadmap.generated.xlsx`** — внешний roadmap; **генерируется**,
+  два листа (`Технический Roadmap`, `Бизнес-функции Roadmap`), руками не правится.
+- **Claude Code** обновляет вход внутри утверждённой задачи; **Codex** проверяет.
+  Hermes retired — прежняя строка про обновление статусов Hermes недействительна.
+- Расхождение представления со входом ловит `scripts/ci/roadmap-governance-guard.py`.
 - Будущие обновления — только status/evidence/notes, если пользователь явно не одобрит изменение формата.

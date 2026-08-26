@@ -2,8 +2,9 @@
 
 > **Историческая программа до-пилотных волн 1–6 (✅ COMPLETE).** Источник истины по статусам —
 > `docs/product/feature-registry.yaml` + зелёный UI-smoke.
-> **Актуальная последовательность работ и матрица зрелости — в `docs/product/roadmap.md`**
-> (ROADMAP-REBASE-003, решения владельца утверждены в OWNER-ROADMAP-DECISION-003);
+> **Актуальная последовательность работ — в `docs/product/roadmap.yaml`**, матрица зрелости —
+> в генерируемой проекции `docs/product/generated/roadmap.generated.md`
+> (очередь из 42 задач утверждена владельцем 2026-08-26; canonical cutover RM-GOV-005);
 > этот документ сохраняется как история закрытия волн 1–6 и больше не задаёт текущий порядок.
 > Утверждённый порядок: UI-SMOKE-STABILITY-005 → PORTAL-UX-POLISH → operator walkthrough →
 > недостающие business-функции → KSO/player + signed licensing → pilot → production hardening.

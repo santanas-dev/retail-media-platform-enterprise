@@ -1,0 +1,828 @@
+schema_version: 1
+base:
+  git_sha: 2b935bb980028a3e67db51718377836bb6242da9
+  generated_from: docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2), утверждено владельцем 2026-08-26
+  stand_baseline:
+    name: rmp-local-stand
+    git_sha: 27dc39707c5c56cdfdcc4250d5aa875d3789c8dc
+    bundle: stand-27dc397
+    schema_head: '036'
+owner_decisions:
+- id: OD-001
+  statement: Код/тесты описывают фактическое поведение; ТЗ/ADR — требуемое. Расхождение является дефектом до явного
+    ADR.
+  status: approved
+  decided_on: '2026-08-26'
+- id: OD-002
+  statement: Ed25519 обязателен для device pilot/production. HMAC допустим только для dev и control-plane stand.
+  status: approved
+  decided_on: '2026-08-26'
+- id: OD-003
+  statement: Retailer scope — первоклассная граница; bypass только system_admin и security_admin.
+  status: approved
+  decided_on: '2026-08-26'
+- id: OD-004
+  statement: UI-smoke отделён от ordinary pytest и является blocking gate для develop, release и повышения journey
+    до reachable.
+  status: approved
+  decided_on: '2026-08-26'
+- id: OD-005
+  statement: self.campaign_create исключён из ближайшего control-plane pilot; первый pilot managed-first.
+  status: approved
+  decided_on: '2026-08-26'
+- id: OD-006
+  statement: При renewal занятые seats старого grant атомарно закрываются и продолжаются под новым grant.
+  status: approved
+  decided_on: '2026-08-26'
+- id: OD-007
+  statement: Активный baseline — .81 / stand-27dc397; .77 называется только unreachable at check time.
+  status: approved
+  decided_on: '2026-08-26'
+- id: OD-008
+  statement: MFA обязателен до production; согласование NATS с ИТ/ops — до pilot deployment.
+  status: open
+- id: OD-009
+  statement: Объём безопасности и соответствия до production — SIEM/Wazuh-экспорт, минимизация
+    PII, доступ администратора только через VPN, retention и партиционирование данных.
+    Вопрос - расширяется ли scope RM-OPS-001 этими четырьмя пунктами или каждый становится
+    отдельной задачей. Ни один сейчас не назван ни одной из 42 задач.
+  status: open
+  blocks:
+  - RM-OPS-001
+- id: OD-010
+  statement: Безопасная выкатка — staged rollout с rollback и feature flags. Вопрос - это
+    предусловие пилота или production. От ответа зависит, входят ли они в RM-PILOT-002
+    preflight или только в RM-OPS-001.
+  status: open
+  blocks:
+  - RM-PILOT-002
+  - RM-OPS-001
+- id: OD-011
+  statement: Нагрузочные профили и критерии производительности на 40K устройств. Вопрос -
+    измеряется ли это до пилота как вход в SLO (RM-TECH-205) и в триггер ClickHouse
+    (RM-TECH-209), или откладывается до production.
+  status: open
+  blocks:
+  - RM-TECH-205
+  - RM-TECH-209
+- id: OD-012
+  statement: Часовые пояса, календарь и праздничное расписание показов. Это корректность
+    доставки, а не операционный вопрос - вопрос владельцу - входит ли в scope пилота.
+  status: open
+- id: OD-013
+  statement: Self-service онбординг рекламодателя - сброс пароля самим пользователем и
+    приглашения. Админский сброс и приглашение уже reachable с зелёными смоуками;
+    self-service отсутствует. Вопрос согласуется с OD-005 (managed-first) - нужен ли
+    self-service в первом пилоте.
+  status: open
+  blocks:
+  - RM-BIZ-002
+- id: OD-014
+  statement: A/B lift и attribution - материал ветки v2.6, зависит от модели арендатора
+    (ADR-018). Вопрос - фиксируется ли как отложенное решением, по образцу ADR-019 для
+    Channel Orchestrator, или остаётся неопределённым.
+  status: open
+- id: OD-015
+  statement: Операционный центр здоровья устройств. Функция device.health_view reachable и
+    закреплена в CI; вопрос - достаточно ли этого представления для пилота или требуется
+    отдельный операционный центр как самостоятельный объём работ.
+  status: open
+stages:
+- id: G
+  title: Единая система roadmap
+  order: 0
+  closed_by_gate: Gate-G
+- id: E0
+  title: Окружения
+  order: 1
+- id: S
+  title: Стабилизация доказательств и границ
+  order: 2
+  closed_by_gate: Gate-S
+- id: U
+  title: Утверждённый UX-порядок
+  order: 3
+  closed_by_gate: Gate-U
+- id: BT
+  title: Бизнесовые и технические разрывы
+  order: 4
+- id: POPS
+  title: 'Внешние действия: pilot и production'
+  order: 4
+gates:
+- id: Gate-G
+  closes_stage: G
+  approver: owner
+  conditions:
+  - Codex проверяет generator и tamper matrix
+  - владелец утверждает canonical cutover
+- id: Gate-S
+  closes_stage: S
+  approver: codex
+  conditions:
+  - новые counts и evidence воспроизводимы
+- id: Gate-U
+  closes_stage: U
+  approver: human
+  conditions:
+  - человек проходит walkthrough на exact stand bundle
+blocked_features:
+- feature_id: self.campaign_create
+  unblocked_by:
+  - RM-BIZ-002
+  conditions:
+  - владелец включает self-service в scope пилота
+  owner_decision: OD-005
+- feature_id: self.report_view
+  unblocked_by:
+  - RM-BIZ-003
+  conditions:
+  - реальные PoP-события от плеера, а не симулятора
+- feature_id: playlist.build
+  unblocked_by:
+  - RM-TECH-207B
+  conditions:
+  - плеер перенесён в enterprise-репозиторий и есть реальный КСО
+- feature_id: license.view
+  unblocked_by:
+  - RM-TECH-208
+  conditions:
+  - 'signed-license Layer 2: offline Ed25519 verify + kid/CRL'
+- feature_id: license.upload
+  unblocked_by:
+  - RM-TECH-208
+  conditions:
+  - 'signed-license Layer 2: upload .lic + проверка подписи'
+tasks:
+- id: RM-GOV-001
+  kind: design
+  stage: G
+  title: Schema/mini-design `roadmap.yaml`
+  dependencies: []
+  acceptance:
+  - check: schema validator
+    verified_by: command
+    ref: python3 scripts/ci/check-roadmap-schema.py --self-test
+  decision_status: approved
+  delivery_status: done
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  owner_gate:
+    required: true
+    reason: scope_decision
+  evidence_refs:
+  - kind: command
+    ref: python3 scripts/ci/check-roadmap-schema.py --self-test
+    status: verified
+  - kind: artifact
+    ref: docs/architecture/rm-gov-001-roadmap-yaml-design-gate.md
+    status: verified
+- id: RM-GOV-002
+  kind: governance
+  stage: G
+  title: Reconciliation/migration manifest
+  dependencies:
+  - RM-GOV-001
+  acceptance:
+  - check: disposition для 93 technical items, 13 SECTION и 57 business rows
+    verified_by: command
+    ref: python3 scripts/ci/check-roadmap-schema.py --file docs/product/roadmap.yaml
+  decision_status: approved
+  delivery_status: done
+  evidence_refs:
+  - kind: command
+    ref: python3 scripts/ci/roadmap-migration-counts.py
+    status: verified
+  - kind: artifact
+    ref: docs/product/roadmap-migration-manifest.yaml
+    status: verified
+  - kind: command
+    ref: python3 scripts/ci/check-roadmap-schema.py --file docs/product/roadmap.yaml
+    status: verified
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); ACCEPT владельца 2026-08-26
+- id: RM-GOV-003
+  kind: implementation
+  stage: G
+  title: Односторонний generator YAML + registry + evidence → Markdown/XLSX/metrics
+  dependencies:
+  - RM-GOV-001
+  - RM-GOV-002
+  acceptance:
+  - check: deterministic generation
+    verified_by: command
+    ref: python3 scripts/ci/roadmap-generate.py --check-clean-diff
+  decision_status: approved
+  delivery_status: done
+  evidence_refs:
+  - kind: command
+    ref: python3 scripts/ci/roadmap-generate.py --check-clean-diff
+    status: verified
+  - kind: command
+    ref: python3 scripts/ci/roadmap-generate.py --self-test
+    status: verified
+    note: 13/13, включая one-way, детерминизм и запрет домысливания зрелости
+  - kind: artifact
+    ref: docs/architecture/rm-gov-003-roadmap-generator-design-gate.md
+    status: verified
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-GOV-004
+  kind: implementation
+  stage: G
+  title: Структурный roadmap guard
+  dependencies:
+  - RM-GOV-003
+  acceptance:
+  - check: tamper matrix красная для drift/schema/dependencies/metrics/SSOT и зелёная на baseline
+    verified_by: ci_job
+    ref: roadmap-governance-guard
+  decision_status: approved
+  delivery_status: verification
+  evidence_refs:
+  - kind: command
+    ref: python3 scripts/ci/roadmap-governance-guard.py
+    status: verified
+    note: PASS — модули schema/drift/metrics/ssot чисты
+  - kind: command
+    ref: python3 scripts/ci/roadmap-governance-guard.py --self-test
+    status: verified
+    note: 15/15 — красно по schema, dependencies, drift, metrics, SSOT; зелено на baseline
+  - kind: artifact
+    ref: docs/architecture/rm-gov-004-roadmap-governance-guard-design-gate.md
+    status: verified
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); статус verification по решению владельца 2026-08-26: приёмка заявлена verified_by ci_job, а job roadmap-governance-guard ни разу не запускался — ничего не закоммичено. Перевод в done только после commit/push и успешного прогона GitHub Actions; локальные проверки сохранены как evidence.'
+- id: RM-GOV-006
+  kind: governance
+  stage: G
+  title: Единое правило факта и требования
+  dependencies:
+  - RM-GOV-001
+  acceptance:
+  - check: approved правило §1.1 записано без конфликта в индекс/ADR-процесс
+    verified_by: artifact
+    ref: docs/architecture/adr/ADR-020-fact-vs-requirement.md
+  decision_status: approved
+  delivery_status: done
+  evidence_refs:
+  - kind: adr
+    ref: docs/architecture/adr/ADR-020-fact-vs-requirement.md
+    status: verified
+  - kind: command
+    ref: python3 scripts/ci/roadmap-governance-guard.py --module doc
+    status: verified
+    note: targeted doc guard зелёный
+  - kind: command
+    ref: python3 scripts/ci/roadmap-governance-guard.py --self-test
+    status: verified
+    note: 20/20, пять кейсов измерения doc
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); правило записано в ADR-020 и проверяется модулем doc гейта. Внесение ADR-020 в индекс Sources of Truth НЕ выполнено намеренно: канон до Gate G не правится, индексирование переходит в RM-GOV-005 под owner gate. Модуль doc нашёл три ПРЕДСУЩЕСТВУЮЩИХ конфликта самого индекса (диапазон ADR-015 против ADR-019; ADR-018/019 вне Active-таблицы; 24 файла с баннером SUPERSEDED вне таблицы) — объявлены и печатаются на каждом прогоне.'
+- id: RM-GOV-005
+  kind: governance
+  stage: G
+  title: Canonical cutover
+  dependencies:
+  - RM-GOV-003
+  - RM-GOV-004
+  - RM-GOV-006
+  acceptance:
+  - check: один sequencing SSOT в `AGENTS.md`
+    verified_by: owner
+  decision_status: approved
+  delivery_status: verification
+  evidence_refs:
+  - kind: command
+    ref: python3 scripts/ci/roadmap-governance-guard.py
+    status: verified
+    note: шесть модулей чисты, включая новый registry
+  - kind: command
+    ref: python3 scripts/ci/roadmap-governance-guard.py --self-test
+    status: verified
+    note: 21/21 по семи измерениям
+  - kind: artifact
+    ref: docs/architecture/rm-gov-005-canonical-cutover-design-gate.md
+    status: verified
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2); работа выполнена, статус verification: приёмка заявлена verified_by owner и задача несёт owner_gate canon_change — закрывается утверждением владельца на Gate G. Решения владельца 2026-08-26 по трём развилкам: проза roadmap.md вынесена в четыре документа; legacy-мутаторы перенесены в scripts/legacy с баннером QUARANTINED; job roadmap-consistency-audit удалён, его живые направления перенесены в модуль registry гейта.'
+  owner_gate:
+    required: true
+    reason: canon_change
+- id: RM-ENV-001
+  kind: governance
+  stage: E0
+  title: Инвентарь `.77/.81/DEV/PROD` и очистка активных ссылок
+  dependencies:
+  - Gate-G
+  acceptance:
+  - check: versioned environment inventory
+    verified_by: artifact
+    ref: docs/product/environment-inventory.yaml
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  owner_gate:
+    required: true
+    reason: scope_decision
+- id: RM-STAB-001
+  kind: implementation
+  stage: S
+  title: Единый контракт `BEHAVIORAL_APP_DB_URL`
+  dependencies:
+  - RM-ENV-001
+  acceptance:
+  - check: обе DSN-формы проходят один targeted behavioral command через один helper
+    verified_by: command
+    ref: RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral/test_commerce_rls.py -q
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-STAB-002
+  kind: implementation
+  stage: S
+  title: Strict RLS context по умолчанию
+  dependencies:
+  - RM-STAB-001
+  acceptance:
+  - check: admin elevation только setup
+    verified_by: behavioral
+    ref: tests/behavioral/conftest.py::strict get_db default
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-STAB-003
+  kind: design
+  stage: S
+  title: Зафиксировать approved personas/retailer-scope
+  dependencies:
+  - RM-STAB-002
+  acceptance:
+  - check: 'mini-design/ADR: persona→permissions→scope'
+    verified_by: owner
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  owner_gate:
+    required: true
+    reason: scope_decision
+- id: RM-STAB-006
+  kind: governance
+  stage: S
+  title: 45/45 нормативных UI journeys
+  dependencies:
+  - RM-STAB-003
+  acceptance:
+  - check: 'validator: actor, permission, entry, `Happy-path: N`, selectors, negative expectation'
+    verified_by: command
+    ref: python3 scripts/ci/check-journey-spec.py --strict
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-STAB-004
+  kind: implementation
+  stage: S
+  title: Реализовать approved RBAC/RLS scope
+  dependencies:
+  - RM-STAB-003
+  - RM-STAB-006
+  acceptance:
+  - check: API/portal/migration согласованы
+    verified_by: behavioral
+    ref: tests/behavioral/test_retailer_scope_rbac.py
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  owner_gate:
+    required: true
+    reason: migration_application
+- id: RM-STAB-007
+  kind: implementation
+  stage: S
+  title: UI proof под intended roles
+  dependencies:
+  - RM-STAB-004
+  - RM-STAB-006
+  acceptance:
+  - check: critical journeys имеют positive intended-role и negative missing-permission proof
+    verified_by: ui_smoke
+    ref: tests/ui-smoke/ci-subset.txt (intended-role variants)
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-STAB-005
+  kind: implementation
+  stage: S
+  title: Исправить C1 UI-smoke и расширить общий guard
+  dependencies:
+  - RM-ENV-001
+  acceptance:
+  - check: нет API/deep goto/sleep/broad retry
+    verified_by: command
+    ref: UI_SMOKE_RUN=1 python3 -m pytest tests/ui-contract -q
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-STAB-009
+  kind: implementation
+  stage: S
+  title: Воспроизводимые CI dependencies
+  dependencies:
+  - RM-ENV-001
+  acceptance:
+  - check: CI ставит project lock/requirements
+    verified_by: ci_job
+    ref: python-tests (installs from requirements.txt)
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-STAB-010
+  kind: governance
+  stage: S
+  title: Зафиксировать signing gate
+  dependencies:
+  - RM-ENV-001
+  acceptance:
+  - check: ADR/roadmap отражают §1.2
+    verified_by: artifact
+    ref: docs/architecture/adr/ADR-021-manifest-signing-gate.md
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-STAB-008
+  kind: implementation
+  stage: S
+  title: Единая blocking-политика UI-smoke
+  dependencies:
+  - RM-STAB-005
+  - RM-STAB-007
+  acceptance:
+  - check: ordinary pytest отделён
+    verified_by: ci_job
+    ref: release-gate
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  owner_gate:
+    required: true
+    reason: canon_change
+- id: RM-STAB-011
+  kind: governance
+  stage: S
+  title: W0 rebaseline
+  dependencies:
+  - RM-STAB-001
+  - RM-STAB-002
+  - RM-STAB-003
+  - RM-STAB-004
+  - RM-STAB-005
+  - RM-STAB-006
+  - RM-STAB-007
+  - RM-STAB-008
+  - RM-STAB-009
+  - RM-STAB-010
+  acceptance:
+  - check: named targeted → behavioral → UI subset → guards
+    verified_by: command
+    ref: python3 scripts/ci/check-roadmap-schema.py --file docs/product/roadmap.yaml
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-UX-001
+  kind: implementation
+  stage: U
+  title: Accessibility оставшихся форм + route matrix
+  dependencies:
+  - Gate-S
+  acceptance:
+  - check: labels/ARIA/axe/targeted vitest
+    verified_by: artifact
+    ref: docs/product/ux-route-matrix.yaml
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  alias: A3
+- id: RM-UX-002
+  kind: implementation
+  stage: U
+  title: Поиск/сортировка/усечение таблиц
+  dependencies:
+  - RM-UX-001
+  acceptance:
+  - check: server semantics для pagination
+    verified_by: ui_smoke
+    ref: tests/ui-smoke/test_uismoke__campaign__create.py
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  alias: A2
+- id: RM-UX-003
+  kind: implementation
+  stage: U
+  title: Responsive-проверка
+  dependencies:
+  - RM-UX-002
+  acceptance:
+  - check: все routes из `ux-route-matrix.yaml` проверены на 390px без overflow/crop
+    verified_by: artifact
+    ref: docs/product/ux-responsive-report.yaml
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  alias: A4
+- id: RM-UX-004
+  kind: implementation
+  stage: U
+  title: Согласованность состояний и терминов
+  dependencies:
+  - RM-UX-003
+  acceptance:
+  - check: route matrix покрывает empty/loading/error/403/success и locale-key check
+    verified_by: artifact
+    ref: docs/product/ux-route-matrix.yaml (states coverage)
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  alias: A6
+- id: RM-UX-005
+  kind: implementation
+  stage: U
+  title: Adoption доказанных primitives малыми slices
+  dependencies:
+  - RM-UX-004
+  acceptance:
+  - check: каждый slice имеет отдельный diff/test/review
+    verified_by: ci_job
+    ref: frontend
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  alias: A1b
+- id: RM-UX-006
+  kind: implementation
+  stage: U
+  title: Advertiser-web UX audit/fixes
+  dependencies:
+  - RM-UX-005
+  acceptance:
+  - check: versioned `docs/product/advertiser-route-matrix.yaml` с точным списком 15 routes
+    verified_by: artifact
+    ref: docs/product/advertiser-route-matrix.yaml
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  alias: A5
+- id: RM-UX-007
+  kind: human
+  stage: U
+  title: Human operator walkthrough
+  dependencies:
+  - RM-UX-001
+  - RM-UX-002
+  - RM-UX-003
+  - RM-UX-004
+  - RM-UX-005
+  - RM-UX-006
+  acceptance:
+  - check: человек проходит exact stand bundle
+    verified_by: human
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  alias: A7
+- id: RM-BIZ-001
+  kind: governance
+  stage: BT
+  title: Записать managed-first scope
+  dependencies:
+  - Gate-U
+  acceptance:
+  - check: roadmap явно исключает `self.campaign_create` из ближайшего control-plane pilot
+    verified_by: artifact
+    ref: docs/product/roadmap.yaml (pilot scope)
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-BIZ-002
+  kind: implementation
+  stage: BT
+  title: '`self.campaign_create` в будущей ветке'
+  dependencies:
+  - RM-BIZ-001
+  acceptance:
+  - check: mini-design, journey, backend/UI/RLS, intended-role smoke, walkthrough
+    verified_by: ui_smoke
+    ref: tests/ui-smoke/test_uismoke__self__campaign_create.py
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  owner_gate:
+    required: true
+    reason: scope_decision
+- id: RM-TECH-201
+  kind: design
+  stage: BT
+  title: Таксономия причин недопоказа
+  dependencies:
+  - Gate-U
+  acceptance:
+  - check: 8 категорий ТЗ, source/report/history contract и owner-approved artifact
+    verified_by: artifact
+    ref: docs/product/underdelivery-reason-taxonomy.yaml
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-TECH-202
+  kind: implementation
+  stage: BT
+  title: Вытеснение и объяснимые приоритеты
+  dependencies:
+  - RM-TECH-201
+  acceptance:
+  - check: versioned rules
+    verified_by: behavioral
+    ref: tests/behavioral/test_campaign_preemption.py
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-TECH-203
+  kind: implementation
+  stage: BT
+  title: Overbooking policy
+  dependencies:
+  - RM-TECH-202
+  acceptance:
+  - check: default deny
+    verified_by: behavioral
+    ref: tests/behavioral/test_inventory_overbooking_policy.py
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-TECH-204
+  kind: implementation
+  stage: BT
+  title: Creative QA без неутверждённого HTML5
+  dependencies:
+  - Gate-U
+  acceptance:
+  - check: metadata/antivirus/executable deny и immutable QA result
+    verified_by: behavioral
+    ref: tests/behavioral/test_creative_qa.py
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-TECH-205
+  kind: governance
+  stage: BT
+  title: SLO objectives и измерение
+  dependencies:
+  - Gate-U
+  acceptance:
+  - check: каждое число ТЗ имеет formula/window/owner/metric либо `not measurable`
+    verified_by: artifact
+    ref: docs/product/slo-objectives.yaml
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-TECH-206
+  kind: implementation
+  stage: BT
+  title: License renewal/grant boundary
+  dependencies:
+  - Gate-U
+  acceptance:
+  - check: атомарная семантика §1.6
+    verified_by: behavioral
+    ref: tests/behavioral/test_license_renewal_boundary.py
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-TECH-207A
+  kind: design
+  stage: BT
+  title: KSO environment + player/playlist design
+  dependencies:
+  - Gate-U
+  acceptance:
+  - check: versioned environment audit, import/contract mini-design и test plan
+    verified_by: artifact
+    ref: docs/architecture/kso-environment-audit.md
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  owner_gate:
+    required: true
+    reason: scope_decision
+- id: RM-TECH-207B
+  kind: implementation
+  stage: BT
+  title: KSO player/playlist/PoP chain
+  dependencies:
+  - RM-TECH-207A
+  acceptance:
+  - check: contract tests и playback→manifest→PoP behavioral proof
+    verified_by: behavioral
+    ref: tests/behavioral/test_kso_playback_chain.py
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  owner_gate:
+    required: true
+    reason: device_contract
+- id: RM-BIZ-003
+  kind: implementation
+  stage: BT
+  title: '`self.report_view` plan/fact'
+  dependencies:
+  - RM-TECH-201
+  - RM-TECH-207B
+  acceptance:
+  - check: реальные PoP/причины/RLS, journey/smoke/walkthrough
+    verified_by: ui_smoke
+    ref: tests/ui-smoke/test_uismoke__self__report_view.py
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-TECH-208
+  kind: implementation
+  stage: BT
+  title: Signed licensing Layer 2
+  dependencies:
+  - RM-TECH-206
+  - RM-TECH-207B
+  - RM-STAB-010
+  acceptance:
+  - check: Ed25519 offline verify, kid/rotation/revocation, UI, tamper/rollback
+    verified_by: behavioral
+    ref: tests/behavioral/test_signed_license_layer2.py
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  owner_gate:
+    required: true
+    reason: protected_boundary
+- id: RM-TECH-209
+  kind: governance
+  stage: BT
+  title: ClickHouse capacity trigger
+  dependencies:
+  - RM-TECH-207B
+  acceptance:
+  - check: измеряемый PoP rate/retention threshold и owner migration gate
+    verified_by: artifact
+    ref: docs/product/clickhouse-capacity-trigger.yaml
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-PILOT-001
+  kind: design
+  stage: POPS
+  title: Managed control-plane pilot scope
+  dependencies:
+  - Gate-S
+  - Gate-U
+  - RM-ENV-001
+  acceptance:
+  - check: exact bundle/host/rollback/TLS
+    verified_by: artifact
+    ref: docs/runbook/pilot-scope.md
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-PILOT-002
+  kind: external-plan
+  stage: POPS
+  title: Deployment plan/preflight
+  dependencies:
+  - RM-PILOT-001
+  acceptance:
+  - check: immutable lock, backup/restore, migration rehearsal, secrets/TLS/monitoring
+    verified_by: artifact
+    ref: infra/deploy/images.lock.json + dry-run evidence
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-PILOT-003
+  kind: external
+  stage: POPS
+  title: Controlled pilot deploy
+  dependencies:
+  - RM-PILOT-002
+  acceptance:
+  - check: SHA/lock/schema/health, stand-safe journeys, rollback readiness
+    verified_by: owner
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  owner_gate:
+    required: true
+    reason: deployment
+- id: RM-OPS-001
+  kind: external
+  stage: POPS
+  title: Production readiness
+  dependencies:
+  - RM-PILOT-003
+  acceptance:
+  - check: не запускается автоматически после pilot
+    verified_by: owner
+  decision_status: approved
+  delivery_status: planned
+  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  owner_gate:
+    required: true
+    reason: deployment

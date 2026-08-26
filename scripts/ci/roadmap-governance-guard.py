@@ -1,0 +1,763 @@
+#!/usr/bin/env python3
+"""RM-GOV-004 — structural roadmap governance guard.
+
+This is the SINGLE CI orchestration entrypoint for roadmap governance (rule B-3).
+Other tasks register independently callable MODULES here; they do not create
+competing mandatory CI jobs and do not re-implement a rule another module owns.
+
+Modules
+  schema        RM-GOV-001 — delegates to scripts/ci/check-roadmap-schema.py.
+                Owns the whole in-file rule set, dependency integrity included
+                (DANGLING-DEP, CYCLE, STAGE-ORDER). Not re-implemented here.
+  drift         RM-GOV-003 — delegates to scripts/ci/roadmap-generate.py.
+                Proves the projections equal what the inputs generate, and that
+                the generator wrote nothing into its own inputs or into canon.
+  metrics       RM-GOV-004 — INDEPENDENT recomputation of the headline counters
+                straight from the inputs, plus a cross-check of every number a
+                canonical document states as programmatically counted.
+                Drift proves "output matches generator"; this proves "generator
+                counted the right thing" and "canon quotes the same number".
+  doc           RM-GOV-006 — the fact-vs-requirement rule (ADR-020, owner decision
+                OD-001) is present and stated, the declared truth order is the same
+                in AGENTS.md and CLAUDE.md, and the ADR process does not contradict
+                its own index.
+  registry      RM-GOV-005 — delegates to scripts/roadmap-consistency-check.py.
+                Carries over the three directions that did NOT become tautological
+                when the workbook started being generated: registry field/status
+                validation with a real smoke behind every reachable UI feature,
+                orphan smokes, and CI-subset membership. The removed CI job
+                roadmap-consistency-audit is replaced here, not dropped.
+  ssot          RM-GOV-004 — exactly one sequencing SSOT; generated artifacts
+                carry their read-only marker; no undeclared script writes to a
+                roadmap file.
+
+Out of scope by the approved acceptance: smoke AST analysis.
+
+Usage
+  python3 scripts/ci/roadmap-governance-guard.py                 # all modules
+  python3 scripts/ci/roadmap-governance-guard.py --module ssot   # one module
+  python3 scripts/ci/roadmap-governance-guard.py --self-test     # tamper matrix
+"""
+
+from __future__ import annotations
+
+import argparse
+import importlib.util
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+import yaml
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+ROADMAP_YAML = Path("docs/product/roadmap.yaml")
+REGISTRY_YAML = Path("docs/product/feature-registry.yaml")
+CI_SUBSET = Path("tests/ui-smoke/ci-subset.txt")
+GENERATED_DIR = Path("docs/product/generated")
+METRICS_JSON = GENERATED_DIR / "roadmap-metrics.generated.json"
+
+SMOKE_PREFIX = "test_uismoke__"
+READONLY_MARKER = "НЕ РЕДАКТИРОВАТЬ РУКАМИ"
+
+# Files a script may write to without being a roadmap mutator.
+ROADMAP_WRITE_TARGETS = (
+    "roadmap.yaml", "roadmap.md", "roadmap-s020", "roadmap.schema.json",
+    "roadmap-migration-manifest.yaml", "roadmap.generated", "roadmap-metrics.generated",
+)
+
+# Scripts allowed to open a roadmap file for writing, each with its owning task.
+# Anything writing to a roadmap path and absent here is a finding. Removing a
+# legacy mutator is RM-GOV-005 (canonical cutover); this guard only makes the
+# set closed, so no NEW mutator can appear unnoticed.
+DECLARED_MUTATORS = {
+    "scripts/ci/roadmap-generate.py":
+        "RM-GOV-003 — пишет только в docs/product/generated/, канон сверяется по sha256",
+    "scripts/dev/build-initial-roadmap.py":
+        "RM-GOV-002 — одноразовая миграция, породила roadmap.yaml и манифест",
+    "scripts/legacy/generate_roadmap.py":
+        "legacy S-020 — в карантине с RM-GOV-005, баннер QUARANTINED, не запускается",
+    "scripts/legacy/update_roadmap_v26.py":
+        "legacy v2.6 — в карантине с RM-GOV-005, баннер QUARANTINED, не запускается",
+    "scripts/legacy/fix_roadmap_qa.py":
+        "legacy QA-правка по абсолютному пути чужой машины — в карантине с RM-GOV-005",
+    "scripts/ci/roadmap-governance-guard.py":
+        "RM-GOV-004 — этот guard; пишет только во временные песочницы self-test",
+    "scripts/legacy/tamper-test-roadmap-guard.py":
+        "тест ROADMAP-GUARD-002 — в карантине с RM-GOV-005: проверял направления "
+        "registry ↔ рукописная книга, которые стали тавтологией",
+}
+
+# Numbers a canonical document states as programmatically counted, mapped to the
+# metric that must equal them. Every entry is checked on every run.
+CANON_CLAIMS = [
+    # docs/product/roadmap.md was archived at the RM-GOV-005 cutover; its summary
+    # is now generated. The registry triple in PROJECT_STATE stays hand-written
+    # and therefore still needs checking.
+]
+
+# Divergences the owner already knows about, each with the task that closes it.
+# Baseline stays green; a NEW divergence is a finding. Nothing is hidden — every
+# entry is printed on every run.
+DECLARED_CANON_DIVERGENCES = {
+    # Emptied by RM-GOV-005. The one entry that lived here — roadmap.md stating
+    # "backend/service без UI-journey: 10" against 13 in the registry — turned out
+    # not to be a wrong number: 10 counts REACHABLE service features, 13 counts all
+    # service features (3 are blocked). The document never said which, and its own
+    # section header used the other definition. The ambiguous line is gone with the
+    # document; the generated projection labels both counts explicitly.
+}
+
+# `58 / 53 reachable / 5 blocked` — the registry triple quoted across PROJECT_STATE.
+TRIPLE_RE = re.compile(r"(\d+)\s*/\s*(\d+)\s+reachable\s*/\s*(\d+)\s+blocked")
+TRIPLE_FILES = ("PROJECT_STATE.md",)
+
+
+# ---------------------------------------------------------------------------
+# Module loading — the guard calls the owning implementation, never a copy.
+# ---------------------------------------------------------------------------
+
+def _load(root: Path, rel: str, name: str):
+    path = root / rel
+    if not path.exists():
+        return None
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+# ---------------------------------------------------------------------------
+# Module: schema  (owner RM-GOV-001)
+# ---------------------------------------------------------------------------
+
+def module_schema(root: Path) -> list:
+    mod = _load(root, "scripts/ci/check-roadmap-schema.py", "rmp_schema")
+    if mod is None:
+        return ["SCHEMA-MODULE-MISSING: scripts/ci/check-roadmap-schema.py отсутствует"]
+    return [f"schema/{f}" for f in mod.validate(root / ROADMAP_YAML)]
+
+
+# ---------------------------------------------------------------------------
+# Module: drift  (owner RM-GOV-003)
+# ---------------------------------------------------------------------------
+
+def module_drift(root: Path) -> list:
+    mod = _load(root, "scripts/ci/roadmap-generate.py", "rmp_generate")
+    if mod is None:
+        return ["DRIFT-MODULE-MISSING: scripts/ci/roadmap-generate.py отсутствует"]
+    return [f"drift/{f}" for f in mod.check_clean_diff(root)]
+
+
+# ---------------------------------------------------------------------------
+# Module: metrics  (owner RM-GOV-004)
+# ---------------------------------------------------------------------------
+
+def _independent_counts(root: Path) -> dict:
+    """Recount from the inputs without touching generator code."""
+    roadmap = yaml.safe_load((root / ROADMAP_YAML).read_text(encoding="utf-8"))
+    registry = yaml.safe_load((root / REGISTRY_YAML).read_text(encoding="utf-8"))
+    features = registry.get("features", []) or []
+
+    subset = set()
+    subset_path = root / CI_SUBSET
+    if subset_path.is_file():
+        for line in subset_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                subset.add(line if line.startswith(SMOKE_PREFIX) else SMOKE_PREFIX + line)
+
+    tasks = roadmap.get("tasks", []) or []
+    stages = {}
+    delivery = {}
+    for t in tasks:
+        stages[t["stage"]] = stages.get(t["stage"], 0) + 1
+        delivery[t["delivery_status"]] = delivery.get(t["delivery_status"], 0) + 1
+
+    ui = [f for f in features if f.get("frontend") != "service"]
+    return {
+        ("sequencing", "tasks_total"): len(tasks),
+        ("sequencing", "owner_gated"): sum(
+            1 for t in tasks if (t.get("owner_gate") or {}).get("required")),
+        ("sequencing", "owner_decisions"): len(roadmap.get("owner_decisions", []) or []),
+        ("features", "total"): len(features),
+        ("features", "reachable"): sum(1 for f in features if f.get("status") == "reachable"),
+        ("features", "blocked"): sum(1 for f in features if f.get("status") == "blocked"),
+        ("features", "ui_features"): len(ui),
+        ("features", "ci_enforced"): sum(1 for f in ui if f.get("smoke") in subset),
+        ("features", "service"): sum(1 for f in features if f.get("frontend") == "service"),
+        ("_by_stage",): stages,
+        ("_by_delivery",): delivery,
+    }
+
+
+def _metric_value(metrics: dict, path: tuple):
+    if path == ("features", "service"):
+        return metrics.get("features", {}).get("by_frontend", {}).get("service")
+    node = metrics
+    for key in path:
+        if not isinstance(node, dict) or key not in node:
+            return None
+        node = node[key]
+    return node
+
+
+def module_metrics(root: Path) -> list:
+    import json
+    findings = []
+    mpath = root / METRICS_JSON
+    if not mpath.exists():
+        return [f"metrics/MISSING: {METRICS_JSON} отсутствует"]
+    metrics = json.loads(mpath.read_text(encoding="utf-8"))
+    counts = _independent_counts(root)
+
+    # (a) independent recomputation vs published metrics
+    for path, expected in counts.items():
+        if path[0].startswith("_"):
+            continue
+        actual = _metric_value(metrics, path)
+        if actual != expected:
+            findings.append(
+                f"metrics/RECOUNT: {'.'.join(path)} = {actual} в metrics.json, "
+                f"независимый пересчёт из входов даёт {expected}")
+    for label, key, expected in (
+        ("by_stage", "by_stage", counts[("_by_stage",)]),
+        ("by_delivery_status", "by_delivery_status", counts[("_by_delivery",)]),
+    ):
+        actual = metrics.get("sequencing", {}).get(key)
+        if actual != expected:
+            findings.append(
+                f"metrics/RECOUNT: sequencing.{label} = {actual} в metrics.json, "
+                f"независимый пересчёт даёт {expected}")
+
+    # (b) canonical documents must quote the same numbers
+    for rel, pattern, path in CANON_CLAIMS:
+        doc = root / rel
+        if not doc.exists():
+            continue
+        m = re.search(pattern, doc.read_text(encoding="utf-8"))
+        if not m:
+            findings.append(f"metrics/CLAIM-GONE: `{rel}` больше не содержит утверждение "
+                            f"{'.'.join(path)} — проверка перестала что-либо доказывать")
+            continue
+        claimed = int(m.group(1))
+        expected = counts.get(path)
+        if claimed == expected:
+            continue
+        declared = DECLARED_CANON_DIVERGENCES.get((rel, path))
+        if declared:
+            print(f"  [объявленное расхождение] {rel} · {'.'.join(path)}: "
+                  f"канон {claimed}, факт {expected} — {declared}")
+            continue
+        findings.append(
+            f"metrics/CANON-CLAIM: `{rel}` заявляет {'.'.join(path)} = {claimed}, "
+            f"пересчёт из входов даёт {expected}")
+
+    # (c) the registry triple quoted in PROJECT_STATE
+    total = counts[("features", "total")]
+    reach = counts[("features", "reachable")]
+    block = counts[("features", "blocked")]
+    for rel in TRIPLE_FILES:
+        doc = root / rel
+        if not doc.exists():
+            continue
+        text = doc.read_text(encoding="utf-8")
+        hits = list(TRIPLE_RE.finditer(text))
+        if not hits:
+            findings.append(f"metrics/CLAIM-GONE: `{rel}` не содержит тройку registry "
+                            f"`N / M reachable / K blocked`")
+        for m in hits:
+            got = tuple(int(x) for x in m.groups())
+            if got != (total, reach, block):
+                line = text[:m.start()].count("\n") + 1
+                findings.append(
+                    f"metrics/CANON-CLAIM: `{rel}:{line}` заявляет "
+                    f"{got[0]} / {got[1]} reachable / {got[2]} blocked, "
+                    f"registry даёт {total} / {reach} / {block}")
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# Module: ssot  (owner RM-GOV-004)
+# ---------------------------------------------------------------------------
+
+def module_ssot(root: Path) -> list:
+    findings = []
+
+    # (a) exactly one sequencing SSOT
+    candidates = []
+    for path in sorted((root / "docs" / "product").rglob("*.yaml")):
+        if path.name == REGISTRY_YAML.name:
+            continue
+        try:
+            doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+        except yaml.YAMLError:
+            continue
+        if isinstance(doc, dict) and "tasks" in doc and "stages" in doc:
+            candidates.append(path.relative_to(root))
+    if not candidates:
+        findings.append("ssot/NO-SSOT: не найден файл последовательности работ")
+    elif len(candidates) > 1:
+        findings.append("ssot/MULTIPLE-SSOT: конкурирующие источники последовательности: "
+                        + ", ".join(str(c) for c in candidates))
+    elif candidates[0] != ROADMAP_YAML:
+        findings.append(f"ssot/WRONG-SSOT: последовательность живёт в `{candidates[0]}`, "
+                        f"ожидается `{ROADMAP_YAML}`")
+
+    # (b) generated artifacts declare themselves read-only
+    gen = root / GENERATED_DIR
+    if not gen.is_dir():
+        findings.append(f"ssot/NO-GENERATED: каталог `{GENERATED_DIR}` отсутствует")
+    else:
+        for path in sorted(gen.iterdir()):
+            if path.name == "README.md":
+                continue
+            rel = path.relative_to(root)
+            if path.suffix in (".md",):
+                if READONLY_MARKER not in path.read_text(encoding="utf-8"):
+                    findings.append(f"ssot/UNMARKED: `{rel}` не несёт метки «{READONLY_MARKER}»")
+            elif path.suffix not in (".xlsx", ".json"):
+                findings.append(f"ssot/UNEXPECTED: `{rel}` не объявлен генератором")
+        readme = gen / "README.md"
+        if not readme.exists():
+            findings.append(f"ssot/NO-README: `{GENERATED_DIR}/README.md` отсутствует — "
+                            f"каталог не объявляет себя сгенерированным")
+
+    # (c) the set of roadmap mutators is closed
+    for path in sorted((root / "scripts").rglob("*.py")):
+        rel = str(path.relative_to(root))
+        if "__pycache__" in rel:
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        writes = any(t in text for t in ROADMAP_WRITE_TARGETS) and re.search(
+            r"\.write_text\(|\.write_bytes\(|wb\.save\(|open\([^)]*['\"][wa]", text)
+        if writes and rel not in DECLARED_MUTATORS:
+            findings.append(f"ssot/UNDECLARED-MUTATOR: `{rel}` пишет в roadmap-файл, "
+                            f"но не объявлен в DECLARED_MUTATORS")
+    for rel in DECLARED_MUTATORS:
+        if not (root / rel).exists():
+            continue
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# Module: doc  (owner RM-GOV-006)
+# ---------------------------------------------------------------------------
+
+ADR_020 = Path("docs/architecture/adr/ADR-020-fact-vs-requirement.md")
+ARCH_README = Path("docs/architecture/README.md")
+
+# The rule must be stated, not merely referenced. Each fragment is load-bearing.
+ADR_020_REQUIRED = (
+    "Код и тесты описывают фактическое поведение",
+    "ТЗ и ADR описывают требуемое",
+    "является дефектом до появления явного ADR",
+)
+ADR_020_SECTIONS = ("## Context", "## Decision", "## Consequences")
+
+# The precedence chain both contracts declare, normalised to comparable tokens.
+TRUTH_ORDER = (
+    "owner instruction", "git", "project_state", "feature-registry",
+    "roadmap", "auto-memory",
+)
+TRUTH_ORDER_SOURCES = ("AGENTS.md", "CLAUDE.md")
+
+# The banner convention documented in AGENTS.md: a superseded document opens with
+# an HTML comment whose first line is `SUPERSEDED: ...`. Matching the bare word
+# anywhere in the head is wrong — a document that merely TALKS about the banner
+# (this repo's own cutover design gate does) would be misread as superseded.
+SUPERSEDED_BANNER = re.compile(r"^\s*SUPERSEDED\b", re.M)
+
+
+def _has_superseded_banner(text: str) -> bool:
+    head = text.lstrip()
+    if not head.startswith("<!--"):
+        return False
+    end = head.find("-->")
+    return bool(SUPERSEDED_BANNER.search(head[:end] if end >= 0 else head[:4000]))
+
+
+def _truth_chain(text: str):
+    """Extract the declared precedence chain as comparable tokens."""
+    chunk = None
+    for marker in ("Precedence follows", "## Truth Priority"):
+        if marker in text:
+            chunk = text.split(marker, 1)[1][:700]
+            break
+    if chunk is None:
+        return None
+    low = chunk.lower()
+    order = []
+    for token, needles in (
+        ("owner instruction", ("owner instruction",)),
+        ("git", ("git / code", "git/code", "git / code / tests")),
+        ("project_state", ("project_state.md",)),
+        ("feature-registry", ("feature-registry.yaml",)),
+        ("roadmap", ("roadmap",)),
+        ("auto-memory", ("auto-memory",)),
+    ):
+        pos = min((low.find(n) for n in needles if low.find(n) >= 0), default=-1)
+        if pos >= 0:
+            order.append((pos, token))
+    return tuple(t for _, t in sorted(order))
+
+
+def module_doc(root: Path) -> list:
+    findings = []
+
+    # (a) the rule exists and is stated
+    adr = root / ADR_020
+    if not adr.exists():
+        findings.append(f"doc/RULE-MISSING: `{ADR_020}` отсутствует — правило факта и "
+                        f"требования нигде не записано")
+    else:
+        text = adr.read_text(encoding="utf-8")
+        for section in ADR_020_SECTIONS:
+            if section not in text:
+                findings.append(f"doc/ADR-MALFORMED: `{ADR_020}` без раздела `{section}`")
+        for fragment in ADR_020_REQUIRED:
+            if fragment not in text:
+                findings.append(f"doc/RULE-NOT-STATED: `{ADR_020}` не формулирует "
+                                f"«{fragment}» — ссылка вместо правила")
+        if "**Status:** ACCEPTED" not in text:
+            findings.append(f"doc/ADR-NOT-ACCEPTED: `{ADR_020}` не помечен ACCEPTED")
+
+    # (b) both contracts declare the same truth order
+    chains = {}
+    for rel in TRUTH_ORDER_SOURCES:
+        path = root / rel
+        if not path.exists():
+            findings.append(f"doc/CONTRACT-MISSING: `{rel}` отсутствует")
+            continue
+        chains[rel] = _truth_chain(path.read_text(encoding="utf-8"))
+        if chains[rel] is None:
+            findings.append(f"doc/ORDER-UNREADABLE: в `{rel}` не найден заявленный "
+                            f"порядок истины — проверка ослепла")
+    present = {k: v for k, v in chains.items() if v}
+    if len(present) == len(TRUTH_ORDER_SOURCES) and len(set(present.values())) > 1:
+        findings.append("doc/ORDER-CONFLICT: заявленный порядок истины различается: "
+                        + "; ".join(f"{k} = {' → '.join(v)}" for k, v in present.items()))
+    for rel, chain in present.items():
+        if chain != TRUTH_ORDER:
+            findings.append(f"doc/ORDER-CHANGED: `{rel}` заявляет "
+                            f"{' → '.join(chain)}, ADR-020 исходит из "
+                            f"{' → '.join(TRUTH_ORDER)}")
+
+    # (c) the ADR process must not contradict its own index
+    readme = root / ARCH_README
+    agents = root / "AGENTS.md"
+    if readme.exists() and agents.exists():
+        rtext, atext = readme.read_text(encoding="utf-8"), agents.read_text(encoding="utf-8")
+        rr = re.search(r"ADR-001\.\.ADR-(\d+)", rtext)
+        ar = re.search(r"ADR-001\.\.ADR-(\d+)", atext)
+        if not rr or not ar:
+            findings.append("doc/RANGE-UNREADABLE: диапазон `ADR-001..ADR-NNN` не найден "
+                            f"в {'README' if not rr else 'AGENTS.md'} — проверка ослепла")
+        elif rr.group(1) != ar.group(1):
+            findings.append(
+                f"doc/ADR-RANGE: `{ARCH_README}` объявляет ADR-001..ADR-{rr.group(1)}, "
+                f"`AGENTS.md` — ADR-001..ADR-{ar.group(1)}: два диапазона одного перечня")
+
+        active = rtext.split("## Active Documents")[1].split("## Superseded")[0] \
+            if "## Active Documents" in rtext else ""
+        indexed = set(re.findall(r"^\| `(adr/ADR-\d+)`", active, re.M))
+        on_disk = sorted(p.name for p in (root / "docs/architecture/adr").glob("ADR-*.md"))
+        missing = [n for n in on_disk
+                   if f"adr/{'-'.join(n.split('-')[:2])}" not in indexed]
+        if missing:
+            findings.append(
+                f"doc/ADR-UNINDEXED: {len(missing)} ADR на диске вне Active-таблицы "
+                f"`{ARCH_README}` — по правилу индекса они формально не канон: "
+                + ", ".join(missing))
+
+        sup = rtext.split("## Superseded Documents (Historical Only)")[1] \
+            if "## Superseded Documents (Historical Only)" in rtext else ""
+        listed = set(re.findall(r"^\| `([^`]+)`", sup, re.M))
+        bannered = {p.name for p in sorted((root / "docs/architecture").glob("*.md"))
+                    if _has_superseded_banner(p.read_text(encoding="utf-8", errors="replace"))}
+        unlisted = sorted(bannered - listed)
+        if unlisted:
+            findings.append(
+                f"doc/SUPERSEDED-UNLISTED: {len(unlisted)} документов несут баннер "
+                f"SUPERSEDED, но отсутствуют в Superseded-таблице (в таблице {len(listed)}): "
+                + ", ".join(unlisted))
+        phantom = sorted(n for n in listed - bannered
+                         if (root / "docs/architecture" / n).exists())
+        if phantom:
+            findings.append(
+                f"doc/SUPERSEDED-NO-BANNER: {len(phantom)} документов перечислены как "
+                f"superseded, но не несут баннера: " + ", ".join(phantom))
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# Module: registry  (owner RM-GOV-005)
+# ---------------------------------------------------------------------------
+
+def module_registry(root: Path) -> list:
+    mod = _load(root, "scripts/roadmap-consistency-check.py", "rmp_registry")
+    if mod is None:
+        return ["registry/MODULE-MISSING: scripts/roadmap-consistency-check.py отсутствует"]
+    features = mod.load_registry()
+    smoke_funcs = mod.scan_smoke_functions()
+    ci_subset = mod.load_ci_subset()
+    findings = []
+    findings += mod.validate_registry(features, smoke_funcs)
+    findings += mod.check_smoke_orphans(smoke_funcs, features)
+    findings += mod.check_ci_subset_membership(features, smoke_funcs, ci_subset)
+    return [f"registry/{f}" for f in findings]
+
+
+MODULES = {
+    "schema": ("RM-GOV-001", module_schema),
+    "drift": ("RM-GOV-003", module_drift),
+    "metrics": ("RM-GOV-004", module_metrics),
+    "doc": ("RM-GOV-006", module_doc),
+    "registry": ("RM-GOV-005", module_registry),
+    "ssot": ("RM-GOV-004", module_ssot),
+}
+
+
+def run(root: Path, only: str | None = None) -> list:
+    findings = []
+    for name, (owner, fn) in MODULES.items():
+        if only and name != only:
+            continue
+        print(f"[{name}] модуль {owner}")
+        try:
+            found = fn(root)
+        except Exception as exc:  # a module that cannot run is a red gate, not a pass
+            found = [f"{name}/MODULE-ERROR: {type(exc).__name__}: {exc}"]
+        for f in found:
+            print(f"  - {f}")
+        if not found:
+            print("  чисто")
+        findings.extend(found)
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# Self-test — tamper matrix
+# ---------------------------------------------------------------------------
+
+SANDBOX_PATHS = [
+    "docs/product/roadmap.yaml", "docs/product/roadmap.schema.json",
+    "docs/product/feature-registry.yaml",
+    "docs/product/history/roadmap-2026-08-26.md",
+    "docs/product/history/roadmap-s020-2026-07-10.xlsx",
+    "docs/product/roadmap-migration-manifest.yaml",
+    "tests/ui-smoke/ci-subset.txt", "PROJECT_STATE.md", "AGENTS.md", "CLAUDE.md",
+    "docs/architecture/README.md",
+]
+SANDBOX_TREES = ["scripts/ci", "scripts/dev", "scripts/legacy", "docs/product/generated",
+                 "tests/ui-smoke", "docs/architecture"]
+
+
+def _sandbox(root: Path, tmp: Path) -> Path:
+    work = tmp / "repo"
+    work.mkdir()
+    for rel in SANDBOX_PATHS:
+        src = root / rel
+        if src.exists():
+            dst = work / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+    for tree in SANDBOX_TREES:
+        src = root / tree
+        if src.is_dir():
+            shutil.copytree(src, work / tree, dirs_exist_ok=True,
+                            ignore=shutil.ignore_patterns("__pycache__"))
+    (work / "scripts").mkdir(exist_ok=True)
+    for name in sorted((root / "scripts").glob("*.py")):
+        shutil.copy2(name, work / "scripts" / name.name)
+    return work
+
+
+def _guard_in(work: Path) -> list:
+    """Run the guard as the CI job runs it, inside the sandbox."""
+    proc = subprocess.run(
+        [sys.executable, str(work / "scripts/ci/roadmap-governance-guard.py")],
+        capture_output=True, text=True, cwd=str(work))
+    return [l for l in proc.stdout.splitlines() if l.strip().startswith("- ")] \
+        if proc.returncode else []
+
+
+def _fingerprint(work: Path) -> dict:
+    """Content hash of everything a tamper could plausibly touch."""
+    import hashlib
+    out = {}
+    for path in sorted(work.rglob("*")):
+        if path.is_file() and "__pycache__" not in str(path):
+            out[str(path.relative_to(work))] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return out
+
+
+def _deps_of(work: Path, task_id: str):
+    doc = yaml.safe_load((work / ROADMAP_YAML).read_text(encoding="utf-8"))
+    for t in doc.get("tasks", []):
+        if t["id"] == task_id:
+            return t.get("dependencies") or []
+    return None
+
+
+def self_test(root: Path) -> int:
+    cases = []
+
+    def case(name, dimension, fn, expect_red: bool, effective=None):
+        """Run one tamper case in a sandbox.
+
+        `effective` guards against the failure mode this task exists to catch:
+        a fixture that still edits the file but no longer states a falsehood, so
+        the gate goes green and the case silently stops proving anything. If it
+        returns False the case FAILS as an inert fixture, not as a clean tree.
+        """
+        with tempfile.TemporaryDirectory() as td:
+            work = _sandbox(root, Path(td))
+            before = _fingerprint(work)
+            fn(work)
+            if _fingerprint(work) == before:
+                cases.append((dimension, name, False, "фикстура ничего не изменила"))
+                return
+            if effective is not None and not effective(work):
+                cases.append((dimension, name, False, "фикстура инертна — подмена не вступила в силу"))
+                return
+            red = bool(_guard_in(work))
+            cases.append((dimension, name, red == expect_red, ""))
+
+    def sub(work, rel, old, new, count=1):
+        p = work / rel
+        text = p.read_text(encoding="utf-8")
+        assert old in text, f"фикстура устарела: {old!r} нет в {rel}"
+        p.write_text(text.replace(old, new, count), encoding="utf-8")
+
+    with tempfile.TemporaryDirectory() as td:
+        work = _sandbox(root, Path(td))
+        cases.append(("baseline", "чистое дерево — зелено", not _guard_in(work), ""))
+
+    case("обязательное поле удалено из задачи", "schema",
+         lambda w: sub(w, ROADMAP_YAML, "  kind: governance\n", "", 1), True)
+    case("статус done без verified evidence", "schema",
+         lambda w: sub(w, ROADMAP_YAML, "  delivery_status: planned",
+                       "  delivery_status: done", 1), True)
+
+    case("зависимость указывает в никуда", "dependencies",
+         lambda w: sub(w, ROADMAP_YAML, "  - RM-GOV-002", "  - RM-GOV-999", 1), True)
+    case("цикл в графе зависимостей", "dependencies",
+         lambda w: sub(w, ROADMAP_YAML,
+                       "- id: RM-GOV-001\n  kind: design\n  stage: G\n"
+                       "  title: Schema/mini-design `roadmap.yaml`\n"
+                       "  dependencies: []\n",
+                       "- id: RM-GOV-001\n  kind: design\n  stage: G\n"
+                       "  title: Schema/mini-design `roadmap.yaml`\n"
+                       "  dependencies:\n  - RM-GOV-003\n", 1), True,
+         effective=lambda w: _deps_of(w, "RM-GOV-001") == ["RM-GOV-003"])
+
+    case("проекция расходится со входом", "drift",
+         lambda w: sub(w, ROADMAP_YAML, "title: Reconciliation/migration manifest",
+                       "title: Reconciliation/migration manifest (tampered)", 1), True)
+    case("проекция правлена руками", "drift",
+         lambda w: sub(w, GENERATED_DIR / "roadmap.generated.md",
+                       "| Всего задач | 42 |", "| Всего задач | 41 |", 1), True)
+
+    case("metrics.json правлен руками", "metrics",
+         lambda w: sub(w, METRICS_JSON, '"blocked": 5', '"blocked": 4', 1), True)
+    case("PROJECT_STATE заявляет неверную тройку registry", "metrics",
+         lambda w: sub(w, "PROJECT_STATE.md",
+                       "58 / 53 reachable / 5 blocked",
+                       "58 / 54 reachable / 4 blocked", 1), True)
+    case("утверждение исчезло из канона — проверка ослепла", "metrics",
+         lambda w: (w / "PROJECT_STATE.md").write_text(
+             (w / "PROJECT_STATE.md").read_text(encoding="utf-8")
+             .replace("58 / 53 reachable / 5 blocked", "registry без изменений"),
+             encoding="utf-8"), True)
+
+    case("ADR-020 отсутствует — правило нигде не записано", "doc",
+         lambda w: (w / ADR_020).unlink(), True)
+    case("ADR-020 ссылается на правило, но не формулирует его", "doc",
+         lambda w: sub(w, ADR_020, "Код и тесты описывают фактическое поведение",
+                       "См. решение владельца OD-001", 1), True)
+    case("ADR-020 понижен из ACCEPTED", "doc",
+         lambda w: sub(w, ADR_020, "**Status:** ACCEPTED", "**Status:** PROPOSED", 1), True)
+    case("порядок истины разошёлся между AGENTS.md и CLAUDE.md", "doc",
+         lambda w: sub(w, "CLAUDE.md", "3. `PROJECT_STATE.md`\n4. `docs/product/feature-registry.yaml`",
+                       "3. `docs/product/feature-registry.yaml`\n4. `PROJECT_STATE.md`", 1), True,
+         effective=lambda w: _truth_chain((w / "CLAUDE.md").read_text(encoding="utf-8"))
+                             != TRUTH_ORDER)
+    case("диапазоны ADR разошлись между README и AGENTS.md", "doc",
+         lambda w: sub(w, ARCH_README, "ADR-001..ADR-020", "ADR-001..ADR-015", 1), True)
+    case("документ с баннером убран из Superseded-таблицы", "doc",
+         lambda w: sub(w, ARCH_README, "| `erd-v2-5-a2.md` |", "| `erd-v2-5-a2.md.disabled` |", 1),
+         True)
+    case("документ перечислен как superseded, но баннера не несёт", "doc",
+         lambda w: sub(w, "docs/architecture/erd-v2-5-a2.md", "<!--\nSUPERSEDED:",
+                       "<!--\nHISTORICAL:", 1), True)
+    # Регрессия, найденная владельцем при проверке Gate G: документ, который лишь
+    # УПОМИНАЕТ слово SUPERSEDED, ошибочно считался вытесненным. Кейс зелёный —
+    # он охраняет отсутствие ложного срабатывания, а не наличие находки.
+    case("документ лишь упоминает слово SUPERSEDED — не находка", "doc",
+         lambda w: (w / "docs/architecture/prose-about-banners.md").write_text(
+             "# Про баннеры\n\nЗдесь описан баннер `SUPERSEDED`, но документ не вытеснен.\n",
+             encoding="utf-8"), False)
+
+    case("новый ADR вне индекса и вне объявленных исключений", "doc",
+         lambda w: (w / "docs/architecture/adr/ADR-021-experimental.md").write_text(
+             "# ADR-021\n\n**Status:** ACCEPTED\n", encoding="utf-8"), True)
+
+    case("registry заявляет reachable без существующего smoke", "registry",
+         lambda w: sub(w, REGISTRY_YAML, "smoke: test_uismoke__campaign__create",
+                       "smoke: test_uismoke__campaign__create_NONEXISTENT", 1), True)
+    case("reachable UI-функция выпала из ci-subset", "registry",
+         lambda w: sub(w, CI_SUBSET, "campaign__create\n", "", 1), True)
+
+    case("второй конкурирующий источник последовательности", "SSOT",
+         lambda w: shutil.copy2(w / ROADMAP_YAML, w / "docs/product/roadmap-v2.yaml"), True)
+    case("с проекции снята метка «не редактировать»", "SSOT",
+         lambda w: sub(w, GENERATED_DIR / "roadmap.generated.md", READONLY_MARKER, "черновик", 1),
+         True)
+    case("README сгенерированного каталога удалён", "SSOT",
+         lambda w: (w / GENERATED_DIR / "README.md").unlink(), True)
+    case("новый необъявленный мутатор roadmap", "SSOT",
+         lambda w: (w / "scripts" / "quick_roadmap_fix.py").write_text(
+             "from pathlib import Path\n"
+             "Path('docs/product/roadmap.md').write_text('переписано')\n",
+             encoding="utf-8"), True)
+
+    width = max(len(n) for _, n, _, _ in cases)
+    dim_w = max(len(d) for d, _, _, _ in cases)
+    failed = sum(1 for _, _, ok, _ in cases if not ok)
+    for dim, name, ok, why in cases:
+        line = f"  [{'PASS' if ok else 'FAIL'}] {dim.ljust(dim_w)}  {name.ljust(width)}"
+        if why:
+            line += f"   ← {why}"
+        print(line)
+    dims = sorted({d for d, _, _, _ in cases})
+    print(f"\n[roadmap-governance-guard] self-test: {len(cases) - failed}/{len(cases)} passed")
+    print(f"  измерения: {', '.join(dims)}")
+    return 1 if failed else 0
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="RM-GOV-004 roadmap governance guard")
+    ap.add_argument("--root", default=str(REPO_ROOT))
+    ap.add_argument("--module", choices=sorted(MODULES))
+    ap.add_argument("--self-test", action="store_true")
+    args = ap.parse_args()
+    root = Path(args.root).resolve()
+
+    if args.self_test:
+        return self_test(root)
+
+    findings = run(root, args.module)
+    print()
+    if findings:
+        print(f"[roadmap-governance-guard] FAIL — {len(findings)} нарушений")
+        return 1
+    print("[roadmap-governance-guard] PASS — все модули чисты")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

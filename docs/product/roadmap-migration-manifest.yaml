@@ -1,0 +1,1029 @@
+schema_version: 1
+produced_by: RM-GOV-002 via scripts/dev/build-initial-roadmap.py
+base_git_sha: 2b935bb980028a3e67db51718377836bb6242da9
+source_files:
+- docs/product/roadmap-s020-2026-07-10.xlsx
+counts:
+  technical_items: 93
+  section_rows: 13
+  business_rows: 58
+dispositions:
+  business:history: 53
+  business:migrate: 5
+  section:history: 13
+  technical:deduplicate: 2
+  technical:drop-with-reason: 5
+  technical:history: 79
+  technical:migrate: 7
+notes:
+- 'Бизнес-лист: 58 непустых строк. Утверждённая приёмка называет 57 — разница ровно в строке 30, вырожденном
+  разделителе с пустым именем (заполнена одна ячейка). Здесь диспозиция проставлена всем 58, ничего не
+  потеряно.'
+- 'Диспозиция ''history'' с пометкой ОТКРЫТЫЙ означает архивацию строки, а НЕ закрытие работы: такие пункты
+  не покрыты ни одной из 42 утверждённых задач и требуют отдельного решения владельца.'
+- Записи с '[ручная поправка]' — там, где детерминированные правила ошибались; каждая несёт обоснование.
+entries:
+- source: technical-sheet
+  row: 2
+  name: SECTION
+  legacy_status: Ядро платформы
+  disposition: history
+  reason: структурный разделитель старого листа
+- source: technical-sheet
+  row: 3
+  name: Импорт-границы (ADR-014)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 4
+  name: Outbox Foundation (ADR-011)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 5
+  name: DB Role Architecture (S-019)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 6
+  name: Release Versioning (S-015)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 7
+  name: SECTION
+  legacy_status: Безопасность и доступ
+  disposition: history
+  reason: структурный разделитель старого листа
+- source: technical-sheet
+  row: 8
+  name: Auth / Dual Login (S-016)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 9
+  name: RBAC / RLS (S-008, ADR-009)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 10
+  name: CORS Baseline (S-011)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 11
+  name: Rate Limiting (S-010)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 12
+  name: SECTION
+  legacy_status: Campaign Domain
+  disposition: history
+  reason: структурный разделитель старого листа
+- source: technical-sheet
+  row: 13
+  name: Campaign CRUD (S-003, S-004)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 14
+  name: Flight/Placement/Creative APIs (B1)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 15
+  name: Approval Workflow (S-005)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 16
+  name: Creative Media Upload (S-017)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 17
+  name: PoP Ingestion (S-007c)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 18
+  name: PoP Reporting (S-007d)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 19
+  name: SECTION
+  legacy_status: Канал доставки (Delivery Pipeline)
+  disposition: history
+  reason: структурный разделитель старого листа
+- source: technical-sheet
+  row: 20
+  name: Manifest Generation (S-006c)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 21
+  name: Device Gateway (S-006d)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 22
+  name: NATS Delivery Pipeline (B2, S-006f)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 23
+  name: Pilot E2E Smoke (B3, S-006g)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 24
+  name: Runtime Simulator (S-006e)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 25
+  name: Manifest/PoP Contracts (S-018)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 26
+  name: SECTION
+  legacy_status: Observability и эксплуатация
+  disposition: history
+  reason: структурный разделитель старого листа
+- source: technical-sheet
+  row: 27
+  name: Health / Readiness (S-013, S-014)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 28
+  name: DB Readiness Checks (S-014)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 29
+  name: SECTION
+  legacy_status: Frontend
+  disposition: history
+  reason: структурный разделитель старого листа
+- source: technical-sheet
+  row: 30
+  name: Admin Web Auth Shell (S-009b)
+  legacy_status: 🟠 Частично
+  disposition: history
+  reason: ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного решения владельца
+- source: technical-sheet
+  row: 31
+  name: Admin Campaign UI
+  legacy_status: 🟡 Готово для пилота
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 32
+  name: Advertiser Portal
+  legacy_status: 🟡 Готово для пилота
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 33
+  name: SECTION
+  legacy_status: Каналы и устройства (носители)
+  disposition: history
+  reason: структурный разделитель старого листа
+- source: technical-sheet
+  row: 34
+  name: KSO Player (Linux/Chromium)
+  legacy_status: ⚪ Не начато (v0.7)
+  disposition: migrate
+  reason: открытая работа перенесена в утверждённую задачу
+  target: RM-TECH-207A
+- source: technical-sheet
+  row: 35
+  name: Android / Android TV
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: technical-sheet
+  row: 36
+  name: Price Checker (Android)
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: technical-sheet
+  row: 37
+  name: ESL / Electronic Price Tags
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: technical-sheet
+  row: 38
+  name: LED Shelf Banners
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: technical-sheet
+  row: 39
+  name: SECTION
+  legacy_status: Аналитика, инвентарь, отчётность
+  disposition: history
+  reason: структурный разделитель старого листа
+- source: technical-sheet
+  row: 40
+  name: ClickHouse / Materialized Views (4.3e)
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: technical-sheet
+  row: 41
+  name: Inventory / Reservations / Forecasting
+  legacy_status: '✅ Готово: S-077/S-078/S-079/S-080/S-081. Minimum inventory contract complete.'
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 42
+  name: Export (PDF/XLSX/CSV)
+  legacy_status: ✅ CSV готово (S-040), XLSX 🚫 отложено
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 43
+  name: Billing
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: technical-sheet
+  row: 44
+  name: SECTION
+  legacy_status: Emergency и эксплуатация
+  disposition: history
+  reason: структурный разделитель старого листа
+- source: technical-sheet
+  row: 45
+  name: Emergency Management (K1 resolved)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 46
+  name: Kill-Switch (ADR-013)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 47
+  name: DR / Backups / HA
+  legacy_status: ✅ Готово
+  disposition: drop-with-reason
+  reason: production остаётся NO-GO; «Готово» не соответствует
+- source: technical-sheet
+  row: 48
+  name: Production Observability
+  legacy_status: ✅ Готово
+  disposition: drop-with-reason
+  reason: production остаётся NO-GO; «Готово» не соответствует
+- source: technical-sheet
+  row: 49
+  name: Local Preview (S-026b)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 50
+  name: SECTION
+  legacy_status: ✅ v0.5 complete (2026-07-13)
+  disposition: history
+  reason: структурный разделитель старого листа
+- source: technical-sheet
+  row: 51
+  name: Admin User Management
+  legacy_status: ✅ S-033 done
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 52
+  name: AD/LDAPS Settings UI
+  legacy_status: ✅ S-034 + C2 real LDAPS + G4 PUT save (durable DB, migration 027)
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 53
+  name: Creative Moderation Queue
+  legacy_status: 🟡 Готово для пилота
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 54
+  name: Advertising Inventory UI
+  legacy_status: ✅ S-037 catalog. S-072 gap. S-076 design. S-077 schema. S-078 availability. S-079 reservation.
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 55
+  name: Campaign Approval Completion
+  legacy_status: 🟡 Готово для пилота
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 56
+  name: Advertiser Cabinet Polish
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 57
+  name: Business Reporting (Pop Export)
+  legacy_status: ✅ CSV готово (S-040), XLSX 🚫 отложено
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 58
+  name: SECTION
+  legacy_status: 'Milestone: v0.7-inventory-foundation release candidate (GO from S-082 review). Not yet
+    published — ready for S-083 publish step.'
+  disposition: history
+  reason: структурный разделитель старого листа
+- source: technical-sheet
+  row: 59
+  name: Monitoring / Observability
+  legacy_status: ✅ S-047 done
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 60
+  name: Real LDAPS Wiring
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 61
+  name: MinIO Backup (S3 Mirror)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 62
+  name: NATS Backup Policy
+  legacy_status: ✅ Готово
+  disposition: deduplicate
+  reason: домен «backup» уже описан строкой «MinIO Backup (S3 Mirror)»
+- source: technical-sheet
+  row: 63
+  name: Portal Error Boundaries
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 64
+  name: 'Audit: Approval/Moderation'
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 65
+  name: Identity Router Decomposition
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 66
+  name: SECTION
+  legacy_status: v2.6 Next Branch
+  disposition: history
+  reason: структурный разделитель старого листа
+- source: technical-sheet
+  row: 67
+  name: Tenant Model ADR (ADR-018)
+  legacy_status: '🚧 В работе (PLAN-001: P0)'
+  disposition: drop-with-reason
+  reason: ADR-018 принят 2026-07-17 и реализован (миграции 020/035); статус «в работе» неверен
+- source: technical-sheet
+  row: 68
+  name: Attribution & Sales Lift
+  legacy_status: 🚫 Отложено по решению бизнеса
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: technical-sheet
+  row: 69
+  name: Self-Service Advertiser Cabinet
+  legacy_status: 🟡 Core pilot flow complete
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 70
+  name: Competitive Separation
+  legacy_status: 🔒 Заблокировано зависимостью (ADR-018)
+  disposition: history
+  reason: '[ручная поправка] домен v2.6 next branch; §10 запрещает активацию без нового owner decision'
+- source: technical-sheet
+  row: 71
+  name: Store-Level Audience Targeting
+  legacy_status: 🔒 Заблокировано зависимостью (ADR-018)
+  disposition: history
+  reason: '[ручная поправка] домен v2.6 next branch; §10 запрещает активацию без нового owner decision'
+- source: technical-sheet
+  row: 72
+  name: Finance Contract/Invoicing Integration
+  legacy_status: 🔒 Заблокировано зависимостью (ADR-018)
+  disposition: history
+  reason: '[ручная поправка] домен v2.6 next branch; §10 запрещает активацию без нового owner decision'
+- source: technical-sheet
+  row: 73
+  name: Programmatic Extension Point
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: technical-sheet
+  row: 74
+  name: Dynamic Creative MVP
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: technical-sheet
+  row: 75
+  name: Mobile Field Ops MVP
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: technical-sheet
+  row: 76
+  name: A/B Lift Metrics
+  legacy_status: ⚪ Не начато
+  disposition: history
+  reason: ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного решения владельца
+- source: technical-sheet
+  row: 77
+  name: Third-Party DOOH Measurement/Accreditation
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: technical-sheet
+  row: 78
+  name: Production Gaps Triage (S-029)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 79
+  name: Production CI Gate
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 80
+  name: Backup / Restore / DR
+  legacy_status: ✅ Готово
+  disposition: deduplicate
+  reason: домен «backup» уже описан строкой «MinIO Backup (S3 Mirror)»
+- source: technical-sheet
+  row: 81
+  name: Secrets Management
+  legacy_status: ⚪ Не начато
+  disposition: migrate
+  reason: открытая работа перенесена в утверждённую задачу
+  target: RM-OPS-001
+- source: technical-sheet
+  row: 82
+  name: Identity Hardening (LDAPS)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 83
+  name: Password Reset / Advertiser Invite
+  legacy_status: ⚪ Не начато
+  disposition: history
+  reason: ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного решения владельца
+- source: technical-sheet
+  row: 84
+  name: Creative Moderation (Manual)
+  legacy_status: 🟡 Готово для пилота
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 85
+  name: Malware Scan
+  legacy_status: ⚪ Не начато
+  disposition: migrate
+  reason: открытая работа перенесена в утверждённую задачу
+  target: RM-TECH-204
+- source: technical-sheet
+  row: 86
+  name: Reporting Export (CSV/XLSX)
+  legacy_status: ✅ CSV готово (S-040), XLSX 🚫 отложено
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 87
+  name: ClickHouse Foundation
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: technical-sheet
+  row: 88
+  name: Device / Player Readiness
+  legacy_status: ⚪ Не начато
+  disposition: migrate
+  reason: открытая работа перенесена в утверждённую задачу
+  target: RM-TECH-207A
+- source: technical-sheet
+  row: 89
+  name: S-086
+  legacy_status: '✅ A1+A2: forecast + sold-out alternatives. CampaignCreate + CampaignDetail.'
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 90
+  name: S-087
+  legacy_status: '✅ Sold-out alternatives: deterministic recommendation engine (same store → time shift
+    → lower SOV → later time). Endpoint POST /inventory/alternatives.'
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 91
+  name: S-088
+  legacy_status: '✅ A3: inventory rules management UI. Admin-web RulesTab: full CRUD (create/edit/activate/deactivate).
+    5 endpoints + validation.'
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: technical-sheet
+  row: 92
+  name: SECTION
+  legacy_status: ТЗ-покрытие (D3 audit)
+  disposition: history
+  reason: структурный разделитель старого листа
+- source: technical-sheet
+  row: 93
+  name: §14 SIEM / Wazuh export
+  legacy_status: ⚪ Не начато
+  disposition: history
+  reason: ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного решения владельца
+- source: technical-sheet
+  row: 94
+  name: §14 mTLS / device cert rotation
+  legacy_status: ⚪ Не начато
+  disposition: migrate
+  reason: открытая работа перенесена в утверждённую задачу
+  target: RM-OPS-001
+- source: technical-sheet
+  row: 95
+  name: §14 HTML5 sandbox / CSP enforcement
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: technical-sheet
+  row: 96
+  name: §14 PII minimisation
+  legacy_status: ⚪ Не начато
+  disposition: history
+  reason: ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного решения владельца
+- source: technical-sheet
+  row: 97
+  name: §14 Admin VPN-only access
+  legacy_status: 🧭 Требует решения
+  disposition: history
+  reason: ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного решения владельца
+- source: technical-sheet
+  row: 98
+  name: §5 / §22.2 SLA 99.5/99.9% + RTO 4ч / RPO 15м
+  legacy_status: ⚪ Не начато
+  disposition: migrate
+  reason: открытая работа перенесена в утверждённую задачу
+  target: RM-TECH-205
+- source: technical-sheet
+  row: 99
+  name: §16.2 УКМ4 integration (Attribution v2.6)
+  legacy_status: 🚫 Отложено по решению бизнеса
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: technical-sheet
+  row: 100
+  name: §22.3 Недопоказы / компенсации (make-good)
+  legacy_status: ⚪ Не начато
+  disposition: migrate
+  reason: открытая работа перенесена в утверждённую задачу
+  target: RM-TECH-201
+- source: technical-sheet
+  row: 101
+  name: §22.6 Device fleet health dashboard
+  legacy_status: ⚪ Не начато
+  disposition: drop-with-reason
+  reason: device.health_view reachable с зелёным smoke; «Не начато» неверно
+- source: technical-sheet
+  row: 102
+  name: §22.7 Staged rollout / rollback
+  legacy_status: ⚪ Не начато
+  disposition: history
+  reason: ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного решения владельца
+- source: technical-sheet
+  row: 103
+  name: §22.9 Feature flags
+  legacy_status: ⚪ Не начато
+  disposition: history
+  reason: ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного решения владельца
+- source: technical-sheet
+  row: 104
+  name: §22.11 Data Governance / retention / partitioning
+  legacy_status: ⚪ Не начато
+  disposition: history
+  reason: ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного решения владельца
+- source: technical-sheet
+  row: 105
+  name: §22.15 Нагрузочные профили и performance criteria
+  legacy_status: ⚪ Не начато
+  disposition: history
+  reason: ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного решения владельца
+- source: technical-sheet
+  row: 106
+  name: §22.17 Timezone / calendar / holiday scheduling
+  legacy_status: '🧭 Требует решения (P0: PLAN-001)'
+  disposition: history
+  reason: '[ручная поправка] ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного
+    решения владельца'
+- source: technical-sheet
+  row: 107
+  name: §24 Channel Orchestrator / Adapter Layer
+  legacy_status: 🧭 Требует решения
+  disposition: drop-with-reason
+  reason: ADR-019 ACCEPTED (deferred); «Требует решения» неверно
+- source: business-sheet
+  row: 2
+  name: Пользователи и доступ
+  legacy_status: ''
+  disposition: history
+  reason: нет остаточной работы, сопоставимой с утверждённой очередью
+- source: business-sheet
+  row: 3
+  name: Вход сотрудников / рекламодателей
+  legacy_status: 🟠 Частично (self.login reachable, self-service сброс пароля без smoke)
+  disposition: history
+  reason: '[ручная поправка] self.login reachable; остаточное (self-service сброс пароля) — открытый пункт
+    вне очереди'
+- source: business-sheet
+  row: 4
+  name: Роли и права (RBAC)
+  legacy_status: ✅ Готово/Юзабельно
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 5
+  name: Личный кабинет рекламодателя
+  legacy_status: 🟠 Частично (self.login ✅, self.campaign_view ✅, self.report_view без smoke)
+  disposition: migrate
+  reason: '[ручная поправка] остаточное — отчёт план/факт рекламодателя'
+  target: RM-BIZ-003
+- source: business-sheet
+  row: 6
+  name: Управление рекламодателями
+  legacy_status: ✅ Готово/Юзабельно
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 7
+  name: Управление рекламными кампаниями
+  legacy_status: ''
+  disposition: history
+  reason: нет остаточной работы, сопоставимой с утверждённой очередью
+- source: business-sheet
+  row: 8
+  name: Создание и редактирование кампаний
+  legacy_status: ✅ Готово/Юзабельно
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 9
+  name: Согласование кампаний (Approval)
+  legacy_status: ✅ Готово/Юзабельно
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 10
+  name: Загрузка креативов (медиафайлы)
+  legacy_status: ✅ Готово/Юзабельно
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 11
+  name: Доставка контента на устройства
+  legacy_status: ''
+  disposition: history
+  reason: нет остаточной работы, сопоставимой с утверждённой очередью
+- source: business-sheet
+  row: 12
+  name: Формирование плейлистов (manifest)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 13
+  name: Получение manifest устройством
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 14
+  name: Proof-of-Play (подтверждение показов)
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 15
+  name: Отчёты по показам
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 16
+  name: Каналы и устройства
+  legacy_status: ''
+  disposition: history
+  reason: нет остаточной работы, сопоставимой с утверждённой очередью
+- source: business-sheet
+  row: 17
+  name: КСО (кассы самообслуживания)
+  legacy_status: ⚪ Не начато (после ADR-018)
+  disposition: migrate
+  reason: '[ручная поправка] физический канал КСО ведёт design-задача'
+  target: RM-TECH-207A
+- source: business-sheet
+  row: 18
+  name: Android / Android TV
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: business-sheet
+  row: 19
+  name: Price Checker (Android)
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: business-sheet
+  row: 20
+  name: ESL / Электронные ценники
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: business-sheet
+  row: 21
+  name: LED Shelf Banners
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: business-sheet
+  row: 22
+  name: Инвентарь и прогноз
+  legacy_status: ''
+  disposition: history
+  reason: нет остаточной работы, сопоставимой с утверждённой очередью
+- source: business-sheet
+  row: 23
+  name: '✅ Готово: availability + reservation + conflicts + rules + UI calendar (S-081)'
+  legacy_status: 🟠 Бэкенд готов, UI-smoke нет
+  disposition: history
+  reason: '[ручная поправка] инвентарь закрыт: inventory.simulate и inventory.rule_create reachable с
+    зелёным smoke'
+- source: business-sheet
+  row: 24
+  name: Прогноз показов
+  legacy_status: ✅ Готово/Юзабельно
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 25
+  name: Эксплуатация и безопасность
+  legacy_status: ''
+  disposition: history
+  reason: нет остаточной работы, сопоставимой с утверждённой очередью
+- source: business-sheet
+  row: 26
+  name: Emergency-управление
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 27
+  name: Резервное копирование и DR
+  legacy_status: '✅ Готово: PostgreSQL (S-031), MinIO (S-049), NATS'
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 28
+  name: Мониторинг и observability
+  legacy_status: ✅ Готово
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 29
+  name: Настройки AD / LDAPS
+  legacy_status: ✅ Готово/Юзабельно
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 30
+  name: ''
+  legacy_status: ''
+  disposition: history
+  reason: нет остаточной работы, сопоставимой с утверждённой очередью
+- source: business-sheet
+  row: 31
+  name: v2.6 Next Branch
+  legacy_status: ''
+  disposition: history
+  reason: нет остаточной работы, сопоставимой с утверждённой очередью
+- source: business-sheet
+  row: 32
+  name: Self-service advertiser cabinet
+  legacy_status: '🟡 Core pilot готов (PLAN-001: medium priority)'
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 33
+  name: Sales Lift / Attribution proof
+  legacy_status: 🚫 Отложено по решению бизнеса
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: business-sheet
+  row: 34
+  name: Competitor blocking
+  legacy_status: ⚪ Не начато
+  disposition: history
+  reason: '[ручная поправка] домен v2.6 next branch; §10 запрещает активацию без нового owner decision'
+- source: business-sheet
+  row: 35
+  name: Store/audience targeting
+  legacy_status: ⚪ Не начато
+  disposition: history
+  reason: '[ручная поправка] домен v2.6 next branch; §10 запрещает активацию без нового owner decision'
+- source: business-sheet
+  row: 36
+  name: Financial docs / reconciliation / integration
+  legacy_status: ⚪ Не начато
+  disposition: history
+  reason: '[ручная поправка] домен v2.6 next branch; §10 запрещает активацию без нового owner decision'
+- source: business-sheet
+  row: 37
+  name: Programmatic inventory sales
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: business-sheet
+  row: 38
+  name: Dynamic creatives
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: business-sheet
+  row: 39
+  name: Mobile field ops
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: business-sheet
+  row: 40
+  name: Independent DOOH measurement
+  legacy_status: 🚫 Отложено
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: business-sheet
+  row: 41
+  name: ТЗ-покрытие (D3 audit)
+  legacy_status: ''
+  disposition: history
+  reason: нет остаточной работы, сопоставимой с утверждённой очередью
+- source: business-sheet
+  row: 42
+  name: 'SLA/NFT: 99.5/99.9% доступность, RTO 4ч, RPO 15м'
+  legacy_status: ⚪ Не начато
+  disposition: migrate
+  reason: открытая работа перенесена в утверждённую задачу
+  target: RM-TECH-205
+- source: business-sheet
+  row: 43
+  name: Мониторинг недопоказов и компенсации
+  legacy_status: ⚪ Не начато
+  disposition: migrate
+  reason: '[ручная поправка] не observability, а таксономия причин недопоказа'
+  target: RM-TECH-201
+- source: business-sheet
+  row: 44
+  name: Операционный центр здоровья устройств
+  legacy_status: '🟠 Частично: device.health_view ✅, audit.view ✅, self.report_view — blocked'
+  disposition: history
+  reason: ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного решения владельца
+- source: business-sheet
+  row: 45
+  name: Staged rollout и rollback
+  legacy_status: ⚪ Не начато
+  disposition: history
+  reason: ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного решения владельца
+- source: business-sheet
+  row: 46
+  name: Интеграция с УКМ4 / чековые данные
+  legacy_status: 🚫 Отложено по решению бизнеса
+  disposition: history
+  reason: отложено решением владельца/ADR; §10 запрещает активацию без нового решения
+- source: business-sheet
+  row: 47
+  name: Feature flags для безопасного развития
+  legacy_status: ⚪ Не начато
+  disposition: history
+  reason: ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного решения владельца
+- source: business-sheet
+  row: 48
+  name: 'Data Governance: retention, партиционирование'
+  legacy_status: ⚪ Не начато
+  disposition: history
+  reason: ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного решения владельца
+- source: business-sheet
+  row: 49
+  name: Нагрузочное тестирование 40K устройств
+  legacy_status: ⚪ Не начато
+  disposition: history
+  reason: ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного решения владельца
+- source: business-sheet
+  row: 50
+  name: Часовые пояса и календарь показов
+  legacy_status: 🧭 Требует решения (P0)
+  disposition: history
+  reason: '[ручная поправка] ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного
+    решения владельца'
+- source: business-sheet
+  row: 51
+  name: Channel Orchestrator / Adapter Layer
+  legacy_status: 🧭 Требует решения
+  disposition: history
+  reason: ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного решения владельца
+- source: business-sheet
+  row: 52
+  name: SIEM/Wazuh + ИБ-мониторинг
+  legacy_status: ⚪ Не начато
+  disposition: history
+  reason: '[ручная поправка] ОТКРЫТЫЙ пункт вне утверждённой очереди 42 задач — не закрыт, требует отдельного
+    решения владельца'
+- source: business-sheet
+  row: 53
+  name: Коммерция (Commerce Contour 2)
+  legacy_status: ''
+  disposition: history
+  reason: нет остаточной работы, сопоставимой с утверждённой очередью
+- source: business-sheet
+  row: 54
+  name: 'Коммерция: тарифы и прайс-листы'
+  legacy_status: ✅ Готово/Юзабельно
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 55
+  name: 'Коммерция: заказы и бронирование'
+  legacy_status: ✅ Готово/Юзабельно
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 56
+  name: Интерфейс и доступность
+  legacy_status: ''
+  disposition: history
+  reason: нет остаточной работы, сопоставимой с утверждённой очередью
+- source: business-sheet
+  row: 57
+  name: Переключение темы (light/dark)
+  legacy_status: ✅ Готово/Юзабельно
+  disposition: history
+  reason: работа закрыта; остаточных обязательств нет
+- source: business-sheet
+  row: 58
+  name: Лицензирование (EPIC-L)
+  legacy_status: ''
+  disposition: history
+  reason: нет остаточной работы, сопоставимой с утверждённой очередью
+- source: business-sheet
+  row: 59
+  name: Лицензирование (seat ledger)
+  legacy_status: '🟠 Частично (Layer 1 reachable: enforce/seat_release/report; Layer 2 view/upload blocked)'
+  disposition: migrate
+  reason: открытая работа перенесена в утверждённую задачу
+  target: RM-TECH-208

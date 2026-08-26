@@ -1,4 +1,24 @@
 #!/usr/bin/env python3
+"""QUARANTINED — НЕ ЗАПУСКАТЬ.
+
+Помещён в карантин canonical cutover RM-GOV-005 (2026-08-26).
+
+Тест подменял строки в каноническом `docs/product/roadmap-s020-2026-07-10.xlsx`
+и проверял направления registry ↔ книга. После cutover книга ГЕНЕРИРУЕТСЯ из
+registry, поэтому эти направления не могут разойтись по построению, а сама книга
+архивирована в `docs/product/history/`.
+
+Живые проверки, которые здесь были, никуда не делись:
+  orphan smoke, поле/статус registry, членство в ci-subset
+    -> модуль `registry` гейта scripts/ci/roadmap-governance-guard.py
+  подмена входа и ручная правка представления
+    -> измерения drift и SSOT того же гейта, tamper-матрица --self-test
+
+Отдельно ради истории: направление OVERCLAIM этого теста было красным на develop,
+потому что его фикстура перестала быть ложью (RM-GOV-004 перенацелил её на строку,
+которая ещё blocked). Урок закреплён в новом гейте проверкой инертности фикстур.
+"""
+
 """Tamper tests for ROADMAP-GUARD-002.
 
 Creates temporary copies of roadmap.xlsx with deliberate violations,
@@ -22,6 +42,7 @@ import openpyxl
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ROADMAP_ORIG = REPO_ROOT / "docs" / "product" / "roadmap-s020-2026-07-10.xlsx"
 GUARD_SCRIPT = REPO_ROOT / "scripts" / "roadmap-consistency-check.py"
+REGISTRY_ORIG = REPO_ROOT / "docs" / "product" / "feature-registry.yaml"
 
 passed = 0
 failed = 0
@@ -95,27 +116,56 @@ test("Understate G1 (campaign.create ✅→⚪️)", understate_g1)
 
 
 # Test 2: Overclaim blocked row
+#
+# RM-GOV-004: the row this case used to target ("Согласование кампаний") stopped
+# being an overclaim once campaign.approve/campaign.reject became reachable with
+# green CI smokes — the tamper was no longer a lie, the guard correctly answered
+# "clean", and this case had been silently proving nothing. Retargeted to a row
+# that is still genuinely blocked in feature-registry.yaml, and made to assert
+# that at the moment it runs, so it cannot go stale in silence again.
+OVERCLAIM_ROW = "Личный кабинет рекламодателя"
+OVERCLAIM_BLOCKED_IDS = ("self.report_view", "self.campaign_create")
+
+
+def _assert_still_blocked():
+    """Fail loudly if the chosen row stopped being an overclaim."""
+    import yaml as _yaml
+    reg = _yaml.safe_load(REGISTRY_ORIG.read_text())["features"]
+    status = {f["id"]: f.get("status") for f in reg}
+    live = [i for i in OVERCLAIM_BLOCKED_IDS if status.get(i) == "blocked"]
+    if not live:
+        print(f"  ❌ FAIL: фикстура устарела — ни одна из {OVERCLAIM_BLOCKED_IDS} "
+              f"больше не blocked, подмена перестала быть ложью")
+        return False
+    return True
+
+
 def overclaim_blocked(wb):
     ws = wb[ws_name]
     for row in range(2, ws.max_row + 1):
         func = str(ws.cell(row=row, column=2).value or "")
-        if "Согласование" in func:
+        if OVERCLAIM_ROW in func:
             ws.cell(row=row, column=6).value = "✅ Готово/Юзабельно"
             ws.cell(row=row, column=3).value = "✅"
             ws.cell(row=row, column=4).value = "✅"
             ws.cell(row=row, column=5).value = (
-                "✅ campaign.approve / ✅ campaign.reject"
+                "✅ self.login / ✅ self.campaign_view / ✅ self.report_view "
+                "/ ✅ self.apply_or_brief / ✅ self.campaign_create"
             )
             return
+    raise AssertionError(f"фикстура устарела: строка {OVERCLAIM_ROW!r} не найдена")
 
-test("Overclaim (approval Итог=✅ without smoke)", overclaim_blocked)
+
+if _assert_still_blocked():
+    test("Overclaim (кабинет рекламодателя Итог=✅ при blocked-функциях)", overclaim_blocked)
+else:
+    failed += 1
 
 
 # Test 3: Clean
 test("Clean workbook → 0 findings", lambda wb: None, expect_violation=False)
 
 # Test 4 (Direction C): Orphan smoke — remove smoke ref from registry
-REGISTRY_ORIG = REPO_ROOT / "docs" / "product" / "feature-registry.yaml"
 
 
 def run_guard_direct():

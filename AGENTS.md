@@ -48,7 +48,8 @@ executes it.
 | `docs/product/user-journeys.md` | **Спецификация** journey: id, роли, путь, Given/When/Then | Авторитет по спецификации (id, формат, приёмка) |
 | `docs/product/pre-pilot-journey-plan.md` | Порядок закрытия journeys по волнам 1–6 | Побеждает ad-hoc приоритизацию |
 | `docs/product/feature-registry.yaml` | **Статус** journey (reachable/blocked), smoke, frontend | Авторитет по статусу. При конфликте статуса registry главнее roadmap |
-| `docs/product/roadmap-s020-2026-07-10.xlsx` | Бизнес-карта (4 колонки): Бэкенд/UI/Юзер-стори/Итог | Производная от registry + smoke; не переопределяет их |
+| `docs/product/roadmap.yaml` | **Последовательность работ**: задачи, зависимости, приёмка, гейты, решения владельца | Единственный sequencing SSOT. Правится только здесь |
+| `docs/product/generated/` | Производные представления roadmap: Markdown, XLSX, метрики | **Только чтение.** Генерируются `scripts/ci/roadmap-generate.py`; руками не правятся и ничего не переопределяют |
 
 ### Done Gate (встроен в Sources of Truth)
 
@@ -86,12 +87,14 @@ executes it.
    только при `UI_SMOKE_RUN=1` и не собираются обычным pytest. Они —
    инструмент аудита, а не CI-gate.
 
-7. **Roadmap-синхронизация обязательна.** Если задача довела journey до
-   зелёного UI-smoke, та же задача обязана поднять в бизнес-вкладке roadmap
-   (`docs/product/roadmap-s020-2026-07-10.xlsx`, лист «Бизнес-функции
-   Roadmap») колонки «UI» + «Юзер-стори» и пересчитать колонку «Итог».
-   Итог=«✅ Готово/Юзабельно» только при Бэкенд ✅ + UI ✅ + Юзер-стори ✅.
-   Без зелёного UI-smoke по journey id — запрещён. Частичные фичи
+7. **Roadmap-синхронизация обязательна и выполняется генерацией, а не правкой.**
+   Если задача довела journey до зелёного UI-smoke, она обновляет **вход**
+   (`docs/product/feature-registry.yaml` — статус, `docs/product/roadmap.yaml` —
+   последовательность) и перегенерирует представления:
+   `python3 scripts/ci/roadmap-generate.py`. Править файлы в
+   `docs/product/generated/` руками запрещено; расхождение представления со
+   входом ловит `scripts/ci/roadmap-governance-guard.py`.
+   Статус `reachable` без зелёного UI-smoke по journey id — запрещён. Частичные фичи
    маркируются «🟠 Частично» с указанием, какая часть не reachable.
 
 8. **Прогон оператором (human walkthrough).** UI journey / wave нельзя закрыть как
@@ -122,8 +125,12 @@ executes it.
 
 ### Tier 4 — Архитектура (как устроено)
 
-- **`docs/architecture/adr/ADR-001..ADR-019`** — architecture decision records.
+- **`docs/architecture/adr/ADR-001..ADR-020`** — architecture decision records.
   ADR переопределяет design gates, correction plans, и phase reports.
+  **ADR-020 (факт и требование)** задаёт, что означает расхождение: код и тесты
+  описывают фактическое поведение, ТЗ и ADR — требуемое, расхождение является
+  дефектом до появления явного ADR, который его принимает. Приведение документа
+  к коду без решения запрещено.
 - `docs/architecture/erd/erd-v2-5.md` — текущая ERD.
 - `docs/architecture/api/api-groups-v1.md` — текущие API-контракты.
 - `docs/architecture/README.md` — индекс + список superseded документов.
@@ -131,6 +138,10 @@ executes it.
   `.docx` — только для истории; агенты используют `.extracted.md`.
 
 ### Tier 5 — Производные (НЕ авторские источники)
+
+- **`docs/product/history/`** и **`scripts/legacy/`** — архив и карантин после
+  canonical cutover (RM-GOV-005, 2026-08-26). Не канон, не запускать, не
+  реализовывать отсюда. Каждый файл несёт баннер с указанием замены.
 
 - **NAS mirror** (`\\192.168.110.118\project\…`, локальный mount `/mnt/asustor-project/`) — зеркало GitHub, может быть stale.
   - **GitHub `origin/develop` — единственная git-истина.** NAS — зеркало, не авторский источник.

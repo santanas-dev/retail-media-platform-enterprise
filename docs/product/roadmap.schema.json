@@ -1,0 +1,536 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://retail-media-platform/schemas/roadmap.schema.json",
+  "title": "RMP Roadmap sequencing SSOT",
+  "description": "Schema for docs/product/roadmap.yaml — the single source of truth for SEQUENCING only. It must not duplicate feature status (feature-registry.yaml), journey specification (user-journeys.md), current workstream (PROJECT_STATE.md), architecture (ADR) or actual behaviour (code/tests/CI). RM-GOV-001.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "base",
+    "stages",
+    "gates",
+    "tasks"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "git_sha",
+        "generated_from"
+      ],
+      "properties": {
+        "git_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "generated_from": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stand_baseline": {
+          "$ref": "#/$defs/environment_identity"
+        }
+      }
+    },
+    "owner_decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "statement",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^OD-[0-9]{3}$"
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "approved",
+              "open",
+              "superseded"
+            ]
+          },
+          "decided_on": {
+            "type": "string",
+            "format": "date"
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/task_id"
+            }
+          }
+        }
+      }
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "order"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "G",
+              "E0",
+              "S",
+              "U",
+              "BT",
+              "POPS"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "closed_by_gate": {
+            "$ref": "#/$defs/gate_id"
+          }
+        }
+      }
+    },
+    "gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "closes_stage",
+          "approver"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/gate_id"
+          },
+          "closes_stage": {
+            "enum": [
+              "G",
+              "E0",
+              "S",
+              "U",
+              "BT",
+              "POPS"
+            ]
+          },
+          "approver": {
+            "enum": [
+              "owner",
+              "codex",
+              "human"
+            ]
+          },
+          "conditions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/task"
+      }
+    },
+    "maturity": {
+      "description": "Independent maturity ladder per feature. MUST NOT carry a reachable/blocked status — feature-registry.yaml owns that.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "feature_id",
+          "level"
+        ],
+        "properties": {
+          "feature_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "level": {
+            "enum": [
+              "implemented",
+              "automated_verified",
+              "ci_enforced",
+              "stand_deployed",
+              "stand_verified",
+              "walkthrough_ok",
+              "pilot_ready",
+              "production_ready"
+            ]
+          },
+          "proof_granularity": {
+            "description": "Required from ci_enforced upward. 'dedicated' = own smoke; 'shared:<smoke-id>' = proof shared with other features.",
+            "type": "string",
+            "pattern": "^(dedicated|shared:[a-z0-9_]+)$"
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/evidence_ref"
+            }
+          }
+        }
+      }
+    },
+    "blocked_features": {
+      "description": "Unblock conditions for every feature the registry marks blocked. The gap itself stays in feature-registry.yaml — this section carries only what unblocks it and which task delivers that (sequencing).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "feature_id",
+          "unblocked_by",
+          "conditions"
+        ],
+        "properties": {
+          "feature_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "unblocked_by": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/task_id"
+            }
+          },
+          "conditions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 3
+            }
+          },
+          "owner_decision": {
+            "type": "string",
+            "pattern": "^OD-[0-9]{3}$"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "task_id": {
+      "type": "string",
+      "pattern": "^RM-(GOV|ENV|STAB|UX|BIZ|TECH|PILOT|OPS)-[0-9]{3}[AB]?$"
+    },
+    "gate_id": {
+      "type": "string",
+      "pattern": "^Gate-[A-Z0-9]+$"
+    },
+    "environment_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "git_sha"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "git_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{7,40}$"
+        },
+        "bundle": {
+          "type": "string"
+        },
+        "schema_head": {
+          "type": "string"
+        }
+      }
+    },
+    "evidence_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "ref",
+        "status"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "command",
+            "ci_run",
+            "behavioral",
+            "ui_smoke",
+            "identity",
+            "readiness",
+            "stand_safe_smoke",
+            "browser_targeted",
+            "full_journey",
+            "operator_walkthrough",
+            "artifact",
+            "adr",
+            "audit_record"
+          ]
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "verified",
+            "disputed",
+            "superseded"
+          ]
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "environment": {
+          "$ref": "#/$defs/environment_identity"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "stage",
+        "title",
+        "dependencies",
+        "acceptance",
+        "decision_status",
+        "delivery_status"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/task_id"
+        },
+        "alias": {
+          "description": "Legacy label carried from the UX backlog, e.g. A1b.",
+          "type": "string",
+          "pattern": "^A[0-9]+[a-z]?$"
+        },
+        "kind": {
+          "enum": [
+            "governance",
+            "design",
+            "implementation",
+            "human",
+            "external-plan",
+            "external"
+          ]
+        },
+        "stage": {
+          "enum": [
+            "G",
+            "E0",
+            "S",
+            "U",
+            "BT",
+            "POPS"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "business_outcome": {
+          "type": "string"
+        },
+        "priority": {
+          "enum": [
+            "P0",
+            "P1",
+            "P2",
+            "P3"
+          ]
+        },
+        "wave": {
+          "description": "Optional cross-reference to the product wave in roadmap.md. Sequencing authority stays with 'stage'.",
+          "enum": [
+            "W0",
+            "W1",
+            "W2",
+            "W3",
+            "W4",
+            "W5"
+          ]
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/task_id"
+              },
+              {
+                "$ref": "#/$defs/gate_id"
+              }
+            ]
+          }
+        },
+        "acceptance": {
+          "description": "Each entry must name a command, CI job, proof or versioned artifact.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "check",
+              "verified_by"
+            ],
+            "properties": {
+              "check": {
+                "type": "string",
+                "minLength": 1
+              },
+              "verified_by": {
+                "enum": [
+                  "command",
+                  "ci_job",
+                  "behavioral",
+                  "ui_smoke",
+                  "artifact",
+                  "owner",
+                  "human"
+                ]
+              },
+              "ref": {
+                "type": "string"
+              }
+            },
+            "description": "Each entry must name a command, CI job, proof or versioned artifact. When verified_by is machine-verifiable, a concrete 'ref' is mandatory: the exact command, CI job name, test id or artifact path a third party can run or open.",
+            "allOf": [
+              {
+                "if": {
+                  "required": [
+                    "verified_by"
+                  ],
+                  "properties": {
+                    "verified_by": {
+                      "enum": [
+                        "command",
+                        "ci_job",
+                        "behavioral",
+                        "ui_smoke",
+                        "artifact"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "ref"
+                  ],
+                  "properties": {
+                    "ref": {
+                      "type": "string",
+                      "minLength": 3
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "owner_gate": {
+          "description": "Named when the task touches a protected boundary or an external action.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required",
+            "reason"
+          ],
+          "properties": {
+            "required": {
+              "const": true
+            },
+            "reason": {
+              "enum": [
+                "canon_change",
+                "migration_application",
+                "device_contract",
+                "protected_boundary",
+                "deployment",
+                "merge",
+                "release",
+                "scope_decision"
+              ]
+            },
+            "granted": {
+              "type": "boolean"
+            }
+          }
+        },
+        "feature_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "decision_status": {
+          "enum": [
+            "proposed",
+            "approved",
+            "rejected"
+          ]
+        },
+        "delivery_status": {
+          "enum": [
+            "planned",
+            "ready",
+            "in_progress",
+            "verification",
+            "blocked",
+            "deferred",
+            "done"
+          ]
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence_ref"
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
