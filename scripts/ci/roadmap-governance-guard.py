@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 import re
 import shutil
 import subprocess
@@ -680,6 +681,165 @@ def module_decisions(root: Path) -> list:
                         "решение живёт вне единого реестра")
     return findings
 
+# ---------------------------------------------------------------------------
+# req — трассировка требований (A1 после OD-017; §37 драфта, REQ-GOV-002/003)
+#
+# requirements-traceability.yaml — единственная машинная карта REQ → story →
+# journey → registry → roadmap → evidence. Гейт красный, если карта расходится
+# с каталогом §25 драфта, ссылается на несуществующие story/journey/SC/task/DEC,
+# нарушает правило покрытия §37, объявляет done без verified evidence, оставляет
+# registry-ID без REQ, или привязана к другой ревизии драфта, чем лежит в репо.
+# ---------------------------------------------------------------------------
+TRACE_YAML = Path("docs/product/requirements-traceability.yaml")
+TRACE_SCHEMA = Path("docs/product/requirements-traceability.schema.json")
+_REQ_ROW = re.compile(r"^\| (REQ-[A-Z0-9]+-\d{3}) \|", re.M)
+_US_ROW = re.compile(r"^\| (US-[A-Z0-9]+-\d{3}) \|", re.M)
+
+
+def module_req(root: Path) -> list:
+    findings = []
+    ypath, spath, draft = root / TRACE_YAML, root / TRACE_SCHEMA, root / TZ_DRAFT
+    for p in (ypath, spath, draft):
+        if not p.exists():
+            return [f"req/MISSING: `{p.relative_to(root)}` отсутствует — карта требований не проверяема"]
+    doc = yaml.safe_load(ypath.read_text(encoding="utf-8"))
+    try:
+        import jsonschema
+        errs = sorted(jsonschema.Draft202012Validator(json.loads(spath.read_text(encoding="utf-8"))).iter_errors(doc),
+                      key=lambda e: list(e.absolute_path))
+        for e in errs[:20]:
+            findings.append(f"req/SCHEMA: {'/'.join(str(x) for x in e.absolute_path) or '<root>'}: {e.message[:160]}")
+        if errs:
+            return findings
+    except ImportError:
+        findings.append("req/NO-JSONSCHEMA: jsonschema не установлен — схема карты не проверена")
+
+    text = draft.read_text(encoding="utf-8")
+    m = re.search(r"\| Revision \| `([^`]+)`", text)
+    draft_rev = m.group(1) if m else None
+    if doc["document"].get("revision") != draft_rev:
+        findings.append(f"req/DRAFT-REVISION-DRIFT: карта привязана к `{doc['document'].get('revision')}`, "
+                        f"в репо лежит `{draft_rev}` — пересверьте REQ/story/SC и обновите document.revision/sha256")
+    catalogue = _draft_section(text, "\n## 25. ")
+    draft_req = set(_REQ_ROW.findall(catalogue))
+    stories = set(_US_ROW.findall(_draft_section(text, "\n## Дополнение AP.")))
+    if not draft_req or not stories:
+        return findings + ["req/DRAFT-NO-CATALOGUE: §25/AP драфта не распознаны — проверка ослепла"]
+
+    roadmap = yaml.safe_load((root / ROADMAP_YAML).read_text(encoding="utf-8"))
+    tasks = {t["id"]: t for t in roadmap.get("tasks", [])}
+    decisions = {a for o in roadmap.get("owner_decisions", []) or [] for a in o.get("aliases", []) or []}
+    decisions |= {o["id"] for o in roadmap.get("owner_decisions", []) or []}
+    registry = {f["id"]: f for f in yaml.safe_load((root / REGISTRY_YAML).read_text(encoding="utf-8"))["features"]}
+
+    reqs = doc["requirements"]
+    ids = [r["id"] for r in reqs]
+    for dup in sorted({i for i in ids if ids.count(i) > 1}):
+        findings.append(f"req/DUPLICATE: {dup} встречается в карте более одного раза")
+    ids = set(ids)
+    for missing in sorted(draft_req - ids):
+        findings.append(f"req/UNMAPPED: {missing} есть в §25 драфта, но отсутствует в карте")
+    for extra in sorted(ids - draft_req):
+        findings.append(f"req/UNKNOWN-REQ: {extra} есть в карте, но не в §25 драфта")
+
+    scenarios = {s["id"]: s for s in doc.get("scenarios", [])}
+    sc_ids = [s["id"] for s in doc.get("scenarios", [])]
+    for dup in sorted({i for i in sc_ids if sc_ids.count(i) > 1}):
+        findings.append(f"req/SC-DUPLICATE: {dup}")
+    pending = set(doc.get("pending_journey_map", {}) or {})
+    for p in sorted(pending & set(registry)):
+        findings.append(f"req/PENDING-IS-CANONICAL: `{p}` уже есть в feature-registry — переведите в journey_ids")
+
+    referenced_sc = set()
+    for r in reqs:
+        rid = r["id"]
+        for s in r["story_ids"]:
+            if s not in stories:
+                findings.append(f"req/STORY-UNKNOWN: {rid} → {s} нет в AP драфта")
+        for j in r["journey_ids"]:
+            if j not in registry:
+                findings.append(f"req/JOURNEY-UNKNOWN: {rid} → `{j}` нет в feature-registry")
+        for j in r["pending_journey_ids"]:
+            if j not in pending:
+                findings.append(f"req/PENDING-UNKNOWN: {rid} → `{j}` нет в pending_journey_map")
+        for s in r["scenario_ids"]:
+            if s not in scenarios:
+                findings.append(f"req/SC-UNKNOWN: {rid} → {s} нет в scenarios")
+            referenced_sc.add(s)
+        for t in r["roadmap_ids"]:
+            if t not in tasks:
+                findings.append(f"req/TASK-UNKNOWN: {rid} → {t} нет в roadmap.yaml")
+        for d in r["dependencies"]:
+            if d not in decisions:
+                findings.append(f"req/DECISION-UNKNOWN: {rid} → {d} не является alias/ID owner_decisions")
+        ct = r["coverage_type"]
+        if ct == "business" and not (r["story_ids"] and (r["journey_ids"] or r["pending_journey_ids"])):
+            findings.append(f"req/COVERAGE: {rid} business без story_ids или journey (§37)")
+        if ct != "business" and not r["scenario_ids"]:
+            findings.append(f"req/COVERAGE: {rid} {ct} без scenario_ids (§37)")
+        ds, rs = r["delivery_status"], r["requirement_status"]
+        if ds == "done":
+            if rs != "approved":
+                findings.append(f"req/STATUS: {rid} delivery done при requirement_status={rs} (§37)")
+            if not any(e["status"] == "verified" for e in r["evidence"]):
+                findings.append(f"req/OVERCLAIM: {rid} delivery done без verified evidence")
+        if ds == "blocked" and not r.get("block_reason"):
+            findings.append(f"req/BLOCKED-NO-REASON: {rid}")
+        # статус берётся из roadmap/verified evidence, не из registry reachable или candidate-теста
+        if ds in ("in_progress", "verification") and not (
+                any(tasks.get(t, {}).get("delivery_status") in ("in_progress", "verification", "done") for t in r["roadmap_ids"])
+                or any(e["status"] == "verified" for e in r["evidence"])):
+            findings.append(f"req/STATUS-SOURCE: {rid} delivery {ds} без roadmap task в работе и без verified evidence — "
+                            "registry reachable/candidate-тест статус не дают")
+        disp = r["disposition"]
+        if disp == "task" and not r["roadmap_ids"]:
+            findings.append(f"req/DISPOSITION: {rid} disposition=task без roadmap_ids")
+        if disp == "task_required" and r["roadmap_ids"]:
+            findings.append(f"req/DISPOSITION: {rid} disposition=task_required, но roadmap_ids уже есть")
+        if disp == "blocked" and ds != "blocked":
+            findings.append(f"req/DISPOSITION: {rid} disposition=blocked при delivery_status={ds}")
+        for e in r["evidence"]:
+            if e["kind"] in ("unit", "behavioral", "integration", "ui_smoke", "contract_test", "command") \
+                    and not (root / e["ref"]).exists():
+                findings.append(f"req/EVIDENCE-PATH: {rid} → `{e['ref']}` не существует")
+    for sid, s in scenarios.items():
+        if sid not in referenced_sc:
+            findings.append(f"req/SC-ORPHAN: {sid} не привязан ни к одному REQ")
+        for rid in s["req_ids"]:
+            if rid not in ids:
+                findings.append(f"req/SC-REQ-UNKNOWN: {sid} → {rid}")
+            elif sid not in next(r for r in reqs if r["id"] == rid)["scenario_ids"]:
+                findings.append(f"req/SC-ASYMMETRIC: {sid} называет {rid}, но {rid} не называет {sid}")
+        for t in s["roadmap_ids"]:
+            if t not in tasks:
+                findings.append(f"req/TASK-UNKNOWN: {sid} → {t} нет в roadmap.yaml")
+        for e in s["evidence"]:
+            if e["kind"] in ("unit", "behavioral", "integration", "ui_smoke", "contract_test", "command") \
+                    and not (root / e["ref"]).exists():
+                findings.append(f"req/EVIDENCE-PATH: {sid} → `{e['ref']}` не существует")
+        if s["delivery_status"] == "done" and not any(e["status"] == "verified" for e in s["evidence"]):
+            findings.append(f"req/OVERCLAIM: {sid} delivery done без verified evidence")
+        if s["delivery_status"] in ("in_progress", "verification") and not (
+                any(tasks.get(t, {}).get("delivery_status") in ("in_progress", "verification", "done") for t in s["roadmap_ids"])
+                or any(e["status"] == "verified" for e in s["evidence"])):
+            findings.append(f"req/STATUS-SOURCE: {sid} delivery {s['delivery_status']} без roadmap task в работе и без verified evidence")
+
+    traced = {j for r in reqs for j in r["journey_ids"]}
+    excluded = {x["id"] for x in doc.get("registry_exclusions", []) or []}
+    for fid in sorted(set(registry) - traced - excluded):
+        findings.append(f"req/REGISTRY-UNTRACED: `{fid}` из feature-registry не встречается ни в одном journey_ids "
+                        "и не исключён явно (REQ-GOV-002)")
+
+    tbd = sum(1 for r in reqs for k in ("owner", "implementation_owner") if r[k] == "TBD") \
+        + sum(1 for s in scenarios.values() if s["owner"] == "TBD")
+    if tbd and doc["document"].get("status") == "APPROVED":
+        findings.append(f"req/TBD-AT-APPROVED: {tbd} полей TBD при document.status=APPROVED (§37)")
+    elif tbd:
+        print(f"  · TBD owner: {tbd} полей — допустимо до APPROVED, блокирует его")
+    print(f"  · REQ {len(reqs)} / SC {len(scenarios)} / pending journeys {len(pending)} / "
+          f"без roadmap_ids {sum(1 for r in reqs if not r['roadmap_ids'])}")
+    return findings
+
 
 MODULES = {
     "schema": ("RM-GOV-001", module_schema),
@@ -690,6 +850,7 @@ MODULES = {
     "registry": ("RM-GOV-005", module_registry),
     "ssot": ("RM-GOV-004", module_ssot),
     "decisions": ("OD-017/A2", module_decisions),
+    "req": ("OD-017/A1", module_req),
 }
 
 
@@ -724,9 +885,10 @@ SANDBOX_PATHS = [
     "tests/ui-smoke/ci-subset.txt", "PROJECT_STATE.md", "AGENTS.md", "CLAUDE.md",
     "docs/architecture/README.md", "docs/product/environment-inventory.yaml",
     "docs/product/requirements/tz-v2.6-draft.md",
+    "docs/product/requirements-traceability.yaml", "docs/product/requirements-traceability.schema.json",
 ]
 SANDBOX_TREES = ["scripts/ci", "scripts/dev", "scripts/legacy", "docs/product/generated",
-                 "tests/ui-smoke", "docs/architecture"]
+                 "tests/ui-smoke", "tests/behavioral", "tests/integration", "docs/architecture"]
 
 
 def _sandbox(root: Path, tmp: Path) -> Path:
@@ -746,6 +908,9 @@ def _sandbox(root: Path, tmp: Path) -> Path:
     (work / "scripts").mkdir(exist_ok=True)
     for name in sorted((root / "scripts").glob("*.py")):
         shutil.copy2(name, work / "scripts" / name.name)
+    (work / "tests").mkdir(exist_ok=True)
+    for name in sorted((root / "tests").glob("*.py")):  # evidence refs модуля req
+        shutil.copy2(name, work / "tests" / name.name)
     return work
 
 
@@ -889,6 +1054,43 @@ def self_test(root: Path) -> int:
     case("alias на superseded решении", "decisions",
          lambda w: sub(w, ROADMAP_YAML, "  status: approved\n  decided_on: '2026-08-28'\n- id: OD-019\n",
                        "  status: superseded\n  decided_on: '2026-08-28'\n- id: OD-019\n", 1), True)
+
+    # --- req: трассировка требований
+    case("REQ из §25 пропал из карты", "req",
+         lambda w: sub(w, TRACE_YAML, "- id: REQ-GOV-003\n", "- id: REQ-GOV-099\n", 1), True,
+         effective=lambda w: "- id: REQ-GOV-099" in (w / TRACE_YAML).read_text(encoding="utf-8"))
+    case("journey_ids ссылается на несуществующий registry ID", "req",
+         lambda w: sub(w, TRACE_YAML, "  - system.theme_switch\n", "  - system.theme_switchx\n", 1), True)
+    case("business REQ потерял story", "req",
+         lambda w: sub(w, TRACE_YAML, "  story_ids:\n  - US-KPI-001\n", "  story_ids: []\n", 1), True,
+         effective=lambda w: "- US-KPI-001" not in (w / TRACE_YAML).read_text(encoding="utf-8"))
+    case("roadmap_ids ссылается на неизвестную задачу", "req",
+         lambda w: sub(w, TRACE_YAML, "  - RM-TECH-203\n", "  - RM-TECH-299\n", 1), True)
+    case("технический REQ остался без сценария", "req",
+         lambda w: sub(w, TRACE_YAML, "  scenario_ids:\n  - SC-STAND-002\n", "  scenario_ids: []\n", 1), True,
+         effective=lambda w: "- SC-STAND-002" not in (w / TRACE_YAML).read_text(encoding="utf-8").split("scenarios:")[0])
+    case("delivery done без verified evidence", "req",
+         lambda w: sub(w, TRACE_YAML, "  delivery_status: planned\n", "  delivery_status: done\n", 1), True,
+         effective=lambda w: "delivery_status: done" in (w / TRACE_YAML).read_text(encoding="utf-8"))
+    case("registry feature без REQ", "req",
+         lambda w: sub(w, TRACE_YAML, "  - observability\n", "", 1), True,
+         effective=lambda w: "  - observability\n" not in (w / TRACE_YAML).read_text(encoding="utf-8"))
+    def _status_in_block(w, req_id, new_status):
+        # меняем delivery_status внутри блока конкретного REQ, не первое совпадение по файлу
+        p = w / TRACE_YAML
+        text = p.read_text(encoding="utf-8")
+        i = text.index(f"- id: {req_id}\n")
+        j = text.index("  delivery_status: ", i)
+        k = text.index("\n", j)
+        p.write_text(text[:j] + f"  delivery_status: {new_status}" + text[k:], encoding="utf-8")
+
+    case("in_progress без roadmap task и verified evidence", "req",
+         lambda w: _status_in_block(w, "REQ-NFR-005", "in_progress"), True,
+         effective=lambda w: yaml.safe_load((w / TRACE_YAML).read_text(encoding="utf-8"))["requirements"]
+         and next(r for r in yaml.safe_load((w / TRACE_YAML).read_text(encoding="utf-8"))["requirements"]
+                  if r["id"] == "REQ-NFR-005")["delivery_status"] == "in_progress")
+    case("карта привязана к другой ревизии драфта", "req",
+         lambda w: sub(w, TZ_DRAFT, "| Revision | `draft-2026-08-28-r422`", "| Revision | `draft-2026-08-28-r423`", 1), True)
 
     with tempfile.TemporaryDirectory() as td:
         work = _sandbox(root, Path(td))

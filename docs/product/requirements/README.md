@@ -21,6 +21,9 @@
 - **Статус документа:** DRAFT → `APPROVED` только после артефактов Дополнения AG и закрытия
   применимых gates (`roadmap.yaml`). Не источник истины, roadmap не меняет.
 - **Sidecar:** `tz-v2.6-draft.sha256`; **приложения:** `tz-v2.6-draft-appendix-index.md`.
+- **Трассировка:** `docs/product/requirements-traceability.yaml` (101 REQ → story → journey → registry →
+  roadmap → evidence, 69 `SC-*`; схема `requirements-traceability.schema.json`; guard-модуль `req`).
+  Привязана к ревизии драфта: новая редакция → красный CI до пересверки.
 - Решения `DEC-022/024/026` записаны как `OD-018/019/020`; `DEC-005` (владелец master-данных
   цен/SKU) остаётся открытым.
 

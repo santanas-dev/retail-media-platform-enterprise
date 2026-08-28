@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-28 (ТЗ v2.6: содержание r421 ACCEPTED — OD-017; DEC-022/024/026 → OD-018/019/020; cutover драфта в `docs/product/requirements/`)
+**Last updated:** 2026-08-28 (ТЗ v2.6 → APPROVED: A2 единый реестр решений — CI run 33164564954 success; A1 requirements-traceability.yaml — 101 REQ / 69 SC, guard `req`)
 
 **RLS-CONTEXT-DEVICE-001 (открыто, блокирует device pilot).** `POST /device/onboard` и
 `POST /identity/device-codes` не несут `Depends(set_rls_context)`, но работают с
@@ -27,7 +27,12 @@ DEC-строки в самом драфте помечены `PENDING-OD` до A
 `docs/audit/2026-08-28-claude-a2-decision-registry.md`. Остаток: колонка источника в драфте
 (Codex), имя владельца master-данных (OD-023).
 
-**Next Active Workstream:** **ТЗ v2.6 → APPROVED**: A1 `requirements-traceability.yaml` + gate `req` + `SC-*` для 53 REQ, A3 task breakdown (owner-gated), артефакты Дополнения AG. Открыто у владельца: `OD-023` (DEC-005) — имя владельца master-данных цен/SKU. Параллельно: этап S (`RM-STAB-003…`), `RM-TECH-210`.
+**TZ-V26-A1-001 (2026-08-28).** `docs/product/requirements-traceability.yaml`: 101 REQ §25 по §37, 69 `SC-*`,
+23 PENDING-ID journeys, все 58 registry ID трассированы; схема + модуль guard `req` (self-test 48/48); delivery_status только из roadmap/verified evidence (правило Codex).
+Запись: `docs/audit/2026-08-28-claude-a1-requirements-traceability.md`. Остаток: 170 TBD owner
+(блокирует APPROVED), owner mapping PENDING-ID, 51 REQ без task → A3. A2 CI evidence: run 33164564954.
+
+**Next Active Workstream:** **ТЗ v2.6 → APPROVED**: A3 task breakdown (owner-gated) → артефакты AG. Ранее: A1 `requirements-traceability.yaml` + gate `req` + `SC-*` для 53 REQ, A3 task breakdown (owner-gated), артефакты Дополнения AG. Открыто у владельца: `OD-023` (DEC-005) — имя владельца master-данных цен/SKU. Параллельно: этап S (`RM-STAB-003…`), `RM-TECH-210`.
 
 Последовательность работ ведётся в `docs/product/roadmap.yaml` (sequencing SSOT, 43 задачи,
 утверждено владельцем 2026-08-26). Представления генерируются в `docs/product/generated/`

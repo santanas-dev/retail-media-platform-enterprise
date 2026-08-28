@@ -88,3 +88,5 @@
 | `2026-08-28-codex-verdict-claude-confirmation-r419.md` | Codex: ACCEPT текста r419 → r420 | `develop @ b21174f` + r420 | добавлен критерий полноты AG |
 | `2026-08-28-tz-v2.6-consistency-reached-r420.md` | **согласованность драфта достигнута** | `develop @ b21174f` + рабочее дерево | цикл ревью закрыт обеими сторонами; 5 действий владельца; распределение AG |
 | `2026-08-28-claude-a2-decision-registry.md` | A2: DEC как alias `owner_decisions` — 27/27, 36 OD, модуль guard `decisions` | `develop @ e429f97` + рабочее дерево | остаток: колонка источника в драфте (Codex r423), имя DEC-005 |
+| `2026-08-28-claude-a1-requirements-traceability.md` | A1: `requirements-traceability.yaml` — 101 REQ, 69 SC, модуль guard `req` | `develop @ b0f9cdb` + рабочее дерево | остаток: 170 TBD owner, 23 PENDING-ID, 51 REQ без task (A3) |
+| `2026-08-28-codex-review-claude-a1.md` | независимая проверка A1 | `develop @ b0f9cdb` + рабочее дерево | ACCEPT после исправления typo 71→69 и фиксации правила delivery_status |
