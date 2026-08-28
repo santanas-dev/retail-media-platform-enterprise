@@ -21,25 +21,33 @@ rules:
   registry reachable и candidate-тест сами по себе статус не дают — без задачи planned/candidate
 - journey_ids — только canonical ID feature-registry; pending_journey_ids — из pending_journey_map
 - исполняемый реестр решений — roadmap.yaml:owner_decisions; dependencies ссылаются на DEC alias
+- >-
+  roadmap_ids заполнены RM-GOV-009 из кандидата A3 (OD-037); disposition task_required больше не допускается без
+  owner-approved deferred
 pending_journey_map:
   analytics.compare:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: analytics.compare
+    note: registry ID создан RM-GOV-009 (blocked до задачи)
   attribution.lift_report:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: attribution.lift_report
+    note: registry ID создан RM-GOV-009 (blocked до задачи)
   audit.compare:
     status: awaiting_owner
     canonical: null
   campaign.competitive_separation:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: campaign.competitive_separation
+    note: registry ID создан RM-GOV-009 (blocked до задачи)
   campaign.readiness:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: campaign.readiness
+    note: registry ID создан RM-GOV-009 (blocked до задачи)
   campaign.schedule:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: campaign.schedule
+    note: registry ID создан RM-GOV-009 (blocked до задачи)
   campaign.underdelivery:
     status: awaiting_owner
     canonical: null
@@ -53,41 +61,51 @@ pending_journey_map:
     status: awaiting_owner
     canonical: null
   content.dynamic_binding:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: content.dynamic_binding
+    note: registry ID создан RM-GOV-009 (blocked до задачи)
   data.catalog:
     status: awaiting_owner
     canonical: null
   experiment.evaluate:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: experiment.evaluate
+    note: registry ID создан RM-GOV-009 (blocked до задачи)
   field_ops.device_confirm:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: field_ops.device_confirm
+    note: registry ID создан RM-GOV-009 (blocked до задачи)
   finance.exchange:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: finance.exchange
+    note: registry ID создан RM-GOV-009 (blocked до задачи)
   finance.reconcile:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: finance.reconcile
+    note: registry ID создан RM-GOV-009 (blocked до задачи)
   integration.reconcile:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: integration.reconcile
+    note: registry ID создан RM-GOV-009 (blocked до задачи)
   inventory.priority:
     status: awaiting_owner
     canonical: null
   kpi.review:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: kpi.review
+    note: registry ID создан RM-GOV-009 (blocked до задачи)
   placement.audience_targeting:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: placement.audience_targeting
+    note: registry ID создан RM-GOV-009 (blocked до задачи)
   release.rollback:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: release.rollback
+    note: registry ID создан RM-GOV-009 (blocked до задачи)
   rollout.rollback:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: rollout.rollback
+    note: registry ID создан RM-GOV-009 (blocked до задачи)
   security.review:
     status: awaiting_owner
     canonical: null
@@ -112,7 +130,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -143,11 +161,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-240
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -162,7 +181,7 @@ requirements:
       существуют уровни network/branch/cluster/store/store_group/channel/device/surface с FK и RLS; отсутствие уровня
       — красный design-gate
   evidence: []
-  disposition: task_required
+  disposition: task
 - id: REQ-CORE-002
   title: Channel-neutral campaign/inventory
   source:
@@ -184,7 +203,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -219,11 +238,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-241
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -240,7 +260,7 @@ requirements:
   - kind: unit
     ref: tests/test_s089_inventory_simulation.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-ARCH-001
   title: Domain boundaries, ERD и event contracts
   source:
@@ -255,11 +275,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-220
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -275,7 +296,7 @@ requirements:
   - kind: command
     ref: scripts/ci/roadmap-governance-guard.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-ARCH-002
   title: Product independence
   source:
@@ -293,11 +314,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-STAB-017
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -313,7 +335,7 @@ requirements:
   - kind: unit
     ref: tests/test_production_config_gate.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-ARCH-003
   title: Async I/O boundary
   source:
@@ -329,11 +351,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-STAB-012
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -349,7 +372,7 @@ requirements:
   - kind: unit
     ref: tests/test_api_tx_boundary.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-ARCH-004
   title: Environment deployment path
   source:
@@ -372,7 +395,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-015
   story_ids: []
@@ -420,7 +443,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-001
   story_ids:
@@ -465,7 +488,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -514,7 +537,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-CHAN-003
@@ -565,7 +588,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-LIC-001
@@ -608,7 +631,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -647,11 +670,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-244
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-004
   story_ids:
@@ -677,7 +701,7 @@ requirements:
   - kind: unit
     ref: tests/test_phase4_2c_delivery.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-ORCH-003
   title: Delivery triggers and revocation
   source:
@@ -696,11 +720,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-242
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -721,7 +746,7 @@ requirements:
   - kind: unit
     ref: tests/test_phase6_outbox.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-ORCH-004
   title: Transactional outbox integrity
   source:
@@ -743,11 +768,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-243
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-004
   story_ids: []
@@ -775,7 +801,7 @@ requirements:
   - kind: integration
     ref: tests/integration/test_nats_e2e.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-ORCH-005
   title: Orchestrator rollout boundary
   source:
@@ -798,7 +824,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-002
   story_ids: []
@@ -839,7 +865,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -877,7 +903,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-CHAN-002
@@ -924,7 +950,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -966,7 +992,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids:
@@ -1003,7 +1029,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-003
   story_ids: []
@@ -1046,7 +1072,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -1092,7 +1118,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -1135,7 +1161,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-024
   story_ids: []
@@ -1181,7 +1207,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids:
@@ -1228,7 +1254,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -1272,7 +1298,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-021
   story_ids:
@@ -1331,11 +1357,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-250
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -1354,7 +1381,7 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_creative_upload_sessions_rls.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-BIZ-001
   title: Placement/inventory calculation
   source:
@@ -1387,7 +1414,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-CAM-001
@@ -1447,13 +1474,13 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-FIN-001
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - finance.reconcile
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -1485,11 +1512,12 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-247
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-ADV-001
@@ -1527,7 +1555,7 @@ requirements:
     ref: tests/ui-smoke/test_uismoke__self__campaign_view.py
     status: candidate
     note: 'self.campaign_view: registry reachable'
-  disposition: task_required
+  disposition: task
 - id: REQ-BIZ-004
   title: Service-quality reporting
   source:
@@ -1545,17 +1573,18 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-UX-010
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-ANL-001
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - analytics.compare
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -1564,7 +1593,7 @@ requirements:
     then: >-
       journey завершён; negative path — stale/empty/foreign data → labelled or denied; `analytics.exported`
   evidence: []
-  disposition: task_required
+  disposition: task
 - id: REQ-BIZ-005
   title: Campaign flight windows
   source:
@@ -1582,17 +1611,18 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-248
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-FLT-001
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - campaign.schedule
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -1601,7 +1631,7 @@ requirements:
     then: >-
       journey завершён; negative path — end before start, DST ambiguity or active immutable window → reject; `campaign.flight_versioned`
   evidence: []
-  disposition: task_required
+  disposition: task
 - id: REQ-BIZ-006
   title: Manifest eligibility
   source:
@@ -1620,17 +1650,18 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-249
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-ELG-001
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - campaign.readiness
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -1640,7 +1671,7 @@ requirements:
       journey завершён; negative path — rejected creative, no target, revoked device or expired window → ineligible;
       `campaign.readiness_evaluated`
   evidence: []
-  disposition: task_required
+  disposition: task
 - id: REQ-BIZ-007
   title: Campaign type and priority
   source:
@@ -1662,7 +1693,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-PRI-001
@@ -1703,7 +1734,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-006
   story_ids:
@@ -1740,11 +1771,12 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-286
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-017
   story_ids:
@@ -1758,8 +1790,8 @@ requirements:
   - commerce.payment_status
   - commerce.price_list_manage
   - commerce.tariff_manage
-  pending_journey_ids:
   - finance.reconcile
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -1798,7 +1830,7 @@ requirements:
     ref: tests/ui-smoke/test_uismoke__commerce__tariff_manage.py
     status: candidate
     note: 'commerce.tariff_manage: registry reachable'
-  disposition: task_required
+  disposition: task
 - id: REQ-BIZ-010
   title: Campaign workflow closure
   source:
@@ -1817,11 +1849,12 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-245
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-025
   story_ids:
@@ -1852,7 +1885,7 @@ requirements:
     ref: tests/ui-smoke/test_uismoke__campaign__pause.py
     status: candidate
     note: 'campaign.pause: registry reachable'
-  disposition: task_required
+  disposition: task
 - id: REQ-BIZ-011
   title: Reporting views
   source:
@@ -1877,7 +1910,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-007
   story_ids:
@@ -1910,18 +1943,19 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-284
   requirement_status: approved
   delivery_status: blocked
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-027
   story_ids:
   - US-AB-001
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - experiment.evaluate
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -1952,18 +1986,19 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-256
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-010
   story_ids:
   - US-KPI-001
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - kpi.review
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -1972,7 +2007,7 @@ requirements:
     then: >-
       journey завершён; negative path — missing owner/source or technical SLO substituted → unmeasurable; `kpi.review_recorded`
   evidence: []
-  disposition: task_required
+  disposition: task
 - id: REQ-BIZ-014
   title: Commerce contour 2
   source:
@@ -1993,11 +2028,12 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-246
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-017
   - DEC-026
@@ -2050,7 +2086,7 @@ requirements:
     ref: tests/ui-smoke/test_uismoke__commerce__tariff_manage.py
     status: candidate
     note: 'commerce.tariff_manage: registry reachable'
-  disposition: task_required
+  disposition: task
 - id: REQ-BIZ-015
   title: Advertiser onboarding и self-service
   source:
@@ -2077,7 +2113,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-ADV-002
@@ -2164,7 +2200,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-INV-001
@@ -2218,11 +2254,12 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-UX-009
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-ADV-003
@@ -2243,7 +2280,7 @@ requirements:
     ref: tests/ui-smoke/test_uismoke__advertiser__contract_pdf_upload.py
     status: candidate
     note: 'advertiser.contract_crud: registry reachable'
-  disposition: task_required
+  disposition: task
 - id: REQ-V26-001
   title: Tenant model conformance
   source:
@@ -2259,11 +2296,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-229
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-V26-005
@@ -2286,7 +2324,7 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_scope_rls.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-V26-002
   title: Attribution & sales lift
   source:
@@ -2301,18 +2339,19 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-282
   requirement_status: approved
   delivery_status: blocked
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-005
   story_ids:
   - US-V26-001
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - attribution.lift_report
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -2344,7 +2383,7 @@ requirements:
   requirement_status: approved
   delivery_status: blocked
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-011
   story_ids:
@@ -2379,20 +2418,21 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-285
   requirement_status: approved
   delivery_status: blocked
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-005
   - DEC-022
   story_ids:
   - US-V26-003
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - campaign.competitive_separation
   - placement.audience_targeting
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -2420,20 +2460,21 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-283
   requirement_status: approved
   delivery_status: blocked
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-005
   - DEC-019
   story_ids:
   - US-V26-003
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - campaign.competitive_separation
   - placement.audience_targeting
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -2460,18 +2501,19 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-286
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-017
   story_ids:
   - US-V26-004
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - finance.exchange
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -2481,7 +2523,7 @@ requirements:
     then: >-
       journey завершён; negative path — duplicate batch, invalid callback or unsupported legal claim → reject; `finance.exchange_reconciled`
   evidence: []
-  disposition: task_required
+  disposition: task
 - id: REQ-V26-007
   title: Programmatic extension point
   source:
@@ -2496,11 +2538,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-289
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-018
   story_ids:
@@ -2516,7 +2559,7 @@ requirements:
     then: >-
       без approved provider/DSP решения (OD-021/OD-031) код не пишется; контракт остаётся design-only с явной пометкой
   evidence: []
-  disposition: task_required
+  disposition: task
 - id: REQ-V26-008
   title: Dynamic creative
   source:
@@ -2531,18 +2574,19 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-262
   requirement_status: approved
   delivery_status: blocked
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-005
   story_ids:
   - US-V26-007
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - content.dynamic_binding
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -2569,17 +2613,18 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-263
   requirement_status: approved
   delivery_status: blocked
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-V26-006
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - field_ops.device_confirm
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -2604,18 +2649,19 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-284
   requirement_status: approved
   delivery_status: blocked
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-027
   story_ids:
   - US-V26-001
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - attribution.lift_report
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -2642,11 +2688,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-289
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-001
   story_ids: []
@@ -2661,7 +2708,7 @@ requirements:
     then: >-
       без approved provider/DSP решения (OD-021/OD-031) код не пишется; контракт остаётся design-only с явной пометкой
   evidence: []
-  disposition: task_required
+  disposition: task
 - id: REQ-SEC-001
   title: Identity and MFA
   source:
@@ -2684,11 +2731,12 @@ requirements:
   coverage_type: security
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-252
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-ADM-001
@@ -2729,7 +2777,7 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_auth_rbac_behavior.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-SEC-002
   title: Tenant/retailer isolation
   source:
@@ -2760,7 +2808,7 @@ requirements:
   requirement_status: approved
   delivery_status: in_progress
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-ADM-001
@@ -2924,7 +2972,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-003
   - DEC-016
@@ -2980,11 +3028,13 @@ requirements:
   coverage_type: security
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-OPS-005
+  - RM-TECH-253
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-007
   story_ids:
@@ -3024,7 +3074,7 @@ requirements:
     ref: tests/ui-smoke/test_uismoke__emergency__deactivate.py
     status: candidate
     note: 'emergency.deactivate: registry reachable'
-  disposition: task_required
+  disposition: task
 - id: REQ-OPS-001
   title: Device health/commands
   source:
@@ -3052,11 +3102,12 @@ requirements:
   coverage_type: operational
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-255
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-ADM-001
@@ -3106,7 +3157,7 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_edge004_heartbeat.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-OPS-009
   title: Device heartbeat contract
   source:
@@ -3128,11 +3179,12 @@ requirements:
   coverage_type: operational
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-224
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids:
@@ -3151,7 +3203,7 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_edge004_heartbeat.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-OPS-007
   title: Emergency control
   source:
@@ -3170,11 +3222,12 @@ requirements:
   coverage_type: operational
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-254
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids:
@@ -3208,7 +3261,7 @@ requirements:
   - kind: ui_smoke
     ref: tests/ui-smoke/test_uismoke__emergency__activate.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-OPS-008
   title: Runtime cache lifecycle
   source:
@@ -3225,11 +3278,12 @@ requirements:
   coverage_type: operational
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-260
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -3244,7 +3298,7 @@ requirements:
       неиспользуемые файлы удалены по правилу, last-known-good сохранён, просроченная платная реклама не показывается
       бесконечно
   evidence: []
-  disposition: task_required
+  disposition: task
 - id: REQ-OPS-002
   title: Rollout/rollback/flags
   source:
@@ -3269,16 +3323,16 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-008
   story_ids:
   - US-OPS-002
   - US-REL-001
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - release.rollback
   - rollout.rollback
+  pending_journey_ids: []
   scenario_ids:
   - SC-OPS-007
   artifacts: []
@@ -3315,7 +3369,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-012
   story_ids:
@@ -3323,8 +3377,8 @@ requirements:
   - US-REL-001
   journey_ids:
   - backup.restore
-  pending_journey_ids:
   - release.rollback
+  pending_journey_ids: []
   scenario_ids:
   - SC-OPS-008
   artifacts:
@@ -3374,14 +3428,14 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-OPS-002
   journey_ids:
   - observability
-  pending_journey_ids:
   - rollout.rollback
+  pending_journey_ids: []
   scenario_ids:
   - SC-OPS-009
   artifacts: []
@@ -3416,7 +3470,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-014
   story_ids: []
@@ -3456,7 +3510,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-012
   - DEC-015
@@ -3517,7 +3571,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-023
   story_ids:
@@ -3543,6 +3597,7 @@ requirements:
   - advertiser.create_org
   - advertiser.invite
   - advertiser.legal_requisites
+  - analytics.compare
   - audit.view
   - campaign.create
   - commerce.booking
@@ -3568,7 +3623,6 @@ requirements:
   - system.theme_switch
   - user.assign_roles
   pending_journey_ids:
-  - analytics.compare
   - carrier.manage
   scenario_ids: []
   artifacts: []
@@ -3702,7 +3756,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -3737,7 +3791,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -3767,11 +3821,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-UX-008
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -3786,7 +3841,7 @@ requirements:
       по каждому каналу видны rendition/inventory/conflicts/forecast/PoP mode/SLA readiness; каждый blocked/warning
       ведёт к действию
   evidence: []
-  disposition: task_required
+  disposition: task
 - id: REQ-UX-005
   title: Permission descriptions
   source:
@@ -3808,7 +3863,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-ADM-002
@@ -3846,17 +3901,18 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-281
   requirement_status: approved
   delivery_status: blocked
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-INT-001
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - integration.reconcile
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -3883,18 +3939,20 @@ requirements:
   coverage_type: business
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-264
+  - RM-TECH-280
   requirement_status: approved
   delivery_status: blocked
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-005
   story_ids:
   - US-INT-001
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - integration.reconcile
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -3921,11 +3979,12 @@ requirements:
   coverage_type: security
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-287
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-013
   story_ids: []
@@ -3943,7 +4002,7 @@ requirements:
   - kind: unit
     ref: tests/test_s065_rate_limit.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-API-001
   title: Versioned API and event compatibility
   source:
@@ -3962,11 +4021,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-220
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -3981,7 +4041,7 @@ requirements:
       в одной версии допустим один canonical; alias имеет deprecation date и ту же authorization; смешение отклонено
       contract-тестом
   evidence: []
-  disposition: task_required
+  disposition: task
 - id: REQ-API-002
   title: API boundary separation
   source:
@@ -3999,11 +4059,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-221
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -4022,7 +4083,7 @@ requirements:
   - kind: unit
     ref: tests/test_phase3_devices_api.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-API-003
   title: PoP endpoint compatibility
   source:
@@ -4040,11 +4101,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-222
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -4064,7 +4126,7 @@ requirements:
   - kind: unit
     ref: tests/test_contract_pop.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-DATA-001
   title: Data ownership and lifecycle
   source:
@@ -4084,11 +4146,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-251
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-007
   story_ids:
@@ -4104,7 +4167,7 @@ requirements:
     when: сохранение
     then: создаётся новая версия с diff и actor; предыдущая неизменяема; словарь данных называет владельца
   evidence: []
-  disposition: task_required
+  disposition: task
 - id: REQ-DATA-002
   title: Canonical entity inventory
   source:
@@ -4125,11 +4188,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-229
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -4150,7 +4214,7 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_scope_rls.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-NFR-001
   title: Capacity/performance
   source:
@@ -4174,7 +4238,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-006
   - DEC-009
@@ -4206,11 +4270,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-248
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -4228,7 +4293,7 @@ requirements:
   - kind: unit
     ref: tests/test_s063_pop_timezone.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-NFR-003
   title: Compatibility
   source:
@@ -4246,11 +4311,12 @@ requirements:
   coverage_type: technical
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-228
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -4266,7 +4332,7 @@ requirements:
   - kind: unit
     ref: tests/test_version_identity.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-NFR-004
   title: Network scale and PoP volume
   source:
@@ -4292,7 +4358,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -4329,7 +4395,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -4366,7 +4432,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies:
   - DEC-009
   story_ids: []
@@ -4405,7 +4471,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -4437,11 +4503,12 @@ requirements:
   coverage_type: security
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-STAB-014
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids:
@@ -4467,7 +4534,7 @@ requirements:
   - kind: unit
     ref: tests/test_phase3_security.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-SEC-006
   title: API attack protection
   source:
@@ -4488,11 +4555,12 @@ requirements:
   coverage_type: security
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-STAB-013
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -4513,7 +4581,7 @@ requirements:
   - kind: unit
     ref: tests/test_phase3_security.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-SEC-007
   title: Object storage boundary
   source:
@@ -4529,11 +4597,12 @@ requirements:
   coverage_type: security
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-STAB-016
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -4552,7 +4621,7 @@ requirements:
   - kind: integration
     ref: tests/integration/test_minio_upload.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-SEC-008
   title: Network segmentation
   source:
@@ -4570,11 +4639,12 @@ requirements:
   coverage_type: security
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-OPS-002
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -4587,7 +4657,7 @@ requirements:
     when: negative reachability tests из device-сегмента
     then: Admin API и PostgreSQL/MinIO/Redis недостижимы; Gateway достижим только по HTTPS/mTLS
   evidence: []
-  disposition: task_required
+  disposition: task
 - id: REQ-SEC-009
   title: System administrator control plane
   source:
@@ -4605,11 +4675,12 @@ requirements:
   coverage_type: security
   owner: TBD
   implementation_owner: Claude Code
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-STAB-015
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids:
@@ -4653,7 +4724,7 @@ requirements:
   - kind: unit
     ref: tests/test_s019_role_safety.py
     status: candidate
-  disposition: task_required
+  disposition: task
 - id: REQ-STAND-001
   title: Safe realistic seed
   source:
@@ -4672,11 +4743,11 @@ requirements:
   owner: TBD
   implementation_owner: Claude Code
   roadmap_ids:
-  - RM-STAB-011
+  - RM-ENV-002
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -4718,11 +4789,11 @@ requirements:
   owner: TBD
   implementation_owner: Claude Code
   roadmap_ids:
-  - RM-STAB-011
+  - RM-ENV-002
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -4759,7 +4830,7 @@ requirements:
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -4804,7 +4875,7 @@ requirements:
   requirement_status: approved
   delivery_status: in_progress
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids:
   - US-REG-001
@@ -4850,7 +4921,7 @@ requirements:
   requirement_status: approved
   delivery_status: in_progress
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -4896,7 +4967,7 @@ requirements:
   requirement_status: approved
   delivery_status: in_progress
   status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
   dependencies: []
   story_ids: []
   journey_ids: []
@@ -4946,7 +5017,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-CORE-001
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-240
   acceptance:
   - given: миграции применены на чистой PostgreSQL
     when: выполняется seed
@@ -4983,7 +5055,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-CORE-003
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-241
   acceptance:
   - given: placement с broad target (store-group/channel/zone)
     when: выполняется планирование
@@ -5002,7 +5075,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-ARCH-001
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-220
   acceptance:
   - given: ADR-001…020, ERD и event schemas в docs/architecture
     when: вносится изменение контракта
@@ -5020,7 +5094,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-ARCH-002
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-STAB-017
   acceptance:
   - given: внешние наблюдатели (dashboard, LLM-агенты) выключены
     when: выполняется полный production smoke
@@ -5038,7 +5113,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-ARCH-003
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-STAB-012
   acceptance:
   - given: async endpoint/dependency
     when: внутри вызывается blocking I/O без threadpool
@@ -5057,7 +5133,9 @@ scenarios:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-ARCH-004
   owner: TBD
   roadmap_ids:
+  - RM-ENV-003
   - RM-OPS-001
+  - RM-OPS-003
   - RM-PILOT-002
   acceptance:
   - given: compose-профили и pilot preflight
@@ -5130,7 +5208,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-ORCH-003
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-242
   acceptance:
   - given: транзакция изменяет campaign/placement/playlist
     when: транзакция фиксируется
@@ -5153,7 +5232,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-ORCH-004
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-243
   acceptance:
   - given: pending события в outbox, брокер NATS JetStream
     when: relay публикует с Nats-Msg-Id=event_id; брокер отвечает ошибкой 7 раз
@@ -5184,6 +5264,7 @@ scenarios:
   owner: TBD
   roadmap_ids:
   - RM-TECH-207A
+  - RM-TECH-261
   acceptance:
   - given: KSO — единственный реальный канал (OD-022)
     when: PR добавляет Channel Orchestrator/mock adapter
@@ -5204,6 +5285,7 @@ scenarios:
   owner: TBD
   roadmap_ids:
   - RM-TECH-207A
+  - RM-TECH-230
   acceptance:
   - given: adapter в mock mode
     when: получает versioned task/manifest
@@ -5222,6 +5304,7 @@ scenarios:
   owner: TBD
   roadmap_ids:
   - RM-TECH-207B
+  - RM-TECH-223
   acceptance:
   - given: manifest для устройства
     when: runtime получает manifest
@@ -5311,6 +5394,7 @@ scenarios:
   owner: TBD
   roadmap_ids:
   - RM-TECH-207B
+  - RM-TECH-226
   acceptance:
   - given: события разных pop_mode
     when: строится коммерческий отчёт
@@ -5335,6 +5419,7 @@ scenarios:
   owner: TBD
   roadmap_ids:
   - RM-TECH-207B
+  - RM-TECH-225
   acceptance:
   - given: runtime offline с буфером событий
     when: связь восстановлена, batch повторён дважды
@@ -5361,6 +5446,7 @@ scenarios:
   owner: TBD
   roadmap_ids:
   - RM-TECH-207B
+  - RM-TECH-222
   acceptance:
   - given: device JWT
     when: POST batch из 501 событий; событие с чужим device_id; fallback без emit_pop
@@ -5383,6 +5469,7 @@ scenarios:
   owner: TBD
   roadmap_ids:
   - RM-TECH-207B
+  - RM-TECH-227
   acceptance:
   - given: событие с недопустимым playback_result / внутренним ID / сдвигом часов
     when: ingestion
@@ -5403,7 +5490,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-CONT-002
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-250
   acceptance:
   - given: загружена media v1, затем v2
     when: v1 логически удалена / legal hold
@@ -5425,7 +5513,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-V26-011/REQ-V26-007
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-289
   acceptance:
   - given: ADR фиксирует export/SSP-facing contract
     when: запрашивается реализация
@@ -5441,7 +5530,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-OPS-009
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-224
   acceptance:
   - given: устройство с monotonic sequence
     when: 'приходят heartbeat: валидный, повторный, с чужим store_id, с просроченным timestamp'
@@ -5461,7 +5551,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-OPS-007
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-254
   acceptance:
   - given: пользователь с emergency-ролью
     when: активирует emergency с причиной; затем деактивирует
@@ -5487,7 +5578,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-OPS-008
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-260
   acceptance:
   - given: кэш на лимите профиля
     when: приходит новый manifest
@@ -5525,6 +5617,7 @@ scenarios:
   owner: TBD
   roadmap_ids:
   - RM-OPS-001
+  - RM-OPS-003
   acceptance:
   - given: production-конфигурация
     when: production gate
@@ -5583,7 +5676,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-UX-004
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-UX-008
   acceptance:
   - given: кампания с ≥1 каналом и незавершённым creative
     when: открыт экран согласования
@@ -5600,7 +5694,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-INT-003
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-287
   acceptance:
   - given: клиент BI без токена / с чужим retailer scope / сверх лимита
     when: вызовы export API
@@ -5619,7 +5714,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-API-001
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-220
   acceptance:
   - given: ресурс с code и PK
     when: клиент обращается по /{id} и по /{code}
@@ -5636,7 +5732,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-API-002
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-221
   acceptance:
   - given: device JWT
     when: вызов admin/user API
@@ -5657,7 +5754,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-API-003
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-222
   acceptance:
   - given: runtime использует legacy /device/pop/batch
     when: отправка batch
@@ -5679,7 +5777,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-DATA-002/REQ-V26-001
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-229
   acceptance:
   - given: ERD/data dictionary сгенерированы из моделей
     when: сравнение с §15
@@ -5704,6 +5803,7 @@ scenarios:
   owner: TBD
   roadmap_ids:
   - RM-TECH-205
+  - RM-TECH-288
   acceptance:
   - given: утверждённые SLO (OD-009/OD-011)
     when: production claim availability/PoP loss
@@ -5718,7 +5818,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-NFR-002
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-248
   acceptance:
   - given: магазины в разных TZ, переход DST
     when: кампания планируется на границу суток
@@ -5738,7 +5839,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-NFR-003
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-228
   acceptance:
   - given: heartbeat объявляет версии
     when: сервер выбирает представление
@@ -5776,6 +5878,7 @@ scenarios:
   owner: TBD
   roadmap_ids:
   - RM-TECH-209
+  - RM-TECH-288
   acceptance:
   - given: утверждённый max latency
     when: PoP принят
@@ -5792,6 +5895,7 @@ scenarios:
   owner: TBD
   roadmap_ids:
   - RM-TECH-205
+  - RM-TECH-288
   acceptance:
   - given: профили 40K KSO + доп. каналы + массовая публикация + emergency + analytics
     when: нагрузочный прогон
@@ -5812,6 +5916,7 @@ scenarios:
   owner: TBD
   roadmap_ids:
   - RM-TECH-205
+  - RM-TECH-288
   acceptance:
   - given: штатная сеть, 95% online
     when: обновление manifest / emergency / восстановление
@@ -5826,7 +5931,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-SEC-005
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-STAB-014
   acceptance:
   - given: критичное действие пользователем/сервисом/устройством
     when: действие выполнено
@@ -5849,7 +5955,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-SEC-006
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-STAB-013
   acceptance:
   - given: набор negative-запросов
     when: runtime negative tests
@@ -5872,7 +5979,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-SEC-007
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-STAB-016
   acceptance:
   - given: bucket и service account
     when: запрос объекта анонимно / presigned после TTL
@@ -5893,7 +6001,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-SEC-008
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-OPS-002
   acceptance:
   - given: firewall rules по environment
     when: negative reachability tests из device-сегмента
@@ -5908,7 +6017,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-SEC-009
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-STAB-015
   acceptance:
   - given: system_admin
     when: управляет users/roles/devices/settings; пытается изменить approved campaign
@@ -5935,6 +6045,7 @@ scenarios:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-STAND-001
   owner: TBD
   roadmap_ids:
+  - RM-ENV-002
   - RM-STAB-011
   acceptance:
   - given: чистый стенд
@@ -5962,6 +6073,7 @@ scenarios:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-STAND-002
   owner: TBD
   roadmap_ids:
+  - RM-ENV-002
   - RM-STAB-011
   acceptance:
   - given: seed выполнен
@@ -5998,6 +6110,8 @@ scenarios:
   owner: TBD
   roadmap_ids:
   - RM-GOV-005
+  - RM-GOV-008
+  - RM-GOV-010
   acceptance:
   - given: registry 58 ID, traceability yaml
     when: guard `req`
@@ -6022,6 +6136,9 @@ scenarios:
   owner: TBD
   roadmap_ids:
   - RM-GOV-004
+  - RM-GOV-007
+  - RM-GOV-008
+  - RM-GOV-009
   acceptance:
   - given: traceability yaml + roadmap.yaml
     when: guard `req` и schema-check
@@ -6046,6 +6163,7 @@ scenarios:
   owner: TBD
   roadmap_ids:
   - RM-TECH-207A
+  - RM-TECH-261
   acceptance:
   - given: system_admin в scope retailer
     when: создаёт/меняет channel и capability profile
@@ -6082,7 +6200,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-ORCH-002
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-244
   acceptance:
   - given: массовая публикация на 1000 устройств
     when: кампания активирована
@@ -6155,7 +6274,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-SEC-001
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-252
   acceptance:
   - given: internal staff
     when: логин через корпоративный IdP; попытка без MFA в production-профиле
@@ -6183,6 +6303,7 @@ scenarios:
   - RM-STAB-002
   - RM-STAB-004
   - RM-TECH-210
+  - RM-UX-011
   acceptance:
   - given: роль retail_media_app NOBYPASSRLS, две организации
     when: запросы в чужой scope по API и SQL
@@ -6233,7 +6354,9 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-SEC-004
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-OPS-005
+  - RM-TECH-253
   acceptance:
   - given: реестр data classes
     when: новая сущность с PII
@@ -6248,7 +6371,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-OPS-001
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-255
   acceptance:
   - given: устройства online/degraded/offline
     when: оператор открывает health view и отправляет команду
@@ -6271,6 +6395,7 @@ scenarios:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-OPS-002
   owner: TBD
   roadmap_ids:
+  - RM-OPS-004
   - RM-PILOT-002
   acceptance:
   - given: stages lab → 5 → 50 → 300 → 10% → 50% → 100%
@@ -6337,7 +6462,8 @@ scenarios:
   source:
   - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-DATA-001
   owner: TBD
-  roadmap_ids: []
+  roadmap_ids:
+  - RM-TECH-251
   acceptance:
   - given: изменение campaign/placement/playlist
     when: сохранение
@@ -6354,6 +6480,7 @@ scenarios:
   owner: TBD
   roadmap_ids:
   - RM-GOV-006
+  - RM-GOV-011
   acceptance:
   - given: AGENTS.md/CLAUDE.md, Done Gate
     when: агент вносит изменение

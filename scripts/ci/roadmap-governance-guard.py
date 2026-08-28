@@ -121,6 +121,10 @@ DECLARED_CANON_DIVERGENCES = {
 # `58 / 53 reachable / 5 blocked` — the registry triple quoted across PROJECT_STATE.
 TRIPLE_RE = re.compile(r"(\d+)\s*/\s*(\d+)\s+reachable\s*/\s*(\d+)\s+blocked")
 TRIPLE_FILES = ("PROJECT_STATE.md",)
+# RM-GOV-009 (OD-038): registry теперь меняется решениями владельца, а исторические
+# записи PROJECT_STATE («58 / 53 reachable / 5 blocked» на свою дату) — записи, не
+# заявления о текущем состоянии. Проверяется только тройка с маркером «Registry (current)».
+CURRENT_TRIPLE_RE = re.compile(r"Registry \(current\)[^\n]*?(\d+)\s*/\s*(\d+)\s+reachable\s*/\s*(\d+)\s+blocked")
 
 
 # ---------------------------------------------------------------------------
@@ -272,10 +276,13 @@ def module_metrics(root: Path) -> list:
         if not doc.exists():
             continue
         text = doc.read_text(encoding="utf-8")
-        hits = list(TRIPLE_RE.finditer(text))
+        hits = list(CURRENT_TRIPLE_RE.finditer(text))
+        historical = len(TRIPLE_RE.findall(text)) - len(hits)
+        if historical:
+            print(f"  · {rel}: исторических троек registry {historical} — записи на дату, не проверяются")
         if not hits:
-            findings.append(f"metrics/CLAIM-GONE: `{rel}` не содержит тройку registry "
-                            f"`N / M reachable / K blocked`")
+            findings.append(f"metrics/CLAIM-GONE: `{rel}` не содержит текущую тройку registry "
+                            f"`Registry (current): N / M reachable / K blocked`")
         for m in hits:
             got = tuple(int(x) for x in m.groups())
             if got != (total, reach, block):
@@ -747,8 +754,9 @@ def module_req(root: Path) -> list:
     for dup in sorted({i for i in sc_ids if sc_ids.count(i) > 1}):
         findings.append(f"req/SC-DUPLICATE: {dup}")
     pending = set(doc.get("pending_journey_map", {}) or {})
-    for p in sorted(pending & set(registry)):
-        findings.append(f"req/PENDING-IS-CANONICAL: `{p}` уже есть в feature-registry — переведите в journey_ids")
+    awaiting = {p for p, v in (doc.get("pending_journey_map", {}) or {}).items() if (v or {}).get("status") == "awaiting_owner"}
+    for p in sorted(awaiting & set(registry)):
+        findings.append(f"req/PENDING-IS-CANONICAL: `{p}` уже есть в feature-registry — переведите в journey_ids (status mapped)")
 
     referenced_sc = set()
     for r in reqs:
@@ -969,12 +977,28 @@ def _triple_text(work: Path) -> str:
 def _bump_triple(work: Path):
     path = work / "PROJECT_STATE.md"
     text = path.read_text(encoding="utf-8")
-    m = TRIPLE_RE.search(text)
-    assert m, "фикстура устарела: тройки registry нет в PROJECT_STATE.md"
+    m = CURRENT_TRIPLE_RE.search(text)
+    assert m, "фикстура устарела: текущей тройки registry нет в PROJECT_STATE.md"
     total, reach, block = (int(x) for x in m.groups())
+    triple = f"{total} / {reach} reachable / {block} blocked"
+    assert triple in m.group(0)
     path.write_text(
-        text.replace(m.group(0), f"{total} / {reach + 1} reachable / {block - 1} blocked"),
+        text[:m.start()] + m.group(0).replace(triple, f"{total} / {reach + 1} reachable / {block - 1} blocked") + text[m.end():],
         encoding="utf-8")
+
+
+def _bump_historical_triple(work: Path):
+    """Историческая тройка (без маркера current) меняется — гейт должен остаться зелёным."""
+    path = work / "PROJECT_STATE.md"
+    text = path.read_text(encoding="utf-8")
+    cur = CURRENT_TRIPLE_RE.search(text)
+    for m in TRIPLE_RE.finditer(text):
+        if cur and cur.start() <= m.start() <= cur.end():
+            continue
+        total, reach, block = (int(x) for x in m.groups())
+        path.write_text(text[:m.start()] + f"{total} / {reach + 1} reachable / {block - 1} blocked" + text[m.end():], encoding="utf-8")
+        return
+    raise AssertionError("фикстура устарела: исторической тройки нет в PROJECT_STATE.md")
 
 
 def _set_env(work: Path, env_id: str, key: str, value):
@@ -1051,6 +1075,10 @@ def self_test(root: Path) -> int:
          lambda w: sub(w, TZ_DRAFT, "| DEC-027 | A/B attribution scope",
                        "| DEC-028 | Новый вопрос без OD | нельзя |\n| DEC-027 | A/B attribution scope", 1), True,
          effective=lambda w: "| DEC-028 |" in (w / TZ_DRAFT).read_text(encoding="utf-8"))
+    case("одна задача дважды в blocks owner decision (дубликат RM-GOV-009)", "decisions",
+         lambda w: sub(w, ROADMAP_YAML, "  blocks:\n  - RM-BIZ-002\n", "  blocks:\n  - RM-BIZ-002\n  - RM-BIZ-002\n", 1), True,
+         effective=lambda w: any((o.get("blocks") or []).count("RM-BIZ-002") == 2
+                                 for o in yaml.safe_load((w / ROADMAP_YAML).read_text(encoding="utf-8"))["owner_decisions"]))
     case("alias на superseded решении", "decisions",
          lambda w: sub(w, ROADMAP_YAML, "  status: approved\n  decided_on: '2026-08-28'\n- id: OD-019\n",
                        "  status: superseded\n  decided_on: '2026-08-28'\n- id: OD-019\n", 1), True)
@@ -1126,6 +1154,10 @@ def self_test(root: Path) -> int:
                        f'"blocked": {_count_in_metrics(w, "features", "blocked") - 1}', 1), True)
     case("PROJECT_STATE заявляет неверную тройку registry", "metrics",
          lambda w: _bump_triple(w), True)
+    case("историческая тройка registry в PROJECT_STATE изменена — гейт зелёный (запись на дату)", "metrics",
+         lambda w: _bump_historical_triple(w), False)
+    case("маркер Registry (current) удалён из PROJECT_STATE", "metrics",
+         lambda w: sub(w, "PROJECT_STATE.md", "**Registry (current):**", "**Registry (историческая):**", 1), True)
     case("утверждение исчезло из канона — проверка ослепла", "metrics",
          lambda w: (w / "PROJECT_STATE.md").write_text(
              (w / "PROJECT_STATE.md").read_text(encoding="utf-8")

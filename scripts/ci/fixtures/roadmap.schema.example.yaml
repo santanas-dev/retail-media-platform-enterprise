@@ -31,8 +31,8 @@ stages:
   - { id: E0,   title: "Окружения",                          order: 1 }
   - { id: S,    title: "Стабилизация доказательств",         order: 2, closed_by_gate: Gate-S }
   - { id: U,    title: "Утверждённый UX-порядок",            order: 3, closed_by_gate: Gate-U }
-  - { id: BT,   title: "Бизнесовые и технические разрывы",   order: 4 }
-  - { id: POPS, title: "Внешние действия",                   order: 4 }
+  - { id: CORE, title: "Ядро",                               order: 4 }
+  - { id: POPS, title: "Внешние действия",                   order: 8 }
 
 gates:
   - id: Gate-G
@@ -102,7 +102,7 @@ tasks:
 
   - id: RM-BIZ-002
     kind: implementation
-    stage: BT
+    stage: CORE
     title: "self.campaign_create в будущей ветке"
     dependencies: []
     acceptance:
@@ -115,7 +115,7 @@ tasks:
 
   - id: RM-BIZ-003
     kind: implementation
-    stage: BT
+    stage: CORE
     title: "self.report_view plan/fact"
     dependencies: []
     acceptance:
@@ -127,7 +127,7 @@ tasks:
 
   - id: RM-TECH-207B
     kind: implementation
-    stage: BT
+    stage: CORE
     title: "KSO player/playlist/PoP chain"
     dependencies: []
     acceptance:
@@ -140,7 +140,7 @@ tasks:
 
   - id: RM-TECH-208
     kind: implementation
-    stage: BT
+    stage: CORE
     title: "Signed licensing Layer 2"
     dependencies: []
     acceptance:
@@ -173,6 +173,54 @@ blocked_features:
     unblocked_by: [RM-TECH-208]
     conditions:
       - "signed-license Layer 2: upload .lic + проверка подписи"
+  - feature_id: device.onboard
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (RM-GOV-009), unblock через задачу очереди"]
+  - feature_id: analytics.compare
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (RM-GOV-009), unblock через задачу очереди"]
+  - feature_id: attribution.lift_report
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (RM-GOV-009), unblock через задачу очереди"]
+  - feature_id: campaign.competitive_separation
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (RM-GOV-009), unblock через задачу очереди"]
+  - feature_id: campaign.readiness
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (RM-GOV-009), unblock через задачу очереди"]
+  - feature_id: campaign.schedule
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (RM-GOV-009), unblock через задачу очереди"]
+  - feature_id: content.dynamic_binding
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (RM-GOV-009), unblock через задачу очереди"]
+  - feature_id: experiment.evaluate
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (RM-GOV-009), unblock через задачу очереди"]
+  - feature_id: field_ops.device_confirm
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (RM-GOV-009), unblock через задачу очереди"]
+  - feature_id: finance.exchange
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (RM-GOV-009), unblock через задачу очереди"]
+  - feature_id: finance.reconcile
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (RM-GOV-009), unblock через задачу очереди"]
+  - feature_id: integration.reconcile
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (RM-GOV-009), unblock через задачу очереди"]
+  - feature_id: kpi.review
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (RM-GOV-009), unblock через задачу очереди"]
+  - feature_id: placement.audience_targeting
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (RM-GOV-009), unblock через задачу очереди"]
+  - feature_id: release.rollback
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (RM-GOV-009), unblock через задачу очереди"]
+  - feature_id: rollout.rollback
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (RM-GOV-009), unblock через задачу очереди"]
 
 maturity:
   - feature_id: campaign.create

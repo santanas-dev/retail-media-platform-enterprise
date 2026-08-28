@@ -30,7 +30,9 @@ DEFAULT_ROADMAP = REPO_ROOT / "docs" / "product" / "roadmap.yaml"
 REGISTRY_PATH = REPO_ROOT / "docs" / "product" / "feature-registry.yaml"
 FIXTURE = REPO_ROOT / "scripts" / "ci" / "fixtures" / "roadmap.schema.example.yaml"
 
-STAGE_ORDER = {"G": 0, "E0": 1, "S": 2, "U": 3, "BT": 4, "POPS": 4}
+# Порядок фаз утверждён владельцем 2026-08-28 (OD-037): Governance → Environment →
+# Stabilization → Contracts → Core → Portal → Channels → Analytics/Scale → Production.
+STAGE_ORDER = {"G": 0, "E0": 1, "S": 2, "C": 3, "CORE": 4, "U": 5, "CH": 6, "A": 7, "POPS": 8}
 
 # Acceptance kinds a third party can execute or open without asking anyone.
 MACHINE_VERIFIABLE = {"command", "ci_job", "behavioral", "ui_smoke", "artifact"}
@@ -136,6 +138,14 @@ def _semantic_findings(doc):
                     f"STAGE-ORDER: {t['id']} (stage {t.get('stage')}) depends on "
                     f"{dep} from later stage {dep_task.get('stage')}"
                 )
+
+    # owner decision lists are sets: a repeated task in blocks or DEC in aliases is a
+    # copy/paste error that would silently double-count (Codex finding on RM-GOV-009)
+    for od in doc.get("owner_decisions", []) or []:
+        for key in ("blocks", "aliases"):
+            items = od.get(key) or []
+            for dup in sorted({x for x in items if items.count(x) > 1}):
+                out.append(f"OD-DUP-ITEM: {od.get('id')}.{key} lists {dup} more than once")
 
     # single decision registry: a DEC alias may represent exactly one owner decision
     seen_alias = {}
@@ -416,6 +426,14 @@ def _tamper_cases(base):
     d = copy.deepcopy(base)
     d["owner_decisions"][1]["aliases"] = list(d["owner_decisions"][0]["aliases"])
     cases.append(("same DEC alias on two owner decisions", d, "DEC-ALIAS-DUP"))
+
+    d = copy.deepcopy(base)
+    d["owner_decisions"][0]["aliases"] = d["owner_decisions"][0]["aliases"] * 2
+    cases.append(("same DEC alias twice inside one owner decision", d, "OD-DUP-ITEM"))
+
+    d = copy.deepcopy(base)
+    d["owner_decisions"][1]["blocks"] = [d["tasks"][0]["id"], d["tasks"][0]["id"]]
+    cases.append(("same task twice in owner decision blocks", d, "OD-DUP-ITEM"))
 
     return cases
 

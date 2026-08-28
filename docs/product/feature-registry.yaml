@@ -576,8 +576,8 @@ features:
     smoke: "EDGE-001 behavioral (13 тестов): test_edge001_*.py"
     priority: P0
     roles: [service]
-    status: reachable
-    gap: ""
+    status: blocked
+    gap: "OD-038 / RLS-CONTEXT-DEVICE-001: в production-path устройство получает 403 INVALID_CODE — маршрут без RLS-контекста; reachable держался под admin-маской тестов. Unblock: RM-TECH-210 (behavioral под runtime-ролью на PostgreSQL)."
 
   - id: device.heartbeat
     frontend: service
@@ -785,19 +785,208 @@ features:
     status: reachable
     note: "THEME-SWITCH-001B — dark theme tokens + accessible toggle, persists across reload."
 
-  # ═══════════════════════════════════════════════════════════════
+  # ══════════════════════════════════════════════════
+  # RM-GOV-009 (OD-037, 2026-08-28) — функции из ТЗ v2.6 без реализации: blocked до задач A3
+  # ══════════════════════════════════════════════════
+
+  - id: analytics.compare
+    frontend: admin-web
+    name: "Отчёт качества услуги по каналам (plan/fact, доля active devices)"
+    route: /login
+    path:
+      - login
+      - (определяется mini-design задачи)
+    smoke: "test_uismoke__analytics__compare"
+    priority: P1
+    roles: [system_admin, campaign_manager, analyst]
+    status: blocked
+    gap: "Запланировано задачей RM-UX-010 (ТЗ v2.6 r421); реализации и smoke нет."
+
+  - id: attribution.lift_report
+    frontend: admin-web
+    name: "Отчёт sales lift test/control (attribution)"
+    route: /login
+    path:
+      - login
+      - (определяется mini-design задачи)
+    smoke: "test_uismoke__attribution__lift_report"
+    priority: P2
+    roles: [analyst, campaign_manager]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-282 (ТЗ v2.6 r421); реализации и smoke нет."
+
+  - id: campaign.competitive_separation
+    frontend: service
+    name: "Competitive separation при построении playlist/manifest"
+    route: n/a
+    path: n/a
+    smoke: "behavioral: tests/behavioral/test_rm_tech_285.py"
+    priority: P2
+    roles: [service]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-285 (ТЗ v2.6 r421); реализации и smoke нет."
+
+  - id: campaign.readiness
+    frontend: admin-web
+    name: "Матрица готовности кампании по каналам"
+    route: /login
+    path:
+      - login
+      - (определяется mini-design задачи)
+    smoke: "test_uismoke__campaign__readiness"
+    priority: P1
+    roles: [campaign_manager, approver]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-249 (ТЗ v2.6 r421); реализации и smoke нет."
+
+  - id: campaign.schedule
+    frontend: admin-web
+    name: "Flight/placement windows кампании (versioned, UTC + local TZ)"
+    route: /login
+    path:
+      - login
+      - (определяется mini-design задачи)
+    smoke: "test_uismoke__campaign__schedule"
+    priority: P1
+    roles: [campaign_manager]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-248 (ТЗ v2.6 r421); реализации и smoke нет."
+
+  - id: content.dynamic_binding
+    frontend: service
+    name: "Dynamic creative: подстановка master-confirmed price/promo"
+    route: n/a
+    path: n/a
+    smoke: "behavioral: tests/behavioral/test_rm_tech_262.py"
+    priority: P2
+    roles: [service]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-262 (ТЗ v2.6 r421); реализации и smoke нет."
+
+  - id: experiment.evaluate
+    frontend: admin-web
+    name: "A/B: группы, период, winner metric, ручное утверждение результата"
+    route: /login
+    path:
+      - login
+      - (определяется mini-design задачи)
+    smoke: "test_uismoke__experiment__evaluate"
+    priority: P2
+    roles: [analyst, campaign_manager]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-284 (ТЗ v2.6 r421); реализации и smoke нет."
+
+  - id: field_ops.device_confirm
+    frontend: admin-web
+    name: "Полевые операции: устройства магазина, фото, инциденты (mobile web)"
+    route: /login
+    path:
+      - login
+      - (определяется mini-design задачи)
+    smoke: "test_uismoke__field_ops__device_confirm"
+    priority: P2
+    roles: [ops_operator]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-263 (ТЗ v2.6 r421); реализации и smoke нет."
+
+  - id: finance.exchange
+    frontend: service
+    name: "Обмен с финансовой системой: idempotent export + payment-status"
+    route: n/a
+    path: n/a
+    smoke: "behavioral: tests/behavioral/test_rm_tech_286.py"
+    priority: P2
+    roles: [service]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-286 (ТЗ v2.6 r421); реализации и smoke нет."
+
+  - id: finance.reconcile
+    frontend: admin-web
+    name: "Финансовая сверка: заказ/договор/тариф/price list"
+    route: /login
+    path:
+      - login
+      - (определяется mini-design задачи)
+    smoke: "test_uismoke__finance__reconcile"
+    priority: P2
+    roles: [system_admin, analyst]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-286 (ТЗ v2.6 r421); реализации и smoke нет."
+
+  - id: integration.reconcile
+    frontend: service
+    name: "Ingestion агрегатов чековых данных и сверка с master-данными"
+    route: n/a
+    path: n/a
+    smoke: "behavioral: tests/behavioral/test_rm_tech_281.py"
+    priority: P2
+    roles: [service]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-281 (ТЗ v2.6 r421); реализации и smoke нет."
+
+  - id: kpi.review
+    frontend: admin-web
+    name: "Бизнес-KPI: baseline/target/metric по целям §1.2"
+    route: /login
+    path:
+      - login
+      - (определяется mini-design задачи)
+    smoke: "test_uismoke__kpi__review"
+    priority: P2
+    roles: [system_admin, analyst]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-256 (ТЗ v2.6 r421); реализации и smoke нет."
+
+  - id: placement.audience_targeting
+    frontend: admin-web
+    name: "Store-audience targeting по анонимным атрибутам магазина"
+    route: /login
+    path:
+      - login
+      - (определяется mini-design задачи)
+    smoke: "test_uismoke__placement__audience_targeting"
+    priority: P2
+    roles: [campaign_manager]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-283 (ТЗ v2.6 r421); реализации и smoke нет."
+
+  - id: release.rollback
+    frontend: service
+    name: "Rollback релиза по плану развёртывания"
+    route: n/a
+    path: n/a
+    smoke: "behavioral: tests/behavioral/test_rm_ops_004.py"
+    priority: P1
+    roles: [service]
+    status: blocked
+    gap: "Запланировано задачей RM-OPS-004 (ТЗ v2.6 r421); реализации и smoke нет."
+
+  - id: rollout.rollback
+    frontend: admin-web
+    name: "Staged rollout и rollback с feature flags"
+    route: /login
+    path:
+      - login
+      - (определяется mini-design задачи)
+    smoke: "test_uismoke__rollout__rollback"
+    priority: P1
+    roles: [system_admin, ops_operator]
+    status: blocked
+    gap: "Запланировано задачей RM-OPS-004 (ТЗ v2.6 r421); реализации и smoke нет."
+
+  # ══════════════════════════════════════════════════
   # Summary counts (auto-generated — do not edit manually)
-  # ═══════════════════════════════════════════════════════════════
-  #   total: 58
+  # ══════════════════════════════════════════════════
+  #   total: 73
   # by status:
-  #   reachable: 53 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, user.split_internal_advertiser, advertiser.create_org, advertiser.view, advertiser.contact_crud, advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites, inventory.simulate, advertiser.invite, adsettings.configure, adsettings.test, audit.view, self.login, self.apply_or_brief, self.campaign_view, advertiser.apply, advertiser.application_review, campaign.activate, campaign.pause, campaign.complete, emergency.activate, emergency.deactivate, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, device.health_view, observability, user.reset_password, user.deactivate, inventory.rule_create, commerce.tariff_manage, commerce.price_list_manage, commerce.order_create, commerce.offer_generate, commerce.booking, commerce.payment_status, commerce.order_close, system.theme_switch, license.enforce, license.seat_release, license.report, backup.restore)
-  #   blocked:      5 (self.report_view, self.campaign_create, playlist.build, license.view, license.upload)
+  #   reachable: 52 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, user.split_internal_advertiser, advertiser.create_org, advertiser.application_review, emergency.activate, emergency.deactivate, campaign.activate, campaign.pause, inventory.simulate, inventory.rule_create, advertiser.view, advertiser.contact_crud, advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites, advertiser.invite, user.reset_password, user.deactivate, adsettings.test, adsettings.configure, audit.view, device.health_view, self.login, self.campaign_view, self.apply_or_brief, advertiser.apply, manifest.deliver, pop.ingest, device.heartbeat, backup.restore, observability, campaign.complete, license.enforce, license.seat_release, license.report, commerce.order_create, commerce.tariff_manage, commerce.offer_generate, commerce.booking, commerce.payment_status, commerce.order_close, commerce.price_list_manage, system.theme_switch)
+  #   blocked:      21 (self.report_view, self.campaign_create, device.onboard, playlist.build, license.view, license.upload, analytics.compare, attribution.lift_report, campaign.competitive_separation, campaign.readiness, campaign.schedule, content.dynamic_binding, experiment.evaluate, field_ops.device_confirm, finance.exchange, finance.reconcile, integration.reconcile, kpi.review, placement.audience_targeting, release.rollback, rollout.rollback)
   # by frontend:
-  #   admin-web:      39
-  #   advertiser-web:  5
-  #   public:          1
-  #   service:        13
+  #   admin-web:       49
+  #   advertiser-web:   5
+  #   public:           1
+  #   service:         18
   # by priority:
   #   P0: 20
-  #   P1: 36
-  #   P2:  2
+  #   P1: 41
+  #   P2: 12

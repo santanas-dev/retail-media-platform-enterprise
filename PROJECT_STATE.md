@@ -32,10 +32,19 @@ DEC-строки в самом драфте помечены `PENDING-OD` до A
 Запись: `docs/audit/2026-08-28-claude-a1-requirements-traceability.md`. Остаток: 170 TBD owner
 (блокирует APPROVED), owner mapping PENDING-ID, 51 REQ без task → A3. A2 CI evidence: run 33164564954.
 
-**Next Active Workstream:** **ТЗ v2.6 → APPROVED**: A3 task breakdown (owner-gated) → артефакты AG. Ранее: A1 `requirements-traceability.yaml` + gate `req` + `SC-*` для 53 REQ, A3 task breakdown (owner-gated), артефакты Дополнения AG. Открыто у владельца: `OD-023` (DEC-005) — имя владельца master-данных цен/SKU. Параллельно: этап S (`RM-STAB-003…`), `RM-TECH-210`.
+**Registry (current):** 73 / 52 reachable / 21 blocked — после OD-038 (`device.onboard` → blocked) и 15 новых ID RM-GOV-009; исторические тройки ниже — записи на свою дату.
 
-Последовательность работ ведётся в `docs/product/roadmap.yaml` (sequencing SSOT, 43 задачи,
-утверждено владельцем 2026-08-26). Представления генерируются в `docs/product/generated/`
+**RM-GOV-009 (2026-08-28, подготовлено — ждёт owner ACCEPT очереди).** Решения владельца OD-037
+(порядок стадий G→E0→S→C→CORE→U→CH→A→POPS, BT расформирован, Gate-C, Gate-U→Gate-S у 6 задач) и
+OD-038 (`device.onboard` → blocked до RM-TECH-210) применены к `roadmap.yaml`: 64 новых задач
+(`decision_status: proposed` до ACCEPT), 14 перестановок, редакции RM-STAB-006/RM-TECH-207B/RM-BIZ-002,
+OD-013/024/025/028 `blocks`; registry +15 blocked ID; traceability 101/101 REQ с roadmap_ids. `done`
+не присвоен никому; RM-GOV-007/008 — `verification` с ci_run evidence.
+
+**Next Active Workstream:** **ТЗ v2.6 → APPROVED**: owner ACCEPT очереди RM-GOV-009 → артефакты AG. Ранее: A1 `requirements-traceability.yaml` + gate `req` + `SC-*` для 53 REQ, A3 task breakdown (owner-gated), артефакты Дополнения AG. Открыто у владельца: `OD-023` (DEC-005) — имя владельца master-данных цен/SKU. Параллельно: этап S (`RM-STAB-003…`), `RM-TECH-210`.
+
+Последовательность работ ведётся в `docs/product/roadmap.yaml` (sequencing SSOT, 107 задач: 43
+утверждены владельцем 2026-08-26, 64 — кандидат A3 со статусом proposed до ACCEPT). Представления генерируются в `docs/product/generated/`
 и руками не правятся. Этап G закрыт (Gate-G approved 2026-08-26, `RM-GOV-001..006` done с CI
 evidence); E0: `RM-ENV-001` done (.77 decommissioned — OD-016); этап S: `RM-STAB-001/002`
 done, `RM-TECH-210` (device onboarding RLS) ждёт owner gate `device_contract`. **PORTAL-UX-POLISH остаётся на паузе**; его backlog вынесен из вытесненного

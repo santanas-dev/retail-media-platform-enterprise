@@ -6,59 +6,66 @@
     "smoke_declared_but_missing": []
   },
   "features": {
-    "blocked": 5,
+    "blocked": 21,
     "blocked_with_empty_gap": 0,
     "by_frontend": {
-      "admin-web": 39,
+      "admin-web": 49,
       "advertiser-web": 5,
       "public": 1,
-      "service": 13
+      "service": 18
     },
     "ci_enforced": 43,
-    "reachable": 53,
-    "total": 58,
-    "ui_features": 45
+    "reachable": 52,
+    "total": 73,
+    "ui_features": 55
   },
   "maturity": {
     "by_level": {},
     "declared": 0,
-    "not_declared": 58,
+    "not_declared": 73,
     "reason": "roadmap.yaml не содержит блока `maturity`; уровни выше registry не выводимы из входов и не домысливаются генератором"
   },
   "schema_version": 1,
   "sequencing": {
     "by_decision_status": {
-      "approved": 43
+      "approved": 43,
+      "proposed": 64
     },
     "by_delivery_status": {
+      "blocked": 16,
       "done": 9,
-      "planned": 34
+      "planned": 80,
+      "verification": 2
     },
     "by_kind": {
-      "design": 5,
+      "design": 12,
       "external": 2,
-      "external-plan": 1,
-      "governance": 10,
+      "external-plan": 2,
+      "governance": 20,
       "human": 1,
-      "implementation": 24
+      "implementation": 70
     },
     "by_stage": {
-      "BT": 14,
-      "E0": 1,
-      "G": 6,
-      "POPS": 4,
-      "S": 11,
-      "U": 7
+      "A": 14,
+      "C": 11,
+      "CH": 9,
+      "CORE": 22,
+      "E0": 3,
+      "G": 11,
+      "POPS": 8,
+      "S": 18,
+      "U": 11
     },
     "gates": [
       "Gate-G",
       "Gate-S",
-      "Gate-U"
+      "Gate-U",
+      "Gate-C"
     ],
-    "max_dependency_depth": 8,
-    "owner_decisions": 36,
-    "owner_gated": 13,
-    "tasks_total": 43,
-    "with_verified_evidence": 9
+    "max_dependency_depth": 9,
+    "owner_decisions": 38,
+    "owner_gated": 30,
+    "tasks_total": 107,
+    "with_verified_evidence": 11
   }
 }

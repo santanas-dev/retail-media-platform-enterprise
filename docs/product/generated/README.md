@@ -8,7 +8,7 @@
 | Файл | Что это |
 |---|---|
 | `roadmap.generated.md` | Markdown-проекция: очередь по этапам, гейты, решения владельца, матрица функций |
-| `roadmap.generated.xlsx` | Книга из двух листов: `Технический Roadmap` (42 задачи), `Бизнес-функции Roadmap` (58 функций) |
+| `roadmap.generated.xlsx` | Книга из двух листов: `Технический Roadmap` (задачи roadmap.yaml), `Бизнес-функции Roadmap` (функции feature-registry); числа — в `roadmap-metrics.generated.json` |
 | `roadmap-metrics.generated.json` | Машиночитаемые метрики — единственный источник чисел для отчётов |
 
 ## Входы (SSOT — правки вносятся только сюда)

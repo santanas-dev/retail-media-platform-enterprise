@@ -71,7 +71,8 @@
             "type": "array",
             "items": {
               "$ref": "#/$defs/task_id"
-            }
+            },
+            "uniqueItems": true
           },
           "aliases": {
             "type": "array",
@@ -112,8 +113,11 @@
               "G",
               "E0",
               "S",
+              "C",
+              "CORE",
               "U",
-              "BT",
+              "CH",
+              "A",
               "POPS"
             ]
           },
@@ -150,8 +154,11 @@
               "G",
               "E0",
               "S",
+              "C",
+              "CORE",
               "U",
-              "BT",
+              "CH",
+              "A",
               "POPS"
             ]
           },
@@ -387,8 +394,11 @@
             "G",
             "E0",
             "S",
+            "C",
+            "CORE",
             "U",
-            "BT",
+            "CH",
+            "A",
             "POPS"
           ]
         },
@@ -557,6 +567,11 @@
         },
         "notes": {
           "type": "string"
+        },
+        "owner_role": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Роль владельца задачи (имя назначает владелец в RACI, RM-GOV-010). Введено RM-GOV-009."
         }
       }
     }

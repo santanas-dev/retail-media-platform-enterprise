@@ -90,3 +90,10 @@
 | `2026-08-28-claude-a2-decision-registry.md` | A2: DEC как alias `owner_decisions` — 27/27, 36 OD, модуль guard `decisions` | `develop @ e429f97` + рабочее дерево | остаток: колонка источника в драфте (Codex r423), имя DEC-005 |
 | `2026-08-28-claude-a1-requirements-traceability.md` | A1: `requirements-traceability.yaml` — 101 REQ, 69 SC, модуль guard `req` | `develop @ b0f9cdb` + рабочее дерево | остаток: 170 TBD owner, 23 PENDING-ID, 51 REQ без task (A3) |
 | `2026-08-28-codex-review-claude-a1.md` | независимая проверка A1 | `develop @ b0f9cdb` + рабочее дерево | ACCEPT после исправления typo 71→69 и фиксации правила delivery_status |
+| `2026-08-28-codex-review-claude-a3.md` | независимая проверка кандидатного A3 | `develop @ d8b6872` + рабочее дерево | PARTIAL ACCEPT; 51/51 REQ покрыты, 4 owner decisions до RM-GOV-009 |
+| `2026-08-28-codex-review-rm-gov-009-applied.md` | проверка применения A3 в roadmap | `develop @ d8b6872` + рабочее дерево | НЕ ACCEPT: дубликат `RM-BIZ-002` в `OD-013.blocks`; нужен structural guard |
+| `2026-08-28-claude-a3-task-breakdown-candidate.md` | **A3 кандидат** task breakdown (r421 + A1): 51/51 REQ покрыты, новые фазы C/CORE/CH/A | `develop @ d8b6872` + рабочее дерево | НЕ roadmap; 4 решения владельца до ACCEPT |
+| `2026-08-28-a3-task-breakdown.candidate.yaml` | машинный источник кандидата A3 | `develop @ d8b6872` | не читается guard/generator; применяется только через RM-GOV-009 |
+| `2026-08-28-codex-review-claude-a3.md` | Codex: проверка кандидата A3 — качество подтверждено; 4 решения владельца до переноса | `develop @ d8b6872` + рабочее дерево | roadmap не меняется до решений |
+| `2026-08-28-claude-rm-gov-009-applied.md` | RM-GOV-009: A3 применён по OD-037/038 — 107 задач, registry 73/52/21, traceability 101/101 | `develop @ d8b6872` + рабочее дерево | proposed до ACCEPT очереди; не закоммичено |
+| `2026-08-28-codex-review-rm-gov-009-applied.md` | Codex: проверка применения RM-GOV-009 — дубликат OD-013.blocks (исправлен, правило OD-DUP-ITEM) | `develop @ d8b6872` + рабочее дерево | см. §6 записи RM-GOV-009 |
