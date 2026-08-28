@@ -531,7 +531,7 @@ KSO-ENV-001 — KSO player environment setup
 
 **Статус:** ✅ Реализован. Backend 12/12, vitest 4/4, UI-smoke green.
 
-**Journey:** `advertiser.contract_pdf_upload` — break-glass admin загружает PDF-договор для рекламодателя.
+**Journey:** `advertiser.contract_crud` (compatibility alias `advertiser.contract_pdf_upload` — имя smoke сохранено; OD-017/AQ.1 №2) — break-glass admin загружает PDF-договор для рекламодателя.
 
 **Happy-path (9 шагов):**
 1. Логин → 2. Advertisers (sidebar) → 3. Выбрать ADV-001 → 4. Вкладка «Договоры»

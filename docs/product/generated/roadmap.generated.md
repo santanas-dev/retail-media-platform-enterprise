@@ -28,7 +28,7 @@
 | С verified evidence | 9 |
 | Максимальная глубина зависимостей | 8 |
 | Гейты | Gate-G, Gate-S, Gate-U |
-| Решения владельца | 16 |
+| Решения владельца | 20 |
 
 ### Функции (из registry — функциональный SSOT)
 
@@ -77,6 +77,10 @@
 | `OD-014` | open | — | A/B lift и attribution - материал ветки v2.6, зависит от модели арендатора (ADR-018). Вопрос - фиксируется ли как отложенное решением, по образцу ADR-019 для Channel Orchestrator, или остаётся неопределённым. |
 | `OD-015` | open | — | Операционный центр здоровья устройств. Функция device.health_view reachable и закреплена в CI; вопрос - достаточно ли этого представления для пилота или требуется отдельный операционный центр как самостоятельный объём работ. |
 | `OD-016` | approved | 2026-08-26 | 192.168.110.77 выводится из эксплуатации решением владельца 2026-08-26. Уточняет OD-007 в части .77 - формулировка «unreachable at check time» была наблюдением до решения; теперь диспозиция decommissioned. Часть OD-007 про активный baseline .81/stand-27dc397 остаётся в силе без изменений. |
+| `OD-017` | approved | 2026-08-28 | Содержание ТЗ v2.6 r421 принято владельцем 2026-08-28 — REVIEW → ACCEPTED. SHA-256 принятой редакции r421 = 59478746c1368e3db556ec805b5345e829b00113cf94b4b556294bbce0fa58e6. Не равно APPROVED - статус документа остаётся DRAFT до артефактов Дополнения AG (traceability, role/scope, routes/journeys, OpenAPI/events, ERD/data, channel matrix, NFR/load, retention/legal, DEV manifest, roadmap views) и закрытия применимых gates. Cutover пути по AQ.1 №3 выполняет Claude - живой драфт docs/product/requirements/tz-v2.6-draft.md (r422 = r421 + пути/sidecar, нормативные разделы без изменений); старый путь docs/audit/2026-08-26-tz-v2.6-design-draft.md остаётся immutable redirect. |
+| `OD-018` | approved | 2026-08-28 | DEC-022 - исключения из принципа аддитивности v2.6 - только §3.1 delivery/priority engine (competitive separation). Любое другое изменение существующих Campaign/Delivery/PoP контрактов в рамках v2.6 запрещено без нового решения владельца. |
+| `OD-019` | approved | 2026-08-28 | DEC-024 - дубликат PoP внутри batch - валидный batch отвечает HTTP 200; дублирующее событие помечается per-event `duplicate` с machine error code 409 в теле и не учитывается повторно. ADR-017 получает amendment, behavioral-тест закрепляет семантику; реализация - отдельной задачей task breakdown. |
+| `OD-020` | approved | 2026-08-28 | DEC-026 - отмена коммерческого заказа - переход draft → cancelled разрешён; confirmed закрывается только reversal/compensation workflow, прямая отмена confirmed запрещена. _ORDER_TRANSITIONS и тесты приводятся отдельной задачей task breakdown. |
 
 ## Гейты
 

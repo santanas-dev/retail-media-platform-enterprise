@@ -7,13 +7,15 @@ implementation work.
 ## Read Order
 
 1. `TZ_Retail_Media_Platform_v2_5_Final_Hermes.extracted.md`
-2. `rmp_rewrite_starting_decisions.md`
-3. `rmp_enterprise_architecture_review.md`
-4. Relevant ADRs and contracts in `docs/architecture/`
+2. `TZ_Retail_Media_Platform_v2_6_Next_Branch_2026-07-11.extracted.md` (additive branch)
+3. `rmp_rewrite_starting_decisions.md`
+4. `rmp_enterprise_architecture_review.md`
+5. Relevant ADRs and contracts in `docs/architecture/`
 
 The original Word document is kept here for traceability:
 
 - `TZ_Retail_Media_Platform_v2_5_Final_Hermes.docx`
+- `docs/product/requirements/TZ_Retail_Media_Platform_v2_6_Next_Branch_2026-07-11.docx`
 
 ## Rules
 

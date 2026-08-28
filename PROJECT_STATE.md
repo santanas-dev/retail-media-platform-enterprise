@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-26 (RM-GOV-005 — canonical cutover: единый sequencing SSOT, генерируемые представления, карантин legacy-мутаторов)
+**Last updated:** 2026-08-28 (ТЗ v2.6: содержание r421 ACCEPTED — OD-017; DEC-022/024/026 → OD-018/019/020; cutover драфта в `docs/product/requirements/`)
 
 **RLS-CONTEXT-DEVICE-001 (открыто, блокирует device pilot).** `POST /device/onboard` и
 `POST /identity/device-codes` не несут `Depends(set_rls_context)`, но работают с
@@ -12,14 +12,22 @@ RLS-таблицей `device_onboarding_codes` (`FORCE RLS`). Продовый `
 Вскрыто задачей `RM-STAB-002`, когда с behavioral-набора сняли маску admin — набор
 скрывал дефект всю свою жизнь. Починка — `RM-TECH-210` (owner gate `device_contract`).
 
-**Next Active Workstream:** **Gate G** — владелец утверждает canonical cutover; Codex проверяет генератор и tamper-матрицу. Затем **RM-ENV-001** (инвентарь окружений `.77/.81/DEV/PROD`).
+**TZ-V26-ACCEPT-001 (2026-08-28).** Содержание драфта ТЗ v2.6 r421 принято владельцем после
+двустороннего ревью (Claude ↔ Codex, записи `docs/audit/2026-08-2[678]-*tz*`): 101 REQ, 41 story,
+27 DEC, 326 AC; расхождений с кодом/ADR-015/018/019/registry/journeys нет. Записано `OD-017`
+(SHA r421), решения `DEC-022/024/026` → `OD-018/019/020`. Cutover: драфт →
+`docs/product/requirements/tz-v2.6-draft.md` (r422, только пути), старый путь — redirect;
+journey договора — `advertiser.contract_crud` с alias. `APPROVED` — только после артефактов
+Дополнения AG. Долг: `DEC-005` (владелец master-данных) открыт; 53/101 REQ без story/SC;
+DEC-строки в самом драфте помечены `PENDING-OD` до A2.
 
-Последовательность работ ведётся в `docs/product/roadmap.yaml` (sequencing SSOT, 42 задачи,
+**Next Active Workstream:** **ТЗ v2.6 → APPROVED**: A2 единый реестр решений (DEC как alias `owner_decisions`), A1 `requirements-traceability.yaml` + gate `req` + `SC-*` для 53 REQ, A3 task breakdown (owner-gated), артефакты Дополнения AG. Открыто у владельца: `DEC-005` — имя владельца master-данных цен/SKU. Параллельно: этап S (`RM-STAB-003…`), `RM-TECH-210`.
+
+Последовательность работ ведётся в `docs/product/roadmap.yaml` (sequencing SSOT, 43 задачи,
 утверждено владельцем 2026-08-26). Представления генерируются в `docs/product/generated/`
-и руками не правятся. Этап G: `RM-GOV-001..003` и `RM-GOV-006` закрыты; `RM-GOV-004` в
-статусе `verification` — приёмка заявлена `verified_by: ci_job`, а job
-`roadmap-governance-guard` ещё не выполнялся; `RM-GOV-005` (этот cutover) ожидает owner
-approval. **PORTAL-UX-POLISH остаётся на паузе**; его backlog вынесен из вытесненного
+и руками не правятся. Этап G закрыт (Gate-G approved 2026-08-26, `RM-GOV-001..006` done с CI
+evidence); E0: `RM-ENV-001` done (.77 decommissioned — OD-016); этап S: `RM-STAB-001/002`
+done, `RM-TECH-210` (device onboarding RLS) ждёт owner gate `device_contract`. **PORTAL-UX-POLISH остаётся на паузе**; его backlog вынесен из вытесненного
 roadmap в `docs/product/portal-ux-polish.md`.
 
 **Repository Checkpoint (PS-001):**

@@ -56,7 +56,7 @@
       "Gate-U"
     ],
     "max_dependency_depth": 8,
-    "owner_decisions": 16,
+    "owner_decisions": 20,
     "owner_gated": 13,
     "tasks_total": 43,
     "with_verified_evidence": 9
