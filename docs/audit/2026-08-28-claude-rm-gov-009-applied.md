@@ -55,3 +55,10 @@ governance guard PASS, self-test **50/50, 11 измерений**. CI — пос
 (2 tamper-кейса) + tamper-кейс guard `decisions` (51/51). Все проверки повторены — зелёные. CI —
 только после commit/push (workflow_dispatch прогонит HEAD, не рабочее дерево).
 
+## 7. Evidence 2026-08-28 — CI и ACCEPT
+
+Commit `2b7713e` → CI run `33169752021`: **success**, 41 job, `JSON Schema Validation` и `Roadmap
+Governance Guard — RM-GOV-004 (blocking)` success (updatedAt 2026-08-28T12:14:32Z). Владелец принял
+очередь: 64 задачи `decision_status: approved` (потолок; `done` — только отдельным ACCEPT), RM-GOV-009
+→ `verification` с этим ci_run. Delivery-статусы задач не менялись.
+

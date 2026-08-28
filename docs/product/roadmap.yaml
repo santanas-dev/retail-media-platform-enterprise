@@ -1222,7 +1222,7 @@ tasks:
   - check: 27/27 DEC §29 представлены alias ровно одного OD; guard decisions зелёный
     verified_by: ci_job
     ref: roadmap-governance-guard
-  decision_status: proposed
+  decision_status: approved
   delivery_status: verification
   evidence_refs:
   - kind: ci_run
@@ -1245,7 +1245,7 @@ tasks:
   - check: 101 REQ, 69 SC, 58/58 registry ID трассированы; guard req зелёный
     verified_by: ci_job
     ref: roadmap-governance-guard
-  decision_status: proposed
+  decision_status: approved
   delivery_status: verification
   evidence_refs:
   - kind: ci_run
@@ -1270,8 +1270,14 @@ tasks:
   - check: владелец принял очередь (ACCEPT с SHA)
     verified_by: owner
     ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)
-  decision_status: proposed
-  delivery_status: planned
+  decision_status: approved
+  delivery_status: verification
+  evidence_refs:
+  - kind: ci_run
+    ref: https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/33169752021
+    status: verified
+    observed_at: '2026-08-28T12:14:32Z'
+    note: 2b7713e — JSON Schema Validation и Roadmap Governance Guard success; 64 задачи approved владельцем 2026-08-28 (потолок approved, done — отдельный ACCEPT)
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-GOV-003; SC: SC-GOV-004; DEC: -. Evidence: check-roadmap-schema
     PASS; guard req/decisions PASS; ci_run. Риск регрессии: средний: STAGE_ORDER/schema enum и генерируемые
     проекции.'
@@ -1292,7 +1298,7 @@ tasks:
   - check: назначения подтверждены владельцем
     verified_by: owner
     ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-GOV-002; SC: SC-GOV-003; DEC: -. Evidence: traceability
     diff; guard req. Риск регрессии: низкий.'
@@ -1310,7 +1316,7 @@ tasks:
   - check: индекс Sources of Truth содержит ADR-020; §27 DoD REQ отражён в Done Gate AGENTS.md
     verified_by: artifact
     ref: diff AGENTS.md
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-GOV-001; SC: SC-GOV-005; DEC: -. Evidence: guard doc
     PASS; diff AGENTS.md. Риск регрессии: низкий.'
@@ -1334,7 +1340,7 @@ tasks:
   - check: в seed нет реальных PII/tokens/договоров
     verified_by: command
     ref: tests/test_local_stand.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-STAND-001, REQ-STAND-002; SC: SC-STAND-001, SC-STAND-002;
     DEC: -. Evidence: tests/test_local_stand.py; scripts/dev seed report. Риск регрессии: средний: массовый
@@ -1352,7 +1358,7 @@ tasks:
   - check: environment-inventory.yaml содержит поля AG для DEV/.81; guard env зелёный
     verified_by: command
     ref: python3 scripts/ci/roadmap-governance-guard.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-ARCH-004; SC: SC-OPS-001; DEC: DEC-015. Evidence:
     guard env; inventory diff. Риск регрессии: низкий.'
@@ -1367,7 +1373,7 @@ tasks:
   - check: статический/рантайм-детектор красный на blocking I/O без threadpool; текущий код чист
     verified_by: command
     ref: tests/test_api_tx_boundary.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-ARCH-003; SC: SC-ARCH-005; DEC: -. Evidence: tests/test_api_tx_boundary.py;
     новый lint/pytest. Риск регрессии: средний: может вскрыть существующие blocking-вызовы.'
@@ -1386,7 +1392,7 @@ tasks:
   - check: 429 + Retry-After по endpoint и principal; audit rate-limit
     verified_by: behavioral
     ref: tests/test_s065_rate_limit.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-006; SC: SC-SEC-004; DEC: -. Evidence: tests/test_s065_rate_limit.py;
     tests/test_phase3_security.py; новый negative suite. Риск регрессии: средний: ужесточение headers/CORS
@@ -1402,7 +1408,7 @@ tasks:
   - check: реестр критичных действий ↔ audit events 100%; anonymous/подставной actor отклонён
     verified_by: behavioral
     ref: tests/behavioral/test_rm_stab_014.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-005; SC: SC-SEC-003; DEC: -. Evidence: tests/ui-smoke/test_uismoke__audit__view.py;
     новый behavioral. Риск регрессии: низкий.'
@@ -1418,7 +1424,7 @@ tasks:
       права не меняется
     verified_by: behavioral
     ref: tests/test_phase3_user_management.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-009; SC: SC-SEC-007; DEC: -. Evidence: tests/test_phase3_user_management.py;
     tests/test_s019_role_safety.py. Риск регрессии: средний: миграция permission-кодов затрагивает seed
@@ -1434,7 +1440,7 @@ tasks:
   - check: анонимный доступ запрещён; просроченный presigned URL отклонён
     verified_by: behavioral
     ref: tests/test_storage_service.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-007; SC: SC-SEC-005; DEC: -. Evidence: tests/test_storage_service.py;
     tests/integration/test_minio_upload.py. Риск регрессии: низкий.'
@@ -1450,7 +1456,7 @@ tasks:
       runtime (egress allow-list)
     verified_by: command
     ref: tests/test_production_config_gate.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-ARCH-002; SC: SC-ARCH-004; DEC: DEC-014. Evidence:
     tests/test_production_config_gate.py; egress check. Риск регрессии: низкий. monitoring-dashboard —
@@ -1469,7 +1475,7 @@ tasks:
   - check: одна canonical opaque идентификация на версию API; alias {id} с deprecation date
     verified_by: behavioral
     ref: tests/behavioral/test_rm_tech_220.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-ARCH-001, REQ-API-001; SC: SC-API-001, SC-ARCH-003;
     DEC: -. Evidence: generated openapi.json diff; contract tests. Риск регрессии: средний: выявит смешение
@@ -1485,7 +1491,7 @@ tasks:
   - check: device JWT → admin endpoint = 403 на всех admin-роутах
     verified_by: behavioral
     ref: tests/test_phase3_protected_identity.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-API-002; SC: SC-API-002; DEC: -. Evidence: tests/test_phase3_protected_identity.py;
     новый negative. Риск регрессии: низкий.'
@@ -1501,7 +1507,7 @@ tasks:
       отклонён
     verified_by: behavioral
     ref: tests/test_contract_pop.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-API-003, REQ-POP-003; SC: SC-API-003, SC-POP-003;
     DEC: -. Evidence: tests/test_contract_pop.py; tests/behavioral/test_edge002fu_real_endpoint.py. Риск
@@ -1518,7 +1524,7 @@ tasks:
       принимаются
     verified_by: behavioral
     ref: tests/test_contract_manifest.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-MAN-004; SC: SC-MAN-001; DEC: -. Evidence: tests/test_contract_manifest.py;
     tests/behavioral/test_edge002_manifest_delivery.py. Риск регрессии: высокий: меняет device-facing
@@ -1538,7 +1544,7 @@ tasks:
       с той же семантикой
     verified_by: behavioral
     ref: tests/behavioral/test_edge004_heartbeat.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-OPS-009; SC: SC-OPS-002; DEC: -. Evidence: tests/behavioral/test_edge004_heartbeat.py.
     Риск регрессии: высокий: device-facing.'
@@ -1557,7 +1563,7 @@ tasks:
       порядок хронологический'
     verified_by: behavioral
     ref: tests/behavioral/test_edge003_pop_ingestion.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-POP-002; SC: SC-POP-002; DEC: DEC-024. Evidence: tests/behavioral/test_edge003_pop_ingestion.py;
     ADR-017 amendment. Риск регрессии: низкий: закрепляет текущее поведение.'
@@ -1572,7 +1578,7 @@ tasks:
   - check: ProofMode содержит 9 значений; отчёт не смешивает playback/apply/delivery/error
     verified_by: behavioral
     ref: tests/behavioral/test_pop_schema.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-POP-001; SC: SC-POP-001; DEC: -. Evidence: tests/behavioral/test_pop_schema.py;
     migration. Риск регрессии: средний: enum migration + отчёты.'
@@ -1592,7 +1598,7 @@ tasks:
       проверены
     verified_by: behavioral
     ref: tests/test_contract_pop.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-POP-004; SC: SC-POP-004; DEC: -. Evidence: tests/test_contract_pop.py;
     tests/behavioral/test_pop_schema.py. Риск регрессии: средний.'
@@ -1608,7 +1614,7 @@ tasks:
       отклонён contract-тестом
     verified_by: behavioral
     ref: tests/test_version_identity.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-NFR-003; SC: SC-NFR-003; DEC: -. Evidence: tests/test_version_identity.py.
     Риск регрессии: средний.'
@@ -1628,7 +1634,7 @@ tasks:
   - check: behavioral RLS proof под ролью приложения NOBYPASSRLS
     verified_by: behavioral
     ref: tests/behavioral/test_adr018_multitenancy_rls.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-DATA-002, REQ-V26-001; SC: SC-DATA-003; DEC: -. Evidence:
     tests/behavioral/test_adr018_multitenancy_rls.py; generated ERD. Риск регрессии: средний: backfill
@@ -1645,7 +1651,7 @@ tasks:
   - check: contract spec + JSON Schema без реализации adapter/mock (ADR-019)
     verified_by: artifact
     ref: docs/architecture contract
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-ORCH-006; SC: SC-ORCH-005; DEC: -. Evidence: docs/architecture
     contract; schema. Риск регрессии: низкий: только документ.'
@@ -1660,7 +1666,7 @@ tasks:
   - check: все уровни существуют с FK и RLS; seed заполняет иерархию; чужой scope не видит
     verified_by: behavioral
     ref: tests/behavioral/test_scope_rls.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-CORE-001; SC: SC-DATA-001; DEC: -. Evidence: migration;
     tests/behavioral/test_scope_rls.py. Риск регрессии: высокий: схема ядра.'
@@ -1679,7 +1685,7 @@ tasks:
   - check: планирование разрешает target до surface; physical_device_id в target отклоняется
     verified_by: behavioral
     ref: tests/test_s089_inventory_simulation.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-CORE-003; SC: SC-ARCH-002; DEC: -. Evidence: tests/test_s089_inventory_simulation.py.
     Риск регрессии: средний.'
@@ -1694,7 +1700,7 @@ tasks:
   - check: каждая доменная мутация создаёт outbox event в той же транзакции; pause/archive порождают revocation
     verified_by: behavioral
     ref: tests/behavioral/test_outbox.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-ORCH-003; SC: SC-ORCH-002; DEC: -. Evidence: tests/behavioral/test_outbox.py.
     Риск регрессии: средний: транзакционные границы всех сервисов.'
@@ -1713,7 +1719,7 @@ tasks:
   - check: NATS recovery integration зелёный
     verified_by: command
     ref: tests/behavioral/test_outbox_relay.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-ORCH-004; SC: SC-ORCH-003; DEC: DEC-004. Evidence:
     tests/behavioral/test_outbox_relay.py; tests/integration/test_nats_recovery.py. Риск регрессии: средний.'
@@ -1728,7 +1734,7 @@ tasks:
   - check: активация на 1000 устройств не ждёт устройств; задачи агрегируют статусы
     verified_by: behavioral
     ref: tests/behavioral/test_delivery_foundation.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-ORCH-002; SC: SC-ORCH-006; DEC: DEC-004. Evidence:
     tests/behavioral/test_delivery_foundation.py. Риск регрессии: средний.'
@@ -1747,7 +1753,7 @@ tasks:
   - check: campaign.* smokes зелёные после изменения
     verified_by: ui_smoke
     ref: tests/ui-smoke/test_rm_tech_245.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-BIZ-010; SC: -; DEC: DEC-025. Evidence: tests/behavioral/test_campaign_domain.py;
     tests/ui-smoke/test_uismoke__campaign__*.py. Риск регрессии: высокий: меняет runtime enum кампании
@@ -1767,7 +1773,7 @@ tasks:
   - check: '_ORDER_TRANSITIONS: draft→cancelled разрешён, confirmed→cancelled запрещён, reversal с audit'
     verified_by: behavioral
     ref: tests/test_commerce_a2.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-BIZ-014; SC: -; DEC: DEC-017, DEC-026. Evidence: tests/test_commerce_a2.py;
     tests/behavioral/test_commerce_rls.py. Риск регрессии: средний.'
@@ -1782,7 +1788,7 @@ tasks:
   - check: политика версионирована; submit/approve соблюдают порядок и timeout; negative для чужого scope
     verified_by: behavioral
     ref: tests/behavioral/test_campaign_approval.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-BIZ-003; SC: -; DEC: -. Evidence: tests/behavioral/test_campaign_approval.py.
     Риск регрессии: средний.'
@@ -1799,7 +1805,7 @@ tasks:
     ref: tests/test_s063_pop_timezone.py
   feature_ids:
   - campaign.schedule
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-BIZ-005, REQ-NFR-002; SC: SC-NFR-002; DEC: -. Evidence:
     tests/test_s063_pop_timezone.py; новый behavioral. Риск регрессии: высокий: расписание доставки.'
@@ -1816,7 +1822,7 @@ tasks:
     ref: tests/behavioral/test_delivery_generation.py
   feature_ids:
   - campaign.readiness
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-BIZ-006; SC: -; DEC: -. Evidence: tests/behavioral/test_delivery_generation.py.
     Риск регрессии: средний.'
@@ -1832,7 +1838,7 @@ tasks:
       logical delete
     verified_by: behavioral
     ref: tests/behavioral/test_creative_assets.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-CONT-002; SC: SC-DATA-002; DEC: -. Evidence: tests/behavioral/test_creative_assets.py.
     Риск регрессии: средний.'
@@ -1850,7 +1856,7 @@ tasks:
   - check: сохранение создаёт версию с diff и actor; предыдущая неизменяема
     verified_by: behavioral
     ref: tests/behavioral/test_rm_tech_251.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-DATA-001; SC: SC-DATA-004; DEC: DEC-007. Evidence:
     новый behavioral. Риск регрессии: средний.'
@@ -1865,7 +1871,7 @@ tasks:
   - check: логин через IdP; production-профиль без MFA отклоняет; TLS-профиль зафиксирован
     verified_by: behavioral
     ref: tests/test_phase3_auth_api.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-001; SC: SC-SEC-008; DEC: -. Evidence: tests/test_phase3_auth_api.py;
     tests/behavioral/test_auth_dual_e2e.py. Риск регрессии: высокий: вход всех пользователей.'
@@ -1883,7 +1889,7 @@ tasks:
   - check: реестр data classes для всех сущностей; новая PII-сущность без класса — красный design-gate
     verified_by: artifact
     ref: docs/architecture data classes
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-004; SC: SC-SEC-011; DEC: DEC-007. Evidence: docs/architecture
     data classes. Риск регрессии: низкий.'
@@ -1903,7 +1909,7 @@ tasks:
   - check: emergency.* smokes зелёные
     verified_by: ui_smoke
     ref: tests/ui-smoke/test_uismoke__emergency__activate.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-OPS-007; SC: SC-OPS-003; DEC: -. Evidence: tests/test_phase3_emergency_api.py;
     tests/ui-smoke/test_uismoke__emergency__activate.py. Риск регрессии: высокий: аварийный контур.'
@@ -1921,7 +1927,7 @@ tasks:
   - check: device.health_view smoke зелёный
     verified_by: ui_smoke
     ref: tests/ui-smoke/test_uismoke__device__health_view.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-OPS-001; SC: SC-OPS-006; DEC: -. Evidence: tests/ui-smoke/test_uismoke__device__health_view.py.
     Риск регрессии: средний.'
@@ -1938,7 +1944,7 @@ tasks:
     ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)
   feature_ids:
   - kpi.review
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-BIZ-013; SC: -; DEC: DEC-010. Evidence: artifact kpi
     register. Риск регрессии: низкий.'
@@ -1958,7 +1964,7 @@ tasks:
   - check: экран согласования показывает матрицу; каждый blocked/warning ведёт к действию
     verified_by: ui_smoke
     ref: tests/ui-smoke/test_rm_ux_008.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-UX-004; SC: SC-UX-002; DEC: -. Evidence: новый ui-smoke;
     vitest. Риск регрессии: средний.'
@@ -1976,7 +1982,7 @@ tasks:
   - check: advertiser.contract_crud smoke зелёный
     verified_by: ui_smoke
     ref: tests/ui-smoke/test_uismoke__advertiser__contract_pdf_upload.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-BIZ-017; SC: -; DEC: -. Evidence: tests/test_advertiser_contracts.py;
     tests/ui-smoke/test_uismoke__advertiser__contract_pdf_upload.py. Риск регрессии: низкий.'
@@ -1993,7 +1999,7 @@ tasks:
     ref: tests/ui-smoke/test_rm_ux_010.py
   feature_ids:
   - analytics.compare
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-BIZ-004; SC: -; DEC: -. Evidence: новый ui-smoke;
     tests/behavioral/test_pop_reporting_scope.py. Риск регрессии: средний.'
@@ -2009,7 +2015,7 @@ tasks:
   - check: матрицы генерируются и сверяются guard; deny-cases покрыты behavioral
     verified_by: command
     ref: python3 scripts/ci/roadmap-governance-guard.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-UX-001, REQ-SEC-002; SC: SC-SEC-009; DEC: DEC-023.
     Evidence: generated matrices; guard registry. Риск регрессии: низкий.'
@@ -2024,7 +2030,7 @@ tasks:
   - check: 'кэш на лимите: очистка по правилу; last-known-good сохранён; просроченная реклама не показывается'
     verified_by: behavioral
     ref: tests/behavioral/test_rm_tech_260.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-OPS-008; SC: SC-EDGE-002; DEC: -. Evidence: runtime
     simulator tests. Риск регрессии: средний: плеер.'
@@ -2046,7 +2052,7 @@ tasks:
   - check: 'extraction design: KSO-вертикаль как первый adapter без поломки контрактов'
     verified_by: artifact
     ref: docs/audit/RM-TECH-261-artifact.md (создаётся задачей)
-  decision_status: proposed
+  decision_status: approved
   delivery_status: blocked
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-CHAN-001, REQ-ORCH-005; SC: SC-CHAN-002, SC-ORCH-004;
     DEC: DEC-001, DEC-002. Evidence: OD-021; design doc. Риск регрессии: высокий: рефакторинг KSO-вертикали.
@@ -2068,7 +2074,7 @@ tasks:
     ref: tests/behavioral/test_rm_tech_262.py
   feature_ids:
   - content.dynamic_binding
-  decision_status: proposed
+  decision_status: approved
   delivery_status: blocked
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-008; SC: -; DEC: DEC-005. Evidence: new behavioral.
     Риск регрессии: высокий. blocked: ложная ESL-посылка, master adapter (OD-023).'
@@ -2086,7 +2092,7 @@ tasks:
     ref: tests/ui-smoke/test_rm_tech_263.py
   feature_ids:
   - field_ops.device_confirm
-  decision_status: proposed
+  decision_status: approved
   delivery_status: blocked
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-009; SC: -; DEC: -. Evidence: new ui-smoke. Риск
     регрессии: средний. blocked RM-TECH-210.'
@@ -2102,7 +2108,7 @@ tasks:
       показ
     verified_by: behavioral
     ref: tests/behavioral/test_rm_tech_264.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: blocked
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-INT-002; SC: -; DEC: DEC-005. Evidence: new behavioral.
     Риск регрессии: высокий. blocked OD-023.'
@@ -2120,7 +2126,7 @@ tasks:
   - check: adapter в mock/test mode проходит contract tests
     verified_by: behavioral
     ref: tests/behavioral/test_rm_tech_280.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: blocked
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-INT-002; SC: -; DEC: DEC-005. Evidence: OD-023; contract
     tests. Риск регрессии: средний. отсутствующий prerequisite по AQ.1 №5; blocked до имени владельца.'
@@ -2140,7 +2146,7 @@ tasks:
     ref: tests/behavioral/test_rm_tech_281.py
   feature_ids:
   - integration.reconcile
-  decision_status: proposed
+  decision_status: approved
   delivery_status: blocked
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-INT-001; SC: -; DEC: -. Evidence: new behavioral;
     methodology doc. Риск регрессии: средний. blocked RM-TECH-280.'
@@ -2158,7 +2164,7 @@ tasks:
     ref: tests/behavioral/test_rm_tech_282.py
   feature_ids:
   - attribution.lift_report
-  decision_status: proposed
+  decision_status: approved
   delivery_status: blocked
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-002; SC: -; DEC: DEC-005, DEC-027. Evidence: new
     behavioral; report. Риск регрессии: средний.'
@@ -2176,7 +2182,7 @@ tasks:
     ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)
   feature_ids:
   - placement.audience_targeting
-  decision_status: proposed
+  decision_status: approved
   delivery_status: blocked
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-005; SC: -; DEC: DEC-005, DEC-019. Evidence: OD-032;
     contract. Риск регрессии: низкий.'
@@ -2196,7 +2202,7 @@ tasks:
     ref: tests/behavioral/test_rm_tech_284.py
   feature_ids:
   - experiment.evaluate
-  decision_status: proposed
+  decision_status: approved
   delivery_status: blocked
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-BIZ-012, REQ-V26-010; SC: -; DEC: DEC-027. Evidence:
     new behavioral. Риск регрессии: средний.'
@@ -2215,7 +2221,7 @@ tasks:
     ref: tests/behavioral/test_rm_tech_285.py
   feature_ids:
   - campaign.competitive_separation
-  decision_status: proposed
+  decision_status: approved
   delivery_status: blocked
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-004; SC: -; DEC: DEC-005, DEC-022. Evidence: new
     behavioral. Риск регрессии: высокий: priority engine.'
@@ -2233,7 +2239,7 @@ tasks:
   feature_ids:
   - finance.exchange
   - finance.reconcile
-  decision_status: proposed
+  decision_status: approved
   delivery_status: blocked
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-006, REQ-BIZ-009; SC: -; DEC: DEC-017. Evidence:
     new behavioral. Риск регрессии: средний. blocked OD-030.'
@@ -2249,7 +2255,7 @@ tasks:
   - check: 401/403/429 negative; vendor connector с отдельными credentials и failure mode
     verified_by: behavioral
     ref: tests/test_s065_rate_limit.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: blocked
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-INT-003; SC: SC-SEC-002; DEC: DEC-013. Evidence: tests/test_s065_rate_limit.py;
     new behavioral. Риск регрессии: средний. blocked OD-026.'
@@ -2264,7 +2270,7 @@ tasks:
   - check: каждый SLO имеет window/denominator/exclusions; load generator и прогон в CI/стенде
     verified_by: artifact
     ref: nfr-slo.yaml
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-NFR-001, REQ-NFR-006, REQ-NFR-007, REQ-NFR-005; SC:
     SC-NFR-001, SC-NFR-005, SC-NFR-006, SC-NFR-007; DEC: DEC-006, DEC-009. Evidence: load run report;
@@ -2281,7 +2287,7 @@ tasks:
   - check: ADR принят с пометкой designed-not-implemented; код не пишется до OD-021/OD-031
     verified_by: artifact
     ref: docs/audit/RM-TECH-289-artifact.md (создаётся задачей)
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-007, REQ-V26-011; SC: SC-ARCH-006; DEC: DEC-001,
     DEC-018. Evidence: ADR. Риск регрессии: низкий.'
@@ -2296,7 +2302,7 @@ tasks:
   - check: Admin API/PostgreSQL/MinIO/Redis недостижимы из device-сегмента; Gateway только HTTPS/mTLS
     verified_by: command
     ref: python3 scripts/ci/roadmap-governance-guard.py
-  decision_status: proposed
+  decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-008; SC: SC-SEC-006; DEC: -. Evidence: reachability
     test log. Риск регрессии: средний: сеть пилота.'
@@ -2315,7 +2321,7 @@ tasks:
   - check: топология утверждена (OD-028), RTO/RPO (OD-025)
     verified_by: owner
     ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)
-  decision_status: proposed
+  decision_status: approved
   delivery_status: blocked
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-OPS-006, REQ-ARCH-004; SC: SC-OPS-001, SC-OPS-005;
     DEC: DEC-012, DEC-015. Evidence: tests/test_production_config_gate.py; drill record. Риск регрессии:
@@ -2337,7 +2343,7 @@ tasks:
   feature_ids:
   - rollout.rollback
   - release.rollback
-  decision_status: proposed
+  decision_status: approved
   delivery_status: blocked
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-OPS-002; SC: SC-OPS-007; DEC: DEC-008. Evidence: tests/integration/test_stand_rollback_drill.py.
     Риск регрессии: средний. blocked OD-010.'
@@ -2353,7 +2359,7 @@ tasks:
   - check: юридическое утверждение retention/152-ФЗ (OD-009)
     verified_by: owner
     ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)
-  decision_status: proposed
+  decision_status: approved
   delivery_status: blocked
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-004; SC: SC-SEC-011; DEC: DEC-007. Evidence: OD-009;
     retention-policy.yaml. Риск регрессии: низкий. blocked OD-009.'

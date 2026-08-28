@@ -23,9 +23,9 @@
 | Всего задач | 107 |
 | По этапам | A=14, C=11, CH=9, CORE=22, E0=3, G=11, POPS=8, S=18, U=11 |
 | По типу | design=12, external=2, external-plan=2, governance=20, human=1, implementation=70 |
-| По статусу поставки | blocked=16, done=9, planned=80, verification=2 |
+| По статусу поставки | blocked=16, done=9, planned=79, verification=3 |
 | Требуют owner gate | 30 |
-| С verified evidence | 11 |
+| С verified evidence | 12 |
 | Максимальная глубина зависимостей | 9 |
 | Гейты | Gate-G, Gate-S, Gate-U, Gate-C |
 | Решения владельца | 38 |
@@ -123,7 +123,7 @@
 | `RM-GOV-006` | governance | Единое правило факта и требования | `RM-GOV-001` | 1 | done | — | approved правило §1.1 записано без конфликта в индекс/ADR-процесс [artifact: `docs/architecture/adr/ADR-020-fact-vs-requirement.md`] | verified · adr · `docs/architecture/adr/ADR-020-fact-vs-requirement.md`; verified · command · `python3 scripts/ci/roadmap-governance-guard.py --module doc`; verified · command · `python3 scripts/ci/roadmap-governance-guard.py --self-test` |
 | `RM-GOV-007` | governance | Единый реестр решений (A2): DEC как alias owner_decisions, модуль guard decisions | `RM-GOV-005` | 5 | verification | — | 27/27 DEC §29 представлены alias ровно одного OD; guard decisions зелёный [ci_job: `roadmap-governance-guard`] | verified · ci_run · `https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/33164564954` |
 | `RM-GOV-008` | governance | Трассировка требований (A1): requirements-traceability.yaml + модуль guard req | `RM-GOV-007` | 6 | verification | — | 101 REQ, 69 SC, 58/58 registry ID трассированы; guard req зелёный [ci_job: `roadmap-governance-guard`] | verified · ci_run · `https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/33166246511` |
-| `RM-GOV-009` | governance | Task breakdown A3 → roadmap.yaml: новые стадии C/CORE/CH/A, перестановка BT, schema stage enum | `RM-GOV-008` | 7 | planned | canon_change | все 101 REQ имеют roadmap_ids или approved deferred; traceability без task_required [command: `python3 scripts/ci/roadmap-governance-guard.py`]; владелец принял очередь (ACCEPT с SHA) [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`] | — |
+| `RM-GOV-009` | governance | Task breakdown A3 → roadmap.yaml: новые стадии C/CORE/CH/A, перестановка BT, schema stage enum | `RM-GOV-008` | 7 | verification | canon_change | все 101 REQ имеют roadmap_ids или approved deferred; traceability без task_required [command: `python3 scripts/ci/roadmap-governance-guard.py`]; владелец принял очередь (ACCEPT с SHA) [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`] | verified · ci_run · `https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/33169752021` |
 | `RM-GOV-010` | governance | Owner/RACI для REQ и SC (170 TBD) и mapping 23 PENDING-ID journeys | `RM-GOV-008` | 7 | planned | scope_decision | 0 полей TBD в traceability; pending_journey_map без awaiting_owner [command: `python3 scripts/ci/roadmap-governance-guard.py`]; назначения подтверждены владельцем [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`] | — |
 | `RM-GOV-011` | governance | Правила агентов и приёмки: ADR-020 в индекс, Done Gate ↔ §27 DoD требования | `RM-GOV-006` | 2 | planned | canon_change | индекс Sources of Truth содержит ADR-020; §27 DoD REQ отражён в Done Gate AGENTS.md [artifact: `diff AGENTS.md`] | — |
 
