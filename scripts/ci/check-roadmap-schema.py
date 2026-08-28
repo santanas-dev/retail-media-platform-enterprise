@@ -137,6 +137,14 @@ def _semantic_findings(doc):
                     f"{dep} from later stage {dep_task.get('stage')}"
                 )
 
+    # single decision registry: a DEC alias may represent exactly one owner decision
+    seen_alias = {}
+    for od in doc.get("owner_decisions", []) or []:
+        for al in od.get("aliases", []) or []:
+            if al in seen_alias:
+                out.append(f"DEC-ALIAS-DUP: {al} is an alias of both {seen_alias[al]} and {od.get('id')}")
+            seen_alias[al] = od.get("id")
+
     # anti-overclaim: done requires at least one verified evidence ref
     for t in tasks:
         if t.get("delivery_status") == "done":
@@ -404,6 +412,10 @@ def _tamper_cases(base):
     if d.get("blocked_features"):
         d["blocked_features"][0]["unblocked_by"] = ["RM-TECH-999"]
     cases.append(("unblock path points at unknown task", d, "UNBLOCK-DANGLING"))
+
+    d = copy.deepcopy(base)
+    d["owner_decisions"][1]["aliases"] = list(d["owner_decisions"][0]["aliases"])
+    cases.append(("same DEC alias on two owner decisions", d, "DEC-ALIAS-DUP"))
 
     return cases
 

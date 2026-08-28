@@ -628,6 +628,58 @@ def module_registry(root: Path) -> list:
     findings += mod.check_ci_subset_membership(features, smoke_funcs, ci_subset)
     return [f"registry/{f}" for f in findings]
 
+# ---------------------------------------------------------------------------
+# decisions — единый реестр решений (A2 после OD-017)
+#
+# ТЗ v2.6 §29 ведёт DEC-ID как вопросы; исполняемый реестр один — owner_decisions
+# в roadmap.yaml, где DEC — alias записи OD. Второй реестр запрещён (AQ ledger).
+# Гейт красный, если DEC из §29 не представлен ни одним OD, alias указывает на
+# несуществующий DEC, один DEC висит на двух OD, alias стоит на superseded OD,
+# или две таблицы DEC в драфте (§29 и Дополнение I) разошлись.
+# ---------------------------------------------------------------------------
+TZ_DRAFT = Path("docs/product/requirements/tz-v2.6-draft.md")
+_DEC_ROW = re.compile(r"^\| (DEC-\d{3}) \|", re.M)
+
+
+def _draft_section(text: str, start: str) -> str:
+    i = text.find(start)
+    if i < 0:
+        return ""
+    j = text.find("\n## ", i + len(start))
+    return text[i:] if j < 0 else text[i:j]
+
+
+def module_decisions(root: Path) -> list:
+    findings = []
+    draft = root / TZ_DRAFT
+    if not draft.exists():
+        return [f"decisions/DRAFT-MISSING: `{TZ_DRAFT}` отсутствует — реестр DEC не с чем сверять"]
+    text = draft.read_text(encoding="utf-8")
+    reg = _draft_section(text, "\n## 29. ")
+    link = _draft_section(text, "\n## Дополнение I. ")
+    dec_reg = set(_DEC_ROW.findall(reg))
+    dec_link = set(_DEC_ROW.findall(link))
+    if not dec_reg:
+        return [f"decisions/DRAFT-NO-REGISTER: в `{TZ_DRAFT}` не найдена таблица §29 с DEC-ID — проверка ослепла"]
+    if dec_link and dec_link != dec_reg:
+        findings.append("decisions/DEC-TABLES-DIVERGE: §29 и Дополнение I драфта содержат разные DEC: "
+                        f"только §29 {sorted(dec_reg - dec_link)}, только Дополнение I {sorted(dec_link - dec_reg)}")
+    roadmap = yaml.safe_load((root / ROADMAP_YAML).read_text(encoding="utf-8"))
+    owner = {}
+    for od in roadmap.get("owner_decisions", []) or []:
+        for al in od.get("aliases", []) or []:
+            if al in owner:
+                findings.append(f"decisions/ALIAS-DUP: {al} представлен и {owner[al]}, и {od['id']} — реестр перестал быть единым")
+            owner[al] = od["id"]
+            if al not in dec_reg:
+                findings.append(f"decisions/ALIAS-UNKNOWN: {od['id']} объявляет alias {al}, которого нет в §29 драфта")
+            if od.get("status") == "superseded":
+                findings.append(f"decisions/ALIAS-SUPERSEDED: {al} висит на superseded {od['id']} — перенесите alias на действующее решение")
+    for dec in sorted(dec_reg - set(owner)):
+        findings.append(f"decisions/DEC-UNMAPPED: {dec} есть в §29 драфта, но не является alias ни одного owner_decision — "
+                        "решение живёт вне единого реестра")
+    return findings
+
 
 MODULES = {
     "schema": ("RM-GOV-001", module_schema),
@@ -637,6 +689,7 @@ MODULES = {
     "env": ("RM-ENV-001", module_env),
     "registry": ("RM-GOV-005", module_registry),
     "ssot": ("RM-GOV-004", module_ssot),
+    "decisions": ("OD-017/A2", module_decisions),
 }
 
 
@@ -670,6 +723,7 @@ SANDBOX_PATHS = [
     "docs/product/roadmap-migration-manifest.yaml",
     "tests/ui-smoke/ci-subset.txt", "PROJECT_STATE.md", "AGENTS.md", "CLAUDE.md",
     "docs/architecture/README.md", "docs/product/environment-inventory.yaml",
+    "docs/product/requirements/tz-v2.6-draft.md",
 ]
 SANDBOX_TREES = ["scripts/ci", "scripts/dev", "scripts/legacy", "docs/product/generated",
                  "tests/ui-smoke", "docs/architecture"]
@@ -818,6 +872,23 @@ def self_test(root: Path) -> int:
         text = p.read_text(encoding="utf-8")
         assert old in text, f"фикстура устарела: {old!r} нет в {rel}"
         p.write_text(text.replace(old, new, count), encoding="utf-8")
+
+    # --- decisions: единый реестр решений
+    case("DEC из §29 потерял alias в owner_decisions", "decisions",
+         lambda w: sub(w, ROADMAP_YAML, "  aliases: [DEC-022]\n", "", 1), True,
+         effective=lambda w: "aliases: [DEC-022]" not in (w / ROADMAP_YAML).read_text(encoding="utf-8"))
+    case("alias указывает на несуществующий DEC", "decisions",
+         lambda w: sub(w, ROADMAP_YAML, "  aliases: [DEC-022]\n", "  aliases: [DEC-099]\n", 1), True,
+         effective=lambda w: "aliases: [DEC-099]" in (w / ROADMAP_YAML).read_text(encoding="utf-8"))
+    case("один DEC на двух owner decisions", "decisions",
+         lambda w: sub(w, ROADMAP_YAML, "  aliases: [DEC-024]\n", "  aliases: [DEC-024, DEC-022]\n", 1), True)
+    case("в §29 драфта появился DEC без owner decision", "decisions",
+         lambda w: sub(w, TZ_DRAFT, "| DEC-027 | A/B attribution scope",
+                       "| DEC-028 | Новый вопрос без OD | нельзя |\n| DEC-027 | A/B attribution scope", 1), True,
+         effective=lambda w: "| DEC-028 |" in (w / TZ_DRAFT).read_text(encoding="utf-8"))
+    case("alias на superseded решении", "decisions",
+         lambda w: sub(w, ROADMAP_YAML, "  status: approved\n  decided_on: '2026-08-28'\n- id: OD-019\n",
+                       "  status: superseded\n  decided_on: '2026-08-28'\n- id: OD-019\n", 1), True)
 
     with tempfile.TemporaryDirectory() as td:
         work = _sandbox(root, Path(td))

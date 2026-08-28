@@ -20,6 +20,8 @@ owner_decisions:
       дефектом до явного ADR.
     status: approved
     decided_on: "2026-08-26"
+    aliases: [DEC-001]
+    sources: ["ADR-020"]
   - id: OD-008
     statement: MFA обязателен до production; согласование NATS с ИТ/ops — до pilot deployment.
     status: open

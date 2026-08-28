@@ -21,7 +21,13 @@ journey договора — `advertiser.contract_crud` с alias. `APPROVED` —
 Дополнения AG. Долг: `DEC-005` (владелец master-данных) открыт; 53/101 REQ без story/SC;
 DEC-строки в самом драфте помечены `PENDING-OD` до A2.
 
-**Next Active Workstream:** **ТЗ v2.6 → APPROVED**: A2 единый реестр решений (DEC как alias `owner_decisions`), A1 `requirements-traceability.yaml` + gate `req` + `SC-*` для 53 REQ, A3 task breakdown (owner-gated), артефакты Дополнения AG. Открыто у владельца: `DEC-005` — имя владельца master-данных цен/SKU. Параллельно: этап S (`RM-STAB-003…`), `RM-TECH-210`.
+**TZ-V26-A2-001 (2026-08-28).** Единый реестр решений: 27 DEC §29 драфта → alias записей
+`owner_decisions` (36 OD, 16 approved/20 open; OD-021…036 новые); schema `aliases/sources`,
+правило `DEC-ALIAS-DUP`, модуль guard `decisions` (self-test 39/39). Запись:
+`docs/audit/2026-08-28-claude-a2-decision-registry.md`. Остаток: колонка источника в драфте
+(Codex), имя владельца master-данных (OD-023).
+
+**Next Active Workstream:** **ТЗ v2.6 → APPROVED**: A1 `requirements-traceability.yaml` + gate `req` + `SC-*` для 53 REQ, A3 task breakdown (owner-gated), артефакты Дополнения AG. Открыто у владельца: `OD-023` (DEC-005) — имя владельца master-данных цен/SKU. Параллельно: этап S (`RM-STAB-003…`), `RM-TECH-210`.
 
 Последовательность работ ведётся в `docs/product/roadmap.yaml` (sequencing SSOT, 43 задачи,
 утверждено владельцем 2026-08-26). Представления генерируются в `docs/product/generated/`

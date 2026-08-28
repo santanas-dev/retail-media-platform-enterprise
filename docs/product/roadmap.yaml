@@ -14,6 +14,8 @@ owner_decisions:
   status: approved
   decided_on: '2026-08-26'
 - id: OD-002
+  aliases: [DEC-003]
+  sources: ['tz-v2.6 §29 DEC-003', 'RM-STAB-010 (implementation evidence)']
   statement: Ed25519 обязателен для device pilot/production. HMAC допустим только для dev и control-plane stand.
   status: approved
   decided_on: '2026-08-26'
@@ -27,6 +29,8 @@ owner_decisions:
   status: approved
   decided_on: '2026-08-26'
 - id: OD-005
+  aliases: [DEC-011]
+  sources: ['tz-v2.6 §29 DEC-011', 'OD-013 (post-pilot self-service - открыто)']
   statement: self.campaign_create исключён из ближайшего control-plane pilot; первый pilot managed-first.
   status: approved
   decided_on: '2026-08-26'
@@ -39,9 +43,13 @@ owner_decisions:
   status: approved
   decided_on: '2026-08-26'
 - id: OD-008
+  aliases: [DEC-004]
+  sources: ['ADR-002 (NATS JetStream baseline)', 'tz-v2.6 §29 DEC-004']
   statement: MFA обязателен до production; согласование NATS с ИТ/ops — до pilot deployment.
   status: open
 - id: OD-009
+  aliases: [DEC-006, DEC-007]
+  sources: ['user-journeys.md §5.1 2026-07-18 (SLA/retention defaults приняты)', 'tz-v2.6 §29 DEC-006/DEC-007']
   statement: Объём безопасности и соответствия до production — SIEM/Wazuh-экспорт, минимизация
     PII, доступ администратора только через VPN, retention и партиционирование данных.
     Вопрос - расширяется ли scope RM-OPS-001 этими четырьмя пунктами или каждый становится
@@ -50,6 +58,8 @@ owner_decisions:
   blocks:
   - RM-OPS-001
 - id: OD-010
+  aliases: [DEC-008]
+  sources: ['tz-v2.6 §29 DEC-008, §22.7/22.9']
   statement: Безопасная выкатка — staged rollout с rollback и feature flags. Вопрос - это
     предусловие пилота или production. От ответа зависит, входят ли они в RM-PILOT-002
     preflight или только в RM-OPS-001.
@@ -58,6 +68,8 @@ owner_decisions:
   - RM-PILOT-002
   - RM-OPS-001
 - id: OD-011
+  aliases: [DEC-009]
+  sources: ['tz-v2.6 §29 DEC-009, §22.15', 'RM-TECH-205']
   statement: Нагрузочные профили и критерии производительности на 40K устройств. Вопрос -
     измеряется ли это до пилота как вход в SLO (RM-TECH-205) и в триггер ClickHouse
     (RM-TECH-209), или откладывается до production.
@@ -78,6 +90,8 @@ owner_decisions:
   blocks:
   - RM-BIZ-002
 - id: OD-014
+  aliases: [DEC-027]
+  sources: ['ADR-018', 'tz-v2.6 §29 DEC-027, REQ-V26-002/010']
   statement: A/B lift и attribution - материал ветки v2.6, зависит от модели арендатора
     (ADR-018). Вопрос - фиксируется ли как отложенное решением, по образцу ADR-019 для
     Channel Orchestrator, или остаётся неопределённым.
@@ -108,12 +122,16 @@ owner_decisions:
   status: approved
   decided_on: '2026-08-28'
 - id: OD-018
+  aliases: [DEC-022]
+  sources: ['tz-v2.6 §29 DEC-022; v2.6 addendum §0.3/§8.3']
   statement: DEC-022 - исключения из принципа аддитивности v2.6 - только §3.1 delivery/priority
     engine (competitive separation). Любое другое изменение существующих Campaign/Delivery/PoP
     контрактов в рамках v2.6 запрещено без нового решения владельца.
   status: approved
   decided_on: '2026-08-28'
 - id: OD-019
+  aliases: [DEC-024]
+  sources: ['ADR-017 (amendment требуется)', 'tz-v2.6 §29 DEC-024']
   statement: DEC-024 - дубликат PoP внутри batch - валидный batch отвечает HTTP 200; дублирующее
     событие помечается per-event `duplicate` с machine error code 409 в теле и не учитывается
     повторно. ADR-017 получает amendment, behavioral-тест закрепляет семантику; реализация -
@@ -121,11 +139,98 @@ owner_decisions:
   status: approved
   decided_on: '2026-08-28'
 - id: OD-020
+  aliases: [DEC-026]
+  sources: ['tz-v2.6 §29 DEC-026; packages/domain _ORDER_TRANSITIONS (факт)']
   statement: DEC-026 - отмена коммерческого заказа - переход draft → cancelled разрешён;
     confirmed закрывается только reversal/compensation workflow, прямая отмена confirmed
     запрещена. _ORDER_TRANSITIONS и тесты приводятся отдельной задачей task breakdown.
   status: approved
   decided_on: '2026-08-28'
+- id: OD-021
+  statement: Каналы первой production-очереди и владелец каждого не выбраны. Вопрос владельцу - перечень каналов, владелец, SLA и бюджет каждого. До решения единственный реальный канал - KSO (ADR-019), хуки под несуществующие каналы запрещены.
+  status: open
+  aliases: [DEC-001]
+  sources: ['ADR-019', 'tz-v2.6 §23/§25, §29 DEC-001']
+- id: OD-022
+  statement: Channel Orchestrator и Adapter Layer вводятся только после появления второго реального канала; mock-first до этого триггера запрещён. Ратифицировано ADR-019.
+  status: approved
+  decided_on: '2026-07-20'
+  aliases: [DEC-002]
+  sources: ['ADR-019', 'user-journeys.md §5.1 (§24 - ПРАГМАТИКА, 2026-07-18)']
+- id: OD-023
+  statement: Master-система цен/SKU и владелец reconciliation не зафиксированы. Вопрос владельцу - имя/роль владельца master-данных цен/SKU. До решения ESL/price-checker, attribution/audience и dynamic creative остаются blocked.
+  status: open
+  aliases: [DEC-005]
+  sources: ['tz-v2.6 §16.2, §23.7, §29 DEC-005', 'AQ.1 №5 (master-data adapter - отсутствующий prerequisite)']
+- id: OD-024
+  statement: Пилотная шкала КСО → 10 → 100 → 500 → сеть принята 2026-07-18. Открыты измеримые exit criteria каждого перехода - вопрос владельцу, какие метрики и пороги закрывают ступень.
+  status: open
+  aliases: [DEC-010]
+  sources: ['user-journeys.md §5.1 2026-07-18 (шкала КСО → 10 → 100 → 500 → сеть принята)', 'tz-v2.6 §29 DEC-010']
+- id: OD-025
+  statement: RTO/RPO, HA target и владелец DR не определены. Вопрос владельцу - целевые RTO/RPO для production, кто владеет DR и что является go/no-go критерием.
+  status: open
+  aliases: [DEC-012]
+  sources: ['tz-v2.6 §5/§17, §29 DEC-012']
+  blocks:
+  - RM-OPS-001
+- id: OD-026
+  statement: Advertiser/BI API access не решён. Вопрос владельцу - scoped API keys с rotation/revoke/audit в первой очереди либо явное исключение из неё.
+  status: open
+  aliases: [DEC-013]
+  sources: ['tz-v2.6 §12/§16, REQ-INT-003, §29 DEC-013']
+- id: OD-027
+  statement: Внешний monitoring-dashboard - read-only наблюдатель без права менять файлы, статусы, задачи и owner decisions. Требуется решение владельца с датой - scope, freshness/correlation contract, оформление расхождений (MON-DIVERGENCE) и запрет записи статусов.
+  status: open
+  aliases: [DEC-014]
+  sources: ['tz-v2.6 Дополнение R, REQ-ARCH-002, §29 DEC-014']
+- id: OD-028
+  statement: Production deployment topology не выбрана - Docker Swarm или approved equivalent. Вопрос владельцу - топология, владелец, критерии HA/rollback, стоимость эксплуатации и migration evidence.
+  status: open
+  aliases: [DEC-015]
+  sources: ['tz-v2.6 REQ-ARCH-004, §29 DEC-015']
+- id: OD-029
+  statement: Device PKI/mTLS activation и срок отказа от token-only flow не решены. Вопрос владельцу/ИБ - PKI/CRL/OCSP, proxy enforcement, migration и rollback.
+  status: open
+  aliases: [DEC-016]
+  sources: ['tz-v2.6 REQ-SEC-003, §29 DEC-016', 'OD-002 (Ed25519 - принято)']
+- id: OD-030
+  statement: Полный ЭДО/биллинг по умолчанию вне первой очереди. Требуется owner/legal решение - границы сущностей и trigger возврата в scope.
+  status: open
+  aliases: [DEC-017]
+  sources: ['tz-v2.6 §2.2, §22.12, §29 DEC-017']
+- id: OD-031
+  statement: DSP/SSP-закупка по умолчанию вне первой очереди. Требуется product/legal решение, ручное согласование и review date.
+  status: open
+  aliases: [DEC-018]
+  sources: ['tz-v2.6 §2.2, §29 DEC-018']
+- id: OD-032
+  statement: Персонализация покупателя по умолчанию вне первой очереди. Требуется privacy/legal решение - lawful purpose и review trigger.
+  status: open
+  aliases: [DEC-019]
+  sources: ['tz-v2.6 §2.2, §14, §29 DEC-019']
+- id: OD-033
+  statement: Звук в торговом зале по умолчанию вне первой очереди. Требуется business/operations safety решение и review date.
+  status: open
+  aliases: [DEC-020]
+  sources: ['tz-v2.6 §2.2, §9, §29 DEC-020']
+- id: OD-034
+  statement: Произвольный HTML/JS-контент запрещён в первой очереди - только изображения/видео. Активация не ранее отдельного решения и только через sandbox/CSP с согласованием ИБ (security gate).
+  status: approved
+  decided_on: '2026-07-18'
+  aliases: [DEC-021]
+  sources: ['user-journeys.md §5.1 2026-07-18 (HTML5 запрещён на старте)', 'tz-v2.6 §2.2, §7, §29 DEC-021']
+- id: OD-035
+  statement: Продуктовая модель ролей принята решением Q2 (user-journeys.md §3). Отсутствующие bundles campaign_manager/moderator/approver/ops_operator создаются аддитивно, alias operator сохраняется на период миграции - это implementation, не новое решение.
+  status: approved
+  aliases: [DEC-023]
+  sources: ['user-journeys.md §3 (продуктовое решение Q2 - матрица ролей)', 'tz-v2.6 REQ-UX-001, §29 DEC-023', 'RM-STAB-003/004/007 (seed 5 из 7 ролей - implementation debt)']
+- id: OD-036
+  statement: Жизненный цикл кампании - полный accepted lifecycle ADR-015, включая scheduled, resume, revise и archive. Текущий код не соответствует и требует implementation task; иной вариант - только amendment ADR-015.
+  status: approved
+  decided_on: '2026-07-05'
+  aliases: [DEC-025]
+  sources: ['ADR-015 (Accepted 2026-07-05)', 'tz-v2.6 §29 DEC-025']
 stages:
 - id: G
   title: Единая система roadmap

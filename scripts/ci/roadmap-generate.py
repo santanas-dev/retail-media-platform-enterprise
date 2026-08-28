@@ -373,10 +373,12 @@ def render_markdown(data: dict, metrics: dict) -> str:
     # ---- owner decisions
     L.append("## Решения владельца")
     L.append("")
-    L.append("| ID | Статус | Дата | Формулировка |")
-    L.append("|---|---|---|---|")
+    L.append("| ID | Статус | Дата | DEC alias | Формулировка | Источники |")
+    L.append("|---|---|---|---|---|---|")
     for d in sorted(roadmap.get("owner_decisions", []) or [], key=lambda x: x["id"]):
-        L.append(f"| `{d['id']}` | {d['status']} | {d.get('decided_on', '—')} | {md_escape(d['statement'])} |")
+        L.append(f"| `{d['id']}` | {d['status']} | {d.get('decided_on', '—')} | "
+                 f"{', '.join(d.get('aliases', []) or []) or '—'} | {md_escape(d['statement'])} | "
+                 f"{md_escape('; '.join(d.get('sources', []) or [])) or '—'} |")
     L.append("")
 
     # ---- gates

@@ -28,7 +28,7 @@
 | С verified evidence | 9 |
 | Максимальная глубина зависимостей | 8 |
 | Гейты | Gate-G, Gate-S, Gate-U |
-| Решения владельца | 20 |
+| Решения владельца | 36 |
 
 ### Функции (из registry — функциональный SSOT)
 
@@ -59,28 +59,44 @@
 
 ## Решения владельца
 
-| ID | Статус | Дата | Формулировка |
-|---|---|---|---|
-| `OD-001` | approved | 2026-08-26 | Код/тесты описывают фактическое поведение; ТЗ/ADR — требуемое. Расхождение является дефектом до явного ADR. |
-| `OD-002` | approved | 2026-08-26 | Ed25519 обязателен для device pilot/production. HMAC допустим только для dev и control-plane stand. |
-| `OD-003` | approved | 2026-08-26 | Retailer scope — первоклассная граница; bypass только system_admin и security_admin. |
-| `OD-004` | approved | 2026-08-26 | UI-smoke отделён от ordinary pytest и является blocking gate для develop, release и повышения journey до reachable. |
-| `OD-005` | approved | 2026-08-26 | self.campaign_create исключён из ближайшего control-plane pilot; первый pilot managed-first. |
-| `OD-006` | approved | 2026-08-26 | При renewal занятые seats старого grant атомарно закрываются и продолжаются под новым grant. |
-| `OD-007` | approved | 2026-08-26 | Активный baseline — .81 / stand-27dc397; .77 называется только unreachable at check time. |
-| `OD-008` | open | — | MFA обязателен до production; согласование NATS с ИТ/ops — до pilot deployment. |
-| `OD-009` | open | — | Объём безопасности и соответствия до production — SIEM/Wazuh-экспорт, минимизация PII, доступ администратора только через VPN, retention и партиционирование данных. Вопрос - расширяется ли scope RM-OPS-001 этими четырьмя пунктами или каждый становится отдельной задачей. Ни один сейчас не назван ни одной из 42 задач. |
-| `OD-010` | open | — | Безопасная выкатка — staged rollout с rollback и feature flags. Вопрос - это предусловие пилота или production. От ответа зависит, входят ли они в RM-PILOT-002 preflight или только в RM-OPS-001. |
-| `OD-011` | open | — | Нагрузочные профили и критерии производительности на 40K устройств. Вопрос - измеряется ли это до пилота как вход в SLO (RM-TECH-205) и в триггер ClickHouse (RM-TECH-209), или откладывается до production. |
-| `OD-012` | open | — | Часовые пояса, календарь и праздничное расписание показов. Это корректность доставки, а не операционный вопрос - вопрос владельцу - входит ли в scope пилота. |
-| `OD-013` | open | — | Self-service онбординг рекламодателя - сброс пароля самим пользователем и приглашения. Админский сброс и приглашение уже reachable с зелёными смоуками; self-service отсутствует. Вопрос согласуется с OD-005 (managed-first) - нужен ли self-service в первом пилоте. |
-| `OD-014` | open | — | A/B lift и attribution - материал ветки v2.6, зависит от модели арендатора (ADR-018). Вопрос - фиксируется ли как отложенное решением, по образцу ADR-019 для Channel Orchestrator, или остаётся неопределённым. |
-| `OD-015` | open | — | Операционный центр здоровья устройств. Функция device.health_view reachable и закреплена в CI; вопрос - достаточно ли этого представления для пилота или требуется отдельный операционный центр как самостоятельный объём работ. |
-| `OD-016` | approved | 2026-08-26 | 192.168.110.77 выводится из эксплуатации решением владельца 2026-08-26. Уточняет OD-007 в части .77 - формулировка «unreachable at check time» была наблюдением до решения; теперь диспозиция decommissioned. Часть OD-007 про активный baseline .81/stand-27dc397 остаётся в силе без изменений. |
-| `OD-017` | approved | 2026-08-28 | Содержание ТЗ v2.6 r421 принято владельцем 2026-08-28 — REVIEW → ACCEPTED. SHA-256 принятой редакции r421 = 59478746c1368e3db556ec805b5345e829b00113cf94b4b556294bbce0fa58e6. Не равно APPROVED - статус документа остаётся DRAFT до артефактов Дополнения AG (traceability, role/scope, routes/journeys, OpenAPI/events, ERD/data, channel matrix, NFR/load, retention/legal, DEV manifest, roadmap views) и закрытия применимых gates. Cutover пути по AQ.1 №3 выполняет Claude - живой драфт docs/product/requirements/tz-v2.6-draft.md (r422 = r421 + пути/sidecar, нормативные разделы без изменений); старый путь docs/audit/2026-08-26-tz-v2.6-design-draft.md остаётся immutable redirect. |
-| `OD-018` | approved | 2026-08-28 | DEC-022 - исключения из принципа аддитивности v2.6 - только §3.1 delivery/priority engine (competitive separation). Любое другое изменение существующих Campaign/Delivery/PoP контрактов в рамках v2.6 запрещено без нового решения владельца. |
-| `OD-019` | approved | 2026-08-28 | DEC-024 - дубликат PoP внутри batch - валидный batch отвечает HTTP 200; дублирующее событие помечается per-event `duplicate` с machine error code 409 в теле и не учитывается повторно. ADR-017 получает amendment, behavioral-тест закрепляет семантику; реализация - отдельной задачей task breakdown. |
-| `OD-020` | approved | 2026-08-28 | DEC-026 - отмена коммерческого заказа - переход draft → cancelled разрешён; confirmed закрывается только reversal/compensation workflow, прямая отмена confirmed запрещена. _ORDER_TRANSITIONS и тесты приводятся отдельной задачей task breakdown. |
+| ID | Статус | Дата | DEC alias | Формулировка | Источники |
+|---|---|---|---|---|---|
+| `OD-001` | approved | 2026-08-26 | — | Код/тесты описывают фактическое поведение; ТЗ/ADR — требуемое. Расхождение является дефектом до явного ADR. | — |
+| `OD-002` | approved | 2026-08-26 | DEC-003 | Ed25519 обязателен для device pilot/production. HMAC допустим только для dev и control-plane stand. | tz-v2.6 §29 DEC-003; RM-STAB-010 (implementation evidence) |
+| `OD-003` | approved | 2026-08-26 | — | Retailer scope — первоклассная граница; bypass только system_admin и security_admin. | — |
+| `OD-004` | approved | 2026-08-26 | — | UI-smoke отделён от ordinary pytest и является blocking gate для develop, release и повышения journey до reachable. | — |
+| `OD-005` | approved | 2026-08-26 | DEC-011 | self.campaign_create исключён из ближайшего control-plane pilot; первый pilot managed-first. | tz-v2.6 §29 DEC-011; OD-013 (post-pilot self-service - открыто) |
+| `OD-006` | approved | 2026-08-26 | — | При renewal занятые seats старого grant атомарно закрываются и продолжаются под новым grant. | — |
+| `OD-007` | approved | 2026-08-26 | — | Активный baseline — .81 / stand-27dc397; .77 называется только unreachable at check time. | — |
+| `OD-008` | open | — | DEC-004 | MFA обязателен до production; согласование NATS с ИТ/ops — до pilot deployment. | ADR-002 (NATS JetStream baseline); tz-v2.6 §29 DEC-004 |
+| `OD-009` | open | — | DEC-006, DEC-007 | Объём безопасности и соответствия до production — SIEM/Wazuh-экспорт, минимизация PII, доступ администратора только через VPN, retention и партиционирование данных. Вопрос - расширяется ли scope RM-OPS-001 этими четырьмя пунктами или каждый становится отдельной задачей. Ни один сейчас не назван ни одной из 42 задач. | user-journeys.md §5.1 2026-07-18 (SLA/retention defaults приняты); tz-v2.6 §29 DEC-006/DEC-007 |
+| `OD-010` | open | — | DEC-008 | Безопасная выкатка — staged rollout с rollback и feature flags. Вопрос - это предусловие пилота или production. От ответа зависит, входят ли они в RM-PILOT-002 preflight или только в RM-OPS-001. | tz-v2.6 §29 DEC-008, §22.7/22.9 |
+| `OD-011` | open | — | DEC-009 | Нагрузочные профили и критерии производительности на 40K устройств. Вопрос - измеряется ли это до пилота как вход в SLO (RM-TECH-205) и в триггер ClickHouse (RM-TECH-209), или откладывается до production. | tz-v2.6 §29 DEC-009, §22.15; RM-TECH-205 |
+| `OD-012` | open | — | — | Часовые пояса, календарь и праздничное расписание показов. Это корректность доставки, а не операционный вопрос - вопрос владельцу - входит ли в scope пилота. | — |
+| `OD-013` | open | — | — | Self-service онбординг рекламодателя - сброс пароля самим пользователем и приглашения. Админский сброс и приглашение уже reachable с зелёными смоуками; self-service отсутствует. Вопрос согласуется с OD-005 (managed-first) - нужен ли self-service в первом пилоте. | — |
+| `OD-014` | open | — | DEC-027 | A/B lift и attribution - материал ветки v2.6, зависит от модели арендатора (ADR-018). Вопрос - фиксируется ли как отложенное решением, по образцу ADR-019 для Channel Orchestrator, или остаётся неопределённым. | ADR-018; tz-v2.6 §29 DEC-027, REQ-V26-002/010 |
+| `OD-015` | open | — | — | Операционный центр здоровья устройств. Функция device.health_view reachable и закреплена в CI; вопрос - достаточно ли этого представления для пилота или требуется отдельный операционный центр как самостоятельный объём работ. | — |
+| `OD-016` | approved | 2026-08-26 | — | 192.168.110.77 выводится из эксплуатации решением владельца 2026-08-26. Уточняет OD-007 в части .77 - формулировка «unreachable at check time» была наблюдением до решения; теперь диспозиция decommissioned. Часть OD-007 про активный baseline .81/stand-27dc397 остаётся в силе без изменений. | — |
+| `OD-017` | approved | 2026-08-28 | — | Содержание ТЗ v2.6 r421 принято владельцем 2026-08-28 — REVIEW → ACCEPTED. SHA-256 принятой редакции r421 = 59478746c1368e3db556ec805b5345e829b00113cf94b4b556294bbce0fa58e6. Не равно APPROVED - статус документа остаётся DRAFT до артефактов Дополнения AG (traceability, role/scope, routes/journeys, OpenAPI/events, ERD/data, channel matrix, NFR/load, retention/legal, DEV manifest, roadmap views) и закрытия применимых gates. Cutover пути по AQ.1 №3 выполняет Claude - живой драфт docs/product/requirements/tz-v2.6-draft.md (r422 = r421 + пути/sidecar, нормативные разделы без изменений); старый путь docs/audit/2026-08-26-tz-v2.6-design-draft.md остаётся immutable redirect. | — |
+| `OD-018` | approved | 2026-08-28 | DEC-022 | DEC-022 - исключения из принципа аддитивности v2.6 - только §3.1 delivery/priority engine (competitive separation). Любое другое изменение существующих Campaign/Delivery/PoP контрактов в рамках v2.6 запрещено без нового решения владельца. | tz-v2.6 §29 DEC-022; v2.6 addendum §0.3/§8.3 |
+| `OD-019` | approved | 2026-08-28 | DEC-024 | DEC-024 - дубликат PoP внутри batch - валидный batch отвечает HTTP 200; дублирующее событие помечается per-event `duplicate` с machine error code 409 в теле и не учитывается повторно. ADR-017 получает amendment, behavioral-тест закрепляет семантику; реализация - отдельной задачей task breakdown. | ADR-017 (amendment требуется); tz-v2.6 §29 DEC-024 |
+| `OD-020` | approved | 2026-08-28 | DEC-026 | DEC-026 - отмена коммерческого заказа - переход draft → cancelled разрешён; confirmed закрывается только reversal/compensation workflow, прямая отмена confirmed запрещена. _ORDER_TRANSITIONS и тесты приводятся отдельной задачей task breakdown. | tz-v2.6 §29 DEC-026; packages/domain _ORDER_TRANSITIONS (факт) |
+| `OD-021` | open | — | DEC-001 | Каналы первой production-очереди и владелец каждого не выбраны. Вопрос владельцу - перечень каналов, владелец, SLA и бюджет каждого. До решения единственный реальный канал - KSO (ADR-019), хуки под несуществующие каналы запрещены. | ADR-019; tz-v2.6 §23/§25, §29 DEC-001 |
+| `OD-022` | approved | 2026-07-20 | DEC-002 | Channel Orchestrator и Adapter Layer вводятся только после появления второго реального канала; mock-first до этого триггера запрещён. Ратифицировано ADR-019. | ADR-019; user-journeys.md §5.1 (§24 - ПРАГМАТИКА, 2026-07-18) |
+| `OD-023` | open | — | DEC-005 | Master-система цен/SKU и владелец reconciliation не зафиксированы. Вопрос владельцу - имя/роль владельца master-данных цен/SKU. До решения ESL/price-checker, attribution/audience и dynamic creative остаются blocked. | tz-v2.6 §16.2, §23.7, §29 DEC-005; AQ.1 №5 (master-data adapter - отсутствующий prerequisite) |
+| `OD-024` | open | — | DEC-010 | Пилотная шкала КСО → 10 → 100 → 500 → сеть принята 2026-07-18. Открыты измеримые exit criteria каждого перехода - вопрос владельцу, какие метрики и пороги закрывают ступень. | user-journeys.md §5.1 2026-07-18 (шкала КСО → 10 → 100 → 500 → сеть принята); tz-v2.6 §29 DEC-010 |
+| `OD-025` | open | — | DEC-012 | RTO/RPO, HA target и владелец DR не определены. Вопрос владельцу - целевые RTO/RPO для production, кто владеет DR и что является go/no-go критерием. | tz-v2.6 §5/§17, §29 DEC-012 |
+| `OD-026` | open | — | DEC-013 | Advertiser/BI API access не решён. Вопрос владельцу - scoped API keys с rotation/revoke/audit в первой очереди либо явное исключение из неё. | tz-v2.6 §12/§16, REQ-INT-003, §29 DEC-013 |
+| `OD-027` | open | — | DEC-014 | Внешний monitoring-dashboard - read-only наблюдатель без права менять файлы, статусы, задачи и owner decisions. Требуется решение владельца с датой - scope, freshness/correlation contract, оформление расхождений (MON-DIVERGENCE) и запрет записи статусов. | tz-v2.6 Дополнение R, REQ-ARCH-002, §29 DEC-014 |
+| `OD-028` | open | — | DEC-015 | Production deployment topology не выбрана - Docker Swarm или approved equivalent. Вопрос владельцу - топология, владелец, критерии HA/rollback, стоимость эксплуатации и migration evidence. | tz-v2.6 REQ-ARCH-004, §29 DEC-015 |
+| `OD-029` | open | — | DEC-016 | Device PKI/mTLS activation и срок отказа от token-only flow не решены. Вопрос владельцу/ИБ - PKI/CRL/OCSP, proxy enforcement, migration и rollback. | tz-v2.6 REQ-SEC-003, §29 DEC-016; OD-002 (Ed25519 - принято) |
+| `OD-030` | open | — | DEC-017 | Полный ЭДО/биллинг по умолчанию вне первой очереди. Требуется owner/legal решение - границы сущностей и trigger возврата в scope. | tz-v2.6 §2.2, §22.12, §29 DEC-017 |
+| `OD-031` | open | — | DEC-018 | DSP/SSP-закупка по умолчанию вне первой очереди. Требуется product/legal решение, ручное согласование и review date. | tz-v2.6 §2.2, §29 DEC-018 |
+| `OD-032` | open | — | DEC-019 | Персонализация покупателя по умолчанию вне первой очереди. Требуется privacy/legal решение - lawful purpose и review trigger. | tz-v2.6 §2.2, §14, §29 DEC-019 |
+| `OD-033` | open | — | DEC-020 | Звук в торговом зале по умолчанию вне первой очереди. Требуется business/operations safety решение и review date. | tz-v2.6 §2.2, §9, §29 DEC-020 |
+| `OD-034` | approved | 2026-07-18 | DEC-021 | Произвольный HTML/JS-контент запрещён в первой очереди - только изображения/видео. Активация не ранее отдельного решения и только через sandbox/CSP с согласованием ИБ (security gate). | user-journeys.md §5.1 2026-07-18 (HTML5 запрещён на старте); tz-v2.6 §2.2, §7, §29 DEC-021 |
+| `OD-035` | approved | — | DEC-023 | Продуктовая модель ролей принята решением Q2 (user-journeys.md §3). Отсутствующие bundles campaign_manager/moderator/approver/ops_operator создаются аддитивно, alias operator сохраняется на период миграции - это implementation, не новое решение. | user-journeys.md §3 (продуктовое решение Q2 - матрица ролей); tz-v2.6 REQ-UX-001, §29 DEC-023; RM-STAB-003/004/007 (seed 5 из 7 ролей - implementation debt) |
+| `OD-036` | approved | 2026-07-05 | DEC-025 | Жизненный цикл кампании - полный accepted lifecycle ADR-015, включая scheduled, resume, revise и archive. Текущий код не соответствует и требует implementation task; иной вариант - только amendment ADR-015. | ADR-015 (Accepted 2026-07-05); tz-v2.6 §29 DEC-025 |
 
 ## Гейты
 
