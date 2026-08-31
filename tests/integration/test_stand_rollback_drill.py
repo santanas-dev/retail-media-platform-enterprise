@@ -44,8 +44,17 @@ OWNER = "retail_media_owner"
 OWNER_PW = "retail_media_owner_pass"
 DB = "retail_media_platform"
 PORT = "55432"
-OLD_HEAD = "035"
-NEW_HEAD = "036"
+# RM-TECH-210 (2026-08-31): пара head'ов вычисляется из миграций, а не пинится литералами —
+# иначе каждая новая миграция роняет drill (так случилось с 037). NEW_HEAD — единственный head
+# репозитория, OLD_HEAD — его down_revision, «предыдущий релиз» = дерево без файла NEW_HEAD.
+import importlib.util as _ilu
+import re as _re
+_VERSIONS = REPO_ROOT / "apps" / "control-api" / "alembic" / "versions"
+_spec = _ilu.spec_from_file_location("alembic_head_for_drill", REPO_ROOT / "scripts" / "deploy" / "alembic_head.py")
+_head_mod = _ilu.module_from_spec(_spec); _spec.loader.exec_module(_head_mod)
+NEW_HEAD = _head_mod.resolve_single_head(_VERSIONS)
+NEW_HEAD_FILE = next(_VERSIONS.glob(f"{NEW_HEAD}_*.py"))
+OLD_HEAD = _re.search(r'^down_revision[^=]*=\s*["\']([^"\']+)["\']', NEW_HEAD_FILE.read_text(encoding="utf-8"), _re.M).group(1)
 
 
 def _sh(cmd: list[str], check: bool = True, **kw):
@@ -94,7 +103,7 @@ def drill_db(tmp_path_factory, stand_module):
     else:
         pytest.fail("drill postgres never became ready")
 
-    assert _alembic(OLD_HEAD).returncode == 0, "could not migrate the drill db to 035"
+    assert _alembic(OLD_HEAD).returncode == 0, f"could not migrate the drill db to {OLD_HEAD}"
     seed = subprocess.run(
         [sys.executable, "apps/control-api/seed.py"],
         cwd=REPO_ROOT, capture_output=True, text=True,
@@ -137,14 +146,13 @@ class TestMigrationAwareRollbackDrill:
         assert _psql("SELECT version_num FROM alembic_version") == OLD_HEAD
         _psql(f"UPDATE alembic_version SET version_num='{NEW_HEAD}'")
         # 'the previous release' = the migration set without the new revision.
-        new_file = REPO_ROOT / "apps" / "control-api" / "alembic" / "versions" / \
-            "036_campaign_permission_split.py"
+        new_file = NEW_HEAD_FILE
         hidden = new_file.with_suffix(".py.hidden")
         new_file.rename(hidden)
         try:
             result = _alembic("head")
             combined = (result.stdout or "") + (result.stderr or "")
-            assert result.returncode != 0, "the old migration set should not accept head 036"
+            assert result.returncode != 0, f"the old migration set should not accept head {NEW_HEAD}"
             assert f"Can't locate revision identified by '{NEW_HEAD}'" in combined, combined[-400:]
         finally:
             hidden.rename(new_file)

@@ -117,6 +117,9 @@ retailer scope по умолчанию в pilot) → RM-STAB-003 `verification` 
 literal `036` как head репозитория, миграция 037 их уронила (behavioral/UI-smoke skipped). Фикс подготовлен локально: фикстуры
 читают head через `alembic_head.resolve_single_head`; `pytest tests/` в окружении CI-job — 1909 passed / 0 failed. Fix-commit —
 по отдельному разрешению; до зелёного CI RM-STAB-003/006 не закрываются, `device.onboard` остаётся blocked.
+Fix `53447ff` запушен → CI **33400714049**: Unit/Packaging/Behavioral/UI-Smoke/Schema/Guard — success, упал только «Stand Rollback Drill»
+(`test_stand_rollback_drill.py` пинил 035/036 и имя файла миграции) → второй fix подготовлен локально (динамическая пара head'ов,
+drill в docker 3/3); ждёт разрешения на commit/push.
 Не начаты C/CORE/CH/A/POPS; ТЗ ACCEPTED.
 
 **Next Active Workstream:** **ТЗ v2.6 → APPROVED**: **Стадия S (RM-TECH-210 in_progress, RM-STAB-003 verification, RM-STAB-006 in_progress → 004 → 007 → 005/009/010/013/014/016 → 012/015/017 → 008 → 011) → Gate-S (codex)**, затем стадия C (OD-042/043): C-задачи стартуют только при закрытых зависимостях; кандидаты AG (13 файлов) принимаются внутри задач (owner_gate); Codex — сверка кандидатов с кодом; решения OD-009/011/021/025 → **Gate-C = ТЗ APPROVED и старт разработки** (OD-041). RM-UX-007/walkthrough — приостановлены OD-041. RM-UX-007/walkthrough — приостановлены OD-041. RM-GOV-010 — `verification` после CI. Ранее: A1 `requirements-traceability.yaml` + gate `req` + `SC-*` для 53 REQ, A3 task breakdown (owner-gated), артефакты Дополнения AG. Открыто у владельца: operator walkthrough в DEV (Rule 8); имена исполнителей ролей (amendment OD-039/OD-023). Параллельно: этап S (`RM-STAB-003…`), `RM-TECH-210`.

@@ -35,9 +35,15 @@
 CI-evidence (job «Behavioral PostgreSQL Tests — ADR-008 Gate») — после разрешения владельца на commit/push. Registry `device.onboard`
 → `reachable` только по CI (OD-038); `done` — только после owner gate `device_contract`.
 
-## 3a. Итог unit-набора после фикса
+## 3a. Итог после фиксов фикстур
 
-`pytest tests/` в окружении CI-job: см. запись в PROJECT_STATE (STAGE-S-001) и следующий CI-прогон.
+| Прогон | Результат |
+|---|---|
+| `pytest tests/` в окружении CI-job (после fix `53447ff`) | **1909 passed, 534 skipped, 0 failed** |
+| CI **33400714049** (`53447ff`) | Unit, Packaging, Behavioral PostgreSQL, UI-Smoke, Schema, Guard — **success**; упал только «Stand Rollback Drill» — `tests/integration/test_stand_rollback_drill.py` пинил `OLD_HEAD/NEW_HEAD = 035/036` и имя файла `036_…py` |
+| фикс drill (локально, docker как в CI) | пара head'ов выводится из миграций (NEW_HEAD = resolver, OLD_HEAD = down_revision, файл — glob); `RUN_STAND_ROLLBACK_DRILL=1` → **3 passed** |
+
+Остальные литералы `036` в `tests/test_local_stand.py` — самосогласованные моки (lock ↔ db), Unit-job их проходит; не трогались.
 
 ## 4. Регрессионные критерии (traceability REQ-SEC-002/003)
 
