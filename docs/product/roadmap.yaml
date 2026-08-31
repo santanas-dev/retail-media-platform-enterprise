@@ -344,6 +344,19 @@ owner_decisions:
   sources:
   - указание владельца 2026-08-31 (сессия)
   - tz-v2.6-draft Дополнение AG (mini-design до шага 7), OD-041, OD-042
+- id: OD-044
+  statement: Решение владельца 2026-08-31 по RM-STAB-003 (persona → permissions → retailer scope, owner gate
+    scope_decision) - D1 security_admin сужается до модели Q2 в RM-STAB-015 отдельной миграцией с negative-тестами
+    (RM-STAB-004 существующий bundle не трогает); D2 analyst остаётся внутренней read-only ролью с retailer scope и
+    добавляется в каталог ролей; D3 в pilot внутренним non-admin учёткам retailer scope назначается по умолчанию
+    (seeded retailer). Mini-design docs/architecture/rm-stab-003-personas-retailer-scope-design-gate.md принят;
+    RM-STAB-004/006 стартуют по OD-043.
+  status: approved
+  decided_on: '2026-08-31'
+  sources:
+  - указание владельца 2026-08-31 (сессия)
+  - docs/architecture/rm-stab-003-personas-retailer-scope-design-gate.md (D1-D3)
+  - OD-035 (DEC-023), OD-003, ADR-018
 stages:
 - id: G
   title: Единая система roadmap
@@ -878,11 +891,18 @@ tasks:
     verified_by: owner
     ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой; OD-035/DEC-023)
   decision_status: approved
-  delivery_status: planned
-  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) RM-GOV-009 (r421): добавить ссылки OD-035/DEC-023 (Q2: 7 ролей) и REQ-UX-001; acceptance без изменений'
+  delivery_status: verification
+  evidence_refs:
+  - kind: artifact
+    ref: docs/architecture/rm-stab-003-personas-retailer-scope-design-gate.md
+    status: verified
+    observed_at: '2026-08-31T13:40:00Z'
+    note: 'ACCEPT владельца D1-D3 (OD-044); done - после commit/CI (Git = истина)'
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) RM-GOV-009 (r421): добавить ссылки OD-035/DEC-023 (Q2: 7 ролей) и REQ-UX-001; acceptance без изменений 2026-08-31 (стадия S, OD-043: RM-STAB-002 done): mini-design docs/architecture/rm-stab-003-personas-retailer-scope-design-gate.md - persona → bundle (30 существующих кодов) → retailer scope, миграция для RM-STAB-004, acceptance; 3 решения владельца D1-D3 (owner gate scope_decision). OD-044 (2026-08-31): D1-D3 приняты владельцем, gate scope_decision granted; verification до commit/CI.'
   owner_gate:
     required: true
     reason: scope_decision
+    granted: true
 - id: RM-STAB-006
   kind: governance
   stage: S
@@ -897,8 +917,8 @@ tasks:
     verified_by: command
     ref: python3 scripts/roadmap-consistency-check.py
   decision_status: approved
-  delivery_status: planned
-  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) Кандидат подготовлен (OD-043, 2026-08-31, без приёмки): нормативный формат journeys registry - docs/product/journeys/journeys.yaml (as-built из registry/user-journeys/AP); computed count = 79. Задача planned до закрытия зависимостей (OD-043).'
+  delivery_status: in_progress
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) Кандидат подготовлен (OD-043, 2026-08-31, без приёмки): нормативный формат journeys registry - docs/product/journeys/journeys.yaml (as-built из registry/user-journeys/AP); computed count = 79. Задача planned до закрытия зависимостей (OD-043). 2026-08-31 старт (OD-043: RM-STAB-003 verification): journeys.yaml нормализован (Happy-path N, selectors из smoke, permission_codes), валидатор scripts/ci/check-journey-spec.py --strict (+self-test).'
 - id: RM-STAB-004
   kind: implementation
   stage: S
@@ -912,7 +932,7 @@ tasks:
     ref: tests/behavioral/test_retailer_scope_rbac.py
   decision_status: approved
   delivery_status: planned
-  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) OD-044 (2026-08-31): реализовать по mini-design RM-STAB-003 - 4 bundles аддитивно, alias operator, scope_type=retailer в resolve_scope_context/require_scoped_permission; D3 - retailer scope по умолчанию внутренним non-admin (seed); D2 - analyst read-only retailer-scoped; security_admin не трогать (D1 → RM-STAB-015).'
   owner_gate:
     required: true
     reason: migration_application
@@ -1301,16 +1321,8 @@ tasks:
   feature_ids:
   - device.onboard
   decision_status: approved
-  delivery_status: planned
-  notes: 'заведена по решению владельца 2026-08-26 после того, как RM-STAB-002 вскрыл дефект.
-    RLS-CONTEXT-DEVICE-CODES-001 и RLS-CONTEXT-DEVICE-ONBOARD-001 — ни один из двух
-    маршрутов не несёт Depends(set_rls_context), при этом оба работают с RLS-таблицей
-    device_onboarding_codes. Доказано прямым запросом: владелец с admin видит код 1, роль
-    приложения без контекста — 0, она же с admin — 1. Значит в проде каждое устройство
-    получает 403 INVALID_CODE и self-onboarding не работает вовсе. Латентно только потому,
-    что пилот не развёрнут. Блокирует device pilot: RM-TECH-207B и ветку RM-PILOT.
-    Требует решения владельца по модели: онбординг неаутентифицирован, поэтому scope нельзя
-    вывести из пользователя — нужен либо явный контекст под код, либо отдельная политика.'
+  delivery_status: in_progress
+  notes: 'заведена по решению владельца 2026-08-26 после того, как RM-STAB-002 вскрыл дефект. RLS-CONTEXT-DEVICE-CODES-001 и RLS-CONTEXT-DEVICE-ONBOARD-001 — ни один из двух маршрутов не несёт Depends(set_rls_context), при этом оба работают с RLS-таблицей device_onboarding_codes. Доказано прямым запросом: владелец с admin видит код 1, роль приложения без контекста — 0, она же с admin — 1. Значит в проде каждое устройство получает 403 INVALID_CODE и self-onboarding не работает вовсе. Латентно только потому, что пилот не развёрнут. Блокирует device pilot: RM-TECH-207B и ветку RM-PILOT. Требует решения владельца по модели: онбординг неаутентифицирован, поэтому scope нельзя вывести из пользователя — нужен либо явный контекст под код, либо отдельная политика. 2026-08-31 (стадия S, OD-043: зависимость RM-STAB-002 done): реализовано локально - set_rls_context на /identity/device-codes, bootstrap-контекст кода/fingerprint на /device/onboard, миграция 037 (rehearsal down/up), allowlist элевации снят; targeted 97 passed под ролью приложения; design-gate docs/architecture/rm-tech-210-device-onboarding-rls-bootstrap-design-gate.md; ждёт CI-evidence и owner gate device_contract.'
   owner_gate:
     required: true
     reason: device_contract
@@ -1665,9 +1677,7 @@ tasks:
     ref: tests/test_phase3_user_management.py
   decision_status: approved
   delivery_status: planned
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-009; SC: SC-SEC-007; DEC: -. Evidence: tests/test_phase3_user_management.py;
-    tests/test_s019_role_safety.py. Риск регрессии: средний: миграция permission-кодов затрагивает seed
-    ролей (RM-STAB-004).'
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-009; SC: SC-SEC-007; DEC: -. Evidence: tests/test_phase3_user_management.py; tests/test_s019_role_safety.py. Риск регрессии: средний: миграция permission-кодов затрагивает seed ролей (RM-STAB-004). OD-044 D1 (2026-08-31): сузить security_admin до модели Q2 (снять campaigns.manage/approve, creatives.moderate, inventory.manage, users.manage) отдельной миграцией с negative-тестами.'
 - id: RM-STAB-016
   kind: implementation
   stage: S

@@ -16,8 +16,8 @@ import asyncio
 import pytest
 from sqlalchemy import text
 
+from tests.behavioral import conftest as _conftest
 from tests.behavioral.conftest import (
-    ENDPOINT_ELEVATION_ALLOWLIST,
     _elevation_allowed,
     set_elevation_phase,
 )
@@ -77,30 +77,17 @@ class TestSessionIsFailClosed:
         )
 
 
-class TestAllowlistIsAccountable:
-    """Каждая запись allowlist — названный дефект, а не удобство."""
+class TestNoRouteElevationRemains:
+    """RM-TECH-210: allowlist элевации по маршрутам снят вместе с механизмом.
 
-    def test_every_entry_names_a_defect_and_a_proof(self):
-        assert ENDPOINT_ELEVATION_ALLOWLIST, (
-            "allowlist пуст — если дефекты починены, удалите и этот тест вместе с "
-            "механизмом, а не оставляйте пустую заглушку"
-        )
-        for route, reason in ENDPOINT_ELEVATION_ALLOWLIST.items():
-            assert route.startswith("/"), f"{route}: маршрут должен начинаться со слэша"
-            assert len(reason) > 120, (
-                f"{route}: причина слишком короткая — запись обязана называть дефект, "
-                f"доказательство и то, чем она снимается"
-            )
-            assert "RLS-CONTEXT-" in reason, (
-                f"{route}: причина не называет идентификатор дефекта"
-            )
-            assert "починк" in reason, (
-                f"{route}: причина не говорит, что запись снимается починкой эндпоинта"
-            )
+    Раньше два маршрута (device-codes, device/onboard) держались на маске admin
+    в фазе `call`; оба починены в эндпоинтах (set_rls_context, bootstrap-контекст
+    кода — миграция 037). Пустая заглушка не оставлена: механизма нет вовсе.
+    """
 
-    def test_allowlist_is_not_a_blanket(self):
-        """Список не должен подменять собой отключение strict-режима."""
-        assert len(ENDPOINT_ELEVATION_ALLOWLIST) <= 5, (
-            f"в allowlist {len(ENDPOINT_ELEVATION_ALLOWLIST)} записей — это уже не "
-            f"исключение, а возврат маски другим способом"
+    def test_allowlist_mechanism_is_gone(self):
+        assert not hasattr(_conftest, "ENDPOINT_ELEVATION_ALLOWLIST"), (
+            "механизм allowlist вернулся — маска admin по маршрутам запрещена; "
+            "эндпоинт, которому нужен контекст, чинится, а не исключается"
         )
+        assert not hasattr(_conftest, "_path_allowlisted")

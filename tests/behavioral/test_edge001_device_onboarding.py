@@ -406,3 +406,86 @@ class TestEDGE001RLSDirectDB:
                 await conn.close()
 
         asyncio.run(_prove())
+
+
+class TestRMTech210BootstrapRLS:
+    """RM-TECH-210 — оба device-маршрута работают под ролью приложения БЕЗ элевации.
+
+    Фаза `call` строгая (RM-STAB-002): TestClient идёт через продовый get_db без
+    admin-маски. Прямые запросы под retail_media_app (NOBYPASSRLS) доказывают, что
+    bootstrap миграции 037 открывает ровно одну строку по секрету, который вызывающий
+    и так предъявляет, и ничего сверх этого.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup(self, client, db_available, e001_setup):
+        self.client = client
+        self.data = e001_setup
+        self.token_admin = _token(USER_IDS["readonly"])
+
+    def _create_code(self, retailer_id):
+        resp = self.client.post(
+            "/api/v1/identity/device-codes",
+            json={"retailer_id": retailer_id, "store_id": self.data["store_a"],
+                  "device_type_id": "beh-e001-dt-01", "ttl_hours": 24},
+            headers=_auth(self.token_admin),
+        )
+        assert resp.status_code == 201, f"device-codes под ролью приложения: {resp.status_code} {resp.text}"
+        return resp.json()["code"]
+
+    def test_device_codes_and_onboard_work_without_elevation(self):
+        code = self._create_code(self.data["ret_a"])
+        fp = f"rm210-fp-{time.time_ns()}"
+        resp = self.client.post("/api/v1/device/onboard", json={"device_code": code, "hardware_fingerprint": fp})
+        assert resp.status_code == 200, f"onboard под ролью приложения: {resp.status_code} {resp.text}"
+        assert resp.json()["device_id"]
+
+    def test_app_role_sees_code_only_with_code_bootstrap(self):
+        code = self._create_code(self.data["ret_a"])
+        import asyncpg
+
+        async def _prove():
+            conn = await asyncpg.connect(raw_dsn())
+            try:
+                await conn.execute("SELECT set_config('app.rmp_is_admin', 'false', false)")
+                await conn.execute("SELECT set_config('app.rmp_scope_retailer_ids', '', false)")
+                none = await conn.fetch("SELECT code FROM device_onboarding_codes WHERE code = $1", code)
+                assert none == [], "без контекста роль приложения не должна видеть код (fail-closed)"
+                await conn.execute("SELECT set_config('app.rmp_device_code', $1, false)", "not-the-code")
+                wrong = await conn.fetch("SELECT code FROM device_onboarding_codes WHERE code = $1", code)
+                assert wrong == [], "чужой секрет не открывает строку"
+                await conn.execute("SELECT set_config('app.rmp_device_code', $1, false)", code)
+                own = await conn.fetch("SELECT code, retailer_id FROM device_onboarding_codes WHERE code = $1", code)
+                assert len(own) == 1 and own[0]["retailer_id"] == self.data["ret_a"], "bootstrap по коду открывает ровно свою строку"
+                others = await conn.fetch("SELECT count(*) AS n FROM device_onboarding_codes WHERE code <> $1", code)
+                assert others[0]["n"] == 0, "bootstrap не открывает другие коды"
+            finally:
+                await conn.close()
+
+        asyncio.run(_prove())
+
+    def test_app_role_sees_device_only_with_fingerprint_bootstrap(self):
+        code = self._create_code(self.data["ret_a"])
+        fp = f"rm210-fp-{time.time_ns()}"
+        resp = self.client.post("/api/v1/device/onboard", json={"device_code": code, "hardware_fingerprint": fp})
+        assert resp.status_code == 200, resp.text
+        device_id = resp.json()["device_id"]
+        import asyncpg
+
+        async def _prove():
+            conn = await asyncpg.connect(raw_dsn())
+            try:
+                await conn.execute("SELECT set_config('app.rmp_is_admin', 'false', false)")
+                await conn.execute("SELECT set_config('app.rmp_scope_retailer_ids', '', false)")
+                none = await conn.fetch("SELECT id FROM physical_devices WHERE id = $1", device_id)
+                assert none == [], "без контекста устройство не видно"
+                await conn.execute("SELECT set_config('app.rmp_device_fingerprint', $1, false)", "other-fingerprint")
+                wrong = await conn.fetch("SELECT id FROM physical_devices WHERE id = $1", device_id)
+                assert wrong == [], "чужой fingerprint не открывает устройство"
+                await conn.execute("SELECT set_config('app.rmp_device_fingerprint', $1, false)", fp)
+                own = await conn.fetch("SELECT id, retailer_id FROM physical_devices WHERE id = $1", device_id)
+                assert len(own) == 1 and own[0]["retailer_id"] == self.data["ret_a"]
+            finally:
+                await conn.close()
+
+        asyncio.run(_prove())

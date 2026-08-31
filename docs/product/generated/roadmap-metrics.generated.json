@@ -33,8 +33,9 @@
     "by_delivery_status": {
       "blocked": 10,
       "done": 9,
-      "planned": 85,
-      "verification": 5
+      "in_progress": 2,
+      "planned": 82,
+      "verification": 6
     },
     "by_kind": {
       "design": 13,
@@ -67,9 +68,9 @@
       "Gate-POPS"
     ],
     "max_dependency_depth": 9,
-    "owner_decisions": 43,
+    "owner_decisions": 44,
     "owner_gated": 33,
     "tasks_total": 109,
-    "with_verified_evidence": 14
+    "with_verified_evidence": 15
   }
 }

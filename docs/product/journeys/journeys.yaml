@@ -1,35 +1,57 @@
-# journeys.yaml — UI journeys registry (нормативный формат)
+# journeys.yaml — UI journeys registry (нормативный формат, RM-STAB-006)
 #
-# Артефакт Дополнения AG (ТЗ v2.6 r428) — задача RM-STAB-006 / RM-UX-011; REQ: REQ-UX-001, REQ-UX-002.
-# Источник: as-built из репозитория develop @ 06ae22e (код = 4ac3ddb) + ТЗ r428; статус: candidate/prepared 2026-08-31 (OD-043) — подготовлено как mini-design; задача roadmap остаётся planned до Gate-S, приёмка выполняется внутри задачи после её старта, не сейчас.
-# Код продукта не менялся. Изменение — только внутри задачи roadmap с ACCEPT.
+# Артефакт Дополнения AG (ТЗ v2.6 r428). Пересобирается из канонических входов; статус: candidate/prepared 2026-08-31 (OD-043),
+# задача RM-STAB-006 in_progress; приёмка - внутри задачи. Код продукта не менялся.
 schema_version: 1
 document:
   artifact: journeys/journeys.yaml — нормативный формат UI journeys registry (RM-STAB-006, Дополнение AG)
   req:
   - REQ-UX-001
   - REQ-UX-002
-  status: 'candidate/prepared 2026-08-31 (OD-043): без приёмки; задача planned до Gate-S'
+  - REQ-UX-005
+  status: candidate/prepared 2026-08-31 (OD-043) — RM-STAB-006 in_progress; валидатор scripts/ci/check-journey-spec.py --strict
   source:
-  - feature-registry.yaml (канон ID/status/smoke)
+  - feature-registry.yaml (канон ID/status/smoke/roles/route — число journeys вычисляется из него)
   - user-journeys.md §6 (пути)
-  - ТЗ r428 Дополнение AP (actor/permission/scope, happy/negative path)
-  rule: ID = <домен>.<действие>; статус reachable только по зелёному smoke (правило 7); walkthrough ставит только человек (правило 8)
+  - ТЗ r428 Дополнение AP (actor/permission/scope, entry, happy/negative path)
+  - tests/ui-smoke/*.py (селекторы data-testid, as-built)
+  - role-scope-matrix.yaml (permission-коды)
+  rule: 'ID = <домен>.<действие>; reachable только по зелёному smoke (правило 7); walkthrough ставит только человек (правило 8); каждый UI journey: actor, permission_codes, entry, `Happy-path: N`, selectors
+    (data-testid), negative_path'
 journeys:
 - id: campaign.create
   name: Создание кампании
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - campaigns.approve
+  - campaigns.manage
+  - campaigns.read
+  - creatives.read
+  - inventory.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-CAM-001
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: Логин → Кампании → **Создать кампанию** → форма → **Сохранить**
+  happy_path: 'Happy-path: 5 шагов — Логин → Кампании → **Создать кампанию** → форма → **Сохранить**'
+  selectors:
+  - campaign-create-open
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__campaign__create
   status: reachable
@@ -38,15 +60,34 @@ journeys:
 - id: campaign.edit
   name: Редактирование кампании (рейсы/размещения)
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - campaigns.approve
+  - campaigns.manage
+  - campaigns.read
+  - creatives.read
+  - inventory.read
   stories:
   - US-WFL-001
   actor_permission_scope: campaign manager; `campaigns.manage`; campaign
   entry: end reached and reconciliation complete
-  happy_path: Кампании → карточка → добавить рейс/размещение
+  happy_path: 'Happy-path: 4 шагов — Логин → Кампании → карточка → добавить рейс/размещение'
+  selectors:
+  - campaign-create-open
+  - content-flights-section
+  - content-placements-section
+  - flight-add-btn
+  - flight-end
+  - flight-start
+  - flight-submit
+  - placement-add-btn
+  - placement-submit
+  - placement-surface
+  - tab-content
   negative_path: active flight, unresolved deficit or no approval → block; `campaign.completed`
   smoke: test_uismoke__campaign__edit
   status: reachable
@@ -55,17 +96,30 @@ journeys:
 - id: creative.upload
   name: Загрузка креатива
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - campaigns.manage
+  - creatives.moderate
+  - creatives.read
   stories:
   - US-CHAN-002
   - US-MOD-001
   actor_permission_scope: content/channel owner; `renditions.manage` PENDING; channel/profile
   entry: channel profile exists; `/login`
-  happy_path: 'карточка → вкладка Креативы → **Выбрать файл** → авто-метаданные → **Загрузить** → Готов. Happy-path: 5 шагов — 1) Креативы → 2) Выбрать файл → 3) метаданные авто-заполнены → 4) Загрузить
-    → 5) статус Готов + reload persistence'
+  happy_path: 'Happy-path: 5 шагов — 1) Креативы → 2) Выбрать файл → 3) метаданные авто-заполнены → 4) Загрузить → 5) статус Готов + reload persistence'
+  selectors:
+  - creative-upload-done
+  - creative-upload-metadata-submit
+  - creative-upload-primary
+  - creative-upload-primary-code
+  - creative-upload-primary-file-input
+  - creative-upload-primary-name
+  - creative-upload-select-file
+  - tab-content
   negative_path: incompatible rendition or unsafe content → reject; `rendition.validation_decided`
   smoke: test_uismoke__creative__upload
   status: reachable
@@ -74,75 +128,217 @@ journeys:
 - id: campaign.submit
   name: Отправить кампанию на согласование
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - campaigns.approve
+  - campaigns.manage
+  - campaigns.read
+  - creatives.read
+  - inventory.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-APR-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: 'Overview → checklist → missing steps → flight → placement → creative ready → **Отправить**. Happy-path: 6 шагов — 1) Обзор → checklist missing; 2) рейс через checklist-action; 3) размещение
-    через checklist-action; 4) креатив с файлом через checklist-action; 5) все ✅ → можно отправить; 6) submit → pending_approval'
+  happy_path: 'Happy-path: 6 шагов — 1) Обзор → checklist missing; 2) рейс через checklist-action; 3) размещение через checklist-action; 4) креатив с файлом через checklist-action; 5) все ✅ → можно отправить;
+    6) submit → pending_approval'
+  selectors:
+  - campaign-create-open
+  - campaign-created-dismiss
+  - campaign-readiness-checklist
+  - campaign-status-badge
+  - campaign-submit-btn
+  - campaign-submit-error
+  - creative-upload-done
+  - creative-upload-metadata-submit
+  - creative-upload-primary
+  - creative-upload-primary-code
+  - creative-upload-primary-error
+  - creative-upload-primary-file-input
+  - creative-upload-select-file
+  - flight-add-btn
+  - flight-end
+  - flight-start
+  - flight-submit
+  - placement-add-btn
+  - placement-submit
+  - placement-surface
+  - readiness-creative-action
+  - readiness-creative-status
+  - readiness-flight-action
+  - readiness-flight-status
+  - readiness-placement-action
+  - readiness-placement-status
+  - readiness-submit-status
+  - tab-content
+  - tab-overview
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__campaign__submit
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: campaign.approve
   name: Одобрить кампанию
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - approver
+  permission_codes:
+  - campaigns.approve
+  - campaigns.manage
+  - campaigns.read
+  - creatives.read
+  - inventory.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-APR-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: Логин → Согласование → карточка → **Одобрить**
+  happy_path: 'Happy-path: 4 шагов — Логин → Согласование → карточка → **Одобрить**'
+  selectors:
+  - campaign-approval-error
+  - campaign-approve-btn
+  - campaign-create-open
+  - campaign-status-badge
+  - campaign-submit-btn
+  - campaign-submit-error
+  - creative-upload-done
+  - creative-upload-metadata-submit
+  - creative-upload-primary
+  - creative-upload-primary-code
+  - creative-upload-primary-error
+  - creative-upload-primary-file-input
+  - creative-upload-select-file
+  - flight-add-btn
+  - flight-end
+  - flight-start
+  - flight-submit
+  - placement-add-btn
+  - placement-submit
+  - placement-surface
+  - tab-content
+  - tab-overview
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__campaign__approve
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: campaign.reject
   name: Отклонить кампанию с причиной
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - approver
+  permission_codes:
+  - campaigns.approve
+  - campaigns.manage
+  - campaigns.read
+  - creatives.read
+  - inventory.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-APR-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: Согласование → карточка → **Отклонить** → причина
+  happy_path: 'Happy-path: 5 шагов — Логин → Согласование → карточка → **Отклонить** → причина'
+  selectors:
+  - campaign-approval-error
+  - campaign-create-open
+  - campaign-reject-btn
+  - campaign-reject-confirm
+  - campaign-reject-reason
+  - campaign-rejection-reason-display
+  - campaign-status-badge
+  - campaign-submit-btn
+  - campaign-submit-error
+  - creative-upload-done
+  - creative-upload-metadata-submit
+  - creative-upload-primary
+  - creative-upload-primary-code
+  - creative-upload-primary-error
+  - creative-upload-primary-file-input
+  - creative-upload-select-file
+  - flight-add-btn
+  - flight-end
+  - flight-start
+  - flight-submit
+  - placement-add-btn
+  - placement-submit
+  - placement-surface
+  - tab-content
+  - tab-overview
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__campaign__reject
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: creative.moderate_approve
   name: Одобрить креатив (модерация)
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - moderator
+  permission_codes:
+  - campaigns.manage
+  - creatives.moderate
+  - creatives.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-CAM-001
+  - US-CHAN-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: Логин → Модерация → элемент → **Одобрить**
+  happy_path: 'Happy-path: 4 шагов — Логин → Модерация → элемент → **Одобрить**'
+  selectors:
+  - creative-add-library-btn
+  - creative-add-submit
+  - creative-code
+  - creative-name
+  - moderation-approve-{creative_code}
+  - moderation-filter-approved
+  - moderation-page
+  - moderation-row-{creative_code}
+  - moderation-status-{creative_code}
+  - tab-content
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__creative__moderate_approve
   status: reachable
@@ -151,17 +347,46 @@ journeys:
 - id: creative.moderate_reject
   name: Отклонить креатив с причиной (модерация)
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - moderator
+  permission_codes:
+  - campaigns.manage
+  - creatives.moderate
+  - creatives.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-CAM-001
+  - US-CHAN-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: Модерация → элемент → **Отклонить** → причина
+  happy_path: 'Happy-path: 5 шагов — Логин → Модерация → элемент → **Отклонить** → причина'
+  selectors:
+  - creative-add-library-btn
+  - creative-add-submit
+  - creative-code
+  - creative-name
+  - moderation-filter-rejected
+  - moderation-page
+  - moderation-reject-confirm-{creative_code}
+  - moderation-reject-reason-{creative_code}
+  - moderation-reject-{creative_code}
+  - moderation-row-{creative_code}
+  - moderation-status-{creative_code}
+  - tab-content
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__creative__moderate_reject
   status: reachable
@@ -170,14 +395,28 @@ journeys:
 - id: user.create_advertiser
   name: Завести локального рекламодателя
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
+  permission_codes:
+  - audit.read
+  - roles.manage
+  - roles.read
+  - users.manage
+  - users.read
   stories: []
-  actor_permission_scope: null
-  entry: null
-  happy_path: Логин → Пользователи → **Создать** → данные+организация
-  negative_path: null
+  actor_permission_scope: system_admin; permission codes users.read, users.manage, roles.read, roles.manage, audit.read; retailer scope
+  entry: '`/login`'
+  happy_path: 'Happy-path: 4 шагов — Логин → Пользователи → **Создать** → данные+организация'
+  selectors:
+  - user-create-advertiser-display-name
+  - user-create-advertiser-open
+  - user-create-advertiser-org-id
+  - user-create-advertiser-result
+  - user-create-advertiser-submit
+  - user-create-advertiser-username
+  negative_path: 'planned: negative path фиксируется в mini-design задачи roadmap'
   smoke: test_uismoke__user__create_advertiser
   status: reachable
   walkthrough: PENDING
@@ -185,32 +424,80 @@ journeys:
 - id: user.assign_roles
   name: Назначить роли/права пользователю
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
+  permission_codes:
+  - audit.read
+  - roles.manage
+  - roles.read
+  - users.manage
+  - users.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-EMR-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
+  - US-SEC-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: Пользователи → пользователь → **Роли** → выбрать → сохранить
+  happy_path: 'Happy-path: 6 шагов — Логин → Пользователи → пользователь → **Роли** → выбрать → сохранить'
+  selectors:
+  - permission-catalog
+  - user-roles-open
+  - user-roles-panel
+  - user-roles-role
+  - user-roles-save
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__user__assign_roles
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: user.split_internal_advertiser
   name: Разделить пользователей на внутренних и рекламодателей
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
+  permission_codes:
+  - audit.read
+  - roles.manage
+  - roles.read
+  - users.manage
+  - users.read
   stories: []
-  actor_permission_scope: null
-  entry: null
-  happy_path: null
-  negative_path: null
+  actor_permission_scope: system_admin; permission codes users.read, users.manage, roles.read, roles.manage, audit.read; retailer scope
+  entry: '`/login`'
+  happy_path: 'Happy-path: 6 шагов — login (system_admin) → Пользователи → вкладки Все/Внутренние/Рекламодатели → Внутренние — только ad/break-glass → Рекламодатели — только local_advertiser + провайдер
+    → UUID read-only invariant'
+  selectors:
+  - user-create-advertiser-id
+  - user-create-advertiser-open
+  - user-create-advertiser-username
+  - user-create-advertiser-uuid
+  - user-provider-advertiser_test
+  - users-empty-advertiser
+  - users-tab-advertiser
+  - users-tab-all
+  - users-tab-bar
+  - users-tab-internal
+  - users-table-advertiser
+  - users-table-internal
+  negative_path: 'planned: negative path фиксируется в mini-design задачи roadmap'
   smoke: test_uismoke__user__split_internal_advertiser
   status: reachable
   walkthrough: PENDING
@@ -218,36 +505,114 @@ journeys:
 - id: advertiser.create_org
   name: Создать организацию рекламодателя (managed)
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - advertiser_applications.read
+  - advertiser_applications.review
+  - advertisers.contacts.manage
+  - advertisers.contacts.read
+  - advertisers.manage
+  - advertisers.read
+  - organization.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: Рекламодатели → **Создать рекламодателя** → реквизиты
+  happy_path: 'Happy-path: 4 шагов — Логин → Рекламодатели → **Создать рекламодателя** → реквизиты'
+  selectors:
+  - advertiser-code-readonly
+  - advertiser-create-open
+  - advertiser-detail-panel
+  - advertiser-org-row
+  - advertiser-tab-реквизиты
+  - advertiser-wizard
+  - advertiser-wizard-code-note
+  - advertiser-wizard-contact-email
+  - advertiser-wizard-contact-name
+  - advertiser-wizard-display-name
+  - advertiser-wizard-error
+  - advertiser-wizard-legal-address
+  - advertiser-wizard-legal-bank
+  - advertiser-wizard-legal-bik
+  - advertiser-wizard-legal-inn
+  - advertiser-wizard-legal-settlement
+  - advertiser-wizard-name
+  - advertiser-wizard-next
+  - advertiser-wizard-step-confirm
+  - advertiser-wizard-step-contact-contract
+  - advertiser-wizard-step-legal-active
+  - advertiser-wizard-step-main
+  - advertiser-wizard-submit
+  - advertiser-wizard-summary-code
+  - advertiser-wizard-summary-contact
+  - advertiser-wizard-summary-inn
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__advertiser__create_org
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: advertiser.application_review
   name: Рассмотреть заявку рекламодателя
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - advertiser_applications.read
+  - advertiser_applications.review
+  - advertisers.contacts.manage
+  - advertisers.contacts.read
+  - advertisers.manage
+  - advertisers.read
+  - organization.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: Логин → Заявки рекламодателей → заявка → **Одобрить/Отклонить**
+  happy_path: 'Happy-path: 4 шагов — Логин → Заявки рекламодателей → заявка → **Одобрить/Отклонить**'
+  selectors:
+  - advertiser-applications-table
+  - advertiser-apply-company-name
+  - advertiser-apply-consent
+  - advertiser-apply-contact-name
+  - advertiser-apply-email
+  - advertiser-apply-phone
+  - advertiser-apply-submit
+  - advertiser-review-start
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__advertiser__application_review
   status: reachable
@@ -256,18 +621,37 @@ journeys:
 - id: emergency.activate
   name: Экстренно остановить показ
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - security_admin
   - ops_operator
+  permission_codes:
+  - emergency.manage
+  - emergency.read
   stories:
   - US-ADM-001
   - US-ADV-003
   - US-CHAN-003
+  - US-DATA-001
+  - US-EMR-001
+  - US-OPS-001
+  - US-SEC-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: Логин → Аварийный режим → **Активировать** → подтвердить
+  happy_path: 'Happy-path: 4 шагов — Логин → Аварийный режим → **Активировать** → подтвердить'
+  selectors:
+  - emergency-activate-btn
+  - emergency-confirm-activate
+  - emergency-confirm-deactivate
+  - emergency-deactivate-btn
+  - emergency-page
+  - emergency-reason-input
+  - emergency-scope-note
+  - emergency-status
+  - emergency-success
+  - emergency-warning
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__emergency__activate
   status: reachable
@@ -276,18 +660,35 @@ journeys:
 - id: emergency.deactivate
   name: Снять аварийный режим
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - security_admin
   - ops_operator
+  permission_codes:
+  - emergency.manage
+  - emergency.read
   stories:
   - US-ADM-001
   - US-ADV-003
   - US-CHAN-003
+  - US-DATA-001
+  - US-EMR-001
+  - US-OPS-001
+  - US-SEC-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: Аварийный режим → **Деактивировать**
+  happy_path: 'Happy-path: 3 шагов — Логин → Аварийный режим → **Деактивировать**'
+  selectors:
+  - emergency-activate-btn
+  - emergency-confirm-activate
+  - emergency-confirm-deactivate
+  - emergency-deactivate-btn
+  - emergency-reason-input
+  - emergency-scope-note
+  - emergency-status
+  - emergency-success
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__emergency__deactivate
   status: reachable
@@ -296,15 +697,46 @@ journeys:
 - id: campaign.activate
   name: Запустить одобренную кампанию
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - campaigns.approve
+  - campaigns.manage
+  - campaigns.read
+  - creatives.read
+  - inventory.read
   stories:
   - US-WFL-001
   actor_permission_scope: campaign manager; `campaigns.manage`; campaign
   entry: end reached and reconciliation complete
-  happy_path: карточка (approved) → **Запустить**
+  happy_path: 'Happy-path: 3 шагов — Логин → карточка (approved) → **Запустить**'
+  selectors:
+  - campaign-activate-btn
+  - campaign-approve-btn
+  - campaign-create-open
+  - campaign-lifecycle-error
+  - campaign-status-badge
+  - campaign-submit-btn
+  - campaign-submit-error
+  - creative-upload-done
+  - creative-upload-metadata-submit
+  - creative-upload-primary
+  - creative-upload-primary-code
+  - creative-upload-primary-error
+  - creative-upload-primary-file-input
+  - creative-upload-select-file
+  - flight-add-btn
+  - flight-end
+  - flight-start
+  - flight-submit
+  - placement-add-btn
+  - placement-submit
+  - placement-surface
+  - tab-content
+  - tab-overview
   negative_path: active flight, unresolved deficit or no approval → block; `campaign.completed`
   smoke: test_uismoke__campaign__activate
   status: reachable
@@ -313,17 +745,48 @@ journeys:
 - id: campaign.pause
   name: Приостановить активную кампанию
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
   - security_admin
   - ops_operator
+  permission_codes:
+  - campaigns.approve
+  - campaigns.manage
+  - campaigns.read
+  - creatives.read
+  - inventory.read
   stories:
   - US-WFL-001
   actor_permission_scope: campaign manager; `campaigns.manage`; campaign
   entry: end reached and reconciliation complete
-  happy_path: карточка (active) → **Пауза**
+  happy_path: 'Happy-path: 3 шагов — Логин → карточка (active) → **Пауза**'
+  selectors:
+  - campaign-activate-btn
+  - campaign-approve-btn
+  - campaign-create-open
+  - campaign-pause-btn
+  - campaign-status-badge
+  - campaign-submit-btn
+  - campaign-submit-error
+  - creative-upload-done
+  - creative-upload-metadata-submit
+  - creative-upload-primary
+  - creative-upload-primary-code
+  - creative-upload-primary-error
+  - creative-upload-primary-file-input
+  - creative-upload-select-file
+  - flight-add-btn
+  - flight-end
+  - flight-start
+  - flight-submit
+  - placement-add-btn
+  - placement-submit
+  - placement-surface
+  - tab-content
+  - tab-overview
   negative_path: active flight, unresolved deficit or no approval → block; `campaign.completed`
   smoke: test_uismoke__campaign__pause
   status: reachable
@@ -332,17 +795,58 @@ journeys:
 - id: inventory.simulate
   name: Прогноз показов (симуляция инвентаря)
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - campaigns.read
+  - inventory.manage
+  - inventory.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-CAM-001
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: Инвентарь → параметры → **Симуляция**
+  happy_path: 'Happy-path: 4 шагов — Логин → Инвентарь → параметры → **Симуляция**'
+  selectors:
+  - creative-add-library-btn
+  - creative-add-submit
+  - creative-attach-btn
+  - creative-attach-select
+  - creative-attach-submit
+  - creative-code
+  - creative-name
+  - flight-add-btn
+  - flight-end
+  - flight-start
+  - flight-submit
+  - placement-add-btn
+  - placement-submit
+  - placement-surface
+  - simulate-btn
+  - simulation-blocking-count
+  - simulation-placement-0
+  - simulation-result
+  - simulation-slot-fill-0
+  - simulation-total-available-0
+  - simulation-total-requested-0
+  - simulation-verdict
+  - simulation-warning-count
+  - tab-content
+  - tab-overview
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__inventory__simulate
   status: reachable
@@ -351,19 +855,49 @@ journeys:
 - id: inventory.rule_create
   name: Создать правило инвентаря
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - campaigns.read
+  - inventory.manage
+  - inventory.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-CAM-001
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: 'Инвентарь → вкладка «Правила» → **+ Создать** → max_sov/35%/priority 17/глобально/активно/будущие даты → Создать → success + строка. Happy-path: 7 шагов — 1) Логин (break_glass_admin) → 2)
-    Инвентарь → 3) вкладка Правила → 4) + Создать → 5) заполнить (max_sov, 35%, priority 17, global, active, future dates) → 6) Создать → 7) строка с типом/областью/приоритетом/значением/активностью/периодом
-    + reload persistence'
+  happy_path: 'Happy-path: 7 шагов — 1) Логин (break_glass_admin) → 2) Инвентарь → 3) вкладка Правила → 4) + Создать → 5) заполнить (max_sov, 35%, priority 17, global, active, future dates) → 6) Создать
+    → 7) строка с типом/областью/приоритетом/значением/активностью/периодом + reload persistence'
+  selectors:
+  - inventory-rule-create-open
+  - inventory-rule-ends-at
+  - inventory-rule-priority
+  - inventory-rule-row-active-{row_key}
+  - inventory-rule-row-period-{row_key}
+  - inventory-rule-row-priority-{row_key}
+  - inventory-rule-row-scope-{row_key}
+  - inventory-rule-row-type-{row_key}
+  - inventory-rule-row-value-{row_key}
+  - inventory-rule-row-{row_key}
+  - inventory-rule-starts-at
+  - inventory-rule-submit
+  - inventory-rule-success
+  - inventory-rule-type
+  - inventory-rule-value
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__inventory__rule_create
   status: reachable
@@ -372,15 +906,33 @@ journeys:
 - id: advertiser.view
   name: Смотреть карточку рекламодателя
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - advertiser_applications.read
+  - advertiser_applications.review
+  - advertisers.contacts.manage
+  - advertisers.contacts.read
+  - advertisers.manage
+  - advertisers.read
+  - organization.read
   stories:
   - US-ADV-002
   actor_permission_scope: applicant plus onboarding manager; application/review/advertiser permissions; public then retailer/advertiser
   entry: public apply enabled; public entry then `/login`
-  happy_path: Рекламодатели → организация
+  happy_path: 'Happy-path: 3 шагов — Логин → Рекламодатели → организация'
+  selectors:
+  - advertiser-detail-code
+  - advertiser-detail-display-name
+  - advertiser-detail-legal-name
+  - advertiser-detail-panel
+  - advertiser-detail-status
+  - advertiser-detail-users
+  - advertiser-detail-users-empty
+  - advertiser-org-row
   negative_path: pre-approval commercial access, expired invite or cross-org → deny; application/invite/member audit events
   smoke: test_uismoke__advertiser__view
   status: reachable
@@ -389,17 +941,55 @@ journeys:
 - id: advertiser.contact_crud
   name: Управление контактами рекламодателя (создание, редактирование, привязка к учётной записи)
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - advertiser_applications.read
+  - advertiser_applications.review
+  - advertisers.contacts.manage
+  - advertisers.contacts.read
+  - advertisers.manage
+  - advertisers.read
+  - organization.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  happy_path: 'Happy-path: 5 шагов — login (system_admin или campaign_manager) → Рекламодатели → организация → вкладка Контакты → создать/редактировать'
+  selectors:
+  - advertiser-contact-create-open
+  - advertiser-contact-display-email-{contact_id}
+  - advertiser-contact-display-name-{contact_id}
+  - advertiser-contact-edit-name
+  - advertiser-contact-edit-{contact_id}
+  - advertiser-contact-email
+  - advertiser-contact-name
+  - advertiser-contact-phone
+  - advertiser-contact-row-{contact_id}
+  - advertiser-contact-submit
+  - advertiser-contact-success
+  - advertiser-contact-title
+  - advertiser-contacts-section
+  - advertiser-detail-panel
+  - advertiser-org-row
+  - advertiser-tab-контакты
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__advertiser__contact_crud
   status: reachable
@@ -408,17 +998,51 @@ journeys:
 - id: advertiser.brand_crud
   name: Управление брендами рекламодателя (создание, редактирование)
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - advertiser_applications.read
+  - advertiser_applications.review
+  - advertisers.contacts.manage
+  - advertisers.contacts.read
+  - advertisers.manage
+  - advertisers.read
+  - organization.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  happy_path: 'Happy-path: 5 шагов — login (system_admin или campaign_manager) → Рекламодатели → организация → вкладка Бренды → создать/редактировать'
+  selectors:
+  - advertiser-brand-code
+  - advertiser-brand-create-open
+  - advertiser-brand-description
+  - advertiser-brand-display-code-{brand_id}
+  - advertiser-brand-display-name-{brand_id}
+  - advertiser-brand-edit-{brand_id}
+  - advertiser-brand-name
+  - advertiser-brand-row-{brand_id}
+  - advertiser-brand-submit
+  - advertiser-brands-section
+  - advertiser-detail-panel
+  - advertiser-org-row
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__advertiser__brand_crud
   status: reachable
@@ -427,17 +1051,55 @@ journeys:
 - id: advertiser.contract_crud
   name: Договоры рекламодателя — создание, редактирование, PDF upload
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - advertiser_applications.read
+  - advertiser_applications.review
+  - advertisers.contacts.manage
+  - advertisers.contacts.read
+  - advertisers.manage
+  - advertisers.read
+  - organization.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-CAM-001
+  - US-CHAN-003
+  - US-COM-001
+  - US-DATA-001
+  - US-EMR-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
+  - US-SEC-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  happy_path: 'Happy-path: 7 шагов — login (system_admin или campaign_manager) → Рекламодатели → организация → вкладка Договоры → создать → выбрать PDF → загрузить'
+  selectors:
+  - advertiser-contract-create-open
+  - advertiser-contract-display-file-{contract_id}
+  - advertiser-contract-display-number-{contract_id}
+  - advertiser-contract-display-title-{contract_id}
+  - advertiser-contract-edit-{contract_id}
+  - advertiser-contract-number
+  - advertiser-contract-row-{contract_id}
+  - advertiser-contract-selected-file
+  - advertiser-contract-submit
+  - advertiser-contract-title
+  - advertiser-contract-upload-done
+  - advertiser-contract-upload-{contract_id}
+  - advertiser-contracts-section
+  - advertiser-detail-panel
+  - advertiser-org-row
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__advertiser__contract_pdf_upload
   status: reachable
@@ -446,17 +1108,62 @@ journeys:
 - id: advertiser.legal_requisites
   name: Юридические реквизиты рекламодателя (заполнение, редактирование)
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - advertiser_applications.read
+  - advertiser_applications.review
+  - advertisers.contacts.manage
+  - advertisers.contacts.read
+  - advertisers.manage
+  - advertisers.read
+  - organization.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  happy_path: 'Happy-path: 6 шагов — login (system_admin или campaign_manager) → Рекламодатели → организация → вкладка Реквизиты → заполнить/редактировать → сохранить'
+  selectors:
+  - advertiser-detail-panel
+  - advertiser-legal-address
+  - advertiser-legal-bank-name
+  - advertiser-legal-bik
+  - advertiser-legal-correspondent-account
+  - advertiser-legal-display-bank-name
+  - advertiser-legal-display-bik
+  - advertiser-legal-display-correspondent-account
+  - advertiser-legal-display-inn
+  - advertiser-legal-display-kpp
+  - advertiser-legal-display-legal-address
+  - advertiser-legal-display-legal-name
+  - advertiser-legal-display-ogrn
+  - advertiser-legal-display-settlement-account
+  - advertiser-legal-edit
+  - advertiser-legal-inn
+  - advertiser-legal-kpp
+  - advertiser-legal-name
+  - advertiser-legal-ogrn
+  - advertiser-legal-section
+  - advertiser-legal-settlement-account
+  - advertiser-legal-submit
+  - advertiser-org-row
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__advertiser__legal_requisites
   status: reachable
@@ -465,17 +1172,51 @@ journeys:
 - id: advertiser.invite
   name: Пригласить рекламодателя
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - advertiser_applications.read
+  - advertiser_applications.review
+  - advertisers.contacts.manage
+  - advertisers.contacts.read
+  - advertisers.manage
+  - advertisers.read
+  - organization.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: Заявки → **Создать приглашение**
+  happy_path: 'Happy-path: 3 шагов — Логин → Заявки → **Создать приглашение**'
+  selectors:
+  - advertiser-applications-table
+  - advertiser-apply-company-name
+  - advertiser-apply-consent
+  - advertiser-apply-contact-name
+  - advertiser-apply-email
+  - advertiser-apply-phone
+  - advertiser-apply-submit
+  - advertiser-approve-btn
+  - advertiser-invite-create
+  - advertiser-invite-status
+  - advertiser-invite-token
+  - advertiser-review-start
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__advertiser__invite
   status: reachable
@@ -484,32 +1225,62 @@ journeys:
 - id: user.reset_password
   name: Сбросить пароль пользователю
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
+  permission_codes:
+  - audit.read
+  - roles.manage
+  - roles.read
+  - users.manage
+  - users.read
   stories: []
-  actor_permission_scope: null
-  entry: null
-  happy_path: 'Пользователи → пользователь → **Сбросить пароль** → OTP. Happy-path: 5 шагов — 1) Логин → 2) Пользователи → 3) найти пользователя (create throwaway или существующий) → 4) Сбросить пароль
-    → подтвердить → 5) OTP (16 символов) в network response, без [object Object]. Seed-учётные данные не мутируются.'
-  negative_path: null
+  actor_permission_scope: system_admin; permission codes users.read, users.manage, roles.read, roles.manage, audit.read; retailer scope
+  entry: '`/login`'
+  happy_path: 'Happy-path: 5 шагов — 1) Логин → 2) Пользователи → 3) найти пользователя (create throwaway или существующий) → 4) Сбросить пароль → подтвердить → 5) OTP (16 символов) в network response,
+    без [object Object]. Seed-учётные данные не мутируются.'
+  selectors:
+  - user-create-advertiser-display-name
+  - user-create-advertiser-open
+  - user-create-advertiser-org-id
+  - user-create-advertiser-result
+  - user-create-advertiser-submit
+  - user-create-advertiser-username
+  - user-reset-password-confirm
+  negative_path: 'planned: negative path фиксируется в mini-design задачи roadmap'
   smoke: test_uismoke__user__reset_password
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: user.deactivate
   name: Заблокировать пользователя
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
+  permission_codes:
+  - audit.read
+  - roles.manage
+  - roles.read
+  - users.manage
+  - users.read
   stories: []
-  actor_permission_scope: null
-  entry: null
-  happy_path: 'Пользователи → пользователь → **Деактивировать** → подтверждение → блок. Happy-path: 7 шагов — 1) Логин (break_glass_admin) → 2) Пользователи → 3) создать throwaway (sd-{uuid}) → 4) найти
-    строку → 5) Деактивировать → подтвердить → 6) статус «Неактивен» + success → 7) залогиниться деактивированным → блокирован (stay on login, error visible). Reload persistence подтверждена. Seed-учётные
-    данные не мутируются. OTP извлекается из DOM.'
-  negative_path: null
+  actor_permission_scope: system_admin; permission codes users.read, users.manage, roles.read, roles.manage, audit.read; retailer scope
+  entry: '`/login`'
+  happy_path: 'Happy-path: 7 шагов — 1) Логин (break_glass_admin) → 2) Пользователи → 3) создать throwaway (sd-{uuid}) → 4) найти строку → 5) Деактивировать → подтвердить → 6) статус «Неактивен» + success
+    → 7) залогиниться деактивированным → блокирован (stay on login, error visible). Reload persistence подтверждена. Seed-учётные данные не мутируются. OTP извлекается из DOM.'
+  selectors:
+  - user-create-advertiser-display-name
+  - user-create-advertiser-open
+  - user-create-advertiser-org-id
+  - user-create-advertiser-result
+  - user-create-advertiser-submit
+  - user-create-advertiser-username
+  - user-deactivate-confirm
+  - user-deactivate-success
+  negative_path: 'planned: negative path фиксируется в mini-design задачи roadmap'
   smoke: test_uismoke__user__deactivate
   status: reachable
   walkthrough: PENDING
@@ -517,91 +1288,199 @@ journeys:
 - id: adsettings.test
   name: Проверить подключение AD
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - security_admin
+  permission_codes:
+  - inventory.manage
+  - users.manage
   stories:
   - US-INV-001
   actor_permission_scope: inventory manager; `inventory.manage`; retailer/channel/surface/store
   entry: capacity/profile exists; `/login`
-  happy_path: 'Настройки AD → **Проверить подключение** → результат (status + message, без секретов). Happy-path: 4 шага — 1) Логин (break_glass_admin) → 2) Настройки AD в меню → 3) Проверить подключение
-    → 4) контролируемый результат (not_configured в DEV, ok/success в PROD), без [object Object], без bind_password.'
+  happy_path: 'Happy-path: 4 шага — 1) Логин (break_glass_admin) → 2) Настройки AD в меню → 3) Проверить подключение → 4) контролируемый результат (not_configured в DEV, ok/success в PROD), без [object
+    Object], без bind_password.'
+  selectors:
+  - adsettings-page
+  - adsettings-test-btn
+  - adsettings-test-error
+  - adsettings-test-success
   negative_path: overbooking, stale version or effective-date conflict → reject; `inventory.rule_version_activated`
   smoke: test_uismoke__adsettings__test
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: adsettings.configure
   name: Сохранить настройки AD
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
+  permission_codes:
+  - inventory.manage
+  - users.manage
   stories:
   - US-INV-001
   actor_permission_scope: inventory manager; `inventory.manage`; retailer/channel/surface/store
   entry: capacity/profile exists; `/login`
-  happy_path: Настройки AD → поля → **Сохранить**
+  happy_path: 'Happy-path: 4 шагов — Логин → Настройки AD → поля → **Сохранить**'
+  selectors:
+  - adsettings-detail-cert
+  - adsettings-detail-server-url
+  - adsettings-detail-tls
+  - adsettings-field-base-dn
+  - adsettings-field-bind-dn
+  - adsettings-field-cert-validation
+  - adsettings-field-enabled
+  - adsettings-field-server-url
+  - adsettings-field-use-tls
+  - adsettings-save-btn
+  - adsettings-save-success
   negative_path: overbooking, stale version or effective-date conflict → reject; `inventory.rule_version_activated`
   smoke: test_uismoke__adsettings__configure
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: audit.view
   name: Смотреть журнал аудита
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - security_admin
+  permission_codes:
+  - audit.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-DATA-001
+  - US-EMR-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
+  - US-SEC-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: 'Логин → Журнал аудита → таблица с событиями → emergency.activated/deactivated видны → поля: действие, исполнитель, ресурс, время. Happy-path: 5 шагов — 1) Логин (break_glass_admin) → 2) Журнал
-    аудита в боковом меню → 3) таблица audit-table → 4) видна строка с emergency действием → 5) поля actor, resource, created-at заполнены. Persistence через re-navigation подтверждена.'
+  happy_path: 'Happy-path: 5 шагов — 1) Логин (break_glass_admin) → 2) Журнал аудита в боковом меню → 3) таблица audit-table → 4) видна строка с emergency действием → 5) поля actor, resource, created-at
+    заполнены. Persistence через re-navigation подтверждена.'
+  selectors:
+  - audit-action-{event_id}
+  - audit-actor-{event_id}
+  - audit-created-at-{event_id}
+  - audit-page
+  - audit-resource-{event_id}
+  - audit-table
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__audit__view
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: device.health_view
   name: Видеть состояние парка устройств
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - operator
   - analyst
+  permission_codes:
+  - devices.manage
+  - devices.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-EMR-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
+  - US-SEC-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: 'Логин → боковое меню «Устройства» → таблица с KSO-001 → health_state badge («Неизвестно») → heartbeat → runtime/player версии → повторный клик в меню → persistence. Happy-path: 6 шагов —
-    1) Логин (break_glass_admin) → 2) Устройства в боковом меню → 3) таблица device-health-table → 4) видна строка KSO-001 с health badge → 5) поля heartbeat, runtime, player → 6) повторный заход persist.'
+  happy_path: 'Happy-path: 6 шагов — 1) Логин (break_glass_admin) → 2) Устройства в боковом меню → 3) таблица device-health-table → 4) видна строка KSO-001 с health badge → 5) поля heartbeat, runtime, player
+    → 6) повторный заход persist.'
+  selectors:
+  - device-health-last-heartbeat-KSO-001
+  - device-health-page
+  - device-health-player-version-KSO-001
+  - device-health-row-KSO-001
+  - device-health-runtime-version-KSO-001
+  - device-health-state-KSO-001
+  - device-health-table
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__device__health_view
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: self.login
   name: Войти в кабинет рекламодателя
   frontend: advertiser-web
+  kind: ui
   route: /login (advertiser-web) + /accept-invite/{token}
   roles:
   - advertiser
+  permission_codes:
+  - campaign_briefs.manage
+  - campaigns.read
+  - creatives.read
+  - organization.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-CAM-001
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: Логин рекламодателя → форма
+  happy_path: 'Happy-path: 3 шагов — Логин рекламодателя → форма → кабинет: список кампаний виден сразу после входа'
+  selectors:
+  - accept-invite-go-to-login
+  - accept-invite-password
+  - accept-invite-submit
+  - advertiser-applications-table
+  - advertiser-apply-company-name
+  - advertiser-apply-consent
+  - advertiser-apply-contact-name
+  - advertiser-apply-email
+  - advertiser-apply-phone
+  - advertiser-apply-submit
+  - advertiser-approve-btn
+  - advertiser-invite-create
+  - advertiser-invite-token
+  - advertiser-review-start
+  - nav-campaigns
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__self__login
   status: reachable
@@ -610,17 +1489,41 @@ journeys:
 - id: self.campaign_view
   name: Смотреть свои кампании (кабинет рекламодателя)
   frontend: advertiser-web
+  kind: ui
   route: /login
   roles:
   - advertiser
+  permission_codes:
+  - campaign_briefs.manage
+  - campaigns.read
+  - creatives.read
+  - organization.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: 'Логин → список кампаний виден сразу после входа → видна seed-кампания (CAMP-2026-001) с названием/кодом/статусом → клик в строку → детальная карточка с периодом. Happy-path: 4 шага — 1) Логин
-    (advertiser_test) → 2) список кампаний с конкретной строкой → 3) клик в строку → 4) карточка кампании с периодом. Reload persistence подтверждена.'
+  happy_path: 'Happy-path: 4 шага — 1) Логин (advertiser_test) → 2) список кампаний с конкретной строкой → 3) клик в строку → 4) карточка кампании с периодом. Reload persistence подтверждена.'
+  selectors:
+  - self-campaign-detail
+  - self-campaign-detail-status
+  - self-campaign-list
+  - self-campaign-name-{SEED_CAMPAIGN_CODE}
+  - self-campaign-row-{SEED_CAMPAIGN_CODE}
+  - self-campaign-status-{SEED_CAMPAIGN_CODE}
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__self__campaign_view
   status: reachable
@@ -629,16 +1532,36 @@ journeys:
 - id: self.report_view
   name: Смотреть отчёт план/факт (PoP) — кабинет рекламодателя
   frontend: advertiser-web
+  kind: ui
   route: /login
   roles:
   - advertiser
+  permission_codes:
+  - campaign_briefs.manage
+  - campaigns.read
+  - creatives.read
+  - organization.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
+  - US-RPT-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: Кабинет → Отчёты
+  happy_path: 'Happy-path: 2 шагов — Кабинет → Отчёты'
+  selectors: []
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__self__report_view
   status: blocked
@@ -647,14 +1570,30 @@ journeys:
 - id: self.apply_or_brief
   name: Подать заявку/бриф (кабинет рекламодателя)
   frontend: advertiser-web
+  kind: ui
   route: /login
   roles:
   - advertiser
+  permission_codes:
+  - campaign_briefs.manage
+  - campaigns.read
+  - creatives.read
+  - organization.read
   stories:
   - US-ADV-002
   actor_permission_scope: applicant plus onboarding manager; application/review/advertiser permissions; public then retailer/advertiser
   entry: public apply enabled; public entry then `/login`
-  happy_path: Кабинет → Заявка/Бриф → отправить
+  happy_path: 'Happy-path: 3 шагов — Кабинет → Заявка/Бриф → отправить'
+  selectors:
+  - brief-create-budget
+  - brief-create-category
+  - brief-create-channels
+  - brief-create-comment
+  - brief-create-objective
+  - brief-create-submit
+  - brief-create-title
+  - brief-list-create-btn
+  - nav-briefs
   negative_path: pre-approval commercial access, expired invite or cross-org → deny; application/invite/member audit events
   smoke: test_uismoke__self__apply_or_brief
   status: reachable
@@ -663,14 +1602,21 @@ journeys:
 - id: self.campaign_create
   name: Самому завести кампанию (self-service, P2)
   frontend: advertiser-web
+  kind: ui
   route: /login
   roles:
   - advertiser
+  permission_codes:
+  - campaign_briefs.manage
+  - campaigns.read
+  - creatives.read
+  - organization.read
   stories:
   - US-V26-002
   actor_permission_scope: advertiser; self-service campaign permissions; own advertiser/retailer
   entry: approved membership, budget/credit/inventory rules
-  happy_path: Кабинет → Создать → форма → отправить
+  happy_path: 'Happy-path: 4 шагов — Кабинет → Создать → форма → отправить'
+  selectors: []
   negative_path: limit/conflict, pre-approval access or cross-org → block; campaign approval audit
   smoke: test_uismoke__self__campaign_create
   status: blocked
@@ -679,16 +1625,46 @@ journeys:
 - id: advertiser.apply
   name: Подать заявку на подключение (публичная форма)
   frontend: public
+  kind: ui
   route: /become-advertiser
   roles:
   - public_lead
+  permission_codes:
+  - advertiser_applications.read
+  - advertiser_applications.review
+  - advertisers.contacts.manage
+  - advertisers.contacts.read
+  - advertisers.manage
+  - advertisers.read
+  - organization.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: Публичная страница заявки → форма → **Отправить**
+  happy_path: 'Happy-path: 3 шагов — Публичная страница заявки → форма → **Отправить**'
+  selectors:
+  - advertiser-apply-comment
+  - advertiser-apply-company-name
+  - advertiser-apply-consent
+  - advertiser-apply-contact-name
+  - advertiser-apply-email
+  - advertiser-apply-phone
+  - advertiser-apply-submit
+  - advertiser-apply-website
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__advertiser__apply
   status: reachable
@@ -697,14 +1673,17 @@ journeys:
 - id: manifest.deliver
   name: Доставка манифеста на устройство
   frontend: service
+  kind: service
   route: n/a
   roles:
   - service
+  permission_codes: []
   stories:
   - US-CHAN-002
   actor_permission_scope: content/channel owner; `renditions.manage` PENDING; channel/profile
   entry: channel profile exists; `/login`
   happy_path: 'Happy-path: 6 шагов — profile → Renditions → constraints → upload/generate → validate preview → publish version'
+  selectors: []
   negative_path: incompatible rendition or unsafe content → reject; `rendition.validation_decided`
   smoke: 'EDGE-002 behavioral (13 тестов): test_edge002_*.py'
   status: reachable
@@ -713,14 +1692,17 @@ journeys:
 - id: pop.ingest
   name: Приём PoP-событий от устройств
   frontend: service
+  kind: service
   route: n/a
   roles:
   - service
+  permission_codes: []
   stories: []
-  actor_permission_scope: null
-  entry: null
+  actor_permission_scope: service; permission codes —; retailer scope
+  entry: service — без UI entry
   happy_path: null
-  negative_path: null
+  selectors: []
+  negative_path: 'нет UI: отрицательные сценарии — behavioral-тесты сервиса'
   smoke: 'EDGE-003 behavioral (11 тестов): test_edge003_*.py'
   status: reachable
   walkthrough: PENDING
@@ -728,15 +1710,21 @@ journeys:
 - id: device.onboard
   name: Онбординг устройства (device-code → JWT)
   frontend: service
+  kind: service
   route: n/a
   roles:
   - service
+  permission_codes:
+  - devices.manage
+  - devices.read
+  - license.read
   stories:
   - US-LIC-001
   - US-SEC-001
   actor_permission_scope: licensing operator; `license.read` plus manage permission PENDING; retailer/devices
   entry: valid signed grant; `/login`
   happy_path: 'Happy-path: 7 шагов — Licensing → grant/scope → signature/validity → seat impact → confirm → apply → report'
+  selectors: []
   negative_path: invalid signature/seat overflow/rollback loss → fail closed; `license.grant_applied`
   smoke: 'EDGE-001 behavioral (13 тестов): test_edge001_*.py'
   status: blocked
@@ -746,14 +1734,19 @@ journeys:
 - id: device.heartbeat
   name: Heartbeat устройств (health/статус)
   frontend: service
+  kind: service
   route: n/a
   roles:
   - service
+  permission_codes:
+  - devices.manage
+  - devices.read
   stories: []
-  actor_permission_scope: null
-  entry: null
+  actor_permission_scope: service; permission codes devices.read, devices.manage; retailer scope
+  entry: service — без UI entry
   happy_path: null
-  negative_path: null
+  selectors: []
+  negative_path: 'нет UI: отрицательные сценарии — behavioral-тесты сервиса'
   smoke: 'EDGE-004 behavioral (12 тестов): test_edge004_*.py'
   status: reachable
   walkthrough: PENDING
@@ -761,14 +1754,17 @@ journeys:
 - id: playlist.build
   name: Построение плейлиста из манифеста
   frontend: service
+  kind: service
   route: n/a
   roles:
   - service
+  permission_codes: []
   stories: []
-  actor_permission_scope: null
-  entry: null
+  actor_permission_scope: service; permission codes —; retailer scope
+  entry: service — без UI entry
   happy_path: null
-  negative_path: null
+  selectors: []
+  negative_path: 'нет UI: отрицательные сценарии — behavioral-тесты сервиса'
   smoke: n/a
   status: blocked
   walkthrough: PENDING
@@ -776,15 +1772,18 @@ journeys:
 - id: backup.restore
   name: Резервное копирование и восстановление
   frontend: service
+  kind: service
   route: n/a
   roles:
   - service
+  permission_codes: []
   stories:
   - US-DR-001
   - US-REL-001
   actor_permission_scope: operations owner; `operations.backup_restore` PENDING permission; component/environment
   entry: verified backup and isolated target
   happy_path: 'Happy-path: 6 шагов — DR → backup → verify → restore isolated → validate RTO/RPO/data → sign result'
+  selectors: []
   negative_path: corrupt backup, wrong scope or destructive production target → abort; `dr.restore_completed`
   smoke: '001C-FU: test_restore_drill_verify.py (16 behavioral) + test_backup_restore_drill.py (27 negative matrix) — real PG+MinIO drill'
   status: reachable
@@ -793,14 +1792,17 @@ journeys:
 - id: observability
   name: Мониторинг и метрики (Prometheus/Grafana)
   frontend: service
+  kind: service
   route: n/a
   roles:
   - service
+  permission_codes: []
   stories:
   - US-OPS-002
   actor_permission_scope: release operator; `rollouts.manage` PENDING; rollout scope
   entry: signed build and thresholds; `/login`
   happy_path: 'Happy-path: 6 шагов — Rollouts → select version/cohort → preview → start → inspect metrics → rollback'
+  selectors: []
   negative_path: unsigned build/threshold breach/foreign cohort → stop; `rollout.started/rolled_back`
   smoke: 'S-047: /metrics endpoint, Prometheus alert rules (8 rules)'
   status: reachable
@@ -809,15 +1811,23 @@ journeys:
 - id: campaign.complete
   name: Автоматическое завершение кампании по концу рейса
   frontend: service
+  kind: service
   route: POST /campaigns/{id}/complete, POST /campaigns/complete-expired
   roles:
   - service
   - operator
+  permission_codes:
+  - campaigns.approve
+  - campaigns.manage
+  - campaigns.read
+  - creatives.read
+  - inventory.read
   stories:
   - US-WFL-001
   actor_permission_scope: campaign manager; `campaigns.manage`; campaign
   entry: end reached and reconciliation complete
   happy_path: 'Happy-path: 5 шагов — campaign → Close readiness → final plan/fact → reasons/compensation → Complete'
+  selectors: []
   negative_path: active flight, unresolved deficit or no approval → block; `campaign.completed`
   smoke: n/a (service feature, no UI journey)
   status: reachable
@@ -826,16 +1836,31 @@ journeys:
 - id: license.enforce
   name: Enforcement лицензии при device enrollment
   frontend: service
+  kind: service
   route: POST /device/onboard (enrollment choke-point)
   roles:
   - service
+  permission_codes:
+  - license.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-CAM-001
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
+  - US-SEC-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
   happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  selectors: []
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_license_enrollment.py (13 behavioral tests)
   status: reachable
@@ -844,16 +1869,31 @@ journeys:
 - id: license.seat_release
   name: Освобождение лицензионного seat при decommission
   frontend: service
+  kind: service
   route: POST /devices/{device_id}/decommission
   roles:
   - service
+  permission_codes:
+  - license.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-CAM-001
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
+  - US-SEC-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
   happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  selectors: []
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_license_decommission.py (13 behavioral tests)
   status: reachable
@@ -862,18 +1902,33 @@ journeys:
 - id: license.report
   name: Отчёт по лицензии (занятые/свободные seats + пик)
   frontend: service
+  kind: service
   route: GET /licenses/report?year&month
   roles:
   - service
   - system_admin
   - security_admin
+  permission_codes:
+  - license.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-CAM-001
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
+  - US-SEC-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
   happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  selectors: []
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_license_report.py (16 behavioral tests)
   status: reachable
@@ -882,16 +1937,31 @@ journeys:
 - id: license.view
   name: Просмотр активных лицензий (UI)
   frontend: service
+  kind: service
   route: n/a
   roles:
   - service
+  permission_codes:
+  - license.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-CAM-001
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
+  - US-SEC-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
   happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  selectors: []
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: n/a
   status: blocked
@@ -900,16 +1970,31 @@ journeys:
 - id: license.upload
   name: Загрузка/установка лицензионного файла
   frontend: service
+  kind: service
   route: n/a
   roles:
   - service
+  permission_codes:
+  - license.read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-CAM-001
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
+  - US-SEC-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
   happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  selectors: []
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: n/a
   status: blocked
@@ -918,139 +2003,461 @@ journeys:
 - id: commerce.order_create
   name: Создание коммерческого заказа
   frontend: admin-web
+  kind: ui
   route: '/commerce/tariffs (tab: Заказы)'
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - commerce.order_manage
+  - commerce.order_read
+  - commerce.tariff_manage
+  - commerce.tariff_read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-FIN-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
   happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  selectors:
+  - commerce-order-create-form
+  - commerce-order-create-open
+  - commerce-order-detail
+  - commerce-order-error
+  - commerce-order-lines-table
+  - commerce-order-org-id
+  - commerce-order-payment-select
+  - commerce-order-payment-status
+  - commerce-order-submit
+  - commerce-order-surface-id
+  - commerce-order-tariff-id
+  - commerce-order-total-{order_id}
+  - commerce-order-total-{reload_order_id}
+  - commerce-order-transition-booked
+  - commerce-order-transition-closed
+  - commerce-order-transition-confirmed
+  - commerce-order-transition-offered
+  - commerce-order-transition-{btn}
+  - commerce-orders-table
+  - commerce-price-item-create-open
+  - commerce-price-item-form
+  - commerce-price-item-submit
+  - commerce-price-item-surface
+  - commerce-price-item-unit-price
+  - commerce-tariff-code
+  - commerce-tariff-create-open
+  - commerce-tariff-form
+  - commerce-tariff-name
+  - commerce-tariff-status
+  - commerce-tariff-submit
+  - commerce-tariffs-page
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__commerce__order_create
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: commerce.tariff_manage
   name: Управление тарифами и прайс-листами
   frontend: admin-web
+  kind: ui
   route: /commerce/tariffs
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - commerce.order_manage
+  - commerce.order_read
+  - commerce.tariff_manage
+  - commerce.tariff_read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-FIN-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
   happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  selectors:
+  - commerce-price-item-create-open
+  - commerce-price-item-form
+  - commerce-price-item-submit
+  - commerce-price-item-surface
+  - commerce-price-item-unit-price
+  - commerce-price-items-table
+  - commerce-tariff-code
+  - commerce-tariff-create-open
+  - commerce-tariff-form
+  - commerce-tariff-name
+  - commerce-tariff-status
+  - commerce-tariff-submit
+  - commerce-tariffs-page
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__commerce__tariff_manage
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: commerce.offer_generate
   name: Генерация коммерческого предложения (draft→offered)
   frontend: admin-web
+  kind: ui
   route: '/commerce/tariffs (tab: Заказы)'
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - commerce.order_manage
+  - commerce.order_read
+  - commerce.tariff_manage
+  - commerce.tariff_read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-FIN-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
   happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  selectors:
+  - commerce-order-create-form
+  - commerce-order-create-open
+  - commerce-order-detail
+  - commerce-order-error
+  - commerce-order-lines-table
+  - commerce-order-org-id
+  - commerce-order-payment-select
+  - commerce-order-payment-status
+  - commerce-order-submit
+  - commerce-order-surface-id
+  - commerce-order-tariff-id
+  - commerce-order-total-{order_id}
+  - commerce-order-total-{reload_order_id}
+  - commerce-order-transition-booked
+  - commerce-order-transition-closed
+  - commerce-order-transition-confirmed
+  - commerce-order-transition-offered
+  - commerce-order-transition-{btn}
+  - commerce-orders-table
+  - commerce-price-item-create-open
+  - commerce-price-item-form
+  - commerce-price-item-submit
+  - commerce-price-item-surface
+  - commerce-price-item-unit-price
+  - commerce-tariff-code
+  - commerce-tariff-create-open
+  - commerce-tariff-form
+  - commerce-tariff-name
+  - commerce-tariff-status
+  - commerce-tariff-submit
+  - commerce-tariffs-page
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__commerce__order_create
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: commerce.booking
   name: Бронирование (offered→booked)
   frontend: admin-web
+  kind: ui
   route: '/commerce/tariffs (tab: Заказы)'
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - commerce.order_manage
+  - commerce.order_read
+  - commerce.tariff_manage
+  - commerce.tariff_read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-FIN-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
   happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  selectors:
+  - commerce-order-create-form
+  - commerce-order-create-open
+  - commerce-order-detail
+  - commerce-order-error
+  - commerce-order-lines-table
+  - commerce-order-org-id
+  - commerce-order-payment-select
+  - commerce-order-payment-status
+  - commerce-order-submit
+  - commerce-order-surface-id
+  - commerce-order-tariff-id
+  - commerce-order-total-{order_id}
+  - commerce-order-total-{reload_order_id}
+  - commerce-order-transition-booked
+  - commerce-order-transition-closed
+  - commerce-order-transition-confirmed
+  - commerce-order-transition-offered
+  - commerce-order-transition-{btn}
+  - commerce-orders-table
+  - commerce-price-item-create-open
+  - commerce-price-item-form
+  - commerce-price-item-submit
+  - commerce-price-item-surface
+  - commerce-price-item-unit-price
+  - commerce-tariff-code
+  - commerce-tariff-create-open
+  - commerce-tariff-form
+  - commerce-tariff-name
+  - commerce-tariff-status
+  - commerce-tariff-submit
+  - commerce-tariffs-page
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__commerce__order_create
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: commerce.payment_status
   name: Статус оплаты заказа
   frontend: admin-web
+  kind: ui
   route: '/commerce/tariffs (tab: Заказы)'
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - commerce.order_manage
+  - commerce.order_read
+  - commerce.tariff_manage
+  - commerce.tariff_read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-FIN-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
   happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  selectors:
+  - commerce-order-create-form
+  - commerce-order-create-open
+  - commerce-order-detail
+  - commerce-order-error
+  - commerce-order-lines-table
+  - commerce-order-org-id
+  - commerce-order-payment-select
+  - commerce-order-payment-status
+  - commerce-order-submit
+  - commerce-order-surface-id
+  - commerce-order-tariff-id
+  - commerce-order-total-{order_id}
+  - commerce-order-total-{reload_order_id}
+  - commerce-order-transition-booked
+  - commerce-order-transition-closed
+  - commerce-order-transition-confirmed
+  - commerce-order-transition-offered
+  - commerce-order-transition-{btn}
+  - commerce-orders-table
+  - commerce-price-item-create-open
+  - commerce-price-item-form
+  - commerce-price-item-submit
+  - commerce-price-item-surface
+  - commerce-price-item-unit-price
+  - commerce-tariff-code
+  - commerce-tariff-create-open
+  - commerce-tariff-form
+  - commerce-tariff-name
+  - commerce-tariff-status
+  - commerce-tariff-submit
+  - commerce-tariffs-page
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__commerce__order_create
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: commerce.order_close
   name: Закрытие заказа (terminal)
   frontend: admin-web
+  kind: ui
   route: '/commerce/tariffs (tab: Заказы)'
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - commerce.order_manage
+  - commerce.order_read
+  - commerce.tariff_manage
+  - commerce.tariff_read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-FIN-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
   happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  selectors:
+  - commerce-order-create-form
+  - commerce-order-create-open
+  - commerce-order-detail
+  - commerce-order-error
+  - commerce-order-lines-table
+  - commerce-order-org-id
+  - commerce-order-payment-select
+  - commerce-order-payment-status
+  - commerce-order-submit
+  - commerce-order-surface-id
+  - commerce-order-tariff-id
+  - commerce-order-total-{order_id}
+  - commerce-order-total-{reload_order_id}
+  - commerce-order-transition-booked
+  - commerce-order-transition-closed
+  - commerce-order-transition-confirmed
+  - commerce-order-transition-offered
+  - commerce-order-transition-{btn}
+  - commerce-orders-table
+  - commerce-price-item-create-open
+  - commerce-price-item-form
+  - commerce-price-item-submit
+  - commerce-price-item-surface
+  - commerce-price-item-unit-price
+  - commerce-tariff-code
+  - commerce-tariff-create-open
+  - commerce-tariff-form
+  - commerce-tariff-name
+  - commerce-tariff-status
+  - commerce-tariff-submit
+  - commerce-tariffs-page
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__commerce__order_create
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: commerce.price_list_manage
   name: Управление версиями прайс-листов
   frontend: admin-web
+  kind: ui
   route: n/a
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - commerce.order_manage
+  - commerce.order_read
+  - commerce.tariff_manage
+  - commerce.tariff_read
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-FIN-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
   happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  selectors:
+  - commerce-price-item-create-open
+  - commerce-price-item-form
+  - commerce-price-item-submit
+  - commerce-price-item-surface
+  - commerce-price-item-unit-price
+  - commerce-price-items-table
+  - commerce-tariff-code
+  - commerce-tariff-create-open
+  - commerce-tariff-form
+  - commerce-tariff-name
+  - commerce-tariff-status
+  - commerce-tariff-submit
+  - commerce-tariffs-page
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__commerce__tariff_manage
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: system.theme_switch
   name: Переключение темы (light/dark)
   frontend: admin-web
+  kind: ui
   route: sidebar footer toggle
   roles:
   - system_admin
@@ -1060,33 +2467,61 @@ journeys:
   - moderator
   - approver
   - analyst
+  permission_codes: []
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-CAM-001
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
   happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  selectors:
+  - theme-option-dark
+  - theme-option-light
+  - theme-toggle
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__system__theme_switch
   status: reachable
   walkthrough: PENDING
-  gap: null
+  gap: ''
 - id: analytics.compare
   name: Отчёт качества услуги по каналам (plan/fact, доля active devices)
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
   - analyst
+  permission_codes: []
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-CAM-001
+  - US-CHAN-003
+  - US-COM-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  happy_path: 'Happy-path: 2 шагов — login → (определяется mini-design задачи)'
+  selectors: []
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__analytics__compare
   status: blocked
@@ -1095,15 +2530,18 @@ journeys:
 - id: attribution.lift_report
   name: Отчёт sales lift test/control (attribution)
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - analyst
   - campaign_manager
+  permission_codes: []
   stories:
   - US-V26-001
   actor_permission_scope: analyst/advertiser; attribution read PENDING; campaign/store cohorts
   entry: master-sales adapter, methodology and controls
-  happy_path: 'Happy-path: 6 шагов — Attribution → campaign/window → cohorts → baseline/fact → lift/confidence → versioned export'
+  happy_path: 'Happy-path: 2 шагов — login → (определяется mini-design задачи)'
+  selectors: []
   negative_path: no control, sparse/deanonymizing data or changed method → block; `attribution.report_versioned`
   smoke: test_uismoke__attribution__lift_report
   status: blocked
@@ -1112,14 +2550,22 @@ journeys:
 - id: campaign.competitive_separation
   name: Competitive separation при построении playlist/manifest
   frontend: service
+  kind: service
   route: n/a
   roles:
   - service
+  permission_codes:
+  - campaigns.approve
+  - campaigns.manage
+  - campaigns.read
+  - creatives.read
+  - inventory.read
   stories:
   - US-V26-003
   actor_permission_scope: campaign manager; planned separation/audience permissions; placement/store/surface
   entry: master attributes and conflict policy
   happy_path: 'Happy-path: 7 шагов — placement → categories/attributes → targets → simulate → conflicts → override reason if allowed → save'
+  selectors: []
   negative_path: competitor adjacency, missing attribute or cross-scope target → block; `placement.targeting_validated`
   smoke: 'behavioral: tests/behavioral/test_rm_tech_285.py'
   status: blocked
@@ -1128,15 +2574,23 @@ journeys:
 - id: campaign.readiness
   name: Матрица готовности кампании по каналам
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - campaign_manager
   - approver
+  permission_codes:
+  - campaigns.approve
+  - campaigns.manage
+  - campaigns.read
+  - creatives.read
+  - inventory.read
   stories:
   - US-ELG-001
   actor_permission_scope: campaign manager/approver; campaigns read/approve; campaign
   entry: campaign graph complete
-  happy_path: 'Happy-path: 5 шагов — campaign → Readiness → eligibility checks → resolve blockers → regenerate'
+  happy_path: 'Happy-path: 2 шагов — login → (определяется mini-design задачи)'
+  selectors: []
   negative_path: rejected creative, no target, revoked device or expired window → ineligible; `campaign.readiness_evaluated`
   smoke: test_uismoke__campaign__readiness
   status: blocked
@@ -1145,14 +2599,22 @@ journeys:
 - id: campaign.schedule
   name: Flight/placement windows кампании (versioned, UTC + local TZ)
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - campaign_manager
+  permission_codes:
+  - campaigns.approve
+  - campaigns.manage
+  - campaigns.read
+  - creatives.read
+  - inventory.read
   stories:
   - US-FLT-001
   actor_permission_scope: campaign manager; `campaigns.manage`; campaign/placement
   entry: draft campaign and timezone
-  happy_path: 'Happy-path: 6 шагов — campaign → Flights → New → local window/TZ → validate → save version'
+  happy_path: 'Happy-path: 2 шагов — login → (определяется mini-design задачи)'
+  selectors: []
   negative_path: end before start, DST ambiguity or active immutable window → reject; `campaign.flight_versioned`
   smoke: test_uismoke__campaign__schedule
   status: blocked
@@ -1161,14 +2623,17 @@ journeys:
 - id: content.dynamic_binding
   name: 'Dynamic creative: подстановка master-confirmed price/promo'
   frontend: service
+  kind: service
   route: n/a
   roles:
   - service
+  permission_codes: []
   stories:
   - US-V26-007
   actor_permission_scope: content operator; dynamic-content permission PENDING; channel/template
   entry: approved master-price contract and second-channel decision
   happy_path: 'Happy-path: 5 шагов — template → approved field → value/source preview → dynamic marker → manifest version'
+  selectors: []
   negative_path: stale/missing price, static-hash contamination or no channel integration → block; `dynamic.binding_versioned`
   smoke: 'behavioral: tests/behavioral/test_rm_tech_262.py'
   status: blocked
@@ -1177,15 +2642,18 @@ journeys:
 - id: experiment.evaluate
   name: 'A/B: группы, период, winner metric, ручное утверждение результата'
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - analyst
   - campaign_manager
+  permission_codes: []
   stories:
   - US-AB-001
   actor_permission_scope: analyst/product owner; `experiments.manage` PENDING; campaign/cohorts
   entry: attribution facts and minimum sample
-  happy_path: 'Happy-path: 6 шагов — Experiments → test/control → metric/methodology → calculate → review confidence → approve winner'
+  happy_path: 'Happy-path: 2 шагов — login → (определяется mini-design задачи)'
+  selectors: []
   negative_path: overlapping cohorts, low sample or retroactive method → block; `experiment.winner_approved`
   smoke: test_uismoke__experiment__evaluate
   status: blocked
@@ -1194,14 +2662,17 @@ journeys:
 - id: field_ops.device_confirm
   name: 'Полевые операции: устройства магазина, фото, инциденты (mobile web)'
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - ops_operator
+  permission_codes: []
   stories:
   - US-V26-006
   actor_permission_scope: store operator; field-ops permission PENDING; own store/devices
   entry: working device onboarding and mobile auth
-  happy_path: 'Happy-path: 5 шагов — mobile login → store devices → device → photo confirmation → incident'
+  happy_path: 'Happy-path: 2 шагов — login → (определяется mini-design задачи)'
+  selectors: []
   negative_path: cross-store, unsafe upload or broken onboarding → deny; `field.device_confirmed/incident_created`
   smoke: test_uismoke__field_ops__device_confirm
   status: blocked
@@ -1210,14 +2681,17 @@ journeys:
 - id: finance.exchange
   name: 'Обмен с финансовой системой: idempotent export + payment-status'
   frontend: service
+  kind: service
   route: n/a
   roles:
   - service
+  permission_codes: []
   stories:
   - US-V26-004
   actor_permission_scope: finance operator; finance exchange permission PENDING; retailer/period
   entry: approved external contract and reconciliation basis
   happy_path: 'Happy-path: 6 шагов — Finance exchange → period → preview → send idempotent batch → receive callback → status/result'
+  selectors: []
   negative_path: duplicate batch, invalid callback or unsupported legal claim → reject; `finance.exchange_reconciled`
   smoke: 'behavioral: tests/behavioral/test_rm_tech_286.py'
   status: blocked
@@ -1226,16 +2700,19 @@ journeys:
 - id: finance.reconcile
   name: 'Финансовая сверка: заказ/договор/тариф/price list'
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - analyst
+  permission_codes: []
   stories:
   - US-COM-001
   - US-FIN-001
   actor_permission_scope: commercial operator; `commerce.*`; retailer/order
   entry: tariff and capacity exist; `/login`
-  happy_path: 'Happy-path: 9 шагов — Commerce → tariff version → prices → quote → order → reserve → book → close → audit'
+  happy_path: 'Happy-path: 2 шагов — login → (определяется mini-design задачи)'
+  selectors: []
   negative_path: stale tariff, double booking, capacity conflict or false payment → reject; `commerce.order_transitioned`
   smoke: test_uismoke__finance__reconcile
   status: blocked
@@ -1244,14 +2721,17 @@ journeys:
 - id: integration.reconcile
   name: Ingestion агрегатов чековых данных и сверка с master-данными
   frontend: service
+  kind: service
   route: n/a
   roles:
   - service
+  permission_codes: []
   stories:
   - US-INT-001
   actor_permission_scope: integration operator; `integrations.read/manage` PENDING; connector
   entry: approved connector/config without exposed secrets
   happy_path: 'Happy-path: 6 шагов — Integrations → connector → health → reconciliation preview → run → result'
+  selectors: []
   negative_path: stale master, secret exposure or mismatch → fail closed; `integration.reconciliation_completed`
   smoke: 'behavioral: tests/behavioral/test_rm_tech_281.py'
   status: blocked
@@ -1260,15 +2740,18 @@ journeys:
 - id: kpi.review
   name: 'Бизнес-KPI: baseline/target/metric по целям §1.2'
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - analyst
+  permission_codes: []
   stories:
   - US-KPI-001
   actor_permission_scope: product owner; governance/report read; product metric
   entry: approved baseline/target/method
-  happy_path: 'Happy-path: 5 шагов — KPI catalog → metric → baseline/target/window → evidence → review/sign'
+  happy_path: 'Happy-path: 2 шагов — login → (определяется mini-design задачи)'
+  selectors: []
   negative_path: missing owner/source or technical SLO substituted → unmeasurable; `kpi.review_recorded`
   smoke: test_uismoke__kpi__review
   status: blocked
@@ -1277,14 +2760,17 @@ journeys:
 - id: placement.audience_targeting
   name: Store-audience targeting по анонимным атрибутам магазина
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - campaign_manager
+  permission_codes: []
   stories:
   - US-V26-003
   actor_permission_scope: campaign manager; planned separation/audience permissions; placement/store/surface
   entry: master attributes and conflict policy
-  happy_path: 'Happy-path: 7 шагов — placement → categories/attributes → targets → simulate → conflicts → override reason if allowed → save'
+  happy_path: 'Happy-path: 2 шагов — login → (определяется mini-design задачи)'
+  selectors: []
   negative_path: competitor adjacency, missing attribute or cross-scope target → block; `placement.targeting_validated`
   smoke: test_uismoke__placement__audience_targeting
   status: blocked
@@ -1293,9 +2779,11 @@ journeys:
 - id: release.rollback
   name: Rollback релиза по плану развёртывания
   frontend: service
+  kind: service
   route: n/a
   roles:
   - service
+  permission_codes: []
   stories:
   - US-DR-001
   - US-OPS-002
@@ -1303,6 +2791,7 @@ journeys:
   actor_permission_scope: operations owner; `operations.backup_restore` PENDING permission; component/environment
   entry: verified backup and isolated target
   happy_path: 'Happy-path: 6 шагов — DR → backup → verify → restore isolated → validate RTO/RPO/data → sign result'
+  selectors: []
   negative_path: corrupt backup, wrong scope or destructive production target → abort; `dr.restore_completed`
   smoke: 'behavioral: tests/behavioral/test_rm_ops_004.py'
   status: blocked
@@ -1311,16 +2800,19 @@ journeys:
 - id: rollout.rollback
   name: Staged rollout и rollback с feature flags
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - ops_operator
+  permission_codes: []
   stories:
   - US-OPS-002
   - US-REL-001
   actor_permission_scope: release operator; `rollouts.manage` PENDING; rollout scope
   entry: signed build and thresholds; `/login`
-  happy_path: 'Happy-path: 6 шагов — Rollouts → select version/cohort → preview → start → inspect metrics → rollback'
+  happy_path: 'Happy-path: 2 шагов — login → (определяется mini-design задачи)'
+  selectors: []
   negative_path: unsigned build/threshold breach/foreign cohort → stop; `rollout.started/rolled_back`
   smoke: test_uismoke__rollout__rollback
   status: blocked
@@ -1329,16 +2821,24 @@ journeys:
 - id: campaign.underdelivery
   name: Разбор недопоказа и make-good (причина, процент, докрутка, компенсация)
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
   - analyst
+  permission_codes:
+  - campaigns.approve
+  - campaigns.manage
+  - campaigns.read
+  - creatives.read
+  - inventory.read
   stories:
   - US-UDR-001
   actor_permission_scope: analyst; campaigns/report read; campaign/placement
   entry: plan and accepted PoP
-  happy_path: 'Happy-path: 6 шагов — report → plan/fact → causes → SLA deficit → make-good proposal → save'
+  happy_path: 'Happy-path: 2 шагов — login → (определяется mini-design задачи)'
+  selectors: []
   negative_path: missing proof, mixed units or negative compensation → reject; `campaign.make_good_proposed`
   smoke: test_uismoke__campaign__underdelivery
   status: blocked
@@ -1347,17 +2847,33 @@ journeys:
 - id: carrier.manage
   name: 'Единый Operations-контур: physical device, logical carrier и surface всех каналов (scope, состояние, действия с подтверждением)'
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - ops_operator
+  permission_codes: []
   stories:
   - US-ADM-001
   - US-ADM-002
   - US-ADV-001
+  - US-ADV-002
+  - US-ADV-003
+  - US-ANL-001
+  - US-APR-001
+  - US-CAM-001
+  - US-CAM-002
+  - US-CHAN-003
+  - US-COM-001
+  - US-EMR-001
+  - US-INV-001
+  - US-LIC-001
+  - US-MOD-001
+  - US-OPS-001
   actor_permission_scope: system admin; action-specific backend permissions; assigned scope
   entry: authenticated admin; `/login`
-  happy_path: 'Happy-path: 6 шагов — Admin section → choose object → inspect permissions/scope → edit → confirm → result'
+  happy_path: 'Happy-path: 2 шагов — login → (определяется mini-design задачи)'
+  selectors: []
   negative_path: missing permission, UUID leakage or approved-campaign mutation → deny; domain-specific immutable audit
   smoke: test_uismoke__carrier__manage
   status: blocked
@@ -1366,14 +2882,17 @@ journeys:
 - id: channel.register
   name: Регистрация channel/device/surface/profile и adapter contract (mock-проверка канала)
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
+  permission_codes: []
   stories:
   - US-CHAN-001
   actor_permission_scope: channel owner; `channels.manage` PENDING; retailer/channel
   entry: approved channel decision; `/login`
-  happy_path: 'Happy-path: 7 шагов — Channels → New → type/profile → adapter contract → mock test → review → submit'
+  happy_path: 'Happy-path: 2 шагов — login → (определяется mini-design задачи)'
+  selectors: []
   negative_path: unknown capability/adapter or missing owner → blocked; `channel.version_created`
   smoke: test_uismoke__channel__register
   status: blocked
@@ -1382,17 +2901,20 @@ journeys:
 - id: channel.rendition_validate
   name: 'Renditions и channel-specific ограничения: валидация preview, публикация версии без изменения core campaign'
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
   - moderator
+  permission_codes: []
   stories:
   - US-CHAN-002
   - US-MOD-001
   actor_permission_scope: content/channel owner; `renditions.manage` PENDING; channel/profile
   entry: channel profile exists; `/login`
-  happy_path: 'Happy-path: 6 шагов — profile → Renditions → constraints → upload/generate → validate preview → publish version'
+  happy_path: 'Happy-path: 2 шагов — login → (определяется mini-design задачи)'
+  selectors: []
   negative_path: incompatible rendition or unsafe content → reject; `rendition.validation_decided`
   smoke: test_uismoke__channel__rendition_validate
   status: blocked
@@ -1401,17 +2923,22 @@ journeys:
 - id: data.catalog
   name: 'Каталог данных: owner, PII-класс, retention и lineage сущности; контроль доступа/архива/удаления'
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - security_admin
+  permission_codes:
+  - advertisers.manage
   stories:
   - US-ADV-003
   - US-DATA-001
   - US-EMR-001
+  - US-SEC-001
   actor_permission_scope: system admin or campaign manager; `advertisers.manage`; advertiser/retailer
   entry: advertiser exists; `/login`
-  happy_path: 'Happy-path: 9 шагов — Advertisers → organization → Contracts → create → select PDF → upload → complete → filename/status → reload'
+  happy_path: 'Happy-path: 2 шагов — login → (определяется mini-design задачи)'
+  selectors: []
   negative_path: non-PDF, oversize, SHA mismatch, foreign advertiser → reject; `advertiser.contract_file_completed`
   smoke: test_uismoke__data__catalog
   status: blocked
@@ -1420,15 +2947,21 @@ journeys:
 - id: inventory.priority
   name: Тип кампании и приоритеты с объяснимым preemption (действующая версия правил)
   frontend: admin-web
+  kind: ui
   route: /login
   roles:
   - system_admin
   - campaign_manager
+  permission_codes:
+  - campaigns.read
+  - inventory.manage
+  - inventory.read
   stories:
   - US-PRI-001
   actor_permission_scope: inventory manager; `inventory.manage`; rule/surface
   entry: versioned priority policy
-  happy_path: 'Happy-path: 6 шагов — Priority rules → type/value → simulation → preemption explanation → approve → activate'
+  happy_path: 'Happy-path: 2 шагов — login → (определяется mini-design задачи)'
+  selectors: []
   negative_path: silent preemption, tie ambiguity or emergency override → block/escalate; `inventory.priority_versioned`
   smoke: test_uismoke__inventory__priority
   status: blocked

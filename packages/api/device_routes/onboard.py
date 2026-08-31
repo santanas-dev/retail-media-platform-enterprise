@@ -12,8 +12,14 @@ import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import text
 
-from packages.api.dependencies import get_current_active_user, get_db, require_permission
+from packages.api.dependencies import (
+    get_current_active_user,
+    get_db,
+    require_permission,
+    set_rls_context,
+)
 from packages.domain import repository
 from packages.domain.schemas import (
     DeviceCodeCreateRequest,
@@ -26,6 +32,33 @@ from packages.security.jwt import create_access_token
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+# ---------------------------------------------------------------------------
+# RM-TECH-210 — RLS context for the public onboarding route.
+#
+# The route carries no JWT, so ``set_rls_context`` cannot resolve a user scope.
+# Migration 037 lets the app role see exactly the code row and the device row
+# whose secrets the caller already presents; the retailer scope is then derived
+# server-side from the code. No admin bypass is ever set here.
+# ---------------------------------------------------------------------------
+
+
+async def _set_onboarding_bootstrap(db, device_code: str, hardware_fingerprint: str) -> None:
+    await db.execute(text("SELECT set_config('app.rmp_is_admin', 'false', true)"))
+    await db.execute(text("SELECT set_config('app.rmp_device_code', :code, true)"), {"code": device_code})
+    await db.execute(
+        text("SELECT set_config('app.rmp_device_fingerprint', :fp, true)"),
+        {"fp": hardware_fingerprint},
+    )
+
+
+async def _bind_retailer_scope(db, retailer_id: str | None) -> None:
+    """Retailer scope comes from the validated code, never from the client."""
+    await db.execute(
+        text("SELECT set_config('app.rmp_scope_retailer_ids', :ids, true)"),
+        {"ids": retailer_id or ""},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -46,6 +79,9 @@ async def device_onboard(
     Idempotent: same code + same fingerprint returns existing device identity.
     Cross-retailer: code from retailer A cannot onboard a device in retailer B.
     """
+    # RM-TECH-210: fail-closed RLS bootstrap — only this code / this fingerprint.
+    await _set_onboarding_bootstrap(db, body.device_code, body.hardware_fingerprint)
+
     # Atomic consume: claim the code in one DB round-trip.
     # If two requests race for the same code, only one wins.
     ok = await repository.claim_onboarding_code(db, body.device_code)
@@ -54,6 +90,7 @@ async def device_onboard(
         code = await repository.get_onboarding_code(db, body.device_code)
         if code is None:
             raise HTTPException(status_code=403, detail={"code": "INVALID_CODE", "message": "Device code not found"})
+        await _bind_retailer_scope(db, code.retailer_id)
         now = datetime.now(timezone.utc)
         if code.status == "revoked":
             raise HTTPException(status_code=403, detail={"code": "CODE_REVOKED", "message": "Device code has been revoked"})
@@ -67,7 +104,7 @@ async def device_onboard(
             raise HTTPException(status_code=403, detail={"code": "CODE_EXPIRED", "message": "Device code has expired"})
         raise HTTPException(status_code=403, detail={"code": "INVALID_CODE", "message": "Device code is not active"})
 
-    # Code claimed — now validate fingerprint
+    # Code claimed — validate fingerprint (visible via the fingerprint bootstrap, no scope needed)
     existing_device = await repository.get_device_by_fingerprint(db, body.hardware_fingerprint)
     if existing_device:
         # Fingerprint already registered and this is a NEW code (just claimed).
@@ -87,6 +124,8 @@ async def device_onboard(
     from packages.domain import licensing_service
 
     code = await repository.get_onboarding_code(db, body.device_code)
+    # Retailer scope is derived from the validated code (server-side), never from the client.
+    await _bind_retailer_scope(db, code.retailer_id if code else None)
     now = datetime.now(timezone.utc)
     decision = await licensing_service.authorize_and_reserve_enrollment(
         db,
@@ -130,8 +169,12 @@ async def create_device_code(
     db=Depends(get_db, scope="function"),
     _user: dict = Depends(get_current_active_user),
     _perm=Depends(require_permission("devices.manage")),
+    _rls=Depends(set_rls_context),
 ):
     """Admin: create a one-time device onboarding code.
+
+    RM-TECH-210: the route writes to the RLS table ``device_onboarding_codes``
+    and therefore carries ``set_rls_context`` like every other tenant route.
 
     Requires: devices.manage permission (system_admin/security_admin).
     The code is bound to a retailer and optionally a store/device_type.

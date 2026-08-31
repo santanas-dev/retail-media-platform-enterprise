@@ -522,7 +522,7 @@ def app():
         """
         async with get_session(engine) as session:
             async with session.begin():
-                if _elevation_allowed() or _path_allowlisted(request):
+                if _elevation_allowed():
                     from sqlalchemy import text
                     await session.execute(
                         text("SELECT set_config('app.rmp_is_admin', 'true', true)")
@@ -699,51 +699,17 @@ def pop_fixtures(db_available):
 # В фазе `call` — то есть в теле теста — сессия открывается ровно так же, как
 # в проде, и эндпоинт, забывший set_rls_context, обязан вести себя fail-closed.
 #
-# Единственное исключение — ENDPOINT_ELEVATION_ALLOWLIST ниже: сейчас он пуст,
-# и это утверждение, а не заглушка. Любая будущая запись в нём должна нести
-# причину и задачу, которая её снимет.
+# Исключений по маршрутам больше нет: механизм route allowlist (снят RM-TECH-210) снят
+# задачей RM-TECH-210 (2026-08-31) вместе с последними двумя записями —
+# RLS-CONTEXT-DEVICE-CODES-001 и RLS-CONTEXT-DEVICE-ONBOARD-001 починены в
+# эндпоинтах (set_rls_context / bootstrap-контекст кода, миграция 037).
 # ---------------------------------------------------------------------------
-
 _ELEVATION_PHASE = {"active": True}
 
-# Эндпоинты, которым элевация нужна и в фазе `call`. Каждая запись — НЕ удобство,
-# а названный дефект с причиной; список должен сокращаться, а не расти.
-ENDPOINT_ELEVATION_ALLOWLIST: dict[str, str] = {
-    "/identity/device-codes": (
-        "RLS-CONTEXT-DEVICE-CODES-001. POST /identity/device-codes не несёт "
-        "Depends(set_rls_context), но пишет в RLS-таблицу device_onboarding_codes. "
-        "Политика device_onboarding_codes_ins требует app.rmp_is_admin=true либо "
-        "совпадения retailer_id со scope; продовый get_db не ставит ни того, ни "
-        "другого, поэтому INSERT отвергается и в проде. Маска admin скрывала это "
-        "всю жизнь набора. Запись снимается починкой эндпоинта, а не правкой теста."
-    ),
-    "/device/onboard": (
-        "RLS-CONTEXT-DEVICE-ONBOARD-001. POST /device/onboard не требует JWT — код и "
-        "есть авторизация — и читает device_onboarding_codes через RLS-сессию без "
-        "какого-либо контекста. Политика device_onboarding_codes_sel требует "
-        "app.rmp_is_admin=true либо совпадения retailer_id со scope. Доказано прямым "
-        "запросом к БД: владелец с admin видит код 1, РОЛЬ ПРИЛОЖЕНИЯ БЕЗ КОНТЕКСТА — 0, "
-        "она же с admin — 1. Значит в проде каждое устройство получает "
-        "403 INVALID_CODE, и self-onboarding не работает. Латентно только потому, что "
-        "пилот не развёрнут. Запись снимается починкой эндпоинта."
-    ),
-}
 
 
 def _elevation_allowed() -> bool:
     return _ELEVATION_PHASE["active"]
-
-
-def _path_allowlisted(request) -> bool:
-    """True, если путь запроса назван в ENDPOINT_ELEVATION_ALLOWLIST.
-
-    Совпадение по суффиксу: приложение смонтировано под префиксом, а список
-    хранит маршрут так, как он объявлен в роутере.
-    """
-    if request is None:
-        return False
-    path = request.url.path
-    return any(path.endswith(route) for route in ENDPOINT_ELEVATION_ALLOWLIST)
 
 
 def set_elevation_phase(active: bool) -> None:

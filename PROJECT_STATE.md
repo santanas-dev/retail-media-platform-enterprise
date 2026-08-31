@@ -11,6 +11,9 @@ RLS-таблицей `device_onboarding_codes` (`FORCE RLS`). Продовый `
 работает, а создать код нельзя вовсе. Латентно только потому, что пилот не развёрнут.
 Вскрыто задачей `RM-STAB-002`, когда с behavioral-набора сняли маску admin — набор
 скрывал дефект всю свою жизнь. Починка — `RM-TECH-210` (owner gate `device_contract`).
+**2026-08-31: починено локально** (стадия S) — `set_rls_context` на `/identity/device-codes`, bootstrap-контекст кода/fingerprint
+на `/device/onboard` (миграция 037), allowlist элевации снят; 97 targeted-тестов под ролью приложения зелёные; ждёт CI-evidence
+и owner gate; registry `device.onboard` → reachable только по CI (OD-038).
 
 **TZ-V26-ACCEPT-001 (2026-08-28).** Содержание драфта ТЗ v2.6 r421 принято владельцем после
 двустороннего ревью (Claude ↔ Codex, записи `docs/audit/2026-08-2[678]-*tz*`): 101 REQ, 41 story,
@@ -99,7 +102,20 @@ journeys.yaml (79), channel-capability-matrix (KSO), slo-objectives (11), nfr-sl
 RM-STAB-006, RM-ENV-003 остаются `planned` до закрытия зависимостей/Gate-S (гейт `DEP-NOT-CLOSED`, schema self-test +2); реализация — только после Gate-S;
 ТЗ — ACCEPTED до Gate-C. Запись: `docs/audit/2026-08-31-claude-stage-c-ag-artifacts.md`.
 
-**Next Active Workstream:** **ТЗ v2.6 → APPROVED**: **Стадия S → Gate-S (codex)**, затем стадия C (OD-042/043): C-задачи стартуют только при закрытых зависимостях; кандидаты AG (13 файлов) принимаются внутри задач (owner_gate); Codex — сверка кандидатов с кодом; решения OD-009/011/021/025 → **Gate-C = ТЗ APPROVED и старт разработки** (OD-041). RM-UX-007/walkthrough — приостановлены OD-041. RM-UX-007/walkthrough — приостановлены OD-041. RM-GOV-010 — `verification` после CI. Ранее: A1 `requirements-traceability.yaml` + gate `req` + `SC-*` для 53 REQ, A3 task breakdown (owner-gated), артефакты Дополнения AG. Открыто у владельца: operator walkthrough в DEV (Rule 8); имена исполнителей ролей (amendment OD-039/OD-023). Параллельно: этап S (`RM-STAB-003…`), `RM-TECH-210`.
+**STAGE-S-001 (2026-08-31, не закоммичено) — стадия S начата по указанию владельца.** Готовы к старту (зависимости закрыты, OD-043):
+RM-STAB-003/005/009/010/013/014/016, RM-TECH-210. Первая задача — **RM-TECH-210** (`in_progress`): дефект RLS-CONTEXT-DEVICE-001
+воспроизведён под ролью приложения (11/13 падений без маски) и починен адаптивно — миграция 037 (bootstrap по коду/fingerprint,
+rehearsal down/up), `set_rls_context` на device-codes, механизм allowlist элевации снят; +3 targeted-теста; 97 passed; полный
+behavioral-набор — регрессия в записи. Design-gate: `docs/architecture/rm-tech-210-device-onboarding-rls-bootstrap-design-gate.md`.
+Находка попутно: `tests/behavioral/test_edge003*` неидемпотентны по фиксированным `event_id` (второй прогон по той же БД → 8 падений;
+CI на свежей БД не видит) — BEHAVIORAL-POP-IDEMPOTENCE-001 → RM-STAB-011 (W0 rebaseline).
+**OD-044 (2026-08-31):** владелец принял D1–D3 RM-STAB-003 (security_admin сузить в RM-STAB-015; analyst read-only retailer-scoped;
+retailer scope по умолчанию в pilot) → RM-STAB-003 `verification` (gate granted, done после CI). **RM-STAB-006 `in_progress`:**
+`journeys/journeys.yaml` (79 из registry, selectors из smoke, `Happy-path: N`), валидатор `scripts/ci/check-journey-spec.py --strict` PASS, self-test 11/11.
+RM-TECH-210 подготовлен к commit (список файлов — `scratchpad/rm-tech-210-commit.txt`), commit/push — по отдельному разрешению.
+Не начаты C/CORE/CH/A/POPS; ТЗ ACCEPTED.
+
+**Next Active Workstream:** **ТЗ v2.6 → APPROVED**: **Стадия S (RM-TECH-210 in_progress, RM-STAB-003 verification, RM-STAB-006 in_progress → 004 → 007 → 005/009/010/013/014/016 → 012/015/017 → 008 → 011) → Gate-S (codex)**, затем стадия C (OD-042/043): C-задачи стартуют только при закрытых зависимостях; кандидаты AG (13 файлов) принимаются внутри задач (owner_gate); Codex — сверка кандидатов с кодом; решения OD-009/011/021/025 → **Gate-C = ТЗ APPROVED и старт разработки** (OD-041). RM-UX-007/walkthrough — приостановлены OD-041. RM-UX-007/walkthrough — приостановлены OD-041. RM-GOV-010 — `verification` после CI. Ранее: A1 `requirements-traceability.yaml` + gate `req` + `SC-*` для 53 REQ, A3 task breakdown (owner-gated), артефакты Дополнения AG. Открыто у владельца: operator walkthrough в DEV (Rule 8); имена исполнителей ролей (amendment OD-039/OD-023). Параллельно: этап S (`RM-STAB-003…`), `RM-TECH-210`.
 
 Последовательность работ ведётся в `docs/product/roadmap.yaml` (sequencing SSOT, 109 задач:
 43 утверждены 2026-08-26, 64 — A3 approved 2026-08-28, 2 proposed RM-GOV-012; delivery 9 done / 3 verification /
