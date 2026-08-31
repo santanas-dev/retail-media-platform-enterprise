@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "rmp/event-envelope-v1",
+  "title": "RMP outbox event envelope v1 — candidate/prepared 2026-08-31 (OD-043; as-built из packages/services/outbox_relay.py; RM-TECH-220 planned до Gate-S)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_type",
+    "event_version",
+    "aggregate_type",
+    "aggregate_id",
+    "payload",
+    "created_at"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "description": "UUID; Nats-Msg-Id для JetStream dedupe (ADR-011 §3)"
+    },
+    "event_type": {
+      "type": "string",
+      "description": "NATS subject; известные типы — см. openapi-target-v2.6.md §3",
+      "enum": [
+        "campaign.creative.changed",
+        "campaign.flight.changed",
+        "campaign.placement.changed",
+        "delivery.manifest.generated",
+        "delivery.manifest.failed",
+        "pop.batch.ingested",
+        "pop.event.accepted",
+        "pop.event.quarantined"
+      ]
+    },
+    "event_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "aggregate_type": {
+      "type": "string"
+    },
+    "aggregate_id": {
+      "type": "string"
+    },
+    "payload": {
+      "type": "object",
+      "description": "без secrets/tokens/PII (§13)"
+    },
+    "headers": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

@@ -12,7 +12,7 @@
 
 | | |
 |---|---|
-| DEV-стенд (`stand-81`, `rmp-local-stand`) | admin **http://192.168.110.81:3000** · advertiser **http://192.168.110.81:3001** · API **http://192.168.110.81:8000** (`GET /version`; маршрута `/health` нет) · MinIO S3 `http://192.168.110.81:9000` · device-gateway `127.0.0.1:8001` только на хосте стенда (для walkthrough не нужен) |
+| DEV-стенд (`stand-81`, `rmp-local-stand`) | admin **http://192.168.110.81:3000** · advertiser **http://192.168.110.81:3001** · API **http://192.168.110.81:8000** (`GET /version`, `GET /health/live`, `GET /health/ready`) · MinIO S3 `http://192.168.110.81:9000` · device-gateway `127.0.0.1:8001` только на хосте стенда (для walkthrough не нужен) |
 | Развёрнутый SHA (проверено curl 2026-08-31T10:52Z) | **`stand-27dc397`** — git_sha `27dc397`, schema `036`, environment `staging`, build 2026-08-26T09:11:27Z (сервис сообщает сам). Отстаёт от `develop @ 4ac3ddb` на 18 коммитов, **ни один не трогает `apps/`** — UI актуален. Walkthrough фиксируется на этом SHA; после обновления стенда сценарии повторяются на новом SHA |
 | Не стенд | santa2 `192.168.110.78:3100/3101/8010` — локальный preview-контур (identity не сообщает, `evidence: false` в `environment-inventory.yaml`); `192.168.110.78:3200` — внешний read-only мониторинг (доска roadmap). Для walkthrough и evidence **не используются** |
 | Логины | учётные записи стенда — администратор и тестовый рекламодатель; пароли только из approved password files владельца (`~/.config/rmp-local-stand/…`, см. `scripts/deploy/stand_safe_smoke.py`), dev-пароли на стенде не используются. На форме входа админ-портала переключить провайдер с «Сотрудник / AD» на локальный/break-glass |

@@ -1,0 +1,320 @@
+# portal-route-matrix.yaml
+#
+# Артефакт Дополнения AG (ТЗ v2.6 r428) — задача RM-UX-011; REQ: REQ-UX-001, REQ-UX-003, REQ-UX-004.
+# Источник: as-built из репозитория develop @ 06ae22e (код = 4ac3ddb) + ТЗ r428; статус: candidate/prepared 2026-08-31 (OD-043) — подготовлено как mini-design; задача roadmap остаётся planned до Gate-S, приёмка выполняется внутри задачи после её старта, не сейчас.
+# Код продукта не менялся. Изменение — только внутри задачи roadmap с ACCEPT.
+schema_version: 1
+document:
+  artifact: portal-route-matrix.yaml (Дополнение AG)
+  task: RM-UX-011 (+RM-STAB-006 формат journeys)
+  req:
+  - REQ-UX-001
+  - REQ-UX-003
+  - REQ-UX-004
+  status: 'candidate/prepared 2026-08-31 (OD-043): без приёмки; задача planned до Gate-S'
+  source:
+  - apps/admin-web/src/main.tsx, apps/advertiser-web/src/main.tsx (маршруты)
+  - docs/product/feature-registry.yaml (journeys/smoke/roles)
+  - docs/product/user-journeys.md §1 (селекторы data-testid, вход только через /login)
+  owner: Product/UX owner (OD-039)
+policy:
+  entry: page.goto только /login; дальше клики
+  selectors: data-testid=<домен>-<действие>-<элемент>, ARIA-роли, видимые лейблы; не CSS-классы
+  walkthrough: PENDING (правило 8; приостановлен OD-041)
+admin-web:
+- route: /login
+  page: LoginPage
+  journeys:
+  - system.theme_switch
+  roles:
+  - analyst
+  - approver
+  - campaign_manager
+  - moderator
+  - ops_operator
+  - security_admin
+  - system_admin
+  smoke:
+  - test_uismoke__system__theme_switch
+  status: reachable
+- route: /become-advertiser
+  page: PublicApplicationForm
+  journeys:
+  - advertiser.apply
+  roles:
+  - public_lead
+  smoke:
+  - test_uismoke__advertiser__apply
+  status: reachable
+- route: /campaigns
+  page: CampaignListPage
+  journeys:
+  - campaign.pause
+  - campaign.activate
+  - campaign.edit
+  roles:
+  - campaign_manager
+  - ops_operator
+  - security_admin
+  - system_admin
+  smoke:
+  - test_uismoke__campaign__pause
+  - test_uismoke__campaign__activate
+  - test_uismoke__campaign__edit
+  status: reachable
+- route: /campaigns/new
+  page: CampaignCreatePage
+  journeys:
+  - campaign.create
+  roles:
+  - campaign_manager
+  - system_admin
+  smoke:
+  - test_uismoke__campaign__create
+  status: reachable
+- route: /campaigns/:id
+  page: CampaignDetailPage
+  journeys:
+  - campaign.edit
+  - creative.upload
+  - campaign.submit
+  - campaign.activate
+  - campaign.pause
+  roles:
+  - campaign_manager
+  - ops_operator
+  - security_admin
+  - system_admin
+  smoke:
+  - test_uismoke__campaign__edit
+  - test_uismoke__creative__upload
+  - test_uismoke__campaign__submit
+  - test_uismoke__campaign__activate
+  - test_uismoke__campaign__pause
+  status: reachable
+- route: /campaigns/approvals
+  page: ApprovalInboxPage
+  journeys:
+  - campaign.approve
+  - campaign.reject
+  roles:
+  - approver
+  - system_admin
+  smoke:
+  - test_uismoke__campaign__approve
+  - test_uismoke__campaign__reject
+  status: reachable
+- route: /advertisers
+  page: AdvertisersPage
+  journeys:
+  - advertiser.view
+  - advertiser.create_org
+  - advertiser.contact_crud
+  - advertiser.brand_crud
+  - advertiser.contract_crud
+  - advertiser.legal_requisites
+  roles:
+  - campaign_manager
+  - system_admin
+  smoke:
+  - test_uismoke__advertiser__view
+  - test_uismoke__advertiser__create_org
+  - test_uismoke__advertiser__contact_crud
+  - test_uismoke__advertiser__brand_crud
+  - test_uismoke__advertiser__contract_pdf_upload
+  - test_uismoke__advertiser__legal_requisites
+  status: reachable
+- route: /advertiser-applications
+  page: AdvertiserApplicationsPage
+  journeys:
+  - advertiser.application_review
+  - advertiser.invite
+  roles:
+  - campaign_manager
+  - system_admin
+  smoke:
+  - test_uismoke__advertiser__application_review
+  - test_uismoke__advertiser__invite
+  status: reachable
+- route: /users
+  page: UsersPage
+  journeys:
+  - user.create_advertiser
+  - user.assign_roles
+  - user.reset_password
+  - user.deactivate
+  - user.split_internal_advertiser
+  roles:
+  - system_admin
+  smoke:
+  - test_uismoke__user__create_advertiser
+  - test_uismoke__user__assign_roles
+  - test_uismoke__user__reset_password
+  - test_uismoke__user__deactivate
+  - test_uismoke__user__split_internal_advertiser
+  status: reachable
+- route: /settings/ad
+  page: ADSettingsPage
+  journeys:
+  - adsettings.test
+  - adsettings.configure
+  roles:
+  - security_admin
+  - system_admin
+  smoke:
+  - test_uismoke__adsettings__test
+  - test_uismoke__adsettings__configure
+  status: reachable
+- route: /creatives/moderation
+  page: CreativeModerationPage
+  journeys:
+  - creative.moderate_approve
+  - creative.moderate_reject
+  roles:
+  - moderator
+  - system_admin
+  smoke:
+  - test_uismoke__creative__moderate_approve
+  - test_uismoke__creative__moderate_reject
+  status: reachable
+- route: /inventory
+  page: InventoryPage
+  journeys:
+  - inventory.simulate
+  - inventory.rule_create
+  roles:
+  - campaign_manager
+  - system_admin
+  smoke:
+  - test_uismoke__inventory__simulate
+  - test_uismoke__inventory__rule_create
+  status: reachable
+- route: /audit
+  page: AuditLogPage
+  journeys:
+  - audit.view
+  roles:
+  - security_admin
+  - system_admin
+  smoke:
+  - test_uismoke__audit__view
+  status: reachable
+- route: /devices
+  page: DeviceHealthPage
+  journeys:
+  - device.health_view
+  roles:
+  - analyst
+  - operator
+  - system_admin
+  smoke:
+  - test_uismoke__device__health_view
+  status: reachable
+- route: /emergency
+  page: EmergencyPage
+  journeys:
+  - emergency.activate
+  - emergency.deactivate
+  roles:
+  - ops_operator
+  - security_admin
+  - system_admin
+  smoke:
+  - test_uismoke__emergency__activate
+  - test_uismoke__emergency__deactivate
+  status: reachable
+- route: /commerce/tariffs
+  page: CommerceTariffsPage (+CommerceOrdersTab)
+  journeys:
+  - commerce.tariff_manage
+  - commerce.price_list_manage
+  - commerce.order_create
+  - commerce.offer_generate
+  - commerce.booking
+  - commerce.payment_status
+  - commerce.order_close
+  roles:
+  - campaign_manager
+  - system_admin
+  smoke:
+  - test_uismoke__commerce__tariff_manage
+  - test_uismoke__commerce__tariff_manage
+  - test_uismoke__commerce__order_create
+  - test_uismoke__commerce__order_create
+  - test_uismoke__commerce__order_create
+  - test_uismoke__commerce__order_create
+  - test_uismoke__commerce__order_create
+  status: reachable
+advertiser-web:
+- route: /login
+  page: LoginPage
+  journeys:
+  - self.login
+  roles:
+  - advertiser
+  smoke:
+  - test_uismoke__self__login
+  status: reachable
+- route: /become-advertiser
+  page: ApplyAdvertiserPage
+  journeys: []
+  roles: []
+  smoke: []
+  status: no-journey
+- route: /accept-invite/:token
+  page: AcceptInvitePage
+  journeys: []
+  roles: []
+  smoke: []
+  status: no-journey
+- route: /dashboard
+  page: DashboardPage
+  journeys:
+  - self.report_view
+  roles:
+  - advertiser
+  smoke:
+  - test_uismoke__self__report_view
+  status: blocked
+- route: /campaigns
+  page: CampaignListPage
+  journeys:
+  - self.campaign_view
+  roles:
+  - advertiser
+  smoke:
+  - test_uismoke__self__campaign_view
+  status: reachable
+- route: /campaigns/new
+  page: CampaignCreatePage
+  journeys:
+  - self.campaign_create
+  roles:
+  - advertiser
+  smoke:
+  - test_uismoke__self__campaign_create
+  status: blocked
+- route: /campaigns/:id
+  page: CampaignDetailPage
+  journeys: []
+  roles: []
+  smoke: []
+  status: no-journey
+- route: /creatives
+  page: (creatives)
+  journeys: []
+  roles: []
+  smoke: []
+  status: no-journey
+- route: /briefs
+  page: BriefListPage/BriefCreatePage/BriefDetailPage
+  journeys:
+  - self.apply_or_brief
+  roles:
+  - advertiser
+  smoke:
+  - test_uismoke__self__apply_or_brief
+  status: reachable
+gaps:
+- маршруты для 27 blocked-функций появляются задачами roadmap (mini-design каждой)
+- селекторы data-testid инвентаризуются из tests/ui-smoke при RM-STAB-006

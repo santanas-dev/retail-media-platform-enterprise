@@ -139,6 +139,23 @@ def _semantic_findings(doc):
                     f"{dep} from later stage {dep_task.get('stage')}"
                 )
 
+    # dependency semantics (OD-043): a task may be in_progress/verification/done only
+    # when every dependency is closed — a task dependency is done/verification, a gate
+    # dependency carries approved_on. Preparing candidate artefacts is allowed before
+    # that; starting the task is not.
+    gate_by_id = {g.get("id"): g for g in doc.get("gates", []) or []}
+    for t in tasks:
+        if t.get("delivery_status") not in ("in_progress", "verification", "done"):
+            continue
+        for dep in t.get("dependencies", []) or []:
+            if dep in gate_by_id:
+                if not gate_by_id[dep].get("approved_on"):
+                    out.append(f"DEP-NOT-CLOSED: {t['id']} is {t['delivery_status']} but gate {dep} "
+                               f"is not approved — работа начинается после закрытия зависимостей (OD-043)")
+            elif dep in by_id and by_id[dep].get("delivery_status") not in ("done", "verification"):
+                out.append(f"DEP-NOT-CLOSED: {t['id']} is {t['delivery_status']} but dependency {dep} "
+                           f"is {by_id[dep].get('delivery_status')} — работа начинается после закрытия зависимостей (OD-043)")
+
     # owner decision lists are sets: a repeated task in blocks or DEC in aliases is a
     # copy/paste error that would silently double-count (Codex finding on RM-GOV-009)
     for od in doc.get("owner_decisions", []) or []:
@@ -401,6 +418,15 @@ def _tamper_cases(base):
     d = copy.deepcopy(base)
     d["tasks"][2]["stage"] = "G"
     cases.append(("stage depends on later stage", d, "STAGE-ORDER"))
+
+    # OD-043: starting a task whose dependency is still open (task or gate)
+    d = copy.deepcopy(base)
+    d["tasks"][2]["delivery_status"] = "in_progress"      # RM-STAB-002 ← RM-STAB-001 (planned)
+    cases.append(("in_progress with an open task dependency", d, "DEP-NOT-CLOSED"))
+
+    d = copy.deepcopy(base)
+    d["tasks"][3]["delivery_status"] = "in_progress"      # RM-STAB-001 ← Gate-G (not approved in fixture)
+    cases.append(("in_progress behind an unapproved gate", d, "DEP-NOT-CLOSED"))
 
     d = copy.deepcopy(base)
     d["tasks"][0]["percent_complete"] = 91

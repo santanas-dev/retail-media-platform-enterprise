@@ -1,0 +1,219 @@
+# role-scope-matrix.yaml
+#
+# Артефакт Дополнения AG (ТЗ v2.6 r428) — задача RM-UX-011; REQ: REQ-UX-001, REQ-SEC-002, REQ-UX-005.
+# Источник: as-built из репозитория develop @ 06ae22e (код = 4ac3ddb) + ТЗ r428; статус: candidate/prepared 2026-08-31 (OD-043) — подготовлено как mini-design; задача roadmap остаётся planned до Gate-S, приёмка выполняется внутри задачи после её старта, не сейчас.
+# Код продукта не менялся. Изменение — только внутри задачи roadmap с ACCEPT.
+schema_version: 1
+document:
+  artifact: role-scope-matrix.yaml (Дополнение AG)
+  task: RM-UX-011
+  req:
+  - REQ-UX-001
+  - REQ-SEC-002
+  - REQ-UX-005
+  - REQ-SEC-009
+  status: 'candidate/prepared 2026-08-31 (OD-043): без приёмки; задача planned до Gate-S'
+  source:
+  - 'seed.py / preview DB develop @ 06ae22e (код = 4ac3ddb): roles, permissions, role_permissions'
+  - docs/product/user-journeys.md §3 (Q2 — продуктовая модель ролей, OD-035)
+  - 'packages/domain/scopes.py (ScopeContext: global_permissions, retailer_scope_ids, advertiser_scope_ids)'
+  - alembic RLS-миграции 004/010/011/013/019/022/033/035
+  owner: Security owner (OD-039)
+scope_types:
+  global: unscoped role assignment → global_permissions (system/security admin)
+  retailer: retailer_scope_ids — RLS по retailer_id (ADR-018 вариант B)
+  advertiser: advertiser_scope_ids — user_roles.scope_type=advertiser; advertiser видит только свою организацию (AUTHZ-CROSS-PORTAL-001)
+  device: device JWT — только Device API/PoP (RM-TECH-221)
+permissions:
+- advertiser_applications.read
+- advertiser_applications.review
+- advertisers.contacts.manage
+- advertisers.contacts.read
+- advertisers.manage
+- advertisers.read
+- audit.read
+- campaign_briefs.manage
+- campaigns.approve
+- campaigns.manage
+- campaigns.read
+- channels.read
+- commerce.order_manage
+- commerce.order_read
+- commerce.tariff_manage
+- commerce.tariff_read
+- creatives.moderate
+- creatives.read
+- devices.manage
+- devices.read
+- emergency.manage
+- emergency.read
+- inventory.manage
+- inventory.read
+- license.read
+- organization.read
+- roles.manage
+- roles.read
+- users.manage
+- users.read
+roles_as_built:
+- code: advertiser
+  name: Рекламодатель
+  permissions:
+  - advertisers.contacts.read
+  - advertisers.read
+  - campaign_briefs.manage
+  - campaigns.read
+  - creatives.read
+  - organization.read
+- code: analyst
+  name: Аналитик
+  permissions:
+  - audit.read
+  - campaigns.read
+  - channels.read
+  - creatives.read
+  - devices.read
+  - organization.read
+- code: operator
+  name: Оператор
+  permissions:
+  - advertisers.read
+  - campaigns.read
+  - channels.read
+  - commerce.order_read
+  - commerce.tariff_read
+  - devices.read
+  - organization.read
+- code: security_admin
+  name: Администратор безопасности
+  permissions:
+  - advertisers.contacts.read
+  - advertisers.read
+  - audit.read
+  - campaigns.approve
+  - campaigns.manage
+  - campaigns.read
+  - creatives.moderate
+  - creatives.read
+  - devices.manage
+  - inventory.manage
+  - inventory.read
+  - license.read
+  - roles.manage
+  - roles.read
+  - users.manage
+  - users.read
+- code: system_admin
+  name: Системный администратор
+  permissions:
+  - advertiser_applications.read
+  - advertiser_applications.review
+  - advertisers.contacts.manage
+  - advertisers.contacts.read
+  - advertisers.manage
+  - advertisers.read
+  - audit.read
+  - campaign_briefs.manage
+  - campaigns.approve
+  - campaigns.manage
+  - campaigns.read
+  - channels.read
+  - commerce.order_manage
+  - commerce.order_read
+  - commerce.tariff_manage
+  - commerce.tariff_read
+  - creatives.moderate
+  - creatives.read
+  - devices.manage
+  - devices.read
+  - emergency.manage
+  - emergency.read
+  - inventory.manage
+  - inventory.read
+  - license.read
+  - organization.read
+  - roles.manage
+  - roles.read
+  - users.manage
+  - users.read
+roles_target_q2:
+- code: system_admin
+  status: seeded
+- code: security_admin
+  status: seeded
+- code: campaign_manager
+  status: 'missing bundle (OD-035: создаётся аддитивно)'
+- code: moderator
+  status: missing bundle (OD-035)
+- code: approver
+  status: missing bundle (OD-035)
+- code: ops_operator
+  status: 'alias operator (OD-035: operator сохраняется на период миграции)'
+- code: advertiser
+  status: seeded
+journey_rights_q2: []
+rls_tables:
+- advertiser_applications
+- advertiser_brands
+- advertiser_contacts
+- advertiser_contracts
+- advertiser_invites
+- advertiser_organizations
+- advertiser_user_memberships
+- branches
+- campaign_approvals
+- campaign_briefs
+- campaign_creatives
+- campaign_flights
+- campaign_placements
+- campaign_status_history
+- campaigns
+- clusters
+- commerce_order_lines
+- commerce_orders
+- commerce_price_items
+- commerce_tariff_versions
+- contract_upload_sessions
+- creative_assets
+- creative_upload_sessions
+- delivery_manifest_assets
+- delivery_manifest_surfaces
+- delivery_manifests
+- delivery_plans
+- device_onboarding_codes
+- display_surfaces
+- inventory_bookings
+- inventory_rules
+- inventory_slots
+- license_grants
+- license_seats
+- physical_devices
+- pop_events_raw
+- pop_ingestion_batches
+- stores
+deny_cases:
+- case: advertiser читает чужую организацию/кампании
+  expected: 403/пусто по RLS
+  evidence: tests/behavioral/test_authz_cross_portal_001_derived_rls.py
+- case: advertiser-сессия в операторской консоли
+  expected: отказ (cross-portal)
+  evidence: tests/behavioral/test_authz_cross_portal_001_derived_rls.py
+- case: advertiser управляет кампанией (не brief)
+  expected: 403 (campaign_briefs.manage ≠ campaigns.manage)
+  evidence: tests/behavioral/test_campaign_permission_split_001.py
+- case: запрос без RLS-контекста под ролью приложения
+  expected: 0 строк / отказ (strict context)
+  evidence: tests/behavioral/test_rls_context_strictness.py
+- case: moderation/approval вне scope
+  expected: '403'
+  evidence: tests/behavioral/test_c1_moderation_approval_rls.py
+- case: device JWT на identity API
+  expected: 403/404
+  evidence: RM-TECH-221 (target)
+- case: self-approval кампании
+  expected: запрещено (AC-126)
+  evidence: RM-TECH-247 (target)
+gaps:
+- 4 product roles без bundle (OD-035, RM-STAB-003/004)
+- permission descriptions — D2 registry (30 кодов) закрепляются RM-STAB-004
+- RLS negative matrix под intended roles — RM-STAB-007

@@ -1,0 +1,93 @@
+# channel-capability-matrix.yaml
+#
+# Артефакт Дополнения AG (ТЗ v2.6 r428) — задача RM-TECH-231; REQ: REQ-CHAN-001/002/003, REQ-MAN-001, REQ-POP-*.
+# Источник: as-built из репозитория develop @ 06ae22e (код = 4ac3ddb) + ТЗ r428; статус: candidate/prepared 2026-08-31 (OD-043) — подготовлено как mini-design; задача roadmap остаётся planned до Gate-S, приёмка выполняется внутри задачи после её старта, не сейчас.
+# Код продукта не менялся. Изменение — только внутри задачи roadmap с ACCEPT.
+schema_version: 1
+document:
+  artifact: channel-capability-matrix.yaml (Дополнение AG)
+  task: RM-TECH-231 (KSO); второй канал — RM-TECH-261 по OD-021
+  req:
+  - REQ-CHAN-001
+  - REQ-CHAN-002
+  - REQ-CHAN-003
+  - REQ-MAN-001
+  - REQ-POP-*
+  - REQ-OPS-008
+  status: 'candidate/prepared 2026-08-31 (OD-043): без приёмки; задача planned до Gate-S'
+  source:
+  - ТЗ r428 §7 (канальные контракты), §8 (NFR), Дополнение L (renditions), §13 (PoP)
+  - 'as-built: packages/contracts/manifest_v1.schema.json, proof_event_v1.schema.json, apps/kso-player-client, apps/device-gateway'
+  owner: Channel/Content owner (OD-039)
+channels:
+- id: kso
+  title: KSO (касса самообслуживания) — первый канал, ADR-019 KSO-first
+  status: active (single channel)
+  runtime: Chromium/kiosk sidecar (apps/kso-player-client), hide-on-touch, ETag/304, local cache, offline ≥7 дней по последнему valid manifest
+  surfaces:
+  - profile: kso-1440x1080
+    resolution: 1440×1080
+    orientation: landscape
+    zones: рекламная зона не блокирует кассовый workflow
+    audio: запрещён (OD-033/DEC-020 open)
+  renditions:
+  - type: JPG/PNG
+    policy: допустимы в профиле поверхности
+    checks: MIME, размер, разрешение, SHA-256, preview
+  - type: GIF
+    policy: ограниченно
+    checks: вес, длительность, FPS/CPU budget
+  - type: MP4/WebM
+    policy: после device/profile теста
+    checks: codec, bitrate, duration, audio policy
+  - type: HTML5/JS
+    policy: запрещены (OD-034/DEC-021)
+    checks: deny
+  - type: Executable
+    policy: запрещены
+    checks: deny upload/distribution
+  manifest:
+    schema: packages/contracts/manifest_v1.schema.json
+    signing: HMAC — dev/stand; Ed25519 — pilot/prod (OD-002, RM-STAB-010)
+    edge_checks: подпись, valid_from/valid_to, SHA, kill-switch до показа (ADR-013); fallback только last-known-good или явный fallback_rules; blank/black без fallback; fallback не эмитит
+      PoP
+    refresh: heartbeat/manifest 30 с ± jitter, 304 при неизменности
+  proof:
+    schema: packages/contracts/proof_event_v1.schema.json (flat proof_event_v1)
+    endpoint: POST /api/v1/pop/batch (канонический, RM-TECH-222); legacy /device/pop/batch alias
+    batch: 60 с
+    auth: device JWT; device_id = JWT subject = manifest binding
+    dedupe: event_id; duplicate → 200 + per-event status=duplicate/409 (OD-019)
+    quarantine: неизвестный manifest, clock drift вне окна
+    timeliness: PoP в отчёте ≤15 мин (§8)
+  sla:
+    manifest_delivery: ≤5 мин для 95% online
+    emergency: ≤60 с для 95% online
+    gateway_availability: ≥99.9% внутри сети
+    pop_loss: ≤0.1% (§5.1 user-journeys — принято владельцем)
+  vendor_constraints: нет внешнего вендора; player build версионируется, compatibility window device/API/manifest — RM-TECH-228
+  security: device onboarding codes + certificates (physical_devices/device_certificates), RLS на device-маршрутах — RM-TECH-210; PKI/mTLS — OD-029/DEC-016 open
+  evidence:
+  - tests/behavioral/test_edge002_manifest_delivery.py
+  - tests/behavioral/test_edge003_pop_ingestion.py
+  - tests/behavioral/test_edge004_heartbeat.py
+  - tests/player_client/test_player_client.py
+  - tests/behavioral/test_k1_emergency_manifest.py
+- id: android_tv
+  status: declared (§7) — не в первой очереди; активация только по OD-021 (второй канал)
+  runtime: player/APK/WebView, orientation/zones, cache, heartbeat, playback PoP
+  notes: см. display device 192.168.110.64 (pull-плеер APK/WebView) — вне scope до OD-021
+- id: price_checker
+  status: declared (§7) — не в первой очереди
+  constraints: idle/safe zones, запрет блокировки проверки цены, price-master validation (OD-023 → RM-TECH-280/264)
+- id: esl
+  status: declared (§7) — только approved template/integration после master-data adapter (RM-TECH-264)
+  constraints: template/SKU binding, price-field isolation, label-ack, vendor error mapping
+- id: led
+  status: declared (§7) — после controller test
+  constraints: rendition conversion, brightness/FPS/colour limits, controller-ack, health
+- id: mock
+  status: adapter-workers/mock — только тесты/нагрузка; Orchestrator/Adapter Layer не создаются до второго реального канала (ADR-019/OD-022)
+gaps:
+- capability profiles как данные (device_types/capability_profiles есть в ERD; channel_types/device_capabilities — missing → RM-TECH-230/261)
+- SLA measurement windows/denominators — nfr-slo.yaml (RM-TECH-288)

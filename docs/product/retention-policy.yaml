@@ -1,0 +1,68 @@
+# retention-policy.yaml
+#
+# Артефакт Дополнения AG (ТЗ v2.6 r428) — задача RM-OPS-005 (blocked OD-009); REQ: REQ-SEC-004, REQ-DATA-001.
+# Источник: as-built из репозитория develop @ 06ae22e (код = 4ac3ddb) + ТЗ r428; статус: candidate/prepared 2026-08-31 (OD-043) — подготовлено как mini-design; задача roadmap остаётся planned до Gate-S, приёмка выполняется внутри задачи после её старта, не сейчас.
+# Код продукта не менялся. Изменение — только внутри задачи roadmap с ACCEPT.
+schema_version: 1
+document:
+  artifact: retention-policy.yaml + legal decision register (Дополнение AG)
+  task: RM-OPS-005 (blocked OD-009), RM-TECH-253
+  req:
+  - REQ-SEC-004
+  - REQ-DATA-001
+  status: 'candidate/prepared 2026-08-31 (OD-043): без приёмки; задача planned до Gate-S'
+  owner: Security/Legal owner (OD-039)
+classes:
+- class: pop_hot
+  retention: 12–18 мес.
+  basis: REQ-DATA-001 working default
+  action: archive
+- class: pop_report_archive
+  retention: 3–5 лет
+  basis: REQ-DATA-001
+  action: delete after legal review
+- class: audit
+  retention: ≥3 лет
+  basis: REQ-DATA-001, REQ-SEC-005
+  action: immutable, long-term store
+- class: technical_logs
+  retention: 90–180 дней
+  basis: REQ-DATA-001
+  action: delete
+- class: creatives
+  retention: 1–3 года
+  basis: REQ-DATA-001
+  action: archive/delete after contract
+- class: pii_advertiser_contacts
+  retention: срок договора + legal
+  basis: 152-ФЗ — OD-009
+  action: minimise; delete on request
+rules:
+- delivery-relevant objects удаляются логически; физическое удаление — после retention и проверки legal/contract constraints
+- 'PII: классификация на колонку (RM-TECH-253), lawful purpose, минимизация, residency'
+- export только по scope/permission с audit и лимитами периода/объёма
+legal_decision_register:
+- dec: DEC-006
+  od: OD-009
+  topic: SLA methodology/compensation/legal
+  status: open
+- dec: DEC-007
+  od: OD-009
+  topic: retention defaults approved; 152-ФЗ/legal exceptions
+  status: open
+- dec: DEC-017
+  od: OD-030
+  topic: ЭДО/биллинг
+  status: open
+- dec: DEC-018
+  od: OD-031
+  topic: DSP/SSP
+  status: open
+- dec: DEC-019
+  od: OD-032
+  topic: персонализация покупателя (privacy)
+  status: open
+- dec: DEC-021
+  od: OD-034
+  topic: HTML/JS запрет
+  status: approved

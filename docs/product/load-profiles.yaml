@@ -1,0 +1,51 @@
+# load-profiles.yaml
+#
+# Артефакт Дополнения AG (ТЗ v2.6 r428) — задача RM-TECH-288; REQ: REQ-NFR-001/004/006.
+# Источник: as-built из репозитория develop @ 06ae22e (код = 4ac3ddb) + ТЗ r428; статус: candidate/prepared 2026-08-31 (OD-043) — подготовлено как mini-design; задача roadmap остаётся planned до Gate-S, приёмка выполняется внутри задачи после её старта, не сейчас.
+# Код продукта не менялся. Изменение — только внутри задачи roadmap с ACCEPT.
+schema_version: 1
+document:
+  artifact: load-profiles.yaml (Дополнение AG)
+  task: RM-TECH-288
+  req:
+  - REQ-NFR-001
+  - REQ-NFR-004
+  - REQ-NFR-006
+  status: 'candidate/prepared 2026-08-31 (OD-043): без приёмки; задача planned до Gate-S'
+  source: ТЗ r428 §8, §25 REQ-NFR-006
+profiles:
+- id: LP-DEVICES-40K
+  description: '40 000 KSO: heartbeat/manifest каждые 30 с с jitter, 304 при неизменности; PoP batch каждые 60 с'
+  rate: ≈1 333 heartbeat/с, ≈667 PoP batch/с
+  acceptance: SLO-GW-AVAIL, SLO-MANIFEST-P95, SLO-POP-LOSS; error rate/CPU/RAM/disk/queue lag фиксируются
+  status: proposed
+- id: LP-MASS-PUBLISH
+  description: массовая публикация manifest на всю сеть
+  rate: 40K устройств за окно ≤5 мин (95%)
+  acceptance: SLO-MANIFEST-P95; outbox/relay lag; DLQ = 0
+  status: proposed
+- id: LP-EMERGENCY
+  description: emergency на всю сеть
+  rate: 40K за ≤60 с (95% online)
+  acceptance: SLO-EMERGENCY-P95
+  status: proposed
+- id: LP-ANALYTICS
+  description: аналитика за 1/7/30/12 мес.
+  rate: отчёты по сети/кампании/магазину
+  acceptance: SLO-POP-REPORT, report response time (TBD)
+  status: proposed
+- id: LP-ADVERTISERS
+  description: сотни read-only advertisers
+  rate: TBD владелец
+  acceptance: API response time p99, RLS без деградации
+  status: proposed
+- id: LP-ADMINS
+  description: до 100 админов одновременно
+  rate: proposed до DEC-009/OD-011
+  acceptance: portal response time
+  status: proposed, not approved
+- id: LP-EXT-CHANNELS
+  description: дополнительные Android/TV/price-checker/ESL/LED
+  rate: после OD-021
+  acceptance: channel-capability-matrix SLA
+  status: deferred until OD-021

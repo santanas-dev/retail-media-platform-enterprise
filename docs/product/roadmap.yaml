@@ -331,6 +331,19 @@ owner_decisions:
   - указание владельца 2026-08-31 (сессия)
   - docs/product/implementation-plan-v2.6.md; docs/audit/2026-08-31-claude-rm-gov-012-alignment.md
   - docs/product/requirements-traceability.yaml (implementation_mode, code_baseline, regression_criteria, conflict_ref)
+- id: OD-043
+  statement: Указание владельца 2026-08-31 - семантика зависимостей. Статус задачи выше planned
+    (in_progress/verification/done) допустим только когда все её зависимости закрыты - задачи-зависимости
+    в done/verification, гейты-зависимости утверждены (approved_on). Задачи стадии C остаются planned до
+    закрытия Gate-S. Подготовка кандидатов артефактов (документы, схемы, фикстуры, as-built снимки) до
+    этого допустима и помечается candidate/prepared - без delivery in_progress и без acceptance; приёмка
+    артефакта выполняется внутри задачи после её старта. Реализация начинается только после Gate-S.
+    Гейт - DEP-NOT-CLOSED в check-roadmap-schema.
+  status: approved
+  decided_on: '2026-08-31'
+  sources:
+  - указание владельца 2026-08-31 (сессия)
+  - tz-v2.6-draft Дополнение AG (mini-design до шага 7), OD-041, OD-042
 stages:
 - id: G
   title: Единая система roadmap
@@ -885,7 +898,7 @@ tasks:
     ref: python3 scripts/roadmap-consistency-check.py
   decision_status: approved
   delivery_status: planned
-  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) Кандидат подготовлен (OD-043, 2026-08-31, без приёмки): нормативный формат journeys registry - docs/product/journeys/journeys.yaml (as-built из registry/user-journeys/AP); computed count = 79. Задача planned до закрытия зависимостей (OD-043).'
 - id: RM-STAB-004
   kind: implementation
   stage: S
@@ -1199,7 +1212,7 @@ tasks:
     ref: docs/product/slo-objectives.yaml
   decision_status: approved
   delivery_status: planned
-  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) RM-GOV-009 (r421): REQ-NFR-001/006/007; пороги ждут OD-011/OD-009 — добавить в notes; артефакты AG выносятся в RM-TECH-288 RM-GOV-012 (предложение 2026-08-31, до ACCEPT владельца): перенесено A → C - артефакт Дополнения AG принимается до Gate-C (старт разработки по OD-041).'
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) RM-GOV-009 (r421): REQ-NFR-001/006/007; пороги ждут OD-011/OD-009 — добавить в notes; артефакты AG выносятся в RM-TECH-288 RM-GOV-012 (предложение 2026-08-31, до ACCEPT владельца): перенесено A → C - артефакт Дополнения AG принимается до Gate-C (старт разработки по OD-041). Кандидат подготовлен (OD-043, 2026-08-31, без приёмки): docs/product/slo-objectives.yaml - 11 объектов, каждое число §8 с formula/window/owner/status; пороги OD-011/OD-025 open. Задача planned до закрытия зависимостей (OD-043).'
 - id: RM-TECH-206
   kind: implementation
   stage: CORE
@@ -1483,7 +1496,13 @@ tasks:
     verified_by: owner
     ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)
   decision_status: approved
-  delivery_status: in_progress
+  delivery_status: verification
+  evidence_refs:
+  - kind: ci_run
+    ref: https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/33390628743
+    status: verified
+    observed_at: '2026-08-31T12:22:15Z'
+    note: 'commit 06ae22e — 41/41 jobs success (JSON Schema Validation, Roadmap Governance Guard, Behavioral PostgreSQL)'
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-GOV-002; SC: SC-GOV-003; DEC: -. Evidence: traceability diff; guard req. Риск регрессии: низкий. 2026-08-31: owner mapping применён по OD-039 (170 TBD → 0, OD-023 approved); остаток - mapping PENDING-ID journeys (8 awaiting_owner). OD-040 (2026-08-31): pending_journey_map закрыт - 6 новых blocked registry-ID, audit.compare rejected, security.review → audit.view; приёмка (1)/(2) выполнена локально, verification - после CI-прогона.'
   owner_gate:
     required: true
@@ -1527,7 +1546,13 @@ tasks:
     verified_by: command
     ref: python3 scripts/ci/roadmap-governance-guard.py
   decision_status: approved
-  delivery_status: in_progress
+  delivery_status: verification
+  evidence_refs:
+  - kind: ci_run
+    ref: https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/33390628743
+    status: verified
+    observed_at: '2026-08-31T12:22:15Z'
+    note: 'commit 06ae22e — 41/41 jobs success (JSON Schema Validation, Roadmap Governance Guard, Behavioral PostgreSQL)'
   notes: 'По указанию владельца 2026-08-31 (OD-041). Предложения этой задачи, требующие ACCEPT: гейты Gate-CORE/CH/A/POPS, расширение условий Gate-C, перенос RM-TECH-205/288/253, RM-OPS-005, RM-UX-011 в стадию C, новая RM-TECH-231. Механические выравнивания (feature_ids, refs приёмки, RM-TECH-263 planned, RM-TECH-284 OD-014, REQ blocked ⇔ задачи blocked) применены. REQ: REQ-GOV-001, REQ-GOV-003; SC: SC-GOV-001; DEC: -. Evidence: план; guard. Риск регрессии: нет (документы/SSOT). OD-042 (2026-08-31): процесс и предложения утверждены владельцем; добавлены implementation_mode/code_baseline/regression_criteria у 101 REQ.'
   owner_gate:
     required: true
@@ -1572,7 +1597,7 @@ tasks:
     ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)
   decision_status: approved
   delivery_status: planned
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-ARCH-004; SC: SC-OPS-001; DEC: DEC-015. Evidence: guard env; inventory diff. Риск регрессии: низкий. Закрывает Gate-E0 (RM-GOV-012, 2026-08-31).'
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-ARCH-004; SC: SC-OPS-001; DEC: DEC-015. Evidence: guard env; inventory diff. Риск регрессии: низкий. Закрывает Gate-E0 (RM-GOV-012, 2026-08-31). Кандидат подготовлен (OD-043, 2026-08-31, без приёмки): environment-inventory.yaml содержит AG-поля для stand-81 (endpoint/версии/git SHA/schema/доступность без секретов, health/live+ready, MinIO, device-gateway loopback); приёмка - внутри задачи после закрытия RM-ENV-002.'
   owner_gate:
     required: true
     reason: scope_decision
@@ -1691,9 +1716,7 @@ tasks:
     ref: tests/behavioral/test_rm_tech_220.py
   decision_status: approved
   delivery_status: planned
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-ARCH-001, REQ-API-001; SC: SC-API-001, SC-ARCH-003;
-    DEC: -. Evidence: generated openapi.json diff; contract tests. Риск регрессии: средний: выявит смешение
-    {id}/{code}.'
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-ARCH-001, REQ-API-001; SC: SC-API-001, SC-ARCH-003; DEC: -. Evidence: generated openapi.json diff; contract tests. Риск регрессии: средний: выявит смешение {id}/{code}. Кандидат подготовлен (OD-043, 2026-08-31, без приёмки): as-built docs/architecture/api/openapi-as-built-v1.json (113 paths/128 ops/149 схем), target docs/architecture/api/openapi-target-v2.6.md, envelope docs/architecture/events/event-envelope-v1.schema.json; contract tests и версионирование - после старта задачи; задача planned до Gate-S (OD-043).'
 - id: RM-TECH-221
   kind: implementation
   stage: C
@@ -1850,9 +1873,7 @@ tasks:
     ref: tests/behavioral/test_adr018_multitenancy_rls.py
   decision_status: approved
   delivery_status: planned
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-DATA-002, REQ-V26-001; SC: SC-DATA-003; DEC: -. Evidence:
-    tests/behavioral/test_adr018_multitenancy_rls.py; generated ERD. Риск регрессии: средний: backfill
-    retailer_id.'
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-DATA-002, REQ-V26-001; SC: SC-DATA-003; DEC: -. Evidence: tests/behavioral/test_adr018_multitenancy_rls.py; generated ERD. Риск регрессии: средний: backfill retailer_id. Кандидат подготовлен (OD-043, 2026-08-31, без приёмки): as-built docs/architecture/erd/data-dictionary-as-built.md (62 таблицы, 38 RLS) и кандидат docs/architecture/erd/migration-plan-v2.6.md (§13 → present/missing → задачи); PII/retention колонки - RM-TECH-253/RM-OPS-005. Задача planned до закрытия зависимостей (OD-043).'
 - id: RM-TECH-230
   kind: design
   stage: C
@@ -1885,7 +1906,7 @@ tasks:
     ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)
   decision_status: approved
   delivery_status: planned
-  notes: 'RM-GOV-012 (предложение 2026-08-31): AG требует channel-capability-matrix до старта разработки, а RM-TECH-261 держит матрицу за решением OD-021 (второй канал). Первый канал KSO описывается без OD-021; RM-TECH-261 расширяет матрицу вторым каналом. REQ: REQ-CHAN-001, REQ-CHAN-002, REQ-CHAN-003; SC: SC-CHAN-002; DEC: DEC-001 (расширение). Evidence: артефакт; ACCEPT владельца. Риск регрессии: нет (документ). Утверждена OD-042 (2026-08-31).'
+  notes: 'RM-GOV-012 (предложение 2026-08-31): AG требует channel-capability-matrix до старта разработки, а RM-TECH-261 держит матрицу за решением OD-021 (второй канал). Первый канал KSO описывается без OD-021; RM-TECH-261 расширяет матрицу вторым каналом. REQ: REQ-CHAN-001, REQ-CHAN-002, REQ-CHAN-003; SC: SC-CHAN-002; DEC: DEC-001 (расширение). Evidence: артефакт; ACCEPT владельца. Риск регрессии: нет (документ). Утверждена OD-042 (2026-08-31). Кандидат подготовлен (OD-043, 2026-08-31, без приёмки): docs/product/channel-capability-matrix.yaml (KSO + declared каналы §7); приёмка - внутри задачи после Gate-S.'
   owner_gate:
     required: true
     reason: scope_decision
@@ -2256,7 +2277,7 @@ tasks:
     ref: python3 scripts/ci/roadmap-governance-guard.py
   decision_status: approved
   delivery_status: planned
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-UX-001, REQ-SEC-002; SC: SC-SEC-009; DEC: DEC-023. Evidence: generated matrices; guard registry. Риск регрессии: низкий. RM-GOV-012 (предложение 2026-08-31, до ACCEPT владельца): перенесено U → C - артефакт Дополнения AG принимается до Gate-C (старт разработки по OD-041).'
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-UX-001, REQ-SEC-002; SC: SC-SEC-009; DEC: DEC-023. Evidence: generated matrices; guard registry. Риск регрессии: низкий. RM-GOV-012 (предложение 2026-08-31, до ACCEPT владельца): перенесено U → C - артефакт Дополнения AG принимается до Gate-C (старт разработки по OD-041). Кандидат подготовлен (OD-043, 2026-08-31, без приёмки): as-built docs/product/role-scope-matrix.yaml (5 seeded ролей × 30 permissions, Q2 target 7 ролей, 38 RLS-таблиц, deny-cases), docs/product/portal-route-matrix.yaml (admin 16 + advertiser 9 маршрутов), docs/product/journeys/journeys.yaml (79 journeys, нормативный формат); generated-сверка guard - после старта задачи; задача planned до Gate-S (OD-043).'
 - id: RM-TECH-260
   kind: implementation
   stage: CH
@@ -2501,7 +2522,7 @@ tasks:
     ref: nfr-slo.yaml
   decision_status: approved
   delivery_status: planned
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-NFR-001, REQ-NFR-006, REQ-NFR-007, REQ-NFR-005; SC: SC-NFR-001, SC-NFR-005, SC-NFR-006, SC-NFR-007; DEC: DEC-006, DEC-009. Evidence: load run report; nfr-slo.yaml. Риск регрессии: низкий. RM-GOV-012 (предложение 2026-08-31, до ACCEPT владельца): перенесено A → C - артефакт Дополнения AG принимается до Gate-C (старт разработки по OD-041).'
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-NFR-001, REQ-NFR-006, REQ-NFR-007, REQ-NFR-005; SC: SC-NFR-001, SC-NFR-005, SC-NFR-006, SC-NFR-007; DEC: DEC-006, DEC-009. Evidence: load run report; nfr-slo.yaml. Риск регрессии: низкий. RM-GOV-012 (предложение 2026-08-31, до ACCEPT владельца): перенесено A → C - артефакт Дополнения AG принимается до Gate-C (старт разработки по OD-041). Кандидат подготовлен (OD-043, 2026-08-31, без приёмки):ы docs/product/nfr-slo.yaml и docs/product/load-profiles.yaml (7 профилей); load generator отсутствует (new). Задача planned до закрытия зависимостей (OD-043).'
 - id: RM-TECH-289
   kind: design
   stage: A
@@ -2588,7 +2609,7 @@ tasks:
     ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)
   decision_status: approved
   delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-004; SC: SC-SEC-011; DEC: DEC-007. Evidence: OD-009; retention-policy.yaml. Риск регрессии: низкий. blocked OD-009. RM-GOV-012 (предложение 2026-08-31, до ACCEPT владельца): перенесено POPS → C - артефакт Дополнения AG принимается до Gate-C (старт разработки по OD-041).'
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-004; SC: SC-SEC-011; DEC: DEC-007. Evidence: OD-009; retention-policy.yaml. Риск регрессии: низкий. blocked OD-009. RM-GOV-012 (предложение 2026-08-31, до ACCEPT владельца): перенесено POPS → C - артефакт Дополнения AG принимается до Gate-C (старт разработки по OD-041). 2026-08-31: кандидат docs/product/retention-policy.yaml подготовлен (working defaults REQ-DATA-001, legal register) - не действует до OD-009; задача остаётся blocked.'
   owner_gate:
     required: true
     reason: scope_decision

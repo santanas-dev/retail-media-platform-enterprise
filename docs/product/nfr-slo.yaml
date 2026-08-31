@@ -1,0 +1,38 @@
+# nfr-slo.yaml
+#
+# Артефакт Дополнения AG (ТЗ v2.6 r428) — задача RM-TECH-288; REQ: REQ-NFR-001/005/006/007.
+# Источник: as-built из репозитория develop @ 06ae22e (код = 4ac3ddb) + ТЗ r428; статус: candidate/prepared 2026-08-31 (OD-043) — подготовлено как mini-design; задача roadmap остаётся planned до Gate-S, приёмка выполняется внутри задачи после её старта, не сейчас.
+# Код продукта не менялся. Изменение — только внутри задачи roadmap с ACCEPT.
+schema_version: 1
+document:
+  artifact: nfr-slo.yaml (Дополнение AG)
+  task: RM-TECH-288 (+RM-TECH-205)
+  req:
+  - REQ-NFR-001
+  - REQ-NFR-005
+  - REQ-NFR-006
+  - REQ-NFR-007
+  status: 'candidate/prepared 2026-08-31 (OD-043): без приёмки; задача planned до Gate-S'
+  owner: Operations owner (OD-039)
+method:
+  percentiles: p95 для латентности доставки, p99 для API response time (TBD владелец)
+  error_budget: 1 − target за окно; расход budget блокирует rollout (RM-OPS-004)
+  generator: load-profiles.yaml → k6/locust сценарии (создаются RM-TECH-288; сейчас нет)
+  ci_evidence: прогон на стенде stand-81 с pinned SHA; результаты — docs/audit/<дата>-load-<sha>.md
+  exclusions: degraded-mode перечень утверждает владелец
+slo_refs:
+- SLO-CP-AVAIL
+- SLO-GW-AVAIL
+- SLO-POP-LOSS
+- SLO-MANIFEST-P95
+- SLO-EMERGENCY-P95
+- SLO-POP-REPORT
+- SLO-AUTONOMY
+- SLO-RTO
+- SLO-RPO
+- NFR-SCALE
+- NFR-ADMINS
+gaps:
+- load generator и сценарии отсутствуют (new)
+- measurement windows/denominators для CP/GW availability — решение владельца
+- OD-011 (capacity gate), OD-025 (RTO/RPO) open

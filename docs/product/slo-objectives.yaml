@@ -1,0 +1,119 @@
+# slo-objectives.yaml
+#
+# Артефакт Дополнения AG (ТЗ v2.6 r428) — задача RM-TECH-205; REQ: REQ-NFR-001/005/006/007, REQ-OPS-003/004.
+# Источник: as-built из репозитория develop @ 06ae22e (код = 4ac3ddb) + ТЗ r428; статус: candidate/prepared 2026-08-31 (OD-043) — подготовлено как mini-design; задача roadmap остаётся planned до Gate-S, приёмка выполняется внутри задачи после её старта, не сейчас.
+# Код продукта не менялся. Изменение — только внутри задачи roadmap с ACCEPT.
+schema_version: 1
+source: ТЗ r428 §8, §25 REQ-NFR-*; user-journeys §5.1
+rule: число без measurement window и denominator — не production claim (§8)
+objectives:
+- id: SLO-CP-AVAIL
+  req: REQ-NFR-001
+  metric: доступность Control Plane/admin portal
+  target: ≥99.5%
+  window: утверждённое рабочее окно (TBD владелец)
+  denominator: минуты окна
+  exclusions: degraded-mode по утверждённому перечню
+  measurement: /health/ready probe + synthetic login
+  owner: Operations owner
+  status: 'candidate/prepared 2026-08-31 (OD-043): без приёмки; задача planned до Gate-S'
+- id: SLO-GW-AVAIL
+  req: REQ-NFR-001
+  metric: доступность Device Gateway внутри сети
+  target: ≥99.9%
+  window: календарный месяц
+  denominator: минуты
+  exclusions: плановые окна
+  measurement: gateway health + heartbeat success rate
+  owner: Operations owner
+  status: proposed (§8)
+- id: SLO-POP-LOSS
+  req: REQ-NFR-001
+  metric: потеря PoP
+  target: ≤0.1% от ожидаемого объёма
+  window: сутки/кампания
+  denominator: ожидаемые показы по manifest
+  exclusions: устройства offline > автономности
+  measurement: pop.batch.ingested vs expected (playlist)
+  owner: Analytics owner
+  status: approved как продуктовый SLA (user-journeys §5.1)
+- id: SLO-MANIFEST-P95
+  req: REQ-NFR-007
+  metric: доставка manifest online-устройствам
+  target: ≤5 мин для 95%
+  window: публикация
+  denominator: online-устройства на момент публикации
+  exclusions: offline
+  measurement: delivery.manifest.generated → device ACK
+  owner: Technical owner
+  status: proposed (§8)
+- id: SLO-EMERGENCY-P95
+  req: REQ-NFR-007
+  metric: доставка emergency-команды
+  target: ≤60 с для 95% online
+  window: инцидент
+  denominator: online-устройства
+  exclusions: offline
+  measurement: emergency.activate → device apply ACK
+  owner: Operations owner
+  status: proposed (§8)
+- id: SLO-POP-REPORT
+  req: REQ-NFR-005/007
+  metric: PoP в отчёте
+  target: ≤15 мин
+  window: непрерывно
+  denominator: принятые события
+  exclusions: quarantine
+  measurement: pop.event.accepted → report freshness
+  owner: Analytics owner
+  status: proposed; percentile — TBD (REQ-NFR-005)
+- id: SLO-AUTONOMY
+  req: REQ-NFR-007
+  metric: автономность runtime по последнему valid manifest
+  target: ≥7 дней
+  window: —
+  denominator: —
+  exclusions: —
+  measurement: player cache lifecycle test (RM-TECH-260)
+  owner: Technical owner
+  status: proposed (§8)
+- id: SLO-RTO
+  req: REQ-NFR-007/REQ-OPS-003
+  metric: полное восстановление
+  target: RTO ≤4 ч
+  window: DR drill
+  denominator: —
+  exclusions: —
+  measurement: restore drill (tests/integration/test_restore_drill_verify.py)
+  owner: Operations owner
+  status: proposed; owner OD-025 (DEC-012) open
+- id: SLO-RPO
+  req: REQ-NFR-007/REQ-OPS-003
+  metric: операционная БД
+  target: RPO ≤15 мин
+  window: DR drill
+  denominator: —
+  exclusions: —
+  measurement: backup schedule + WAL
+  owner: Operations owner
+  status: proposed; OD-025 open
+- id: NFR-SCALE
+  req: REQ-NFR-004
+  metric: масштаб сети
+  target: до 10 000 магазинов, 40 000+ устройств, десятки/сотни млн PoP/год
+  window: —
+  denominator: —
+  exclusions: —
+  measurement: load profile LP-DEVICES; ClickHouse trigger RM-TECH-209 (ADR-007)
+  owner: Architecture owner
+  status: proposed; capacity gate OD-011 (DEC-009) open
+- id: NFR-ADMINS
+  req: REQ-NFR-006
+  metric: одновременные админы
+  target: до 100
+  window: —
+  denominator: —
+  exclusions: —
+  measurement: LP-ADMINS
+  owner: Product owner
+  status: proposed до DEC-009/OD-011 — не утверждён

@@ -91,7 +91,15 @@ Gate-E0/CORE/CH/A/POPS, Gate-C, переносы в C, RM-TECH-231 — 109/109 �
 `code_baseline` (реальные пути), `regression_criteria`; guard `req`: MODE-REPLACE-NO-CONFLICT, BASELINE-PATH (self-test 55/55). Проекции
 перегенерированы из roadmap.yaml. Отчёт о покрытии: `docs/audit/2026-08-31-claude-rm-gov-012-coverage-report.md`. Код не менялся.
 
-**Next Active Workstream:** **ТЗ v2.6 → APPROVED**: **RM-GOV-012** — единый план реализации (кандидат) → независимая проверка Codex → утверждение владельцем документов (ACCEPT RM-GOV-012, гейты, переносы в C, RM-TECH-231) → стадия C (артефакты AG: RM-TECH-220/229/231/288, RM-UX-011, RM-ENV-003, RM-OPS-005) → Gate-C = старт разработки (OD-041). RM-UX-007/walkthrough — приостановлены OD-041. RM-GOV-010 — `verification` после CI. Ранее: A1 `requirements-traceability.yaml` + gate `req` + `SC-*` для 53 REQ, A3 task breakdown (owner-gated), артефакты Дополнения AG. Открыто у владельца: operator walkthrough в DEV (Rule 8); имена исполнителей ролей (amendment OD-039/OD-023). Параллельно: этап S (`RM-STAB-003…`), `RM-TECH-210`.
+**STAGE-C-AG-001 (2026-08-31, не закоммичено) — кандидаты 10 артефактов AG подготовлены (OD-043).** Коммит `06ae22e` (RM-GOV-010/012, OD-039…042)
+запушен; CI run **33390628743** success (41/41, 2026-08-31T12:22:15Z) — evidence у RM-GOV-010/012 (`verification`, done — только ACCEPT владельца). As-built/кандидаты: OpenAPI (113 paths/128 ops), envelope событий, data dictionary (62 таблицы,
+38 RLS), migration plan §13→ERD, role-scope-matrix (5 seeded ролей × 30 permissions; Q2 = 7 ролей), portal-route-matrix (16+9 маршрутов),
+journeys.yaml (79), channel-capability-matrix (KSO), slo-objectives (11), nfr-slo, load-profiles (7), retention-policy (кандидат до OD-009).
+**OD-043 (семантика зависимостей):** все 13 файлов — candidate/prepared без приёмки; задачи RM-TECH-220/229/231/205/288, RM-UX-011,
+RM-STAB-006, RM-ENV-003 остаются `planned` до закрытия зависимостей/Gate-S (гейт `DEP-NOT-CLOSED`, schema self-test +2); реализация — только после Gate-S;
+ТЗ — ACCEPTED до Gate-C. Запись: `docs/audit/2026-08-31-claude-stage-c-ag-artifacts.md`.
+
+**Next Active Workstream:** **ТЗ v2.6 → APPROVED**: **Стадия S → Gate-S (codex)**, затем стадия C (OD-042/043): C-задачи стартуют только при закрытых зависимостях; кандидаты AG (13 файлов) принимаются внутри задач (owner_gate); Codex — сверка кандидатов с кодом; решения OD-009/011/021/025 → **Gate-C = ТЗ APPROVED и старт разработки** (OD-041). RM-UX-007/walkthrough — приостановлены OD-041. RM-UX-007/walkthrough — приостановлены OD-041. RM-GOV-010 — `verification` после CI. Ранее: A1 `requirements-traceability.yaml` + gate `req` + `SC-*` для 53 REQ, A3 task breakdown (owner-gated), артефакты Дополнения AG. Открыто у владельца: operator walkthrough в DEV (Rule 8); имена исполнителей ролей (amendment OD-039/OD-023). Параллельно: этап S (`RM-STAB-003…`), `RM-TECH-210`.
 
 Последовательность работ ведётся в `docs/product/roadmap.yaml` (sequencing SSOT, 109 задач:
 43 утверждены 2026-08-26, 64 — A3 approved 2026-08-28, 2 proposed RM-GOV-012; delivery 9 done / 3 verification /

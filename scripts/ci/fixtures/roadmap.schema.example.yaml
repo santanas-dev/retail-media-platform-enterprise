@@ -221,6 +221,24 @@ blocked_features:
   - feature_id: rollout.rollback
     unblocked_by: [RM-TECH-207B]
     conditions: ["фикстура: registry blocked (RM-GOV-009), unblock через задачу очереди"]
+  - feature_id: campaign.underdelivery
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (OD-040), unblock через задачу очереди"]
+  - feature_id: carrier.manage
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (OD-040), unblock через задачу очереди"]
+  - feature_id: channel.register
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (OD-040), unblock через задачу очереди"]
+  - feature_id: channel.rendition_validate
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (OD-040), unblock через задачу очереди"]
+  - feature_id: data.catalog
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (OD-040), unblock через задачу очереди"]
+  - feature_id: inventory.priority
+    unblocked_by: [RM-TECH-207B]
+    conditions: ["фикстура: registry blocked (OD-040), unblock через задачу очереди"]
 
 maturity:
   - feature_id: campaign.create

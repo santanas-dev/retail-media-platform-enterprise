@@ -40,7 +40,8 @@ environments:
       http_admin_web: 200
       http_advertiser_web: 200
       http_control_api_version: 200
-      http_control_api_health: 404   # маршрута /health нет; идентичность и живость — GET /version
+      http_control_api_health_live: 200    # GET /health/live
+      http_control_api_health_ready: 200   # GET /health/ready — {status: ok, database: ok, db_role: non-superuser NOBYPASSRLS}
       http_minio_health_live: 200
       http_device_gateway_from_santa2: 000   # loopback — не наблюдался с santa2, проверяется только на хосте
     identity:
