@@ -2,12 +2,15 @@
 # SSOT трассировки REQ → story → journey → registry → roadmap → evidence по §37 драфта.
 # Валидируется scripts/ci/roadmap-governance-guard.py (модуль req) и roadmap-traceability.schema.json.
 # Правится руками внутри утверждённой задачи; TBD блокирует APPROVED.
+# Ревизия драфта: r425 (2026-08-31) = r421 (ACCEPT OD-017) + пути/sidecar (r422) + §29/Доп. I ↔ OD-018/019/020 (r423)
+# + ссылки Доп. I на OD-021…036 (r424) + исправление дефектов r424 (r425); нормативные §6/§25/§26/AP байт-в-байт
+# как в r419 — состав REQ/SC/story не менялся.
 schema_version: 1
 document:
   id: TZ-RMP-2.6
-  revision: draft-2026-08-28-r422
+  revision: draft-2026-08-31-r425
   path: docs/product/requirements/tz-v2.6-draft.md
-  sha256: 70f097c70798b8f061e3a240431223332201f464d94876026b79decd4e90b4fd
+  sha256: 8688b5595d4d527f07684fb6a216f5e1659952f9359fbfe2f15b012381f81d2e
   status: ACCEPTED
   accepted_by: OD-017
   accepted_on: '2026-08-28'
@@ -116,7 +119,7 @@ requirements:
   source:
   - TZ v2.5 §1
   - TZ v2.5 §2
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: owner-approved scope/deferred register
   scope:
@@ -152,7 +155,7 @@ requirements:
   source:
   - TZ v2.5 §4
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: migration + seed network/branch/cluster/store/store_group/channel/device/surface уровней
   scope:
@@ -187,7 +190,7 @@ requirements:
   source:
   - TZ v2.5 §4
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     campaign/inventory/RBAC/reporting core не импортируют channel adapter; добавление канала требует только нового
@@ -227,7 +230,7 @@ requirements:
   - TZ v2.5 §6
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     placement таргетируется на network/branch/cluster/store/store-group, channel/device type, zone/category/SKU/shelf
@@ -266,7 +269,7 @@ requirements:
   source:
   - TZ v2.5 §4
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: согласованные versioned artifacts
   scope:
@@ -304,7 +307,7 @@ requirements:
   - TZ v2.5 §4
   - TZ v2.5 §21
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     платформа не зависит от Retail Media Dashboard, Hermes/LLM или другого внешнего runtime для production работы
@@ -341,7 +344,7 @@ requirements:
   source:
   - TZ v2.5 §4
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     blocking I/O запрещён в async handlers/dependencies; используются native async или утверждённый threadpool
@@ -378,7 +381,7 @@ requirements:
   source:
   - TZ v2.5 §4
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     local Docker Compose; pilot на одном host с backup/monitoring/restore; test store с ≥2 backend/gateway за reverse
@@ -427,7 +430,7 @@ requirements:
   - TZ v2.5 §10
   - TZ v2.5 §15
   - TZ v2.5 §23
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     versioned CRUD + scope/RLS; ESL production activation requires a separate pilot and approvals from price-process
@@ -469,7 +472,7 @@ requirements:
   - TZ v2.5 §10
   - TZ v2.5 §15
   - TZ v2.5 §23
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     surface-level targeting, SLA и профили размеров (КСО 1440×1080, TV 1920×1080, ESL 296×128, LED 1200×80); one
@@ -517,7 +520,7 @@ requirements:
   - TZ v2.5 §10
   - TZ v2.5 §15
   - TZ v2.5 §23
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     Admin/Operations должны видеть и управлять всеми physical device, logical carrier и display surface всех активных
@@ -566,7 +569,7 @@ requirements:
   - TZ v2.5 §15
   - TZ v2.5 §16
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     License contour отделён от advertiser billing: versioned license grant принадлежит отдельному licensee, имеет
@@ -615,7 +618,7 @@ requirements:
   - TZ v2.5 §8
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     resolves broad targets to surfaces, runs conflict/preemption/availability simulation, creates immutable manifest/task
@@ -658,7 +661,7 @@ requirements:
   - TZ v2.5 §8
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     массовая публикация идёт event-driven через persisted queue, а не прямыми синхронными вызовами portal→device/vendor;
@@ -708,7 +711,7 @@ requirements:
   - TZ v2.5 §8
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     любая OLTP-запись, создающая domain event, создаёт outbox event атомарно (не только delivery-relevant mutation);
@@ -753,7 +756,7 @@ requirements:
   - TZ v2.5 §8
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     domain write и outbox event в одной PostgreSQL-транзакции; relay атомарно claim-ит `pending` через lease/status
@@ -807,7 +810,7 @@ requirements:
   source:
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     для KSO-first сохраняются только channel-neutral data contracts и тонкий compatibility seam; Channel Orchestrator,
@@ -848,7 +851,7 @@ requirements:
   source:
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     каждый adapter получает versioned task/manifest через утверждённый Gateway/API, подтверждает receipt, возвращает
@@ -886,7 +889,7 @@ requirements:
   source:
   - TZ v2.5 §8
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     JSON Schema + compatibility rules; runtime polls manifest/content every 30 seconds with jitter and uses `ETag`/`If-None-Match`,
@@ -931,7 +934,7 @@ requirements:
   source:
   - TZ v2.5 §8
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     обязательны opaque external `manifest_id`, `device_id`, `store_id`, `playlist_version`, `valid_from`, `valid_to`,
@@ -976,7 +979,7 @@ requirements:
   title: Playlist inheritance and overrides
   source:
   - TZ v2.5 §8
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     hierarchy-level playlists inherit from network/branch/cluster/store/channel and allow explicit scoped overrides
@@ -1015,7 +1018,7 @@ requirements:
   source:
   - TZ v2.5 §8
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: Ed25519 profile, key rotation/revoke, offline verify
   scope:
@@ -1056,7 +1059,7 @@ requirements:
   - TZ v2.5 §9
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     invalid/future/expired manifest отклоняется fail-safe; сохраняется last-known-good/fallback, kill-switch имеет
@@ -1100,7 +1103,7 @@ requirements:
   - TZ v2.5 §11
   - TZ v2.5 §12
   - TZ v2.5 §23
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     целевой `pop_mode` enum: `real_playback`, `screen_render`, `idle_screen`, `template_applied`, `gateway_ack`,
@@ -1145,7 +1148,7 @@ requirements:
   source:
   - TZ v2.5 §11
   - TZ v2.5 §23
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     signature/time/manifest validation + dedupe; при потере связи события/ack/error буферизуются локально или на
@@ -1191,7 +1194,7 @@ requirements:
   source:
   - TZ v2.5 §11
   - TZ v2.5 §23
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     PoP только от runtime через `POST /api/v1/pop/batch`, batch ≤500; `event_type=proof`, `device_id` совпадает
@@ -1234,7 +1237,7 @@ requirements:
   - TZ v2.5 §11
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     flat `proof_event_v1`: opaque external event/manifest/campaign/placement/creative/media/store/surface/device
@@ -1279,7 +1282,7 @@ requirements:
   source:
   - TZ v2.5 §7
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     checks выполняются отдельно для каждой immutable rendition и cover format/MIME/resolution/file size/duration/codec/FPS/bitrate,
@@ -1345,7 +1348,7 @@ requirements:
   source:
   - TZ v2.5 §7
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     каждая media/rendition version хранит uploader/author, timestamp, SHA-256, source metadata, QA/moderation decision
@@ -1389,7 +1392,7 @@ requirements:
   - TZ v2.5 §6
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     capacity/reserved/sold/free рассчитываются и показываются по network/branch/cluster/store/device/logical carrier/surface;
@@ -1451,7 +1454,7 @@ requirements:
   source:
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     advertiser record includes legal entity, brand, contacts and responsible persons; до брони создаётся versioned
@@ -1497,7 +1500,7 @@ requirements:
   - TZ v2.5 §3
   - TZ v2.5 §6
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     для каждого campaign/placement/creative задаются required approval roles, scope, порядок и transition criteria;
@@ -1561,7 +1564,7 @@ requirements:
   source:
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     advertiser и quality reports показывают по каждому каналу долю active devices/logical carriers/surfaces, channel-specific
@@ -1600,7 +1603,7 @@ requirements:
   - TZ v2.5 §6
   - TZ v2.5 §22
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     отдельные versioned flight/placement windows с обязательными `start_at/end_at` в UTC, локальной TZ для UI и
@@ -1639,7 +1642,7 @@ requirements:
   - TZ v2.5 §6
   - TZ v2.5 §22
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     eligibility требует approved status, валидный flight и contract, resolved target и ready/approved creative;
@@ -1677,7 +1680,7 @@ requirements:
   source:
   - TZ v2.5 §6
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     явные типы commercial/internal/compensation/test/filler и версионируемая иерархия приоритетов с `effective_at`,
@@ -1717,7 +1720,7 @@ requirements:
   - TZ v2.5 §6
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     классификация причин недопоказа (technical/operational/business/emergency/content/planning/device/store), plan/fact/выполнение
@@ -1756,7 +1759,7 @@ requirements:
   source:
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     scope финансового контура (заказ, договор, тариф, price list, discount, package/bonus, compensation, payment/confirmation
@@ -1837,7 +1840,7 @@ requirements:
   - TZ v2.5 §6
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     для каждого шага lifecycle назначены role/owner, допустимые действия, SLA/deadline и transition criteria; поддерживаются
@@ -1891,7 +1894,7 @@ requirements:
   source:
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     обязательны network dashboard (active campaigns/today plan-fact/problems), campaign dashboard (plan-fact/geography/dynamics/no-play/reasons),
@@ -1932,7 +1935,7 @@ requirements:
   title: A/B test attribution
   source:
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     A/B campaign фиксирует control/test groups, assignment scope, period, winner metric и minimum sample; результат
@@ -1974,7 +1977,7 @@ requirements:
   - TZ v2.5 §1
   - TZ v2.5 §6
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     для каждой бизнес-цели §1.2 владелец утверждает baseline, target, metric definition, unit, measurement window,
@@ -2014,7 +2017,7 @@ requirements:
   - TZ v2.5 §12
   - TZ v2.5 §16
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     Тарифы, price lists, offers, orders и inventory booking образуют обязательный versioned operational workflow;
@@ -2093,7 +2096,7 @@ requirements:
   - TZ v2.5 §6
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     Заявка рекламодателя, review/approval, создание организации, brand, contact и legal requisites, приглашение
@@ -2181,7 +2184,7 @@ requirements:
   source:
   - TZ v2.5 §6
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     Правила inventory (capacity, max ad load, slot duration, prime-time, priority, filler, channel/surface/store
@@ -2241,7 +2244,7 @@ requirements:
   title: Advertiser contract PDF upload
   source:
   - feature-registry (registry-derived gap)
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     Уполномоченный администратор через UI выбирает рекламодателя, создаёт договор и загружает PDF; MIME/размер/целостность
@@ -2285,7 +2288,7 @@ requirements:
   title: Tenant model conformance
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     ADR-018 уже принял multi-retailer/syndication-ready модель; все новые tenant-сущности получают `retailer_id
@@ -2329,7 +2332,7 @@ requirements:
   title: Attribution & sales lift
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     Принимать только агрегаты store/SKU/day, строить versioned baseline и test/control по магазинам, рассчитывать
@@ -2368,7 +2371,7 @@ requirements:
   title: Advertiser self-service
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     Отдельный advertiser web позволяет scoped inventory/forecast, draft, creative upload и submit в общий moderation/approval;
@@ -2408,7 +2411,7 @@ requirements:
   title: Competitive separation
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     Brand/advertiser имеет `competitive_category`; playlist/manifest проверяет интервал и exceptions, блокирует
@@ -2449,7 +2452,7 @@ requirements:
   title: Store-audience targeting
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     Анонимные price-segment/average-check/traffic-profile атрибуты участвуют в placement targeting; master-data
@@ -2491,7 +2494,7 @@ requirements:
   title: Financial-system exchange
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     Versioned/idempotent export и обратный payment-status contract; повтор не создаёт дубль, внешнее `paid` не смешивается
@@ -2528,7 +2531,7 @@ requirements:
   title: Programmatic extension point
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     ADR и SSP-facing availability contract проектируются, но DSP/SSP auto-buy остаётся excluded до отдельного owner
@@ -2564,7 +2567,7 @@ requirements:
   title: Dynamic creative
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     На одном выбранном канале master-confirmed price/promo подставляется при manifest generation; dynamic marker
@@ -2603,7 +2606,7 @@ requirements:
   title: Field mobile operations
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     Scoped mobile web/app для сотрудника магазина показывает устройства, принимает photo proof и incident; publish/content/admin
@@ -2639,7 +2642,7 @@ requirements:
   title: A/B winner metric
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     Winner может быть delivery или lift metric, при minimum sample и owner approval; результат versioned и не переписывает
@@ -2678,7 +2681,7 @@ requirements:
   title: External audience measurement
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     ADR фиксирует export PoP/manifest contract как designed-not-implemented extension до появления approved provider
@@ -2714,7 +2717,7 @@ requirements:
   source:
   - TZ v2.5 §4
   - TZ v2.5 §14
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     AD/LDAP или корпоративный SSO; для internal staff production-протокол и TLS-профиль фиксируются (ADR-006: LDAPS,
@@ -2784,7 +2787,7 @@ requirements:
   - TZ v2.5 §4
   - TZ v2.5 §6
   - TZ v2.5 §14
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     RLS и object authorization применяются на уровнях retailer/network → branch → cluster → store → channel/device/surface
@@ -2947,7 +2950,7 @@ requirements:
   source:
   - TZ v2.5 §4
   - TZ v2.5 §14
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     ADR-003 lifecycle обязателен: одноразовый `device_code` + `hardware_fingerprint` + `device_type` для enrollment;
@@ -3016,7 +3019,7 @@ requirements:
   - TZ v2.5 §4
   - TZ v2.5 §13
   - TZ v2.5 §14
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     data classes (public/internal/confidential/PII), lawful purpose and minimisation, residency, encryption in transit/at
@@ -3083,7 +3086,7 @@ requirements:
   - TZ v2.5 §10
   - TZ v2.5 §13
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     status thresholds и per-device health view с last heartbeat, current manifest, player/Chromium version, free
@@ -3164,7 +3167,7 @@ requirements:
   - TZ v2.5 §10
   - TZ v2.5 §17
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     Каждый runtime/device отправляет authenticated heartbeat с `device_id`, `store_id`, `channel_type`, `timestamp_utc`,
@@ -3209,7 +3212,7 @@ requirements:
   source:
   - TZ v2.5 §13
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     только ограниченные роли с MFA и обязательной причиной; действия включают stop-рекламы, системное сообщение,
@@ -3267,7 +3270,7 @@ requirements:
   source:
   - TZ v2.5 §9
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     лимит локального кэша на профиль устройства, детерминированная очистка неиспользуемых/устаревших файлов, сохранение
@@ -3305,7 +3308,7 @@ requirements:
   - TZ v2.5 §9
   - TZ v2.5 §13
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     baseline stages `lab → 5 stores → 50 stores → 300 stores → 10% network → 50% network → all network` для player/manifest/schedule/content/config
@@ -3352,7 +3355,7 @@ requirements:
   - TZ v2.5 §5
   - TZ v2.5 §17
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     topology, RTO/RPO, backup schedule, encryption, offsite copy, retention, named owner и restore drill; PostgreSQL
@@ -3408,7 +3411,7 @@ requirements:
   - TZ v2.5 §5
   - TZ v2.5 §17
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     backend, Device Gateway, PoP ingestion, Analytics, MinIO, PostgreSQL, ClickHouse, Redis, players и adapters
@@ -3453,7 +3456,7 @@ requirements:
   source:
   - TZ v2.5 §17
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     инструкции запуска/остановки/обновления/отката/восстановления; player имеет systemd/restart policy, локальный
@@ -3492,7 +3495,7 @@ requirements:
   title: Production HA baseline
   source:
   - TZ v2.5 §17
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     минимум 2 backend и горизонтально масштабируемый Device Gateway за балансировщиком; Gateway имеет health-check,
@@ -3544,7 +3547,7 @@ requirements:
   - TZ v2.5 §6
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     отдельные route/action/data capabilities для полного набора ролей исходного ТЗ: системный администратор (users/roles/devices/settings/monitoring/audit),
@@ -3742,7 +3745,7 @@ requirements:
   title: Human walkthrough
   source:
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: operator evidence на реальном DEV
   scope:
@@ -3774,7 +3777,7 @@ requirements:
   title: Accessibility and localization
   source:
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     утверждённый accessibility target (уровень стандарта, keyboard/screen-reader/contrast checks) и locale/timezone
@@ -3809,7 +3812,7 @@ requirements:
   title: Campaign readiness matrix
   source:
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     при создании/согласовании кампании UI показывает по каждому выбранному каналу: rendition approved, inventory
@@ -3846,7 +3849,7 @@ requirements:
   title: Permission descriptions
   source:
   - feature-registry (registry-derived gap)
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     В управлении ролями UI показывает стабильные permission code, label и description; неизвестное право безопасно
@@ -3889,7 +3892,7 @@ requirements:
   title: УКМ4/чековые данные
   source:
   - TZ v2.5 §16
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     phase 1 допускает пакетную загрузку только агрегированных чековых данных; phase 2 — регулярный approved API/ETL;
@@ -3927,7 +3930,7 @@ requirements:
   title: Price/SKU master
   source:
   - TZ v2.5 §16
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     ESL/price-checker price-related данные приходят из approved price/SKU master или проходят reconciliation; при
@@ -3967,7 +3970,7 @@ requirements:
   title: BI/export/SIEM/vendor
   source:
   - TZ v2.5 §16
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     BI/export API требует authentication, rate-limit, immutable audit и ограничение advertiser/role/retailer scope;
@@ -4008,7 +4011,7 @@ requirements:
   source:
   - TZ v2.5 §16
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     OpenAPI/event schemas, errors, deprecation/migration; для resource URLs выбирается один canonical opaque external
@@ -4048,7 +4051,7 @@ requirements:
   - TZ v2.5 §4
   - TZ v2.5 §16
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     User API, Device API, analytics API и emergency API логически разделены; device clients не имеют доступа к admin
@@ -4090,7 +4093,7 @@ requirements:
   - TZ v2.5 §11
   - TZ v2.5 §16
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     каноничен `POST /api/v1/pop/batch` по ADR-017; legacy `/device/pop/batch` только временный alias с deprecation
@@ -4131,7 +4134,7 @@ requirements:
   title: Data ownership and lifecycle
   source:
   - TZ v2.5 §15
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     dictionary, lineage, immutable versioning/diff для campaign/placement/playlist/manifest/priority/inventory/player
@@ -4172,7 +4175,7 @@ requirements:
   title: Canonical entity inventory
   source:
   - TZ v2.5 §15
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     ERD/data dictionary обязаны перечислить и связать все группы §15: верхнеуровневую сущность `retailers` и обязательный
@@ -4221,7 +4224,7 @@ requirements:
   - TZ v2.5 §3
   - TZ v2.5 §5
   - TZ v2.5 §20
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     40K + additional channels load profile; Control Plane/admin portal availability ≥99.5% в утверждённом рабочем
@@ -4258,7 +4261,7 @@ requirements:
   title: Time/calendar
   source:
   - TZ v2.5 §3
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     all DB/log events store UTC plus object local TZ; campaign schedules use store local time unless an approved
@@ -4299,7 +4302,7 @@ requirements:
   source:
   - TZ v2.5 §5
   - TZ v2.5 §20
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     Device/API/manifest version window with explicit deprecation dates; heartbeat advertises supported API/manifest
@@ -4340,7 +4343,7 @@ requirements:
   - TZ v2.5 §3
   - TZ v2.5 §5
   - TZ v2.5 §17
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     до 10 000 магазинов, 40 000+ устройств и десятки/сотни млн PoP в год без смены базовой архитектуры; Phase 1
@@ -4381,7 +4384,7 @@ requirements:
   - TZ v2.5 §5
   - TZ v2.5 §17
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: утверждённый maximum latency отчёта после PoP и контролируемый percentile
   scope:
@@ -4414,7 +4417,7 @@ requirements:
   source:
   - TZ v2.5 §5
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     профили: 40K KSO (heartbeat/manifest 30s с jitter, PoP batch 60s), дополнительные Android/TV/price-checker/ESL/LED,
@@ -4453,7 +4456,7 @@ requirements:
   title: Operational latency and continuity
   source:
   - TZ v2.5 §5
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     при штатной сети manifest обновляется ≤5 минут для 95% online-устройств, emergency-команда доставляется ≤60
@@ -4491,7 +4494,7 @@ requirements:
   - TZ v2.5 §4
   - TZ v2.5 §14
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     100% критичных действий неотключаемо без решения ИБ; user-initiated audit events содержат существующий actor
@@ -4539,7 +4542,7 @@ requirements:
   title: API attack protection
   source:
   - TZ v2.5 §14
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     все user/device/vendor входы проходят schema validation и bounded size/depth; object-level authorization проверяет
@@ -4586,7 +4589,7 @@ requirements:
   title: Object storage boundary
   source:
   - TZ v2.5 §14
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     MinIO buckets приватны, service accounts ограничены, presigned URL выдаётся только по утверждённой политике
@@ -4626,7 +4629,7 @@ requirements:
   title: Network segmentation
   source:
   - TZ v2.5 §14
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     устройства/плееры/шлюзы инициируют только исходящие HTTPS/mTLS или approved vendor/API connections к Gateway;
@@ -4663,7 +4666,7 @@ requirements:
   source:
   - TZ v2.5 §6
   - TZ v2.5 §14
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     системный администратор управляет users, roles, permissions, LDAP/SSO bindings, devices, settings, monitoring
@@ -4729,7 +4732,7 @@ requirements:
   title: Safe realistic seed
   source:
   - TZ v2.5 §18
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     all channels, 1M synthetic PoP/apply-ack events and scenarios for active/completed campaigns, underdelivery,
@@ -4777,7 +4780,7 @@ requirements:
   source:
   - TZ v2.5 §18
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     10 branches/50 clusters/500 stores; 2,000 KSO, 500 Android/TV, 300 price checkers, 50 ESL gateways, 100 LED
@@ -4813,7 +4816,7 @@ requirements:
   title: Real KSO feasibility gate
   source:
   - TZ v2.5 §18
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     до начала основной реализации на реальной КСО подтверждены 1440×1080, hide-on-touch, кассовая безопасность,
@@ -4853,7 +4856,7 @@ requirements:
   - TZ v2.5 §20
   - TZ v2.5 §21
   - TZ v2.5 §25
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     до изменения — анализ текущего состояния и mini-design с файлами/слоями/рисками/проверкой/commit; после шага
@@ -4902,7 +4905,7 @@ requirements:
   - TZ v2.5 §18
   - TZ v2.5 §19
   - TZ v2.5 §25
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     Каждый ID `docs/product/feature-registry.yaml` должен иметь в ТЗ и traceability-манифесте canonical REQ/story
@@ -4948,7 +4951,7 @@ requirements:
   source:
   - TZ v2.5 §18
   - TZ v2.5 §19
-  - tz-v2.6-draft draft-2026-08-28-r422 §25
+  - tz-v2.6-draft draft-2026-08-31-r425 §25
   normative: MUST
   statement: >-
     Каждый REQ, story, journey и approved decision обязан иметь одну или несколько явных задач в `docs/product/roadmap.yaml`
@@ -4996,7 +4999,7 @@ scenarios:
   req_ids:
   - REQ-SCOPE-001
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-SCOPE-001
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SCOPE-001
   owner: TBD
   roadmap_ids:
   - RM-BIZ-001
@@ -5015,7 +5018,7 @@ scenarios:
   req_ids:
   - REQ-CORE-001
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-CORE-001
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-CORE-001
   owner: TBD
   roadmap_ids:
   - RM-TECH-240
@@ -5033,7 +5036,7 @@ scenarios:
   req_ids:
   - REQ-CORE-002
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-CORE-002
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-CORE-002
   owner: TBD
   roadmap_ids:
   - RM-TECH-207A
@@ -5053,7 +5056,7 @@ scenarios:
   req_ids:
   - REQ-CORE-003
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-CORE-003
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-CORE-003
   owner: TBD
   roadmap_ids:
   - RM-TECH-241
@@ -5073,7 +5076,7 @@ scenarios:
   req_ids:
   - REQ-ARCH-001
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-ARCH-001
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ARCH-001
   owner: TBD
   roadmap_ids:
   - RM-TECH-220
@@ -5092,7 +5095,7 @@ scenarios:
   req_ids:
   - REQ-ARCH-002
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-ARCH-002
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ARCH-002
   owner: TBD
   roadmap_ids:
   - RM-STAB-017
@@ -5111,7 +5114,7 @@ scenarios:
   req_ids:
   - REQ-ARCH-003
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-ARCH-003
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ARCH-003
   owner: TBD
   roadmap_ids:
   - RM-STAB-012
@@ -5130,7 +5133,7 @@ scenarios:
   req_ids:
   - REQ-ARCH-004
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-ARCH-004
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ARCH-004
   owner: TBD
   roadmap_ids:
   - RM-ENV-003
@@ -5159,7 +5162,7 @@ scenarios:
   req_ids:
   - REQ-CHAN-002
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-CHAN-002
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-CHAN-002
   owner: TBD
   roadmap_ids:
   - RM-TECH-207A
@@ -5183,7 +5186,7 @@ scenarios:
   req_ids:
   - REQ-ORCH-001
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-ORCH-001
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ORCH-001
   owner: TBD
   roadmap_ids:
   - RM-TECH-207A
@@ -5206,7 +5209,7 @@ scenarios:
   req_ids:
   - REQ-ORCH-003
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-ORCH-003
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ORCH-003
   owner: TBD
   roadmap_ids:
   - RM-TECH-242
@@ -5230,7 +5233,7 @@ scenarios:
   req_ids:
   - REQ-ORCH-004
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-ORCH-004
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ORCH-004
   owner: TBD
   roadmap_ids:
   - RM-TECH-243
@@ -5260,7 +5263,7 @@ scenarios:
   req_ids:
   - REQ-ORCH-005
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-ORCH-005
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ORCH-005
   owner: TBD
   roadmap_ids:
   - RM-TECH-207A
@@ -5281,7 +5284,7 @@ scenarios:
   req_ids:
   - REQ-ORCH-006
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-ORCH-006
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ORCH-006
   owner: TBD
   roadmap_ids:
   - RM-TECH-207A
@@ -5300,7 +5303,7 @@ scenarios:
   req_ids:
   - REQ-MAN-004
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-MAN-004
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-MAN-004
   owner: TBD
   roadmap_ids:
   - RM-TECH-207B
@@ -5325,7 +5328,7 @@ scenarios:
   req_ids:
   - REQ-MAN-005
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-MAN-005
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-MAN-005
   owner: TBD
   roadmap_ids:
   - RM-TECH-207B
@@ -5344,7 +5347,7 @@ scenarios:
   req_ids:
   - REQ-MAN-002
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-MAN-002
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-MAN-002
   owner: TBD
   roadmap_ids:
   - RM-STAB-010
@@ -5366,7 +5369,7 @@ scenarios:
   req_ids:
   - REQ-MAN-003
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-MAN-003
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-MAN-003
   owner: TBD
   roadmap_ids:
   - RM-TECH-207B
@@ -5390,7 +5393,7 @@ scenarios:
   req_ids:
   - REQ-POP-001
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-POP-001
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-POP-001
   owner: TBD
   roadmap_ids:
   - RM-TECH-207B
@@ -5415,7 +5418,7 @@ scenarios:
   req_ids:
   - REQ-POP-002
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-POP-002
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-POP-002
   owner: TBD
   roadmap_ids:
   - RM-TECH-207B
@@ -5442,7 +5445,7 @@ scenarios:
   req_ids:
   - REQ-POP-003
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-POP-003
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-POP-003
   owner: TBD
   roadmap_ids:
   - RM-TECH-207B
@@ -5465,7 +5468,7 @@ scenarios:
   req_ids:
   - REQ-POP-004
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-POP-004
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-POP-004
   owner: TBD
   roadmap_ids:
   - RM-TECH-207B
@@ -5488,7 +5491,7 @@ scenarios:
   req_ids:
   - REQ-CONT-002
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-CONT-002
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-CONT-002
   owner: TBD
   roadmap_ids:
   - RM-TECH-250
@@ -5511,7 +5514,7 @@ scenarios:
   - REQ-V26-011
   - REQ-V26-007
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-V26-011/REQ-V26-007
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-V26-011/REQ-V26-007
   owner: TBD
   roadmap_ids:
   - RM-TECH-289
@@ -5528,7 +5531,7 @@ scenarios:
   req_ids:
   - REQ-OPS-009
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-OPS-009
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-009
   owner: TBD
   roadmap_ids:
   - RM-TECH-224
@@ -5549,7 +5552,7 @@ scenarios:
   req_ids:
   - REQ-OPS-007
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-OPS-007
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-007
   owner: TBD
   roadmap_ids:
   - RM-TECH-254
@@ -5576,7 +5579,7 @@ scenarios:
   req_ids:
   - REQ-OPS-008
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-OPS-008
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-008
   owner: TBD
   roadmap_ids:
   - RM-TECH-260
@@ -5594,7 +5597,7 @@ scenarios:
   req_ids:
   - REQ-OPS-005
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-OPS-005
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-005
   owner: TBD
   roadmap_ids:
   - RM-OPS-001
@@ -5613,7 +5616,7 @@ scenarios:
   req_ids:
   - REQ-OPS-006
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-OPS-006
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-006
   owner: TBD
   roadmap_ids:
   - RM-OPS-001
@@ -5641,7 +5644,7 @@ scenarios:
   req_ids:
   - REQ-UX-002
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-UX-002
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-UX-002
   owner: TBD
   roadmap_ids:
   - RM-UX-007
@@ -5657,7 +5660,7 @@ scenarios:
   req_ids:
   - REQ-UX-003
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-UX-003
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-UX-003
   owner: TBD
   roadmap_ids:
   - RM-UX-001
@@ -5674,7 +5677,7 @@ scenarios:
   req_ids:
   - REQ-UX-004
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-UX-004
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-UX-004
   owner: TBD
   roadmap_ids:
   - RM-UX-008
@@ -5692,7 +5695,7 @@ scenarios:
   req_ids:
   - REQ-INT-003
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-INT-003
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-INT-003
   owner: TBD
   roadmap_ids:
   - RM-TECH-287
@@ -5712,7 +5715,7 @@ scenarios:
   req_ids:
   - REQ-API-001
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-API-001
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-API-001
   owner: TBD
   roadmap_ids:
   - RM-TECH-220
@@ -5730,7 +5733,7 @@ scenarios:
   req_ids:
   - REQ-API-002
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-API-002
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-API-002
   owner: TBD
   roadmap_ids:
   - RM-TECH-221
@@ -5752,7 +5755,7 @@ scenarios:
   req_ids:
   - REQ-API-003
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-API-003
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-API-003
   owner: TBD
   roadmap_ids:
   - RM-TECH-222
@@ -5775,7 +5778,7 @@ scenarios:
   - REQ-DATA-002
   - REQ-V26-001
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-DATA-002/REQ-V26-001
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-DATA-002/REQ-V26-001
   owner: TBD
   roadmap_ids:
   - RM-TECH-229
@@ -5799,7 +5802,7 @@ scenarios:
   req_ids:
   - REQ-NFR-001
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-NFR-001
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-NFR-001
   owner: TBD
   roadmap_ids:
   - RM-TECH-205
@@ -5816,7 +5819,7 @@ scenarios:
   req_ids:
   - REQ-NFR-002
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-NFR-002
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-NFR-002
   owner: TBD
   roadmap_ids:
   - RM-TECH-248
@@ -5837,7 +5840,7 @@ scenarios:
   req_ids:
   - REQ-NFR-003
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-NFR-003
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-NFR-003
   owner: TBD
   roadmap_ids:
   - RM-TECH-228
@@ -5856,7 +5859,7 @@ scenarios:
   req_ids:
   - REQ-NFR-004
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-NFR-004
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-NFR-004
   owner: TBD
   roadmap_ids:
   - RM-TECH-209
@@ -5874,7 +5877,7 @@ scenarios:
   req_ids:
   - REQ-NFR-005
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-NFR-005
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-NFR-005
   owner: TBD
   roadmap_ids:
   - RM-TECH-209
@@ -5891,7 +5894,7 @@ scenarios:
   req_ids:
   - REQ-NFR-006
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-NFR-006
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-NFR-006
   owner: TBD
   roadmap_ids:
   - RM-TECH-205
@@ -5912,7 +5915,7 @@ scenarios:
   req_ids:
   - REQ-NFR-007
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-NFR-007
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-NFR-007
   owner: TBD
   roadmap_ids:
   - RM-TECH-205
@@ -5929,7 +5932,7 @@ scenarios:
   req_ids:
   - REQ-SEC-005
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-SEC-005
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-005
   owner: TBD
   roadmap_ids:
   - RM-STAB-014
@@ -5953,7 +5956,7 @@ scenarios:
   req_ids:
   - REQ-SEC-006
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-SEC-006
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-006
   owner: TBD
   roadmap_ids:
   - RM-STAB-013
@@ -5977,7 +5980,7 @@ scenarios:
   req_ids:
   - REQ-SEC-007
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-SEC-007
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-007
   owner: TBD
   roadmap_ids:
   - RM-STAB-016
@@ -5999,7 +6002,7 @@ scenarios:
   req_ids:
   - REQ-SEC-008
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-SEC-008
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-008
   owner: TBD
   roadmap_ids:
   - RM-OPS-002
@@ -6015,7 +6018,7 @@ scenarios:
   req_ids:
   - REQ-SEC-009
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-SEC-009
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-009
   owner: TBD
   roadmap_ids:
   - RM-STAB-015
@@ -6042,7 +6045,7 @@ scenarios:
   req_ids:
   - REQ-STAND-001
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-STAND-001
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-STAND-001
   owner: TBD
   roadmap_ids:
   - RM-ENV-002
@@ -6070,7 +6073,7 @@ scenarios:
   req_ids:
   - REQ-STAND-002
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-STAND-002
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-STAND-002
   owner: TBD
   roadmap_ids:
   - RM-ENV-002
@@ -6089,7 +6092,7 @@ scenarios:
   req_ids:
   - REQ-STAND-003
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-STAND-003
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-STAND-003
   owner: TBD
   roadmap_ids:
   - RM-TECH-207A
@@ -6106,7 +6109,7 @@ scenarios:
   req_ids:
   - REQ-GOV-002
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-GOV-002
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-GOV-002
   owner: TBD
   roadmap_ids:
   - RM-GOV-005
@@ -6132,7 +6135,7 @@ scenarios:
   req_ids:
   - REQ-GOV-003
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-GOV-003
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-GOV-003
   owner: TBD
   roadmap_ids:
   - RM-GOV-004
@@ -6159,7 +6162,7 @@ scenarios:
   req_ids:
   - REQ-CHAN-001
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-CHAN-001
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-CHAN-001
   owner: TBD
   roadmap_ids:
   - RM-TECH-207A
@@ -6177,7 +6180,7 @@ scenarios:
   req_ids:
   - REQ-CHAN-003
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-CHAN-003
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-CHAN-003
   owner: TBD
   roadmap_ids:
   - RM-TECH-207A
@@ -6198,7 +6201,7 @@ scenarios:
   req_ids:
   - REQ-ORCH-002
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-ORCH-002
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ORCH-002
   owner: TBD
   roadmap_ids:
   - RM-TECH-244
@@ -6224,7 +6227,7 @@ scenarios:
   req_ids:
   - REQ-MAN-001
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-MAN-001
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-MAN-001
   owner: TBD
   roadmap_ids:
   - RM-TECH-207A
@@ -6247,7 +6250,7 @@ scenarios:
   req_ids:
   - REQ-CONT-001
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-CONT-001
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-CONT-001
   owner: TBD
   roadmap_ids:
   - RM-TECH-204
@@ -6272,7 +6275,7 @@ scenarios:
   req_ids:
   - REQ-SEC-001
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-SEC-001
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-001
   owner: TBD
   roadmap_ids:
   - RM-TECH-252
@@ -6297,7 +6300,7 @@ scenarios:
   req_ids:
   - REQ-SEC-002
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-SEC-002
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-002
   owner: TBD
   roadmap_ids:
   - RM-STAB-002
@@ -6328,7 +6331,7 @@ scenarios:
   req_ids:
   - REQ-SEC-003
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-SEC-003
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-003
   owner: TBD
   roadmap_ids:
   - RM-STAB-010
@@ -6352,7 +6355,7 @@ scenarios:
   req_ids:
   - REQ-SEC-004
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-SEC-004
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-004
   owner: TBD
   roadmap_ids:
   - RM-OPS-005
@@ -6369,7 +6372,7 @@ scenarios:
   req_ids:
   - REQ-OPS-001
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-OPS-001
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-001
   owner: TBD
   roadmap_ids:
   - RM-TECH-255
@@ -6392,7 +6395,7 @@ scenarios:
   req_ids:
   - REQ-OPS-002
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-OPS-002
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-002
   owner: TBD
   roadmap_ids:
   - RM-OPS-004
@@ -6413,7 +6416,7 @@ scenarios:
   req_ids:
   - REQ-OPS-003
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-OPS-003
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-003
   owner: TBD
   roadmap_ids:
   - RM-OPS-001
@@ -6441,7 +6444,7 @@ scenarios:
   req_ids:
   - REQ-OPS-004
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-OPS-004
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-004
   owner: TBD
   roadmap_ids:
   - RM-TECH-205
@@ -6460,7 +6463,7 @@ scenarios:
   req_ids:
   - REQ-DATA-001
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-DATA-001
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-DATA-001
   owner: TBD
   roadmap_ids:
   - RM-TECH-251
@@ -6476,7 +6479,7 @@ scenarios:
   req_ids:
   - REQ-GOV-001
   source:
-  - tz-v2.6-draft draft-2026-08-28-r422 §25 REQ-GOV-001
+  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-GOV-001
   owner: TBD
   roadmap_ids:
   - RM-GOV-006

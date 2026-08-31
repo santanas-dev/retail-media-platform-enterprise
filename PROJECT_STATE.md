@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-28 (ТЗ v2.6 → APPROVED: A2 единый реестр решений — CI run 33164564954 success; A1 requirements-traceability.yaml — 101 REQ / 69 SC, guard `req`)
+**Last updated:** 2026-08-31 (ТЗ v2.6 → APPROVED: r425 — дефекты r424 исправлены, карта требований перепривязана на r425, guard `DRAFT-SHA-DRIFT`/`SIDECAR-DRIFT`; статус документа ACCEPTED, не APPROVED; не закоммичено)
 
 **RLS-CONTEXT-DEVICE-001 (открыто, блокирует device pilot).** `POST /device/onboard` и
 `POST /identity/device-codes` не несут `Depends(set_rls_context)`, но работают с
@@ -40,6 +40,17 @@ OD-038 (`device.onboard` → blocked до RM-TECH-210) применены к `ro
 (`decision_status: proposed` до ACCEPT), 14 перестановок, редакции RM-STAB-006/RM-TECH-207B/RM-BIZ-002,
 OD-013/024/025/028 `blocks`; registry +15 blocked ID; traceability 101/101 REQ с roadmap_ids. `done`
 не присвоен никому; RM-GOV-007/008 — `verification` с ci_run evidence.
+
+**TZ-V26-R425-SYNC-001 (2026-08-31, не закоммичено).** Codex r423/r424 привели §29/Дополнение I драфта к единому
+реестру решений (DEC-022/024/026 → `OD-018/019/020`; все 27 DEC-строк Доп. I ссылаются на свой OD). Проверка Claude
+нашла три дефекта r424 — sidecar `29af88ce…` ≠ байты, оборванная фраза changelog, DEC-014 «approved» при open `OD-027`;
+исправлены редакцией **r425** по указанию владельца (sidecar по файлу, changelog завершён, DEC-014 → open/owner decision
+required). Нормативные §6/§25/§26/AP по SHA равны r419 — состав REQ/SC/story не менялся. Карта требований перепривязана
+на r425 (`sha256` `8688b559…`, 171 source-ссылка): REQ 101 / SC 69 / без roadmap_ids 0 / TBD 170. Guard `req`:
+`DRAFT-SHA-DRIFT`, `SIDECAR-DRIFT`, tamper «другая ревизия» revision-agnostic; self-test 53/53. Записи:
+`docs/audit/2026-08-31-claude-tz-r42[345]-*.md`. `document.status` остаётся ACCEPTED (OD-017, содержание r421);
+**APPROVED не объявлен** — блокируют 170 TBD owner, 23 PENDING-ID journeys (8 awaiting_owner), `OD-023` open,
+operator walkthrough PENDING.
 
 **Next Active Workstream:** **ТЗ v2.6 → APPROVED**: RM-GOV-010 (owner/RACI 170 TBD, 8 PENDING-ID) → артефакты AG по стадии C (RM-TECH-220/229). Ранее: A1 `requirements-traceability.yaml` + gate `req` + `SC-*` для 53 REQ, A3 task breakdown (owner-gated), артефакты Дополнения AG. Открыто у владельца: `OD-023` (DEC-005) — имя владельца master-данных цен/SKU. Параллельно: этап S (`RM-STAB-003…`), `RM-TECH-210`.
 

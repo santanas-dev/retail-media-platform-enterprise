@@ -646,6 +646,7 @@ def module_registry(root: Path) -> list:
 # или две таблицы DEC в драфте (§29 и Дополнение I) разошлись.
 # ---------------------------------------------------------------------------
 TZ_DRAFT = Path("docs/product/requirements/tz-v2.6-draft.md")
+TZ_DRAFT_SHA = Path("docs/product/requirements/tz-v2.6-draft.sha256")  # SHA-256 точных байтов драфта
 _DEC_ROW = re.compile(r"^\| (DEC-\d{3}) \|", re.M)
 
 
@@ -727,6 +728,22 @@ def module_req(root: Path) -> list:
     if doc["document"].get("revision") != draft_rev:
         findings.append(f"req/DRAFT-REVISION-DRIFT: карта привязана к `{doc['document'].get('revision')}`, "
                         f"в репо лежит `{draft_rev}` — пересверьте REQ/story/SC и обновите document.revision/sha256")
+    # байты драфта: карта пришпилена к sha256 конкретной редакции, а sidecar обязан совпадать с файлом.
+    # Иначе драфт можно править «под тем же revision», и карта молча устареет (Codex r423: «SHA должен быть проверен»).
+    import hashlib as _hashlib
+    draft_sha = _hashlib.sha256(draft.read_bytes()).hexdigest()
+    pinned = str(doc["document"].get("sha256") or "")
+    if pinned != draft_sha:
+        findings.append(f"req/DRAFT-SHA-DRIFT: карта привязана к sha256 `{pinned[:12]}…`, байты `{TZ_DRAFT}` дают "
+                        f"`{draft_sha[:12]}…` — драфт изменён без пересборки карты (обновите document.sha256 вместе с revision)")
+    sidecar = root / TZ_DRAFT_SHA
+    if not sidecar.exists():
+        findings.append(f"req/SIDECAR-MISSING: `{TZ_DRAFT_SHA}` отсутствует — digest редакции драфта не проверяем")
+    else:
+        sm = re.match(r"([0-9a-f]{64})\s", sidecar.read_text(encoding="utf-8"))
+        if not sm or sm.group(1) != draft_sha:
+            findings.append(f"req/SIDECAR-DRIFT: `{TZ_DRAFT_SHA}` содержит `{(sm.group(1)[:12] if sm else '?')}…`, байты драфта "
+                            f"дают `{draft_sha[:12]}…` — sidecar не пересчитан после правки драфта")
     catalogue = _draft_section(text, "\n## 25. ")
     draft_req = set(_REQ_ROW.findall(catalogue))
     stories = set(_US_ROW.findall(_draft_section(text, "\n## Дополнение AP.")))
@@ -892,7 +909,7 @@ SANDBOX_PATHS = [
     "docs/product/roadmap-migration-manifest.yaml",
     "tests/ui-smoke/ci-subset.txt", "PROJECT_STATE.md", "AGENTS.md", "CLAUDE.md",
     "docs/architecture/README.md", "docs/product/environment-inventory.yaml",
-    "docs/product/requirements/tz-v2.6-draft.md",
+    "docs/product/requirements/tz-v2.6-draft.md", "docs/product/requirements/tz-v2.6-draft.sha256",
     "docs/product/requirements-traceability.yaml", "docs/product/requirements-traceability.schema.json",
 ]
 SANDBOX_TREES = ["scripts/ci", "scripts/dev", "scripts/legacy", "docs/product/generated",
@@ -1117,8 +1134,30 @@ def self_test(root: Path) -> int:
          effective=lambda w: yaml.safe_load((w / TRACE_YAML).read_text(encoding="utf-8"))["requirements"]
          and next(r for r in yaml.safe_load((w / TRACE_YAML).read_text(encoding="utf-8"))["requirements"]
                   if r["id"] == "REQ-NFR-005")["delivery_status"] == "in_progress")
-    case("карта привязана к другой ревизии драфта", "req",
-         lambda w: sub(w, TZ_DRAFT, "| Revision | `draft-2026-08-28-r422`", "| Revision | `draft-2026-08-28-r423`", 1), True)
+    def _bump_draft_revision(w):
+        """Поднять rN драфта, не зная его заранее — литерал `r422` устарел в r423 и сделал бы фикстуру инертной."""
+        p = w / TZ_DRAFT
+        text = p.read_text(encoding="utf-8")
+        m = re.search(r"\| Revision \| `draft-\d{4}-\d{2}-\d{2}-r(\d+)`", text)
+        assert m, "фикстура устарела: строки Revision нет в драфте"
+        p.write_text(text[:m.start(1)] + str(int(m.group(1)) + 1) + text[m.end(1):], encoding="utf-8")
+
+    def _append_to_draft(w):
+        p = w / TZ_DRAFT
+        p.write_text(p.read_text(encoding="utf-8") + "\nПравка драфта без пересборки карты и sidecar.\n", encoding="utf-8")
+
+    def _corrupt_sidecar(w):
+        p = w / TZ_DRAFT_SHA
+        text = p.read_text(encoding="utf-8")
+        flipped = ("0" if text[0] != "0" else "1") + text[1:]
+        p.write_text(flipped, encoding="utf-8")
+
+    case("карта привязана к другой ревизии драфта", "req", _bump_draft_revision, True)
+    case("драфт изменён под тем же revision — sha256 карты и sidecar отстали", "req", _append_to_draft, True,
+         effective=lambda w: "Правка драфта без пересборки" in (w / TZ_DRAFT).read_text(encoding="utf-8"))
+    case("sidecar digest не совпадает с байтами драфта", "req", _corrupt_sidecar, True,
+         effective=lambda w: (w / TZ_DRAFT_SHA).read_text(encoding="utf-8")[:64]
+         != __import__("hashlib").sha256((w / TZ_DRAFT).read_bytes()).hexdigest())
 
     with tempfile.TemporaryDirectory() as td:
         work = _sandbox(root, Path(td))

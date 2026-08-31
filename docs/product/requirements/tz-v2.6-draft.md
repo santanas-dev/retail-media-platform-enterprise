@@ -5,10 +5,10 @@
 | Поле | Значение |
 |---|---|
 | Document ID | `TZ-RMP-2.6` |
-| Revision | `draft-2026-08-28-r422`; увеличивается при каждом содержательном изменении |
+| Revision | `draft-2026-08-31-r425`; увеличивается при каждом содержательном изменении |
 | Source | v2.5 extracted text + v2.5 DOCX + `TZ_Retail_Media_Platform_v2_6_Next_Branch_2026-07-11.docx` (additive extension) |
 | Source SHA | v2.5 extracted `.md`: `718c87678a25998b4330041d0d71946627fa2788a520c0c224d2f5e5d2941714`; v2.5 `.docx`: `8f4d7f04296a43c3a8549d2fedd68912c8ce8534727029901326005a0a61f47d`; v2.6 addendum `.docx`: `54897059a2f27e677c381f64db825326109708f787f918cdde1d846bf9491378`; v2.6 addendum extracted `.md`: `23e08e8ba560aae223235e2cfc94a9ebe75162396c9178bc39742419c19b8ff4` (2026-08-27) |
-| Parent snapshot | `HEAD b21174f93b2d5468fb2a80d63a4db35cb4906464` carried upstream draft revision `r40`; this working revision `r421` corrects a stale AQ handoff reference after Claude confirmation |
+| Parent snapshot | `origin/develop cbffb3bd7f38fea3667ddef60a0212ac0fec1ce1` carries the r422 cutover; r423/r424 completed DEC→OD source traceability; this working revision r425 fixes the r424 defects (sidecar digest, truncated changelog, DEC-014 status vs open OD-027) |
 | Draft digest sidecar | `docs/product/requirements/tz-v2.6-draft.sha256` (SHA-256 of the exact draft bytes) |
 | Extraction provenance | `python3` + `python-docx` (`Document()`), input v2.6 DOCX, output `docs/00-source-of-truth/TZ_Retail_Media_Platform_v2_6_Next_Branch_2026-07-11.extracted.md`; observed `129` paragraphs / `3` tables |
 | Product owner | назначается владельцем проекта |
@@ -25,7 +25,27 @@
 и SHA самого драфта (Git commit/blob SHA или утверждённый sidecar digest); Source SHA ниже
 идентифицирует только исходные материалы и не заменяет digest этой редакции.
 
-### Active changelog (r285–r421)
+### Active changelog (r285–r425)
+
+Changelog r425: исправлены три дефекта r424, найденные проверкой Claude — sidecar пересчитан по
+фактическим байтам файла (в r424 digest не совпадал с драфтом), завершена оборванная фраза
+changelog r424, строка DEC-014 в Дополнении I возвращена в статус open/owner decision required
+согласно `OD-027` (open). Нормативные §6/§25/§26/AP не менялись; traceability перепривязывается
+на r425.
+
+Changelog r424: Дополнение I приведено к единому decision registry — каждая строка DEC,
+имеющая OD в `roadmap.yaml`, теперь ссылается на него явно (DEC-001→OD-021, DEC-002→OD-022,
+DEC-005→OD-023, DEC-010→OD-024, DEC-012→OD-025, DEC-013→OD-026, DEC-014→OD-027,
+DEC-015→OD-028, DEC-016→OD-029, DEC-017→OD-030, DEC-018→OD-031, DEC-019→OD-032,
+DEC-020→OD-033, DEC-021→OD-034, DEC-023→OD-035, DEC-025→OD-036). Статусы и решения самих
+DEC не менялись; формулировка строки DEC-014 в этой редакции ошибочно заявила «approved
+boundary» при open `OD-027` — исправлено в r425.
+
+Changelog r423: сверены §29/Дополнение I с `roadmap.yaml:owner_decisions`. DEC-022, DEC-024
+и DEC-026 больше не являются `PENDING-OD`: владелец утвердил их как OD-018/019/020
+2026-08-28. В драфте зафиксированы выбранные варианты и обязательные implementation/
+ADR-amendment follow-ups; DEC-005, DEC-014 и остальные действительно открытые решения
+сохраняют open-статус. A1 traceability требует пересборки на новый revision.
 
 Changelog r422: cutover по AQ.1 №3 после owner ACCEPT (OD-017, 2026-08-28): файл перенесён в
 `docs/product/requirements/tz-v2.6-draft.md`, sidecar перемещён; старый путь — immutable redirect.
@@ -1353,11 +1373,11 @@ ADR-017 канонизирует `POST /api/v1/pop/batch`. В новой ред�
 | DEC-019 | Персонализация покупателя вне первой очереди | privacy/legal decision, lawful purpose и review trigger |
 | DEC-020 | Звук в торговом зале вне первой очереди | business/operations safety decision и review date |
 | DEC-021 | Произвольный HTML/JS вне первой очереди | security decision, sandbox/CSP policy и activation gate |
-| DEC-022 | Additive exceptions v2.6 | owner выбирает точный перечень и границы исключений из §0.3; до решения запрещены изменения существующих Campaign/Delivery/PoP кроме явно разрешённого §3.1 |
+| DEC-022 | Additive exceptions v2.6 | **approved OD-018 (2026-08-28):** разрешено только исключение §3.1 delivery/priority engine (competitive separation); любые другие изменения Campaign/Delivery/PoP требуют нового owner decision |
 | DEC-023 | Миграция role bundles | product role model уже принят Q2; определить additive создание отсутствующих `campaign_manager/moderator/approver/ops_operator`, migration/alias `operator` и сохранение permission-code authorization |
-| DEC-024 | Duplicate PoP внутри batch | согласовать ADR-017 и API; рекомендация Codex — HTTP 200 для валидного batch, per-event `duplicate` + machine error code 409, без повторного учёта |
+| DEC-024 | Duplicate PoP внутри batch | **approved OD-019 (2026-08-28):** валидный batch отвечает HTTP 200; duplicate получает per-event `duplicate` и machine error code 409 в теле, повторно не учитывается; ADR-017 amendment и behavioral evidence обязательны |
 | DEC-025 | Campaign lifecycle conformance | закрыто ADR-015: реализовать полный accepted lifecycle, включая `scheduled`, resume, revise и archive; иной вариант требует amendment ADR-015 |
-| DEC-026 | Отмена commerce order | определить допустимые источники cancellation; рекомендация Codex — разрешить draft cancellation, а confirmed закрывать reversal/compensation workflow, не прямой отменой |
+| DEC-026 | Отмена commerce order | **approved OD-020 (2026-08-28):** `draft → cancelled` разрешён; `confirmed` закрывается только reversal/compensation workflow, прямая отмена запрещена; код и тесты приводятся к этому контракту |
 | DEC-027 | A/B attribution scope и sequencing | OD-014: после attribution prerequisites; winner metric/methodology и milestone требуют owner decision |
 
 Неразрешённый DEC блокирует связанные REQ-ID и не превращается в «planned» без владельца.
@@ -1680,32 +1700,32 @@ security control требует DEC-ID, impact analysis по REQ/API/ERD/UX/road
 
 | DEC-ID | Текущий источник для сверки | Статус до v2.6 |
 |---|---|---|
-| DEC-001 | ADR-019 + перечень каналов §23/25 | scope/владельцы не завершены |
-| DEC-002 | ADR-019 | **approved**: Orchestrator/Adapter Layer/mock только после второго реального канала |
+| DEC-001 | OD-021, ADR-019 + перечень каналов §23/25 | scope/владельцы не завершены |
+| DEC-002 | OD-022, ADR-019 | **approved**: Orchestrator/Adapter Layer/mock только после второго реального канала |
 | DEC-003 | OD-002, RM-STAB-010 | **approved**: Ed25519 pilot/prod, HMAC только dev/control-plane stand; implementation evidence отдельно |
 | DEC-004 | ADR-002 + OD-008 | NATS JetStream baseline принят; открыты только детальные persistence/ops thresholds и evidence |
-| DEC-005 | §16.2, §23.7 | master price/SKU owner не зафиксирован |
+| DEC-005 | OD-023, §16.2, §23.7 | master price/SKU owner не зафиксирован |
 | DEC-006 | product decision §5.1 + OD-009 | SLA targets approved; methodology/compensation/legal часть открыта |
 | DEC-007 | product decision §5.1 + OD-009 | retention defaults approved; 152-ФЗ/legal exceptions открыты |
 | DEC-008 | OD-010, §22.7/22.9 | staged rollout/flags открыты |
 | DEC-009 | OD-011, §22.15 | load/capacity gate открыт |
-| DEC-010 | product decision §5.1, RM-PILOT-* | шкала approved; измеримые exit criteria открыты |
+| DEC-010 | OD-024, product decision §5.1, RM-PILOT-* | шкала approved; измеримые exit criteria открыты |
 | DEC-011 | OD-005, OD-013 | первый pilot managed-first approved; post-pilot self-service scope открыт |
-| DEC-012 | §5/§17, RM-OPS-001 | HA/DR ownership и target не закрыты |
-| DEC-013 | §12/§16, REQ-INT-003 | advertiser/BI API access, scope, key rotation и audit не закрыты |
-| DEC-014 | §R, REQ-ARCH-002 | предложенная read-only/non-authoritative boundary; **owner decision требуется** в `roadmap.yaml:owner_decisions` с датой, scope, freshness/correlation и запретом записи статусов |
-| DEC-015 | REQ-ARCH-004 | production deployment topology и HA/rollback критерии не закрыты |
-| DEC-016 | REQ-SEC-003 | device PKI/mTLS activation, migration и rollback не закрыты |
-| DEC-017 | §2.2, §22.12 | полный ЭДО/биллинг исключён до owner/legal решения |
-| DEC-018 | §2.2 | DSP/SSP-закупка исключена до product/legal решения |
-| DEC-019 | §2.2, §14 | персонализация покупателя исключена до privacy/legal решения |
-| DEC-020 | §2.2, §9 | звук исключён до business/operations safety решения |
-| DEC-021 | product decision §5.1, §2.2, §7 | запрет в первой очереди approved; future activation требует security gate |
-| DEC-022 | `PENDING-OD`, v2.6 addendum §0.3/§8.3 | additive exceptions не выбраны владельцем |
-| DEC-023 | product decision Q2, REQ-UX-001 | role/persona target approved; migration `operator` и отсутствующих bundles открыта |
-| DEC-024 | `PENDING-OD`, ADR-017 | batch/per-event duplicate semantics не согласованы |
-| DEC-025 | ADR-015 | **approved** lifecycle; текущий код не соответствует и требует implementation task |
-| DEC-026 | `PENDING-OD`, commerce lifecycle | draft/confirmed cancellation semantics не согласованы |
+| DEC-012 | OD-025, §5/§17, RM-OPS-001 | HA/DR ownership и target не закрыты |
+| DEC-013 | OD-026, §12/§16, REQ-INT-003 | advertiser/BI API access, scope, key rotation и audit не закрыты |
+| DEC-014 | OD-027, §R, REQ-ARCH-002 | предложенная read-only/non-authoritative boundary; **owner decision требуется** — `OD-027` open: scope, freshness/correlation contract, оформление расхождений (MON-DIVERGENCE) и запрет записи статусов |
+| DEC-015 | OD-028, REQ-ARCH-004 | production deployment topology и HA/rollback критерии не закрыты |
+| DEC-016 | OD-029, REQ-SEC-003 | device PKI/mTLS activation, migration и rollback не закрыты |
+| DEC-017 | OD-030, §2.2, §22.12 | полный ЭДО/биллинг исключён до owner/legal решения |
+| DEC-018 | OD-031, §2.2 | DSP/SSP-закупка исключена до product/legal решения |
+| DEC-019 | OD-032, §2.2, §14 | персонализация покупателя исключена до privacy/legal решения |
+| DEC-020 | OD-033, §2.2, §9 | звук исключён до business/operations safety решения |
+| DEC-021 | OD-034, product decision §5.1, §2.2, §7 | запрет в первой очереди approved; future activation требует security gate |
+| DEC-022 | OD-018, v2.6 addendum §0.3/§8.3 | approved: только §3.1 delivery/priority engine; остальные additive exceptions запрещены без нового решения |
+| DEC-023 | OD-035, product decision Q2, REQ-UX-001 | role/persona target approved; migration `operator` и отсутствующих bundles открыта |
+| DEC-024 | OD-019, ADR-017 | approved: HTTP 200 batch + per-event `duplicate`/409; требуется amendment ADR-017 и implementation evidence |
+| DEC-025 | OD-036, ADR-015 | **approved** lifecycle; текущий код не соответствует и требует implementation task |
+| DEC-026 | OD-020, commerce lifecycle | approved: draft cancellation; confirmed только reversal/compensation; implementation evidence требуется |
 | DEC-027 | OD-014, REQ-V26-002/010 | A/B/lift sequencing и winner methodology открыты |
 При конфликте приоритет остаётся за утверждённым ADR и owner decision согласно
 `AGENTS.md`. Строка с несовпадающим статусом должна помечаться `CONFLICT`, а не
@@ -2909,5 +2929,6 @@ next-step. `walkthrough` для всех UI stories остаётся `PENDING` �
 | 4 | Governance scope из AQ принимается в очередь: traceability schema/gate, journey↔registry↔smoke drift, единый decision registry, generated ERD/OpenAPI/permissions и documentation drift | roadmap governance | Claude готовит task breakdown и вносит его в `roadmap.yaml` отдельным owner-gated изменением |
 | 5 | Master-data adapter признан отсутствующим prerequisite; текущая ESL/price-checker integration — ложная baseline-посылка. Attribution/audience/dynamic creative сохраняются, но имеют `blocked` до prerequisite evidence | REQ-V26-002/005/008, integration/channel scope | создать отдельные dependency tasks как минимум для price/SKU master adapter, sales-reference ingestion+methodology, audience source/privacy contract, dynamic binding/rendition safety и реальной интеграции второго канала; для каждой — owner/contract/security/behavioral acceptance; не начинать downstream implementation раньше них |
 
-После этих решений r419 передаётся Claude/Codex на повторное review. Статус документа
-остаётся `DRAFT` до traceability, canonical cutover и закрытия применимых approval gates.
+Историческая запись: после решений владельца r419 передавался Claude/Codex на повторное
+review. Текущий объект — r425; статус документа остаётся `DRAFT` до пересборки traceability
+и закрытия применимых approval gates.

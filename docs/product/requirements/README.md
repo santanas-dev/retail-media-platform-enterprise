@@ -17,7 +17,9 @@
 ### Драфт ТЗ v2.6 — `tz-v2.6-draft.md`
 
 - **Статус содержания:** ACCEPTED владельцем 2026-08-28 (`OD-017`, редакция r421,
-  SHA-256 `59478746…`); текущая редакция r422 — только cutover пути.
+  SHA-256 `59478746…`); текущая рабочая редакция r425: decision-source traceability Дополнения I
+  по всем 27 DEC (r423 — OD-018/019/020, r424 — OD-021…036) и исправление дефектов r424
+  (sidecar, changelog, DEC-014 open по `OD-027`); нормативные разделы = r421.
 - **Статус документа:** DRAFT → `APPROVED` только после артефактов Дополнения AG и закрытия
   применимых gates (`roadmap.yaml`). Не источник истины, roadmap не меняет.
 - **Sidecar:** `tz-v2.6-draft.sha256`; **приложения:** `tz-v2.6-draft-appendix-index.md`.
@@ -27,10 +29,11 @@
 - Решения `DEC-022/024/026` записаны как `OD-018/019/020`; `DEC-005` (владелец master-данных
   цен/SKU) остаётся открытым.
 
-### P0 Foundation Decision
+### P0 Foundation Decision (закрыто)
 
-**Перед любой реализацией v2.6 обязателен explicit P0 decision по tenant model.**
-См. `docs/architecture/adr/ADR-018-tenant-model-for-next-branch.md` (Proposed).
+**Tenant model v2.6 принят:** multi-retailer / syndication-ready по ADR-018.
+Новые изменения tenant boundary требуют отдельного owner decision и ADR amendment.
+См. `docs/architecture/adr/ADR-018-tenant-model-for-next-branch.md` (Accepted).
 
 Без решения: attribution, finance, targeting, competitive separation и RLS-домены
 придётся переписывать при переходе к multi-retailer модели.
