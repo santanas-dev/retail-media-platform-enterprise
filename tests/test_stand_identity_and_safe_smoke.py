@@ -24,6 +24,7 @@ import ast
 import importlib.util
 import json
 import os
+import re
 import stat
 import sys
 from pathlib import Path
@@ -53,11 +54,15 @@ stand = _load(TOOL, "local_stand_under_test")
 smoke = _load(SMOKE, "stand_safe_smoke_under_test")
 validator = _load(VALIDATOR, "validate_image_lock_under_test")
 
+# RM-TECH-210 (2026-08-31): head репозитория вычисляется, а не пинится литералом —
+# иначе каждая новая миграция роняет эти тесты (так и случилось с 037).
+HEAD = head_mod.resolve_single_head(VERSIONS)
+
 
 def _lock(**release) -> dict:
     rel = {"version": "stand-abc1234",
            "git_sha": "c0881118ea9232af190560031f718f126b431322",
-           "schema_head": "036"}
+           "schema_head": HEAD}
     rel.update(release)
     return {
         "release": rel,
@@ -83,7 +88,10 @@ def _lock(**release) -> dict:
 class TestSingleHeadResolver:
 
     def test_resolves_the_repo_to_one_head(self):
-        assert head_mod.resolve_single_head(VERSIONS) == "036"
+        """Резолвер даёт ровно тот head, что независимо следует из имён файлов миграций."""
+        expected = sorted(p.name[:3] for p in VERSIONS.glob("[0-9][0-9][0-9]_*.py"))[-1]
+        assert head_mod.resolve_single_head(VERSIONS) == expected
+        assert re.fullmatch(r"\d{3}", expected)
 
     def test_rejects_a_branched_history(self, tmp_path):
         (tmp_path / "a.py").write_text('revision: str = "a"\ndown_revision: Union[str, None] = None\n')
@@ -165,7 +173,7 @@ class TestIdentitySwitch:
         assert identity == {
             "RMP_VERSION": "stand-abc1234",
             "RMP_GIT_SHA": "c0881118ea9232af190560031f718f126b431322",
-            "RMP_SCHEMA_HEAD": "036",
+            "RMP_SCHEMA_HEAD": HEAD,
             "RMP_BUILD_TIME": "2026-08-25T20:35:34Z",
         }
 
@@ -424,11 +432,11 @@ class TestStandSafeSmoke:
 class TestCurrentStandIdentity:
 
     def test_repo_head_is_the_head_the_stand_must_advertise(self):
-        """036 without anyone editing .env.stand: the lock carries it and the
-        update tool writes it."""
-        assert head_mod.resolve_single_head(VERSIONS) == "036"
-        identity = stand.version_identity(_lock(schema_head="036"))
-        assert identity["RMP_SCHEMA_HEAD"] == "036"
+        """The repo head without anyone editing .env.stand: the lock carries it and
+        the update tool writes it (head is resolved, not typed)."""
+        assert head_mod.resolve_single_head(VERSIONS) == HEAD
+        identity = stand.version_identity(_lock(schema_head=HEAD))
+        assert identity["RMP_SCHEMA_HEAD"] == HEAD
 
     def test_no_documented_manual_env_edit_remains_in_the_tooling(self):
         text = TOOL.read_text()

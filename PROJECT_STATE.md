@@ -112,7 +112,11 @@ CI на свежей БД не видит) — BEHAVIORAL-POP-IDEMPOTENCE-001 �
 **OD-044 (2026-08-31):** владелец принял D1–D3 RM-STAB-003 (security_admin сузить в RM-STAB-015; analyst read-only retailer-scoped;
 retailer scope по умолчанию в pilot) → RM-STAB-003 `verification` (gate granted, done после CI). **RM-STAB-006 `in_progress`:**
 `journeys/journeys.yaml` (79 из registry, selectors из smoke, `Happy-path: N`), валидатор `scripts/ci/check-journey-spec.py --strict` PASS, self-test 11/11.
-RM-TECH-210 подготовлен к commit (список файлов — `scratchpad/rm-tech-210-commit.txt`), commit/push — по отдельному разрешению.
+Коммит `062c16f` (RM-TECH-210 + RM-STAB-003/006, OD-044) запушен; **CI 33398575125 — failure**: jobs «Python — Unit Tests» и
+«Packaging (001B)» — фикстуры `test_pilot_host_preflight`/`test_pilot_packaging`/`test_stand_identity_and_safe_smoke` пинили
+literal `036` как head репозитория, миграция 037 их уронила (behavioral/UI-smoke skipped). Фикс подготовлен локально: фикстуры
+читают head через `alembic_head.resolve_single_head`; `pytest tests/` в окружении CI-job — 1909 passed / 0 failed. Fix-commit —
+по отдельному разрешению; до зелёного CI RM-STAB-003/006 не закрываются, `device.onboard` остаётся blocked.
 Не начаты C/CORE/CH/A/POPS; ТЗ ACCEPTED.
 
 **Next Active Workstream:** **ТЗ v2.6 → APPROVED**: **Стадия S (RM-TECH-210 in_progress, RM-STAB-003 verification, RM-STAB-006 in_progress → 004 → 007 → 005/009/010/013/014/016 → 012/015/017 → 008 → 011) → Gate-S (codex)**, затем стадия C (OD-042/043): C-задачи стартуют только при закрытых зависимостях; кандидаты AG (13 файлов) принимаются внутри задач (owner_gate); Codex — сверка кандидатов с кодом; решения OD-009/011/021/025 → **Gate-C = ТЗ APPROVED и старт разработки** (OD-041). RM-UX-007/walkthrough — приостановлены OD-041. RM-UX-007/walkthrough — приостановлены OD-041. RM-GOV-010 — `verification` после CI. Ранее: A1 `requirements-traceability.yaml` + gate `req` + `SC-*` для 53 REQ, A3 task breakdown (owner-gated), артефакты Дополнения AG. Открыто у владельца: operator walkthrough в DEV (Rule 8); имена исполнителей ролей (amendment OD-039/OD-023). Параллельно: этап S (`RM-STAB-003…`), `RM-TECH-210`.

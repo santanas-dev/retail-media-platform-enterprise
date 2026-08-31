@@ -23,6 +23,12 @@ import pytest
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+# RM-TECH-210: head репозитория вычисляется из миграций, а не пинится литералом.
+import importlib.util as _ilu
+_spec = _ilu.spec_from_file_location("alembic_head_for_packaging_tests", REPO_ROOT / "scripts" / "deploy" / "alembic_head.py")
+_head_mod = _ilu.module_from_spec(_spec); _spec.loader.exec_module(_head_mod)
+REPO_HEAD = _head_mod.resolve_single_head(REPO_ROOT / "apps" / "control-api" / "alembic" / "versions")
 PILOT_COMPOSE = REPO_ROOT / "infra" / "compose" / "docker-compose.pilot.yml"
 LOCK_EXAMPLE = REPO_ROOT / "infra" / "deploy" / "images.lock.example.json"
 ENV_EXAMPLE = REPO_ROOT / "infra" / "deploy" / ".env.pilot.example"
@@ -196,7 +202,7 @@ class TestValidatorScripts:
 
     def test_image_lock_validator_accepts_valid_lock(self, tmp_path):
         lock = {
-            "release": {"schema_head": "036",
+            "release": {"schema_head": REPO_HEAD,
                         "version": "v0.11.0-pilot-control-plane",
                         "git_sha": "e13020768c7cc1c2358ff03713baf32fc6ae409c"},
             "build_timestamp": "2026-08-22T00:00:00Z",

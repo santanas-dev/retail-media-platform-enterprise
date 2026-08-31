@@ -30,10 +30,14 @@
 | полный `tests/behavioral` #1 | **477 passed, 12 skipped, 0 failed** (4:37) |
 | полный `tests/behavioral` #2 (та же БД, что #1) | 8 failed / 469 passed — все 8 в PoP-тестах (`test_edge003*`) из-за фиксированных `event_id`: на свежей БД финальный код даёт 11/11, повтор по той же БД — те же 8 падений. **Pre-existing неидемпотентность тестов, не регрессия** (находка BEHAVIORAL-POP-IDEMPOTENCE-001 → RM-STAB-011) |
 | полный `tests/behavioral` #3 (свежая БД, финальный код) | **477 passed, 12 skipped, 0 failed** (4:36) |
-| root-набор `tests/*.py` | падения только pre-existing/окружение (`test_pilot_host_preflight`, `test_pilot_packaging`, `test_s079_inventory_reservations`, production-config при заданных env) — воспроизводятся на исходном коде, не связаны с задачей |
+| root-набор `tests/` (как CI «Python — Unit Tests», с env job) | **исправление после красного CI 33398575125**: `test_pilot_host_preflight`, `test_pilot_packaging`, `test_stand_identity_and_safe_smoke` пинили literal `036` как head репозитория; миграция 037 их уронила (мой первичный вывод «pre-existing» был ошибкой — untracked-миграция оставалась в дереве при проверке «на исходном коде»). Фикстуры переведены на `alembic_head.resolve_single_head` (динамический head); тест резолвера сверяется с независимым вычислением из имён файлов. Результат: см. итог в этой таблице ниже |
 
 CI-evidence (job «Behavioral PostgreSQL Tests — ADR-008 Gate») — после разрешения владельца на commit/push. Registry `device.onboard`
 → `reachable` только по CI (OD-038); `done` — только после owner gate `device_contract`.
+
+## 3a. Итог unit-набора после фикса
+
+`pytest tests/` в окружении CI-job: см. запись в PROJECT_STATE (STAGE-S-001) и следующий CI-прогон.
 
 ## 4. Регрессионные критерии (traceability REQ-SEC-002/003)
 

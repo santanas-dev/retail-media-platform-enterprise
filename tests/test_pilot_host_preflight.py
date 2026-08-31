@@ -38,10 +38,16 @@ GOOD_DIGEST = "sha256:" + "b" * 64
 STRONG = "S" * 40  # >= _MIN_SECRET_LEN
 
 
+_HEAD_SPEC = importlib.util.spec_from_file_location("alembic_head_for_preflight_tests", Path(__file__).resolve().parents[1] / "scripts" / "deploy" / "alembic_head.py")
+_HEAD_MOD = importlib.util.module_from_spec(_HEAD_SPEC); _HEAD_SPEC.loader.exec_module(_HEAD_MOD)
+# RM-TECH-210: head репозитория вычисляется из миграций, а не пинится литералом.
+REPO_HEAD = _HEAD_MOD.resolve_single_head(Path(__file__).resolve().parents[1] / "apps" / "control-api" / "alembic" / "versions")
+
+
 def _valid_lock() -> dict:
     return {
         "release": {"version": "v0.11.1-pilot-packaging", "git_sha": GOOD_SHA,
-                    "schema_head": "036"},
+                    "schema_head": REPO_HEAD},
         "checksum": "c" * 64,
         "images": [
             {
