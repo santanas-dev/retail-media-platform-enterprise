@@ -3,14 +3,14 @@
 # Валидируется scripts/ci/roadmap-governance-guard.py (модуль req) и roadmap-traceability.schema.json.
 # Правится руками внутри утверждённой задачи; TBD блокирует APPROVED.
 # Ревизия драфта: r425 (2026-08-31) = r421 (ACCEPT OD-017) + пути/sidecar (r422) + §29/Доп. I ↔ OD-018/019/020 (r423)
-# + ссылки Доп. I на OD-021…036 (r424) + исправление дефектов r424 (r425); нормативные §6/§25/§26/AP байт-в-байт
+# + ссылки Доп. I на OD-021…036 (r424) + дефекты r424 (r425) + OD-023/OD-039 (r426) + OD-040 (r427) + AG/AN/OD-041 (r428); нормативные §6/§25/§26/AP байт-в-байт
 # как в r419 — состав REQ/SC/story не менялся.
 schema_version: 1
 document:
   id: TZ-RMP-2.6
-  revision: draft-2026-08-31-r425
+  revision: draft-2026-08-31-r428
   path: docs/product/requirements/tz-v2.6-draft.md
-  sha256: 8688b5595d4d527f07684fb6a216f5e1659952f9359fbfe2f15b012381f81d2e
+  sha256: ffb8cf7d192ee0d00fb648d228b1a1fd89a4a5b81d498867051146d4122850e7
   status: ACCEPTED
   accepted_by: OD-017
   accepted_on: '2026-08-28'
@@ -25,6 +25,18 @@ rules:
 - journey_ids — только canonical ID feature-registry; pending_journey_ids — из pending_journey_map
 - исполняемый реестр решений — roadmap.yaml:owner_decisions; dependencies ссылаются на DEC alias
 - >-
+  owner - роль из словаря OD-039 (Product/Technical/Architecture/Security/Operations/Product Data/Legal/Finance/Channel-Content/Analytics/PMO),
+  выведена по правилу OD-039 (owner_role задачи → семейство ID → kind SC); имена исполнителей ролей - amendment OD-039; TBD не допускается
+- >-
+  pending_journey_map закрыт OD-040 (2026-08-31): 6 canonical ID созданы в registry (blocked), audit.compare rejected,
+  security.review → audit.view; awaiting_owner не допускается
+- >-
+  OD-042 (2026-08-31): каждый REQ несёт implementation_mode preserve|adapt|replace|new относительно baseline кода develop @ 4ac3ddb
+  (code_baseline), regression_criteria; replace допустим только с conflict_ref - доказанным конфликтом существующего поведения с ТЗ r428
+- >-
+  RM-GOV-012 (2026-08-31): delivery_status blocked у REQ ⇔ все его задачи blocked по open OD; зависимость между задачами
+  блокировкой не является (planned)
+- >-
   roadmap_ids заполнены RM-GOV-009 из кандидата A3 (OD-037); disposition task_required больше не допускается без
   owner-approved deferred
 pending_journey_map:
@@ -37,8 +49,9 @@ pending_journey_map:
     canonical: attribution.lift_report
     note: registry ID создан RM-GOV-009 (blocked до задачи)
   audit.compare:
-    status: awaiting_owner
+    status: rejected
     canonical: null
+    note: 'rejected как product-journey (OD-040): governance-процедура аудитора, доказательство - roadmap-governance-guard в CI; REQ-GOV-001 покрыт SC'
   campaign.competitive_separation:
     status: mapped
     canonical: campaign.competitive_separation
@@ -52,24 +65,29 @@ pending_journey_map:
     canonical: campaign.schedule
     note: registry ID создан RM-GOV-009 (blocked до задачи)
   campaign.underdelivery:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: campaign.underdelivery
+    note: registry ID создан RM-GOV-010 по OD-040 (blocked до RM-TECH-201)
   carrier.manage:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: carrier.manage
+    note: registry ID создан RM-GOV-010 по OD-040 (blocked до RM-TECH-255)
   channel.register:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: channel.register
+    note: registry ID создан RM-GOV-010 по OD-040 (blocked до RM-TECH-207A)
   channel.rendition_validate:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: channel.rendition_validate
+    note: registry ID создан RM-GOV-010 по OD-040 (blocked до RM-TECH-204)
   content.dynamic_binding:
     status: mapped
     canonical: content.dynamic_binding
     note: registry ID создан RM-GOV-009 (blocked до задачи)
   data.catalog:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: data.catalog
+    note: registry ID создан RM-GOV-010 по OD-040 (blocked до RM-TECH-251)
   experiment.evaluate:
     status: mapped
     canonical: experiment.evaluate
@@ -91,8 +109,9 @@ pending_journey_map:
     canonical: integration.reconcile
     note: registry ID создан RM-GOV-009 (blocked до задачи)
   inventory.priority:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: inventory.priority
+    note: registry ID создан RM-GOV-010 по OD-040 (blocked до RM-TECH-202)
   kpi.review:
     status: mapped
     canonical: kpi.review
@@ -110,8 +129,9 @@ pending_journey_map:
     canonical: rollout.rollback
     note: registry ID создан RM-GOV-009 (blocked до задачи)
   security.review:
-    status: awaiting_owner
-    canonical: null
+    status: mapped
+    canonical: audit.view
+    note: 'mapped → canonical audit.view (OD-040): baseline по AP US-SEC-001; критичный фильтр/SIEM-экспорт - acceptance REQ-SEC-001 (RM-TECH-252/253)'
 registry_exclusions: []
 requirements:
 - id: REQ-SCOPE-001
@@ -119,14 +139,14 @@ requirements:
   source:
   - TZ v2.5 §1
   - TZ v2.5 §2
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: owner-approved scope/deferred register
   scope:
   - pilot
   - production
   coverage_type: governance
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-BIZ-001
@@ -149,20 +169,29 @@ requirements:
   - kind: command
     ref: scripts/ci/roadmap-governance-guard.py
     status: candidate
+  implementation_mode: preserve
+  mode_rationale: 'scope/deferred ведутся owner_decisions; код не меняется'
+  code_baseline:
+  - scripts/ci/roadmap-governance-guard.py
+  - scripts/ci/check-roadmap-schema.py
+  - scripts/roadmap-consistency-check.py
+  - docs/product/roadmap.yaml
+  regression_criteria:
+  - 'поведение кода не меняется; изменения только в evidence/документах (diff вне tests/docs/scripts — красный сигнал)'
   disposition: task
 - id: REQ-CORE-001
   title: Универсальная иерархия носителей
   source:
   - TZ v2.5 §4
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: migration + seed network/branch/cluster/store/store_group/channel/device/surface уровней
   scope:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Product Data Owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-240
@@ -184,13 +213,24 @@ requirements:
       существуют уровни network/branch/cluster/store/store_group/channel/device/surface с FK и RLS; отсутствие уровня
       — красный design-gate
   evidence: []
+  implementation_mode: adapt
+  mode_rationale: 'иерархия branch/cluster/store/device/surface существует (seed, models); дополняется network/store_group аддитивной миграцией RM-TECH-240'
+  code_baseline:
+  - packages/domain/models.py
+  - apps/control-api/alembic/versions/001_init_channel_model.py
+  - apps/control-api/alembic/versions/020_multitenancy_retailer_id.py
+  - apps/control-api/seed.py
+  - tests/behavioral/test_scope_rls.py
+  regression_criteria:
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
+  - 'alembic upgrade/downgrade rehearsal на стенде до применения (owner gate migration_application)'
   disposition: task
 - id: REQ-CORE-002
   title: Channel-neutral campaign/inventory
   source:
   - TZ v2.5 §4
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     campaign/inventory/RBAC/reporting core не импортируют channel adapter; добавление канала требует только нового
@@ -199,7 +239,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-207A
@@ -223,6 +263,15 @@ requirements:
   - kind: unit
     ref: tests/test_import_boundaries.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'channel-neutral границы есть (import boundaries); закрепляются контрактом/тестами без переписывания'
+  code_baseline:
+  - tests/test_import_boundaries.py
+  - packages/api/dependencies.py
+  - tests/test_api_tx_boundary.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/test_import_boundaries.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-CORE-003
   title: Target resolution boundary
@@ -230,7 +279,7 @@ requirements:
   - TZ v2.5 §6
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     placement таргетируется на network/branch/cluster/store/store-group, channel/device type, zone/category/SKU/shelf
@@ -239,7 +288,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-241
@@ -263,20 +312,29 @@ requirements:
   - kind: unit
     ref: tests/test_s089_inventory_simulation.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'симуляция инвентаря существует; boundary broad target → display_surface_id добавляется RM-TECH-241'
+  code_baseline:
+  - packages/api/identity_routes/inventory.py
+  - apps/control-api/alembic/versions/015_inventory_domain.py
+  - apps/admin-web/src/pages/InventoryPage.tsx
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/test_s089_inventory_simulation.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-ARCH-001
   title: Domain boundaries, ERD и event contracts
   source:
   - TZ v2.5 §4
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: согласованные versioned artifacts
   scope:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-220
@@ -299,6 +357,14 @@ requirements:
   - kind: command
     ref: scripts/ci/roadmap-governance-guard.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'manifest_v1/proof_event_v1 схемы существуют; OpenAPI/event schema as-built генерируется RM-TECH-220 поверх'
+  code_baseline:
+  - packages/contracts/manifest_v1.schema.json
+  - packages/contracts/proof_event_v1.schema.json
+  - packages/contracts/README.md
+  regression_criteria:
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-ARCH-002
   title: Product independence
@@ -307,7 +373,7 @@ requirements:
   - TZ v2.5 §4
   - TZ v2.5 §21
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     платформа не зависит от Retail Media Dashboard, Hermes/LLM или другого внешнего runtime для production работы
@@ -315,7 +381,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-STAB-017
@@ -338,13 +404,21 @@ requirements:
   - kind: unit
     ref: tests/test_production_config_gate.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'production config gate существует; production smoke при отключённом внешнем runtime добавляется RM-STAB-017'
+  code_baseline:
+  - tests/integration/test_pilot_e2e.py
+  - scripts/deploy/stand_safe_smoke.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/test_production_config_gate.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-ARCH-003
   title: Async I/O boundary
   source:
   - TZ v2.5 §4
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     blocking I/O запрещён в async handlers/dependencies; используются native async или утверждённый threadpool
@@ -352,7 +426,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-STAB-012
@@ -375,13 +449,22 @@ requirements:
   - kind: unit
     ref: tests/test_api_tx_boundary.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'tx boundary тест существует; детектор blocking I/O добавляется RM-STAB-012'
+  code_baseline:
+  - tests/test_import_boundaries.py
+  - packages/api/dependencies.py
+  - tests/test_api_tx_boundary.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/test_api_tx_boundary.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-ARCH-004
   title: Environment deployment path
   source:
   - TZ v2.5 §4
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     local Docker Compose; pilot на одном host с backup/monitoring/restore; test store с ≥2 backend/gateway за reverse
@@ -390,7 +473,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Architecture owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-PILOT-002
@@ -422,6 +505,16 @@ requirements:
   - kind: integration
     ref: tests/integration/test_stand_rollback_drill.py
     status: candidate
+  implementation_mode: new
+  mode_rationale: 'production/pilot deployment path не существует (pilot не развёрнут); stand-safe скрипты — база'
+  code_baseline:
+  - scripts/deploy/local_stand.py
+  - scripts/deploy/stand_safe_smoke.py
+  - infra/compose/docker-compose.local-stand.yml
+  - tests/integration/test_stand_rollback_drill.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/integration/test_stand_rollback_drill.py, tests/test_pilot_host_preflight.py, tests/test_pilot_packaging.py'
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-CHAN-001
   title: Channel registry и capability profiles
@@ -430,7 +523,7 @@ requirements:
   - TZ v2.5 §10
   - TZ v2.5 §15
   - TZ v2.5 §23
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     versioned CRUD + scope/RLS; ESL production activation requires a separate pilot and approvals from price-process
@@ -439,7 +532,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-207A
@@ -451,9 +544,9 @@ requirements:
   - DEC-001
   story_ids:
   - US-CHAN-001
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - channel.register
+  pending_journey_ids: []
   scenario_ids:
   - SC-CHAN-002
   artifacts: []
@@ -463,6 +556,16 @@ requirements:
     then: >-
       версия и audit записаны; чужой scope не видит; ESL production activation требует отдельного решения (OD-021)
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'channel registry/capability profiles отсутствуют; KSO — единственный канал (ADR-019)'
+  code_baseline:
+  - packages/domain/models.py
+  - apps/control-api/alembic/versions/001_init_channel_model.py
+  - apps/control-api/alembic/versions/020_multitenancy_retailer_id.py
+  - apps/control-api/seed.py
+  - tests/behavioral/test_scope_rls.py
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-CHAN-002
   title: Physical/logical device-surface model
@@ -472,7 +575,7 @@ requirements:
   - TZ v2.5 §10
   - TZ v2.5 §15
   - TZ v2.5 §23
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     surface-level targeting, SLA и профили размеров (КСО 1440×1080, TV 1920×1080, ESL 296×128, LED 1200×80); one
@@ -484,7 +587,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-207A
@@ -512,6 +615,19 @@ requirements:
   - kind: unit
     ref: tests/test_edge001_device_onboarding.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'device/surface модель и onboarding существуют; physical/logical carrier расширяется по RM-TECH-207A'
+  code_baseline:
+  - packages/api/identity_routes/devices.py
+  - packages/api/device_routes/onboard.py
+  - apps/control-api/alembic/versions/021_device_onboarding_codes.py
+  - apps/control-api/alembic/versions/023_device_rls_bootstrap.py
+  - apps/control-api/alembic/versions/025_device_heartbeat.py
+  - tests/behavioral/test_edge001_device_onboarding.py
+  - tests/behavioral/test_edge004_heartbeat.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_edge001_device_onboarding.py, tests/test_edge001_device_onboarding.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-CHAN-003
   title: Полное управление носителями
@@ -520,7 +636,7 @@ requirements:
   - TZ v2.5 §10
   - TZ v2.5 §15
   - TZ v2.5 §23
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     Admin/Operations должны видеть и управлять всеми physical device, logical carrier и display surface всех активных
@@ -533,7 +649,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-207A
@@ -544,9 +660,9 @@ requirements:
   dependencies: []
   story_ids:
   - US-CHAN-003
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - carrier.manage
+  pending_journey_ids: []
   scenario_ids:
   - SC-CHAN-003
   artifacts: []
@@ -560,6 +676,19 @@ requirements:
   - kind: unit
     ref: tests/test_phase3_devices_api.py
     status: candidate
+  implementation_mode: new
+  mode_rationale: 'единый Operations-контур управления носителями отсутствует (только health view)'
+  code_baseline:
+  - packages/api/identity_routes/devices.py
+  - packages/api/device_routes/onboard.py
+  - apps/control-api/alembic/versions/021_device_onboarding_codes.py
+  - apps/control-api/alembic/versions/023_device_rls_bootstrap.py
+  - apps/control-api/alembic/versions/025_device_heartbeat.py
+  - tests/behavioral/test_edge001_device_onboarding.py
+  - tests/behavioral/test_edge004_heartbeat.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/test_phase3_devices_api.py'
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-LIC-001
   title: Licensing и seat ledger
@@ -569,7 +698,7 @@ requirements:
   - TZ v2.5 §15
   - TZ v2.5 §16
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     License contour отделён от advertiser billing: versioned license grant принадлежит отдельному licensee, имеет
@@ -583,7 +712,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-206
@@ -611,6 +740,18 @@ requirements:
     then: >-
       journey завершён; negative path — invalid signature/seat overflow/rollback loss → fail closed; `license.grant_applied`
   evidence: []
+  implementation_mode: adapt
+  mode_rationale: 'Layer 1 licensing/seat ledger существует (reachable); Layer 2 signed licensing — RM-TECH-206/208 аддитивно'
+  code_baseline:
+  - packages/domain/licensing.py
+  - packages/domain/licensing_service.py
+  - packages/domain/licensing_repository.py
+  - apps/control-api/alembic/versions/034_license_seat_ledger.py
+  - packages/api/identity_routes/licenses.py
+  - tests/behavioral/test_license_enrollment.py
+  - tests/behavioral/test_license_seat_ledger.py
+  regression_criteria:
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-ORCH-001
   title: Orchestrator simulation
@@ -618,7 +759,7 @@ requirements:
   - TZ v2.5 §8
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     resolves broad targets to surfaces, runs conflict/preemption/availability simulation, creates immutable manifest/task
@@ -627,7 +768,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-207A
@@ -654,6 +795,14 @@ requirements:
   - kind: unit
     ref: tests/test_s080_inventory_conflicts.py
     status: candidate
+  implementation_mode: preserve
+  mode_rationale: 'симулятор runtime существует; Orchestrator не создаётся до второго канала (ADR-019/OD-022)'
+  code_baseline:
+  - packages/runtime/simulator.py
+  - tests/test_import_boundaries.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/test_s080_inventory_conflicts.py, tests/test_s089_inventory_simulation.py'
+  - 'поведение кода не меняется; изменения только в evidence/документах (diff вне tests/docs/scripts — красный сигнал)'
   disposition: task
 - id: REQ-ORCH-002
   title: Adapter task lifecycle
@@ -661,7 +810,7 @@ requirements:
   - TZ v2.5 §8
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     массовая публикация идёт event-driven через persisted queue, а не прямыми синхронными вызовами portal→device/vendor;
@@ -671,7 +820,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-244
@@ -683,9 +832,9 @@ requirements:
   - DEC-004
   story_ids:
   - US-CHAN-001
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - channel.register
+  pending_journey_ids: []
   scenario_ids:
   - SC-ORCH-006
   artifacts: []
@@ -704,6 +853,18 @@ requirements:
   - kind: unit
     ref: tests/test_phase4_2c_delivery.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'delivery foundation и mock adapter существуют; persisted queue lifecycle — RM-TECH-244'
+  code_baseline:
+  - packages/domain/delivery.py
+  - apps/orchestrator-worker/main.py
+  - apps/adapter-workers/mock/main.py
+  - apps/control-api/alembic/versions/008_delivery_foundation.py
+  - tests/behavioral/test_delivery_foundation.py
+  - tests/behavioral/test_delivery_generation.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_delivery_foundation.py, tests/test_phase4_2b_delivery.py, tests/test_phase4_2c_delivery.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-ORCH-003
   title: Delivery triggers and revocation
@@ -711,7 +872,7 @@ requirements:
   - TZ v2.5 §8
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     любая OLTP-запись, создающая domain event, создаёт outbox event атомарно (не только delivery-relevant mutation);
@@ -721,7 +882,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-242
@@ -749,6 +910,18 @@ requirements:
   - kind: unit
     ref: tests/test_phase6_outbox.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'outbox существует; расширяется на любую OLTP-запись с domain event (RM-TECH-242)'
+  code_baseline:
+  - packages/services/outbox_relay.py
+  - packages/services/nats_publisher.py
+  - apps/control-api/alembic/versions/007_outbox_events.py
+  - tests/behavioral/test_outbox.py
+  - tests/behavioral/test_outbox_relay.py
+  - tests/integration/test_nats_recovery.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_outbox.py, tests/test_phase6_outbox.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-ORCH-004
   title: Transactional outbox integrity
@@ -756,7 +929,7 @@ requirements:
   - TZ v2.5 §8
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     domain write и outbox event в одной PostgreSQL-транзакции; relay атомарно claim-ит `pending` через lease/status
@@ -769,7 +942,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-243
@@ -804,13 +977,25 @@ requirements:
   - kind: integration
     ref: tests/integration/test_nats_e2e.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'outbox relay существует; lease/Nats-Msg-Id/dead_letter — RM-TECH-243'
+  code_baseline:
+  - packages/services/outbox_relay.py
+  - packages/services/nats_publisher.py
+  - apps/control-api/alembic/versions/007_outbox_events.py
+  - tests/behavioral/test_outbox.py
+  - tests/behavioral/test_outbox_relay.py
+  - tests/integration/test_nats_recovery.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_outbox_relay.py, tests/integration/test_nats_e2e.py, tests/integration/test_nats_recovery.py, tests/test_phase4_outbox_relay.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-ORCH-005
   title: Orchestrator rollout boundary
   source:
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     для KSO-first сохраняются только channel-neutral data contracts и тонкий compatibility seam; Channel Orchestrator,
@@ -820,7 +1005,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-207A
@@ -845,13 +1030,22 @@ requirements:
   - kind: unit
     ref: tests/test_import_boundaries.py
     status: candidate
+  implementation_mode: preserve
+  mode_rationale: 'граница «Orchestrator только при втором канале» соблюдается; import boundaries тест — evidence'
+  code_baseline:
+  - tests/test_import_boundaries.py
+  - packages/api/dependencies.py
+  - tests/test_api_tx_boundary.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/test_import_boundaries.py'
+  - 'поведение кода не меняется; изменения только в evidence/документах (diff вне tests/docs/scripts — красный сигнал)'
   disposition: task
 - id: REQ-ORCH-006
   title: Channel Adapter contract
   source:
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     каждый adapter получает versioned task/manifest через утверждённый Gateway/API, подтверждает receipt, возвращает
@@ -861,7 +1055,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-207A
@@ -883,13 +1077,18 @@ requirements:
       подтверждает receipt, возвращает proof/ack или нормализованный error; timeout/retry/idempotency/circuit-breaker
       работают; прямой доступ к PostgreSQL/MinIO отклонён
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'Channel Adapter contract (design-only) отсутствует — RM-TECH-230 артефакт'
+  code_baseline: []
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-MAN-001
   title: Universal manifest schema
   source:
   - TZ v2.5 §8
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     JSON Schema + compatibility rules; runtime polls manifest/content every 30 seconds with jitter and uses `ETag`/`If-None-Match`,
@@ -898,7 +1097,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-207A
@@ -912,8 +1111,8 @@ requirements:
   - US-CHAN-002
   journey_ids:
   - manifest.deliver
-  pending_journey_ids:
   - channel.rendition_validate
+  pending_journey_ids: []
   scenario_ids:
   - SC-MAN-003
   artifacts: []
@@ -928,13 +1127,26 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_edge002_manifest_delivery.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'manifest_v1 и доставка существуют; universal schema/renditions — RM-TECH-207A/B аддитивно'
+  code_baseline:
+  - packages/contracts/manifest_v1.schema.json
+  - packages/contracts/manifest_signing.py
+  - apps/device-gateway/main.py
+  - apps/kso-player-client/player_client/manifest.py
+  - tests/behavioral/test_edge002_manifest_delivery.py
+  - tests/test_contract_manifest.py
+  - tests/test_k2_manifest_signing.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_edge002_manifest_delivery.py, tests/test_contract_manifest.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-MAN-004
   title: Manifest field contract
   source:
   - TZ v2.5 §8
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     обязательны opaque external `manifest_id`, `device_id`, `store_id`, `playlist_version`, `valid_from`, `valid_to`,
@@ -946,7 +1158,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-207B
@@ -974,12 +1186,25 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_edge002_manifest_delivery.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'manifest поля существуют; opaque media_ref/ACK-состояния — RM-TECH-223'
+  code_baseline:
+  - packages/contracts/manifest_v1.schema.json
+  - packages/contracts/manifest_signing.py
+  - apps/device-gateway/main.py
+  - apps/kso-player-client/player_client/manifest.py
+  - tests/behavioral/test_edge002_manifest_delivery.py
+  - tests/test_contract_manifest.py
+  - tests/test_k2_manifest_signing.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_edge002_manifest_delivery.py, tests/test_contract_manifest.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-MAN-005
   title: Playlist inheritance and overrides
   source:
   - TZ v2.5 §8
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     hierarchy-level playlists inherit from network/branch/cluster/store/channel and allow explicit scoped overrides
@@ -988,7 +1213,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-207B
@@ -1012,20 +1237,32 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_delivery_generation.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'генерация playlist существует; inheritance/override — RM-TECH-207B'
+  code_baseline:
+  - packages/domain/delivery.py
+  - apps/orchestrator-worker/main.py
+  - apps/adapter-workers/mock/main.py
+  - apps/control-api/alembic/versions/008_delivery_foundation.py
+  - tests/behavioral/test_delivery_foundation.py
+  - tests/behavioral/test_delivery_generation.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_delivery_generation.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-MAN-002
   title: Signed manifest
   source:
   - TZ v2.5 §8
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: Ed25519 profile, key rotation/revoke, offline verify
   scope:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-STAB-010
@@ -1052,6 +1289,20 @@ requirements:
   - kind: unit
     ref: tests/test_contract_manifest.py
     status: candidate
+  implementation_mode: replace
+  mode_rationale: 'подпись manifest: Ed25519 pilot/prod, HMAC только dev/stand — по OD-002 прод-профиль подписи заменяется; dev-путь сохраняется'
+  code_baseline:
+  - packages/contracts/manifest_v1.schema.json
+  - packages/contracts/manifest_signing.py
+  - apps/device-gateway/main.py
+  - apps/kso-player-client/player_client/manifest.py
+  - tests/behavioral/test_edge002_manifest_delivery.py
+  - tests/test_contract_manifest.py
+  - tests/test_k2_manifest_signing.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/test_contract_manifest.py, tests/test_k2_manifest_signing.py'
+  - 'замена только по conflict_ref: старое поведение сохраняется для dev/stand профиля, прод-профиль — новый contract test; negative test на старый прод-путь'
+  conflict_ref: 'OD-002; docs/audit/2026-08-27-claude-review-r417-stability.md (DEC-003/OD-002: Ed25519 pilot/prod, HMAC dev/stand); RM-STAB-010 signing gate'
   disposition: task
 - id: REQ-MAN-003
   title: Edge safety and kill-switch
@@ -1059,7 +1310,7 @@ requirements:
   - TZ v2.5 §9
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     invalid/future/expired manifest отклоняется fail-safe; сохраняется last-known-good/fallback, kill-switch имеет
@@ -1068,7 +1319,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-207B
@@ -1096,6 +1347,15 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_k1_emergency_manifest.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'emergency manifest/kill-switch существует; edge safety расширяется в RM-TECH-207B'
+  code_baseline:
+  - packages/api/identity_routes/emergency.py
+  - apps/control-api/alembic/versions/024_emergency_overrides.py
+  - tests/behavioral/test_k1_emergency_manifest.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_k1_emergency_manifest.py, tests/test_phase4_2e_runtime_simulator.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-POP-001
   title: Normalized proof model
@@ -1103,7 +1363,7 @@ requirements:
   - TZ v2.5 §11
   - TZ v2.5 §12
   - TZ v2.5 §23
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     целевой `pop_mode` enum: `real_playback`, `screen_render`, `idle_screen`, `template_applied`, `gateway_ack`,
@@ -1114,7 +1374,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-207B
@@ -1142,13 +1402,28 @@ requirements:
   - kind: unit
     ref: tests/test_phase4_3b_pop_schema.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'proof model существует; pop_mode error/not_applied — RM-TECH-226 миграция'
+  code_baseline:
+  - packages/domain/pop_ingestion.py
+  - packages/api/pop.py
+  - apps/pop-ingestor/main.py
+  - packages/contracts/proof_event_v1.schema.json
+  - apps/control-api/alembic/versions/009_pop_persistence_schema.py
+  - tests/behavioral/test_edge003_pop_ingestion.py
+  - tests/behavioral/test_pop_ingestion.py
+  - tests/behavioral/test_pop_schema.py
+  - tests/test_contract_pop.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_pop_schema.py, tests/test_phase4_3b_pop_schema.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-POP-002
   title: At-least-once ingestion без дублей
   source:
   - TZ v2.5 §11
   - TZ v2.5 §23
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     signature/time/manifest validation + dedupe; при потере связи события/ack/error буферизуются локально или на
@@ -1157,7 +1432,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-207B
@@ -1188,13 +1463,28 @@ requirements:
   - kind: unit
     ref: tests/test_phase4_3c_pop_ingestion.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'at-least-once ingestion существует; duplicate semantics по OD-019 (200 + per-event 409) — RM-TECH-225'
+  code_baseline:
+  - packages/domain/pop_ingestion.py
+  - packages/api/pop.py
+  - apps/pop-ingestor/main.py
+  - packages/contracts/proof_event_v1.schema.json
+  - apps/control-api/alembic/versions/009_pop_persistence_schema.py
+  - tests/behavioral/test_edge003_pop_ingestion.py
+  - tests/behavioral/test_pop_ingestion.py
+  - tests/behavioral/test_pop_schema.py
+  - tests/test_contract_pop.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_edge003_pop_ingestion.py, tests/behavioral/test_pop_ingestion.py, tests/test_phase4_3c_pop_ingestion.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-POP-003
   title: Runtime proof endpoint
   source:
   - TZ v2.5 §11
   - TZ v2.5 §23
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     PoP только от runtime через `POST /api/v1/pop/batch`, batch ≤500; `event_type=proof`, `device_id` совпадает
@@ -1203,7 +1493,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-207B
@@ -1230,6 +1520,21 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_edge003fu_nobypass_rls.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'runtime proof endpoint существует (reachable); canonical /api/v1/pop/batch с legacy alias — RM-TECH-222'
+  code_baseline:
+  - packages/domain/pop_ingestion.py
+  - packages/api/pop.py
+  - apps/pop-ingestor/main.py
+  - packages/contracts/proof_event_v1.schema.json
+  - apps/control-api/alembic/versions/009_pop_persistence_schema.py
+  - tests/behavioral/test_edge003_pop_ingestion.py
+  - tests/behavioral/test_pop_ingestion.py
+  - tests/behavioral/test_pop_schema.py
+  - tests/test_contract_pop.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_edge003fu_nobypass_rls.py, tests/test_contract_pop.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-POP-004
   title: Canonical proof event validation
@@ -1237,7 +1542,7 @@ requirements:
   - TZ v2.5 §11
   - TZ v2.5 §23
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     flat `proof_event_v1`: opaque external event/manifest/campaign/placement/creative/media/store/surface/device
@@ -1250,7 +1555,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-207B
@@ -1276,13 +1581,28 @@ requirements:
   - kind: unit
     ref: tests/test_contract_pop.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'валидация proof_event_v1 существует; playback_result/failure_reason/clock-drift — RM-TECH-227'
+  code_baseline:
+  - packages/domain/pop_ingestion.py
+  - packages/api/pop.py
+  - apps/pop-ingestor/main.py
+  - packages/contracts/proof_event_v1.schema.json
+  - apps/control-api/alembic/versions/009_pop_persistence_schema.py
+  - tests/behavioral/test_edge003_pop_ingestion.py
+  - tests/behavioral/test_pop_ingestion.py
+  - tests/behavioral/test_pop_schema.py
+  - tests/test_contract_pop.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_pop_schema.py, tests/test_contract_pop.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-CONT-001
   title: Creative/rendition QA
   source:
   - TZ v2.5 §7
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     checks выполняются отдельно для каждой immutable rendition и cover format/MIME/resolution/file size/duration/codec/FPS/bitrate,
@@ -1294,7 +1614,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-204
@@ -1311,8 +1631,8 @@ requirements:
   - creative.moderate_approve
   - creative.moderate_reject
   - creative.upload
-  pending_journey_ids:
   - channel.rendition_validate
+  pending_journey_ids: []
   scenario_ids:
   - SC-CONT-001
   artifacts: []
@@ -1342,13 +1662,26 @@ requirements:
   - kind: ui_smoke
     ref: tests/ui-smoke/test_uismoke__creative__moderate_reject.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'загрузка/модерация существуют (reachable); QA без неутверждённого HTML5 — RM-TECH-204 (OD-034)'
+  code_baseline:
+  - packages/api/identity_routes/creatives.py
+  - packages/services/storage.py
+  - apps/control-api/alembic/versions/012_creative_upload_sessions.py
+  - tests/behavioral/test_creative_assets.py
+  - tests/behavioral/test_creative_upload_sessions_rls.py
+  - apps/admin-web/src/pages/CreativeModerationPage.tsx
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__creative__moderate_approve.py, tests/ui-smoke/test_uismoke__creative__moderate_reject.py, tests/ui-smoke/test_uismoke__creative__upload.py'
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_creative_assets.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-CONT-002
   title: Immutable media history
   source:
   - TZ v2.5 §7
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     каждая media/rendition version хранит uploader/author, timestamp, SHA-256, source metadata, QA/moderation decision
@@ -1358,7 +1691,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Channel/Content owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-250
@@ -1384,6 +1717,19 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_creative_upload_sessions_rls.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'creative assets существуют; immutable media history/state machine — RM-TECH-250'
+  code_baseline:
+  - packages/api/identity_routes/creatives.py
+  - packages/services/storage.py
+  - apps/control-api/alembic/versions/012_creative_upload_sessions.py
+  - tests/behavioral/test_creative_assets.py
+  - tests/behavioral/test_creative_upload_sessions_rls.py
+  - apps/admin-web/src/pages/CreativeModerationPage.tsx
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_creative_assets.py, tests/behavioral/test_creative_upload_sessions_rls.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
+  - 'alembic upgrade/downgrade rehearsal на стенде до применения (owner gate migration_application)'
   disposition: task
 - id: REQ-BIZ-001
   title: Placement/inventory calculation
@@ -1392,7 +1738,7 @@ requirements:
   - TZ v2.5 §6
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     capacity/reserved/sold/free рассчитываются и показываются по network/branch/cluster/store/device/logical carrier/surface;
@@ -1410,7 +1756,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-203
@@ -1448,13 +1794,22 @@ requirements:
     ref: tests/ui-smoke/test_uismoke__inventory__simulate.py
     status: candidate
     note: 'inventory.simulate: registry reachable'
+  implementation_mode: adapt
+  mode_rationale: 'inventory rules/simulation существуют (reachable); overbooking policy — RM-TECH-203'
+  code_baseline:
+  - packages/api/identity_routes/inventory.py
+  - apps/control-api/alembic/versions/015_inventory_domain.py
+  - apps/admin-web/src/pages/InventoryPage.tsx
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__campaign__create.py, tests/ui-smoke/test_uismoke__inventory__rule_create.py, tests/ui-smoke/test_uismoke__inventory__simulate.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-BIZ-002
   title: Commercial lifecycle
   source:
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     advertiser record includes legal entity, brand, contacts and responsible persons; до брони создаётся versioned
@@ -1470,7 +1825,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-STAB-003
@@ -1493,6 +1848,17 @@ requirements:
     then: >-
       journey завершён; negative path — missing external proof, mutable basis or cross-retailer → block; `finance.reconciliation_signed`
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'reconciliation коммерческого цикла (finance.reconcile) отсутствует; commerce order chain — база'
+  code_baseline:
+  - packages/api/identity_routes/commerce.py
+  - packages/domain/commerce_repository.py
+  - apps/control-api/alembic/versions/032_commerce_contour2_foundation.py
+  - apps/control-api/alembic/versions/033_commerce_rls.py
+  - tests/behavioral/test_commerce_rls.py
+  - apps/admin-web/src/pages/CommerceTariffsPage.tsx
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-BIZ-003
   title: Approval policy
@@ -1500,7 +1866,7 @@ requirements:
   - TZ v2.5 §3
   - TZ v2.5 §6
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     для каждого campaign/placement/creative задаются required approval roles, scope, порядок и transition criteria;
@@ -1513,7 +1879,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-247
@@ -1558,13 +1924,29 @@ requirements:
     ref: tests/ui-smoke/test_uismoke__self__campaign_view.py
     status: candidate
     note: 'self.campaign_view: registry reachable'
+  implementation_mode: adapt
+  mode_rationale: 'approval существует (reachable); approval policy roles/scope/timeout — RM-TECH-247'
+  code_baseline:
+  - packages/api/identity_routes/campaigns.py
+  - packages/domain/repository.py
+  - apps/control-api/alembic/versions/006_campaign_domain.py
+  - apps/control-api/alembic/versions/026_placement_basis.py
+  - apps/control-api/alembic/versions/036_campaign_permission_split.py
+  - tests/behavioral/test_campaign_domain.py
+  - tests/behavioral/test_campaign_mutations.py
+  - tests/behavioral/test_campaign_approval.py
+  - tests/behavioral/test_campaign_completion.py
+  - apps/admin-web/src/pages/CampaignDetailPage.tsx
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__campaign__approve.py, tests/ui-smoke/test_uismoke__campaign__reject.py, tests/ui-smoke/test_uismoke__campaign__submit.py, tests/ui-smoke/test_uismoke__self__campaign_view.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-BIZ-004
   title: Service-quality reporting
   source:
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     advertiser и quality reports показывают по каждому каналу долю active devices/logical carriers/surfaces, channel-specific
@@ -1574,7 +1956,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-UX-010
@@ -1596,6 +1978,14 @@ requirements:
     then: >-
       journey завершён; negative path — stale/empty/foreign data → labelled or denied; `analytics.exported`
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'service-quality reporting/analytics.compare отсутствует; PoP reporting — база'
+  code_baseline:
+  - packages/api/identity_routes/reporting.py
+  - tests/behavioral/test_pop_reporting.py
+  - tests/behavioral/test_pop_reporting_scope.py
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-BIZ-005
   title: Campaign flight windows
@@ -1603,7 +1993,7 @@ requirements:
   - TZ v2.5 §6
   - TZ v2.5 §22
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     отдельные versioned flight/placement windows с обязательными `start_at/end_at` в UTC, локальной TZ для UI и
@@ -1612,7 +2002,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-248
@@ -1634,6 +2024,21 @@ requirements:
     then: >-
       journey завершён; negative path — end before start, DST ambiguity or active immutable window → reject; `campaign.flight_versioned`
   evidence: []
+  implementation_mode: adapt
+  mode_rationale: 'flights существуют; versioned UTC windows/schedule — RM-TECH-248'
+  code_baseline:
+  - packages/api/identity_routes/campaigns.py
+  - packages/domain/repository.py
+  - apps/control-api/alembic/versions/006_campaign_domain.py
+  - apps/control-api/alembic/versions/026_placement_basis.py
+  - apps/control-api/alembic/versions/036_campaign_permission_split.py
+  - tests/behavioral/test_campaign_domain.py
+  - tests/behavioral/test_campaign_mutations.py
+  - tests/behavioral/test_campaign_approval.py
+  - tests/behavioral/test_campaign_completion.py
+  - apps/admin-web/src/pages/CampaignDetailPage.tsx
+  regression_criteria:
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-BIZ-006
   title: Manifest eligibility
@@ -1642,7 +2047,7 @@ requirements:
   - TZ v2.5 §6
   - TZ v2.5 §22
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     eligibility требует approved status, валидный flight и contract, resolved target и ready/approved creative;
@@ -1651,7 +2056,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-249
@@ -1674,13 +2079,24 @@ requirements:
       journey завершён; negative path — rejected creative, no target, revoked device or expired window → ineligible;
       `campaign.readiness_evaluated`
   evidence: []
+  implementation_mode: adapt
+  mode_rationale: 'delivery generation существует; readiness/eligibility gate — RM-TECH-249'
+  code_baseline:
+  - packages/domain/delivery.py
+  - apps/orchestrator-worker/main.py
+  - apps/adapter-workers/mock/main.py
+  - apps/control-api/alembic/versions/008_delivery_foundation.py
+  - tests/behavioral/test_delivery_foundation.py
+  - tests/behavioral/test_delivery_generation.py
+  regression_criteria:
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-BIZ-007
   title: Campaign type and priority
   source:
   - TZ v2.5 §6
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     явные типы commercial/internal/compensation/test/filler и версионируемая иерархия приоритетов с `effective_at`,
@@ -1689,7 +2105,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-202
@@ -1700,9 +2116,9 @@ requirements:
   dependencies: []
   story_ids:
   - US-PRI-001
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - inventory.priority
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -1713,6 +2129,14 @@ requirements:
       journey завершён; negative path — silent preemption, tie ambiguity or emergency override → block/escalate;
       `inventory.priority_versioned`
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'тип кампании и объяснимое вытеснение отсутствуют — RM-TECH-202'
+  code_baseline:
+  - packages/api/identity_routes/inventory.py
+  - apps/control-api/alembic/versions/015_inventory_domain.py
+  - apps/admin-web/src/pages/InventoryPage.tsx
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-BIZ-008
   title: Underdelivery and make-good
@@ -1720,7 +2144,7 @@ requirements:
   - TZ v2.5 §6
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     классификация причин недопоказа (technical/operational/business/emergency/content/planning/device/store), plan/fact/выполнение
@@ -1730,7 +2154,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-201
@@ -1742,9 +2166,9 @@ requirements:
   - DEC-006
   story_ids:
   - US-UDR-001
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - campaign.underdelivery
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -1753,13 +2177,21 @@ requirements:
     then: >-
       journey завершён; negative path — missing proof, mixed units or negative compensation → reject; `campaign.make_good_proposed`
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'таксономия недопоказа/make-good отсутствует — RM-TECH-201'
+  code_baseline:
+  - packages/api/identity_routes/reporting.py
+  - tests/behavioral/test_pop_reporting.py
+  - tests/behavioral/test_pop_reporting_scope.py
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-BIZ-009
   title: Financial reporting boundary
   source:
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     scope финансового контура (заказ, договор, тариф, price list, discount, package/bonus, compensation, payment/confirmation
@@ -1772,14 +2204,14 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Finance owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-286
   requirement_status: approved
-  delivery_status: planned
-  status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
+  delivery_status: blocked
+  status_changed_at: '2026-08-31T00:00:00Z'
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids; RM-GOV-012 выравнивание 2026-08-31
   dependencies:
   - DEC-017
   story_ids:
@@ -1833,14 +2265,27 @@ requirements:
     ref: tests/ui-smoke/test_uismoke__commerce__tariff_manage.py
     status: candidate
     note: 'commerce.tariff_manage: registry reachable'
-  disposition: task
+  implementation_mode: adapt
+  mode_rationale: 'commerce boundary существует; financial reporting boundary уточняется после OD-030'
+  code_baseline:
+  - packages/api/identity_routes/commerce.py
+  - packages/domain/commerce_repository.py
+  - apps/control-api/alembic/versions/032_commerce_contour2_foundation.py
+  - apps/control-api/alembic/versions/033_commerce_rls.py
+  - tests/behavioral/test_commerce_rls.py
+  - apps/admin-web/src/pages/CommerceTariffsPage.tsx
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__commerce__order_create.py, tests/ui-smoke/test_uismoke__commerce__tariff_manage.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
+  disposition: blocked
+  block_reason: 'финансовый обмен: OD-030 (DEC-017) open - RM-TECH-286 blocked'
 - id: REQ-BIZ-010
   title: Campaign workflow closure
   source:
   - TZ v2.5 §6
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     для каждого шага lifecycle назначены role/owner, допустимые действия, SLA/deadline и transition criteria; поддерживаются
@@ -1850,7 +2295,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-245
@@ -1888,13 +2333,30 @@ requirements:
     ref: tests/ui-smoke/test_uismoke__campaign__pause.py
     status: candidate
     note: 'campaign.pause: registry reachable'
+  implementation_mode: adapt
+  mode_rationale: 'lifecycle существует; scheduled/resume/revise/archive по ADR-015/OD-036 добавляются аддитивно (текущее поведение сохраняется)'
+  code_baseline:
+  - packages/api/identity_routes/campaigns.py
+  - packages/domain/repository.py
+  - apps/control-api/alembic/versions/006_campaign_domain.py
+  - apps/control-api/alembic/versions/026_placement_basis.py
+  - apps/control-api/alembic/versions/036_campaign_permission_split.py
+  - tests/behavioral/test_campaign_domain.py
+  - tests/behavioral/test_campaign_mutations.py
+  - tests/behavioral/test_campaign_approval.py
+  - tests/behavioral/test_campaign_completion.py
+  - apps/admin-web/src/pages/CampaignDetailPage.tsx
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__campaign__activate.py, tests/ui-smoke/test_uismoke__campaign__edit.py, tests/ui-smoke/test_uismoke__campaign__pause.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
+  - 'alembic upgrade/downgrade rehearsal на стенде до применения (owner gate migration_application)'
   disposition: task
 - id: REQ-BIZ-011
   title: Reporting views
   source:
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     обязательны network dashboard (active campaigns/today plan-fact/problems), campaign dashboard (plan-fact/geography/dynamics/no-play/reasons),
@@ -1906,7 +2368,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-BIZ-003
@@ -1930,12 +2392,20 @@ requirements:
       journey завершён; negative path — cross-tenant, stale unlabeled data or unsupported format → deny/explain;
       `report.exported`
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'advertiser report views (self.report_view) отсутствуют — RM-BIZ-003'
+  code_baseline:
+  - packages/api/identity_routes/reporting.py
+  - tests/behavioral/test_pop_reporting.py
+  - tests/behavioral/test_pop_reporting_scope.py
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-BIZ-012
   title: A/B test attribution
   source:
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     A/B campaign фиксирует control/test groups, assignment scope, period, winner metric и minimum sample; результат
@@ -1944,7 +2414,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Analytics owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-284
@@ -1969,15 +2439,20 @@ requirements:
     then: >-
       journey завершён; negative path — overlapping cohorts, low sample or retroactive method → block; `experiment.winner_approved`
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'A/B attribution отсутствует; blocked OD-014'
+  code_baseline: []
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: blocked
-  block_reason: attribution prerequisites (REQ-V26-002)
+  block_reason: 'A/B attribution: OD-014 (DEC-027) open; prerequisites RM-TECH-280/281/282'
 - id: REQ-BIZ-013
   title: Business outcome KPI
   source:
   - TZ v2.5 §1
   - TZ v2.5 §6
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     для каждой бизнес-цели §1.2 владелец утверждает baseline, target, metric definition, unit, measurement window,
@@ -1987,7 +2462,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-256
@@ -2010,6 +2485,11 @@ requirements:
     then: >-
       journey завершён; negative path — missing owner/source or technical SLO substituted → unmeasurable; `kpi.review_recorded`
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'KPI catalog отсутствует — RM-TECH-256'
+  code_baseline: []
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-BIZ-014
   title: Commerce contour 2
@@ -2017,7 +2497,7 @@ requirements:
   - TZ v2.5 §12
   - TZ v2.5 §16
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     Тарифы, price lists, offers, orders и inventory booking образуют обязательный versioned operational workflow;
@@ -2029,7 +2509,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-246
@@ -2089,6 +2569,18 @@ requirements:
     ref: tests/ui-smoke/test_uismoke__commerce__tariff_manage.py
     status: candidate
     note: 'commerce.tariff_manage: registry reachable'
+  implementation_mode: adapt
+  mode_rationale: 'commerce contour 2 существует (7 reachable journeys); отмена по OD-020 — RM-TECH-246 меняет _ORDER_TRANSITIONS аддитивно (draft→cancelled), confirmed — reversal'
+  code_baseline:
+  - packages/api/identity_routes/commerce.py
+  - packages/domain/commerce_repository.py
+  - apps/control-api/alembic/versions/032_commerce_contour2_foundation.py
+  - apps/control-api/alembic/versions/033_commerce_rls.py
+  - tests/behavioral/test_commerce_rls.py
+  - apps/admin-web/src/pages/CommerceTariffsPage.tsx
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__commerce__order_create.py, tests/ui-smoke/test_uismoke__commerce__tariff_manage.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-BIZ-015
   title: Advertiser onboarding и self-service
@@ -2096,7 +2588,7 @@ requirements:
   - TZ v2.5 §6
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     Заявка рекламодателя, review/approval, создание организации, brand, contact и legal requisites, приглашение
@@ -2109,7 +2601,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-STAB-003
@@ -2178,13 +2670,28 @@ requirements:
     ref: tests/ui-smoke/test_uismoke__self__apply_or_brief.py
     status: candidate
     note: 'self.apply_or_brief: registry reachable'
+  implementation_mode: adapt
+  mode_rationale: 'onboarding существует (reachable); personas/retailer-scope — RM-STAB-003'
+  code_baseline:
+  - packages/api/identity_routes/advertisers.py
+  - packages/api/identity_routes/advertiser_applications.py
+  - packages/api/public_routes/applications.py
+  - apps/control-api/alembic/versions/005_advertiser_domain.py
+  - apps/control-api/alembic/versions/016_advertiser_applications.py
+  - apps/control-api/alembic/versions/017_advertiser_invites.py
+  - tests/behavioral/test_advertiser_domain.py
+  - tests/behavioral/test_bp002_invite_access.py
+  - apps/admin-web/src/pages/AdvertisersPage.tsx
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__advertiser__application_review.py, tests/ui-smoke/test_uismoke__advertiser__apply.py, tests/ui-smoke/test_uismoke__advertiser__brand_crud.py, tests/ui-smoke/test_uismoke__advertiser__contact_crud.py, tests/ui-smoke/test_uismoke__advertiser__create_org.py, tests/ui-smoke/test_uismoke__advertiser__invite.py, tests/ui-smoke/test_uismoke__advertiser__legal_requisites.py, tests/ui-smoke/test_uismoke__advertiser__view.py, tests/ui-smoke/test_uismoke__self__apply_or_brief.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-BIZ-016
   title: Versioned inventory rules
   source:
   - TZ v2.5 §6
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     Правила inventory (capacity, max ad load, slot duration, prime-time, priority, filler, channel/surface/store
@@ -2196,7 +2703,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-203
@@ -2239,12 +2746,21 @@ requirements:
     ref: tests/ui-smoke/test_uismoke__inventory__simulate.py
     status: candidate
     note: 'inventory.simulate: registry reachable'
+  implementation_mode: adapt
+  mode_rationale: 'inventory rules существуют; версионирование — RM-TECH-203'
+  code_baseline:
+  - packages/api/identity_routes/inventory.py
+  - apps/control-api/alembic/versions/015_inventory_domain.py
+  - apps/admin-web/src/pages/InventoryPage.tsx
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__adsettings__configure.py, tests/ui-smoke/test_uismoke__adsettings__test.py, tests/ui-smoke/test_uismoke__inventory__rule_create.py, tests/ui-smoke/test_uismoke__inventory__simulate.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-BIZ-017
   title: Advertiser contract PDF upload
   source:
   - feature-registry (registry-derived gap)
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     Уполномоченный администратор через UI выбирает рекламодателя, создаёт договор и загружает PDF; MIME/размер/целостность
@@ -2255,7 +2771,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-UX-009
@@ -2283,12 +2799,22 @@ requirements:
     ref: tests/ui-smoke/test_uismoke__advertiser__contract_pdf_upload.py
     status: candidate
     note: 'advertiser.contract_crud: registry reachable'
+  implementation_mode: adapt
+  mode_rationale: 'PDF upload существует (reachable); immutable versions/SHA — RM-UX-009'
+  code_baseline:
+  - packages/api/identity_routes/advertisers.py
+  - apps/control-api/alembic/versions/030_advertiser_contract_files_and_upload_sessions.py
+  - tests/test_advertiser_contracts.py
+  - tests/ui-smoke/test_uismoke__advertiser__contract_pdf_upload.py
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__advertiser__contract_pdf_upload.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-V26-001
   title: Tenant model conformance
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     ADR-018 уже принял multi-retailer/syndication-ready модель; все новые tenant-сущности получают `retailer_id
@@ -2297,7 +2823,7 @@ requirements:
   scope:
   - v2.6
   coverage_type: technical
-  owner: TBD
+  owner: Product Data Owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-229
@@ -2327,12 +2853,23 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_scope_rls.py
     status: candidate
+  implementation_mode: preserve
+  mode_rationale: 'tenant model принят ADR-018, RLS proof существует; RM-TECH-229 — только ERD артефакт'
+  code_baseline:
+  - tests/behavioral/test_adr018_multitenancy_rls.py
+  - tests/behavioral/test_scope_rls.py
+  - apps/control-api/alembic/versions/020_multitenancy_retailer_id.py
+  - apps/control-api/alembic/versions/035_derived_tables_advertiser_rls.py
+  - docs/architecture/adr/ADR-018-tenant-model-for-next-branch.md
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_adr018_multitenancy_rls.py, tests/behavioral/test_scope_rls.py'
+  - 'поведение кода не меняется; изменения только в evidence/документах (diff вне tests/docs/scripts — красный сигнал)'
   disposition: task
 - id: REQ-V26-002
   title: Attribution & sales lift
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     Принимать только агрегаты store/SKU/day, строить versioned baseline и test/control по магазинам, рассчитывать
@@ -2340,7 +2877,7 @@ requirements:
   scope:
   - v2.6
   coverage_type: business
-  owner: TBD
+  owner: Analytics owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-282
@@ -2365,13 +2902,18 @@ requirements:
     then: >-
       journey завершён; negative path — no control, sparse/deanonymizing data or changed method → block; `attribution.report_versioned`
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'attribution/sales lift отсутствует; blocked OD-014'
+  code_baseline: []
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: blocked
-  block_reason: master-data adapter отсутствует (OD-023/DEC-005); tenant ADR-018 принят
+  block_reason: 'attribution: OD-014 (DEC-027) open; prerequisites RM-TECH-280/281 planned (OD-023 approved 2026-08-31)'
 - id: REQ-V26-003
   title: Advertiser self-service
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     Отдельный advertiser web позволяет scoped inventory/forecast, draft, creative upload и submit в общий moderation/approval;
@@ -2379,7 +2921,7 @@ requirements:
   scope:
   - v2.6
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-BIZ-002
@@ -2405,13 +2947,22 @@ requirements:
       journey завершён; negative path — limit/conflict, pre-approval access or cross-org → block; campaign approval
       audit
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'self-service campaign create отсутствует (briefs — база); blocked OD-013'
+  code_baseline:
+  - packages/api/identity_routes/briefs.py
+  - apps/control-api/alembic/versions/018_campaign_briefs.py
+  - tests/behavioral/test_bp004_campaign_briefs_rls.py
+  - apps/advertiser-web/src/pages/BriefCreatePage.tsx
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: blocked
   block_reason: OD-005 managed-first; scope post-pilot — OD-013
 - id: REQ-V26-004
   title: Competitive separation
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     Brand/advertiser имеет `competitive_category`; playlist/manifest проверяет интервал и exceptions, блокирует
@@ -2419,14 +2970,14 @@ requirements:
   scope:
   - v2.6
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-285
   requirement_status: approved
-  delivery_status: blocked
-  status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
+  delivery_status: planned
+  status_changed_at: '2026-08-31T00:00:00Z'
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids; OD-023 approved 2026-08-31 (RM-GOV-010) unblock
   dependencies:
   - DEC-005
   - DEC-022
@@ -2446,13 +2997,20 @@ requirements:
     then: >-
       journey завершён; negative path — competitor adjacency, missing attribute or cross-scope target → block; `placement.targeting_validated`
   evidence: []
-  disposition: blocked
-  block_reason: competitive separation требует master brand data (OD-023) и исключения §3.1 (OD-018)
+  implementation_mode: new
+  mode_rationale: 'competitive separation отсутствует — RM-TECH-285'
+  code_baseline:
+  - packages/api/identity_routes/inventory.py
+  - apps/control-api/alembic/versions/015_inventory_domain.py
+  - apps/admin-web/src/pages/InventoryPage.tsx
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
+  disposition: task
 - id: REQ-V26-005
   title: Store-audience targeting
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     Анонимные price-segment/average-check/traffic-profile атрибуты участвуют в placement targeting; master-data
@@ -2461,7 +3019,7 @@ requirements:
   scope:
   - v2.6
   coverage_type: business
-  owner: TBD
+  owner: Product Data Owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-283
@@ -2488,13 +3046,18 @@ requirements:
     then: >-
       journey завершён; negative path — competitor adjacency, missing attribute or cross-scope target → block; `placement.targeting_validated`
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'store-audience targeting отсутствует; blocked OD-032'
+  code_baseline: []
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: blocked
-  block_reason: audience source/privacy contract (OD-023, OD-032)
+  block_reason: 'audience source/privacy contract: OD-032 (DEC-019) open; OD-023 approved 2026-08-31'
 - id: REQ-V26-006
   title: Financial-system exchange
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     Versioned/idempotent export и обратный payment-status contract; повтор не создаёт дубль, внешнее `paid` не смешивается
@@ -2502,14 +3065,14 @@ requirements:
   scope:
   - v2.6
   coverage_type: business
-  owner: TBD
+  owner: Finance owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-286
   requirement_status: approved
-  delivery_status: planned
-  status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
+  delivery_status: blocked
+  status_changed_at: '2026-08-31T00:00:00Z'
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids; RM-GOV-012 выравнивание 2026-08-31
   dependencies:
   - DEC-017
   story_ids:
@@ -2526,12 +3089,24 @@ requirements:
     then: >-
       journey завершён; negative path — duplicate batch, invalid callback or unsupported legal claim → reject; `finance.exchange_reconciled`
   evidence: []
-  disposition: task
+  implementation_mode: new
+  mode_rationale: 'financial-system exchange отсутствует; blocked OD-030'
+  code_baseline:
+  - packages/api/identity_routes/commerce.py
+  - packages/domain/commerce_repository.py
+  - apps/control-api/alembic/versions/032_commerce_contour2_foundation.py
+  - apps/control-api/alembic/versions/033_commerce_rls.py
+  - tests/behavioral/test_commerce_rls.py
+  - apps/admin-web/src/pages/CommerceTariffsPage.tsx
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
+  disposition: blocked
+  block_reason: 'финансовый обмен: OD-030 (DEC-017) open - RM-TECH-286 blocked'
 - id: REQ-V26-007
   title: Programmatic extension point
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     ADR и SSP-facing availability contract проектируются, но DSP/SSP auto-buy остаётся excluded до отдельного owner
@@ -2539,7 +3114,7 @@ requirements:
   scope:
   - v2.6
   coverage_type: technical
-  owner: TBD
+  owner: Architecture owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-289
@@ -2562,12 +3137,17 @@ requirements:
     then: >-
       без approved provider/DSP решения (OD-021/OD-031) код не пишется; контракт остаётся design-only с явной пометкой
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'programmatic extension point — design-only ADR (RM-TECH-289)'
+  code_baseline: []
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-V26-008
   title: Dynamic creative
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     На одном выбранном канале master-confirmed price/promo подставляется при manifest generation; dynamic marker
@@ -2575,14 +3155,14 @@ requirements:
   scope:
   - v2.6
   coverage_type: business
-  owner: TBD
+  owner: Channel/Content owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-262
   requirement_status: approved
-  delivery_status: blocked
-  status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
+  delivery_status: planned
+  status_changed_at: '2026-08-31T00:00:00Z'
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids; OD-023 approved 2026-08-31 (RM-GOV-010) unblock
   dependencies:
   - DEC-005
   story_ids:
@@ -2600,13 +3180,23 @@ requirements:
       journey завершён; negative path — stale/missing price, static-hash contamination or no channel integration
       → block; `dynamic.binding_versioned`
   evidence: []
-  disposition: blocked
-  block_reason: ESL/price-checker premise ложна; master adapter (OD-023)
+  implementation_mode: new
+  mode_rationale: 'dynamic creative binding отсутствует — RM-TECH-262 после RM-TECH-280'
+  code_baseline:
+  - packages/api/identity_routes/creatives.py
+  - packages/services/storage.py
+  - apps/control-api/alembic/versions/012_creative_upload_sessions.py
+  - tests/behavioral/test_creative_assets.py
+  - tests/behavioral/test_creative_upload_sessions_rls.py
+  - apps/admin-web/src/pages/CreativeModerationPage.tsx
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
+  disposition: task
 - id: REQ-V26-009
   title: Field mobile operations
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     Scoped mobile web/app для сотрудника магазина показывает устройства, принимает photo proof и incident; publish/content/admin
@@ -2614,7 +3204,7 @@ requirements:
   scope:
   - v2.6
   coverage_type: business
-  owner: TBD
+  owner: Operations owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-263
@@ -2636,13 +3226,25 @@ requirements:
     then: >-
       journey завершён; negative path — cross-store, unsafe upload or broken onboarding → deny; `field.device_confirmed/incident_created`
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'field mobile operations отсутствует — RM-TECH-263 после RM-TECH-210'
+  code_baseline:
+  - packages/api/identity_routes/devices.py
+  - packages/api/device_routes/onboard.py
+  - apps/control-api/alembic/versions/021_device_onboarding_codes.py
+  - apps/control-api/alembic/versions/023_device_rls_bootstrap.py
+  - apps/control-api/alembic/versions/025_device_heartbeat.py
+  - tests/behavioral/test_edge001_device_onboarding.py
+  - tests/behavioral/test_edge004_heartbeat.py
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: blocked
   block_reason: 'RM-TECH-210: device onboarding RLS defect'
 - id: REQ-V26-010
   title: A/B winner metric
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     Winner может быть delivery или lift metric, при minimum sample и owner approval; результат versioned и не переписывает
@@ -2650,7 +3252,7 @@ requirements:
   scope:
   - v2.6
   coverage_type: business
-  owner: TBD
+  owner: Analytics owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-284
@@ -2675,13 +3277,18 @@ requirements:
     then: >-
       journey завершён; negative path — no control, sparse/deanonymizing data or changed method → block; `attribution.report_versioned`
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'A/B winner metric отсутствует; blocked OD-014'
+  code_baseline: []
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: blocked
-  block_reason: attribution prerequisites (REQ-V26-002)
+  block_reason: 'A/B attribution: OD-014 (DEC-027) open; prerequisites RM-TECH-280/281/282'
 - id: REQ-V26-011
   title: External audience measurement
   source:
   - TZ v2.6 Next Branch addendum 2026-07-11
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     ADR фиксирует export PoP/manifest contract как designed-not-implemented extension до появления approved provider
@@ -2689,7 +3296,7 @@ requirements:
   scope:
   - v2.6
   coverage_type: technical
-  owner: TBD
+  owner: Architecture owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-289
@@ -2711,13 +3318,18 @@ requirements:
     then: >-
       без approved provider/DSP решения (OD-021/OD-031) код не пишется; контракт остаётся design-only с явной пометкой
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'external audience measurement — design-only (RM-TECH-289)'
+  code_baseline: []
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-SEC-001
   title: Identity and MFA
   source:
   - TZ v2.5 §4
   - TZ v2.5 §14
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     AD/LDAP или корпоративный SSO; для internal staff production-протокол и TLS-профиль фиксируются (ADR-006: LDAPS,
@@ -2732,7 +3344,7 @@ requirements:
   - pilot
   - production
   coverage_type: security
-  owner: TBD
+  owner: Security owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-252
@@ -2748,8 +3360,7 @@ requirements:
   - audit.view
   - device.health_view
   - user.assign_roles
-  pending_journey_ids:
-  - security.review
+  pending_journey_ids: []
   scenario_ids:
   - SC-SEC-008
   artifacts:
@@ -2780,6 +3391,20 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_auth_rbac_behavior.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'dual auth (AD/local) существует; SSO/MFA — RM-TECH-252 аддитивно (OD-008)'
+  code_baseline:
+  - packages/auth/service.py
+  - packages/auth/ad_provider.py
+  - packages/security/jwt.py
+  - packages/security/tokens.py
+  - packages/api/identity_routes/ad_settings.py
+  - tests/behavioral/test_auth_dual_e2e.py
+  - tests/behavioral/test_auth_rbac_behavior.py
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__audit__view.py, tests/ui-smoke/test_uismoke__device__health_view.py, tests/ui-smoke/test_uismoke__user__assign_roles.py'
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_auth_dual_e2e.py, tests/behavioral/test_auth_rbac_behavior.py, tests/test_phase3_auth_api.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-SEC-002
   title: Tenant/retailer isolation
@@ -2787,7 +3412,7 @@ requirements:
   - TZ v2.5 §4
   - TZ v2.5 §6
   - TZ v2.5 §14
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     RLS и object authorization применяются на уровнях retailer/network → branch → cluster → store → channel/device/surface
@@ -2802,7 +3427,7 @@ requirements:
   - pilot
   - production
   coverage_type: security
-  owner: TBD
+  owner: Security owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-STAB-002
@@ -2842,8 +3467,8 @@ requirements:
   - commerce.tariff_manage
   - device.health_view
   - user.assign_roles
-  pending_journey_ids:
   - carrier.manage
+  pending_journey_ids: []
   scenario_ids:
   - SC-SEC-009
   artifacts: []
@@ -2944,13 +3569,27 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_rls_context_strictness.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'RLS/retailer isolation существует; strict context и approved scope — RM-STAB-002/004, RM-TECH-210'
+  code_baseline:
+  - packages/domain/scopes.py
+  - packages/api/dependencies.py
+  - apps/control-api/alembic/versions/004_rls_pilot.py
+  - apps/control-api/alembic/versions/010_campaign_write_rls.py
+  - tests/behavioral/test_rls_context_strictness.py
+  - tests/behavioral/test_authz_cross_portal_001_derived_rls.py
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__advertiser__application_review.py, tests/ui-smoke/test_uismoke__advertiser__apply.py, tests/ui-smoke/test_uismoke__advertiser__brand_crud.py, tests/ui-smoke/test_uismoke__advertiser__contact_crud.py, tests/ui-smoke/test_uismoke__advertiser__create_org.py, tests/ui-smoke/test_uismoke__advertiser__invite.py, tests/ui-smoke/test_uismoke__advertiser__legal_requisites.py, tests/ui-smoke/test_uismoke__audit__view.py, tests/ui-smoke/test_uismoke__campaign__approve.py, tests/ui-smoke/test_uismoke__campaign__reject.py, tests/ui-smoke/test_uismoke__campaign__submit.py, tests/ui-smoke/test_uismoke__commerce__order_create.py, tests/ui-smoke/test_uismoke__commerce__tariff_manage.py, tests/ui-smoke/test_uismoke__device__health_view.py, tests/ui-smoke/test_uismoke__user__assign_roles.py'
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_adr018_multitenancy_rls.py, tests/behavioral/test_authz_cross_portal_001_derived_rls.py, tests/behavioral/test_rls_context_strictness.py, tests/behavioral/test_scope_rls.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
+  - 'alembic upgrade/downgrade rehearsal на стенде до применения (owner gate migration_application)'
   disposition: task
 - id: REQ-SEC-003
   title: Device/vendor security
   source:
   - TZ v2.5 §4
   - TZ v2.5 §14
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     ADR-003 lifecycle обязателен: одноразовый `device_code` + `hardware_fingerprint` + `device_type` для enrollment;
@@ -2967,7 +3606,7 @@ requirements:
   - pilot
   - production
   coverage_type: security
-  owner: TBD
+  owner: Security owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-STAB-010
@@ -2990,8 +3629,7 @@ requirements:
   - license.seat_release
   - license.upload
   - license.view
-  pending_journey_ids:
-  - security.review
+  pending_journey_ids: []
   scenario_ids:
   - SC-SEC-010
   artifacts:
@@ -3012,6 +3650,21 @@ requirements:
   - kind: unit
     ref: tests/test_phase3_devices_api.py
     status: candidate
+  implementation_mode: replace
+  mode_rationale: 'device security: HMAC-подпись сохраняется только для dev/stand, для pilot/prod вводится Ed25519 (OD-002) — прод-профиль заменяется, dev-профиль сохраняется'
+  code_baseline:
+  - packages/api/identity_routes/devices.py
+  - packages/api/device_routes/onboard.py
+  - apps/control-api/alembic/versions/021_device_onboarding_codes.py
+  - apps/control-api/alembic/versions/023_device_rls_bootstrap.py
+  - apps/control-api/alembic/versions/025_device_heartbeat.py
+  - tests/behavioral/test_edge001_device_onboarding.py
+  - tests/behavioral/test_edge004_heartbeat.py
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__audit__view.py'
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_edge001_device_onboarding.py, tests/test_phase3_devices_api.py'
+  - 'замена только по conflict_ref: старое поведение сохраняется для dev/stand профиля, прод-профиль — новый contract test; negative test на старый прод-путь'
+  conflict_ref: 'OD-002; docs/audit/2026-08-27-claude-review-r417-stability.md (DEC-003/OD-002); RM-STAB-010'
   disposition: task
 - id: REQ-SEC-004
   title: Data protection
@@ -3019,7 +3672,7 @@ requirements:
   - TZ v2.5 §4
   - TZ v2.5 §13
   - TZ v2.5 §14
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     data classes (public/internal/confidential/PII), lawful purpose and minimisation, residency, encryption in transit/at
@@ -3029,7 +3682,7 @@ requirements:
   - pilot
   - production
   coverage_type: security
-  owner: TBD
+  owner: Security owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-OPS-005
@@ -3050,9 +3703,8 @@ requirements:
   - audit.view
   - emergency.activate
   - emergency.deactivate
-  pending_journey_ids:
   - data.catalog
-  - security.review
+  pending_journey_ids: []
   scenario_ids:
   - SC-SEC-011
   artifacts: []
@@ -3077,6 +3729,14 @@ requirements:
     ref: tests/ui-smoke/test_uismoke__emergency__deactivate.py
     status: candidate
     note: 'emergency.deactivate: registry reachable'
+  implementation_mode: adapt
+  mode_rationale: 'data protection частично (private buckets, RLS); data classes/retention — RM-TECH-253, RM-OPS-005 (OD-009)'
+  code_baseline:
+  - packages/services/storage.py
+  - tests/integration/test_minio_upload.py
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__advertiser__contract_pdf_upload.py, tests/ui-smoke/test_uismoke__audit__view.py, tests/ui-smoke/test_uismoke__emergency__activate.py, tests/ui-smoke/test_uismoke__emergency__deactivate.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-OPS-001
   title: Device health/commands
@@ -3086,7 +3746,7 @@ requirements:
   - TZ v2.5 §10
   - TZ v2.5 §13
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     status thresholds и per-device health view с last heartbeat, current manifest, player/Chromium version, free
@@ -3103,7 +3763,7 @@ requirements:
   - pilot
   - production
   coverage_type: operational
-  owner: TBD
+  owner: Operations owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-255
@@ -3123,8 +3783,8 @@ requirements:
   - emergency.activate
   - emergency.deactivate
   - user.assign_roles
-  pending_journey_ids:
   - carrier.manage
+  pending_journey_ids: []
   scenario_ids:
   - SC-OPS-006
   artifacts: []
@@ -3160,6 +3820,17 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_edge004_heartbeat.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'device health view существует; пороги/команды с подтверждением — RM-TECH-255'
+  code_baseline:
+  - packages/services/health_state.py
+  - packages/api/identity_routes/devices.py
+  - apps/admin-web/src/pages/DeviceHealthPage.tsx
+  - tests/behavioral/test_edge004_heartbeat.py
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__audit__view.py, tests/ui-smoke/test_uismoke__device__health_view.py, tests/ui-smoke/test_uismoke__emergency__activate.py, tests/ui-smoke/test_uismoke__emergency__deactivate.py, tests/ui-smoke/test_uismoke__user__assign_roles.py'
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_edge004_heartbeat.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-OPS-009
   title: Device heartbeat contract
@@ -3167,7 +3838,7 @@ requirements:
   - TZ v2.5 §10
   - TZ v2.5 §17
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     Каждый runtime/device отправляет authenticated heartbeat с `device_id`, `store_id`, `channel_type`, `timestamp_utc`,
@@ -3180,7 +3851,7 @@ requirements:
   - pilot
   - production
   coverage_type: operational
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-224
@@ -3206,13 +3877,26 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_edge004_heartbeat.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'heartbeat существует; дедуп/clock drift/freshness — RM-TECH-224'
+  code_baseline:
+  - packages/api/identity_routes/devices.py
+  - packages/api/device_routes/onboard.py
+  - apps/control-api/alembic/versions/021_device_onboarding_codes.py
+  - apps/control-api/alembic/versions/023_device_rls_bootstrap.py
+  - apps/control-api/alembic/versions/025_device_heartbeat.py
+  - tests/behavioral/test_edge001_device_onboarding.py
+  - tests/behavioral/test_edge004_heartbeat.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_edge004_heartbeat.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-OPS-007
   title: Emergency control
   source:
   - TZ v2.5 §13
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     только ограниченные роли с MFA и обязательной причиной; действия включают stop-рекламы, системное сообщение,
@@ -3223,7 +3907,7 @@ requirements:
   - pilot
   - production
   coverage_type: operational
-  owner: TBD
+  owner: Operations owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-254
@@ -3264,13 +3948,23 @@ requirements:
   - kind: ui_smoke
     ref: tests/ui-smoke/test_uismoke__emergency__activate.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'emergency activate/deactivate существуют (reachable); state machine — RM-TECH-254'
+  code_baseline:
+  - packages/api/identity_routes/emergency.py
+  - apps/control-api/alembic/versions/024_emergency_overrides.py
+  - tests/behavioral/test_k1_emergency_manifest.py
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__emergency__activate.py, tests/ui-smoke/test_uismoke__emergency__deactivate.py'
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_k1_emergency_manifest.py, tests/test_phase3_emergency_api.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-OPS-008
   title: Runtime cache lifecycle
   source:
   - TZ v2.5 §9
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     лимит локального кэша на профиль устройства, детерминированная очистка неиспользуемых/устаревших файлов, сохранение
@@ -3279,7 +3973,7 @@ requirements:
   - pilot
   - production
   coverage_type: operational
-  owner: TBD
+  owner: Channel/Content owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-260
@@ -3301,6 +3995,15 @@ requirements:
       неиспользуемые файлы удалены по правилу, last-known-good сохранён, просроченная платная реклама не показывается
       бесконечно
   evidence: []
+  implementation_mode: adapt
+  mode_rationale: 'player cache существует; лимит/очистка по профилю — RM-TECH-260'
+  code_baseline:
+  - apps/kso-player-client/player_client/manifest.py
+  - apps/kso-player-client/player_client/http.py
+  - apps/kso-player-client/player_client/retry_backoff.py
+  - tests/player_client/test_player_client.py
+  regression_criteria:
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-OPS-002
   title: Rollout/rollback/flags
@@ -3308,7 +4011,7 @@ requirements:
   - TZ v2.5 §9
   - TZ v2.5 §13
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     baseline stages `lab → 5 stores → 50 stores → 300 stores → 10% network → 50% network → all network` для player/manifest/schedule/content/config
@@ -3319,7 +4022,7 @@ requirements:
   - pilot
   - production
   coverage_type: operational
-  owner: TBD
+  owner: Operations owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-PILOT-002
@@ -3348,6 +4051,16 @@ requirements:
   - kind: integration
     ref: tests/integration/test_stand_rollback_drill.py
     status: candidate
+  implementation_mode: new
+  mode_rationale: 'rollout entity/flags отсутствуют (stand rollback drill — база); blocked OD-010 в RM-OPS-004'
+  code_baseline:
+  - scripts/deploy/local_stand.py
+  - scripts/deploy/stand_safe_smoke.py
+  - infra/compose/docker-compose.local-stand.yml
+  - tests/integration/test_stand_rollback_drill.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/integration/test_stand_rollback_drill.py'
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-OPS-003
   title: HA/DR/backup
@@ -3355,7 +4068,7 @@ requirements:
   - TZ v2.5 §5
   - TZ v2.5 §17
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     topology, RTO/RPO, backup schedule, encryption, offsite copy, retention, named owner и restore drill; PostgreSQL
@@ -3365,7 +4078,7 @@ requirements:
   - pilot
   - production
   coverage_type: operational
-  owner: TBD
+  owner: Operations owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-OPS-001
@@ -3403,6 +4116,16 @@ requirements:
   - kind: integration
     ref: tests/integration/test_restore_drill_verify.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'backup/restore drill существует (reachable); production HA baseline — RM-OPS-001/003'
+  code_baseline:
+  - tests/integration/test_backup_restore.py
+  - tests/integration/test_minio_backup_restore.py
+  - tests/integration/test_restore_drill_verify.py
+  - tests/test_backup_restore_drill.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/integration/test_backup_restore.py, tests/integration/test_minio_backup_restore.py, tests/integration/test_restore_drill_verify.py, tests/test_backup_restore_drill.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-OPS-004
   title: Observability
@@ -3411,7 +4134,7 @@ requirements:
   - TZ v2.5 §5
   - TZ v2.5 §17
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     backend, Device Gateway, PoP ingestion, Analytics, MinIO, PostgreSQL, ClickHouse, Redis, players и adapters
@@ -3424,7 +4147,7 @@ requirements:
   - pilot
   - production
   coverage_type: operational
-  owner: TBD
+  owner: Operations owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-205
@@ -3450,13 +4173,20 @@ requirements:
   - kind: unit
     ref: tests/test_phase_observability.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'metrics/alert rules существуют (reachable); SLO objectives — RM-TECH-205'
+  code_baseline:
+  - packages/observability/metrics.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/test_phase_observability.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-OPS-005
   title: Operational readiness
   source:
   - TZ v2.5 §17
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     инструкции запуска/остановки/обновления/отката/восстановления; player имеет systemd/restart policy, локальный
@@ -3466,7 +4196,7 @@ requirements:
   - pilot
   - production
   coverage_type: operational
-  owner: TBD
+  owner: Operations owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-OPS-001
@@ -3490,12 +4220,20 @@ requirements:
   - kind: unit
     ref: tests/test_phase2_health.py
     status: candidate
+  implementation_mode: new
+  mode_rationale: 'operational readiness (runbooks/on-call/RACI) отсутствует — RM-OPS-001'
+  code_baseline:
+  - tests/integration/test_pilot_e2e.py
+  - scripts/deploy/stand_safe_smoke.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/test_phase2_health.py'
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-OPS-006
   title: Production HA baseline
   source:
   - TZ v2.5 §17
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     минимум 2 backend и горизонтально масштабируемый Device Gateway за балансировщиком; Gateway имеет health-check,
@@ -3506,7 +4244,7 @@ requirements:
   - pilot
   - production
   coverage_type: operational
-  owner: TBD
+  owner: Operations owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-OPS-001
@@ -3540,6 +4278,14 @@ requirements:
   - kind: integration
     ref: tests/integration/test_restore_drill_verify.py
     status: candidate
+  implementation_mode: new
+  mode_rationale: 'production HA baseline отсутствует — RM-OPS-001/003 (OD-025/028)'
+  code_baseline:
+  - tests/integration/test_pilot_e2e.py
+  - scripts/deploy/stand_safe_smoke.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/integration/test_restore_drill_verify.py, tests/test_phase4_production_readiness.py, tests/test_production_config_gate.py'
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-UX-001
   title: Role-specific portal
@@ -3547,7 +4293,7 @@ requirements:
   - TZ v2.5 §6
   - TZ v2.5 §12
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     отдельные route/action/data capabilities для полного набора ролей исходного ТЗ: системный администратор (users/roles/devices/settings/monitoring/audit),
@@ -3564,7 +4310,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-STAB-003
@@ -3625,8 +4371,8 @@ requirements:
   - self.report_view
   - system.theme_switch
   - user.assign_roles
-  pending_journey_ids:
   - carrier.manage
+  pending_journey_ids: []
   scenario_ids: []
   artifacts: []
   acceptance:
@@ -3740,19 +4486,29 @@ requirements:
     ref: tests/ui-smoke/test_uismoke__user__assign_roles.py
     status: candidate
     note: 'user.assign_roles: registry reachable'
+  implementation_mode: adapt
+  mode_rationale: 'role-specific portal существует (43 reachable UI journeys); intended-role proof и journeys registry — RM-STAB-003/004/006/007'
+  code_baseline:
+  - apps/admin-web/src/pages
+  - apps/advertiser-web/src/pages
+  - tests/ui-smoke/ci-subset.txt
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__advertiser__application_review.py, tests/ui-smoke/test_uismoke__advertiser__apply.py, tests/ui-smoke/test_uismoke__advertiser__brand_crud.py, tests/ui-smoke/test_uismoke__advertiser__contact_crud.py, tests/ui-smoke/test_uismoke__advertiser__contract_pdf_upload.py, tests/ui-smoke/test_uismoke__advertiser__create_org.py, tests/ui-smoke/test_uismoke__advertiser__invite.py, tests/ui-smoke/test_uismoke__advertiser__legal_requisites.py, tests/ui-smoke/test_uismoke__audit__view.py, tests/ui-smoke/test_uismoke__campaign__create.py, tests/ui-smoke/test_uismoke__commerce__order_create.py, tests/ui-smoke/test_uismoke__commerce__tariff_manage.py, tests/ui-smoke/test_uismoke__creative__moderate_approve.py, tests/ui-smoke/test_uismoke__creative__moderate_reject.py, tests/ui-smoke/test_uismoke__device__health_view.py, tests/ui-smoke/test_uismoke__inventory__rule_create.py, tests/ui-smoke/test_uismoke__inventory__simulate.py, tests/ui-smoke/test_uismoke__self__campaign_view.py, tests/ui-smoke/test_uismoke__self__login.py, tests/ui-smoke/test_uismoke__system__theme_switch.py, tests/ui-smoke/test_uismoke__user__assign_roles.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
+  - 'alembic upgrade/downgrade rehearsal на стенде до применения (owner gate migration_application)'
   disposition: task
 - id: REQ-UX-002
   title: Human walkthrough
   source:
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: operator evidence на реальном DEV
   scope:
   - pilot
   - production
   coverage_type: governance
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-UX-007
@@ -3772,12 +4528,20 @@ requirements:
     when: оператор проходит journey на DEV
     then: evidence (скриншоты/дата/оператор) записано человеком; агент ставит только PENDING (RM-UX-007)
   evidence: []
+  implementation_mode: preserve
+  mode_rationale: 'human walkthrough — процесс (RM-UX-007, приостановлен OD-041); код не меняется'
+  code_baseline:
+  - apps/admin-web/src/pages
+  - apps/advertiser-web/src/pages
+  - tests/ui-smoke/ci-subset.txt
+  regression_criteria:
+  - 'поведение кода не меняется; изменения только в evidence/документах (diff вне tests/docs/scripts — красный сигнал)'
   disposition: task
 - id: REQ-UX-003
   title: Accessibility and localization
   source:
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     утверждённый accessibility target (уровень стандарта, keyboard/screen-reader/contrast checks) и locale/timezone
@@ -3786,7 +4550,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-UX-001
@@ -3807,12 +4571,20 @@ requirements:
     when: прогон keyboard/screen-reader/contrast и locale/TZ матрицы
     then: нарушений нет либо каждое имеет задачу; evidence приложено к RM-UX-001/003
   evidence: []
+  implementation_mode: adapt
+  mode_rationale: 'формы существуют; accessibility/localization — RM-UX-001/003'
+  code_baseline:
+  - apps/admin-web/src/pages
+  - apps/advertiser-web/src/pages
+  - tests/ui-smoke/ci-subset.txt
+  regression_criteria:
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-UX-004
   title: Campaign readiness matrix
   source:
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     при создании/согласовании кампании UI показывает по каждому выбранному каналу: rendition approved, inventory
@@ -3822,7 +4594,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-UX-008
@@ -3844,12 +4616,20 @@ requirements:
       по каждому каналу видны rendition/inventory/conflicts/forecast/PoP mode/SLA readiness; каждый blocked/warning
       ведёт к действию
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'campaign readiness matrix UI отсутствует — RM-UX-008'
+  code_baseline:
+  - apps/admin-web/src/pages
+  - apps/advertiser-web/src/pages
+  - tests/ui-smoke/ci-subset.txt
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-UX-005
   title: Permission descriptions
   source:
   - feature-registry (registry-derived gap)
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     В управлении ролями UI показывает стабильные permission code, label и description; неизвестное право безопасно
@@ -3859,7 +4639,7 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-STAB-004
@@ -3887,12 +4667,22 @@ requirements:
     ref: tests/ui-smoke/test_uismoke__user__assign_roles.py
     status: candidate
     note: 'user.assign_roles: registry reachable'
+  implementation_mode: adapt
+  mode_rationale: 'permission descriptions существуют (D2); закрепляются RM-STAB-004'
+  code_baseline:
+  - packages/api/identity_routes/users.py
+  - apps/admin-web/src/pages/UsersPage.tsx
+  - tests/behavioral/test_user_management.py
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__user__assign_roles.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
+  - 'alembic upgrade/downgrade rehearsal на стенде до применения (owner gate migration_application)'
   disposition: task
 - id: REQ-INT-001
   title: УКМ4/чековые данные
   source:
   - TZ v2.5 §16
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     phase 1 допускает пакетную загрузку только агрегированных чековых данных; phase 2 — регулярный approved API/ETL;
@@ -3902,14 +4692,14 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Analytics owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-281
   requirement_status: approved
-  delivery_status: blocked
-  status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
+  delivery_status: planned
+  status_changed_at: '2026-08-31T00:00:00Z'
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids; OD-023 approved 2026-08-31 (RM-GOV-010) unblock
   dependencies: []
   story_ids:
   - US-INT-001
@@ -3924,13 +4714,17 @@ requirements:
     then: >-
       journey завершён; negative path — stale master, secret exposure or mismatch → fail closed; `integration.reconciliation_completed`
   evidence: []
-  disposition: blocked
-  block_reason: master-data adapter (OD-023)
+  implementation_mode: new
+  mode_rationale: 'УКМ4/чековые данные — ingestion отсутствует — RM-TECH-281'
+  code_baseline: []
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
+  disposition: task
 - id: REQ-INT-002
   title: Price/SKU master
   source:
   - TZ v2.5 §16
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     ESL/price-checker price-related данные приходят из approved price/SKU master или проходят reconciliation; при
@@ -3940,15 +4734,15 @@ requirements:
   - pilot
   - production
   coverage_type: business
-  owner: TBD
+  owner: Product Data Owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-264
   - RM-TECH-280
   requirement_status: approved
-  delivery_status: blocked
-  status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
+  delivery_status: planned
+  status_changed_at: '2026-08-31T00:00:00Z'
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids; OD-023 approved 2026-08-31 (RM-GOV-010) unblock
   dependencies:
   - DEC-005
   story_ids:
@@ -3964,13 +4758,17 @@ requirements:
     then: >-
       journey завершён; negative path — stale master, secret exposure or mismatch → fail closed; `integration.reconciliation_completed`
   evidence: []
-  disposition: blocked
-  block_reason: master-data adapter и владелец master-данных (OD-023)
+  implementation_mode: new
+  mode_rationale: 'price/SKU master adapter отсутствует — RM-TECH-280/264 (OD-023)'
+  code_baseline: []
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
+  disposition: task
 - id: REQ-INT-003
   title: BI/export/SIEM/vendor
   source:
   - TZ v2.5 §16
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     BI/export API требует authentication, rate-limit, immutable audit и ограничение advertiser/role/retailer scope;
@@ -3980,14 +4778,14 @@ requirements:
   - pilot
   - production
   coverage_type: security
-  owner: TBD
+  owner: Security owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-287
   requirement_status: approved
-  delivery_status: planned
-  status_changed_at: '2026-08-28T00:00:00Z'
-  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids
+  delivery_status: blocked
+  status_changed_at: '2026-08-31T00:00:00Z'
+  status_actor: OD-017 (owner ACCEPT r421); A1 bootstrap Claude Code; RM-GOV-009 (OD-037) roadmap_ids; RM-GOV-012 выравнивание 2026-08-31
   dependencies:
   - DEC-013
   story_ids: []
@@ -4005,13 +4803,23 @@ requirements:
   - kind: unit
     ref: tests/test_s065_rate_limit.py
     status: candidate
-  disposition: task
+  implementation_mode: new
+  mode_rationale: 'BI/export/SIEM API отсутствует (rate limit — база); blocked OD-026'
+  code_baseline:
+  - packages/observability/rate_limit.py
+  - packages/security/sanitize.py
+  - tests/behavioral/test_auth_rbac_behavior.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/test_s065_rate_limit.py'
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
+  disposition: blocked
+  block_reason: 'BI/export/SIEM API: OD-026 (DEC-013) open - RM-TECH-287 blocked'
 - id: REQ-API-001
   title: Versioned API and event compatibility
   source:
   - TZ v2.5 §16
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     OpenAPI/event schemas, errors, deprecation/migration; для resource URLs выбирается один canonical opaque external
@@ -4022,7 +4830,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-220
@@ -4044,6 +4852,16 @@ requirements:
       в одной версии допустим один canonical; alias имеет deprecation date и ту же authorization; смешение отклонено
       contract-тестом
   evidence: []
+  implementation_mode: adapt
+  mode_rationale: 'FastAPI openapi существует; версионирование/deprecation/contract tests — RM-TECH-220'
+  code_baseline:
+  - apps/control-api/main.py
+  - packages/api/identity_routes
+  - packages/api/device_routes
+  - packages/api/public_routes
+  - packages/version.py
+  regression_criteria:
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-API-002
   title: API boundary separation
@@ -4051,7 +4869,7 @@ requirements:
   - TZ v2.5 §4
   - TZ v2.5 §16
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     User API, Device API, analytics API и emergency API логически разделены; device clients не имеют доступа к admin
@@ -4060,7 +4878,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Security owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-221
@@ -4086,6 +4904,17 @@ requirements:
   - kind: unit
     ref: tests/test_phase3_devices_api.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'identity/device/public routes разделены; недостижимость admin для device client закрепляется RM-TECH-221'
+  code_baseline:
+  - apps/control-api/main.py
+  - packages/api/identity_routes
+  - packages/api/device_routes
+  - packages/api/public_routes
+  - packages/version.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/test_phase3_devices_api.py, tests/test_phase3_protected_identity.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-API-003
   title: PoP endpoint compatibility
@@ -4093,7 +4922,7 @@ requirements:
   - TZ v2.5 §11
   - TZ v2.5 §16
   - TZ v2.5 §24
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     каноничен `POST /api/v1/pop/batch` по ADR-017; legacy `/device/pop/batch` только временный alias с deprecation
@@ -4102,7 +4931,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-222
@@ -4129,12 +4958,27 @@ requirements:
   - kind: unit
     ref: tests/test_contract_pop.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'PoP endpoint существует; canonical route + alias — RM-TECH-222'
+  code_baseline:
+  - packages/domain/pop_ingestion.py
+  - packages/api/pop.py
+  - apps/pop-ingestor/main.py
+  - packages/contracts/proof_event_v1.schema.json
+  - apps/control-api/alembic/versions/009_pop_persistence_schema.py
+  - tests/behavioral/test_edge003_pop_ingestion.py
+  - tests/behavioral/test_pop_ingestion.py
+  - tests/behavioral/test_pop_schema.py
+  - tests/test_contract_pop.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_edge002fu_real_endpoint.py, tests/test_contract_pop.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-DATA-001
   title: Data ownership and lifecycle
   source:
   - TZ v2.5 §15
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     dictionary, lineage, immutable versioning/diff для campaign/placement/playlist/manifest/priority/inventory/player
@@ -4147,7 +4991,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Product Data Owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-251
@@ -4159,9 +5003,9 @@ requirements:
   - DEC-007
   story_ids:
   - US-DATA-001
-  journey_ids: []
-  pending_journey_ids:
+  journey_ids:
   - data.catalog
+  pending_journey_ids: []
   scenario_ids:
   - SC-DATA-004
   artifacts: []
@@ -4170,12 +5014,17 @@ requirements:
     when: сохранение
     then: создаётся новая версия с diff и actor; предыдущая неизменяема; словарь данных называет владельца
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'data catalog/ownership/lineage отсутствует — RM-TECH-251'
+  code_baseline: []
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-DATA-002
   title: Canonical entity inventory
   source:
   - TZ v2.5 §15
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     ERD/data dictionary обязаны перечислить и связать все группы §15: верхнеуровневую сущность `retailers` и обязательный
@@ -4189,7 +5038,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Product Data Owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-229
@@ -4217,6 +5066,17 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_scope_rls.py
     status: candidate
+  implementation_mode: preserve
+  mode_rationale: 'модели существуют; as-built ERD/data dictionary — артефакт RM-TECH-229'
+  code_baseline:
+  - tests/behavioral/test_adr018_multitenancy_rls.py
+  - tests/behavioral/test_scope_rls.py
+  - apps/control-api/alembic/versions/020_multitenancy_retailer_id.py
+  - apps/control-api/alembic/versions/035_derived_tables_advertiser_rls.py
+  - docs/architecture/adr/ADR-018-tenant-model-for-next-branch.md
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_adr018_multitenancy_rls.py, tests/behavioral/test_scope_rls.py'
+  - 'поведение кода не меняется; изменения только в evidence/документах (diff вне tests/docs/scripts — красный сигнал)'
   disposition: task
 - id: REQ-NFR-001
   title: Capacity/performance
@@ -4224,7 +5084,7 @@ requirements:
   - TZ v2.5 §3
   - TZ v2.5 §5
   - TZ v2.5 §20
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     40K + additional channels load profile; Control Plane/admin portal availability ≥99.5% в утверждённом рабочем
@@ -4234,7 +5094,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Operations owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-205
@@ -4256,12 +5116,18 @@ requirements:
     when: production claim availability/PoP loss
     then: каждый SLO имеет окно/знаменатель/исключения; claim подтверждён load evidence, не декларацией
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'capacity/performance профили отсутствуют — RM-TECH-205/288'
+  code_baseline:
+  - packages/observability/metrics.py
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-NFR-002
   title: Time/calendar
   source:
   - TZ v2.5 §3
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     all DB/log events store UTC plus object local TZ; campaign schedules use store local time unless an approved
@@ -4271,7 +5137,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Product owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-248
@@ -4296,13 +5162,28 @@ requirements:
   - kind: unit
     ref: tests/test_s063_pop_timezone.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'timezone обработка PoP существует; календарь/flight windows — RM-TECH-248'
+  code_baseline:
+  - packages/domain/pop_ingestion.py
+  - packages/api/pop.py
+  - apps/pop-ingestor/main.py
+  - packages/contracts/proof_event_v1.schema.json
+  - apps/control-api/alembic/versions/009_pop_persistence_schema.py
+  - tests/behavioral/test_edge003_pop_ingestion.py
+  - tests/behavioral/test_pop_ingestion.py
+  - tests/behavioral/test_pop_schema.py
+  - tests/test_contract_pop.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/test_s063_pop_timezone.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-NFR-003
   title: Compatibility
   source:
   - TZ v2.5 §5
   - TZ v2.5 §20
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     Device/API/manifest version window with explicit deprecation dates; heartbeat advertises supported API/manifest
@@ -4312,7 +5193,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Technical owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-228
@@ -4335,6 +5216,17 @@ requirements:
   - kind: unit
     ref: tests/test_version_identity.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'version identity существует; окно совместимости device/API/manifest — RM-TECH-228'
+  code_baseline:
+  - apps/control-api/main.py
+  - packages/api/identity_routes
+  - packages/api/device_routes
+  - packages/api/public_routes
+  - packages/version.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/test_version_identity.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-NFR-004
   title: Network scale and PoP volume
@@ -4343,7 +5235,7 @@ requirements:
   - TZ v2.5 §3
   - TZ v2.5 §5
   - TZ v2.5 §17
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     до 10 000 магазинов, 40 000+ устройств и десятки/сотни млн PoP в год без смены базовой архитектуры; Phase 1
@@ -4354,7 +5246,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Operations owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-209
@@ -4377,6 +5269,11 @@ requirements:
       ClickHouse включается только после owner gate (RM-TECH-209) с backpressure/lag telemetry; backfill и совместимость
       обязательны
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'network scale/ClickHouse trigger — RM-TECH-209 (governance)'
+  code_baseline: []
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-NFR-005
   title: Analytics freshness
@@ -4384,14 +5281,14 @@ requirements:
   - TZ v2.5 §5
   - TZ v2.5 §17
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: утверждённый maximum latency отчёта после PoP и контролируемый percentile
   scope:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Operations owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-209
@@ -4411,13 +5308,18 @@ requirements:
     when: PoP принят
     then: отчёт отражает событие в пределах latency по контролируемому percentile
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'analytics freshness — RM-TECH-209'
+  code_baseline: []
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-NFR-006
   title: Load-profile acceptance
   source:
   - TZ v2.5 §5
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     профили: 40K KSO (heartbeat/manifest 30s с jitter, PoP batch 60s), дополнительные Android/TV/price-checker/ESL/LED,
@@ -4428,7 +5330,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Operations owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-205
@@ -4451,12 +5353,17 @@ requirements:
       response time/error rate/CPU/RAM/disk в бюджете; degraded-mode поведение задокументировано; «до 100 admin»
       — proposed до OD-011
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'load-profile acceptance отсутствует — RM-TECH-205/288'
+  code_baseline: []
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-NFR-007
   title: Operational latency and continuity
   source:
   - TZ v2.5 §5
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     при штатной сети manifest обновляется ≤5 минут для 95% online-устройств, emergency-команда доставляется ≤60
@@ -4467,7 +5374,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Operations owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-205
@@ -4487,6 +5394,12 @@ requirements:
     when: обновление manifest / emergency / восстановление
     then: показатели в пределах, с percentile/окном/знаменателем/исключениями
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'latency/continuity SLO отсутствуют — RM-TECH-205'
+  code_baseline:
+  - packages/observability/metrics.py
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-SEC-005
   title: Critical-action audit completeness
@@ -4494,7 +5407,7 @@ requirements:
   - TZ v2.5 §4
   - TZ v2.5 §14
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     100% критичных действий неотключаемо без решения ИБ; user-initiated audit events содержат существующий actor
@@ -4504,7 +5417,7 @@ requirements:
   - pilot
   - production
   coverage_type: security
-  owner: TBD
+  owner: Security owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-STAB-014
@@ -4537,12 +5450,23 @@ requirements:
   - kind: unit
     ref: tests/test_phase3_security.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'audit log существует (reachable); полнота критичных действий/actor — RM-STAB-014'
+  code_baseline:
+  - packages/api/identity_routes/users.py
+  - apps/control-api/alembic/versions/002_identity_rbac_audit.py
+  - apps/admin-web/src/pages/AuditLogPage.tsx
+  - tests/ui-smoke/test_uismoke__audit__view.py
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__audit__view.py'
+  - 'существующие тесты остаются зелёными: tests/test_phase3_security.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-SEC-006
   title: API attack protection
   source:
   - TZ v2.5 §14
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     все user/device/vendor входы проходят schema validation и bounded size/depth; object-level authorization проверяет
@@ -4556,7 +5480,7 @@ requirements:
   - pilot
   - production
   coverage_type: security
-  owner: TBD
+  owner: Security owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-STAB-013
@@ -4584,12 +5508,21 @@ requirements:
   - kind: unit
     ref: tests/test_phase3_security.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'rate limit/sanitize существуют; runtime negative suite — RM-STAB-013'
+  code_baseline:
+  - packages/observability/rate_limit.py
+  - packages/security/sanitize.py
+  - tests/behavioral/test_auth_rbac_behavior.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/test_phase3_security.py, tests/test_s065_rate_limit.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-SEC-007
   title: Object storage boundary
   source:
   - TZ v2.5 §14
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     MinIO buckets приватны, service accounts ограничены, presigned URL выдаётся только по утверждённой политике
@@ -4598,7 +5531,7 @@ requirements:
   - pilot
   - production
   coverage_type: security
-  owner: TBD
+  owner: Security owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-STAB-016
@@ -4624,12 +5557,20 @@ requirements:
   - kind: integration
     ref: tests/integration/test_minio_upload.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'MinIO presigned существует; private buckets/TTL boundary — RM-STAB-016'
+  code_baseline:
+  - packages/services/storage.py
+  - tests/integration/test_minio_upload.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/integration/test_minio_upload.py, tests/test_storage_service.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-SEC-008
   title: Network segmentation
   source:
   - TZ v2.5 §14
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     устройства/плееры/шлюзы инициируют только исходящие HTTPS/mTLS или approved vendor/API connections к Gateway;
@@ -4640,7 +5581,7 @@ requirements:
   - pilot
   - production
   coverage_type: security
-  owner: TBD
+  owner: Security owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-OPS-002
@@ -4660,13 +5601,22 @@ requirements:
     when: negative reachability tests из device-сегмента
     then: Admin API и PostgreSQL/MinIO/Redis недостижимы; Gateway достижим только по HTTPS/mTLS
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'network segmentation по environment отсутствует — RM-OPS-002'
+  code_baseline:
+  - scripts/deploy/local_stand.py
+  - scripts/deploy/stand_safe_smoke.py
+  - infra/compose/docker-compose.local-stand.yml
+  - tests/integration/test_stand_rollback_drill.py
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-SEC-009
   title: System administrator control plane
   source:
   - TZ v2.5 §6
   - TZ v2.5 §14
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     системный администратор управляет users, roles, permissions, LDAP/SSO bindings, devices, settings, monitoring
@@ -4676,7 +5626,7 @@ requirements:
   - pilot
   - production
   coverage_type: security
-  owner: TBD
+  owner: Security owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-STAB-015
@@ -4727,12 +5677,22 @@ requirements:
   - kind: unit
     ref: tests/test_s019_role_safety.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'users control plane существует (reachable); отдельные permission-коды — RM-STAB-015'
+  code_baseline:
+  - packages/api/identity_routes/users.py
+  - apps/admin-web/src/pages/UsersPage.tsx
+  - tests/behavioral/test_user_management.py
+  regression_criteria:
+  - 'UI-smoke journeys остаются зелёными: tests/ui-smoke/test_uismoke__user__create_advertiser.py, tests/ui-smoke/test_uismoke__user__deactivate.py, tests/ui-smoke/test_uismoke__user__reset_password.py, tests/ui-smoke/test_uismoke__user__split_internal_advertiser.py'
+  - 'существующие тесты остаются зелёными: tests/test_phase3_scoped_permission.py, tests/test_phase3_user_management.py, tests/test_s019_role_safety.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-STAND-001
   title: Safe realistic seed
   source:
   - TZ v2.5 §18
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     all channels, 1M synthetic PoP/apply-ack events and scenarios for active/completed campaigns, underdelivery,
@@ -4743,7 +5703,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Operations owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-ENV-002
@@ -4774,13 +5734,23 @@ requirements:
   - kind: behavioral
     ref: tests/behavioral/test_smoke_cleanup_safety.py
     status: candidate
+  implementation_mode: adapt
+  mode_rationale: 'seed существует; reset в утверждённое время — RM-ENV-002'
+  code_baseline:
+  - apps/control-api/seed.py
+  - scripts/deploy/local_stand.py
+  - tests/test_local_stand.py
+  - tests/behavioral/test_smoke_cleanup_safety.py
+  regression_criteria:
+  - 'существующие тесты остаются зелёными: tests/behavioral/test_smoke_cleanup_safety.py, tests/test_local_stand.py, tests/test_stand_identity_and_safe_smoke.py'
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-STAND-002
   title: Exact demo composition
   source:
   - TZ v2.5 §18
   - TZ v2.5 §22
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     10 branches/50 clusters/500 stores; 2,000 KSO, 500 Android/TV, 300 price checkers, 50 ESL gateways, 100 LED
@@ -4789,7 +5759,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Operations owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-ENV-002
@@ -4811,12 +5781,21 @@ requirements:
       10 branches/50 clusters/500 stores; 2000 KSO, 500 Android/TV, 300 price checkers, 50 ESL gateways, 100 LED,
       20 advertisers, 100 campaigns, 500 creatives
   evidence: []
+  implementation_mode: adapt
+  mode_rationale: 'демо-состав существует (seed); точный состав утверждается RM-ENV-002'
+  code_baseline:
+  - apps/control-api/seed.py
+  - scripts/deploy/local_stand.py
+  - tests/test_local_stand.py
+  - tests/behavioral/test_smoke_cleanup_safety.py
+  regression_criteria:
+  - 'аддитивность: существующие маршруты/статусы/поля сохраняются, миграции additive-first с rollback rehearsal; новое поведение — только с новым behavioral/smoke'
   disposition: task
 - id: REQ-STAND-003
   title: Real KSO feasibility gate
   source:
   - TZ v2.5 §18
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     до начала основной реализации на реальной КСО подтверждены 1440×1080, hide-on-touch, кассовая безопасность,
@@ -4826,7 +5805,7 @@ requirements:
   - pilot
   - production
   coverage_type: technical
-  owner: TBD
+  owner: Operations owner
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-207A
@@ -4847,6 +5826,15 @@ requirements:
       проверка 1440×1080, hide-on-touch, кассовой безопасности, сети, прав, heartbeat/manifest, playback/PoP
     then: evidence с окружением/датой/owner/ограничениями записано до основной реализации (RM-TECH-207A)
   evidence: []
+  implementation_mode: new
+  mode_rationale: 'real KSO feasibility gate отсутствует — RM-TECH-207A design'
+  code_baseline:
+  - apps/kso-player-client/player_client/manifest.py
+  - apps/kso-player-client/player_client/http.py
+  - apps/kso-player-client/player_client/retry_backoff.py
+  - tests/player_client/test_player_client.py
+  regression_criteria:
+  - 'новая функция не меняет существующие smokes/behavioral соседних journeys; reachable — только с новым UI-smoke/behavioral (правило 7)'
   disposition: task
 - id: REQ-GOV-001
   title: Agent/change/acceptance boundaries
@@ -4856,7 +5844,7 @@ requirements:
   - TZ v2.5 §20
   - TZ v2.5 §21
   - TZ v2.5 §25
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     до изменения — анализ текущего состояния и mini-design с файлами/слоями/рисками/проверкой/commit; после шага
@@ -4871,7 +5859,7 @@ requirements:
   - pilot
   - production
   coverage_type: governance
-  owner: TBD
+  owner: PMO
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-GOV-006
@@ -4883,8 +5871,7 @@ requirements:
   story_ids:
   - US-REG-001
   journey_ids: []
-  pending_journey_ids:
-  - audit.compare
+  pending_journey_ids: []
   scenario_ids:
   - SC-GOV-005
   artifacts: []
@@ -4898,6 +5885,15 @@ requirements:
   - kind: command
     ref: scripts/ci/roadmap-governance-guard.py
     status: candidate
+  implementation_mode: preserve
+  mode_rationale: 'границы агентов/приёмки действуют (AGENTS.md, guard); RM-GOV-011 — документ'
+  code_baseline:
+  - scripts/ci/roadmap-governance-guard.py
+  - scripts/ci/check-roadmap-schema.py
+  - scripts/roadmap-consistency-check.py
+  - docs/product/roadmap.yaml
+  regression_criteria:
+  - 'поведение кода не меняется; изменения только в evidence/документах (diff вне tests/docs/scripts — красный сигнал)'
   disposition: task
 - id: REQ-GOV-002
   title: Feature-registry двусторонняя трассировка
@@ -4905,7 +5901,7 @@ requirements:
   - TZ v2.5 §18
   - TZ v2.5 §19
   - TZ v2.5 §25
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     Каждый ID `docs/product/feature-registry.yaml` должен иметь в ТЗ и traceability-манифесте canonical REQ/story
@@ -4917,7 +5913,7 @@ requirements:
   - pilot
   - production
   coverage_type: governance
-  owner: TBD
+  owner: PMO
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-GOV-005
@@ -4945,13 +5941,22 @@ requirements:
   - kind: command
     ref: scripts/roadmap-consistency-check.py
     status: candidate
+  implementation_mode: preserve
+  mode_rationale: 'двусторонняя трассировка registry↔REQ реализована (guard req)'
+  code_baseline:
+  - scripts/ci/roadmap-governance-guard.py
+  - scripts/ci/check-roadmap-schema.py
+  - scripts/roadmap-consistency-check.py
+  - docs/product/roadmap.yaml
+  regression_criteria:
+  - 'поведение кода не меняется; изменения только в evidence/документах (diff вне tests/docs/scripts — красный сигнал)'
   disposition: task
 - id: REQ-GOV-003
   title: Roadmap coverage и status contract
   source:
   - TZ v2.5 §18
   - TZ v2.5 §19
-  - tz-v2.6-draft draft-2026-08-31-r425 §25
+  - tz-v2.6-draft draft-2026-08-31-r428 §25
   normative: MUST
   statement: >-
     Каждый REQ, story, journey и approved decision обязан иметь одну или несколько явных задач в `docs/product/roadmap.yaml`
@@ -4963,7 +5968,7 @@ requirements:
   - pilot
   - production
   coverage_type: governance
-  owner: TBD
+  owner: PMO
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-GOV-004
@@ -4991,6 +5996,15 @@ requirements:
   - kind: command
     ref: scripts/ci/check-roadmap-schema.py
     status: candidate
+  implementation_mode: preserve
+  mode_rationale: 'coverage/status contract реализован (guard/schema-check)'
+  code_baseline:
+  - scripts/ci/roadmap-governance-guard.py
+  - scripts/ci/check-roadmap-schema.py
+  - scripts/roadmap-consistency-check.py
+  - docs/product/roadmap.yaml
+  regression_criteria:
+  - 'поведение кода не меняется; изменения только в evidence/документах (diff вне tests/docs/scripts — красный сигнал)'
   disposition: task
 scenarios:
 - id: SC-GOV-001
@@ -4999,8 +6013,8 @@ scenarios:
   req_ids:
   - REQ-SCOPE-001
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SCOPE-001
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-SCOPE-001
+  owner: Product owner
   roadmap_ids:
   - RM-BIZ-001
   acceptance:
@@ -5018,8 +6032,8 @@ scenarios:
   req_ids:
   - REQ-CORE-001
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-CORE-001
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-CORE-001
+  owner: Product Data Owner
   roadmap_ids:
   - RM-TECH-240
   acceptance:
@@ -5036,8 +6050,8 @@ scenarios:
   req_ids:
   - REQ-CORE-002
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-CORE-002
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-CORE-002
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-207A
   acceptance:
@@ -5056,8 +6070,8 @@ scenarios:
   req_ids:
   - REQ-CORE-003
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-CORE-003
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-CORE-003
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-241
   acceptance:
@@ -5076,8 +6090,8 @@ scenarios:
   req_ids:
   - REQ-ARCH-001
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ARCH-001
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-ARCH-001
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-220
   acceptance:
@@ -5095,8 +6109,8 @@ scenarios:
   req_ids:
   - REQ-ARCH-002
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ARCH-002
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-ARCH-002
+  owner: Technical owner
   roadmap_ids:
   - RM-STAB-017
   acceptance:
@@ -5114,8 +6128,8 @@ scenarios:
   req_ids:
   - REQ-ARCH-003
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ARCH-003
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-ARCH-003
+  owner: Technical owner
   roadmap_ids:
   - RM-STAB-012
   acceptance:
@@ -5133,8 +6147,8 @@ scenarios:
   req_ids:
   - REQ-ARCH-004
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ARCH-004
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-ARCH-004
+  owner: Architecture owner
   roadmap_ids:
   - RM-ENV-003
   - RM-OPS-001
@@ -5162,8 +6176,8 @@ scenarios:
   req_ids:
   - REQ-CHAN-002
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-CHAN-002
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-CHAN-002
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-207A
   acceptance:
@@ -5186,8 +6200,8 @@ scenarios:
   req_ids:
   - REQ-ORCH-001
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ORCH-001
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-ORCH-001
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-207A
   acceptance:
@@ -5209,8 +6223,8 @@ scenarios:
   req_ids:
   - REQ-ORCH-003
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ORCH-003
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-ORCH-003
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-242
   acceptance:
@@ -5233,8 +6247,8 @@ scenarios:
   req_ids:
   - REQ-ORCH-004
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ORCH-004
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-ORCH-004
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-243
   acceptance:
@@ -5263,8 +6277,8 @@ scenarios:
   req_ids:
   - REQ-ORCH-005
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ORCH-005
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-ORCH-005
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-207A
   - RM-TECH-261
@@ -5284,8 +6298,8 @@ scenarios:
   req_ids:
   - REQ-ORCH-006
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ORCH-006
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-ORCH-006
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-207A
   - RM-TECH-230
@@ -5303,8 +6317,8 @@ scenarios:
   req_ids:
   - REQ-MAN-004
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-MAN-004
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-MAN-004
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-207B
   - RM-TECH-223
@@ -5328,8 +6342,8 @@ scenarios:
   req_ids:
   - REQ-MAN-005
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-MAN-005
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-MAN-005
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-207B
   acceptance:
@@ -5347,8 +6361,8 @@ scenarios:
   req_ids:
   - REQ-MAN-002
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-MAN-002
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-MAN-002
+  owner: Technical owner
   roadmap_ids:
   - RM-STAB-010
   acceptance:
@@ -5369,8 +6383,8 @@ scenarios:
   req_ids:
   - REQ-MAN-003
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-MAN-003
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-MAN-003
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-207B
   acceptance:
@@ -5393,8 +6407,8 @@ scenarios:
   req_ids:
   - REQ-POP-001
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-POP-001
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-POP-001
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-207B
   - RM-TECH-226
@@ -5418,8 +6432,8 @@ scenarios:
   req_ids:
   - REQ-POP-002
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-POP-002
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-POP-002
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-207B
   - RM-TECH-225
@@ -5445,8 +6459,8 @@ scenarios:
   req_ids:
   - REQ-POP-003
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-POP-003
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-POP-003
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-207B
   - RM-TECH-222
@@ -5468,8 +6482,8 @@ scenarios:
   req_ids:
   - REQ-POP-004
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-POP-004
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-POP-004
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-207B
   - RM-TECH-227
@@ -5491,8 +6505,8 @@ scenarios:
   req_ids:
   - REQ-CONT-002
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-CONT-002
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-CONT-002
+  owner: Channel/Content owner
   roadmap_ids:
   - RM-TECH-250
   acceptance:
@@ -5514,8 +6528,8 @@ scenarios:
   - REQ-V26-011
   - REQ-V26-007
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-V26-011/REQ-V26-007
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-V26-011/REQ-V26-007
+  owner: Architecture owner
   roadmap_ids:
   - RM-TECH-289
   acceptance:
@@ -5531,8 +6545,8 @@ scenarios:
   req_ids:
   - REQ-OPS-009
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-009
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-OPS-009
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-224
   acceptance:
@@ -5552,8 +6566,8 @@ scenarios:
   req_ids:
   - REQ-OPS-007
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-007
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-OPS-007
+  owner: Operations owner
   roadmap_ids:
   - RM-TECH-254
   acceptance:
@@ -5579,8 +6593,8 @@ scenarios:
   req_ids:
   - REQ-OPS-008
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-008
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-OPS-008
+  owner: Channel/Content owner
   roadmap_ids:
   - RM-TECH-260
   acceptance:
@@ -5597,8 +6611,8 @@ scenarios:
   req_ids:
   - REQ-OPS-005
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-005
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-OPS-005
+  owner: Operations owner
   roadmap_ids:
   - RM-OPS-001
   acceptance:
@@ -5616,8 +6630,8 @@ scenarios:
   req_ids:
   - REQ-OPS-006
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-006
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-OPS-006
+  owner: Operations owner
   roadmap_ids:
   - RM-OPS-001
   - RM-OPS-003
@@ -5644,8 +6658,8 @@ scenarios:
   req_ids:
   - REQ-UX-002
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-UX-002
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-UX-002
+  owner: Product owner
   roadmap_ids:
   - RM-UX-007
   acceptance:
@@ -5660,8 +6674,8 @@ scenarios:
   req_ids:
   - REQ-UX-003
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-UX-003
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-UX-003
+  owner: Product owner
   roadmap_ids:
   - RM-UX-001
   - RM-UX-003
@@ -5677,8 +6691,8 @@ scenarios:
   req_ids:
   - REQ-UX-004
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-UX-004
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-UX-004
+  owner: Product owner
   roadmap_ids:
   - RM-UX-008
   acceptance:
@@ -5695,8 +6709,8 @@ scenarios:
   req_ids:
   - REQ-INT-003
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-INT-003
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-INT-003
+  owner: Security owner
   roadmap_ids:
   - RM-TECH-287
   acceptance:
@@ -5715,8 +6729,8 @@ scenarios:
   req_ids:
   - REQ-API-001
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-API-001
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-API-001
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-220
   acceptance:
@@ -5733,8 +6747,8 @@ scenarios:
   req_ids:
   - REQ-API-002
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-API-002
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-API-002
+  owner: Security owner
   roadmap_ids:
   - RM-TECH-221
   acceptance:
@@ -5755,8 +6769,8 @@ scenarios:
   req_ids:
   - REQ-API-003
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-API-003
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-API-003
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-222
   acceptance:
@@ -5778,8 +6792,8 @@ scenarios:
   - REQ-DATA-002
   - REQ-V26-001
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-DATA-002/REQ-V26-001
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-DATA-002/REQ-V26-001
+  owner: Product Data Owner
   roadmap_ids:
   - RM-TECH-229
   acceptance:
@@ -5802,8 +6816,8 @@ scenarios:
   req_ids:
   - REQ-NFR-001
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-NFR-001
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-NFR-001
+  owner: Operations owner
   roadmap_ids:
   - RM-TECH-205
   - RM-TECH-288
@@ -5819,8 +6833,8 @@ scenarios:
   req_ids:
   - REQ-NFR-002
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-NFR-002
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-NFR-002
+  owner: Product owner
   roadmap_ids:
   - RM-TECH-248
   acceptance:
@@ -5840,8 +6854,8 @@ scenarios:
   req_ids:
   - REQ-NFR-003
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-NFR-003
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-NFR-003
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-228
   acceptance:
@@ -5859,8 +6873,8 @@ scenarios:
   req_ids:
   - REQ-NFR-004
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-NFR-004
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-NFR-004
+  owner: Operations owner
   roadmap_ids:
   - RM-TECH-209
   acceptance:
@@ -5877,8 +6891,8 @@ scenarios:
   req_ids:
   - REQ-NFR-005
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-NFR-005
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-NFR-005
+  owner: Operations owner
   roadmap_ids:
   - RM-TECH-209
   - RM-TECH-288
@@ -5894,8 +6908,8 @@ scenarios:
   req_ids:
   - REQ-NFR-006
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-NFR-006
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-NFR-006
+  owner: Operations owner
   roadmap_ids:
   - RM-TECH-205
   - RM-TECH-288
@@ -5915,8 +6929,8 @@ scenarios:
   req_ids:
   - REQ-NFR-007
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-NFR-007
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-NFR-007
+  owner: Operations owner
   roadmap_ids:
   - RM-TECH-205
   - RM-TECH-288
@@ -5932,8 +6946,8 @@ scenarios:
   req_ids:
   - REQ-SEC-005
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-005
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-SEC-005
+  owner: Security owner
   roadmap_ids:
   - RM-STAB-014
   acceptance:
@@ -5956,8 +6970,8 @@ scenarios:
   req_ids:
   - REQ-SEC-006
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-006
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-SEC-006
+  owner: Security owner
   roadmap_ids:
   - RM-STAB-013
   acceptance:
@@ -5980,8 +6994,8 @@ scenarios:
   req_ids:
   - REQ-SEC-007
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-007
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-SEC-007
+  owner: Security owner
   roadmap_ids:
   - RM-STAB-016
   acceptance:
@@ -6002,8 +7016,8 @@ scenarios:
   req_ids:
   - REQ-SEC-008
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-008
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-SEC-008
+  owner: Security owner
   roadmap_ids:
   - RM-OPS-002
   acceptance:
@@ -6018,8 +7032,8 @@ scenarios:
   req_ids:
   - REQ-SEC-009
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-009
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-SEC-009
+  owner: Security owner
   roadmap_ids:
   - RM-STAB-015
   acceptance:
@@ -6045,8 +7059,8 @@ scenarios:
   req_ids:
   - REQ-STAND-001
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-STAND-001
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-STAND-001
+  owner: Operations owner
   roadmap_ids:
   - RM-ENV-002
   - RM-STAB-011
@@ -6073,8 +7087,8 @@ scenarios:
   req_ids:
   - REQ-STAND-002
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-STAND-002
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-STAND-002
+  owner: Operations owner
   roadmap_ids:
   - RM-ENV-002
   - RM-STAB-011
@@ -6092,8 +7106,8 @@ scenarios:
   req_ids:
   - REQ-STAND-003
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-STAND-003
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-STAND-003
+  owner: Operations owner
   roadmap_ids:
   - RM-TECH-207A
   acceptance:
@@ -6109,8 +7123,8 @@ scenarios:
   req_ids:
   - REQ-GOV-002
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-GOV-002
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-GOV-002
+  owner: PMO
   roadmap_ids:
   - RM-GOV-005
   - RM-GOV-008
@@ -6135,8 +7149,8 @@ scenarios:
   req_ids:
   - REQ-GOV-003
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-GOV-003
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-GOV-003
+  owner: PMO
   roadmap_ids:
   - RM-GOV-004
   - RM-GOV-007
@@ -6162,8 +7176,8 @@ scenarios:
   req_ids:
   - REQ-CHAN-001
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-CHAN-001
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-CHAN-001
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-207A
   - RM-TECH-261
@@ -6180,8 +7194,8 @@ scenarios:
   req_ids:
   - REQ-CHAN-003
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-CHAN-003
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-CHAN-003
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-207A
   acceptance:
@@ -6201,8 +7215,8 @@ scenarios:
   req_ids:
   - REQ-ORCH-002
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-ORCH-002
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-ORCH-002
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-244
   acceptance:
@@ -6227,8 +7241,8 @@ scenarios:
   req_ids:
   - REQ-MAN-001
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-MAN-001
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-MAN-001
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-207A
   - RM-TECH-207B
@@ -6250,8 +7264,8 @@ scenarios:
   req_ids:
   - REQ-CONT-001
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-CONT-001
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-CONT-001
+  owner: Technical owner
   roadmap_ids:
   - RM-TECH-204
   acceptance:
@@ -6275,8 +7289,8 @@ scenarios:
   req_ids:
   - REQ-SEC-001
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-001
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-SEC-001
+  owner: Security owner
   roadmap_ids:
   - RM-TECH-252
   acceptance:
@@ -6300,8 +7314,8 @@ scenarios:
   req_ids:
   - REQ-SEC-002
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-002
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-SEC-002
+  owner: Security owner
   roadmap_ids:
   - RM-STAB-002
   - RM-STAB-004
@@ -6331,8 +7345,8 @@ scenarios:
   req_ids:
   - REQ-SEC-003
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-003
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-SEC-003
+  owner: Security owner
   roadmap_ids:
   - RM-STAB-010
   - RM-TECH-210
@@ -6355,8 +7369,8 @@ scenarios:
   req_ids:
   - REQ-SEC-004
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-SEC-004
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-SEC-004
+  owner: Security owner
   roadmap_ids:
   - RM-OPS-005
   - RM-TECH-253
@@ -6372,8 +7386,8 @@ scenarios:
   req_ids:
   - REQ-OPS-001
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-001
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-OPS-001
+  owner: Operations owner
   roadmap_ids:
   - RM-TECH-255
   acceptance:
@@ -6395,8 +7409,8 @@ scenarios:
   req_ids:
   - REQ-OPS-002
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-002
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-OPS-002
+  owner: Operations owner
   roadmap_ids:
   - RM-OPS-004
   - RM-PILOT-002
@@ -6416,8 +7430,8 @@ scenarios:
   req_ids:
   - REQ-OPS-003
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-003
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-OPS-003
+  owner: Operations owner
   roadmap_ids:
   - RM-OPS-001
   acceptance:
@@ -6444,8 +7458,8 @@ scenarios:
   req_ids:
   - REQ-OPS-004
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-OPS-004
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-OPS-004
+  owner: Operations owner
   roadmap_ids:
   - RM-TECH-205
   acceptance:
@@ -6463,8 +7477,8 @@ scenarios:
   req_ids:
   - REQ-DATA-001
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-DATA-001
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-DATA-001
+  owner: Product Data Owner
   roadmap_ids:
   - RM-TECH-251
   acceptance:
@@ -6479,8 +7493,8 @@ scenarios:
   req_ids:
   - REQ-GOV-001
   source:
-  - tz-v2.6-draft draft-2026-08-31-r425 §25 REQ-GOV-001
-  owner: TBD
+  - tz-v2.6-draft draft-2026-08-31-r428 §25 REQ-GOV-001
+  owner: PMO
   roadmap_ids:
   - RM-GOV-006
   - RM-GOV-011

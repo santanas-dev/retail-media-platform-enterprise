@@ -855,6 +855,23 @@ def module_req(root: Path) -> list:
         findings.append(f"req/REGISTRY-UNTRACED: `{fid}` из feature-registry не встречается ни в одном journey_ids "
                         "и не исключён явно (REQ-GOV-002)")
 
+    # OD-042: режим реализации относительно существующего кода. replace — только по доказанному конфликту с ТЗ;
+    # baseline-пути должны существовать (в sandbox self-test деревья apps/packages/infra не копируются — проверяем
+    # только tests/scripts/docs, остальное — когда рядом есть apps/).
+    full_tree = (root / "apps").is_dir()
+    for r in reqs:
+        mode = r.get("implementation_mode")
+        if mode == "replace" and not r.get("conflict_ref"):
+            findings.append(f"req/MODE-REPLACE-NO-CONFLICT: {r['id']} объявлен replace без conflict_ref — "
+                            "переписывать существующую реализацию без доказанного конфликта с ТЗ запрещено (OD-042)")
+        for pth in r.get("code_baseline") or []:
+            checkable = pth.startswith(("tests/", "scripts/", "docs/")) or full_tree
+            if checkable and not (root / pth).exists():
+                findings.append(f"req/BASELINE-PATH: {r['id']} → `{pth}` не существует — baseline кода должен быть реальным")
+    modes = {}
+    for r in reqs:
+        modes[r.get("implementation_mode", "?")] = modes.get(r.get("implementation_mode", "?"), 0) + 1
+    print(f"  · implementation_mode: {modes}")
     tbd = sum(1 for r in reqs for k in ("owner", "implementation_owner") if r[k] == "TBD") \
         + sum(1 for s in scenarios.values() if s["owner"] == "TBD")
     if tbd and doc["document"].get("status") == "APPROVED":
@@ -912,8 +929,9 @@ SANDBOX_PATHS = [
     "docs/product/requirements/tz-v2.6-draft.md", "docs/product/requirements/tz-v2.6-draft.sha256",
     "docs/product/requirements-traceability.yaml", "docs/product/requirements-traceability.schema.json",
 ]
-SANDBOX_TREES = ["scripts/ci", "scripts/dev", "scripts/legacy", "docs/product/generated",
-                 "tests/ui-smoke", "tests/behavioral", "tests/integration", "docs/architecture"]
+SANDBOX_TREES = ["scripts/ci", "scripts/dev", "scripts/legacy", "scripts/deploy", "docs/product/generated",
+                 "tests/ui-smoke", "tests/behavioral", "tests/integration", "tests/player_client", "tests/domain",
+                 "docs/architecture"]  # scripts/deploy, tests/player_client, tests/domain — baseline-пути OD-042
 
 
 def _sandbox(root: Path, tmp: Path) -> Path:
@@ -1153,6 +1171,29 @@ def self_test(root: Path) -> int:
         p.write_text(flipped, encoding="utf-8")
 
     case("карта привязана к другой ревизии драфта", "req", _bump_draft_revision, True)
+    def _mode_in_block(w, req_id, mode, drop_conflict=False):
+        p = w / TRACE_YAML
+        text = p.read_text(encoding="utf-8")
+        i = text.index(f"- id: {req_id}\n"); j = text.index("  implementation_mode: ", i); k = text.index("\n", j)
+        text = text[:j] + f"  implementation_mode: {mode}" + text[k:]
+        if drop_conflict:
+            text = re.sub(rf"(- id: {req_id}\n(?:.*\n)*?)  conflict_ref: .*\n", r"\1", text, count=1)
+        p.write_text(text, encoding="utf-8")
+
+    def _bad_baseline(w, req_id):
+        p = w / TRACE_YAML
+        text = p.read_text(encoding="utf-8")
+        i = text.index(f"- id: {req_id}\n"); j = text.index("  code_baseline:", i); k = text.index("\n", j)
+        text = text[:k + 1] + "  - tests/behavioral/test_does_not_exist.py\n" + text[k + 1:]
+        p.write_text(text, encoding="utf-8")
+
+    case("replace без доказанного конфликта (conflict_ref)", "req",
+         lambda w: _mode_in_block(w, "REQ-CORE-001", "replace"), True,
+         effective=lambda w: next(r for r in yaml.safe_load((w / TRACE_YAML).read_text(encoding="utf-8"))["requirements"]
+                                  if r["id"] == "REQ-CORE-001")["implementation_mode"] == "replace")
+    case("baseline указывает на несуществующий тест", "req",
+         lambda w: _bad_baseline(w, "REQ-CORE-001"), True,
+         effective=lambda w: "test_does_not_exist" in (w / TRACE_YAML).read_text(encoding="utf-8"))
     case("драфт изменён под тем же revision — sha256 карты и sidecar отстали", "req", _append_to_draft, True,
          effective=lambda w: "Правка драфта без пересборки" in (w / TZ_DRAFT).read_text(encoding="utf-8"))
     case("sidecar digest не совпадает с байтами драфта", "req", _corrupt_sidecar, True,

@@ -17,17 +17,17 @@
 ### Драфт ТЗ v2.6 — `tz-v2.6-draft.md`
 
 - **Статус содержания:** ACCEPTED владельцем 2026-08-28 (`OD-017`, редакция r421,
-  SHA-256 `59478746…`); текущая рабочая редакция r425: decision-source traceability Дополнения I
-  по всем 27 DEC (r423 — OD-018/019/020, r424 — OD-021…036) и исправление дефектов r424
-  (sidecar, changelog, DEC-014 open по `OD-027`); нормативные разделы = r421.
+  SHA-256 `59478746…`); текущая рабочая редакция r426: decision-source traceability Дополнения I
+  по всем 27 DEC (r423/r424), исправление дефектов r424 (r425), OD-023/OD-039 (r426);
+  нормативные разделы = r421.
 - **Статус документа:** DRAFT → `APPROVED` только после артефактов Дополнения AG и закрытия
   применимых gates (`roadmap.yaml`). Не источник истины, roadmap не меняет.
 - **Sidecar:** `tz-v2.6-draft.sha256`; **приложения:** `tz-v2.6-draft-appendix-index.md`.
 - **Трассировка:** `docs/product/requirements-traceability.yaml` (101 REQ → story → journey → registry →
   roadmap → evidence, 69 `SC-*`; схема `requirements-traceability.schema.json`; guard-модуль `req`).
   Привязана к ревизии драфта: новая редакция → красный CI до пересверки.
-- Решения `DEC-022/024/026` записаны как `OD-018/019/020`; `DEC-005` (владелец master-данных
-  цен/SKU) остаётся открытым.
+- Решения `DEC-022/024/026` записаны как `OD-018/019/020`; `DEC-005` закрыт `OD-023` (2026-08-31:
+  роль Product Data Owner, имя исполнителя — amendment); ролевая модель владельцев REQ/SC — `OD-039`.
 
 ### P0 Foundation Decision (закрыто)
 

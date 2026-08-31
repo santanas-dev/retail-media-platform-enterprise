@@ -974,19 +974,97 @@ features:
     status: blocked
     gap: "Запланировано задачей RM-OPS-004 (ТЗ v2.6 r421); реализации и smoke нет."
 
+  - id: campaign.underdelivery
+    frontend: admin-web
+    name: "Разбор недопоказа и make-good (причина, процент, докрутка, компенсация)"
+    route: /login
+    path:
+      - login
+      - (определяется mini-design задачи)
+    smoke: "test_uismoke__campaign__underdelivery"
+    priority: P1
+    roles: [system_admin, campaign_manager, analyst]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-201 (OD-040, US-UDR-001, ТЗ v2.6 r427); реализации и smoke нет."
+
+  - id: carrier.manage
+    frontend: admin-web
+    name: "Единый Operations-контур: physical device, logical carrier и surface всех каналов (scope, состояние, действия с подтверждением)"
+    route: /login
+    path:
+      - login
+      - (определяется mini-design задачи)
+    smoke: "test_uismoke__carrier__manage"
+    priority: P1
+    roles: [system_admin, ops_operator]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-255 (OD-040, US-CHAN-003, ТЗ v2.6 r427); реализации и smoke нет."
+
+  - id: channel.register
+    frontend: admin-web
+    name: "Регистрация channel/device/surface/profile и adapter contract (mock-проверка канала)"
+    route: /login
+    path:
+      - login
+      - (определяется mini-design задачи)
+    smoke: "test_uismoke__channel__register"
+    priority: P1
+    roles: [system_admin]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-207A (OD-040, US-CHAN-001, ТЗ v2.6 r427); реализации и smoke нет."
+
+  - id: channel.rendition_validate
+    frontend: admin-web
+    name: "Renditions и channel-specific ограничения: валидация preview, публикация версии без изменения core campaign"
+    route: /login
+    path:
+      - login
+      - (определяется mini-design задачи)
+    smoke: "test_uismoke__channel__rendition_validate"
+    priority: P1
+    roles: [system_admin, campaign_manager, moderator]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-204 (OD-040, US-CHAN-002, ТЗ v2.6 r427); реализации и smoke нет."
+
+  - id: data.catalog
+    frontend: admin-web
+    name: "Каталог данных: owner, PII-класс, retention и lineage сущности; контроль доступа/архива/удаления"
+    route: /login
+    path:
+      - login
+      - (определяется mini-design задачи)
+    smoke: "test_uismoke__data__catalog"
+    priority: P1
+    roles: [system_admin, security_admin]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-251 (OD-040, US-DATA-001, ТЗ v2.6 r427); реализации и smoke нет."
+
+  - id: inventory.priority
+    frontend: admin-web
+    name: "Тип кампании и приоритеты с объяснимым preemption (действующая версия правил)"
+    route: /login
+    path:
+      - login
+      - (определяется mini-design задачи)
+    smoke: "test_uismoke__inventory__priority"
+    priority: P1
+    roles: [system_admin, campaign_manager]
+    status: blocked
+    gap: "Запланировано задачей RM-TECH-202 (OD-040, US-PRI-001, ТЗ v2.6 r427); реализации и smoke нет."
+
   # ══════════════════════════════════════════════════
   # Summary counts (auto-generated — do not edit manually)
   # ══════════════════════════════════════════════════
-  #   total: 73
+  #   total: 79
   # by status:
   #   reachable: 52 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, user.split_internal_advertiser, advertiser.create_org, advertiser.application_review, emergency.activate, emergency.deactivate, campaign.activate, campaign.pause, inventory.simulate, inventory.rule_create, advertiser.view, advertiser.contact_crud, advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites, advertiser.invite, user.reset_password, user.deactivate, adsettings.test, adsettings.configure, audit.view, device.health_view, self.login, self.campaign_view, self.apply_or_brief, advertiser.apply, manifest.deliver, pop.ingest, device.heartbeat, backup.restore, observability, campaign.complete, license.enforce, license.seat_release, license.report, commerce.order_create, commerce.tariff_manage, commerce.offer_generate, commerce.booking, commerce.payment_status, commerce.order_close, commerce.price_list_manage, system.theme_switch)
-  #   blocked:      21 (self.report_view, self.campaign_create, device.onboard, playlist.build, license.view, license.upload, analytics.compare, attribution.lift_report, campaign.competitive_separation, campaign.readiness, campaign.schedule, content.dynamic_binding, experiment.evaluate, field_ops.device_confirm, finance.exchange, finance.reconcile, integration.reconcile, kpi.review, placement.audience_targeting, release.rollback, rollout.rollback)
+  #   blocked:      27 (self.report_view, self.campaign_create, device.onboard, playlist.build, license.view, license.upload, analytics.compare, attribution.lift_report, campaign.competitive_separation, campaign.readiness, campaign.schedule, content.dynamic_binding, experiment.evaluate, field_ops.device_confirm, finance.exchange, finance.reconcile, integration.reconcile, kpi.review, placement.audience_targeting, release.rollback, rollout.rollback, campaign.underdelivery, carrier.manage, channel.register, channel.rendition_validate, data.catalog, inventory.priority)
   # by frontend:
-  #   admin-web:       49
-  #   advertiser-web:   5
-  #   public:           1
+  #   admin-web:       55
+  #   advertiser-web:  5
+  #   public:          1
   #   service:         18
   # by priority:
   #   P0: 20
-  #   P1: 41
+  #   P1: 47
   #   P2: 12

@@ -5,10 +5,10 @@
 | Поле | Значение |
 |---|---|
 | Document ID | `TZ-RMP-2.6` |
-| Revision | `draft-2026-08-31-r425`; увеличивается при каждом содержательном изменении |
+| Revision | `draft-2026-08-31-r428`; увеличивается при каждом содержательном изменении |
 | Source | v2.5 extracted text + v2.5 DOCX + `TZ_Retail_Media_Platform_v2_6_Next_Branch_2026-07-11.docx` (additive extension) |
 | Source SHA | v2.5 extracted `.md`: `718c87678a25998b4330041d0d71946627fa2788a520c0c224d2f5e5d2941714`; v2.5 `.docx`: `8f4d7f04296a43c3a8549d2fedd68912c8ce8534727029901326005a0a61f47d`; v2.6 addendum `.docx`: `54897059a2f27e677c381f64db825326109708f787f918cdde1d846bf9491378`; v2.6 addendum extracted `.md`: `23e08e8ba560aae223235e2cfc94a9ebe75162396c9178bc39742419c19b8ff4` (2026-08-27) |
-| Parent snapshot | `origin/develop cbffb3bd7f38fea3667ddef60a0212ac0fec1ce1` carries the r422 cutover; r423/r424 completed DEC→OD source traceability; this working revision r425 fixes the r424 defects (sidecar digest, truncated changelog, DEC-014 status vs open OD-027) |
+| Parent snapshot | `origin/develop cbffb3bd7f38fea3667ddef60a0212ac0fec1ce1` carries the r422 cutover; r423/r424 completed DEC→OD source traceability; r425 fixed the r424 defects; r426 recorded OD-023/OD-039; r427 recorded OD-040; this working revision r428 reconciles Appendices AG/AN with the roadmap and records OD-041 (alignment before development) |
 | Draft digest sidecar | `docs/product/requirements/tz-v2.6-draft.sha256` (SHA-256 of the exact draft bytes) |
 | Extraction provenance | `python3` + `python-docx` (`Document()`), input v2.6 DOCX, output `docs/00-source-of-truth/TZ_Retail_Media_Platform_v2_6_Next_Branch_2026-07-11.extracted.md`; observed `129` paragraphs / `3` tables |
 | Product owner | назначается владельцем проекта |
@@ -25,7 +25,27 @@
 и SHA самого драфта (Git commit/blob SHA или утверждённый sidecar digest); Source SHA ниже
 идентифицирует только исходные материалы и не заменяет digest этой редакции.
 
-### Active changelog (r285–r425)
+### Active changelog (r285–r428)
+
+Changelog r428: выравнивание с roadmap по указанию владельца 2026-08-31 (`OD-041`: RM-UX-007/walkthrough
+приостановлены; порядок — выравнивание → проверка Codex → утверждение владельцем → разработка). Дополнение AG
+получило соответствие «артефакт → задача roadmap» и фиксирует Gate-C как точку старта разработки; Дополнение AN
+помечено как снимок 2026-08-27 с указанием актуальных задач RM-GOV-009/OD-040 для строк `UNMAPPED`. Единый план
+реализации — `docs/product/implementation-plan-v2.6.md` (кандидат RM-GOV-012). Нормативные §6/§25/§26/AP не менялись.
+
+Changelog r427: решение владельца `OD-040` (2026-08-31) закрывает все 8 `PENDING-ID` journeys AP-stories:
+6 получают canonical registry-ID с тем же именем (blocked до задач RM-TECH-201/202/204/207A/244/251/255),
+`audit.compare` (US-REG-001) отклонён как product-journey (governance-процедура, доказательство — guard в CI),
+`security.review` (US-SEC-001) mapped на canonical `audit.view`. Нормативная таблица Дополнения AP не
+переписывается (SHA r419); mapping живёт в `requirements-traceability.yaml:pending_journey_map` и registry.
+Нормативные §6/§25/§26/AP не менялись.
+
+Changelog r426: решения владельца 2026-08-31 отражены в decision register — DEC-005 закрыт
+`OD-023` (владелец master-данных цен/SKU — роль Product Data Owner, исполнитель роли по имени назначается
+amendment-ом; master-система и reconciliation фиксируются контрактом RM-TECH-280); принята ролевая
+модель владельцев требований `OD-039` (§37: owner REQ/SC — роль из нормализованного словаря,
+implementation_owner — Claude Code; 170 TBD в traceability закрыты ролями). Нормативные
+§6/§25/§26/AP не менялись.
 
 Changelog r425: исправлены три дефекта r424, найденные проверкой Claude — sidecar пересчитан по
 фактическим байтам файла (в r424 digest не совпадал с драфтом), завершена оборванная фраза
@@ -1356,7 +1376,7 @@ ADR-017 канонизирует `POST /api/v1/pop/batch`. В новой ред�
 | DEC-002 | Когда вводится Orchestrator и Adapter Layer | закрыто ADR-019: только после появления второго реального канала; mock-first до trigger запрещён |
 | DEC-003 | Профиль подписи по dev/pilot/prod | Ed25519/HMAC, rotation/revoke |
 | DEC-004 | Operational contract очереди | NATS JetStream — baseline по ADR-002; delivery, retry, DLQ, persistence, lag и migration path должны быть раскрыты, а замена брокера требует ADR amendment и owner approval |
-| DEC-005 | Master-система цен/SKU и owner reconciliation | ESL/price checker safety |
+| DEC-005 | Master-система цен/SKU и owner reconciliation | **approved OD-023 (2026-08-31):** владелец master-данных цен/SKU — роль Product Data Owner (имя исполнителя роли — amendment OD-023); master-система и reconciliation фиксируются контрактом RM-TECH-280; ESL/price checker safety — acceptance этого контракта |
 | DEC-006 | SLA methodology, impression/reach и compensation policy | SLA targets приняты; открыты measurement и non-cash make-good rules |
 | DEC-007 | Retention/152-ФЗ/legal report status | рабочие retention defaults приняты; открыты legal approval, исключения и deletion/archive process |
 | DEC-008 | Rollout thresholds и feature-flag authority | stop/rollback responsibility |
@@ -1704,7 +1724,7 @@ security control требует DEC-ID, impact analysis по REQ/API/ERD/UX/road
 | DEC-002 | OD-022, ADR-019 | **approved**: Orchestrator/Adapter Layer/mock только после второго реального канала |
 | DEC-003 | OD-002, RM-STAB-010 | **approved**: Ed25519 pilot/prod, HMAC только dev/control-plane stand; implementation evidence отдельно |
 | DEC-004 | ADR-002 + OD-008 | NATS JetStream baseline принят; открыты только детальные persistence/ops thresholds и evidence |
-| DEC-005 | OD-023, §16.2, §23.7 | master price/SKU owner не зафиксирован |
+| DEC-005 | OD-023, §16.2, §23.7 | approved: роль Product Data Owner; исполнитель роли по имени открыт (amendment OD-023); master adapter RM-TECH-280 planned |
 | DEC-006 | product decision §5.1 + OD-009 | SLA targets approved; methodology/compensation/legal часть открыта |
 | DEC-007 | product decision §5.1 + OD-009 | retention defaults approved; 152-ФЗ/legal exceptions открыты |
 | DEC-008 | OD-010, §22.7/22.9 | staged rollout/flags открыты |
@@ -2621,6 +2641,13 @@ status: proposed
 | DEV environment manifest | Operations owner | `docs/product/environment-inventory.yaml` как текущий источник: endpoint/версии/Git SHA/schema/доступность без секретов; seed/reset и недостающие поля дополняются отдельным manifest; baseline `.81` |
 | roadmap + generated business/technical views | Product/PMO owner | каждая REQ имеет задачу или approved deferred; status подтверждён Git/CI |
 
+Соответствие артефактов задачам `roadmap.yaml` (r428, RM-GOV-012): traceability → RM-GOV-008 (verification);
+role-scope/route/journeys → RM-UX-011 (+RM-STAB-003/006); OpenAPI + event/manifest schema → RM-TECH-220; ERD/data
+dictionary/migration plan → RM-TECH-229; channel-capability-matrix → RM-TECH-231 (KSO; второй канал — RM-TECH-261 по
+OD-021); nfr-slo + load-profiles → RM-TECH-288 (+RM-TECH-205); retention-policy + legal register → RM-OPS-005 (OD-009);
+DEV environment manifest → RM-ENV-003 (`environment-inventory.yaml`, стенд `stand-81`); roadmap + generated views →
+RM-GOV-003/009. Все артефакты принимаются до `Gate-C`; после `Gate-C` — старт разработки (OD-041).
+
 Порядок gate: (1) owner decisions и RACI, (2) трассировка и схемы, (3) portal
 journeys/smoke, (4) миграция и compatibility, (5) NFR/security/DR evidence, (6)
 независимая сверка Claude Code и Codex, (7) owner approval. До шага (7) Claude Code
@@ -2783,6 +2810,11 @@ classifier и полного `source_line → obligation_id → disposition` man
 `user-journeys.md` (2026-08-27). `UNMAPPED` означает реальный пробел планирования, а
 не разрешённое «будет позже».
 
+> Снимок 2026-08-27 (r416). Актуальное покрытие после RM-GOV-009 (OD-037) и OD-040 — в `requirements-traceability.yaml`:
+> V26-002 → RM-TECH-282 (blocked OD-014), V26-004 → RM-TECH-285, V26-005 → RM-TECH-283 (blocked OD-032), V26-006 →
+> RM-TECH-286 (blocked OD-030), V26-007/011 → RM-TECH-289 (designed-not-implemented), V26-008 → RM-TECH-262, V26-009 →
+> RM-TECH-263, V26-010 → RM-TECH-284 (blocked OD-014); registry-ID созданы. Строки `UNMAPPED` ниже — исторические.
+
 | REQ-V26 | Найденный canonical ID | Текущий статус покрытия |
 |---|---|---|
 | V26-001 | ADR-018, OD-003, RM-STAB-003 | decision accepted, implementation disputed: ADR-018 утвердил вариант B; OD-016 относится только к выводу хоста `.77`; требуется проверить фактическую retailer-scope/RLS реализацию |
@@ -2930,5 +2962,5 @@ next-step. `walkthrough` для всех UI stories остаётся `PENDING` �
 | 5 | Master-data adapter признан отсутствующим prerequisite; текущая ESL/price-checker integration — ложная baseline-посылка. Attribution/audience/dynamic creative сохраняются, но имеют `blocked` до prerequisite evidence | REQ-V26-002/005/008, integration/channel scope | создать отдельные dependency tasks как минимум для price/SKU master adapter, sales-reference ingestion+methodology, audience source/privacy contract, dynamic binding/rendition safety и реальной интеграции второго канала; для каждой — owner/contract/security/behavioral acceptance; не начинать downstream implementation раньше них |
 
 Историческая запись: после решений владельца r419 передавался Claude/Codex на повторное
-review. Текущий объект — r425; статус документа остаётся `DRAFT` до пересборки traceability
+review. Текущий объект — r428; статус документа остаётся `DRAFT` до пересборки traceability
 и закрытия применимых approval gates.

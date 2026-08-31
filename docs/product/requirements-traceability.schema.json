@@ -102,7 +102,8 @@
       "required": ["id", "title", "source", "normative", "statement", "scope", "coverage_type", "owner",
                    "implementation_owner", "roadmap_ids", "requirement_status", "delivery_status",
                    "status_changed_at", "status_actor", "dependencies", "story_ids", "journey_ids",
-                   "pending_journey_ids", "scenario_ids", "artifacts", "acceptance", "evidence", "disposition"],
+                   "pending_journey_ids", "scenario_ids", "artifacts", "acceptance", "evidence", "disposition",
+                   "implementation_mode", "mode_rationale", "code_baseline", "regression_criteria"],
       "properties": {
         "id": { "$ref": "#/$defs/req_id" },
         "title": { "$ref": "#/$defs/nonempty" },
@@ -127,7 +128,12 @@
         "acceptance": { "$ref": "#/$defs/acceptance" },
         "evidence": { "$ref": "#/$defs/evidence" },
         "disposition": { "enum": ["task", "task_required", "blocked", "deferred", "excluded"] },
-        "block_reason": { "$ref": "#/$defs/nonempty" }
+        "block_reason": { "$ref": "#/$defs/nonempty" },
+        "implementation_mode": { "enum": ["preserve", "adapt", "replace", "new"], "description": "OD-042: режим относительно существующего кода — preserve (не менять), adapt (аддитивно дополнить), replace (заменить только по conflict_ref), new (создать)" },
+        "mode_rationale": { "$ref": "#/$defs/nonempty" },
+        "code_baseline": { "type": "array", "items": { "$ref": "#/$defs/nonempty" }, "description": "существующие модули/миграции/тесты (пути в репо), от которых отталкивается реализация" },
+        "regression_criteria": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonempty" } },
+        "conflict_ref": { "$ref": "#/$defs/nonempty", "description": "обязателен при implementation_mode=replace: OD/audit record/тест, доказывающий конфликт существующего поведения с ТЗ" }
       }
     },
     "scenario": {

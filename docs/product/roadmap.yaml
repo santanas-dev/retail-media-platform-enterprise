@@ -158,10 +158,19 @@ owner_decisions:
   aliases: [DEC-002]
   sources: ['ADR-019', 'user-journeys.md §5.1 (§24 - ПРАГМАТИКА, 2026-07-18)']
 - id: OD-023
-  statement: Master-система цен/SKU и владелец reconciliation не зафиксированы. Вопрос владельцу - имя/роль владельца master-данных цен/SKU. До решения ESL/price-checker, attribution/audience и dynamic creative остаются blocked.
-  status: open
-  aliases: [DEC-005]
-  sources: ['tz-v2.6 §16.2, §23.7, §29 DEC-005', 'AQ.1 №5 (master-data adapter - отсутствующий prerequisite)']
+  statement: Владелец master-данных цен/SKU и reconciliation - роль Product Data Owner (решение владельца
+    2026-08-31; исполнитель роли по имени назначается позднее amendment-ом этого решения).
+    Master-система цен/SKU и reconciliation фиксируются контрактом RM-TECH-280 (prerequisite по
+    AQ.1 №5). Цепочка master-data (RM-TECH-280/281/264/262/285) разблокируется по роли; задачи,
+    зависящие от других open решений (OD-014, OD-032), остаются blocked по ним.
+  status: approved
+  decided_on: '2026-08-31'
+  aliases:
+  - DEC-005
+  sources:
+  - tz-v2.6 §16.2, §23.7, §29 DEC-005
+  - AQ.1 №5 (master-data adapter - отсутствующий prerequisite)
+  - ответ владельца 2026-08-31 (RM-GOV-010)
 - id: OD-024
   statement: Пилотная шкала КСО → 10 → 100 → 500 → сеть принята 2026-07-18. Открыты измеримые exit criteria каждого перехода - вопрос владельцу, какие метрики и пороги закрывают ступень.
   status: open
@@ -257,6 +266,71 @@ owner_decisions:
   sources: ['tz-v2.6-draft §11', 'PROJECT_STATE RLS-CONTEXT-DEVICE-001', 'RM-TECH-210']
   blocks:
   - RM-TECH-210
+- id: OD-039
+  statement: Ролевая модель владельцев требований (RM-GOV-010, ТЗ §37 - владельцы и RACI). Owner
+    каждого REQ и SC в requirements-traceability.yaml - роль из нормализованного словаря
+    {Product owner, Technical owner, Architecture owner, Security owner, Operations owner,
+    Product Data Owner, Legal owner, Finance owner, Channel/Content owner, Analytics owner, PMO};
+    implementation_owner - Claude Code. Правило вывода - (1) REQ с задачами RM-GOV-009 -
+    из утверждённого owner_role задачи, составная роль нормализуется к первой названной
+    (accountable), при нескольких ролях - роль prerequisite-задачи, иначе первой; (2) REQ
+    старых задач без owner_role - по семейству ID - CORE/ORCH/MAN/POP/CONT/CHAN/API/DATA/INT
+    → Technical, BIZ/UX/SCOPE/LIC/V26 → Product, SEC → Security, OPS/NFR/STAND → Operations,
+    ARCH → Architecture, GOV → PMO; (3) SC наследует роль своих REQ, при разных - роль по kind
+    (security/operational/governance/data/performance/architecture/contract/technical), иначе
+    первого REQ. Имена исполнителей ролей назначаются отдельным amendment-ом; до него owner -
+    роль, TBD не допускается.
+  status: approved
+  decided_on: '2026-08-31'
+  sources:
+  - tz-v2.6-draft §37 (владельцы и RACI до APPROVED)
+  - RM-GOV-010 (приёмка - назначения подтверждены владельцем)
+  - ответ владельца 2026-08-31
+- id: OD-040
+  statement: Mapping 8 PENDING-ID journeys из AP-stories ТЗ v2.6 (RM-GOV-010, решение владельца
+    2026-08-31). Новые canonical registry-ID со статусом blocked до задач - campaign.underdelivery
+    (RM-TECH-201, US-UDR-001), carrier.manage (RM-TECH-255 + RM-TECH-207A, US-CHAN-003),
+    channel.register (RM-TECH-207A + RM-TECH-244, US-CHAN-001), channel.rendition_validate
+    (RM-TECH-204 + RM-TECH-207A, US-CHAN-002), data.catalog (RM-TECH-251, US-DATA-001),
+    inventory.priority (RM-TECH-202, US-PRI-001). audit.compare (US-REG-001) - rejected как
+    product-journey - governance-процедура аудитора, доказательство - roadmap-governance-guard
+    в CI, REQ-GOV-001 покрыт SC. security.review (US-SEC-001) - mapped на canonical audit.view
+    (baseline по AP), критичный фильтр и SIEM-экспорт - acceptance REQ-SEC-001 в RM-TECH-252/253.
+    pending_journey_map без awaiting_owner; нормативная таблица AP не переписывается (r419 SHA).
+  status: approved
+  decided_on: '2026-08-31'
+  sources:
+  - tz-v2.6-draft Дополнение AP (US-REG-001, US-UDR-001, US-CHAN-001/002/003, US-DATA-001, US-PRI-001, US-SEC-001), Дополнение V
+  - RM-GOV-010 (приёмка - pending_journey_map без awaiting_owner; назначения подтверждены владельцем)
+  - docs/audit/2026-08-31-claude-rm-gov-010-pending-journeys.md (варианты)
+  - ответ владельца 2026-08-31
+- id: OD-041
+  statement: Указание владельца 2026-08-31 - RM-UX-007 и operator walkthrough временно приостановлены
+    (не закрываются, done не ставится). Порядок работ до старта разработки - (1) выравнивание ТЗ v2.6,
+    технической и бизнесовой roadmap, хронологии этапов, зависимостей и acceptance gates; (2) единый план
+    реализации без изменения кода; (3) независимая проверка Codex; (4) утверждение документов владельцем;
+    (5) старт разработки. Реализация новых продуктовых функций до (4) запрещена (Дополнение AG, шаг 7).
+  status: approved
+  decided_on: '2026-08-31'
+  sources:
+  - указание владельца 2026-08-31 (сессия)
+  - tz-v2.6-draft Дополнение AG (порядок gate 1-7), AGENTS.md правило 8
+  - docs/product/implementation-plan-v2.6.md (кандидат RM-GOV-012)
+- id: OD-042
+  statement: Решение владельца 2026-08-31. (1) ТЗ v2.6 draft-2026-08-31-r428 (sha256 ffb8cf7d192ee0d00fb648d228b1a1fd89a4a5b81d498867051146d4122850e7) -
+    целевой контракт реализации; любое изменение нормативных разделов - новая ревизия и отдельное решение.
+    (2) RM-GOV-012 - единый процесс выравнивания и планирования - утверждён вместе с его предложениями (Gate-E0/CORE/CH/A/POPS,
+    условия и решение Gate-C, перенос RM-TECH-205/288/253, RM-OPS-005, RM-UX-011 в стадию C, RM-TECH-231).
+    (3) Каждый REQ несёт implementation_mode относительно baseline кода develop @ 4ac3ddb - preserve (не менять),
+    adapt (аддитивно дополнить), replace (заменить только при conflict_ref - доказанном конфликте существующего
+    поведения с r428), new (создать) - с code_baseline и regression_criteria; существующая реализация не переписывается
+    без доказанного конфликта. (4) Excel/Markdown/metrics обновляются только генерацией из roadmap.yaml (RM-GOV-003).
+  status: approved
+  decided_on: '2026-08-31'
+  sources:
+  - указание владельца 2026-08-31 (сессия)
+  - docs/product/implementation-plan-v2.6.md; docs/audit/2026-08-31-claude-rm-gov-012-alignment.md
+  - docs/product/requirements-traceability.yaml (implementation_mode, code_baseline, regression_criteria, conflict_ref)
 stages:
 - id: G
   title: Единая система roadmap
@@ -265,6 +339,7 @@ stages:
 - id: E0
   title: Окружения
   order: 1
+  closed_by_gate: Gate-E0
 - id: S
   title: Стабилизация доказательств и границ
   order: 2
@@ -276,6 +351,7 @@ stages:
 - id: CORE
   title: 'Ядро: иерархия, outbox, lifecycle, безопасность'
   order: 4
+  closed_by_gate: Gate-CORE
 - id: U
   title: 'Portal: утверждённый UX-порядок'
   order: 5
@@ -283,12 +359,15 @@ stages:
 - id: CH
   title: 'Каналы: KSO-first, второй канал по ADR-019'
   order: 6
+  closed_by_gate: Gate-CH
 - id: A
   title: 'Аналитика и масштаб: attribution, NFR, интеграции'
   order: 7
+  closed_by_gate: Gate-A
 - id: POPS
   title: 'Внешние действия: pilot и production'
   order: 8
+  closed_by_gate: Gate-POPS
 gates:
 - id: Gate-G
   closes_stage: G
@@ -298,6 +377,14 @@ gates:
   - владелец утверждает canonical cutover
   approved_on: '2026-08-26'
   approval_note: принят владельцем после собственной проверки; два замечания по гейту и триаж 19 открытых пунктов закрыты до принятия
+- id: Gate-E0
+  closes_stage: E0
+  approver: owner
+  conditions:
+  - RM-ENV-003 - DEV environment manifest (environment-inventory.yaml, стенд stand-81) принят владельцем как артефакт Дополнения AG (owner_gate scope_decision)
+  - guard env зелёный - стенд совпадает с base.stand_baseline; evidence только у окружений с наблюдаемой identity
+  decision: окружения инвентаризованы и доказательны - наблюдения на stand-81 принимаются как evidence для стадий S и далее; этап E0 закрыт
+  note: 'историческая пометка (RM-GOV-012, 2026-08-31) - гейт введён после того, как RM-ENV-001 была закрыта done 2026-08-26 (owner gate scope_decision, .77 decommissioned по OD-016); гейт не переоценивает RM-ENV-001 задним числом и закрывается приёмкой RM-ENV-003'
 - id: Gate-S
   closes_stage: S
   approver: codex
@@ -308,12 +395,49 @@ gates:
   approver: human
   conditions:
   - человек проходит walkthrough на exact stand bundle
+  decision: портал признан юзабельным человеком-оператором (AGENTS.md правило 8) - этап U закрыт
+  note: 'приостановлен владельцем 2026-08-31 (OD-041) до утверждения единого плана реализации; walkthrough - на DEV-стенде stand-81 по docs/product/operator-walkthrough-dev.md'
 - id: Gate-C
   closes_stage: C
   approver: owner
   conditions:
-  - OpenAPI + event/manifest JSON Schema и ERD/data dictionary приняты владельцем как артефакты Дополнения AG
-  - contract tests зелёные в CI
+  - каждый артефакт handoff-пакета Дополнения AG принят владельцем отдельно - traceability (RM-GOV-008), DEV manifest (RM-ENV-003), role-scope/route/journeys (RM-UX-011), OpenAPI + event/manifest JSON Schema (RM-TECH-220), ERD/data dictionary/migration plan (RM-TECH-229), channel-capability-matrix KSO (RM-TECH-231), nfr-slo + load-profiles (RM-TECH-288), retention-policy + legal register (RM-OPS-005), roadmap views (RM-GOV-003/009)
+  - contract tests стадии C зелёные в CI
+  - независимая сверка Claude/Codex единого плана реализации (RM-GOV-012) выполнена, замечания закрыты
+  decision: ТЗ v2.6 переводится владельцем в APPROVED; разрешён старт разработки новых продуктовых функций (OD-041, Дополнение AG шаг 7)
+  note: 'условия расширены предложением RM-GOV-012 (2026-08-31) до ACCEPT владельца; до этого действовали два условия - схемы/ERD приняты и contract tests зелёные'
+- id: Gate-CORE
+  closes_stage: CORE
+  approver: codex
+  conditions:
+  - behavioral evidence под runtime-ролью приложения на PostgreSQL для иерархии носителей, target resolution, outbox/relay, campaign/commerce lifecycle, emergency state machine
+  - migration rehearsal up/down на стенде для каждой migration_application-задачи; contract tests стадии C не сломаны
+  decision: ядро доказано behavioral evidence и migration rehearsal - этап CORE закрыт, портал (U) и каналы (CH) строятся на нём
+  note: 'предложение RM-GOV-012 (2026-08-31) - гейт введён выравниванием и действует после ACCEPT владельца'
+- id: Gate-CH
+  closes_stage: CH
+  approver: owner
+  conditions:
+  - цепочка KSO manifest → playlist → PoP доказана на стенде под device_contract (RM-TECH-207B, RM-TECH-260); registry playlist.build/device.onboard reachable по smoke/behavioral
+  - второй канал только по OD-021 (RM-TECH-261); ESL/dynamic creative только после master-data adapter (RM-TECH-280)
+  decision: цепочка KSO доказана на стенде под device_contract - этап CH закрыт; второй канал остаётся за OD-021
+  note: 'предложение RM-GOV-012 (2026-08-31) - гейт введён выравниванием и действует после ACCEPT владельца'
+- id: Gate-A
+  closes_stage: A
+  approver: codex
+  conditions:
+  - SLO/NFR evidence по nfr-slo.yaml и load-profiles.yaml воспроизводимы в CI/на стенде (RM-TECH-205/288); ClickHouse trigger оценён (RM-TECH-209)
+  - attribution/A-B только при approved методике владельца (OD-014); задачи без решения остаются blocked, а не done
+  decision: NFR/SLO evidence воспроизводимы, аналитика без утверждённой методики остаётся blocked - этап A закрыт
+  note: 'предложение RM-GOV-012 (2026-08-31) - гейт введён выравниванием и действует после ACCEPT владельца'
+- id: Gate-POPS
+  closes_stage: POPS
+  approver: owner
+  conditions:
+  - pilot развёрнут по RM-PILOT-003 (deployment gate) на exact bundle; production readiness RM-OPS-001 - RTO/RPO (OD-025), топология/HA (OD-028), rollback/DR evidence
+  - staged rollout и feature flags по OD-010; ничего не запускается автоматически после pilot
+  decision: pilot развёрнут и production readiness принята владельцем - внешние действия завершены
+  note: 'предложение RM-GOV-012 (2026-08-31) - гейт введён выравниванием и действует после ACCEPT владельца'
 blocked_features:
 - feature_id: self.campaign_create
   unblocked_by:
@@ -422,6 +546,45 @@ blocked_features:
   - RM-OPS-004
   conditions:
   - функция реализована задачей RM-OPS-004 и имеет зелёный smoke/behavioral proof
+- feature_id: campaign.underdelivery
+  unblocked_by:
+  - RM-TECH-201
+  conditions:
+  - функция реализована задачей RM-TECH-201 (US-UDR-001) и имеет зелёный smoke/behavioral proof
+  owner_decision: OD-040
+- feature_id: carrier.manage
+  unblocked_by:
+  - RM-TECH-255
+  - RM-TECH-207A
+  conditions:
+  - функция реализована задачей RM-TECH-255 (US-CHAN-003) и имеет зелёный smoke/behavioral proof
+  owner_decision: OD-040
+- feature_id: channel.register
+  unblocked_by:
+  - RM-TECH-207A
+  - RM-TECH-244
+  conditions:
+  - функция реализована задачей RM-TECH-207A (US-CHAN-001) и имеет зелёный smoke/behavioral proof
+  owner_decision: OD-040
+- feature_id: channel.rendition_validate
+  unblocked_by:
+  - RM-TECH-204
+  - RM-TECH-207A
+  conditions:
+  - функция реализована задачей RM-TECH-204 (US-CHAN-002) и имеет зелёный smoke/behavioral proof
+  owner_decision: OD-040
+- feature_id: data.catalog
+  unblocked_by:
+  - RM-TECH-251
+  conditions:
+  - функция реализована задачей RM-TECH-251 (US-DATA-001) и имеет зелёный smoke/behavioral proof
+  owner_decision: OD-040
+- feature_id: inventory.priority
+  unblocked_by:
+  - RM-TECH-202
+  conditions:
+  - функция реализована задачей RM-TECH-202 (US-PRI-001) и имеет зелёный smoke/behavioral proof
+  owner_decision: OD-040
 tasks:
 - id: RM-GOV-001
   kind: design
@@ -700,6 +863,7 @@ tasks:
   acceptance:
   - check: 'mini-design/ADR: persona→permissions→scope'
     verified_by: owner
+    ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой; OD-035/DEC-023)
   decision_status: approved
   delivery_status: planned
   notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) RM-GOV-009 (r421): добавить ссылки OD-035/DEC-023 (Q2: 7 ролей) и REQ-UX-001; acceptance без изменений'
@@ -929,9 +1093,10 @@ tasks:
   acceptance:
   - check: человек проходит exact stand bundle
     verified_by: human
+    ref: PROJECT_STATE.md строка `operator walkthrough` (AGENTS.md правило 8); сценарии docs/product/operator-walkthrough-dev.md
   decision_status: approved
   delivery_status: planned
-  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) ПРИОСТАНОВЛЕНО владельцем 2026-08-31 (OD-041) до выравнивания ТЗ/roadmap/gates и утверждения единого плана реализации; не закрывать, done не ставить.'
   alias: A7
 - id: RM-BIZ-001
   kind: governance
@@ -956,6 +1121,8 @@ tasks:
   - check: mini-design, journey, backend/UI/RLS, intended-role smoke, walkthrough
     verified_by: ui_smoke
     ref: tests/ui-smoke/test_uismoke__self__campaign_create.py
+  feature_ids:
+  - self.campaign_create
   decision_status: approved
   delivery_status: blocked
   notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2). RM-GOV-009 (OD-037): blocked до OD-013 — полный self-service вне pilot scope (REQ-V26-003, OD-005)'
@@ -972,6 +1139,8 @@ tasks:
   - check: 8 категорий ТЗ, source/report/history contract и owner-approved artifact
     verified_by: artifact
     ref: docs/product/underdelivery-reason-taxonomy.yaml
+  feature_ids:
+  - campaign.underdelivery
   decision_status: approved
   delivery_status: planned
   notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
@@ -985,6 +1154,8 @@ tasks:
   - check: versioned rules
     verified_by: behavioral
     ref: tests/behavioral/test_campaign_preemption.py
+  feature_ids:
+  - inventory.priority
   decision_status: approved
   delivery_status: planned
   notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) RM-GOV-009 (r421): REQ-BIZ-007 и порядок приоритета §12; исключение §3.1 (OD-018) — единственная точка изменения engine → RM-TECH-285 зависит от неё'
@@ -1011,12 +1182,14 @@ tasks:
   - check: metadata/antivirus/executable deny и immutable QA result
     verified_by: behavioral
     ref: tests/behavioral/test_creative_qa.py
+  feature_ids:
+  - channel.rendition_validate
   decision_status: approved
   delivery_status: planned
   notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
 - id: RM-TECH-205
   kind: governance
-  stage: A
+  stage: C
   title: SLO objectives и измерение
   dependencies:
   - Gate-S
@@ -1026,7 +1199,7 @@ tasks:
     ref: docs/product/slo-objectives.yaml
   decision_status: approved
   delivery_status: planned
-  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) RM-GOV-009 (r421): REQ-NFR-001/006/007; пороги ждут OD-011/OD-009 — добавить в notes; артефакты AG выносятся в RM-TECH-288'
+  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) RM-GOV-009 (r421): REQ-NFR-001/006/007; пороги ждут OD-011/OD-009 — добавить в notes; артефакты AG выносятся в RM-TECH-288 RM-GOV-012 (предложение 2026-08-31, до ACCEPT владельца): перенесено A → C - артефакт Дополнения AG принимается до Gate-C (старт разработки по OD-041).'
 - id: RM-TECH-206
   kind: implementation
   stage: CORE
@@ -1072,6 +1245,8 @@ tasks:
   - check: manifest target lifecycle (generated → signed → queued → delivered → applied/failed/expired) и canonical POST /api/v1/pop/batch
     verified_by: behavioral
     ref: tests/behavioral/test_kso_playback_chain.py
+  feature_ids:
+  - playlist.build
   decision_status: approved
   delivery_status: planned
   notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
@@ -1089,6 +1264,8 @@ tasks:
   - check: реальные PoP/причины/RLS, journey/smoke/walkthrough
     verified_by: ui_smoke
     ref: tests/ui-smoke/test_uismoke__self__report_view.py
+  feature_ids:
+  - self.report_view
   decision_status: approved
   delivery_status: planned
   notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) RM-GOV-009 (r421): REQ-BIZ-011; зависит от RM-TECH-207B (реальные PoP) — без изменений'
@@ -1108,6 +1285,8 @@ tasks:
       онбординга
     verified_by: behavioral
     ref: tests/behavioral/test_rls_context_strictness.py
+  feature_ids:
+  - device.onboard
   decision_status: approved
   delivery_status: planned
   notes: 'заведена по решению владельца 2026-08-26 после того, как RM-STAB-002 вскрыл дефект.
@@ -1134,6 +1313,9 @@ tasks:
   - check: Ed25519 offline verify, kid/rotation/revocation, UI, tamper/rollback
     verified_by: behavioral
     ref: tests/behavioral/test_signed_license_layer2.py
+  feature_ids:
+  - license.view
+  - license.upload
   decision_status: approved
   delivery_status: planned
   notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
@@ -1190,6 +1372,7 @@ tasks:
   acceptance:
   - check: SHA/lock/schema/health, stand-safe journeys, rollback readiness
     verified_by: owner
+    ref: docs/audit/<дата>-pilot-deploy-<sha>.md + ACCEPT владельца с датой (deployment gate)
   decision_status: approved
   delivery_status: planned
   notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
@@ -1205,6 +1388,7 @@ tasks:
   acceptance:
   - check: не запускается автоматически после pilot
     verified_by: owner
+    ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой; OD-025/OD-028)
   decision_status: approved
   delivery_status: planned
   notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) RM-GOV-009 (r421): зависит от OD-025 (RTO/RPO) и OD-028 (топология); REQ-OPS-005/006; HA baseline выделен в RM-OPS-003'
@@ -1299,9 +1483,8 @@ tasks:
     verified_by: owner
     ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)
   decision_status: approved
-  delivery_status: planned
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-GOV-002; SC: SC-GOV-003; DEC: -. Evidence: traceability
-    diff; guard req. Риск регрессии: низкий.'
+  delivery_status: in_progress
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-GOV-002; SC: SC-GOV-003; DEC: -. Evidence: traceability diff; guard req. Риск регрессии: низкий. 2026-08-31: owner mapping применён по OD-039 (170 TBD → 0, OD-023 approved); остаток - mapping PENDING-ID journeys (8 awaiting_owner). OD-040 (2026-08-31): pending_journey_map закрыт - 6 новых blocked registry-ID, audit.compare rejected, security.review → audit.view; приёмка (1)/(2) выполнена локально, verification - после CI-прогона.'
   owner_gate:
     required: true
     reason: scope_decision
@@ -1320,6 +1503,32 @@ tasks:
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-GOV-001; SC: SC-GOV-005; DEC: -. Evidence: guard doc
     PASS; diff AGENTS.md. Риск регрессии: низкий.'
+  owner_gate:
+    required: true
+    reason: canon_change
+- id: RM-GOV-012
+  kind: governance
+  stage: G
+  title: 'Выравнивание ТЗ v2.6 ↔ roadmap ↔ хронология ↔ зависимости ↔ acceptance gates; единый план реализации (без кода)'
+  owner_role: PMO/Claude Code
+  dependencies:
+  - RM-GOV-010
+  acceptance:
+  - check: единый план реализации опубликован и привязан к SHA roadmap.yaml/ТЗ; расхождения ТЗ↔roadmap↔gates закрыты или названы с владельцем
+    verified_by: artifact
+    ref: docs/product/implementation-plan-v2.6.md
+  - check: независимая проверка Codex выполнена, замечания закрыты
+    verified_by: artifact
+    ref: docs/audit/<дата>-codex-review-implementation-plan.md
+  - check: документы утверждены владельцем (ACCEPT с датой) - стадия C и Gate-C становятся точкой старта разработки
+    verified_by: owner
+    ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)
+  - check: schema/consistency/governance/self-test зелёные
+    verified_by: command
+    ref: python3 scripts/ci/roadmap-governance-guard.py
+  decision_status: approved
+  delivery_status: in_progress
+  notes: 'По указанию владельца 2026-08-31 (OD-041). Предложения этой задачи, требующие ACCEPT: гейты Gate-CORE/CH/A/POPS, расширение условий Gate-C, перенос RM-TECH-205/288/253, RM-OPS-005, RM-UX-011 в стадию C, новая RM-TECH-231. Механические выравнивания (feature_ids, refs приёмки, RM-TECH-263 planned, RM-TECH-284 OD-014, REQ blocked ⇔ задачи blocked) применены. REQ: REQ-GOV-001, REQ-GOV-003; SC: SC-GOV-001; DEC: -. Evidence: план; guard. Риск регрессии: нет (документы/SSOT). OD-042 (2026-08-31): процесс и предложения утверждены владельцем; добавлены implementation_mode/code_baseline/regression_criteria у 101 REQ.'
   owner_gate:
     required: true
     reason: canon_change
@@ -1358,10 +1567,15 @@ tasks:
   - check: environment-inventory.yaml содержит поля AG для DEV/.81; guard env зелёный
     verified_by: command
     ref: python3 scripts/ci/roadmap-governance-guard.py
+  - check: DEV environment manifest принят владельцем как артефакт Дополнения AG
+    verified_by: owner
+    ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)
   decision_status: approved
   delivery_status: planned
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-ARCH-004; SC: SC-OPS-001; DEC: DEC-015. Evidence:
-    guard env; inventory diff. Риск регрессии: низкий.'
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-ARCH-004; SC: SC-OPS-001; DEC: DEC-015. Evidence: guard env; inventory diff. Риск регрессии: низкий. Закрывает Gate-E0 (RM-GOV-012, 2026-08-31).'
+  owner_gate:
+    required: true
+    reason: scope_decision
 - id: RM-STAB-012
   kind: implementation
   stage: S
@@ -1623,7 +1837,7 @@ tasks:
   stage: C
   title: 'ERD + data dictionary + migration plan (AG): инвентарь сущностей §15, retailer_id NOT NULL +
     двухуровневый RLS'
-  owner_role: Data/Technical owner
+  owner_role: Product Data Owner/Technical owner
   dependencies:
   - RM-TECH-220
   acceptance:
@@ -1655,11 +1869,31 @@ tasks:
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-ORCH-006; SC: SC-ORCH-005; DEC: -. Evidence: docs/architecture
     contract; schema. Риск регрессии: низкий: только документ.'
+- id: RM-TECH-231
+  kind: design
+  stage: C
+  title: 'channel-capability-matrix.yaml (AG) для первого канала KSO: channel/surface/rendition/proof/SLA/vendor constraints'
+  owner_role: Channel/Content owner
+  dependencies:
+  - RM-TECH-230
+  acceptance:
+  - check: матрица покрывает KSO channel/surface/rendition/proof/SLA/vendor constraints; каждая строка ссылается на REQ-CHAN-*/REQ-MAN-*/REQ-POP-*
+    verified_by: artifact
+    ref: docs/product/channel-capability-matrix.yaml
+  - check: артефакт принят владельцем как часть handoff-пакета AG
+    verified_by: owner
+    ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)
+  decision_status: approved
+  delivery_status: planned
+  notes: 'RM-GOV-012 (предложение 2026-08-31): AG требует channel-capability-matrix до старта разработки, а RM-TECH-261 держит матрицу за решением OD-021 (второй канал). Первый канал KSO описывается без OD-021; RM-TECH-261 расширяет матрицу вторым каналом. REQ: REQ-CHAN-001, REQ-CHAN-002, REQ-CHAN-003; SC: SC-CHAN-002; DEC: DEC-001 (расширение). Evidence: артефакт; ACCEPT владельца. Риск регрессии: нет (документ). Утверждена OD-042 (2026-08-31).'
+  owner_gate:
+    required: true
+    reason: scope_decision
 - id: RM-TECH-240
   kind: implementation
   stage: CORE
   title: 'Универсальная иерархия носителей: migration + seed network/branch/cluster/store/store_group/channel/device/surface'
-  owner_role: Data owner
+  owner_role: Product Data Owner
   dependencies:
   - RM-TECH-229
   acceptance:
@@ -1734,6 +1968,8 @@ tasks:
   - check: активация на 1000 устройств не ждёт устройств; задачи агрегируют статусы
     verified_by: behavioral
     ref: tests/behavioral/test_delivery_foundation.py
+  feature_ids:
+  - channel.register
   decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-ORCH-002; SC: SC-ORCH-006; DEC: DEC-004. Evidence:
@@ -1849,13 +2085,15 @@ tasks:
   kind: implementation
   stage: CORE
   title: 'Data ownership/lineage: immutable versioning и diff campaign/placement/playlist, словарь владельцев'
-  owner_role: Data owner
+  owner_role: Product Data Owner
   dependencies:
   - RM-TECH-229
   acceptance:
   - check: сохранение создаёт версию с diff и actor; предыдущая неизменяема
     verified_by: behavioral
     ref: tests/behavioral/test_rm_tech_251.py
+  feature_ids:
+  - data.catalog
   decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-DATA-001; SC: SC-DATA-004; DEC: DEC-007. Evidence:
@@ -1880,7 +2118,7 @@ tasks:
     reason: protected_boundary
 - id: RM-TECH-253
   kind: design
-  stage: CORE
+  stage: C
   title: 'Data protection: data classes, lawful purpose, минимизация PII, residency; retention по OD-009'
   owner_role: Security/Legal owner
   dependencies:
@@ -1891,8 +2129,7 @@ tasks:
     ref: docs/architecture data classes
   decision_status: approved
   delivery_status: planned
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-004; SC: SC-SEC-011; DEC: DEC-007. Evidence: docs/architecture
-    data classes. Риск регрессии: низкий.'
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-004; SC: SC-SEC-011; DEC: DEC-007. Evidence: docs/architecture data classes. Риск регрессии: низкий. RM-GOV-012 (предложение 2026-08-31, до ACCEPT владельца): перенесено CORE → C - артефакт Дополнения AG принимается до Gate-C (старт разработки по OD-041).'
 - id: RM-TECH-254
   kind: implementation
   stage: CORE
@@ -1927,6 +2164,8 @@ tasks:
   - check: device.health_view smoke зелёный
     verified_by: ui_smoke
     ref: tests/ui-smoke/test_uismoke__device__health_view.py
+  feature_ids:
+  - carrier.manage
   decision_status: approved
   delivery_status: planned
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-OPS-001; SC: SC-OPS-006; DEC: -. Evidence: tests/ui-smoke/test_uismoke__device__health_view.py.
@@ -2005,7 +2244,7 @@ tasks:
     tests/behavioral/test_pop_reporting_scope.py. Риск регрессии: средний.'
 - id: RM-UX-011
   kind: governance
-  stage: U
+  stage: C
   title: role-scope-matrix.yaml + portal-route-matrix.yaml + journeys/ (AG) из seed/pg_policies/registry
   owner_role: Security + Product/UX owner
   dependencies:
@@ -2017,8 +2256,7 @@ tasks:
     ref: python3 scripts/ci/roadmap-governance-guard.py
   decision_status: approved
   delivery_status: planned
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-UX-001, REQ-SEC-002; SC: SC-SEC-009; DEC: DEC-023.
-    Evidence: generated matrices; guard registry. Риск регрессии: низкий.'
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-UX-001, REQ-SEC-002; SC: SC-SEC-009; DEC: DEC-023. Evidence: generated matrices; guard registry. Риск регрессии: низкий. RM-GOV-012 (предложение 2026-08-31, до ACCEPT владельца): перенесено U → C - артефакт Дополнения AG принимается до Gate-C (старт разработки по OD-041).'
 - id: RM-TECH-260
   kind: implementation
   stage: CH
@@ -2075,9 +2313,8 @@ tasks:
   feature_ids:
   - content.dynamic_binding
   decision_status: approved
-  delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-008; SC: -; DEC: DEC-005. Evidence: new behavioral.
-    Риск регрессии: высокий. blocked: ложная ESL-посылка, master adapter (OD-023).'
+  delivery_status: planned
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-008; SC: -; DEC: DEC-005. Evidence: new behavioral. Риск регрессии: высокий. ложная ESL-посылка снимается prerequisite RM-TECH-280 (OD-023 approved 2026-08-31) - planned по зависимости.'
 - id: RM-TECH-263
   kind: implementation
   stage: CH
@@ -2093,14 +2330,13 @@ tasks:
   feature_ids:
   - field_ops.device_confirm
   decision_status: approved
-  delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-009; SC: -; DEC: -. Evidence: new ui-smoke. Риск
-    регрессии: средний. blocked RM-TECH-210.'
+  delivery_status: planned
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-009; SC: -; DEC: -. Evidence: new ui-smoke. Риск регрессии: средний. prerequisite RM-TECH-210 (RLS device) - planned по зависимости; feature field_ops.device_confirm blocked до задачи (RM-GOV-012 выравнивание: blocked = решение владельца/внешний факт, а не зависимость).'
 - id: RM-TECH-264
   kind: implementation
   stage: CH
   title: 'ESL/price-checker: интеграция только через approved price/SKU master (INT-002)'
-  owner_role: Channel/Data owner
+  owner_role: Channel/Product Data Owner
   dependencies:
   - RM-TECH-280
   acceptance:
@@ -2109,14 +2345,13 @@ tasks:
     verified_by: behavioral
     ref: tests/behavioral/test_rm_tech_264.py
   decision_status: approved
-  delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-INT-002; SC: -; DEC: DEC-005. Evidence: new behavioral.
-    Риск регрессии: высокий. blocked OD-023.'
+  delivery_status: planned
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-INT-002; SC: -; DEC: DEC-005. Evidence: new behavioral. Риск регрессии: высокий. OD-023 approved 2026-08-31 - planned после RM-TECH-280.'
 - id: RM-TECH-280
   kind: design
   stage: CH
   title: 'Prerequisite: master-data adapter цен/SKU (контракт, owner OD-023, reconciliation)'
-  owner_role: Data owner (OD-023)
+  owner_role: Product Data Owner (OD-023)
   dependencies:
   - RM-TECH-229
   acceptance:
@@ -2127,9 +2362,8 @@ tasks:
     verified_by: behavioral
     ref: tests/behavioral/test_rm_tech_280.py
   decision_status: approved
-  delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-INT-002; SC: -; DEC: DEC-005. Evidence: OD-023; contract
-    tests. Риск регрессии: средний. отсутствующий prerequisite по AQ.1 №5; blocked до имени владельца.'
+  delivery_status: planned
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-INT-002; SC: -; DEC: DEC-005. Evidence: OD-023; contract tests. Риск регрессии: средний. отсутствующий prerequisite по AQ.1 №5; OD-023 approved 2026-08-31 (роль Product Data Owner) - planned; owner gate: контракт/scope adapter.'
   owner_gate:
     required: true
     reason: scope_decision
@@ -2147,9 +2381,8 @@ tasks:
   feature_ids:
   - integration.reconcile
   decision_status: approved
-  delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-INT-001; SC: -; DEC: -. Evidence: new behavioral;
-    methodology doc. Риск регрессии: средний. blocked RM-TECH-280.'
+  delivery_status: planned
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-INT-001; SC: -; DEC: -. Evidence: new behavioral; methodology doc. Риск регрессии: средний. prerequisite RM-TECH-280 (OD-023 approved 2026-08-31) - planned по зависимости.'
 - id: RM-TECH-282
   kind: implementation
   stage: A
@@ -2166,13 +2399,12 @@ tasks:
   - attribution.lift_report
   decision_status: approved
   delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-002; SC: -; DEC: DEC-005, DEC-027. Evidence: new
-    behavioral; report. Риск регрессии: средний.'
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-002; SC: -; DEC: DEC-005, DEC-027. Evidence: new behavioral; report. Риск регрессии: средний. blocked OD-014 (DEC-027); OD-023 approved 2026-08-31.'
 - id: RM-TECH-283
   kind: design
   stage: A
   title: 'Prerequisite: audience source/privacy contract (анонимные store-атрибуты, 152-ФЗ, OD-032)'
-  owner_role: Data/Legal owner
+  owner_role: Product Data Owner/Legal owner
   dependencies:
   - RM-TECH-280
   - RM-TECH-253
@@ -2184,8 +2416,7 @@ tasks:
   - placement.audience_targeting
   decision_status: approved
   delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-005; SC: -; DEC: DEC-005, DEC-019. Evidence: OD-032;
-    contract. Риск регрессии: низкий.'
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-005; SC: -; DEC: DEC-005, DEC-019. Evidence: OD-032; contract. Риск регрессии: низкий. blocked OD-032 (DEC-019); OD-023 approved 2026-08-31.'
   owner_gate:
     required: true
     reason: scope_decision
@@ -2204,8 +2435,7 @@ tasks:
   - experiment.evaluate
   decision_status: approved
   delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-BIZ-012, REQ-V26-010; SC: -; DEC: DEC-027. Evidence:
-    new behavioral. Риск регрессии: средний.'
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-BIZ-012, REQ-V26-010; SC: -; DEC: DEC-027. Evidence: new behavioral. Риск регрессии: средний. blocked OD-014 (DEC-027) - методика winner metric не утверждена.'
 - id: RM-TECH-285
   kind: implementation
   stage: A
@@ -2222,9 +2452,8 @@ tasks:
   feature_ids:
   - campaign.competitive_separation
   decision_status: approved
-  delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-004; SC: -; DEC: DEC-005, DEC-022. Evidence: new
-    behavioral. Риск регрессии: высокий: priority engine.'
+  delivery_status: planned
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-004; SC: -; DEC: DEC-005, DEC-022. Evidence: new behavioral. Риск регрессии: высокий: priority engine. OD-023 approved 2026-08-31, DEC-022 = OD-018 approved - planned после RM-TECH-280.'
 - id: RM-TECH-286
   kind: implementation
   stage: A
@@ -2261,7 +2490,7 @@ tasks:
     new behavioral. Риск регрессии: средний. blocked OD-026.'
 - id: RM-TECH-288
   kind: governance
-  stage: A
+  stage: C
   title: 'nfr-slo.yaml + load-profiles.yaml (AG): method, percentile, error budget, generator, CI evidence'
   owner_role: SRE/Operations owner
   dependencies:
@@ -2272,9 +2501,7 @@ tasks:
     ref: nfr-slo.yaml
   decision_status: approved
   delivery_status: planned
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-NFR-001, REQ-NFR-006, REQ-NFR-007, REQ-NFR-005; SC:
-    SC-NFR-001, SC-NFR-005, SC-NFR-006, SC-NFR-007; DEC: DEC-006, DEC-009. Evidence: load run report;
-    nfr-slo.yaml. Риск регрессии: низкий.'
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-NFR-001, REQ-NFR-006, REQ-NFR-007, REQ-NFR-005; SC: SC-NFR-001, SC-NFR-005, SC-NFR-006, SC-NFR-007; DEC: DEC-006, DEC-009. Evidence: load run report; nfr-slo.yaml. Риск регрессии: низкий. RM-GOV-012 (предложение 2026-08-31, до ACCEPT владельца): перенесено A → C - артефакт Дополнения AG принимается до Gate-C (старт разработки по OD-041).'
 - id: RM-TECH-289
   kind: design
   stage: A
@@ -2349,7 +2576,7 @@ tasks:
     Риск регрессии: средний. blocked OD-010.'
 - id: RM-OPS-005
   kind: governance
-  stage: POPS
+  stage: C
   title: 'retention-policy.yaml + legal decision register (AG): сроки, 152-ФЗ, deletion/archive, review
     date'
   owner_role: Security/Legal owner
@@ -2361,8 +2588,7 @@ tasks:
     ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)
   decision_status: approved
   delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-004; SC: SC-SEC-011; DEC: DEC-007. Evidence: OD-009;
-    retention-policy.yaml. Риск регрессии: низкий. blocked OD-009.'
+  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-004; SC: SC-SEC-011; DEC: DEC-007. Evidence: OD-009; retention-policy.yaml. Риск регрессии: низкий. blocked OD-009. RM-GOV-012 (предложение 2026-08-31, до ACCEPT владельца): перенесено POPS → C - артефакт Дополнения AG принимается до Gate-C (старт разработки по OD-041).'
   owner_gate:
     required: true
     reason: scope_decision

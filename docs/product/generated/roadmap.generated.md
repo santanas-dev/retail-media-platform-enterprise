@@ -20,24 +20,24 @@
 
 | Метрика | Значение |
 |---|---|
-| Всего задач | 107 |
-| По этапам | A=14, C=11, CH=9, CORE=22, E0=3, G=11, POPS=8, S=18, U=11 |
-| По типу | design=12, external=2, external-plan=2, governance=20, human=1, implementation=70 |
-| По статусу поставки | blocked=16, done=9, planned=79, verification=3 |
-| Требуют owner gate | 30 |
+| Всего задач | 109 |
+| По этапам | A=12, C=17, CH=9, CORE=21, E0=3, G=12, POPS=7, S=18, U=10 |
+| По типу | design=13, external=2, external-plan=2, governance=21, human=1, implementation=70 |
+| По статусу поставки | blocked=10, done=9, in_progress=2, planned=85, verification=3 |
+| Требуют owner gate | 33 |
 | С verified evidence | 12 |
 | Максимальная глубина зависимостей | 9 |
-| Гейты | Gate-G, Gate-S, Gate-U, Gate-C |
-| Решения владельца | 38 |
+| Гейты | Gate-G, Gate-E0, Gate-S, Gate-U, Gate-C, Gate-CORE, Gate-CH, Gate-A, Gate-POPS |
+| Решения владельца | 42 |
 
 ### Функции (из registry — функциональный SSOT)
 
 | Метрика | Значение |
 |---|---|
-| Всего функций | 73 |
-| reachable · blocked | 52 · 21 |
-| По фронтенду | admin-web=49, advertiser-web=5, public=1, service=18 |
-| UI-функций (не service) | 55 |
+| Всего функций | 79 |
+| reachable · blocked | 52 · 27 |
+| По фронтенду | admin-web=55, advertiser-web=5, public=1, service=18 |
+| UI-функций (не service) | 61 |
 | Закреплено в CI-subset | 43 |
 | blocked с пустым `gap` | 0 |
 
@@ -83,7 +83,7 @@
 | `OD-020` | approved | 2026-08-28 | DEC-026 | DEC-026 - отмена коммерческого заказа - переход draft → cancelled разрешён; confirmed закрывается только reversal/compensation workflow, прямая отмена confirmed запрещена. _ORDER_TRANSITIONS и тесты приводятся отдельной задачей task breakdown. | tz-v2.6 §29 DEC-026; packages/domain _ORDER_TRANSITIONS (факт) |
 | `OD-021` | open | — | DEC-001 | Каналы первой production-очереди и владелец каждого не выбраны. Вопрос владельцу - перечень каналов, владелец, SLA и бюджет каждого. До решения единственный реальный канал - KSO (ADR-019), хуки под несуществующие каналы запрещены. | ADR-019; tz-v2.6 §23/§25, §29 DEC-001 |
 | `OD-022` | approved | 2026-07-20 | DEC-002 | Channel Orchestrator и Adapter Layer вводятся только после появления второго реального канала; mock-first до этого триггера запрещён. Ратифицировано ADR-019. | ADR-019; user-journeys.md §5.1 (§24 - ПРАГМАТИКА, 2026-07-18) |
-| `OD-023` | open | — | DEC-005 | Master-система цен/SKU и владелец reconciliation не зафиксированы. Вопрос владельцу - имя/роль владельца master-данных цен/SKU. До решения ESL/price-checker, attribution/audience и dynamic creative остаются blocked. | tz-v2.6 §16.2, §23.7, §29 DEC-005; AQ.1 №5 (master-data adapter - отсутствующий prerequisite) |
+| `OD-023` | approved | 2026-08-31 | DEC-005 | Владелец master-данных цен/SKU и reconciliation - роль Product Data Owner (решение владельца 2026-08-31; исполнитель роли по имени назначается позднее amendment-ом этого решения). Master-система цен/SKU и reconciliation фиксируются контрактом RM-TECH-280 (prerequisite по AQ.1 №5). Цепочка master-data (RM-TECH-280/281/264/262/285) разблокируется по роли; задачи, зависящие от других open решений (OD-014, OD-032), остаются blocked по ним. | tz-v2.6 §16.2, §23.7, §29 DEC-005; AQ.1 №5 (master-data adapter - отсутствующий prerequisite); ответ владельца 2026-08-31 (RM-GOV-010) |
 | `OD-024` | open | — | DEC-010 | Пилотная шкала КСО → 10 → 100 → 500 → сеть принята 2026-07-18. Открыты измеримые exit criteria каждого перехода - вопрос владельцу, какие метрики и пороги закрывают ступень. | user-journeys.md §5.1 2026-07-18 (шкала КСО → 10 → 100 → 500 → сеть принята); tz-v2.6 §29 DEC-010 |
 | `OD-025` | open | — | DEC-012 | RTO/RPO, HA target и владелец DR не определены. Вопрос владельцу - целевые RTO/RPO для production, кто владеет DR и что является go/no-go критерием. | tz-v2.6 §5/§17, §29 DEC-012 |
 | `OD-026` | open | — | DEC-013 | Advertiser/BI API access не решён. Вопрос владельцу - scoped API keys с rotation/revoke/audit в первой очереди либо явное исключение из неё. | tz-v2.6 §12/§16, REQ-INT-003, §29 DEC-013 |
@@ -99,19 +99,28 @@
 | `OD-036` | approved | 2026-07-05 | DEC-025 | Жизненный цикл кампании - полный accepted lifecycle ADR-015, включая scheduled, resume, revise и archive. Текущий код не соответствует и требует implementation task; иной вариант - только amendment ADR-015. | ADR-015 (Accepted 2026-07-05); tz-v2.6 §29 DEC-025 |
 | `OD-037` | approved | 2026-08-28 | — | Порядок стадий roadmap утверждён владельцем 2026-08-28 - G → E0 → S → C → CORE → U → CH → A → POPS (Governance → Environment → Stabilization → Contracts → Core → Portal → Channels → Analytics/Scale → Production). Стадия BT расформирована - её 14 задач переезжают по фазам с сохранением ID и истории; введён Gate-C; у шести задач Core/Contracts зависимость Gate-U заменена на Gate-S, потому что Portal идёт после Core. Кандидат - docs/audit/2026-08-28-claude-a3-task-breakdown-candidate.md. | docs/audit/2026-08-28-claude-a3-task-breakdown-candidate.md §1/§3; docs/audit/2026-08-28-codex-review-claude-a3.md |
 | `OD-038` | approved | 2026-08-28 | — | Конфликт канона разрешён владельцем 2026-08-28 - feature-registry device.onboard переводится reachable → blocked с unblocked_by RM-TECH-210, потому что в production-path устройство получает 403 INVALID_CODE (RLS-CONTEXT-DEVICE-001, доказано прямым запросом к БД); ранее reachable держался под административной маской behavioral-набора. Smoke сохраняется; статус возвращается к reachable только по behavioral evidence под runtime-ролью на PostgreSQL. | tz-v2.6-draft §11; PROJECT_STATE RLS-CONTEXT-DEVICE-001; RM-TECH-210 |
+| `OD-039` | approved | 2026-08-31 | — | Ролевая модель владельцев требований (RM-GOV-010, ТЗ §37 - владельцы и RACI). Owner каждого REQ и SC в requirements-traceability.yaml - роль из нормализованного словаря {Product owner, Technical owner, Architecture owner, Security owner, Operations owner, Product Data Owner, Legal owner, Finance owner, Channel/Content owner, Analytics owner, PMO}; implementation_owner - Claude Code. Правило вывода - (1) REQ с задачами RM-GOV-009 - из утверждённого owner_role задачи, составная роль нормализуется к первой названной (accountable), при нескольких ролях - роль prerequisite-задачи, иначе первой; (2) REQ старых задач без owner_role - по семейству ID - CORE/ORCH/MAN/POP/CONT/CHAN/API/DATA/INT → Technical, BIZ/UX/SCOPE/LIC/V26 → Product, SEC → Security, OPS/NFR/STAND → Operations, ARCH → Architecture, GOV → PMO; (3) SC наследует роль своих REQ, при разных - роль по kind (security/operational/governance/data/performance/architecture/contract/technical), иначе первого REQ. Имена исполнителей ролей назначаются отдельным amendment-ом; до него owner - роль, TBD не допускается. | tz-v2.6-draft §37 (владельцы и RACI до APPROVED); RM-GOV-010 (приёмка - назначения подтверждены владельцем); ответ владельца 2026-08-31 |
+| `OD-040` | approved | 2026-08-31 | — | Mapping 8 PENDING-ID journeys из AP-stories ТЗ v2.6 (RM-GOV-010, решение владельца 2026-08-31). Новые canonical registry-ID со статусом blocked до задач - campaign.underdelivery (RM-TECH-201, US-UDR-001), carrier.manage (RM-TECH-255 + RM-TECH-207A, US-CHAN-003), channel.register (RM-TECH-207A + RM-TECH-244, US-CHAN-001), channel.rendition_validate (RM-TECH-204 + RM-TECH-207A, US-CHAN-002), data.catalog (RM-TECH-251, US-DATA-001), inventory.priority (RM-TECH-202, US-PRI-001). audit.compare (US-REG-001) - rejected как product-journey - governance-процедура аудитора, доказательство - roadmap-governance-guard в CI, REQ-GOV-001 покрыт SC. security.review (US-SEC-001) - mapped на canonical audit.view (baseline по AP), критичный фильтр и SIEM-экспорт - acceptance REQ-SEC-001 в RM-TECH-252/253. pending_journey_map без awaiting_owner; нормативная таблица AP не переписывается (r419 SHA). | tz-v2.6-draft Дополнение AP (US-REG-001, US-UDR-001, US-CHAN-001/002/003, US-DATA-001, US-PRI-001, US-SEC-001), Дополнение V; RM-GOV-010 (приёмка - pending_journey_map без awaiting_owner; назначения подтверждены владельцем); docs/audit/2026-08-31-claude-rm-gov-010-pending-journeys.md (варианты); ответ владельца 2026-08-31 |
+| `OD-041` | approved | 2026-08-31 | — | Указание владельца 2026-08-31 - RM-UX-007 и operator walkthrough временно приостановлены (не закрываются, done не ставится). Порядок работ до старта разработки - (1) выравнивание ТЗ v2.6, технической и бизнесовой roadmap, хронологии этапов, зависимостей и acceptance gates; (2) единый план реализации без изменения кода; (3) независимая проверка Codex; (4) утверждение документов владельцем; (5) старт разработки. Реализация новых продуктовых функций до (4) запрещена (Дополнение AG, шаг 7). | указание владельца 2026-08-31 (сессия); tz-v2.6-draft Дополнение AG (порядок gate 1-7), AGENTS.md правило 8; docs/product/implementation-plan-v2.6.md (кандидат RM-GOV-012) |
+| `OD-042` | approved | 2026-08-31 | — | Решение владельца 2026-08-31. (1) ТЗ v2.6 draft-2026-08-31-r428 (sha256 ffb8cf7d192ee0d00fb648d228b1a1fd89a4a5b81d498867051146d4122850e7) - целевой контракт реализации; любое изменение нормативных разделов - новая ревизия и отдельное решение. (2) RM-GOV-012 - единый процесс выравнивания и планирования - утверждён вместе с его предложениями (Gate-E0/CORE/CH/A/POPS, условия и решение Gate-C, перенос RM-TECH-205/288/253, RM-OPS-005, RM-UX-011 в стадию C, RM-TECH-231). (3) Каждый REQ несёт implementation_mode относительно baseline кода develop @ 4ac3ddb - preserve (не менять), adapt (аддитивно дополнить), replace (заменить только при conflict_ref - доказанном конфликте существующего поведения с r428), new (создать) - с code_baseline и regression_criteria; существующая реализация не переписывается без доказанного конфликта. (4) Excel/Markdown/metrics обновляются только генерацией из roadmap.yaml (RM-GOV-003). | указание владельца 2026-08-31 (сессия); docs/product/implementation-plan-v2.6.md; docs/audit/2026-08-31-claude-rm-gov-012-alignment.md; docs/product/requirements-traceability.yaml (implementation_mode, code_baseline, regression_criteria, conflict_ref) |
 
 ## Гейты
 
 | Гейт | Закрывает этап | Утверждает | Условия |
 |---|---|---|---|
-| `Gate-C` | C | owner | OpenAPI + event/manifest JSON Schema и ERD/data dictionary приняты владельцем как артефакты Дополнения AG; contract tests зелёные в CI |
+| `Gate-A` | A | codex | SLO/NFR evidence по nfr-slo.yaml и load-profiles.yaml воспроизводимы в CI/на стенде (RM-TECH-205/288); ClickHouse trigger оценён (RM-TECH-209); attribution/A-B только при approved методике владельца (OD-014); задачи без решения остаются blocked, а не done |
+| `Gate-C` | C | owner | каждый артефакт handoff-пакета Дополнения AG принят владельцем отдельно - traceability (RM-GOV-008), DEV manifest (RM-ENV-003), role-scope/route/journeys (RM-UX-011), OpenAPI + event/manifest JSON Schema (RM-TECH-220), ERD/data dictionary/migration plan (RM-TECH-229), channel-capability-matrix KSO (RM-TECH-231), nfr-slo + load-profiles (RM-TECH-288), retention-policy + legal register (RM-OPS-005), roadmap views (RM-GOV-003/009); contract tests стадии C зелёные в CI; независимая сверка Claude/Codex единого плана реализации (RM-GOV-012) выполнена, замечания закрыты |
+| `Gate-CH` | CH | owner | цепочка KSO manifest → playlist → PoP доказана на стенде под device_contract (RM-TECH-207B, RM-TECH-260); registry playlist.build/device.onboard reachable по smoke/behavioral; второй канал только по OD-021 (RM-TECH-261); ESL/dynamic creative только после master-data adapter (RM-TECH-280) |
+| `Gate-CORE` | CORE | codex | behavioral evidence под runtime-ролью приложения на PostgreSQL для иерархии носителей, target resolution, outbox/relay, campaign/commerce lifecycle, emergency state machine; migration rehearsal up/down на стенде для каждой migration_application-задачи; contract tests стадии C не сломаны |
+| `Gate-E0` | E0 | owner | RM-ENV-003 - DEV environment manifest (environment-inventory.yaml, стенд stand-81) принят владельцем как артефакт Дополнения AG (owner_gate scope_decision); guard env зелёный - стенд совпадает с base.stand_baseline; evidence только у окружений с наблюдаемой identity |
 | `Gate-G` | G | owner | Codex проверяет generator и tamper matrix; владелец утверждает canonical cutover |
+| `Gate-POPS` | POPS | owner | pilot развёрнут по RM-PILOT-003 (deployment gate) на exact bundle; production readiness RM-OPS-001 - RTO/RPO (OD-025), топология/HA (OD-028), rollback/DR evidence; staged rollout и feature flags по OD-010; ничего не запускается автоматически после pilot |
 | `Gate-S` | S | codex | новые counts и evidence воспроизводимы |
 | `Gate-U` | U | human | человек проходит walkthrough на exact stand bundle |
 
 ## Очередь по этапам
 
-### G — Единая система roadmap (11) · закрывается `Gate-G`
+### G — Единая система roadmap (12) · закрывается `Gate-G`
 
 | ID | Kind | Задача | Зависит от | Глубина | Поставка | Owner gate | Приёмка | Evidence |
 |---|---|---|---|---|---|---|---|---|
@@ -124,16 +133,17 @@
 | `RM-GOV-007` | governance | Единый реестр решений (A2): DEC как alias owner_decisions, модуль guard decisions | `RM-GOV-005` | 5 | verification | — | 27/27 DEC §29 представлены alias ровно одного OD; guard decisions зелёный [ci_job: `roadmap-governance-guard`] | verified · ci_run · `https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/33164564954` |
 | `RM-GOV-008` | governance | Трассировка требований (A1): requirements-traceability.yaml + модуль guard req | `RM-GOV-007` | 6 | verification | — | 101 REQ, 69 SC, 58/58 registry ID трассированы; guard req зелёный [ci_job: `roadmap-governance-guard`] | verified · ci_run · `https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/33166246511` |
 | `RM-GOV-009` | governance | Task breakdown A3 → roadmap.yaml: новые стадии C/CORE/CH/A, перестановка BT, schema stage enum | `RM-GOV-008` | 7 | verification | canon_change | все 101 REQ имеют roadmap_ids или approved deferred; traceability без task_required [command: `python3 scripts/ci/roadmap-governance-guard.py`]; владелец принял очередь (ACCEPT с SHA) [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`] | verified · ci_run · `https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/33169752021` |
-| `RM-GOV-010` | governance | Owner/RACI для REQ и SC (170 TBD) и mapping 23 PENDING-ID journeys | `RM-GOV-008` | 7 | planned | scope_decision | 0 полей TBD в traceability; pending_journey_map без awaiting_owner [command: `python3 scripts/ci/roadmap-governance-guard.py`]; назначения подтверждены владельцем [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`] | — |
+| `RM-GOV-010` | governance | Owner/RACI для REQ и SC (170 TBD) и mapping 23 PENDING-ID journeys | `RM-GOV-008` | 7 | in_progress | scope_decision | 0 полей TBD в traceability; pending_journey_map без awaiting_owner [command: `python3 scripts/ci/roadmap-governance-guard.py`]; назначения подтверждены владельцем [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`] | — |
 | `RM-GOV-011` | governance | Правила агентов и приёмки: ADR-020 в индекс, Done Gate ↔ §27 DoD требования | `RM-GOV-006` | 2 | planned | canon_change | индекс Sources of Truth содержит ADR-020; §27 DoD REQ отражён в Done Gate AGENTS.md [artifact: `diff AGENTS.md`] | — |
+| `RM-GOV-012` | governance | Выравнивание ТЗ v2.6 ↔ roadmap ↔ хронология ↔ зависимости ↔ acceptance gates; единый план реализации (без кода) | `RM-GOV-010` | 8 | in_progress | canon_change | единый план реализации опубликован и привязан к SHA roadmap.yaml/ТЗ; расхождения ТЗ↔roadmap↔gates закрыты или названы с владельцем [artifact: `docs/product/implementation-plan-v2.6.md`]; независимая проверка Codex выполнена, замечания закрыты [artifact: `docs/audit/<дата>-codex-review-implementation-plan.md`]; документы утверждены владельцем (ACCEPT с датой) - стадия C и Gate-C становятся точкой старта разработки [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`]; schema/consistency/governance/self-test зелёные [command: `python3 scripts/ci/roadmap-governance-guard.py`] | — |
 
-### E0 — Окружения (3)
+### E0 — Окружения (3) · закрывается `Gate-E0`
 
 | ID | Kind | Задача | Зависит от | Глубина | Поставка | Owner gate | Приёмка | Evidence |
 |---|---|---|---|---|---|---|---|---|
 | `RM-ENV-001` | governance | Инвентарь `.77/.81/DEV/PROD` и очистка активных ссылок | `Gate-G` | 0 | done | scope_decision | versioned environment inventory [artifact: `docs/product/environment-inventory.yaml`] | verified · ci_run · `gh run 33003166965 — roadmap-governance-guard success на 9b88ae8`; verified · artifact · `docs/product/environment-inventory.yaml`; verified · command · `curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://192.168.110.77:3000/`; verified · command · `curl -s http://192.168.110.81:8000/version`; verified · command · `python3 scripts/ci/roadmap-governance-guard.py --module env`; verified · artifact · `docs/architecture/rm-env-001-environment-inventory-design-gate.md` |
 | `RM-ENV-002` | implementation | Стенд: seed/reset в утверждённое время и точный демо-состав | `RM-ENV-001` | 1 | planned | — | seed/reset воспроизводим, время до smoke-набора измерено и ≤ owner target [command: `tests/test_local_stand.py`]; подсчёт по БД совпадает с §25 REQ-STAND-002 (10/50/500; 2000 KSO …) [behavioral: `tests/test_local_stand.py`]; в seed нет реальных PII/tokens/договоров [command: `tests/test_local_stand.py`] | — |
-| `RM-ENV-003` | governance | DEV environment manifest (AG): endpoint/версии/SHA/schema/доступность + seed/reset | `RM-ENV-001`, `RM-ENV-002` | 2 | planned | — | environment-inventory.yaml содержит поля AG для DEV/.81; guard env зелёный [command: `python3 scripts/ci/roadmap-governance-guard.py`] | — |
+| `RM-ENV-003` | governance | DEV environment manifest (AG): endpoint/версии/SHA/schema/доступность + seed/reset | `RM-ENV-001`, `RM-ENV-002` | 2 | planned | scope_decision | environment-inventory.yaml содержит поля AG для DEV/.81; guard env зелёный [command: `python3 scripts/ci/roadmap-governance-guard.py`]; DEV environment manifest принят владельцем как артефакт Дополнения AG [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`] | — |
 
 ### S — Стабилизация доказательств и границ (18) · закрывается `Gate-S`
 
@@ -141,7 +151,7 @@
 |---|---|---|---|---|---|---|---|---|
 | `RM-STAB-001` | implementation | Единый контракт `BEHAVIORAL_APP_DB_URL` | `RM-ENV-001` | 1 | done | — | обе DSN-формы проходят один targeted behavioral command через один helper [command: `RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral/test_commerce_rls.py -q`] | verified · command · `RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral/test_commerce_rls.py -q`; verified · behavioral · `RUN_BEHAVIORAL_TESTS=1 BEHAVIORAL_APP_DB_URL=postgresql://... python3 -m pytest tests/behavioral/test_commerce_rls.py tests/behavioral/test_campaign_permission_split_001.py -q`; verified · behavioral · `RUN_BEHAVIORAL_TESTS=1 BEHAVIORAL_APP_DB_URL=postgresql+asyncpg://... python3 -m pytest tests/behavioral/test_commerce_rls.py tests/behavioral/test_campaign_permission_split_001.py -q`; verified · behavioral · `tamper — helper перестаёт нормализовать в каждую сторону`; verified · ci_run · `gh run 33006795900 — Behavioral PostgreSQL Tests success на 00d75a6`; verified · artifact · `tests/behavioral/dsn.py` |
 | `RM-STAB-002` | implementation | Strict RLS context по умолчанию | `RM-STAB-001` | 2 | done | — | admin elevation только setup [behavioral: `tests/behavioral/conftest.py::strict get_db default`] | verified · behavioral · `tests/behavioral/test_rls_context_strictness.py`; verified · behavioral · `RUN_BEHAVIORAL_TESTS=1 python3 -m pytest tests/behavioral -q`; verified · behavioral · `tamper — маска возвращена, хук фазы убран, запись allowlist без дефекта`; verified · ci_run · `gh run 33015298420 — Behavioral PostgreSQL Tests success на 1e7a2bf`; verified · artifact · `docs/architecture/rm-stab-002-strict-rls-context-design-gate.md` |
-| `RM-STAB-003` | design | Зафиксировать approved personas/retailer-scope | `RM-STAB-002` | 3 | planned | scope_decision | mini-design/ADR: persona→permissions→scope [owner] | — |
+| `RM-STAB-003` | design | Зафиксировать approved personas/retailer-scope | `RM-STAB-002` | 3 | planned | scope_decision | mini-design/ADR: persona→permissions→scope [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой; OD-035/DEC-023)`] | — |
 | `RM-STAB-004` | implementation | Реализовать approved RBAC/RLS scope | `RM-STAB-003`, `RM-STAB-006` | 5 | planned | migration_application | API/portal/migration согласованы [behavioral: `tests/behavioral/test_retailer_scope_rbac.py`] | — |
 | `RM-STAB-005` | implementation | Исправить C1 UI-smoke и расширить общий guard | `RM-ENV-001` | 1 | planned | — | нет API/deep goto/sleep/broad retry [command: `UI_SMOKE_RUN=1 python3 -m pytest tests/ui-contract -q`] | — |
 | `RM-STAB-006` | governance | Нормативный формат всех UI journeys registry | `RM-STAB-003` | 4 | planned | — | validator: actor, permission, entry, `Happy-path: N`, selectors, negative expectation [command: `python3 scripts/ci/check-journey-spec.py --strict`]; число journeys вычисляется из feature-registry, не фиксируется в задаче (RM-GOV-009 - «45/45» не подтверждено r421) [command: `python3 scripts/roadmap-consistency-check.py`] | — |
@@ -158,10 +168,12 @@
 | `RM-STAB-017` | implementation | Независимость production от внешнего runtime: production smoke при выключенных dashboard/LLM-агентах | `RM-STAB-009` | 2 | planned | — | полный production smoke проходит без внешних наблюдателей; ни один сервис не вызывает внешний runtime (egress allow-list) [command: `tests/test_production_config_gate.py`] | — |
 | `RM-TECH-210` | implementation | RLS-контекст на device-маршрутах онбординга | `RM-STAB-002` | 3 | planned | device_contract | POST /device/onboard и POST /identity/device-codes работают под ролью приложения БЕЗ элевации до admin; обе записи снимаются из ENDPOINT_ELEVATION_ALLOWLIST, и behavioral-набор остаётся зелёным без них [behavioral: `tests/behavioral/test_edge001_device_onboarding.py`]; прямой запрос к БД под ролью приложения без контекста находит активный код онбординга [behavioral: `tests/behavioral/test_rls_context_strictness.py`] | — |
 
-### C — Контракты: API, события, manifest, ERD (11) · закрывается `Gate-C`
+### C — Контракты: API, события, manifest, ERD (17) · закрывается `Gate-C`
 
 | ID | Kind | Задача | Зависит от | Глубина | Поставка | Owner gate | Приёмка | Evidence |
 |---|---|---|---|---|---|---|---|---|
+| `RM-OPS-005` | governance | retention-policy.yaml + legal decision register (AG): сроки, 152-ФЗ, deletion/archive, review date | `RM-TECH-253` | 3 | blocked | scope_decision | юридическое утверждение retention/152-ФЗ (OD-009) [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`] | — |
+| `RM-TECH-205` | governance | SLO objectives и измерение | `Gate-S` | 0 | planned | — | каждое число ТЗ имеет formula/window/owner/metric либо `not measurable` [artifact: `docs/product/slo-objectives.yaml`] | — |
 | `RM-TECH-220` | implementation | OpenAPI + event/manifest JSON Schema (AG): as-built генерация + target из §26/AB, contract tests | `Gate-S` | 0 | planned | — | OpenAPI/event schemas версионированы, examples и deprecation policy; contract tests зелёные [command: `python3 scripts/ci/roadmap-governance-guard.py`]; одна canonical opaque идентификация на версию API; alias {id} с deprecation date [behavioral: `tests/behavioral/test_rm_tech_220.py`] | — |
 | `RM-TECH-221` | implementation | Разделение User/Device/analytics/emergency API; device client не достигает admin | `RM-TECH-220` | 1 | planned | — | device JWT → admin endpoint = 403 на всех admin-роутах [behavioral: `tests/test_phase3_protected_identity.py`] | — |
 | `RM-TECH-222` | implementation | Канонический POST /api/v1/pop/batch, legacy /device/pop/batch как alias с deprecation | `RM-TECH-220` | 1 | planned | — | ответы канонического и legacy идентичны; deprecation header; batch>500 → 422; чужой device_id отклонён [behavioral: `tests/test_contract_pop.py`] | — |
@@ -173,8 +185,12 @@
 | `RM-TECH-228` | implementation | Окно совместимости device/API/manifest: heartbeat объявляет версии, сервер выбирает представление | `RM-TECH-224` | 2 | planned | — | совместимая версия выбрана по объявленным capabilities; breaking change без staged rollout отклонён contract-тестом [behavioral: `tests/test_version_identity.py`] | — |
 | `RM-TECH-229` | design | ERD + data dictionary + migration plan (AG): инвентарь сущностей §15, retailer_id NOT NULL + двухуровневый RLS | `RM-TECH-220` | 1 | planned | — | as-built ERD из моделей; каждая группа §15 присутствует или имеет migration task; tenant-таблицы с retailer_id+FK+RLS [artifact: `tests/behavioral/test_adr018_multitenancy_rls.py`]; behavioral RLS proof под ролью приложения NOBYPASSRLS [behavioral: `tests/behavioral/test_adr018_multitenancy_rls.py`] | — |
 | `RM-TECH-230` | design | Channel Adapter contract (design-only до второго канала): versioned task, receipt, proof/ack, error, health, mock mode | `RM-TECH-220` | 1 | planned | — | contract spec + JSON Schema без реализации adapter/mock (ADR-019) [artifact: `docs/architecture contract`] | — |
+| `RM-TECH-231` | design | channel-capability-matrix.yaml (AG) для первого канала KSO: channel/surface/rendition/proof/SLA/vendor constraints | `RM-TECH-230` | 2 | planned | scope_decision | матрица покрывает KSO channel/surface/rendition/proof/SLA/vendor constraints; каждая строка ссылается на REQ-CHAN-*/REQ-MAN-*/REQ-POP-* [artifact: `docs/product/channel-capability-matrix.yaml`]; артефакт принят владельцем как часть handoff-пакета AG [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`] | — |
+| `RM-TECH-253` | design | Data protection: data classes, lawful purpose, минимизация PII, residency; retention по OD-009 | `RM-TECH-229` | 2 | planned | — | реестр data classes для всех сущностей; новая PII-сущность без класса — красный design-gate [artifact: `docs/architecture data classes`] | — |
+| `RM-TECH-288` | governance | nfr-slo.yaml + load-profiles.yaml (AG): method, percentile, error budget, generator, CI evidence | `RM-TECH-205` | 1 | planned | — | каждый SLO имеет window/denominator/exclusions; load generator и прогон в CI/стенде [artifact: `nfr-slo.yaml`] | — |
+| `RM-UX-011` | governance | role-scope-matrix.yaml + portal-route-matrix.yaml + journeys/ (AG) из seed/pg_policies/registry | `RM-STAB-004`, `RM-STAB-006` | 6 | planned | — | матрицы генерируются и сверяются guard; deny-cases покрыты behavioral [command: `python3 scripts/ci/roadmap-governance-guard.py`] | — |
 
-### CORE — Ядро: иерархия, outbox, lifecycle, безопасность (22)
+### CORE — Ядро: иерархия, outbox, lifecycle, безопасность (21) · закрывается `Gate-CORE`
 
 | ID | Kind | Задача | Зависит от | Глубина | Поставка | Owner gate | Приёмка | Evidence |
 |---|---|---|---|---|---|---|---|---|
@@ -197,11 +213,10 @@
 | `RM-TECH-250` | implementation | Creative/rendition state machine и immutable media history (uploaded→scanning→qa_failed/approved→superseded→retained) | `RM-TECH-204` | 1 | planned | migration_application | каждая версия хранит uploader/SHA-256/QA-решение/связь; закрытый отчёт воспроизводим после logical delete [behavioral: `tests/behavioral/test_creative_assets.py`] | — |
 | `RM-TECH-251` | implementation | Data ownership/lineage: immutable versioning и diff campaign/placement/playlist, словарь владельцев | `RM-TECH-229` | 2 | planned | — | сохранение создаёт версию с diff и actor; предыдущая неизменяема [behavioral: `tests/behavioral/test_rm_tech_251.py`] | — |
 | `RM-TECH-252` | implementation | Identity: AD/LDAP или SSO для internal staff, MFA до production (OD-008) | `RM-STAB-004` | 6 | planned | protected_boundary | логин через IdP; production-профиль без MFA отклоняет; TLS-профиль зафиксирован [behavioral: `tests/test_phase3_auth_api.py`] | — |
-| `RM-TECH-253` | design | Data protection: data classes, lawful purpose, минимизация PII, residency; retention по OD-009 | `RM-TECH-229` | 2 | planned | — | реестр data classes для всех сущностей; новая PII-сущность без класса — красный design-gate [artifact: `docs/architecture data classes`] | — |
 | `RM-TECH-254` | implementation | Emergency state machine: requested→authorized→dispatching→applied→resuming→closed, MFA+reason, приоритетный канал | `RM-TECH-245` | 7 | planned | — | emergency с причиной; per-target result; audit actor/reason/affected; resume возвращает штатный manifest [behavioral: `tests/test_phase3_emergency_api.py`]; emergency.* smokes зелёные [ui_smoke: `tests/ui-smoke/test_uismoke__emergency__activate.py`] | — |
 | `RM-TECH-255` | implementation | Device health/commands: пороги статусов по профилю, per-device view, команды с подтверждением | `RM-TECH-224` | 2 | planned | — | online→degraded→offline по порогам; команда доставлена и подтверждена [behavioral: `tests/behavioral/test_rm_tech_255.py`]; device.health_view smoke зелёный [ui_smoke: `tests/ui-smoke/test_uismoke__device__health_view.py`] | — |
 
-### U — Portal: утверждённый UX-порядок (11) · закрывается `Gate-U`
+### U — Portal: утверждённый UX-порядок (10) · закрывается `Gate-U`
 
 | ID | Kind | Задача | Зависит от | Глубина | Поставка | Owner gate | Приёмка | Evidence |
 |---|---|---|---|---|---|---|---|---|
@@ -212,12 +227,11 @@
 | `RM-UX-004` (A6) | implementation | Согласованность состояний и терминов | `RM-UX-003` | 3 | planned | — | route matrix покрывает empty/loading/error/403/success и locale-key check [artifact: `docs/product/ux-route-matrix.yaml (states coverage)`] | — |
 | `RM-UX-005` (A1b) | implementation | Adoption доказанных primitives малыми slices | `RM-UX-004` | 4 | planned | — | каждый slice имеет отдельный diff/test/review [ci_job: `frontend`] | — |
 | `RM-UX-006` (A5) | implementation | Advertiser-web UX audit/fixes | `RM-UX-005` | 5 | planned | — | versioned `docs/product/advertiser-route-matrix.yaml` с точным списком 15 routes [artifact: `docs/product/advertiser-route-matrix.yaml`] | — |
-| `RM-UX-007` (A7) | human | Human operator walkthrough | `RM-UX-001`, `RM-UX-002`, `RM-UX-003`, `RM-UX-004`, `RM-UX-005`, `RM-UX-006` | 6 | planned | — | человек проходит exact stand bundle [human] | — |
+| `RM-UX-007` (A7) | human | Human operator walkthrough | `RM-UX-001`, `RM-UX-002`, `RM-UX-003`, `RM-UX-004`, `RM-UX-005`, `RM-UX-006` | 6 | planned | — | человек проходит exact stand bundle [human: `PROJECT_STATE.md строка `operator walkthrough` (AGENTS.md правило 8); сценарии docs/product/operator-walkthrough-dev.md`] | — |
 | `RM-UX-008` | implementation | Campaign readiness matrix по каналам (rendition/inventory/conflicts/forecast/PoP mode/SLA) с действием на blocked | `RM-TECH-249`, `RM-UX-004` | 9 | planned | — | экран согласования показывает матрицу; каждый blocked/warning ведёт к действию [ui_smoke: `tests/ui-smoke/test_rm_ux_008.py`] | — |
 | `RM-UX-009` | implementation | Договор рекламодателя: immutable file versions, server-side SHA-256, legal status (юр. решение) | `RM-TECH-250` | 2 | planned | — | повторная загрузка создаёт новую версию, SHA проверен сервером; старая версия неизменяема [behavioral: `tests/test_advertiser_contracts.py`]; advertiser.contract_crud smoke зелёный [ui_smoke: `tests/ui-smoke/test_uismoke__advertiser__contract_pdf_upload.py`] | — |
-| `RM-UX-011` | governance | role-scope-matrix.yaml + portal-route-matrix.yaml + journeys/ (AG) из seed/pg_policies/registry | `RM-STAB-004`, `RM-STAB-006` | 6 | planned | — | матрицы генерируются и сверяются guard; deny-cases покрыты behavioral [command: `python3 scripts/ci/roadmap-governance-guard.py`] | — |
 
-### CH — Каналы: KSO-first, второй канал по ADR-019 (9)
+### CH — Каналы: KSO-first, второй канал по ADR-019 (9) · закрывается `Gate-CH`
 
 | ID | Kind | Задача | Зависит от | Глубина | Поставка | Owner gate | Приёмка | Evidence |
 |---|---|---|---|---|---|---|---|---|
@@ -226,42 +240,39 @@
 | `RM-TECH-208` | implementation | Signed licensing Layer 2 | `RM-TECH-206`, `RM-TECH-207B`, `RM-STAB-010` | 2 | planned | protected_boundary | Ed25519 offline verify, kid/rotation/revocation, UI, tamper/rollback [behavioral: `tests/behavioral/test_signed_license_layer2.py`] | — |
 | `RM-TECH-260` | implementation | Runtime cache lifecycle: лимит по профилю, детерминированная очистка, last-known-good | `RM-TECH-207B` | 2 | planned | device_contract | кэш на лимите: очистка по правилу; last-known-good сохранён; просроченная реклама не показывается [behavioral: `tests/behavioral/test_rm_tech_260.py`] | — |
 | `RM-TECH-261` | design | Второй канал: решение OD-021 + channel-capability-matrix.yaml (AG); extraction design по ADR-019 | `RM-TECH-207B`, `RM-TECH-230` | 2 | blocked | scope_decision | владелец назвал канал и владельца (OD-021); матрица возможностей утверждена [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`]; extraction design: KSO-вертикаль как первый adapter без поломки контрактов [artifact: `docs/audit/RM-TECH-261-artifact.md (создаётся задачей)`] | — |
-| `RM-TECH-262` | implementation | Dynamic creative binding/rendition safety (V26-008) на одном канале | `RM-TECH-280`, `RM-TECH-261` | 3 | blocked | — | master-confirmed price/promo подставляется при manifest generation; SLA-тест dynamic manifest [behavioral: `tests/behavioral/test_rm_tech_262.py`] | — |
-| `RM-TECH-263` | implementation | Field mobile operations: scoped mobile web для сотрудника магазина (устройства, фото, инциденты) | `RM-TECH-210`, `RM-TECH-255` | 4 | blocked | — | journey field_ops.device_confirm под ролью магазина с RLS; negative чужой магазин [ui_smoke: `tests/ui-smoke/test_rm_tech_263.py`] | — |
-| `RM-TECH-264` | implementation | ESL/price-checker: интеграция только через approved price/SKU master (INT-002) | `RM-TECH-280` | 3 | blocked | — | price-related данные приходят из master или проходят reconciliation; расхождение блокирует показ [behavioral: `tests/behavioral/test_rm_tech_264.py`] | — |
-| `RM-TECH-280` | design | Prerequisite: master-data adapter цен/SKU (контракт, owner OD-023, reconciliation) | `RM-TECH-229` | 2 | blocked | scope_decision | владелец master-данных назначен (OD-023 approved); contract + reconciliation design утверждены [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`]; adapter в mock/test mode проходит contract tests [behavioral: `tests/behavioral/test_rm_tech_280.py`] | — |
+| `RM-TECH-262` | implementation | Dynamic creative binding/rendition safety (V26-008) на одном канале | `RM-TECH-280`, `RM-TECH-261` | 3 | planned | — | master-confirmed price/promo подставляется при manifest generation; SLA-тест dynamic manifest [behavioral: `tests/behavioral/test_rm_tech_262.py`] | — |
+| `RM-TECH-263` | implementation | Field mobile operations: scoped mobile web для сотрудника магазина (устройства, фото, инциденты) | `RM-TECH-210`, `RM-TECH-255` | 4 | planned | — | journey field_ops.device_confirm под ролью магазина с RLS; negative чужой магазин [ui_smoke: `tests/ui-smoke/test_rm_tech_263.py`] | — |
+| `RM-TECH-264` | implementation | ESL/price-checker: интеграция только через approved price/SKU master (INT-002) | `RM-TECH-280` | 3 | planned | — | price-related данные приходят из master или проходят reconciliation; расхождение блокирует показ [behavioral: `tests/behavioral/test_rm_tech_264.py`] | — |
+| `RM-TECH-280` | design | Prerequisite: master-data adapter цен/SKU (контракт, owner OD-023, reconciliation) | `RM-TECH-229` | 2 | planned | scope_decision | владелец master-данных назначен (OD-023 approved); contract + reconciliation design утверждены [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`]; adapter в mock/test mode проходит contract tests [behavioral: `tests/behavioral/test_rm_tech_280.py`] | — |
 
-### A — Аналитика и масштаб: attribution, NFR, интеграции (14)
+### A — Аналитика и масштаб: attribution, NFR, интеграции (12) · закрывается `Gate-A`
 
 | ID | Kind | Задача | Зависит от | Глубина | Поставка | Owner gate | Приёмка | Evidence |
 |---|---|---|---|---|---|---|---|---|
 | `RM-BIZ-003` | implementation | `self.report_view` plan/fact | `RM-TECH-201`, `RM-TECH-207B` | 2 | planned | — | реальные PoP/причины/RLS, journey/smoke/walkthrough [ui_smoke: `tests/ui-smoke/test_uismoke__self__report_view.py`] | — |
-| `RM-TECH-205` | governance | SLO objectives и измерение | `Gate-S` | 0 | planned | — | каждое число ТЗ имеет formula/window/owner/metric либо `not measurable` [artifact: `docs/product/slo-objectives.yaml`] | — |
 | `RM-TECH-209` | governance | ClickHouse capacity trigger | `RM-TECH-207B` | 2 | planned | — | измеряемый PoP rate/retention threshold и owner migration gate [artifact: `docs/product/clickhouse-capacity-trigger.yaml`] | — |
 | `RM-TECH-256` | governance | Business outcome KPI: baseline/target/metric definition для целей §1.2 (OD-024 exit criteria) | `RM-TECH-205` | 1 | planned | scope_decision | каждая бизнес-цель имеет baseline/target/формулу/владельца, утверждено владельцем [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`] | — |
-| `RM-TECH-281` | implementation | Prerequisite: sales-reference ingestion (агрегаты store/SKU/day) + методология baseline/test-control | `RM-TECH-280` | 3 | blocked | — | пакетная загрузка агрегатов без PII; versioned baseline; методика утверждена владельцем [behavioral: `tests/behavioral/test_rm_tech_281.py`] | — |
+| `RM-TECH-281` | implementation | Prerequisite: sales-reference ingestion (агрегаты store/SKU/day) + методология baseline/test-control | `RM-TECH-280` | 3 | planned | — | пакетная загрузка агрегатов без PII; versioned baseline; методика утверждена владельцем [behavioral: `tests/behavioral/test_rm_tech_281.py`] | — |
 | `RM-TECH-282` | implementation | Attribution & sales lift: test/control, versioned baseline, pilot lift report | `RM-TECH-281`, `RM-TECH-229` | 4 | blocked | — | pilot lift report по test/control с explainable методикой; RLS scope [behavioral: `tests/behavioral/test_rm_tech_282.py`] | — |
 | `RM-TECH-283` | design | Prerequisite: audience source/privacy contract (анонимные store-атрибуты, 152-ФЗ, OD-032) | `RM-TECH-280`, `RM-TECH-253` | 3 | blocked | scope_decision | privacy/legal решение (OD-032) и контракт источника утверждены [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`] | — |
 | `RM-TECH-284` | implementation | A/B attribution и winner metric (minimum sample, owner approval результата) | `RM-TECH-282` | 5 | blocked | — | A/B фиксирует группы/период/метрику; winner только при minimum sample и ручном утверждении [behavioral: `tests/behavioral/test_rm_tech_284.py`] | — |
-| `RM-TECH-285` | implementation | Competitive separation: competitive_category, интервал/исключение в playlist/manifest (исключение §3.1 по OD-018) | `RM-TECH-202`, `RM-TECH-280` | 3 | blocked | — | separation block/override test; изменение priority engine ограничено §3.1 [behavioral: `tests/behavioral/test_rm_tech_285.py`] | — |
+| `RM-TECH-285` | implementation | Competitive separation: competitive_category, интервал/исключение в playlist/manifest (исключение §3.1 по OD-018) | `RM-TECH-202`, `RM-TECH-280` | 3 | planned | — | separation block/override test; изменение priority engine ограничено §3.1 [behavioral: `tests/behavioral/test_rm_tech_285.py`] | — |
 | `RM-TECH-286` | implementation | Financial-system exchange: versioned/idempotent export + payment-status contract (после DEC-017) | `RM-TECH-246` | 7 | blocked | — | idempotent export round-trip; повтор не создаёт дубликатов; scope финансового контура зафиксирован [behavioral: `tests/behavioral/test_rm_tech_286.py`] | — |
 | `RM-TECH-287` | implementation | BI/export/SIEM/vendor API: scoped keys, rate-limit, immutable audit, circuit breaker (после DEC-013) | `RM-STAB-013` | 4 | blocked | — | 401/403/429 negative; vendor connector с отдельными credentials и failure mode [behavioral: `tests/test_s065_rate_limit.py`] | — |
-| `RM-TECH-288` | governance | nfr-slo.yaml + load-profiles.yaml (AG): method, percentile, error budget, generator, CI evidence | `RM-TECH-205` | 1 | planned | — | каждый SLO имеет window/denominator/exclusions; load generator и прогон в CI/стенде [artifact: `nfr-slo.yaml`] | — |
 | `RM-TECH-289` | design | Extension points designed-not-implemented: ADR для programmatic (V26-007) и external measurement (V26-011) | `RM-TECH-220` | 1 | planned | — | ADR принят с пометкой designed-not-implemented; код не пишется до OD-021/OD-031 [artifact: `docs/audit/RM-TECH-289-artifact.md (создаётся задачей)`] | — |
 | `RM-UX-010` | implementation | Service-quality reporting: доля active devices/logical carriers, plan/fact по каналу (analytics.compare) | `RM-BIZ-003` | 3 | planned | — | отчёт по каналу с долями и причинами; RLS scope advertiser [ui_smoke: `tests/ui-smoke/test_rm_ux_010.py`] | — |
 
-### POPS — Внешние действия: pilot и production (8)
+### POPS — Внешние действия: pilot и production (7) · закрывается `Gate-POPS`
 
 | ID | Kind | Задача | Зависит от | Глубина | Поставка | Owner gate | Приёмка | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| `RM-OPS-001` | external | Production readiness | `RM-PILOT-003` | 4 | planned | deployment | не запускается автоматически после pilot [owner] | — |
+| `RM-OPS-001` | external | Production readiness | `RM-PILOT-003` | 4 | planned | deployment | не запускается автоматически после pilot [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой; OD-025/OD-028)`] | — |
 | `RM-OPS-002` | implementation | Network segmentation: firewall rules по environment + negative reachability tests из device-сегмента | `RM-PILOT-002` | 3 | planned | — | Admin API/PostgreSQL/MinIO/Redis недостижимы из device-сегмента; Gateway только HTTPS/mTLS [command: `python3 scripts/ci/roadmap-governance-guard.py`] | — |
 | `RM-OPS-003` | external-plan | Production HA baseline: ≥2 backend, масштабируемый Gateway, standby PostgreSQL, MinIO replication, quarterly restore drill | `RM-OPS-001` | 5 | blocked | deployment | production config gate зелёный; restore drill выполнен и записан [command: `tests/test_production_config_gate.py`]; топология утверждена (OD-028), RTO/RPO (OD-025) [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`] | — |
 | `RM-OPS-004` | implementation | Rollout entity/state machine и feature flags: planned→lab→canary→staged→paused→completed/rolled_back | `RM-PILOT-002` | 3 | blocked | — | rollback возвращает предыдущую версию; flag отключает функцию; ответственность по OD-010 [behavioral: `tests/integration/test_stand_rollback_drill.py`] | — |
-| `RM-OPS-005` | governance | retention-policy.yaml + legal decision register (AG): сроки, 152-ФЗ, deletion/archive, review date | `RM-TECH-253` | 3 | blocked | scope_decision | юридическое утверждение retention/152-ФЗ (OD-009) [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`] | — |
 | `RM-PILOT-001` | design | Managed control-plane pilot scope | `Gate-S`, `Gate-U`, `RM-ENV-001` | 1 | planned | — | exact bundle/host/rollback/TLS [artifact: `docs/runbook/pilot-scope.md`] | — |
 | `RM-PILOT-002` | external-plan | Deployment plan/preflight | `RM-PILOT-001` | 2 | planned | — | immutable lock, backup/restore, migration rehearsal, secrets/TLS/monitoring [artifact: `infra/deploy/images.lock.json + dry-run evidence`] | — |
-| `RM-PILOT-003` | external | Controlled pilot deploy | `RM-PILOT-002` | 3 | planned | deployment | SHA/lock/schema/health, stand-safe journeys, rollback readiness [owner] | — |
+| `RM-PILOT-003` | external | Controlled pilot deploy | `RM-PILOT-002` | 3 | planned | deployment | SHA/lock/schema/health, stand-safe journeys, rollback readiness [owner: `docs/audit/<дата>-pilot-deploy-<sha>.md + ACCEPT владельца с датой (deployment gate)`] | — |
 
 ## Заблокированные функции и условия разблокировки
 
@@ -272,13 +283,19 @@
 | `campaign.competitive_separation` | Запланировано задачей RM-TECH-285 (ТЗ v2.6 r421); реализации и smoke нет. | `RM-TECH-285` | функция реализована задачей RM-TECH-285 и имеет зелёный smoke/behavioral proof | — |
 | `campaign.readiness` | Запланировано задачей RM-TECH-249 (ТЗ v2.6 r421); реализации и smoke нет. | `RM-TECH-249` | функция реализована задачей RM-TECH-249 и имеет зелёный smoke/behavioral proof | — |
 | `campaign.schedule` | Запланировано задачей RM-TECH-248 (ТЗ v2.6 r421); реализации и smoke нет. | `RM-TECH-248` | функция реализована задачей RM-TECH-248 и имеет зелёный smoke/behavioral proof | — |
+| `campaign.underdelivery` | Запланировано задачей RM-TECH-201 (OD-040, US-UDR-001, ТЗ v2.6 r427); реализации и smoke нет. | `RM-TECH-201` | функция реализована задачей RM-TECH-201 (US-UDR-001) и имеет зелёный smoke/behavioral proof | OD-040 |
+| `carrier.manage` | Запланировано задачей RM-TECH-255 (OD-040, US-CHAN-003, ТЗ v2.6 r427); реализации и smoke нет. | `RM-TECH-255`, `RM-TECH-207A` | функция реализована задачей RM-TECH-255 (US-CHAN-003) и имеет зелёный smoke/behavioral proof | OD-040 |
+| `channel.register` | Запланировано задачей RM-TECH-207A (OD-040, US-CHAN-001, ТЗ v2.6 r427); реализации и smoke нет. | `RM-TECH-207A`, `RM-TECH-244` | функция реализована задачей RM-TECH-207A (US-CHAN-001) и имеет зелёный smoke/behavioral proof | OD-040 |
+| `channel.rendition_validate` | Запланировано задачей RM-TECH-204 (OD-040, US-CHAN-002, ТЗ v2.6 r427); реализации и smoke нет. | `RM-TECH-204`, `RM-TECH-207A` | функция реализована задачей RM-TECH-204 (US-CHAN-002) и имеет зелёный smoke/behavioral proof | OD-040 |
 | `content.dynamic_binding` | Запланировано задачей RM-TECH-262 (ТЗ v2.6 r421); реализации и smoke нет. | `RM-TECH-262` | функция реализована задачей RM-TECH-262 и имеет зелёный smoke/behavioral proof | — |
+| `data.catalog` | Запланировано задачей RM-TECH-251 (OD-040, US-DATA-001, ТЗ v2.6 r427); реализации и smoke нет. | `RM-TECH-251` | функция реализована задачей RM-TECH-251 (US-DATA-001) и имеет зелёный smoke/behavioral proof | OD-040 |
 | `device.onboard` | OD-038 / RLS-CONTEXT-DEVICE-001: в production-path устройство получает 403 INVALID_CODE — маршрут без RLS-контекста; reachable держался под admin-маской тестов. Unblock: RM-TECH-210 (behavioral под runtime-ролью на PostgreSQL). | `RM-TECH-210` | POST /device/onboard и POST /identity/device-codes работают под runtime-ролью на PostgreSQL без элевации (behavioral evidence) | OD-038 |
 | `experiment.evaluate` | Запланировано задачей RM-TECH-284 (ТЗ v2.6 r421); реализации и smoke нет. | `RM-TECH-284` | функция реализована задачей RM-TECH-284 и имеет зелёный smoke/behavioral proof | — |
 | `field_ops.device_confirm` | Запланировано задачей RM-TECH-263 (ТЗ v2.6 r421); реализации и smoke нет. | `RM-TECH-263` | функция реализована задачей RM-TECH-263 и имеет зелёный smoke/behavioral proof | — |
 | `finance.exchange` | Запланировано задачей RM-TECH-286 (ТЗ v2.6 r421); реализации и smoke нет. | `RM-TECH-286` | функция реализована задачей RM-TECH-286 и имеет зелёный smoke/behavioral proof | — |
 | `finance.reconcile` | Запланировано задачей RM-TECH-286 (ТЗ v2.6 r421); реализации и smoke нет. | `RM-TECH-286` | функция реализована задачей RM-TECH-286 и имеет зелёный smoke/behavioral proof | — |
 | `integration.reconcile` | Запланировано задачей RM-TECH-281 (ТЗ v2.6 r421); реализации и smoke нет. | `RM-TECH-281` | функция реализована задачей RM-TECH-281 и имеет зелёный smoke/behavioral proof | — |
+| `inventory.priority` | Запланировано задачей RM-TECH-202 (OD-040, US-PRI-001, ТЗ v2.6 r427); реализации и smoke нет. | `RM-TECH-202` | функция реализована задачей RM-TECH-202 (US-PRI-001) и имеет зелёный smoke/behavioral proof | OD-040 |
 | `kpi.review` | Запланировано задачей RM-TECH-256 (ТЗ v2.6 r421); реализации и smoke нет. | `RM-TECH-256` | функция реализована задачей RM-TECH-256 и имеет зелёный smoke/behavioral proof | — |
 | `license.upload` | Layer 2 (signed-license/JWS/CRL + UI upload) — не реализован. | `RM-TECH-208` | signed-license Layer 2: upload .lic + проверка подписи | — |
 | `license.view` | Layer 2 (signed-license/UI) — не реализован. | `RM-TECH-208` | signed-license Layer 2: offline Ed25519 verify + kid/CRL | — |
@@ -293,7 +310,7 @@
 
 Столбец «Зрелость» берётся только из блока `maturity` в `roadmap.yaml`. Генератор его не вычисляет.
 
-### admin-web — 49
+### admin-web — 55
 
 | Feature ID | Название | Приоритет | Статус | Smoke | В CI-subset | Зрелость |
 |---|---|---|---|---|---|---|
@@ -319,6 +336,10 @@
 | `campaign.reject` | Отклонить кампанию с причиной | P0 | reachable | `test_uismoke__campaign__reject` | ✅ | не заявлено |
 | `campaign.schedule` | Flight/placement windows кампании (versioned, UTC + local TZ) | P1 | blocked | `test_uismoke__campaign__schedule` | — | не заявлено |
 | `campaign.submit` | Отправить кампанию на согласование | P0 | reachable | `test_uismoke__campaign__submit` | ✅ | не заявлено |
+| `campaign.underdelivery` | Разбор недопоказа и make-good (причина, процент, докрутка, компенсация) | P1 | blocked | `test_uismoke__campaign__underdelivery` | — | не заявлено |
+| `carrier.manage` | Единый Operations-контур: physical device, logical carrier и surface всех каналов (scope, состояние, действия с подтверждением) | P1 | blocked | `test_uismoke__carrier__manage` | — | не заявлено |
+| `channel.register` | Регистрация channel/device/surface/profile и adapter contract (mock-проверка канала) | P1 | blocked | `test_uismoke__channel__register` | — | не заявлено |
+| `channel.rendition_validate` | Renditions и channel-specific ограничения: валидация preview, публикация версии без изменения core campaign | P1 | blocked | `test_uismoke__channel__rendition_validate` | — | не заявлено |
 | `commerce.booking` | Бронирование (offered→booked) | P1 | reachable | `test_uismoke__commerce__order_create` | ✅ | не заявлено |
 | `commerce.offer_generate` | Генерация коммерческого предложения (draft→offered) | P1 | reachable | `test_uismoke__commerce__order_create` | ✅ | не заявлено |
 | `commerce.order_close` | Закрытие заказа (terminal) | P1 | reachable | `test_uismoke__commerce__order_create` | ✅ | не заявлено |
@@ -329,12 +350,14 @@
 | `creative.moderate_approve` | Одобрить креатив (модерация) | P0 | reachable | `test_uismoke__creative__moderate_approve` | ✅ | не заявлено |
 | `creative.moderate_reject` | Отклонить креатив с причиной (модерация) | P0 | reachable | `test_uismoke__creative__moderate_reject` | ✅ | не заявлено |
 | `creative.upload` | Загрузка креатива | P0 | reachable | `test_uismoke__creative__upload` | ✅ | не заявлено |
+| `data.catalog` | Каталог данных: owner, PII-класс, retention и lineage сущности; контроль доступа/архива/удаления | P1 | blocked | `test_uismoke__data__catalog` | — | не заявлено |
 | `device.health_view` | Видеть состояние парка устройств | P1 | reachable | `test_uismoke__device__health_view` | ✅ | не заявлено |
 | `emergency.activate` | Экстренно остановить показ | P0 | reachable | `test_uismoke__emergency__activate` | ✅ | не заявлено |
 | `emergency.deactivate` | Снять аварийный режим | P0 | reachable | `test_uismoke__emergency__deactivate` | ✅ | не заявлено |
 | `experiment.evaluate` | A/B: группы, период, winner metric, ручное утверждение результата | P2 | blocked | `test_uismoke__experiment__evaluate` | — | не заявлено |
 | `field_ops.device_confirm` | Полевые операции: устройства магазина, фото, инциденты (mobile web) | P2 | blocked | `test_uismoke__field_ops__device_confirm` | — | не заявлено |
 | `finance.reconcile` | Финансовая сверка: заказ/договор/тариф/price list | P2 | blocked | `test_uismoke__finance__reconcile` | — | не заявлено |
+| `inventory.priority` | Тип кампании и приоритеты с объяснимым preemption (действующая версия правил) | P1 | blocked | `test_uismoke__inventory__priority` | — | не заявлено |
 | `inventory.rule_create` | Создать правило инвентаря | P1 | reachable | `test_uismoke__inventory__rule_create` | ✅ | не заявлено |
 | `inventory.simulate` | Прогноз показов (симуляция инвентаря) | P1 | reachable | `test_uismoke__inventory__simulate` | ✅ | не заявлено |
 | `kpi.review` | Бизнес-KPI: baseline/target/metric по целям §1.2 | P2 | blocked | `test_uismoke__kpi__review` | — | не заявлено |

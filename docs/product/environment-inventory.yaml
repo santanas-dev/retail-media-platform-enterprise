@@ -12,28 +12,37 @@
 # Формат `identity` совпадает с $defs/environment_identity в roadmap.schema.json.
 
 schema_version: 1
-checked_at: '2026-08-26'
+checked_at: '2026-08-31'
 checked_by: Claude Code
 check_method: |
   curl -s -o /dev/null -w '%{http_code}' --max-time 4 <url> для достижимости;
   GET /version для идентичности; readlink /proc/<pid>/cwd и ps -o lstart= для
   того, из какого дерева и с какого момента работает процесс.
+  Loopback-эндпоинты хоста стенда (127.0.0.1:*) с santa2 не наблюдаемы —
+  для них фиксируется только `не наблюдался с santa2`, никогда не «200».
 
 environments:
 
   - id: stand-81
     disposition: active
     role: stand
-    title: rmp-local-stand — единственный контур, дающий доказательства
+    title: rmp-local-stand — DEV/QA-стенд владельца, единственный контур, дающий доказательства
     host: 192.168.110.81
     endpoints:
       admin_web: http://192.168.110.81:3000
       advertiser_web: http://192.168.110.81:3001
       control_api: http://192.168.110.81:8000
+      minio_s3: http://192.168.110.81:9000
+      device_gateway: http://127.0.0.1:8001   # loopback хоста стенда; снаружи не публикуется
     reachable_at_check: true
+    observed_at: '2026-08-31T10:52:45Z'
     observed:
       http_admin_web: 200
+      http_advertiser_web: 200
       http_control_api_version: 200
+      http_control_api_health: 404   # маршрута /health нет; идентичность и живость — GET /version
+      http_minio_health_live: 200
+      http_device_gateway_from_santa2: 000   # loopback — не наблюдался с santa2, проверяется только на хосте
     identity:
       name: rmp-local-stand
       git_sha: 27dc39707c5c56cdfdcc4250d5aa875d3789c8dc
@@ -44,7 +53,12 @@ environments:
     evidence: true
     evidence_scope: |
       Наблюдение здесь привязывается к коммиту 27dc397 и схеме 036, потому что
-      сервис сообщает их сам. Это активный baseline по OD-007.
+      сервис сообщает их сам. Это активный baseline по OD-007. Повторно
+      наблюдено 2026-08-31: /version отдаёт ту же identity (build 2026-08-26T09:11:27Z,
+      environment staging); relative develop @ 4ac3ddb стенд отстаёт на 18 коммитов,
+      ни один не трогает apps/ (governance/docs) — UI стенда актуален для walkthrough.
+      device-gateway 127.0.0.1:8001 с santa2 не наблюдался — его живость этим
+      инвентарём не утверждается.
     notes: |
       Совпадение проверено: base.stand_baseline в docs/product/roadmap.yaml
       объявляет ровно этот bundle, git_sha и schema_head.
@@ -84,40 +98,47 @@ environments:
   - id: santa2-dev
     disposition: active
     role: portal-contour
-    title: DEV-портал на santa2 (ветка develop)
-    host: santa2 (localhost)
+    title: Локальный preview-контур santa2 (ветка develop) — НЕ DEV-стенд
+    host: santa2 (192.168.110.78 / localhost)
     endpoints:
-      admin_web: http://127.0.0.1:3100
+      admin_web: http://192.168.110.78:3100
+      advertiser_web: http://192.168.110.78:3101
+      control_api: http://192.168.110.78:8010
     reachable_at_check: true
+    observed_at: '2026-08-31T10:52:45Z'
     observed:
       http_admin_web: 200
+      http_advertiser_web: 200
+      http_control_api_version: 200
     identity: null
     identity_source: |
       Отсутствует. Портал — Vite dev-сервер (`vite --host 0.0.0.0 --port 3100`)
-      из клона /home/santa2/contours/dev, HEAD 1b0452c (develop).
-      Обслуживающий control-api идентичность не сообщает.
+      из клона /home/santa2/contours/dev, HEAD 4ac3ddb (develop, refresh-dev.sh
+      2026-08-31 по разрешению владельца). control-api — контейнер
+      rmp-dev-control-api-1 на :8010; GET /version отдаёт version=dev,
+      git_sha=unknown, schema_head=null — идентичность не сообщается.
     evidence: false
     evidence_scope: |
-      Не доказательство. Три независимые причины, каждая проверена:
-      1. Общий API. DEV и PROD обслуживает ОДИН control-api на :8000, поэтому
-         наблюдение в портале не является наблюдением стека этого контура.
-      2. API не сообщает идентичность: GET /version отдаёт
-         version=dev, git_sha=unknown, schema_head=null.
-      3. API работает из изменяемого рабочего клона
-         /home/santa2/work/retail-media-platform-enterprise, запущен
-         2026-08-25 14:26:31 без --reload. Выполняется код дерева на момент
-         старта процесса; сам клон с тех пор ушёл вперёд. Соответствия
-         наблюдения какому-либо зафиксированному SHA не существует.
+      Не доказательство. Это локальный preview для наблюдения за развитием
+      продукта на santa2, а не стенд владельца (stand-81):
+      1. API не сообщает идентичность: GET /version отдаёт
+         version=dev, git_sha=unknown, schema_head=null — наблюдение нельзя
+         привязать к коммиту силами самого сервиса.
+      2. Портал — Vite dev-сервер с HMR, не production-сборка.
+      3. Контур пересобирается скриптом refresh-dev.sh из клона, который
+         движется вместе с develop; операторский walkthrough (Rule 8) и любые
+         evidence снимаются только на stand-81. Документы 2026-08-31, называвшие
+         этот контур «DEV», исправлены.
     notes: |
       Портал собирается dev-сервером с HMR, а не production-сборкой.
 
   - id: santa2-prod
     disposition: active
     role: portal-contour
-    title: PROD-портал на santa2 (ветка main)
-    host: santa2 (localhost)
+    title: Локальный preview-контур santa2 (ветка main), именуется PROD — НЕ стенд и не production
+    host: santa2 (192.168.110.78 / localhost)
     endpoints:
-      admin_web: http://127.0.0.1:3000
+      admin_web: http://192.168.110.78:3000   # не путать с admin_web стенда 192.168.110.81:3000
     reachable_at_check: true
     observed:
       http_admin_web: 200
@@ -132,6 +153,29 @@ environments:
       с DEV, отсутствие идентичности у API и работа API из изменяемого рабочего
       клона. Дополнительно: несмотря на имя PROD, портал поднят Vite dev-сервером,
       то есть это не production-сборка.
+
+  - id: santa2-roadmap-board
+    disposition: active
+    role: monitoring
+    title: Внешний read-only мониторинг — доска roadmap на santa2
+    host: santa2 (192.168.110.78)
+    endpoints:
+      board: http://192.168.110.78:3200
+    reachable_at_check: true
+    observed_at: '2026-08-31T10:52:45Z'
+    observed:
+      http_board: 200   # <title>Дорожная карта RMP</title>
+    identity: null
+    identity_source: |
+      Не применимо: не сервис продукта. Доска читает docs/product/roadmap.yaml и
+      feature-registry.yaml из локального клона и показывает их; в репозиторий,
+      статусы и решения не пишет (границы read-only наблюдателя — DEC-014/OD-027,
+      решение владельца ещё open).
+    evidence: false
+    evidence_scope: |
+      Ничего не доказывает о продукте и о контурах. Единственное назначение —
+      внешний read-only мониторинг очереди работ. Не является DEV-стендом и не
+      используется для walkthrough, smoke или evidence.
 
   - id: github-actions
     disposition: active

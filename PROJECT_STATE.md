@@ -1,6 +1,6 @@
 # Retail Media Platform — Project State
 
-**Last updated:** 2026-08-31 (ТЗ v2.6 → APPROVED: r425 — дефекты r424 исправлены, карта требований перепривязана на r425, guard `DRAFT-SHA-DRIFT`/`SIDECAR-DRIFT`; статус документа ACCEPTED, не APPROVED; не закоммичено)
+**Last updated:** 2026-08-31 (OD-042: r428 — целевой контракт, RM-GOV-012 approved; implementation_mode у 101 REQ; RM-GOV-012 выравнивание, OD-041 пауза walkthrough; RM-GOV-010-A/B; статус документа ACCEPTED, не APPROVED; не закоммичено)
 
 **RLS-CONTEXT-DEVICE-001 (открыто, блокирует device pilot).** `POST /device/onboard` и
 `POST /identity/device-codes` не несут `Depends(set_rls_context)`, но работают с
@@ -32,7 +32,7 @@ DEC-строки в самом драфте помечены `PENDING-OD` до A
 Запись: `docs/audit/2026-08-28-claude-a1-requirements-traceability.md`. Остаток: 170 TBD owner
 (блокирует APPROVED), owner mapping PENDING-ID, 51 REQ без task → A3. A2 CI evidence: run 33164564954.
 
-**Registry (current):** 73 / 52 reachable / 21 blocked — после OD-038 (`device.onboard` → blocked) и 15 новых ID RM-GOV-009; исторические тройки ниже — записи на свою дату.
+**Registry (current):** 79 / 52 reachable / 27 blocked — после OD-040 (6 новых blocked ID RM-GOV-010), OD-038 (`device.onboard` → blocked) и 15 ID RM-GOV-009; исторические тройки ниже — записи на свою дату.
 
 **RM-GOV-009 (2026-08-28) — CI run 33169752021 success (2b7713e); владелец принял очередь: 64 задачи `approved` (потолок — approved, `done` только отдельным ACCEPT); RM-GOV-009 `verification`.** Решения владельца OD-037
 (порядок стадий G→E0→S→C→CORE→U→CH→A→POPS, BT расформирован, Gate-C, Gate-U→Gate-S у 6 задач) и
@@ -52,13 +52,55 @@ required). Нормативные §6/§25/§26/AP по SHA равны r419 — 
 **APPROVED не объявлен** — блокируют 170 TBD owner, 23 PENDING-ID journeys (8 awaiting_owner), `OD-023` open,
 operator walkthrough PENDING.
 
-**Next Active Workstream:** **ТЗ v2.6 → APPROVED**: RM-GOV-010 (owner/RACI 170 TBD, 8 PENDING-ID) → артефакты AG по стадии C (RM-TECH-220/229). Ранее: A1 `requirements-traceability.yaml` + gate `req` + `SC-*` для 53 REQ, A3 task breakdown (owner-gated), артефакты Дополнения AG. Открыто у владельца: `OD-023` (DEC-005) — имя владельца master-данных цен/SKU. Параллельно: этап S (`RM-STAB-003…`), `RM-TECH-210`.
+**RM-GOV-010-A (2026-08-31, не закоммичено) — ролевая модель владельцев и OD-023.** Решения владельца: `OD-039`
+(owner REQ/SC — роль из словаря Product/Technical/Architecture/Security/Operations/Product Data/Legal/Finance/Channel-Content/
+Analytics/PMO; implementation_owner — Claude Code; имена — amendment) и `OD-023` approved (DEC-005: роль Product Data Owner
+без имени). Применено: owner у 101 REQ / 69 SC — **TBD 170 → 0**; разблокированы по роли RM-TECH-280/281/264/262/285
+(blocked → planned), RM-TECH-282/283 остаются blocked (OD-014/OD-032); REQ-INT-001/002, V26-004/008 → planned;
+RM-GOV-010 `in_progress` (остаток на тот момент — 8 awaiting_owner; закрыт OD-040, см. RM-GOV-010-B). Драфт r426 (DEC-005 approved), карта на r426,
+проекции перегенерированы. Уточнение владельца: роль называется **Product Data Owner** (переименовано во всех текущих
+артефактах, включая составные owner_role). Запись: `docs/audit/2026-08-31-claude-rm-gov-010-owner-mapping.md`. **APPROVED не объявлен**.
 
-Последовательность работ ведётся в `docs/product/roadmap.yaml` (sequencing SSOT, 107 задач:
-43 утверждены 2026-08-26, 64 — A3, approved 2026-08-28). Представления генерируются в `docs/product/generated/`
+**RM-GOV-010-B (2026-08-31, не закоммичено) — PENDING-ID journeys закрыты `OD-040`.** 6 новых canonical registry-ID
+`blocked` до задач (campaign.underdelivery→RM-TECH-201, carrier.manage→255+207A, channel.register→207A+244,
+channel.rendition_validate→204+207A, data.catalog→251, inventory.priority→202); `audit.compare` rejected как
+product-journey (guard в CI); `security.review` → `audit.view`. Карта: pending_journey_map без awaiting_owner
+(mapped 22 / rejected 1), REQ journey_ids обновлены у 15 требований; драфт r427 (changelog, AP не тронут).
+Приёмка RM-GOV-010 (1)/(2) выполнена локально — `verification` после CI. Walkthrough: сценарии
+`docs/product/operator-walkthrough-dev.md` (17 сценариев, 43 UI-journey) — на **DEV-стенде `192.168.110.81`**
+(`stand-27dc397`, schema 036, проверено curl 2026-08-31; `apps/` = develop). santa2 `:3100/:3101/:8010` — локальный
+preview (обновлён до `4ac3ddb`, `evidence: false`), `.78:3200` — внешний read-only мониторинг; в инвентаре RM-ENV-001
+переучтено 2026-08-31 (stand-81 +MinIO/device-gateway, santa2-roadmap-board);
+`operator walkthrough: PENDING` — **приостановлен владельцем 2026-08-31 (OD-041)**; ставит только человек. Записи: `docs/audit/2026-08-31-claude-rm-gov-010-pending-journeys.md`.
+
+**RM-GOV-012 (2026-08-31, не закоммичено, `proposed`) — выравнивание ТЗ ↔ roadmap ↔ хронология ↔ зависимости ↔ gates; единый план реализации.**
+По указанию владельца (`OD-041`): RM-UX-007 и walkthrough приостановлены (не закрыты, done не ставится); порядок —
+выравнивание → проверка Codex → утверждение владельцем → разработка. Найдено и применено: 5 этапов без gate → предложены
+Gate-CORE/CH/A/POPS и расширен Gate-C (все 10 артефактов AG, ТЗ APPROVED, старт разработки); хронологический конфликт AG
+(артефакты до разработки) ↔ roadmap (NFR/retention/channel-matrix в A/POPS/CH) → предложен перенос RM-TECH-205/288/253,
+RM-OPS-005, RM-UX-011 в стадию C и новая RM-TECH-231 (channel-capability-matrix KSO); механика — feature_ids у 5 задач
+(6 blocked-функций), refs owner/human-приёмок, RM-TECH-263 planned (зависимость ≠ блокировка), RM-TECH-284 → OD-014,
+REQ-BIZ-009/V26-006/INT-003 → blocked (OD-030/OD-026). Драфт r428 (AG артефакт→задача, AN как снимок, changelog),
+карта на r428. План: `docs/product/implementation-plan-v2.6.md` (кандидат, не канон до утверждения). Запись:
+`docs/audit/2026-08-31-claude-rm-gov-012-alignment.md`. По заключению Codex: явный Gate-E0 (приёмка RM-ENV-003, историческая пометка о RM-ENV-001),
+у гейтов разделены входные условия и решение (`decision`/`note`, схема). Итог: 109 задач (2 proposed), OD 41, gates 9, registry 79/52/27.
+
+**OD-042 (2026-08-31, не закоммичено) — r428 = целевой контракт ТЗ, RM-GOV-012 = единый процесс (approved вместе с предложениями:
+Gate-E0/CORE/CH/A/POPS, Gate-C, переносы в C, RM-TECH-231 — 109/109 задач approved).** Каждому из 101 REQ назначен `implementation_mode`
+относительно baseline `develop @ 4ac3ddb`: preserve 9 / adapt 54 / replace 2 (только с conflict_ref — OD-002 Ed25519↔HMAC) / new 36;
+`code_baseline` (реальные пути), `regression_criteria`; guard `req`: MODE-REPLACE-NO-CONFLICT, BASELINE-PATH (self-test 55/55). Проекции
+перегенерированы из roadmap.yaml. Отчёт о покрытии: `docs/audit/2026-08-31-claude-rm-gov-012-coverage-report.md`. Код не менялся.
+
+**Next Active Workstream:** **ТЗ v2.6 → APPROVED**: **RM-GOV-012** — единый план реализации (кандидат) → независимая проверка Codex → утверждение владельцем документов (ACCEPT RM-GOV-012, гейты, переносы в C, RM-TECH-231) → стадия C (артефакты AG: RM-TECH-220/229/231/288, RM-UX-011, RM-ENV-003, RM-OPS-005) → Gate-C = старт разработки (OD-041). RM-UX-007/walkthrough — приостановлены OD-041. RM-GOV-010 — `verification` после CI. Ранее: A1 `requirements-traceability.yaml` + gate `req` + `SC-*` для 53 REQ, A3 task breakdown (owner-gated), артефакты Дополнения AG. Открыто у владельца: operator walkthrough в DEV (Rule 8); имена исполнителей ролей (amendment OD-039/OD-023). Параллельно: этап S (`RM-STAB-003…`), `RM-TECH-210`.
+
+Последовательность работ ведётся в `docs/product/roadmap.yaml` (sequencing SSOT, 109 задач:
+43 утверждены 2026-08-26, 64 — A3 approved 2026-08-28, 2 proposed RM-GOV-012; delivery 9 done / 3 verification /
+2 in_progress / 85 planned / 10 blocked; 9 этапов, 9 гейтов — approved только Gate-G;
+41 OD — 22 approved / 19 open). Представления генерируются в `docs/product/generated/`
 и руками не правятся. Этап G закрыт (Gate-G approved 2026-08-26, `RM-GOV-001..006` done с CI
-evidence); E0: `RM-ENV-001` done (.77 decommissioned — OD-016); этап S: `RM-STAB-001/002`
-done, `RM-TECH-210` (device onboarding RLS) ждёт owner gate `device_contract`. **PORTAL-UX-POLISH остаётся на паузе**; его backlog вынесен из вытесненного
+evidence); E0: `RM-ENV-001` done (.77 decommissioned — OD-016), Gate-E0 введён 2026-08-31 (RM-GOV-012) и закрывается
+приёмкой `RM-ENV-003`; этап S: `RM-STAB-001/002` done, `RM-TECH-210` (device onboarding RLS) ждёт owner gate
+`device_contract`. **PORTAL-UX-POLISH остаётся на паузе**; его backlog вынесен из вытесненного
 roadmap в `docs/product/portal-ux-polish.md`.
 
 **Repository Checkpoint (PS-001):**
