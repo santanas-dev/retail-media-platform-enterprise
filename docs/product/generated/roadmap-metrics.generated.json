@@ -6,7 +6,7 @@
     "smoke_declared_but_missing": []
   },
   "features": {
-    "blocked": 27,
+    "blocked": 26,
     "blocked_with_empty_gap": 0,
     "by_frontend": {
       "admin-web": 55,
@@ -15,7 +15,7 @@
       "service": 18
     },
     "ci_enforced": 43,
-    "reachable": 52,
+    "reachable": 53,
     "total": 79,
     "ui_features": 61
   },
@@ -32,10 +32,10 @@
     },
     "by_delivery_status": {
       "blocked": 10,
-      "done": 9,
-      "in_progress": 2,
-      "planned": 82,
-      "verification": 6
+      "done": 12,
+      "in_progress": 1,
+      "planned": 81,
+      "verification": 5
     },
     "by_kind": {
       "design": 13,
@@ -68,9 +68,9 @@
       "Gate-POPS"
     ],
     "max_dependency_depth": 9,
-    "owner_decisions": 44,
+    "owner_decisions": 45,
     "owner_gated": 33,
     "tasks_total": 109,
-    "with_verified_evidence": 15
+    "with_verified_evidence": 17
   }
 }

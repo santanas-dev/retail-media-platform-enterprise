@@ -3477,6 +3477,11 @@ requirements:
     when: запросы в чужой scope по API и SQL
     then: строки не возвращаются, мутации отклонены; fail-closed при отсутствии контекста
   evidence:
+  - kind: ci_run
+    ref: https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/33408891221
+    status: verified
+    observed_at: '2026-08-31T15:40:01Z'
+    note: 'RM-TECH-210: RLS-контекст device-маршрутов — CI Behavioral success'
   - kind: ui_smoke
     ref: tests/ui-smoke/test_uismoke__advertiser__application_review.py
     status: candidate
@@ -3640,6 +3645,11 @@ requirements:
     then: >-
       первый онбординг успешен; повтор и подмена отклонены; в production RLS-контекст на маршрутах (RM-TECH-210)
   evidence:
+  - kind: ci_run
+    ref: https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/33408891221
+    status: verified
+    observed_at: '2026-08-31T15:40:01Z'
+    note: 'RM-TECH-210: онбординг под runtime-ролью без элевации — CI Behavioral success'
   - kind: ui_smoke
     ref: tests/ui-smoke/test_uismoke__audit__view.py
     status: candidate
@@ -4382,6 +4392,11 @@ requirements:
     then: >-
       journey завершён; negative path — no permission, foreign scope, sold-out/conflict → deny/explain; `campaign.created`
   evidence:
+  - kind: ci_run
+    ref: https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/33408891221
+    status: verified
+    observed_at: '2026-08-31T15:40:01Z'
+    note: 'RM-STAB-006: journeys registry нормативного формата, check-journey-spec --strict PASS; CI Guard success'
   - kind: ui_smoke
     ref: tests/ui-smoke/test_uismoke__advertiser__application_review.py
     status: candidate

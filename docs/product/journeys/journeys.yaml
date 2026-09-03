@@ -1726,11 +1726,10 @@ journeys:
   happy_path: 'Happy-path: 7 шагов — Licensing → grant/scope → signature/validity → seat impact → confirm → apply → report'
   selectors: []
   negative_path: invalid signature/seat overflow/rollback loss → fail closed; `license.grant_applied`
-  smoke: 'EDGE-001 behavioral (13 тестов): test_edge001_*.py'
-  status: blocked
+  smoke: 'EDGE-001 behavioral (16 тестов, в т.ч. TestRMTech210BootstrapRLS): test_edge001_*.py'
+  status: reachable
   walkthrough: PENDING
-  gap: 'OD-038 / RLS-CONTEXT-DEVICE-001: в production-path устройство получает 403 INVALID_CODE — маршрут без RLS-контекста; reachable держался под admin-маской тестов. Unblock: RM-TECH-210 (behavioral
-    под runtime-ролью на PostgreSQL).'
+  gap: ''
 - id: device.heartbeat
   name: Heartbeat устройств (health/статус)
   frontend: service

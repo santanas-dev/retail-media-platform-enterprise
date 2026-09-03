@@ -1,6 +1,6 @@
 # Claude — RM-TECH-210: RLS-контекст на device-маршрутах онбординга (стадия S)
 
-Статус: **реализовано локально; `delivery_status: in_progress`; не закоммичено; ждёт CI-evidence и owner gate `device_contract`.**
+Статус: **`delivery_status: done`** — CI 33408891221 success; owner gate `device_contract` granted **OD-045 (2026-08-31)**.
 База: `develop @ 236bda4`. Режим OD-042: **adapt** (REQ-SEC-002/003, REQ-CHAN-002); существующее поведение и контракты ответов сохранены.
 Старт по OD-043: зависимость `RM-STAB-002` — done. Design-gate: `docs/architecture/rm-tech-210-device-onboarding-rls-bootstrap-design-gate.md`.
 
@@ -42,9 +42,18 @@ CI-evidence (job «Behavioral PostgreSQL Tests — ADR-008 Gate») — посл�
 | `pytest tests/` в окружении CI-job (после fix `53447ff`) | **1909 passed, 534 skipped, 0 failed** |
 | CI **33400714049** (`53447ff`) | Unit, Packaging, Behavioral PostgreSQL, UI-Smoke, Schema, Guard — **success**; упал только «Stand Rollback Drill» — `tests/integration/test_stand_rollback_drill.py` пинил `OLD_HEAD/NEW_HEAD = 035/036` и имя файла `036_…py` |
 | фикс drill (локально, docker как в CI) | пара head'ов выводится из миграций (NEW_HEAD = resolver, OLD_HEAD = down_revision, файл — glob); `RUN_STAND_ROLLBACK_DRILL=1` → **3 passed** |
+| CI **33408891221** (`128dce0`) | **41/41 success, release-gate success** — Behavioral PostgreSQL, Unit, Packaging, UI-Smoke, Rollback Drill, Schema, Guard. Статусы по плану владельца: RM-TECH-210 → `verification`; `device.onboard` → reachable (OD-038); `done` — после owner gate `device_contract` |
 
 Остальные литералы `036` в `tests/test_local_stand.py` — самосогласованные моки (lock ↔ db), Unit-job их проходит; не трогались.
 
 ## 4. Регрессионные критерии (traceability REQ-SEC-002/003)
 
 Сохранены: коды ответов онбординга, идемпотентность, cross-retailer scope из кода, licensing choke-point; strict-режим RM-STAB-002 без исключений.
+
+## 5. Уточнение приёмки (2026-08-31, указание владельца)
+
+Приёмка №2 в `roadmap.yaml` переформулирована в три утверждения bootstrap-RLS: без контекста роль приложения видит **0** onboarding codes; со своим `app.rmp_device_code` — **только свою** строку; с чужим кодом — **0**. Ref → `tests/behavioral/test_edge001_device_onboarding.py::TestRMTech210BootstrapRLS::test_app_role_sees_code_only_with_code_bootstrap`; evidence_refs синхронизированы (статус задачи — `verification`, `done` после owner gate `device_contract`).
+
+## 6. ACCEPT device_contract (OD-045, 2026-08-31)
+
+Владелец принял контракт публичного онбординга как fail-closed: без контекста приложение не видит codes; со своим `app.rmp_device_code`/`app.rmp_device_fingerprint` — только свой объект; чужой секрет — 0; admin-обход отсутствует. RM-TECH-210 → `done` (gate granted, evidence behavioral + ci_run 33408891221).

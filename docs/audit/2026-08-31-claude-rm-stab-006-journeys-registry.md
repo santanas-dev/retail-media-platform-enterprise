@@ -1,6 +1,6 @@
 # Claude — RM-STAB-006: нормативный формат UI journeys registry (стадия S)
 
-Статус: **реализовано локально; `delivery_status: in_progress`; не закоммичено.** База `develop @ 236bda4`. Старт по OD-043 (RM-STAB-003 → verification, OD-044).
+Статус: **`delivery_status: done`** — commit 062c16f, CI 33408891221 success; validator strict PASS, self-test 11/11. База `develop @ 236bda4`. Старт по OD-043 (RM-STAB-003 → verification, OD-044).
 Режим OD-042: adapt/new (документ + governance tooling); продуктовый код не менялся.
 
 ## 1. Артефакт

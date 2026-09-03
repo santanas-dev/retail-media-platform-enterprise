@@ -1,10 +1,10 @@
 # RM-TECH-210 — mini-design: RLS-контекст на device-маршрутах онбординга
 
-**Статус:** реализовано локально, `delivery_status: in_progress` — жду CI-прогона и owner gate `device_contract`
+**Статус:** `delivery_status: done` — owner gate `device_contract` granted **OD-045 (2026-08-31)**: fail-closed контракт публичного онбординга принят владельцем; evidence: CI run **33408891221** (`128dce0`, 41/41 success, job «Behavioral PostgreSQL Tests — ADR-008 Gate» success)
 **Задача:** `RM-TECH-210` (этап S, зависит от `RM-STAB-002` — done)
 **Закрывает находку:** `RLS-CONTEXT-DEVICE-001` (PROJECT_STATE, 2026-08-26): `RLS-CONTEXT-DEVICE-CODES-001`, `RLS-CONTEXT-DEVICE-ONBOARD-001`
 **Режим (OD-042):** adapt — REQ-SEC-002 / REQ-SEC-003 / REQ-CHAN-002; существующее поведение сохраняется, политики расширяются аддитивно
-**Owner gate:** `device_contract` — контракт публичного онбординга дополняется двумя транзакционными настройками сессии; требует ACCEPT владельца
+**Owner gate:** `device_contract` — granted OD-045 (2026-08-31): без контекста 0 codes; свой code/fingerprint → только свой объект; чужой — 0; admin-обхода нет
 
 ---
 
@@ -36,12 +36,12 @@
 |---|---|
 | Rehearsal миграции: `alembic downgrade 036` → `upgrade head` | политики восстановлены/пересозданы, `alembic_version=037` |
 | `test_edge001_device_onboarding.py` (13 старых + 3 новых RM-TECH-210) + `test_rls_context_strictness.py` + heartbeat + manifest delivery + license enrollment/decommission + import/tx boundaries | **97 passed** без элевации в фазе `call` |
-| Прямой запрос под ролью приложения без контекста | 0 строк (fail-closed); с `app.rmp_device_code` = свой код — 1 строка, чужие коды — 0; с чужим секретом — 0 |
+| Приёмка №2 (уточнена владельцем 2026-08-31): прямой запрос под ролью приложения | **без RLS-контекста — 0 onboarding codes (fail-closed); со своим `app.rmp_device_code` — только своя строка; с чужим кодом — 0** — `TestRMTech210BootstrapRLS::test_app_role_sees_code_only_with_code_bootstrap` |
 | Прямой запрос к `physical_devices` | без контекста 0; с чужим fingerprint 0; со своим — 1 |
 | Полный behavioral-набор | #1 (свежая БД): 477 passed / 12 skipped / 0 failed; #2 по той же БД: 8 падений PoP-тестов = pre-existing неидемпотентность (fixed event_id), не регрессия; #3 (свежая БД, финальный код): **477 passed / 12 skipped / 0 failed** |
 
-CI-evidence (job «Behavioral PostgreSQL Tests — ADR-008 Gate») — после разрешения владельца на commit/push. Registry `device.onboard`
-возвращается в `reachable` только по этому CI-evidence (OD-038).
+CI-evidence: run **33408891221** (job «Behavioral PostgreSQL Tests — ADR-008 Gate» — success). Registry `device.onboard`
+переведён в `reachable` по этому evidence (OD-038).
 
 ## 4. Что не менялось
 

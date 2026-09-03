@@ -573,11 +573,12 @@ features:
     name: Онбординг устройства (device-code → JWT)
     route: n/a
     path: n/a
-    smoke: "EDGE-001 behavioral (13 тестов): test_edge001_*.py"
+    smoke: "EDGE-001 behavioral (16 тестов, в т.ч. TestRMTech210BootstrapRLS): test_edge001_*.py"
     priority: P0
     roles: [service]
-    status: blocked
-    gap: "OD-038 / RLS-CONTEXT-DEVICE-001: в production-path устройство получает 403 INVALID_CODE — маршрут без RLS-контекста; reachable держался под admin-маской тестов. Unblock: RM-TECH-210 (behavioral под runtime-ролью на PostgreSQL)."
+    status: reachable
+    gap: ""
+    note: "reachable по OD-038: behavioral evidence под runtime-ролью NOBYPASSRLS на PostgreSQL — CI 33408891221 job Behavioral success (миграция 037). RM-TECH-210 — done; owner gate device_contract granted OD-045 (2026-08-31)."
 
   - id: device.heartbeat
     frontend: service
@@ -1057,8 +1058,8 @@ features:
   # ══════════════════════════════════════════════════
   #   total: 79
   # by status:
-  #   reachable: 52 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, user.split_internal_advertiser, advertiser.create_org, advertiser.application_review, emergency.activate, emergency.deactivate, campaign.activate, campaign.pause, inventory.simulate, inventory.rule_create, advertiser.view, advertiser.contact_crud, advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites, advertiser.invite, user.reset_password, user.deactivate, adsettings.test, adsettings.configure, audit.view, device.health_view, self.login, self.campaign_view, self.apply_or_brief, advertiser.apply, manifest.deliver, pop.ingest, device.heartbeat, backup.restore, observability, campaign.complete, license.enforce, license.seat_release, license.report, commerce.order_create, commerce.tariff_manage, commerce.offer_generate, commerce.booking, commerce.payment_status, commerce.order_close, commerce.price_list_manage, system.theme_switch)
-  #   blocked:      27 (self.report_view, self.campaign_create, device.onboard, playlist.build, license.view, license.upload, analytics.compare, attribution.lift_report, campaign.competitive_separation, campaign.readiness, campaign.schedule, content.dynamic_binding, experiment.evaluate, field_ops.device_confirm, finance.exchange, finance.reconcile, integration.reconcile, kpi.review, placement.audience_targeting, release.rollback, rollout.rollback, campaign.underdelivery, carrier.manage, channel.register, channel.rendition_validate, data.catalog, inventory.priority)
+  #   reachable: 53 (campaign.create, campaign.edit, creative.upload, campaign.submit, campaign.approve, campaign.reject, creative.moderate_approve, creative.moderate_reject, user.create_advertiser, user.assign_roles, user.split_internal_advertiser, advertiser.create_org, advertiser.application_review, emergency.activate, emergency.deactivate, campaign.activate, campaign.pause, inventory.simulate, inventory.rule_create, advertiser.view, advertiser.contact_crud, advertiser.brand_crud, advertiser.contract_crud, advertiser.legal_requisites, advertiser.invite, user.reset_password, user.deactivate, adsettings.test, adsettings.configure, audit.view, device.health_view, self.login, self.campaign_view, self.apply_or_brief, advertiser.apply, manifest.deliver, pop.ingest, device.onboard, device.heartbeat, backup.restore, observability, campaign.complete, license.enforce, license.seat_release, license.report, commerce.order_create, commerce.tariff_manage, commerce.offer_generate, commerce.booking, commerce.payment_status, commerce.order_close, commerce.price_list_manage, system.theme_switch)
+  #   blocked:      26 (self.report_view, self.campaign_create, playlist.build, license.view, license.upload, analytics.compare, attribution.lift_report, campaign.competitive_separation, campaign.readiness, campaign.schedule, content.dynamic_binding, experiment.evaluate, field_ops.device_confirm, finance.exchange, finance.reconcile, integration.reconcile, kpi.review, placement.audience_targeting, release.rollback, rollout.rollback, campaign.underdelivery, carrier.manage, channel.register, channel.rendition_validate, data.catalog, inventory.priority)
   # by frontend:
   #   admin-web:       55
   #   advertiser-web:  5
