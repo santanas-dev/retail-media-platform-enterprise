@@ -188,6 +188,9 @@ async def refresh(
     )
 
     if isinstance(result, AuthFailure):
+        # A replay revoked the token family and wrote an audit event; commit so
+        # the rollback on HTTPException does not undo them (RM-STAB-018).
+        await db.commit()
         raise HTTPException(
             status_code=401,
             detail={

@@ -20,15 +20,15 @@
 
 | Метрика | Значение |
 |---|---|
-| Всего задач | 109 |
-| По этапам | A=12, C=17, CH=9, CORE=21, E0=3, G=12, POPS=7, S=18, U=10 |
-| По типу | design=13, external=2, external-plan=2, governance=21, human=1, implementation=70 |
-| По статусу поставки | blocked=10, done=12, in_progress=1, planned=81, verification=5 |
+| Всего задач | 110 |
+| По этапам | A=12, C=17, CH=9, CORE=21, E0=3, G=12, POPS=7, S=19, U=10 |
+| По типу | design=13, external=2, external-plan=2, governance=21, human=1, implementation=71 |
+| По статусу поставки | blocked=10, done=12, in_progress=2, planned=81, verification=5 |
 | Требуют owner gate | 33 |
 | С verified evidence | 17 |
 | Максимальная глубина зависимостей | 9 |
 | Гейты | Gate-G, Gate-E0, Gate-S, Gate-U, Gate-C, Gate-CORE, Gate-CH, Gate-A, Gate-POPS |
-| Решения владельца | 45 |
+| Решения владельца | 46 |
 
 ### Функции (из registry — функциональный SSOT)
 
@@ -106,6 +106,7 @@
 | `OD-043` | approved | 2026-08-31 | — | Указание владельца 2026-08-31 - семантика зависимостей. Статус задачи выше planned (in_progress/verification/done) допустим только когда все её зависимости закрыты - задачи-зависимости в done/verification, гейты-зависимости утверждены (approved_on). Задачи стадии C остаются planned до закрытия Gate-S. Подготовка кандидатов артефактов (документы, схемы, фикстуры, as-built снимки) до этого допустима и помечается candidate/prepared - без delivery in_progress и без acceptance; приёмка артефакта выполняется внутри задачи после её старта. Реализация начинается только после Gate-S. Гейт - DEP-NOT-CLOSED в check-roadmap-schema. | указание владельца 2026-08-31 (сессия); tz-v2.6-draft Дополнение AG (mini-design до шага 7), OD-041, OD-042 |
 | `OD-044` | approved | 2026-08-31 | — | Решение владельца 2026-08-31 по RM-STAB-003 (persona → permissions → retailer scope, owner gate scope_decision) - D1 security_admin сужается до модели Q2 в RM-STAB-015 отдельной миграцией с negative-тестами (RM-STAB-004 существующий bundle не трогает); D2 analyst остаётся внутренней read-only ролью с retailer scope и добавляется в каталог ролей; D3 в pilot внутренним non-admin учёткам retailer scope назначается по умолчанию (seeded retailer). Mini-design docs/architecture/rm-stab-003-personas-retailer-scope-design-gate.md принят; RM-STAB-004/006 стартуют по OD-043. | указание владельца 2026-08-31 (сессия); docs/architecture/rm-stab-003-personas-retailer-scope-design-gate.md (D1-D3); OD-035 (DEC-023), OD-003, ADR-018 |
 | `OD-045` | approved | 2026-08-31 | — | ACCEPT владельца 2026-08-31 - owner gate device_contract задачи RM-TECH-210. Контракт публичного онбординга принят как fail-closed - без RLS-контекста роль приложения не видит onboarding codes; со своим app.rmp_device_code / app.rmp_device_fingerprint видна ровно одна своя строка (код / устройство); чужой секрет не открывает ничего; admin-обход на публичном маршруте отсутствует; retailer scope выводится сервером из кода (миграция 037, set_rls_context на /identity/device-codes). RM-TECH-210 переводится в done. | указание владельца 2026-08-31 (сессия); docs/architecture/rm-tech-210-device-onboarding-rls-bootstrap-design-gate.md; CI run 33408891221 (Behavioral PostgreSQL - ADR-008 Gate, success) |
+| `OD-046` | approved | 2026-09-28 | — | Решение владельца 2026-09-28 по находке P0-7 ревью main@8ad0228 (сверка RF-00) - заводится RM-STAB-018 (стадия S), реализуется этапом RF-01. Повторное предъявление ротированного refresh-токена позже 10 с после ротации отзывает всю семью токенов с audit-событием; повтор в пределах 10 с (гонка параллельных refresh вкладок портала, P1-13.b) даёт 401 без отзыва семьи; окно настраивается в SecurityConfig. Ротация атомарна - параллельные refresh одним токеном не создают две ветки. Мок-тест test_replay_calls_family_revoke, маскирующий дефект, заменяется тестом на PostgreSQL. | указание владельца 2026-09-28 (сессия /start RF-01); docs/audit/2026-09-27-claude-rf-00-recheck-develop-b166419.md (P0-7); docs/remediation/stages.md (RF-01) |
 
 ## Гейты
 
@@ -148,7 +149,7 @@
 | `RM-ENV-002` | implementation | Стенд: seed/reset в утверждённое время и точный демо-состав | `RM-ENV-001` | 1 | planned | — | seed/reset воспроизводим, время до smoke-набора измерено и ≤ owner target [command: `tests/test_local_stand.py`]; подсчёт по БД совпадает с §25 REQ-STAND-002 (10/50/500; 2000 KSO …) [behavioral: `tests/test_local_stand.py`]; в seed нет реальных PII/tokens/договоров [command: `tests/test_local_stand.py`] | — |
 | `RM-ENV-003` | governance | DEV environment manifest (AG): endpoint/версии/SHA/schema/доступность + seed/reset | `RM-ENV-001`, `RM-ENV-002` | 2 | planned | scope_decision | environment-inventory.yaml содержит поля AG для DEV/.81; guard env зелёный [command: `python3 scripts/ci/roadmap-governance-guard.py`]; DEV environment manifest принят владельцем как артефакт Дополнения AG [owner: `docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)`] | — |
 
-### S — Стабилизация доказательств и границ (18) · закрывается `Gate-S`
+### S — Стабилизация доказательств и границ (19) · закрывается `Gate-S`
 
 | ID | Kind | Задача | Зависит от | Глубина | Поставка | Owner gate | Приёмка | Evidence |
 |---|---|---|---|---|---|---|---|---|
@@ -169,6 +170,7 @@
 | `RM-STAB-015` | implementation | Control plane системного администратора: отдельные permission-коды и scope | `RM-STAB-004` | 6 | planned | — | users/roles/devices/settings/monitoring/audit — отдельные коды; approved campaign без отдельного права не меняется [behavioral: `tests/test_phase3_user_management.py`] | — |
 | `RM-STAB-016` | implementation | Object storage boundary: приватные buckets, presigned TTL, ограниченные service accounts | `RM-ENV-001` | 1 | planned | — | анонимный доступ запрещён; просроченный presigned URL отклонён [behavioral: `tests/test_storage_service.py`] | — |
 | `RM-STAB-017` | implementation | Независимость production от внешнего runtime: production smoke при выключенных dashboard/LLM-агентах | `RM-STAB-009` | 2 | planned | — | полный production smoke проходит без внешних наблюдателей; ни один сервис не вызывает внешний runtime (egress allow-list) [command: `tests/test_production_config_gate.py`] | — |
+| `RM-STAB-018` | implementation | Refresh-токены пользователя: обнаружение повтора и атомарная ротация | `RM-STAB-002` | 3 | in_progress | — | повтор ротированного refresh позже окна отзывает всю семью (audit auth.refresh.replay_detected); повтор в окне - 401 без отзыва (audit auth.refresh.reuse_within_grace); параллельные refresh одним токеном дают ровно одну новую сессию; операции над семьёй сериализованы (повтор против refresh - без выживших, два повтора - без deadlock); отзыв закоммичен при ответе 401 [behavioral: `tests/behavioral/test_rm_stab_018_refresh_replay.py`] | — |
 | `RM-TECH-210` | implementation | RLS-контекст на device-маршрутах онбординга | `RM-STAB-002` | 3 | done | device_contract | POST /device/onboard и POST /identity/device-codes работают под ролью приложения БЕЗ элевации до admin; обе записи снимаются из ENDPOINT_ELEVATION_ALLOWLIST, и behavioral-набор остаётся зелёным без них [behavioral: `tests/behavioral/test_edge001_device_onboarding.py`]; bootstrap-RLS миграции 037: без RLS-контекста роль приложения видит 0 onboarding codes (fail-closed); со своим app.rmp_device_code — только свою строку; с чужим кодом — 0 [behavioral: `tests/behavioral/test_edge001_device_onboarding.py::TestRMTech210BootstrapRLS::test_app_role_sees_code_only_with_code_bootstrap`] | verified · behavioral · `tests/behavioral/test_edge001_device_onboarding.py`; verified · behavioral · `tests/behavioral/test_edge001_device_onboarding.py::TestRMTech210BootstrapRLS::test_app_role_sees_code_only_with_code_bootstrap`; verified · behavioral · `tests/behavioral/test_rls_context_strictness.py`; verified · ci_run · `https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/33408891221` |
 
 ### C — Контракты: API, события, manifest, ERD (17) · закрывается `Gate-C`

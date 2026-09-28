@@ -10,8 +10,8 @@
 | | |
 |---|---|
 | Активный этап | — |
-| Последний завершённый | RF-CI — merged (PR #10, `6bc9ac0`); RF-00 — finished, PR #9 ждёт merge |
-| Следующий шаг | merge PR RF-00 владельцем → решение по черновикам RF-01…RF-09 → `/start RF-<N>` |
+| Последний завершённый | RF-01 — finished, PR ждёт merge (`gh pr list --head fix/RF-01`); RF-00 — merged (PR #9, `7762434`) |
+| Следующий шаг | merge PR RF-01 владельцем → RM-STAB-018 `done` после CI develop (решение владельца) → выбор следующего черновика → `/start RF-<N>` |
 | Базовая линия | `origin/develop @ 6bc9ac0` (2026-09-28, merge RF-CI; push-run `develop` 36407616564 → success; то же дерево — push-run `fix/RF-CI` 36404147483, 41/41). Снимок аудита RF-00 — `b166419`; ветка `fix/RF-00` получила `6bc9ac0` merge-коммитом `3892552` |
 | Источник находок | `docs/audit/2026-09-27-claude-code-review-main-8ad0228.md` (снято на `main @ 8ad0228`; develop на 64 коммита впереди) |
 
@@ -23,6 +23,7 @@
 | # | Инвариант | Команда проверки | Добавлен этапом |
 |---|---|---|---|
 | I-0 | Границы импорта (ADR-014) | `python scripts/ci/check-import-boundaries.py` | исходное правило проекта |
+| I-1 | Refresh-токены: повтор после окна отзывает семью (+audit), в окне — нет; одна ветка при гонке; семья сериализована; отзыв переживает 401 (RM-STAB-018) | шаги job `behavioral-postgres-tests` (PostgreSQL, `retail_media_app` NOBYPASSRLS), затем `python3 -m pytest tests/behavioral/test_rm_stab_018_refresh_replay.py -v` → 7 passed | RF-01 |
 
 ## Решения владельца, влияющие на этапы
 
@@ -33,6 +34,7 @@
 | 2026-09-27 | `/start` одобряет только Protected Boundaries, перечисленные в карточке этапа |
 | 2026-09-27 | Первый этап — пересверка находок на develop (RF-00); дальнейшие этапы — пакеты задач `roadmap.yaml` |
 | 2026-09-28 | Запись RF-CI (карточка, журнал, checkpoint) — в PR #9: предложено агентом в отчёте RF-CI, владелец продолжил `/finish`; синхронизация `fix/RF-00` с develop — merge-коммитом (решение владельца) |
+| 2026-09-28 | RF-01 = P0-7 + замена маскирующего теста `test_replay_calls_family_revoke` (одобрено); T7 и P0-6/P0-8 — в остаток черновика RF-01; задача RM-STAB-018 и OD-046 заводятся этапом; повтор ротированного refresh в окне 10 с — 401 без отзыва семьи, позже — отзыв семьи (вариант «a») |
 | 2026-09-28 | Красный CI PR #9 из-за внешнего дрейфа — отдельный этап RF-CI (вариант 1); SQLAlchemy `<2.1` в CI и requirements; MinIO → Chainguard по digest; скоуп CI + drill + phase1 + pilot, Protected Boundary «Docker/deployment» — по ответу владельца «CI + drill + phase1 + pilot»: образ/healthcheck MinIO в `phase1-ci.yml`, compose restore-drill/phase1/pilot и версия MinIO в `backup-restore-drill.sh`; pilot `user: "0"` + долг. `user: "0"` в phase1 добавлен агентом на круге ревью 2 по аналогии — **ожидает подтверждения владельца** |
 
 ---
@@ -220,3 +222,110 @@
   дефект изоляции тестов, не разбирался; runbook/preflight без шага бэкапа MinIO перед апгрейдом stand-81.
 - Новые инварианты: нет отдельной команды — зелёный `Phase 1 — Quality Gates` (включая UI-Smoke и drill) и есть проверка.
 - Следующий шаг: `develop @ 6bc9ac0` влит в `fix/RF-00` (`3892552`); push-run ветки RF-00 → зелёный → merge PR #9 владельцем.
+
+## RF-01 — Refresh-токены: обнаружение повтора и атомарная ротация
+
+- Статус: finished (PR ждёт merge владельцем)
+- Ветка: fix/RF-01 · Основа: develop @ 7762434 (merge PR #9)
+- Baseline (2026-09-28, `.venv` Python 3.12.3, зависимости — дословно из `phase1-ci.yml`, `set -o pipefail`, код = develop):
+  - I-0 `python scripts/ci/check-import-boundaries.py` → rc 0 «All import boundaries clean.»
+  - `python scripts/ci/roadmap-governance-guard.py` → rc 0 PASS (после записи RM-STAB-018/OD-046 и генерации); `--self-test` → 55/55
+  - python-tests (`python -m pytest tests/ -v`, env job) → rc 0: 1909 passed, 534 skipped.
+    Первый прогон шёл параллельно с behavioral и дал 2 failed `TestScopeAdminReset` — тест пробует сокет `localhost:5432`
+    и при живом порте ходит в `DATABASE_URL=db.ci.internal`; артефакт локальной среды, без PostgreSQL на 5432 — зелёно.
+  - behavioral (шаги job дословно: postgres:16-alpine, migrations, seed, `retail_media_app` NOBYPASSRLS) → rc 0: 477 passed, 12 skipped.
+- План:
+  - Задача: повтор ротированного refresh-токена позже 10 с отзывает всю семью (+audit `auth.refresh.replay_detected`), в пределах
+    10 с — 401 без отзыва; ротация атомарна (блокировка строки + условный UPDATE); отзыв коммитится до 401.
+  - Домен: `packages/auth` (repository, service), `packages/api/auth.py` (роутер), `packages/security/config.py`. ADR-014: api → auth → domain, не меняется.
+  - Protected Boundaries: нет. Миграций нет.
+  - Доказательство: `tests/behavioral/test_rm_stab_018_refresh_replay.py` под `retail_media_app` (падает на develop), замена
+    маскирующего unit-теста, существующие `test_auth_dual_e2e.py` и python-tests зелёные.
+
+### Сделано
+- RM-STAB-018 (S, in_progress) и OD-046 в `roadmap.yaml`; RM-STAB-018 в `roadmap_ids` REQ-SEC-001; `roadmap-generate.py`.
+- Карточка RF-01 в `stages.md`; строка черновика RF-01 → «RF-01-остаток».
+- `packages/auth/repository.py`: `lock_refresh_session` — поиск по хэшу в любом состоянии + `FOR UPDATE`; `rotate_refresh_session`
+  условный (`rotated_at IS NULL AND revoked_at IS NULL`) → bool; `revoke_refresh_token_family` без `last_error`/`reason`; убран
+  неиспользуемый импорт `delete`.
+- `packages/auth/service.py::refresh_session`: revoked → REFRESH_FAILED; rotated ≤ окна → REFRESH_FAILED без отзыва; rotated > окна →
+  отзыв семьи + audit `auth.refresh.replay_detected` (actor = владелец сессии, target = предъявленная сессия, details: семья, число
+  отозванных) → REFRESH_REPLAY; expired → REFRESH_FAILED; проигранная гонка ротации → REFRESH_FAILED.
+- `packages/api/auth.py::refresh`: `await db.commit()` перед 401 (как `login`).
+- `packages/security/config.py`: `refresh_reuse_grace_seconds = 10`.
+- `tests/behavioral/test_rm_stab_018_refresh_replay.py` (3 теста): на develop-коде 2 failed (семья не отозвана; 4 параллельных
+  refresh → `[200, 200, 200, 200]`), после — 3 passed. Tamper: без `db.commit()` перед 401 → тест повтора красный.
+- `tests/test_phase3_auth_service.py`: `test_replay_calls_family_revoke` заменён (одобрено) на 4 теста — компиляция UPDATE семьи
+  под PostgreSQL, запрос блокировки без фильтров rotated/revoked + FOR UPDATE, повтор после окна → отзыв + audit, отозванный токен →
+  без повторного отзыва. Адаптированы без ослабления (цель патча `find_active_refresh_session` → `lock_refresh_session`/
+  `rotate_refresh_session`, снят аргумент `reason`): `test_refresh_success`, `test_refresh_invalid_token_fails`,
+  `test_rotated_token_is_not_active` (мок теперь — ротированная в окне сессия + проверка «семья не отозвана»),
+  `test_revoke_refresh_token_family_revokes_all_active`, `test_revoke_family_leaves_unrelated_family_active`,
+  `test_normal_refresh_does_not_revoke_family` (добавлены отсутствовавшие проверки «семья не отозвана», «ротация вызвана»).
+- Круг 1 ревью: advisory-lock семьи в `lock_refresh_session`; audit `auth.refresh.reuse_within_grace`; тесты
+  `TestFamilySerialisation` (2), `test_inactive_user_refresh_revokes_session`; unit `test_lock_unknown_token_takes_no_lock`,
+  переименование; приёмка RM-STAB-018 дополнена сериализацией.
+- Круг 2 ревью: порядок проверок в `refresh_session` (rotated → revoked); unit `test_replay_of_burned_family_is_not_audited_again`
+  (заменил свой же тест круга 1 `test_revoked_token_fails_without_family_revoke`), `test_revoked_unrotated_token_fails_without_family_revoke`;
+  behavioral `test_replay_detected_after_session_limit_revoked_rotated_row`.
+- Самопроверка после круга 2: behavioral 484 passed / 12 skipped rc 0 (RM-STAB-018 7/7); python-tests 1914 passed / 541 skipped rc 0;
+  I-0 rc 0; guard PASS; self-test 55/55; `git diff --check` rc 0; ruff — новых ошибок нет.
+- Самопроверка после круга 1: behavioral 483 passed / 12 skipped rc 0; python-tests 1913 passed / 540 skipped rc 0; I-0 rc 0;
+  guard PASS; self-test 55/55; `git diff --check` rc 0; ruff — новых ошибок нет.
+- Самопроверка (до ревью): behavioral 480 passed / 12 skipped rc 0; python-tests 1912 passed / 537 skipped rc 0; I-0 rc 0; guard PASS;
+  self-test 55/55; `git diff --check` rc 0; ruff по изменённым файлам — новых ошибок нет (repository 1→0, service 5→5, api/auth 3→3,
+  config 0, тест-файлы 19→19 и 0; старые ошибки — долг, вне скоупа).
+
+### Решения
+- Найден второй скрытый дефект: `revoke_refresh_token_family` пишет несуществующую колонку `last_error` →
+  `CompileError: Unconsumed column names: last_error` (проверено компиляцией). Исправляется без миграции; причина — в audit.
+- Окно повтора — поле `SecurityConfig.refresh_reuse_grace_seconds = 10`, без env-переменной (иначе правка `.env.example` —
+  Protected Boundary).
+
+### Ревью
+| Круг | Замечание | Уровень | Решение | Риск исправления | Доказательство |
+|---|---|---|---|---|---|
+| 1 | Отзыв семьи не сериализован с refresh той же семьи: преемник переживает «сожжённую» семью; два повтора → deadlock → 500 | 🟠 | исправлено: `lock_refresh_session` читает семью, берёт `pg_advisory_xact_lock(18, hashtext(family))` ДО блокировки строки; 2 behavioral-теста | средний: новый lock на горячем пути refresh; одна семья = одна сессия пользователя, конкуренция только внутри неё; logout/login/admin revoke-all advisory не берут — цикл на блокировках строк с ними возможен (круг 2 п.2, круг 3 п.1 — долг) | до исправления на PostgreSQL: `DeadlockDetectedError` и выживший `revoked_at=None`; после — 6/6 passed, 3 повтора подряд стабильно |
+| 1 | Повтор внутри окна не оставляет следа | 🟠 | исправлено: audit `auth.refresh.reuse_within_grace` без отзыва семьи (OD-046 не меняется) | низкий: +1 строка аудита на гонку вкладок | behavioral `test_replay_within_grace_keeps_family` проверяет ровно одну запись; unit |
+| 1 | Окно сравнивает часы разных инстансов (`rotated_at` из Python) | 🟡 | долг: `expires_at`/`issued_at` во всём auth тоже на часах Python; переход на часы БД — отдельная правка всего модуля; требование NTP для multi-instance | — | — |
+| 1 | `db.commit()` при любом отказе сохраняет и revoke на USER_INACTIVE — не описано | 🟡 | исправлено: behavioral `test_inactive_user_refresh_revokes_session`; записано здесь | нет (исправление: раньше revoke откатывался) | тест passed |
+| 1 | Имя `test_rotated_token_is_not_active` не отражает проверку | 🟡 | исправлено: `test_rotated_within_grace_fails_without_family_revoke` | нет | unit 57 passed |
+| 1 | Параллельный тест не доказывает, что гонка была | 🟡 | закрыто фактом: на develop-коде в этой сессии `[200, 200, 200, 200]` | — | журнал «Сделано», прогон до исправления |
+| 2 | Лимит сессий при login отзывает ротированные строки → их повтор попадал в ветку «revoked», семья и преемник вора живы | 🟠 | исправлено (вариант «а», в скоупе refresh): `rotated_at` проверяется до `revoked_at`; отзыв семьи идемпотентен, audit только при `revoked > 0`; дефект самого лимита (ротированные строки занимают квоту) — долг, это login | низкий: повтор уже сожжённой семьи даёт REPLAY вместо FAILED — оба 401 `INVALID_TOKEN`, клиент не различает | behavioral `test_replay_detected_after_session_limit_revoked_rotated_row` через реальные 5 login: до правки FAILED (преемник жив), после — passed |
+| 2 | logout и админский revoke-all не берут advisory-lock семьи: редкий deadlock/выживший преемник | 🟡 | долг: logout/admin вне скоупа карточки | — | — |
+| 2 | Окно 10 с: ложный отзыв при потерянном ответе и повторе > 10 с; вор первым в окне | 🟡 | долг/остаточный риск принятого OD-046 — в отчёт владельцу | — | — |
+| 2 | +2 round-trip на refresh; коллизии `hashtext` лишь сериализуют чужие семьи | 🟡 | принято, информационно | — | — |
+| 2 | Гоночный тест не проверяет коды ответов (500 прошёл бы) | 🟡 | исправлено: коды ⊆ {200, 401} | нет | 7/7 passed |
+| 3 | Deadlock login (`revoke_oldest_sessions`, строки по `issued_at`) × повтор (FOR UPDATE строки + UPDATE семьи); запись круга 1 «цикла нет» неверна | 🟡 | долг (login вне скоупа; связан с дефектом квоты ротированных строк); запись круга 1 исправлена | — | по коду, не воспроизводилось |
+| 3 | notes RM-STAB-018: «гонка вкладок закрыта окном» — сильнее факта | 🟡 | исправлено: семья не отзывается, 401 проигравшей вкладке — до RF-08 | нет | `roadmap.yaml`, генерация, guard PASS |
+| 3 | Нет rate limit на `/refresh`: повторы в окне пишут audit без ограничения | 🟡 | долг (нужен валидный только что ротированный токен, 10 с) | — | — |
+
+### Гейт
+2026-09-28, `.venv`, `set -o pipefail`, после круга 3 (код не менялся с круга 2):
+- behavioral (шаги job `behavioral-postgres-tests` дословно, `retail_media_app` NOBYPASSRLS) → rc 0: 484 passed, 12 skipped;
+  `test_rm_stab_018_refresh_replay.py` 7/7 и `test_auth_dual_e2e.py` 8/8 — PASSED.
+- python-tests (`python -m pytest tests/ -v`, env job) → rc 0: 1914 passed, 541 skipped.
+- I-0 → rc 0; `roadmap-governance-guard` → PASS; `--self-test` → 55/55; `git diff --check` → rc 0.
+- ruff по изменённым файлам: 27 = ровно ошибки develop (service 5, api/auth 3, test_phase3_auth_service 19); repository 1 → 0; новых нет.
+- Ревью: 3 круга, APPROVE WITH COMMENTS ×3; 🔴 нет; 🟠 — 3, все исправлены с тестом, падавшим до исправления; 🟡 — исправлены или в долге.
+- Не запускалось: frontend/UI-smoke (не затронуты); CI — на `/finish`.
+
+### Долг (к `/finish`)
+- Остаточные риски OD-046: ложный отзыв семьи при потерянном ответе и повторе позже 10 с; вор, первым успевший в окне, сохраняет сессию, если законный клиент не повторит после окна.
+- Квота сессий (`count_active_sessions`/`revoke_oldest_sessions`) считает ротированные строки активными — живые сессии других устройств отзываются раньше срока (было до RF-01; login).
+- logout, admin revoke-all и login-лимит не берут advisory-lock семьи: редкий deadlock → 500 / выживший преемник.
+- Окно сравнивает часы Python разных инстансов (NTP для multi-instance); весь auth на часах Python.
+- Нет rate limit на `/refresh`; audit `reuse_within_grace` на каждый повтор в окне.
+- Старые ошибки ruff в `service.py`, `api/auth.py`, `test_phase3_auth_service.py`.
+- Проигравшая вкладка портала получает 401 до single-flight (P1-13.b, RF-08).
+
+### Итог (заполняет /finish)
+- Коммит и PR: `gh pr list --head fix/RF-01` · CI: результат проверок PR — в отчёте `/finish` (в коммит не входит).
+- Доказано: P0-7 закрыта на PostgreSQL под `retail_media_app` — повтор после 10 с отзывает семью с audit, в окне — 401 без отзыва
+  с audit `reuse_within_grace`; параллельные refresh → одна ветка; повтор против refresh и два повтора одной семьи — без выживших и
+  без deadlock; повтор строки, отозванной лимитом сессий, всё равно сжигает семью; отзыв и revoke USER_INACTIVE переживают 401.
+  Каждый сценарий — тест, падавший на коде до исправления.
+- RM-STAB-018 остаётся `in_progress`: `done` — после merge и зелёного CI develop, решением владельца.
+- Долг — раздел «Долг (к `/finish`)» выше; отклонённых 🟠 нет.
+- Новые инварианты: I-1.
+- Следующий шаг: merge PR владельцем → выбор следующего черновика (остаток RF-01: P0-6/P0-8 vs RM-STAB-004; RF-05; RF-02…) → `/start RF-<N>`.

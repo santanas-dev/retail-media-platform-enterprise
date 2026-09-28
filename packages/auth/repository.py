@@ -11,7 +11,7 @@ import hashlib
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.domain.models import (
@@ -186,6 +186,45 @@ async def find_active_refresh_session(
     return result.scalar_one_or_none()
 
 
+_REFRESH_FAMILY_LOCK_CLASS = 18  # advisory-lock namespace, RM-STAB-018
+
+
+async def lock_refresh_session(
+    session: AsyncSession, token_hash: str
+) -> RefreshSession | None:
+    """Find a refresh session by token_hash in any state and lock it.
+
+    Unlike find_active_refresh_session this also returns rotated, revoked and
+    expired sessions, so the caller can tell a replay from an unknown token.
+
+    Every operation on one token family is serialised (RM-STAB-018): a
+    transaction-scoped advisory lock on the family is taken BEFORE the row
+    lock. Without it a family revoke misses a successor inserted by a
+    concurrent refresh, and two concurrent replays deadlock on each other's
+    rows. token_family_id never changes, so reading it unlocked is safe.
+    """
+    family_id = (
+        await session.execute(
+            select(RefreshSession.token_family_id)
+            .where(RefreshSession.token_hash == token_hash)
+        )
+    ).scalar_one_or_none()
+    if family_id is None:
+        return None
+    await session.execute(
+        select(func.pg_advisory_xact_lock(
+            _REFRESH_FAMILY_LOCK_CLASS, func.hashtext(family_id),
+        ))
+    )
+    stmt = (
+        select(RefreshSession)
+        .where(RefreshSession.token_hash == token_hash)
+        .with_for_update()
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
 async def revoke_refresh_session(
     session: AsyncSession, refresh_session_id: str
 ) -> None:
@@ -200,14 +239,23 @@ async def revoke_refresh_session(
 
 async def rotate_refresh_session(
     session: AsyncSession, refresh_session_id: str
-) -> None:
-    """Mark a refresh session as rotated (used once, new token issued)."""
+) -> bool:
+    """Mark a refresh session as rotated (used once, new token issued).
+
+    Only a session that is neither rotated nor revoked is rotated; returns
+    False when another transaction got there first.
+    """
     stmt = (
         update(RefreshSession)
-        .where(RefreshSession.id == refresh_session_id)
+        .where(
+            RefreshSession.id == refresh_session_id,
+            RefreshSession.rotated_at.is_(None),
+            RefreshSession.revoked_at.is_(None),
+        )
         .values(rotated_at=_now())
     )
-    await session.execute(stmt)
+    result = await session.execute(stmt)
+    return result.rowcount == 1
 
 
 async def count_active_sessions(
@@ -327,12 +375,13 @@ async def revoke_all_sessions_for_user(
 
 
 async def revoke_refresh_token_family(
-    session: AsyncSession, token_family_id: str, *, reason: str = "security_replay",
+    session: AsyncSession, token_family_id: str,
 ) -> int:
     """Revoke ALL active refresh sessions in a token family.
 
     Used when a rotated token is replayed — the entire family is burned
     because an attacker or client bug may have captured a prior token.
+    The reason is recorded by the caller's audit event.
     Returns count of sessions revoked.
     """
     now = _now()
@@ -343,6 +392,6 @@ async def revoke_refresh_token_family(
             RefreshSession.revoked_at.is_(None),
             RefreshSession.expires_at > now,
         )
-        .values(revoked_at=now, last_error=reason)
+        .values(revoked_at=now)
     )
     return result.rowcount

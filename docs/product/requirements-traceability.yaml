@@ -3348,6 +3348,7 @@ requirements:
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-TECH-252
+  - RM-STAB-018
   requirement_status: approved
   delivery_status: planned
   status_changed_at: '2026-08-28T00:00:00Z'

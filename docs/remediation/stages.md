@@ -67,7 +67,23 @@
 | Гейт | CI `Phase 1 — Quality Gates` всё зелёное; import boundaries; roadmap guard |
 | Канон, который меняется | только checkpoint PROJECT_STATE |
 
-## RF-01 и далее
+## RF-01 — Refresh-токены: обнаружение повтора и атомарная ротация (решение владельца 2026-09-28)
+
+| Поле | Значение |
+|---|---|
+| Статус | finished |
+| Цель | Повтор ротированного refresh-токена отзывает семью, ротация атомарна, отзыв переживает ответ 401 — доказано на PostgreSQL под `retail_media_app` |
+| Задачи roadmap.yaml | RM-STAB-018 (OD-046) |
+| Находки | P0-7; маскирующий тест `tests/test_phase3_auth_service.py::TestRefreshTokenFamilyRevoke::test_replay_calls_family_revoke` |
+| Скоуп (в) | `packages/auth/repository.py` (поиск по хэшу с блокировкой, условная ротация, отзыв семьи без `last_error`); `packages/auth/service.py` (`refresh_session`: повтор, окно 10 с, audit); `packages/api/auth.py` (`/refresh`: отзыв коммитится до 401); `packages/security/config.py` (окно повтора); замена маскирующего теста (одобрено владельцем); новый behavioral-тест; RM-STAB-018/OD-046 в `roadmap.yaml`, ссылка в `requirements-traceability.yaml` (REQ-SEC-001), генерация представлений |
+| Скоуп (вне) | P0-6, P0-8, P1-11.a, T1–T3, T7 (остаток черновика RF-01); фронтенд single-flight P1-13.b (RF-08); миграции; logout; RM-STAB-004 |
+| Protected Boundaries | нет (auth портала не в списке `AGENTS.md`) |
+| mini-design | нет — поведение согласовано владельцем (OD-046: окно 10 с, строгий отзыв после окна) |
+| Входные условия | PR #9 (RF-00) смержен — `develop @ 7762434` |
+| Гейт | behavioral под `retail_media_app` NOBYPASSRLS: новый тест RM-STAB-018 + `tests/behavioral/test_auth_dual_e2e.py`; job python-tests (`python -m pytest tests/`); I-0; `roadmap-governance-guard` + `--self-test`; ruff по изменённым файлам |
+| Канон, который меняется | `roadmap.yaml` (RM-STAB-018, OD-046) + генерация; `requirements-traceability.yaml` (roadmap_ids REQ-SEC-001); checkpoint `PROJECT_STATE.md` |
+
+## Остальное
 
 Определяются по итогам RF-00 и решению владельца.
 
@@ -82,7 +98,7 @@
 
 | Черновик | Название | Находки | Задачи roadmap.yaml | Стадия | Protected Boundaries | mini-design |
 |---|---|---|---|---|---|---|
-| RF-01 | Авторизация: scoped-права, эскалация, refresh-семья | P0-6, P0-7, P0-8, P1-11.a, P1-13.b (бэкенд), T1, T2, T3, T7 | новая; пересекается по коду с RM-STAB-004 (S, in_progress) — риск конфликта правок `dependencies.py`/`scopes.py`, решает владелец; смежно RM-STAB-015 | CORE (безопасность) | нет (auth портала не в списке) | да — модель `scoped_permissions[(type,id)]` по ADR-009 |
+| RF-01-остаток (номер — владелец) | Авторизация: scoped-права, эскалация (P0-7 выделена в RF-01, решение владельца 2026-09-28) | P0-6, P0-8, P1-11.a, T1, T2, T3, T7 | новая; пересекается по коду с RM-STAB-004 (S, in_progress) — риск конфликта правок `dependencies.py`/`scopes.py`, решает владелец; смежно RM-STAB-015 | CORE (безопасность) | нет (auth портала не в списке) | да — модель `scoped_permissions[(type,id)]` по ADR-009 |
 | RF-02 | Деньги: договор кампании и бронь инвентаря | P0-9, P0-11.a–c, P1-9, P2-D1, T4, T8 | RM-TECH-203, RM-TECH-241 (частично) + новая | CORE | campaign submit/approval (бронь в `request_campaign_approval`) | да |
 | RF-03 | Доставка: мультикампанийный манифест, отзыв, resume, daypart/SoV, PoP-окна | P0-12.a–d, P1-2, P2-B8, T9 | RM-TECH-242, RM-TECH-245, RM-TECH-248 + новая | CORE / CH | generated manifest compatibility; campaign publication; KSO runtime (плеер) | да (ADR-016) |
 | RF-04 | Надёжность событий: consumer, stream subjects, воркер завершения | P1-6.a–b, P1-7, P1-8, P0-4 (ack при ошибке), P2-B7, T11 | RM-TECH-243 (частично) + новая | CORE (outbox) | требует проверки: P0-4/P1-8 затрагивают генерацию манифестов и lifecycle кампании (близко к publication flows / manifest compatibility) | нет |

@@ -82,6 +82,10 @@ class SecurityConfig:
     refresh_session_ttl_hours: int = 8
     refresh_token_bytes: int = 32
     max_sessions_per_user: int = 5
+    # RM-STAB-018 (OD-046): a rotated token presented again within this window
+    # is a parallel refresh race (several portal tabs), rejected without
+    # revoking the family; later it is treated as replay of a stolen token.
+    refresh_reuse_grace_seconds: int = 10
 
     # Login rate limiting
     login_rate_limit_max_attempts: int = 5

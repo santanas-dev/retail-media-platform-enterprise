@@ -384,11 +384,12 @@ class TestAuthServiceSessionManagement(unittest.IsolatedAsyncioTestCase):
         os.environ.clear()
         os.environ.update(self._orig_env)
 
-    @patch("packages.auth.service.find_active_refresh_session", new_callable=AsyncMock)
+    @patch("packages.auth.service.lock_refresh_session", new_callable=AsyncMock)
+    @patch("packages.auth.service.rotate_refresh_session", new_callable=AsyncMock, return_value=True)
     @patch("packages.auth.service.create_access_token")
     @patch("packages.auth.service.create_refresh_session", new_callable=AsyncMock)
     async def test_refresh_success(
-        self, mock_create_rs, mock_create_jwt, mock_find_rs,
+        self, mock_create_rs, mock_create_jwt, mock_rotate, mock_find_rs,
     ):
         """Valid refresh token returns new access + refresh tokens."""
         from packages.auth.service import AuthService
@@ -423,7 +424,7 @@ class TestAuthServiceSessionManagement(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.access_token, "new-access-token")
         self.assertTrue(len(result.refresh_token) > 0)
 
-    @patch("packages.auth.service.find_active_refresh_session", new_callable=AsyncMock)
+    @patch("packages.auth.service.lock_refresh_session", new_callable=AsyncMock)
     async def test_refresh_invalid_token_fails(
         self, mock_find_rs,
     ):
@@ -468,14 +469,17 @@ class TestAuthServiceSessionManagement(unittest.IsolatedAsyncioTestCase):
 
         self.assertFalse(result)
 
-    @patch("packages.auth.service.find_active_refresh_session", new_callable=AsyncMock)
-    async def test_rotated_token_is_not_active(
-        self, mock_find_rs,
+    @patch("packages.auth.service.lock_refresh_session", new_callable=AsyncMock)
+    @patch("packages.auth.service.revoke_refresh_token_family", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_audit_event", new_callable=AsyncMock)
+    async def test_rotated_within_grace_fails_without_family_revoke(
+        self, mock_audit, mock_family_revoke, mock_find_rs,
     ):
-        """Rotated refresh token is not returned as active — treated as invalid."""
-        # find_active_refresh_session filters rotated_at.is_(None)
-        # So a rotated session won't be found at all
-        mock_find_rs.return_value = None
+        """Rotated refresh token is not accepted; inside the reuse grace window
+        (parallel refresh race) the family is left alone (RM-STAB-018)."""
+        mock_find_rs.return_value = _make_refresh_session(
+            rotated_at=_now() - timedelta(seconds=2),
+        )
 
         svc = AuthService()
         session = MagicMock(spec=AsyncSession)
@@ -485,6 +489,11 @@ class TestAuthServiceSessionManagement(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsInstance(result, AuthFailure)
         self.assertEqual(result.internal_code, "REFRESH_FAILED")
+        mock_family_revoke.assert_not_called()
+        mock_audit.assert_called_once()
+        self.assertEqual(
+            mock_audit.call_args.kwargs["action"], "auth.refresh.reuse_within_grace",
+        )
 
 
 class TestAuthServicePasswordReset(unittest.IsolatedAsyncioTestCase):
@@ -1057,7 +1066,7 @@ class TestRefreshTokenFamilyRevoke(unittest.IsolatedAsyncioTestCase):
 
         async def _run():
             return await revoke_refresh_token_family(
-                mock_db, family_id, reason="security_replay",
+                mock_db, family_id,
             )
 
         count = asyncio.run(_run())
@@ -1086,7 +1095,7 @@ class TestRefreshTokenFamilyRevoke(unittest.IsolatedAsyncioTestCase):
 
         async def _run():
             return await revoke_refresh_token_family(
-                mock_db, family_a, reason="security_replay",
+                mock_db, family_a,
             )
 
         count = asyncio.run(_run())
@@ -1096,47 +1105,142 @@ class TestRefreshTokenFamilyRevoke(unittest.IsolatedAsyncioTestCase):
         call_args = mock_db.execute.call_args[0][0]
         self.assertIsNotNone(call_args, "execute should be called with update statement")
 
-    @patch("packages.auth.service.find_active_refresh_session", new_callable=AsyncMock)
-    @patch("packages.auth.repository.revoke_refresh_token_family", new_callable=AsyncMock)
-    async def test_replay_calls_family_revoke(self, mock_family_revoke, mock_find_rs):
-        """Replay detection invokes revoke_refresh_token_family, not single revoke."""
+    def test_family_revoke_statement_compiles_for_postgresql(self):
+        """The UPDATE only touches real columns (it used to set a non-existent
+        last_error, which mocks hid and PostgreSQL rejects)."""
+        from packages.auth.repository import revoke_refresh_token_family
+        from sqlalchemy.dialects import postgresql
+
+        mock_db = MagicMock(spec=AsyncSession)
+        mock_db.execute = AsyncMock(return_value=MagicMock(rowcount=0))
+        asyncio.run(revoke_refresh_token_family(mock_db, "fam-x"))
+
+        stmt = mock_db.execute.call_args[0][0]
+        sql = str(stmt.compile(dialect=postgresql.dialect()))
+        self.assertIn("revoked_at", sql)
+
+    def test_lock_query_finds_rotated_and_revoked_and_locks(self):
+        """The refresh lookup must see rotated/revoked rows (else replay is
+        undetectable), lock the whole family first (else a family revoke
+        misses a concurrent successor or deadlocks) and then the row."""
+        from packages.auth.repository import lock_refresh_session
+        from sqlalchemy.dialects import postgresql
+
+        family = MagicMock()
+        family.scalar_one_or_none.return_value = "fam-x"
+        row = MagicMock()
+        row.scalar_one_or_none.return_value = _make_refresh_session()
+        mock_db = MagicMock(spec=AsyncSession)
+        mock_db.execute = AsyncMock(side_effect=[family, MagicMock(), row])
+        asyncio.run(lock_refresh_session(mock_db, "hash-x"))
+
+        sqls = [
+            str(c[0][0].compile(dialect=postgresql.dialect()))
+            for c in mock_db.execute.call_args_list
+        ]
+        self.assertEqual(len(sqls), 3)
+        self.assertNotIn("FOR UPDATE", sqls[0])
+        self.assertIn("pg_advisory_xact_lock", sqls[1])
+        self.assertIn("FOR UPDATE", sqls[2])
+        for sql in (sqls[0], sqls[2]):
+            where = sql.split("WHERE", 1)[1]
+            self.assertNotIn("rotated_at", where)
+            self.assertNotIn("revoked_at", where)
+
+    def test_lock_unknown_token_takes_no_lock(self):
+        from packages.auth.repository import lock_refresh_session
+
+        family = MagicMock()
+        family.scalar_one_or_none.return_value = None
+        mock_db = MagicMock(spec=AsyncSession)
+        mock_db.execute = AsyncMock(return_value=family)
+        self.assertIsNone(asyncio.run(lock_refresh_session(mock_db, "nope")))
+        self.assertEqual(mock_db.execute.call_count, 1)
+
+    @patch("packages.auth.service.lock_refresh_session", new_callable=AsyncMock)
+    @patch("packages.auth.service.revoke_refresh_token_family", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_audit_event", new_callable=AsyncMock)
+    async def test_replay_after_grace_revokes_family_and_audits(
+        self, mock_audit, mock_family_revoke, mock_find_rs,
+    ):
+        """Replay of a token rotated longer ago than the grace window revokes
+        the whole family and is audited. PostgreSQL proof:
+        tests/behavioral/test_rm_stab_018_refresh_replay.py."""
         from packages.auth.service import AuthService
 
-        # Simulate a rotated session (replay scenario)
         rs = _make_refresh_session(rotated_at=_now() - timedelta(minutes=5))
         mock_find_rs.return_value = rs
+        mock_family_revoke.return_value = 3
 
-        svc = AuthService()
-        session = MagicMock(spec=AsyncSession)
-
-        # Need to mock the User query that follows replay check
-        user = _make_user(id=rs.user_id)
-        with patch.object(
-            __import__("sqlalchemy").ext.asyncio.AsyncSession, "execute",
-            new_callable=AsyncMock,
-        ) as mock_exec:
-            mock_result = MagicMock()
-            mock_result.scalar_one_or_none.return_value = user
-            mock_exec.return_value = mock_result
-            session.execute = mock_exec
-
-            result = await svc.refresh_session(
-                session, raw_refresh_token="replayed-raw-token",
-            )
+        result = await AuthService().refresh_session(
+            MagicMock(spec=AsyncSession), raw_refresh_token="replayed-raw-token",
+            ip_address="10.0.0.9",
+        )
 
         self.assertIsInstance(result, AuthFailure)
         self.assertEqual(result.internal_code, "REFRESH_REPLAY")
-
-        # Critical: family revoke was called (not single-session revoke)
         mock_family_revoke.assert_called_once()
-        call_args = mock_family_revoke.call_args
-        self.assertEqual(call_args[0][1], rs.token_family_id)
+        self.assertEqual(mock_family_revoke.call_args[0][1], rs.token_family_id)
+        mock_audit.assert_called_once()
+        audit = mock_audit.call_args.kwargs
+        self.assertEqual(audit["action"], "auth.refresh.replay_detected")
+        self.assertEqual(audit["actor_user_id"], rs.user_id)
+        self.assertEqual(audit["target_id"], rs.id)
+        self.assertEqual(audit["details"], {
+            "token_family_id": rs.token_family_id, "revoked_sessions": 3,
+        })
 
-    @patch("packages.auth.service.find_active_refresh_session", new_callable=AsyncMock)
+    @patch("packages.auth.service.lock_refresh_session", new_callable=AsyncMock)
+    @patch("packages.auth.service.revoke_refresh_token_family", new_callable=AsyncMock)
+    @patch("packages.auth.service.create_audit_event", new_callable=AsyncMock)
+    async def test_replay_of_burned_family_is_not_audited_again(
+        self, mock_audit, mock_family_revoke, mock_find_rs,
+    ):
+        """A rotated row already revoked (burned family, or the max-sessions
+        limit) still goes through the family revoke; the audit event is only
+        written when something was actually revoked."""
+        from packages.auth.service import AuthService
+
+        mock_find_rs.return_value = _make_refresh_session(
+            rotated_at=_now() - timedelta(minutes=5),
+            revoked_at=_now() - timedelta(minutes=1),
+        )
+        mock_family_revoke.return_value = 0
+        result = await AuthService().refresh_session(
+            MagicMock(spec=AsyncSession), raw_refresh_token="burned",
+        )
+
+        self.assertIsInstance(result, AuthFailure)
+        self.assertEqual(result.internal_code, "REFRESH_REPLAY")
+        mock_family_revoke.assert_called_once()
+        mock_audit.assert_not_called()
+
+    @patch("packages.auth.service.lock_refresh_session", new_callable=AsyncMock)
+    @patch("packages.auth.service.revoke_refresh_token_family", new_callable=AsyncMock)
+    async def test_revoked_unrotated_token_fails_without_family_revoke(
+        self, mock_family_revoke, mock_find_rs,
+    ):
+        """A logged-out (revoked, never rotated) token just fails."""
+        from packages.auth.service import AuthService
+
+        mock_find_rs.return_value = _make_refresh_session(
+            revoked_at=_now() - timedelta(minutes=1),
+        )
+        result = await AuthService().refresh_session(
+            MagicMock(spec=AsyncSession), raw_refresh_token="logged-out",
+        )
+
+        self.assertIsInstance(result, AuthFailure)
+        self.assertEqual(result.internal_code, "REFRESH_FAILED")
+        mock_family_revoke.assert_not_called()
+
+    @patch("packages.auth.service.lock_refresh_session", new_callable=AsyncMock)
+    @patch("packages.auth.service.rotate_refresh_session", new_callable=AsyncMock, return_value=True)
+    @patch("packages.auth.service.revoke_refresh_token_family", new_callable=AsyncMock)
     @patch("packages.auth.service.create_access_token")
     @patch("packages.auth.service.create_refresh_session", new_callable=AsyncMock)
     async def test_normal_refresh_does_not_revoke_family(
-        self, mock_create_rs, mock_create_jwt, mock_find_rs,
+        self, mock_create_rs, mock_create_jwt, mock_family_revoke, mock_rotate, mock_find_rs,
     ):
         """Normal (non-replay) refresh does NOT trigger family revoke."""
         from packages.auth.service import AuthService
@@ -1167,6 +1271,8 @@ class TestRefreshTokenFamilyRevoke(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsInstance(result, AuthSuccess)
         self.assertEqual(result.access_token, "new-access-token")
+        mock_family_revoke.assert_not_called()
+        mock_rotate.assert_called_once()
 
 
 if __name__ == "__main__":

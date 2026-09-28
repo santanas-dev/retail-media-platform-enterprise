@@ -25,8 +25,11 @@ from packages.auth.repository import (
     find_user_by_username,
     get_local_credential,
     hash_identifier,
+    lock_refresh_session,
     revoke_oldest_sessions,
     revoke_refresh_session,
+    revoke_refresh_token_family,
+    rotate_refresh_session,
 )
 from packages.auth.schemas import (
     AuthFailure,
@@ -461,23 +464,71 @@ class AuthService:
         raw_refresh_token: str,
         ip_address: str | None = None,
     ) -> AuthResult:
-        """Rotate a refresh token — issue new access + refresh, invalidate old."""
+        """Rotate a refresh token — issue new access + refresh, invalidate old.
+
+        The caller must commit on failure too: a replay revokes the token
+        family and writes an audit event that must outlive the 401.
+        """
         token_hash_val = hash_token(raw_refresh_token)
-        rs = await find_active_refresh_session(session, token_hash_val)
+        rs = await lock_refresh_session(session, token_hash_val)
 
         if rs is None:
             return auth_failure(
                 internal_code="REFRESH_FAILED",
-                debug_context={"reason": "token_not_found_or_revoked"},
+                debug_context={"reason": "token_not_found"},
             )
 
-        # Check rotation replay: if already rotated, revoke ENTIRE family (S-035i)
+        # Rotation replay (S-035i, RM-STAB-018): inside the grace window it is a
+        # parallel refresh race; after it the ENTIRE family is revoked. Checked
+        # before revoked_at: the max-sessions limit on login revokes old rotated
+        # rows, and their replay must still burn the live successor.
         if rs.rotated_at is not None:
-            from packages.auth.repository import revoke_refresh_token_family
-            await revoke_refresh_token_family(session, rs.token_family_id)
+            cfg = get_security_config()
+            grace = timedelta(seconds=cfg.refresh_reuse_grace_seconds)
+            if _now() - rs.rotated_at <= grace:
+                # Not burned (OD-046), but traceable if it was a thief first.
+                await create_audit_event(
+                    session,
+                    actor_user_id=rs.user_id,
+                    action="auth.refresh.reuse_within_grace",
+                    target_type="auth_session",
+                    target_id=rs.id,
+                    ip_address=ip_address or "",
+                    details={"token_family_id": rs.token_family_id},
+                )
+                return auth_failure(
+                    internal_code="REFRESH_FAILED",
+                    debug_context={"reason": "rotated_within_grace"},
+                )
+            revoked = await revoke_refresh_token_family(session, rs.token_family_id)
+            if revoked:  # an already burned family is not reported again
+                await create_audit_event(
+                    session,
+                    actor_user_id=rs.user_id,
+                    action="auth.refresh.replay_detected",
+                    target_type="auth_session",
+                    target_id=rs.id,
+                    ip_address=ip_address or "",
+                    details={
+                        "token_family_id": rs.token_family_id,
+                        "revoked_sessions": revoked,
+                    },
+                )
             return auth_failure(
                 internal_code="REFRESH_REPLAY",
                 debug_context={"reason": "token_already_rotated"},
+            )
+
+        if rs.revoked_at is not None:
+            return auth_failure(
+                internal_code="REFRESH_FAILED",
+                debug_context={"reason": "token_revoked"},
+            )
+
+        if rs.expires_at <= _now():
+            return auth_failure(
+                internal_code="REFRESH_FAILED",
+                debug_context={"reason": "token_expired"},
             )
 
         # Get user for auth_provider
@@ -492,9 +543,13 @@ class AuthService:
             await revoke_refresh_session(session, rs.id)
             return auth_failure(internal_code="USER_INACTIVE")
 
-        # Rotate old token
-        from packages.auth.repository import rotate_refresh_session
-        await rotate_refresh_session(session, rs.id)
+        # Rotate old token; the row lock makes a lost race impossible, the
+        # conditional UPDATE keeps it impossible if the lock is ever dropped.
+        if not await rotate_refresh_session(session, rs.id):
+            return auth_failure(
+                internal_code="REFRESH_FAILED",
+                debug_context={"reason": "rotation_race_lost"},
+            )
 
         # Issue new session (same family for detection)
         cfg = get_security_config()
