@@ -71,7 +71,8 @@ jobs:
         run: |
           # Test that service modules import correctly.
           # pip deps are installed in CI (setup-python does not auto-install them).
-          pip install fastapi uvicorn sqlalchemy PyJWT bcrypt 2>&1 | tail -1
+          set -o pipefail
+          pip install fastapi uvicorn "sqlalchemy>=2.0,<2.1" PyJWT bcrypt 2>&1 | tail -1
           python -c "
           import sys, os
           sys.path.insert(0, '.')
@@ -100,7 +101,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install deps
-        run: pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT nats-py jsonschema pyyaml pytest-asyncio greenlet minio ldap3 redis aiosqlite requests
+        run: pip install "sqlalchemy>=2.0,<2.1" alembic asyncpg fastapi httpx pytest bcrypt PyJWT nats-py jsonschema pyyaml pytest-asyncio greenlet minio ldap3 redis aiosqlite requests
       - name: Run tests
         run: |
           set -o pipefail
@@ -227,7 +228,10 @@ jobs:
           --health-timeout 5s
           --health-retries 5
       minio:
-        image: minio/minio:latest
+        # minio/minio is no longer pullable anonymously from Docker Hub (2026-09);
+        # Chainguard image pinned by digest. It ships no curl, so readiness is
+        # checked from the runner in the "Wait for MinIO" step below.
+        image: cgr.dev/chainguard/minio@sha256:6a1d0b45c8669726bba580ced0bfa4cb9fdeed1ed636dfabd81d1577beb6937b
         env:
           MINIO_ROOT_USER: minioadmin
           MINIO_ROOT_PASSWORD: minioadmin
@@ -235,11 +239,6 @@ jobs:
         ports:
           - 9000:9000
           - 9001:9001
-        options: >-
-          --health-cmd "curl -sf http://localhost:9000/minio/health/live"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
         command: server /data --console-address ":9001"
     env:
       ENVIRONMENT: dev
@@ -264,10 +263,13 @@ jobs:
           node-version: "22"
           cache: "npm"
           cache-dependency-path: apps/admin-web/package-lock.json
+      - name: Wait for MinIO
+        # State-based: the service is ready once /minio/health/live answers 200.
+        run: curl -sf --retry 60 --retry-all-errors --retry-delay 1 --retry-max-time 120 --connect-timeout 2 --max-time 5 -o /dev/null http://localhost:9000/minio/health/live
       - name: Install system deps
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Install Python deps
-        run: pip install sqlalchemy alembic asyncpg fastapi uvicorn httpx pytest bcrypt PyJWT psycopg2-binary greenlet ldap3 minio nats-py jsonschema pyyaml pytest-asyncio redis aiosqlite playwright pytest-playwright
+        run: pip install "sqlalchemy>=2.0,<2.1" alembic asyncpg fastapi uvicorn httpx pytest bcrypt PyJWT psycopg2-binary greenlet ldap3 minio nats-py jsonschema pyyaml pytest-asyncio redis aiosqlite playwright pytest-playwright
       - name: Install Node deps (admin-web)
         working-directory: apps/admin-web
         run: npm ci
@@ -341,21 +343,20 @@ jobs:
           done
       - name: Setup MinIO buckets + CORS
         run: |
-          # Download MinIO client
-          curl -sSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
-          chmod +x /usr/local/bin/mc
-          mc alias set local http://localhost:9000 minioadmin minioadmin
+          # MinIO client from a digest-pinned image (dl.min.io mc download returns 410 since 2026-09).
+          # Pull explicitly so an unavailable image fails here, not in later UI tests.
+          docker pull -q cgr.dev/chainguard/minio-client@sha256:b2bd7824d23d3e3b15bedd7e87fbc3be29d2e213307b4f901e4a1d92356dc20f
+          mc() { docker run --rm --network host -e MC_HOST_local=http://minioadmin:minioadmin@localhost:9000 cgr.dev/chainguard/minio-client@sha256:b2bd7824d23d3e3b15bedd7e87fbc3be29d2e213307b4f901e4a1d92356dc20f "$@"; }
           # Create required buckets
-          mc mb local/retail-media-creatives 2>/dev/null || true
-          mc mb local/retail-media-contracts 2>/dev/null || true
-          mc anonymous set public local/retail-media-creatives 2>/dev/null || true
-          mc anonymous set public local/retail-media-contracts 2>/dev/null || true
+          mc mb --ignore-existing local/retail-media-creatives
+          mc mb --ignore-existing local/retail-media-contracts
+          mc anonymous set public local/retail-media-creatives
+          mc anonymous set public local/retail-media-contracts
           # Set CORS for browser presigned-URL upload
           mc admin config set local api \
-            cors_allow_origin='http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173' \
-            >/dev/null 2>&1 || true
+            cors_allow_origin='http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173'
           echo "MinIO configured."
-          mc ls local/ 2>/dev/null || true
+          mc ls local/
       - name: Write build marker (both apps)
         run: |
           SHORT=$(git rev-parse --short HEAD)
@@ -535,7 +536,7 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: |
-          pip install sqlalchemy alembic asyncpg fastapi httpx pytest bcrypt PyJWT psycopg2-binary greenlet ldap3 minio nats-py jsonschema pyyaml pytest-asyncio redis
+          pip install "sqlalchemy>=2.0,<2.1" alembic asyncpg fastapi httpx pytest bcrypt PyJWT psycopg2-binary greenlet ldap3 minio nats-py jsonschema pyyaml pytest-asyncio redis
       - name: Wait for PostgreSQL
         run: |
           ready=false
@@ -670,7 +671,7 @@ jobs:
           python-version: "3.12"
       - name: Install deps
         run: |
-          pip install sqlalchemy alembic asyncpg fastapi uvicorn httpx pytest bcrypt \
+          pip install "sqlalchemy>=2.0,<2.1" alembic asyncpg fastapi uvicorn httpx pytest bcrypt \
             PyJWT psycopg2-binary greenlet ldap3 minio nats-py jsonschema pyyaml \
             pytest-asyncio redis
           sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
@@ -812,7 +813,7 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: |
-          pip install sqlalchemy alembic asyncpg psycopg2-binary greenlet pytest bcrypt PyJWT \
+          pip install "sqlalchemy>=2.0,<2.1" alembic asyncpg psycopg2-binary greenlet pytest bcrypt PyJWT \
             fastapi httpx pyyaml jsonschema minio nats-py ldap3 redis
       - name: Run the isolated rollback drill
         run: |
