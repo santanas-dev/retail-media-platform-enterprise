@@ -87,7 +87,7 @@ export MINIO_ENDPOINT="127.0.0.1:19000"
 export MINIO_ACCESS_KEY="${MINIO_ROOT_USER_SRC}"
 export MINIO_SECRET_KEY="${MINIO_ROOT_PW_SRC}"
 export MINIO_BUCKETS="drill-creatives,drill-contracts"
-export MINIO_SERVER_VERSION="RELEASE.2024-11-07T00-52-20Z"
+export MINIO_SERVER_VERSION="RELEASE.2026-09-22T19-25-18Z"
 export BACKUP_ROOT
 
 python3 scripts/backup/quiesced_backup.py \
