@@ -2,6 +2,17 @@
 
 **Last updated:** 2026-08-31 (OD-042: r428 — целевой контракт, RM-GOV-012 approved; implementation_mode у 101 REQ; RM-GOV-012 выравнивание, OD-041 пауза walkthrough; RM-GOV-010-A/B; статус документа ACCEPTED, не APPROVED; не закоммичено)
 
+**RF-01 / RM-STAB-018 (2026-09-28, PR в develop ждёт merge владельцем) — refresh-токены: обнаружение повтора и атомарная ротация.**
+Закрывает P0-7 ревью `main @ 8ad0228` по OD-046. Было: поиск refresh с фильтром `rotated_at IS NULL` делал обнаружение повтора
+недостижимым, отзыв семьи писал несуществующую колонку `last_error`, ротация без блокировки (4 параллельных refresh → 4 живые ветки),
+отзыв откатывался вместе с 401. Стало: повтор ротированного токена позже 10 с отзывает семью (audit `auth.refresh.replay_detected`),
+в пределах 10 с — 401 без отзыва (audit `auth.refresh.reuse_within_grace`); операции над семьёй сериализованы advisory-lock;
+коммит перед 401. Доказательство: `tests/behavioral/test_rm_stab_018_refresh_replay.py` 7/7 под `retail_media_app` NOBYPASSRLS
+(падают на коде до исправления), behavioral 484 passed, python-tests 1914 passed, 3 круга ревью (APPROVE WITH COMMENTS).
+RM-STAB-018 — `in_progress` до merge и CI develop. Долг: ложный отзыв при потерянном ответе и повторе > 10 с; квота сессий считает
+ротированные строки; logout/admin revoke-all/login-лимит без блокировки семьи (редкий deadlock → 500); нет rate limit на `/refresh`;
+проигравшая вкладка портала получает 401 до RF-08. Запись: `docs/remediation/journal.md`.
+
 **RF-CI (2026-09-28, merged `6bc9ac0`) — CI снова собирается после внешнего дрейфа.** SQLAlchemy 2.1.1
 (`postgresql://` → psycopg v3), закрытый анонимный pull `minio/minio` на Docker Hub и 410 у `dl.min.io` mc уронили
 `Phase 1 — Quality Gates` на любом push (push-run `fix/RF-00` 36392472274: 6 failure + 3 cancelled). Исправлено PR #10 (`ebc1832`): pin `sqlalchemy<2.1` в CI и

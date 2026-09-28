@@ -369,6 +369,19 @@ owner_decisions:
   - указание владельца 2026-08-31 (сессия)
   - docs/architecture/rm-tech-210-device-onboarding-rls-bootstrap-design-gate.md
   - CI run 33408891221 (Behavioral PostgreSQL - ADR-008 Gate, success)
+- id: OD-046
+  statement: Решение владельца 2026-09-28 по находке P0-7 ревью main@8ad0228 (сверка RF-00) - заводится
+    RM-STAB-018 (стадия S), реализуется этапом RF-01. Повторное предъявление ротированного refresh-токена
+    позже 10 с после ротации отзывает всю семью токенов с audit-событием; повтор в пределах 10 с (гонка
+    параллельных refresh вкладок портала, P1-13.b) даёт 401 без отзыва семьи; окно настраивается в
+    SecurityConfig. Ротация атомарна - параллельные refresh одним токеном не создают две ветки. Мок-тест
+    test_replay_calls_family_revoke, маскирующий дефект, заменяется тестом на PostgreSQL.
+  status: approved
+  decided_on: '2026-09-28'
+  sources:
+  - указание владельца 2026-09-28 (сессия /start RF-01)
+  - docs/audit/2026-09-27-claude-rf-00-recheck-develop-b166419.md (P0-7)
+  - docs/remediation/stages.md (RF-01)
 stages:
 - id: G
   title: Единая система roadmap
@@ -1759,6 +1772,27 @@ tasks:
   notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-ARCH-002; SC: SC-ARCH-004; DEC: DEC-014. Evidence:
     tests/test_production_config_gate.py; egress check. Риск регрессии: низкий. monitoring-dashboard —
     read-only наблюдатель (OD-027), не зависимость.'
+- id: RM-STAB-018
+  kind: implementation
+  stage: S
+  title: 'Refresh-токены пользователя: обнаружение повтора и атомарная ротация'
+  owner_role: Security owner
+  dependencies:
+  - RM-STAB-002
+  acceptance:
+  - check: повтор ротированного refresh позже окна отзывает всю семью (audit auth.refresh.replay_detected);
+      повтор в окне - 401 без отзыва (audit auth.refresh.reuse_within_grace); параллельные refresh одним токеном
+      дают ровно одну новую сессию; операции над семьёй сериализованы (повтор против refresh - без выживших, два
+      повтора - без deadlock); отзыв закоммичен при ответе 401
+    verified_by: behavioral
+    ref: tests/behavioral/test_rm_stab_018_refresh_replay.py
+  decision_status: approved
+  delivery_status: in_progress
+  notes: 'OD-046 (2026-09-28), этап RF-01; находка P0-7 ревью main@8ad0228. REQ: REQ-SEC-001; SC: -; DEC: -.
+    Скрытые дефекты: поиск с фильтром rotated_at IS NULL делал ветку повтора недостижимой; отзыв семьи писал
+    несуществующую колонку last_error (CompileError); ротация без блокировки. Риск регрессии: средний -
+    отзыв семьи начинает срабатывать; гонка вкладок портала (P1-13.b) семью не отзывает (окно 10 с), но
+    проигравшая вкладка по-прежнему получает 401 - до single-flight на фронтенде (RF-08).'
 - id: RM-TECH-220
   kind: implementation
   stage: C
