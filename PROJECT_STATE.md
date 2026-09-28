@@ -2,6 +2,16 @@
 
 **Last updated:** 2026-08-31 (OD-042: r428 — целевой контракт, RM-GOV-012 approved; implementation_mode у 101 REQ; RM-GOV-012 выравнивание, OD-041 пауза walkthrough; RM-GOV-010-A/B; статус документа ACCEPTED, не APPROVED; не закоммичено)
 
+**RF-00 (2026-09-28) — пересверка ревью кода `main @ 8ad0228` на `develop @ b166419`; ожидает решения владельца.**
+Только документы, код не менялся. Запись: `docs/audit/2026-09-27-claude-rf-00-recheck-develop-b166419.md` —
+94 строки (13 P0 / 18 P1 / P2 / пробелы тестов): 4 исправлено (P0-13 API-TX-BOUNDARY-001, P1-5 RM-TECH-210, T5, T6),
+3 частично, 87 актуально; 12 из 13 P0 открыты (pilot-контур, RBAC/refresh, бронь, lifecycle манифеста, CI inputs).
+Доказательство — file:line на `b166419`, 3 круга независимого ревью (APPROVE WITH COMMENTS), guard PASS / self-test 55/55.
+Не доказано: 9 строк «вероятно» требуют PostgreSQL/NATS/MinIO. Вынесено владельцу (не решено агентом): расхождения
+канона с кодом — LIFECYCLE-COMPLETE «real DB proof» (тест под владельцем БД, P1-8), pilot «Verify green» (P0-5),
+canon §2.4 (P1-3/P1-4); 4 теста закрепляют дефекты; черновики RF-01…RF-09 в `docs/remediation/stages.md` (`draft`);
+новые задачи `roadmap.yaml` не внесены — ожидает решения владельца.
+
 **RLS-CONTEXT-DEVICE-001 (открыто, блокирует device pilot).** `POST /device/onboard` и
 `POST /identity/device-codes` не несут `Depends(set_rls_context)`, но работают с
 RLS-таблицей `device_onboarding_codes` (`FORCE RLS`). Продовый `get_db` не ставит ни
