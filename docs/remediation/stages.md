@@ -51,6 +51,22 @@
 
 ---
 
+## RF-CI — CI снова собирается (внеплановый, решение владельца 2026-09-28)
+
+| Поле | Значение |
+|---|---|
+| Статус | merged |
+| Цель | `Phase 1 — Quality Gates` снова зелёный после внешнего дрейфа (SQLAlchemy 2.1, `minio/minio`, `dl.min.io`) |
+| Задачи roadmap.yaml | — (смежно RM-STAB-009 — пины зависимостей) |
+| Находки | push-run `fix/RF-00` 36392472274 (6 failure + 3 cancelled); P2-I3 (частично) |
+| Скоуп (в) | `phase1-ci.yml`; requirements трёх сервисов; compose restore-drill / phase1 / pilot (образ, healthcheck, `user: "0"` в pilot и phase1); `backup-restore-drill.sh` (`MINIO_SERVER_VERSION`) |
+| Скоуп (вне) | Код приложений, тесты (кроме CI-скрипта drill), миграции, переход на SQLAlchemy 2.1, non-root MinIO, зеркало в GHCR |
+| Protected Boundaries | Docker/deployment/backup — MinIO в CI, compose restore-drill/phase1/pilot и drill-скрипте (ответ владельца «CI + drill + phase1 + pilot»); `user: "0"` в pilot — одобрено, в phase1 — ожидает подтверждения |
+| mini-design | нет |
+| Входные условия | решение владельца «вариант 1» |
+| Гейт | CI `Phase 1 — Quality Gates` всё зелёное; import boundaries; roadmap guard |
+| Канон, который меняется | только checkpoint PROJECT_STATE |
+
 ## RF-01 и далее
 
 Определяются по итогам RF-00 и решению владельца.

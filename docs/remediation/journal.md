@@ -10,9 +10,9 @@
 | | |
 |---|---|
 | Активный этап | — |
-| Последний завершённый | RF-00 — finished, PR `fix/RF-00` → `develop` ждёт merge |
+| Последний завершённый | RF-CI — merged (PR #10, `6bc9ac0`); RF-00 — finished, PR #9 ждёт merge |
 | Следующий шаг | merge PR RF-00 владельцем → решение по черновикам RF-01…RF-09 → `/start RF-<N>` |
-| Базовая линия | `origin/develop @ b166419` (2026-09-03). CI run 33735361730 → success (проверено в baseline RF-00) |
+| Базовая линия | `origin/develop @ 6bc9ac0` (2026-09-28, merge RF-CI; push-run `develop` 36407616564 → success; то же дерево — push-run `fix/RF-CI` 36404147483, 41/41). Снимок аудита RF-00 — `b166419`; ветка `fix/RF-00` получила `6bc9ac0` merge-коммитом `3892552` |
 | Источник находок | `docs/audit/2026-09-27-claude-code-review-main-8ad0228.md` (снято на `main @ 8ad0228`; develop на 64 коммита впереди) |
 
 ## Инварианты (не ломать)
@@ -32,6 +32,8 @@
 | 2026-09-27 | Git: ветка `fix/<id>` от `develop` → PR в `develop`; merge делает только владелец |
 | 2026-09-27 | `/start` одобряет только Protected Boundaries, перечисленные в карточке этапа |
 | 2026-09-27 | Первый этап — пересверка находок на develop (RF-00); дальнейшие этапы — пакеты задач `roadmap.yaml` |
+| 2026-09-28 | Запись RF-CI (карточка, журнал, checkpoint) — в PR #9: предложено агентом в отчёте RF-CI, владелец продолжил `/finish`; синхронизация `fix/RF-00` с develop — merge-коммитом (решение владельца) |
+| 2026-09-28 | Красный CI PR #9 из-за внешнего дрейфа — отдельный этап RF-CI (вариант 1); SQLAlchemy `<2.1` в CI и requirements; MinIO → Chainguard по digest; скоуп CI + drill + phase1 + pilot, Protected Boundary «Docker/deployment» — по ответу владельца «CI + drill + phase1 + pilot»: образ/healthcheck MinIO в `phase1-ci.yml`, compose restore-drill/phase1/pilot и версия MinIO в `backup-restore-drill.sh`; pilot `user: "0"` + долг. `user: "0"` в phase1 добавлен агентом на круге ревью 2 по аналогии — **ожидает подтверждения владельца** |
 
 ---
 
@@ -131,6 +133,15 @@
 | 3 | P1-16: часть про CLI `nats` без пометки «вероятно» | 🟡 | исправлено: пометка «требует проверки образа» | нет | образ не проверялся (без Docker-запусков в RF-00) |
 | 3 | Не указан интерпретатор guard — системный `python3` даёт ложный красный | 🟡 | исправлено: в baseline записан `.venv` | нет | ревьюер: системный `python3` → `MODULE-ERROR: openpyxl` |
 | 3 | P0-3: доказательство без dev-fallback audience и источника токена | 🟡 | исправлено: добавлены `config.py:257-258`, `onboard.py:151`, compose `:120` | нет | `sed -n 255,258p config.py` |
+| Δ1 | Push записи не даст зелёный CI: workflow только на `push` по дереву ветки, в `fix/RF-00` нет правок RF-CI | 🔴 | исправлено: merge `origin/develop` → `3892552` (решение владельца), текст плана переписан | низкий: merge без конфликтов, история не переписана | `on: push` в `phase1-ci.yml`; runs `event: push` |
+| Δ1 | Базовая линия `6bc9ac0` противоречила основе ветки `b166419` | 🟠 | исправлено: разделены базовая линия, снимок аудита, merge-коммит | нет | journal «Текущее состояние» |
+| Δ1 | «9 fail» — фактически 6 failure + 3 cancelled | 🟠 | исправлено во всех местах | нет | `gh run view 36392472274` |
+| Δ1 | «CI PR» — на деле push-run ветки | 🟠 | исправлено | нет | `event: push` |
+| Δ1 | Запись RF-CI в PR #9 без записанного одобрения; формулировка Protected Boundary | 🟡 | исправлено: строки в «Решения владельца» | нет | — |
+| Δ1 | Шапка `Last updated` в PROJECT_STATE устарела (2026-08-31) | 🟡 | долг: шапка ведётся отдельными записями, не менялась этапом | — | — |
+| Δ2 | Одобрение Protected Boundary записано уже фактического диффа; `user: "0"` в phase1 — после решения | 🟠 | исправлено: запись по ответу владельца, phase1 `user` — «ожидает подтверждения» | нет | ответ владельца «CI + drill + phase1 + pilot» |
+| Δ2 | Необратимый апгрейд pilot MinIO защищён только текстом | 🟠 | вынесено владельцу (вне скоупа RF-00), долг RF-CI | — | overlay `docker-compose.local-stand.yml` поверх pilot |
+| Δ2 | Базовая линия — ссылка на run ветки, а не develop; «в этой ветке»; ретро-правка записи; порядкозависимые тесты не в долге | 🟡 | исправлено: run 36407616564; ветка названа; исходная строка восстановлена + «Дополнение»; долг добавлен | нет | `gh run view 36407616564` → push develop success |
 
 ### Гейт
 2026-09-27, `.venv`, `set -o pipefail`, после круга 3:
@@ -146,6 +157,7 @@
 ### Итог
 - Статус: finished (PR ждёт merge владельцем)
 - Коммит и PR: `gh pr list --head fix/RF-00` · CI: результат проверок PR — в отчёте `/finish` (в коммит не входит)
+- Дополнение 2026-09-28: Коммит `6bb5b2c` · PR #9 · push-run 36392472274 attempt 1 → failure (6 failure + 3 cancelled) — внешний дрейф (SQLAlchemy 2.1, `minio/minio`, `dl.min.io`), не RF-00; исправлено этапом RF-CI (PR #10). `phase1-ci.yml` запускается только на `push` по дереву ветки (PR-триггер — только `main`), поэтому `develop @ 6bc9ac0` влит в ветку merge-коммитом `3892552` (решение владельца 2026-09-28); повторный CI — push-run ветки с этой записью
 - Доказано: статус каждой из 94 строк находок ревью `8ad0228` на `develop @ b166419` с file:line;
   4 исправлено (P0-13, P1-5, T5, T6), 3 частично (P0-10.b, P1-15, P2-F3), 87 актуально.
 - Долг / ожидает решения владельца:
@@ -157,3 +169,54 @@
   - разовый self-test 54/55 в baseline (не воспроизведён, причина не установлена).
 - Новые инварианты: нет (этап документальный, поведение не менял).
 - Следующий шаг: merge PR владельцем → решение по черновикам → `/start RF-<N>`.
+
+## RF-CI — CI снова собирается (внеплановый этап)
+
+- Статус: merged (PR #10 → `develop @ 6bc9ac0`, владелец 2026-09-28)
+- Ветка: fix/RF-CI · Основа: develop @ b166419 · Коммит `ebc1832`
+- Причина: push-run `fix/RF-00` 36392472274 → 6 failure + 3 cancelled по внешним причинам, воспроизведено локально:
+  SQLAlchemy 2.1.1 (`postgresql://` → psycopg v3; без `[asyncio]` нет greenlet); Docker Hub `minio/minio` —
+  анонимный pull запрещён на всех тегах, quay.io — нет манифеста; `dl.min.io` mc → HTTP 410.
+- План и решения владельца — см. «Решения владельца» (2026-09-28). Карточка и журнал RF-CI записаны в ветке `fix/RF-00`
+  (`docs/remediation/` на `fix/RF-CI` отсутствовал), после merge PR #10.
+
+### Сделано
+- `phase1-ci.yml`: `"sqlalchemy>=2.0,<2.1"` во всех `pip install`; MinIO `cgr.dev/chainguard/minio@sha256:6a1d0b45…`;
+  шаг «Wait for MinIO» (curl до 200, `--retry-all-errors`, ≤120 с); `mc` из `cgr.dev/chainguard/minio-client@sha256:b2bd7824…`
+  с явным pull, без `|| true`; `pipefail` у import smoke.
+- requirements control-api / device-gateway / orchestrator-worker: `<2.1` с комментарием причины.
+- compose restore-drill / phase1 / pilot: образ по digest, healthcheck через bash `/dev/tcp`; pilot и phase1 — `user: "0"`.
+- `backup-restore-drill.sh`: `MINIO_SERVER_VERSION` = `RELEASE.2026-09-22T19-25-18Z`.
+
+### Доказательства
+- Локально: import smoke 5 сервисов — на 2.1.1 `ImportError greenlet`, с pin 5× OK; `alembic upgrade head` на PostgreSQL 16
+  через `postgresql://` → 037; `test_stand_rollback_drill.py` 3 passed; drill MinIO `up --wait` → Healthy; healthcheck 200 → 0,
+  403 → 1; шаги CI Wait/Setup под `bash -e` rc 0 (повтор rc 0, без сервера rc 7 за 60 с); UID 65532 на root-томе с данными →
+  `file access denied` (основание `user: "0"`).
+- CI: push-run ветки `fix/RF-CI` (head `ebc1832`) 36404147483 attempt 1 → success, 41/41 (UI-Smoke, Backup/Restore Drill, Behavioral, Rollback Drill, release-gate).
+- Не запускалось локально: Backup/Restore Drill (нет `pg_dump`), UI-smoke — доказаны CI.
+- Наблюдение: локальный `pytest tests/` — 7 падений и на чистом develop (зависят от порядка, по отдельности проходят); в CI зелёно.
+
+### Ревью
+| Круг | Замечание | Уровень | Решение | Риск исправления | Доказательство |
+|---|---|---|---|---|---|
+| 1 | `mc` с `2>/dev/null \|\| true` — недоступный образ молча не создаст бакеты | 🟠 | исправлено: явный `docker pull`, `mb --ignore-existing`, без подавления | низкий: шаг строже | шаг под `bash -e` rc 0, повтор rc 0 |
+| 1 | Апгрейд pilot-тома 2024-11 → 2026-09 не проверен, откат не описан | 🟠 | отклонено с обоснованием → долг: старый образ недоступен нигде — ни тест, ни откат невозможны | — | `docker manifest inspect` Docker Hub/quay → denied / no manifest |
+| 1 | Нет карточки RF-CI с одобрением Protected Boundary | 🟠 | одобрение владельца получено в сессии 2026-09-28; записано здесь и в PR #10 | — | «Решения владельца» 2026-09-28 |
+| 1 | Digest Chainguard может исчезнуть (free tier — только `latest`) | 🟠 | долг: не проверяемо кодом; вариант — зеркало в GHCR | — | — |
+| 2 | phase1 compose: существующие dev-тома под UID 65532 | 🟠 | исправлено: `user: "0"` как в pilot | низкий | `compose config` OK |
+| 2 | Комментарий pin неточен (greenlet приходит с `[asyncio]` и в 2.1) | 🟡 | исправлено: причина — psycopg v3 | нет | `pip install --dry-run "sqlalchemy[asyncio]==2.1.1"` → greenlet |
+| 2 | `mc ls \|\| true` | 🟡 | исправлено | нет | шаг rc 0 |
+| 3 | `pip \| tail` без pipefail (строка правилась) | 🟡 | исправлено | низкий | CI 41/41 |
+| 3 | Ожидание MinIO не ограничено по времени целиком | 🟡 | исправлено: `--retry-max-time 120 --connect-timeout 2 --max-time 5` | нет | без сервера rc 7 за 60 с |
+| 1–3 | `MINIO_SERVER_VERSION` захардкожена; runbook `minio/minio:latest`; двойной CORS; голые `postgresql://`; `prepare-ui-smoke-stack.sh` с mc | 🟡 | долг | — | — |
+
+### Итог
+- Коммит `ebc1832` · PR #10 · push-run 36404147483 → success · merged `6bc9ac0`.
+- Долг: апгрейд pilot MinIO на живом томе не проверен и необратим — **бэкап MinIO перед обновлением stand-81**; non-root MinIO
+  после `chown -R 65532` томов (операция владельца); сохранность digest Chainguard / зеркало в GHCR; снять pin после явных
+  `postgresql+psycopg2://` (RM-STAB-009); runbook `pilot-deployment-readiness.md`; `prepare-ui-smoke-stack.sh`; двойной CORS;
+  `MINIO_SERVER_VERSION`; 7 порядкозависимых падений локального `pytest tests/` (есть и на чистом develop, в CI зелёно) —
+  дефект изоляции тестов, не разбирался; runbook/preflight без шага бэкапа MinIO перед апгрейдом stand-81.
+- Новые инварианты: нет отдельной команды — зелёный `Phase 1 — Quality Gates` (включая UI-Smoke и drill) и есть проверка.
+- Следующий шаг: `develop @ 6bc9ac0` влит в `fix/RF-00` (`3892552`); push-run ветки RF-00 → зелёный → merge PR #9 владельцем.
