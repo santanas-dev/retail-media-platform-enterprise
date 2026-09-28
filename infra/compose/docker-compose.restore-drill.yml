@@ -39,7 +39,7 @@ services:
       retries: 10
 
   src-minio:
-    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    image: cgr.dev/chainguard/minio@sha256:6a1d0b45c8669726bba580ced0bfa4cb9fdeed1ed636dfabd81d1577beb6937b
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: drill_src_minio_admin
@@ -50,7 +50,7 @@ services:
       - src_minio_data:/data
     networks: [source-net]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /minio/health/live HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && read -r s <&3 && [[ $$s == *' 200 '* ]]"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -75,7 +75,7 @@ services:
       retries: 10
 
   tgt-minio:
-    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    image: cgr.dev/chainguard/minio@sha256:6a1d0b45c8669726bba580ced0bfa4cb9fdeed1ed636dfabd81d1577beb6937b
     command: server /data --console-address ":9002"
     environment:
       MINIO_ROOT_USER: drill_tgt_minio_admin
@@ -86,7 +86,7 @@ services:
       - tgt_minio_data:/data
     networks: [target-net]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /minio/health/live HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && read -r s <&3 && [[ $$s == *' 200 '* ]]"]
       interval: 5s
       timeout: 3s
       retries: 10
