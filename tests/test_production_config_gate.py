@@ -42,6 +42,8 @@ def _prod_config(**overrides) -> SecurityConfig:
         "DATABASE_URL": "postgresql+asyncpg://rmp_user:strong-prod-pass@db.internal:5432/rmp_prod",
         "SEED_DEV_CREDENTIALS": "",
         "METRICS_AUTH_TOKEN": "a-strong-metrics-token-32-chars-min!!",
+        # RF-05: required outside dev (shared by every backend service)
+        "JWT_AUDIENCE": "rmp-control-api",
     }
     env.update(overrides)
     # Sentinel: empty string means "delete this key from environment"
@@ -281,6 +283,15 @@ def test_production_rejects_missing_metrics_token():
     """Production must reject absent METRICS_AUTH_TOKEN."""
     with pytest.raises(ValueError, match="METRICS_AUTH_TOKEN must be set"):
         _prod_config(METRICS_AUTH_TOKEN="")
+
+def test_production_rejects_missing_jwt_audience():
+    """RF-05 (P0-3): production must reject an absent JWT_AUDIENCE at boot."""
+    with pytest.raises(ValueError, match="JWT_AUDIENCE must be set"):
+        _prod_config(JWT_AUDIENCE="")
+
+def test_production_rejects_blank_jwt_audience():
+    with pytest.raises(ValueError, match="JWT_AUDIENCE must be set"):
+        _prod_config(JWT_AUDIENCE="   ")
 
 def test_production_rejects_short_metrics_token():
     """Production must reject short (<16 chars) METRICS_AUTH_TOKEN."""

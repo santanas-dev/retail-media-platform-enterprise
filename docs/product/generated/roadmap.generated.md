@@ -20,12 +20,12 @@
 
 | Метрика | Значение |
 |---|---|
-| Всего задач | 110 |
-| По этапам | A=12, C=17, CH=9, CORE=21, E0=3, G=12, POPS=7, S=19, U=10 |
-| По типу | design=13, external=2, external-plan=2, governance=21, human=1, implementation=71 |
-| По статусу поставки | blocked=10, done=12, in_progress=2, planned=81, verification=5 |
+| Всего задач | 111 |
+| По этапам | A=12, C=17, CH=9, CORE=21, E0=3, G=12, POPS=8, S=19, U=10 |
+| По типу | design=13, external=2, external-plan=2, governance=21, human=1, implementation=72 |
+| По статусу поставки | blocked=10, done=13, in_progress=2, planned=81, verification=5 |
 | Требуют owner gate | 33 |
-| С verified evidence | 17 |
+| С verified evidence | 18 |
 | Максимальная глубина зависимостей | 9 |
 | Гейты | Gate-G, Gate-E0, Gate-S, Gate-U, Gate-C, Gate-CORE, Gate-CH, Gate-A, Gate-POPS |
 | Решения владельца | 46 |
@@ -170,7 +170,7 @@
 | `RM-STAB-015` | implementation | Control plane системного администратора: отдельные permission-коды и scope | `RM-STAB-004` | 6 | planned | — | users/roles/devices/settings/monitoring/audit — отдельные коды; approved campaign без отдельного права не меняется [behavioral: `tests/test_phase3_user_management.py`] | — |
 | `RM-STAB-016` | implementation | Object storage boundary: приватные buckets, presigned TTL, ограниченные service accounts | `RM-ENV-001` | 1 | planned | — | анонимный доступ запрещён; просроченный presigned URL отклонён [behavioral: `tests/test_storage_service.py`] | — |
 | `RM-STAB-017` | implementation | Независимость production от внешнего runtime: production smoke при выключенных dashboard/LLM-агентах | `RM-STAB-009` | 2 | planned | — | полный production smoke проходит без внешних наблюдателей; ни один сервис не вызывает внешний runtime (egress allow-list) [command: `tests/test_production_config_gate.py`] | — |
-| `RM-STAB-018` | implementation | Refresh-токены пользователя: обнаружение повтора и атомарная ротация | `RM-STAB-002` | 3 | in_progress | — | повтор ротированного refresh позже окна отзывает всю семью (audit auth.refresh.replay_detected); повтор в окне - 401 без отзыва (audit auth.refresh.reuse_within_grace); параллельные refresh одним токеном дают ровно одну новую сессию; операции над семьёй сериализованы (повтор против refresh - без выживших, два повтора - без deadlock); отзыв закоммичен при ответе 401 [behavioral: `tests/behavioral/test_rm_stab_018_refresh_replay.py`] | — |
+| `RM-STAB-018` | implementation | Refresh-токены пользователя: обнаружение повтора и атомарная ротация | `RM-STAB-002` | 3 | done | — | повтор ротированного refresh позже окна отзывает всю семью (audit auth.refresh.replay_detected); повтор в окне - 401 без отзыва (audit auth.refresh.reuse_within_grace); параллельные refresh одним токеном дают ровно одну новую сессию; операции над семьёй сериализованы (повтор против refresh - без выживших, два повтора - без deadlock); отзыв закоммичен при ответе 401 [behavioral: `tests/behavioral/test_rm_stab_018_refresh_replay.py`] | verified · behavioral · `tests/behavioral/test_rm_stab_018_refresh_replay.py`; verified · ci_run · `https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/36475858226` |
 | `RM-TECH-210` | implementation | RLS-контекст на device-маршрутах онбординга | `RM-STAB-002` | 3 | done | device_contract | POST /device/onboard и POST /identity/device-codes работают под ролью приложения БЕЗ элевации до admin; обе записи снимаются из ENDPOINT_ELEVATION_ALLOWLIST, и behavioral-набор остаётся зелёным без них [behavioral: `tests/behavioral/test_edge001_device_onboarding.py`]; bootstrap-RLS миграции 037: без RLS-контекста роль приложения видит 0 onboarding codes (fail-closed); со своим app.rmp_device_code — только свою строку; с чужим кодом — 0 [behavioral: `tests/behavioral/test_edge001_device_onboarding.py::TestRMTech210BootstrapRLS::test_app_role_sees_code_only_with_code_bootstrap`] | verified · behavioral · `tests/behavioral/test_edge001_device_onboarding.py`; verified · behavioral · `tests/behavioral/test_edge001_device_onboarding.py::TestRMTech210BootstrapRLS::test_app_role_sees_code_only_with_code_bootstrap`; verified · behavioral · `tests/behavioral/test_rls_context_strictness.py`; verified · ci_run · `https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/33408891221` |
 
 ### C — Контракты: API, события, manifest, ERD (17) · закрывается `Gate-C`
@@ -267,7 +267,7 @@
 | `RM-TECH-289` | design | Extension points designed-not-implemented: ADR для programmatic (V26-007) и external measurement (V26-011) | `RM-TECH-220` | 1 | planned | — | ADR принят с пометкой designed-not-implemented; код не пишется до OD-021/OD-031 [artifact: `docs/audit/RM-TECH-289-artifact.md (создаётся задачей)`] | — |
 | `RM-UX-010` | implementation | Service-quality reporting: доля active devices/logical carriers, plan/fact по каналу (analytics.compare) | `RM-BIZ-003` | 3 | planned | — | отчёт по каналу с долями и причинами; RLS scope advertiser [ui_smoke: `tests/ui-smoke/test_rm_ux_010.py`] | — |
 
-### POPS — Внешние действия: pilot и production (7) · закрывается `Gate-POPS`
+### POPS — Внешние действия: pilot и production (8) · закрывается `Gate-POPS`
 
 | ID | Kind | Задача | Зависит от | Глубина | Поставка | Owner gate | Приёмка | Evidence |
 |---|---|---|---|---|---|---|---|---|
@@ -277,6 +277,7 @@
 | `RM-OPS-004` | implementation | Rollout entity/state machine и feature flags: planned→lab→canary→staged→paused→completed/rolled_back | `RM-PILOT-002` | 3 | blocked | — | rollback возвращает предыдущую версию; flag отключает функцию; ответственность по OD-010 [behavioral: `tests/integration/test_stand_rollback_drill.py`] | — |
 | `RM-PILOT-001` | design | Managed control-plane pilot scope | `Gate-S`, `Gate-U`, `RM-ENV-001` | 1 | planned | — | exact bundle/host/rollback/TLS [artifact: `docs/runbook/pilot-scope.md`] | — |
 | `RM-PILOT-002` | external-plan | Deployment plan/preflight | `RM-PILOT-001` | 2 | planned | — | immutable lock, backup/restore, migration rehearsal, secrets/TLS/monitoring [artifact: `infra/deploy/images.lock.json + dry-run evidence`] | — |
+| `RM-PILOT-002A` | implementation | Pilot-compose поднимается под ENVIRONMENT=pilot без ручных шагов; verify честный | — | 0 | in_progress | — | pilot-compose из образов коммита под ENVIRONMENT=pilot - db-migrate сам создаёт retail_media_app (NOBYPASSRLS), все сервисы healthy в пределах таймаута, readiness со строгой проверкой роли, identity из образа, device-токен control-api принят device-gateway, конфиг orchestrator-worker грузится; таймаут или любой отказ роняют проверку [command: `CI job pilot-compose-smoke: bash scripts/ci/verify-pilot-run.sh --images-from-env <version> <sha>`]; каждый backend-сервис получает из pilot-compose все переменные, которых требует валидатор prod; пустой JWT_AUDIENCE - отказ при старте [command: `python -m pytest tests/test_rf05_pilot_boot.py tests/test_production_config_gate.py`] | — |
 | `RM-PILOT-003` | external | Controlled pilot deploy | `RM-PILOT-002` | 3 | planned | deployment | SHA/lock/schema/health, stand-safe journeys, rollback readiness [owner: `docs/audit/<дата>-pilot-deploy-<sha>.md + ACCEPT владельца с датой (deployment gate)`] | — |
 
 ## Заблокированные функции и условия разблокировки

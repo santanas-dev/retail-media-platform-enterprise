@@ -29,6 +29,18 @@ COPY packages/ ./packages/
 COPY apps/${SERVICE_NAME}/ ./apps/${SERVICE_NAME}/
 COPY infra/compose/ ./infra/compose/
 
+# Build identity (build-images.sh passes these). Baked into the image so a
+# release's identity can be checked against the image itself
+# (verify-pilot-run.sh, docker image inspect). At runtime the pilot compose
+# still passes RMP_VERSION/RMP_GIT_SHA/RMP_BUILD_TIME, which override these.
+# Unset args stay empty: packages/version.py fails closed on them in pilot.
+ARG RMP_VERSION=
+ARG RMP_GIT_SHA=
+ARG RMP_BUILD_TIME=
+ENV RMP_VERSION=${RMP_VERSION}
+ENV RMP_GIT_SHA=${RMP_GIT_SHA}
+ENV RMP_BUILD_TIME=${RMP_BUILD_TIME}
+
 EXPOSE ${SERVICE_PORT}
 
 CMD ["sh", "-c", "python -c \"import runpy; runpy.run_module('${SERVICE_MODULE}', run_name='__main__')\""]

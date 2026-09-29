@@ -1450,6 +1450,28 @@ tasks:
   decision_status: approved
   delivery_status: planned
   notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+- id: RM-PILOT-002A
+  kind: implementation
+  stage: POPS
+  title: 'Pilot-compose поднимается под ENVIRONMENT=pilot без ручных шагов; verify честный'
+  owner_role: Technical owner
+  dependencies: []
+  acceptance:
+  - check: pilot-compose из образов коммита под ENVIRONMENT=pilot - db-migrate сам создаёт retail_media_app (NOBYPASSRLS), все
+      сервисы healthy в пределах таймаута, readiness со строгой проверкой роли, identity из образа, device-токен control-api принят
+      device-gateway, конфиг orchestrator-worker грузится; таймаут или любой отказ роняют проверку
+    verified_by: command
+    ref: 'CI job pilot-compose-smoke: bash scripts/ci/verify-pilot-run.sh --images-from-env <version> <sha>'
+  - check: каждый backend-сервис получает из pilot-compose все переменные, которых требует валидатор prod; пустой JWT_AUDIENCE -
+      отказ при старте
+    verified_by: command
+    ref: python -m pytest tests/test_rf05_pilot_boot.py tests/test_production_config_gate.py
+  decision_status: approved
+  delivery_status: in_progress
+  notes: 'Решение владельца 2026-09-29 (этап RF-05, область RM-PILOT-002, Protected Boundary Docker/deployment с условиями). Находки
+    ревью main@8ad0228: P0-1..P0-5, P1-16, P2-I9, P2-I11, T12 (+ FU5 healthcheck frontend). REQ: REQ-ARCH-004; SC: -; DEC: -.
+    Не покрывает: TLS/reverse proxy (001D), ack/DLQ воркера при ошибке (RF-04), публикацию релиза и verify-pilot-images на GHCR
+    (внешнее действие владельца). Риск регрессии: средний - обязательный JWT_AUDIENCE вне dev; pilot-хосты без него не стартуют.'
 - id: RM-PILOT-003
   kind: external
   stage: POPS
@@ -1787,8 +1809,19 @@ tasks:
     verified_by: behavioral
     ref: tests/behavioral/test_rm_stab_018_refresh_replay.py
   decision_status: approved
-  delivery_status: in_progress
-  notes: 'OD-046 (2026-09-28), этап RF-01; находка P0-7 ревью main@8ad0228. REQ: REQ-SEC-001; SC: -; DEC: -.
+  delivery_status: done
+  evidence_refs:
+  - kind: behavioral
+    ref: tests/behavioral/test_rm_stab_018_refresh_replay.py
+    status: verified
+    observed_at: '2026-09-28T20:06:33Z'
+    note: 'CI job «Behavioral PostgreSQL Tests — ADR-008 Gate» success на develop @ d8dbd62 (runtime-роль NOBYPASSRLS)'
+  - kind: ci_run
+    ref: https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/36475858226
+    status: verified
+    observed_at: '2026-09-28T20:06:33Z'
+    note: push-run develop @ d8dbd62 (merge PR #11), attempt 1, success 41/41
+  notes: 'OD-046 (2026-09-28), этап RF-01; done - PR #11 смержен в develop @ d8dbd62, push-run develop 36475858226 success 41/41 (решение владельца 2026-09-29); находка P0-7 ревью main@8ad0228. REQ: REQ-SEC-001; SC: -; DEC: -.
     Скрытые дефекты: поиск с фильтром rotated_at IS NULL делал ветку повтора недостижимой; отзыв семьи писал
     несуществующую колонку last_error (CompileError); ротация без блокировки. Риск регрессии: средний -
     отзыв семьи начинает срабатывать; гонка вкладок портала (P1-13.b) семью не отзывает (окно 10 с), но

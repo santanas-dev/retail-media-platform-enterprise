@@ -87,6 +87,43 @@ jobs:
           except SystemExit:
               pass  # uvicorn.run tries to parse args
           "
+      - name: Import smoke under ENVIRONMENT=pilot (pilot services)
+        # RF-05 (T12): dev mode skips the production validator, which is how
+        # pilot-only boot failures stayed invisible. This step proves the code
+        # imports and the validator accepts a complete pilot env; whether the
+        # compose actually passes that env is proven by tests/test_rf05_pilot_boot.py
+        # and the pilot-compose-smoke job. Placeholder values are CI-only, not secrets.
+        if: contains(fromJSON('["apps/control-api/main.py","apps/device-gateway/main.py","apps/orchestrator-worker/main.py"]'), matrix.path)
+        env:
+          ENVIRONMENT: pilot
+          JWT_SECRET: ci-pilot-smoke-jwt-secret-at-least-32-chars
+          JWT_AUDIENCE: rmp-control-api
+          MANIFEST_SIGNING_KEY: ci-pilot-smoke-manifest-key-at-least-32-chars
+          METRICS_AUTH_TOKEN: ci-pilot-smoke-metrics-token
+          CORS_ALLOWED_ORIGINS: https://admin.pilot-smoke.invalid
+          DATABASE_URL: postgresql+asyncpg://retail_media_app:ci-pilot-smoke-pass@postgres:5432/retail_media_platform
+          MINIO_ACCESS_KEY: ci-pilot-smoke-access
+          MINIO_SECRET_KEY: ci-pilot-smoke-secret-key-000
+        run: |
+          set -o pipefail
+          pip install fastapi uvicorn "sqlalchemy>=2.0,<2.1" PyJWT bcrypt 2>&1 | tail -1
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+          path = '${{ matrix.path }}'
+          mod = path.replace('/', '.').replace('.py', '')
+          src = open(path).read()
+          if '__name__' in src:
+              src = src.split(\"if __name__\")[0]
+          try:
+              exec(compile(src, path, 'exec'), {'__file__': path, '__name__': mod})
+              # orchestrator-worker loads the config lazily (manifest path): load it here.
+              from packages.security.config import get_security_config
+              assert not get_security_config().dev_mode
+              print('import OK (pilot)')
+          except SystemExit:
+              pass  # uvicorn.run tries to parse args
+          "
   python-tests:
     name: Python — Unit Tests
     runs-on: ubuntu-latest
@@ -828,6 +865,34 @@ jobs:
             exit 1
           fi
 
+  pilot-compose-smoke:
+    name: Pilot Compose Smoke — RF-05 (ENVIRONMENT=pilot, blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [python-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build all pilot images from this commit (no push)
+        run: |
+          set -o pipefail
+          bash scripts/deploy/build-images.sh --version ci-pilot-smoke --sha "$GITHUB_SHA"
+      - name: Pilot run proof (verify-pilot-run.sh on the local images)
+        run: |
+          set -o pipefail
+          # Same proof as the published-release verify: ENVIRONMENT=pilot, the
+          # compose creates its own app role, bounded waits fail the job, the
+          # identity comes from the images, device token crosses services.
+          R=ghcr.io/santanas-dev/rmp-pilot
+          export CONTROL_API_IMAGE=$R/control-api:ci-pilot-smoke
+          export DEVICE_GATEWAY_IMAGE=$R/device-gateway:ci-pilot-smoke
+          export ORCHESTRATOR_WORKER_IMAGE=$R/orchestrator-worker:ci-pilot-smoke
+          export ADMIN_WEB_IMAGE=$R/admin-web:ci-pilot-smoke
+          export ADVERTISER_WEB_IMAGE=$R/advertiser-web:ci-pilot-smoke
+          bash scripts/ci/verify-pilot-run.sh --images-from-env ci-pilot-smoke "$GITHUB_SHA"
+
   release-gate:
     name: release-gate
     runs-on: ubuntu-latest
@@ -846,6 +911,7 @@ jobs:
       - packaging
       - backup-restore-drill
       - stand-rollback-drill
+      - pilot-compose-smoke
     # Always run so the aggregate verdict is authoritative even if an upstream
     # job was skipped or failed — required status checks only gate on this job.
     if: always()
@@ -868,6 +934,7 @@ jobs:
             [packaging]="${{ needs.packaging.result }}"
             [backup-restore-drill]="${{ needs.backup-restore-drill.result }}"
             [stand-rollback-drill]="${{ needs.stand-rollback-drill.result }}"
+            [pilot-compose-smoke]="${{ needs.pilot-compose-smoke.result }}"
           )
           fail=0
           for job in "${!results[@]}"; do

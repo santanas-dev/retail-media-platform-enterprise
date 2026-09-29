@@ -325,6 +325,13 @@ class SecurityConfig:
             raise ValueError(
                 "JWT_SECRET must not be a common weak value in production"
             )
+        # RF-05 (P0-3): an empty audience is not a startup error elsewhere — it
+        # turns into 401 on every token issued by another service.
+        if not self.jwt_audience.strip():
+            raise ValueError(
+                "JWT_AUDIENCE must be set in production and equal across services "
+                "(control-api issues device tokens that device-gateway verifies)"
+            )
         self._validate_cors()
         self._validate_cors_production_origins()
         # S-017 P2: reject default MinIO credentials in production

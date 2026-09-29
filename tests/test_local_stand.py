@@ -659,32 +659,27 @@ def test_tool_does_not_persist_plaintext():
     assert "del password" in src
 
 
-# --- FU2: pilot compose omits MANIFEST_SIGNING_KEY for control-api -----------
+# --- FU2: MANIFEST_SIGNING_KEY for control-api -------------------------------
 #
-# docker-compose.pilot.yml passes MANIFEST_SIGNING_KEY to device-gateway and
-# orchestrator-worker but not to control-api. verify-pilot-run.sh runs with
-# ENVIRONMENT=dev, where the production validator is skipped, so CI never saw
-# it. Under ENVIRONMENT=staging/production control-api refuses to boot. The
-# stand runs as staging, so the overlay supplies the variable.
+# The pilot compose used to omit it for control-api, so control-api refused to
+# boot outside dev and the stand overlay carried a workaround. RF-05 fixed the
+# pilot compose (replacing test_pilot_compose_still_omits_manifest_key_for_control_api
+# and test_overlay_supplies_manifest_key_to_control_api, owner decision
+# 2026-09-29); the overlay must not keep a silent duplicate.
 
-def test_pilot_compose_still_omits_manifest_key_for_control_api():
-    """Guards the reason the overlay carries this variable.
+def _env_keys(service_doc) -> set:
+    env = (service_doc or {}).get("environment", {}) or {}
+    return set(env) if isinstance(env, dict) else {e.split("=", 1)[0] for e in env}
 
-    If the pilot compose is fixed, this test fails on purpose: remove the
-    workaround from the overlay instead of keeping a silent duplicate.
-    """
+
+def test_pilot_compose_passes_manifest_key_to_control_api():
     pilot = yaml.safe_load(PILOT.read_text())
-    env = (pilot["services"]["control-api"] or {}).get("environment", {}) or {}
-    keys = set(env) if isinstance(env, dict) else {e.split("=", 1)[0] for e in env}
-    assert "MANIFEST_SIGNING_KEY" not in keys, (
-        "pilot compose now sets MANIFEST_SIGNING_KEY for control-api - "
-        "drop the workaround from docker-compose.local-stand.yml")
-
-
-def test_overlay_supplies_manifest_key_to_control_api():
-    doc = load_overlay()
-    env = doc["services"]["control-api"]["environment"]
+    env = pilot["services"]["control-api"]["environment"]
     assert env["MANIFEST_SIGNING_KEY"] == "${MANIFEST_SIGNING_KEY}"
+
+
+def test_overlay_does_not_duplicate_manifest_key():
+    assert "MANIFEST_SIGNING_KEY" not in _env_keys(load_overlay()["services"]["control-api"])
 
 
 def test_manifest_key_is_required_by_staging_validator():
@@ -702,27 +697,22 @@ def test_services_needing_manifest_key_all_receive_it():
     assert "MANIFEST_SIGNING_KEY" in merged
 
 
-# --- FU3: pilot compose omits CORS_ALLOWED_ORIGINS for device-gateway --------
+# --- FU3: CORS_ALLOWED_ORIGINS for device-gateway -----------------------------
 #
-# Same class as the MANIFEST_SIGNING_KEY gap: the shared security validator
-# requires an explicit CORS list under staging/production, but the pilot compose
-# only passes it to control-api. On the real host device-gateway entered a
-# restart loop. The stand overlay supplies it.
+# Same class as FU2: the shared validator requires an explicit CORS list outside
+# dev; device-gateway sat in a restart loop on the real host until the overlay
+# supplied it. Fixed in the pilot compose by RF-05.
 
-def test_pilot_compose_still_omits_cors_for_device_gateway():
-    """Guards the reason the overlay carries this variable; fails once fixed."""
+def test_pilot_compose_passes_cors_to_device_gateway():
+    """Replaces test_pilot_compose_still_omits_cors_for_device_gateway (RF-05)."""
     pilot = yaml.safe_load(PILOT.read_text())
-    env = (pilot["services"]["device-gateway"] or {}).get("environment", {}) or {}
-    keys = set(env) if isinstance(env, dict) else {e.split("=", 1)[0] for e in env}
-    assert "CORS_ALLOWED_ORIGINS" not in keys, (
-        "pilot compose now sets CORS_ALLOWED_ORIGINS for device-gateway - "
-        "drop the workaround from docker-compose.local-stand.yml")
-
-
-def test_overlay_supplies_cors_to_device_gateway():
-    doc = load_overlay()
-    env = doc["services"]["device-gateway"]["environment"]
+    env = pilot["services"]["device-gateway"]["environment"]
     assert env["CORS_ALLOWED_ORIGINS"] == "${CORS_ALLOWED_ORIGINS}"
+
+
+def test_overlay_does_not_duplicate_cors_for_device_gateway():
+    """Replaces test_overlay_supplies_cors_to_device_gateway (RF-05)."""
+    assert "CORS_ALLOWED_ORIGINS" not in _env_keys(load_overlay()["services"]["device-gateway"])
 
 
 def test_cors_is_required_by_staging_validator():
@@ -823,26 +813,22 @@ def test_no_service_publishes_on_all_interfaces():
 #
 # /etc/hosts in these images maps localhost to both 127.0.0.1 and ::1. wget
 # tries IPv6 first, nginx listens on IPv4 only, so the pilot probe reported
-# "connection refused" while the site served fine from the LAN.
+# "connection refused" while the site served fine from the LAN. RF-05 pinned the
+# pilot probes to IPv4 (replacing test_pilot_healthchecks_still_use_localhost and
+# test_overlay_healthcheck_avoids_localhost_ambiguity, owner decision 2026-09-29).
 
 @pytest.mark.parametrize("svc,port", [("admin-web", 3000), ("advertiser-web", 3001)])
-def test_overlay_healthcheck_avoids_localhost_ambiguity(svc, port):
-    doc = load_overlay()
-    test = doc["services"][svc]["healthcheck"]["test"]
-    probe = test[-1] if isinstance(test, list) else str(test)
+def test_pilot_healthcheck_avoids_localhost_ambiguity(svc, port):
+    pilot = yaml.safe_load(PILOT.read_text())
+    probe = pilot["services"][svc]["healthcheck"]["test"][-1]
     assert f"127.0.0.1:{port}" in probe, f"{svc}: probe must pin IPv4"
     assert "localhost" not in probe, (
         f"{svc}: localhost resolves to ::1 first; nginx listens on IPv4 only")
 
 
-def test_pilot_healthchecks_still_use_localhost():
-    """Guards the reason the overlay overrides them; fails once pilot is fixed."""
-    pilot = yaml.safe_load(PILOT.read_text())
-    for svc in ("admin-web", "advertiser-web"):
-        probe = pilot["services"][svc]["healthcheck"]["test"][-1]
-        assert "localhost" in probe, (
-            f"pilot {svc} healthcheck no longer uses localhost - "
-            f"drop the override from docker-compose.local-stand.yml")
+@pytest.mark.parametrize("svc", ["admin-web", "advertiser-web"])
+def test_overlay_does_not_override_frontend_healthcheck(svc):
+    assert "healthcheck" not in load_overlay()["services"][svc]
 
 
 # --- update diagnostics (LOCAL-DEV-STAND-001) --------------------------------

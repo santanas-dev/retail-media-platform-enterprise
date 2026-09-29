@@ -71,7 +71,7 @@
 
 | Поле | Значение |
 |---|---|
-| Статус | finished |
+| Статус | merged |
 | Цель | Повтор ротированного refresh-токена отзывает семью, ротация атомарна, отзыв переживает ответ 401 — доказано на PostgreSQL под `retail_media_app` |
 | Задачи roadmap.yaml | RM-STAB-018 (OD-046) |
 | Находки | P0-7; маскирующий тест `tests/test_phase3_auth_service.py::TestRefreshTokenFamilyRevoke::test_replay_calls_family_revoke` |
@@ -82,6 +82,22 @@
 | Входные условия | PR #9 (RF-00) смержен — `develop @ 7762434` |
 | Гейт | behavioral под `retail_media_app` NOBYPASSRLS: новый тест RM-STAB-018 + `tests/behavioral/test_auth_dual_e2e.py`; job python-tests (`python -m pytest tests/`); I-0; `roadmap-governance-guard` + `--self-test`; ruff по изменённым файлам |
 | Канон, который меняется | `roadmap.yaml` (RM-STAB-018, OD-046) + генерация; `requirements-traceability.yaml` (roadmap_ids REQ-SEC-001); checkpoint `PROJECT_STATE.md` |
+
+## RF-05 — Pilot-контур поднимается, verify честный (решение владельца 2026-09-29)
+
+| Поле | Значение |
+|---|---|
+| Статус | finished |
+| Цель | Pilot-compose с `ENVIRONMENT=pilot` поднимается с нуля без ручных шагов (роль приложения, CORS, audience, конфиг воркера), а `verify-pilot-run.sh` падает, если это не так |
+| Задачи roadmap.yaml | новая в области RM-PILOT-002 (одобрено владельцем 2026-09-29) |
+| Находки | P0-1, P0-2, P0-3, P0-4 (конфиг; ack при ошибке — RF-04), P0-5, P1-16, P2-I9, P2-I11, T12 |
+| Скоуп (в) | Защищённая зона (список утверждён владельцем 2026-09-29): `infra/compose/docker-compose.pilot.yml`, `infra/compose/create-app-role.py`, `scripts/ci/verify-pilot-run.sh`, `infra/compose/docker-compose.local-stand.yml`, `infra/compose/docker-compose.phase1.yml`, `.github/workflows/phase1-ci.yml` (import smoke под pilot + новый job «pilot compose smoke»), `infra/compose/Dockerfile.service` (версия в образе), `infra/deploy/.env.pilot.example` (только заглушки). Код: `packages/security/config.py` (`JWT_AUDIENCE` в prod), `apps/control-api/main.py` (readiness), `apps/control-api/alembic/env.py`. Тесты: замена `test_pilot_compose_still_omits_*` / `test_overlay_supplies_*` и FU5 `test_pilot_healthchecks_still_use_localhost` / `test_overlay_healthcheck_avoids_localhost_ambiguity` (одобрено владельцем), новые тесты; фикстуры `JWT_AUDIENCE` в `test_phase2_health.py`, `test_phase3_security.py`, `test_production_config_gate.py` и `requirements-traceability.yaml` (REQ-ARCH-004 → RM-PILOT-002A) — подтверждено владельцем 2026-09-29 |
+| Скоуп (вне) | прод-конфигурация и CI/CD-пайплайны деплоя в прод; ack/DLQ воркера (RF-04); supply chain и GHCR (RF-06); non-root MinIO |
+| Protected Boundaries | «Docker, deployment scripts» — одобрено владельцем 2026-09-29 с условиями: без секретов в Dockerfile/compose/скриптах (только env или secret-механизм, в репозитории — `.env.example` с заглушками); без root в контейнерах без обоснования в PR; только pilot-контур; список файлов — владельцу до правок |
+| mini-design | нет |
+| Входные условия | RF-01 смержен (PR #11, `develop @ d8dbd62`) |
+| Гейт | локальный прогон скрипта pilot compose smoke (`ENVIRONMENT=pilot`, образы собраны из ветки) → db-migrate 0, все сервисы healthy, роль NOBYPASSRLS, версия из образа, device-токен принят, конфиг воркера; I-0; I-1 и job behavioral под `retail_media_app`; job python-tests; `roadmap-governance-guard` + `--self-test`; ruff по изменённым файлам; `docker compose config` pilot/phase1/local-stand |
+| Канон, который меняется | `roadmap.yaml` (новая задача RM-PILOT-*) + генерация; checkpoint `PROJECT_STATE.md` |
 
 ## Остальное
 
@@ -102,7 +118,7 @@
 | RF-02 | Деньги: договор кампании и бронь инвентаря | P0-9, P0-11.a–c, P1-9, P2-D1, T4, T8 | RM-TECH-203, RM-TECH-241 (частично) + новая | CORE | campaign submit/approval (бронь в `request_campaign_approval`) | да |
 | RF-03 | Доставка: мультикампанийный манифест, отзыв, resume, daypart/SoV, PoP-окна | P0-12.a–d, P1-2, P2-B8, T9 | RM-TECH-242, RM-TECH-245, RM-TECH-248 + новая | CORE / CH | generated manifest compatibility; campaign publication; KSO runtime (плеер) | да (ADR-016) |
 | RF-04 | Надёжность событий: consumer, stream subjects, воркер завершения | P1-6.a–b, P1-7, P1-8, P0-4 (ack при ошибке), P2-B7, T11 | RM-TECH-243 (частично) + новая | CORE (outbox) | требует проверки: P0-4/P1-8 затрагивают генерацию манифестов и lifecycle кампании (близко к publication flows / manifest compatibility) | нет |
-| RF-05 | Pilot-контур поднимается, verify честный | P0-1, P0-2, P0-3, P0-4 (конфиг), P0-5, P1-16, P2-I9, P2-I11, T12 | новая (область RM-PILOT-002) | POPS / E0 | Docker, deployment scripts | нет |
+| RF-05 → карточка выше | Pilot-контур поднимается, verify честный | P0-1, P0-2, P0-3, P0-4 (конфиг), P0-5, P1-16, P2-I9, P2-I11, T12 | новая (область RM-PILOT-002) | POPS / E0 | Docker, deployment scripts | нет |
 | RF-06 | Supply chain CI и образы | P0-10.a–c, P1-18, P2-I1–I7, P2-I10 | RM-STAB-009 (частично) + новая | S / POPS | Docker, deployment scripts; внешнее действие владельца — GHCR visibility | нет |
 | RF-07 | Tenancy и миграции | P1-3, P1-4, P1-17, P2-I8 | RM-TECH-229, RM-STAB-004 (частично) | C / CORE | destructive migrations (downgrade) | да (ERD/migration plan) |
 | RF-08 | Портал: сессия, даты, циклы запросов | P1-11.b, P1-12, P1-13.a–c (фронт), P1-14, P1-15, P2-F1–F6, T13, T14 | RM-UX-002 (частично) + новая | U (Gate-U приостановлен OD-041) | нет (не редизайн); P1-13.c требует правки бэкенда `packages/api/auth.py` (refresh-cookie) | нет |

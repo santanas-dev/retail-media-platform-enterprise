@@ -43,7 +43,8 @@ services:
       CLICKHOUSE_DB: retail_media_platform
     ports:
       - "8123:8123"
-      - "9000:9000"
+      # Native protocol on host 9002: host 9000 is MinIO's S3 API (P1-16).
+      - "9002:9000"
     volumes:
       - ch_data:/var/lib/clickhouse
     healthcheck:
@@ -71,7 +72,8 @@ services:
     volumes:
       - nats_jetstream:/data
     healthcheck:
-      test: ["CMD-SHELL", "nats server check connection --server nats://localhost:4222"]
+      # nats:2-alpine ships no `nats` CLI; the monitoring endpoint is the probe.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8222/healthz || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 5

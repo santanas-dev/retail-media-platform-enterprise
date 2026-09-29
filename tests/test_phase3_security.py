@@ -39,6 +39,8 @@ class TestSecurityConfig(unittest.TestCase):
         self._orig_env = dict(os.environ)
         # S-065: pre-populate metrics token for production tests
         os.environ["METRICS_AUTH_TOKEN"] = "ci-metrics-token-at-least-32-characters-long"
+        # RF-05: JWT_AUDIENCE is required outside dev
+        os.environ["JWT_AUDIENCE"] = "rmp-control-api"
 
     def tearDown(self):
         sec_config.reset_security_config()
