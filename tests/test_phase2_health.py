@@ -416,12 +416,14 @@ class TestCorsConfig(unittest.TestCase):
         reset_security_config()
         # S-065: pre-populate for production CORS tests
         os.environ["METRICS_AUTH_TOKEN"] = "ci-metrics-token-at-least-32-characters"
+        # RF-05: JWT_AUDIENCE is required outside dev
+        os.environ["JWT_AUDIENCE"] = "rmp-control-api"
 
     def tearDown(self):
         from packages.security.config import reset_security_config
         reset_security_config()
         for key in ("CORS_ALLOWED_ORIGINS", "CORS_ALLOW_CREDENTIALS",
-                     "ENVIRONMENT", "JWT_SECRET"):
+                     "ENVIRONMENT", "JWT_SECRET", "JWT_AUDIENCE"):
             os.environ.pop(key, None)
 
     def test_dev_defaults_include_localhost(self):

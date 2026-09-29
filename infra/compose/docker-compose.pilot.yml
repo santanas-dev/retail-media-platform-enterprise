@@ -87,6 +87,10 @@ services:
     environment:
       ENVIRONMENT: ${ENVIRONMENT}
       DATABASE_URL: ${MIGRATION_DATABASE_URL}
+      # create-app-role.py: the runtime role exists only because this job makes it
+      # (no init-db.sql in pilot — no source bind mounts).
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:-retail_media_app}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD}
       # Dev-credential seeding is explicitly forbidden in pilot.
       SEED_DEV_CREDENTIALS: "false"
       LICENSE_DEV_INGEST_ENABLED: "false"
@@ -97,6 +101,8 @@ services:
         cd apps/control-api && alembic upgrade head;
         echo '=== seed ===';
         cd /app && python apps/control-api/seed.py;
+        echo '=== create app role ===';
+        cd /app && python infra/compose/create-app-role.py;
         echo '=== grant app role ===';
         cd /app && python infra/compose/grant-app-role.py;
         echo '=== migrate complete ===';
@@ -131,6 +137,7 @@ services:
       CREATIVE_STORAGE_BUCKET: ${CREATIVE_STORAGE_BUCKET}
       CONTRACT_STORAGE_BUCKET: ${CONTRACT_STORAGE_BUCKET}
       CREATIVE_AUTO_APPROVE_UPLOADS: "false"
+      MANIFEST_SIGNING_KEY: ${MANIFEST_SIGNING_KEY}
       METRICS_AUTH_TOKEN: ${METRICS_AUTH_TOKEN}
       LICENSE_DEV_INGEST_ENABLED: "false"
     ports:
@@ -159,6 +166,11 @@ services:
       RMP_BUILD_TIME: ${RMP_BUILD_TIME}
       DEVICE_GATEWAY_PORT: "8001"
       JWT_SECRET: ${JWT_SECRET}
+      # Must equal control-api's: control-api issues the device tokens.
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      # Shared config validator requires explicit origins outside dev.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      CORS_ALLOW_CREDENTIALS: ${CORS_ALLOW_CREDENTIALS}
       DATABASE_URL: ${DATABASE_URL}
       MANIFEST_SIGNING_KEY: ${MANIFEST_SIGNING_KEY}
       METRICS_AUTH_TOKEN: ${METRICS_AUTH_TOKEN}
@@ -190,6 +202,12 @@ services:
       RMP_BUILD_TIME: ${RMP_BUILD_TIME}
       ORCHESTRATOR_PORT: "8003"
       JWT_SECRET: ${JWT_SECRET}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      # Manifest generation loads the shared security config: without these it
+      # raises outside dev and every manifest fails.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      CORS_ALLOW_CREDENTIALS: ${CORS_ALLOW_CREDENTIALS}
+      METRICS_AUTH_TOKEN: ${METRICS_AUTH_TOKEN}
       DATABASE_URL: ${DATABASE_URL}
       NATS_URL: "nats://nats:4222"
       CAMPAIGN_CONSUMER_ENABLED: "true"
@@ -214,13 +232,15 @@ services:
   # ---------------------------------------------------------------------------
   admin-web:
     image: ${ADMIN_WEB_IMAGE}
+    # Healthchecks probe 127.0.0.1, not localhost: in these images localhost
+    # resolves to ::1 first and nginx listens on IPv4 only (FU5).
     ports:
       - "3000:3000"
     depends_on:
       control-api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3000/healthz || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/healthz || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -234,7 +254,7 @@ services:
       control-api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3001/healthz || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3001/healthz || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -477,6 +477,7 @@ requirements:
   implementation_owner: Claude Code
   roadmap_ids:
   - RM-PILOT-002
+  - RM-PILOT-002A
   - RM-OPS-001
   requirement_status: approved
   delivery_status: planned

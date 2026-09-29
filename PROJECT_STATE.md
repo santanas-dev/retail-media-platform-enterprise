@@ -2,14 +2,29 @@
 
 **Last updated:** 2026-08-31 (OD-042: r428 — целевой контракт, RM-GOV-012 approved; implementation_mode у 101 REQ; RM-GOV-012 выравнивание, OD-041 пауза walkthrough; RM-GOV-010-A/B; статус документа ACCEPTED, не APPROVED; не закоммичено)
 
-**RF-01 / RM-STAB-018 (2026-09-28, PR в develop ждёт merge владельцем) — refresh-токены: обнаружение повтора и атомарная ротация.**
+**RF-05 / RM-PILOT-002A (2026-09-29, PR в develop ждёт merge владельцем) — pilot-контур поднимается под `ENVIRONMENT=pilot`, verify честный.**
+Закрывает P0-1…P0-5, P1-16, P2-I9, P2-I11, T12 ревью `main @ 8ad0228` (+ FU5). Было: pilot-compose проверялся только с `ENVIRONMENT=dev`,
+где prod-валидатор пропускается, — роль `retail_media_app` никто не создавал, device-gateway/воркер/control-api падали при старте без
+CORS/`JWT_AUDIENCE`/`METRICS_AUTH_TOKEN`/`MANIFEST_SIGNING_KEY`, device-токены получали 401, healthcheck frontend — unhealthy по IPv6,
+verify сам создавал роль, сверял версию со своим env и не падал по таймауту. Стало: `db-migrate` создаёт роль (`create-app-role.py`, пароль не
+попадает в логи), compose передаёт переменные сервисам, пустой `JWT_AUDIENCE` вне dev — отказ при старте, версия запекается в образ,
+`verify-pilot-run.sh` — `ENVIRONMENT=pilot`, `compose up --wait` с таймаутом, identity образа, `404 Device not found` по токену control-api;
+новый CI job `pilot-compose-smoke` в release-gate. Protected Boundary «Docker, deployment scripts» — одобрена владельцем с условиями
+(список файлов утверждён). Доказательство: локальный прогон verify на образах ветки rc 0 (compose develop — rc 1), `tests/test_rf05_pilot_boot.py`
+(падают на коде до исправления), behavioral 484 passed под `retail_media_app` NOBYPASSRLS, python-tests 1941 passed, 4 круга ревью
+(3-й — REQUEST CHANGES, исправлено по решению владельца). RM-PILOT-002A — `in_progress` до merge и CI develop. Долг/риск: `JWT_AUDIENCE`
+не проверяется `validate-pilot-env.py`/`local_stand.py` — **проверить `.env.stand` до обновления стенда** (ожидает решения владельца);
+lock-режим verify на реальном релизе не доказан, релизы до RF-05 verify не проходят (принято владельцем); `generate_release_lock.py` без
+`schema_head` (RF-06). Запись: `docs/remediation/journal.md`.
+
+**RF-01 / RM-STAB-018 (2026-09-28, merged PR #11 → `develop @ d8dbd62`; push-run develop 36475858226 success 41/41; RM-STAB-018 `done` решением владельца 2026-09-29) — refresh-токены: обнаружение повтора и атомарная ротация.**
 Закрывает P0-7 ревью `main @ 8ad0228` по OD-046. Было: поиск refresh с фильтром `rotated_at IS NULL` делал обнаружение повтора
 недостижимым, отзыв семьи писал несуществующую колонку `last_error`, ротация без блокировки (4 параллельных refresh → 4 живые ветки),
 отзыв откатывался вместе с 401. Стало: повтор ротированного токена позже 10 с отзывает семью (audit `auth.refresh.replay_detected`),
 в пределах 10 с — 401 без отзыва (audit `auth.refresh.reuse_within_grace`); операции над семьёй сериализованы advisory-lock;
 коммит перед 401. Доказательство: `tests/behavioral/test_rm_stab_018_refresh_replay.py` 7/7 под `retail_media_app` NOBYPASSRLS
 (падают на коде до исправления), behavioral 484 passed, python-tests 1914 passed, 3 круга ревью (APPROVE WITH COMMENTS).
-RM-STAB-018 — `in_progress` до merge и CI develop. Долг: ложный отзыв при потерянном ответе и повторе > 10 с; квота сессий считает
+RM-STAB-018 — `done` (evidence_refs: behavioral + CI run 36475858226). Долг: ложный отзыв при потерянном ответе и повторе > 10 с; квота сессий считает
 ротированные строки; logout/admin revoke-all/login-лимит без блокировки семьи (редкий deadlock → 500); нет rate limit на `/refresh`;
 проигравшая вкладка портала получает 401 до RF-08. Запись: `docs/remediation/journal.md`.
 

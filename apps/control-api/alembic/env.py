@@ -17,12 +17,16 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Override from environment
-db_url = os.environ.get(
-    "DATABASE_URL",
-    "postgresql+asyncpg://retail_media:retail_media_dev@localhost:5432/retail_media_platform",
-)
-config.set_main_option("sqlalchemy.url", db_url.replace("+asyncpg", ""))
+# Override from environment. The localhost fallback is for dev only: outside
+# dev a missing DATABASE_URL must not silently target some local database.
+db_url = os.environ.get("DATABASE_URL", "").strip()
+if not db_url:
+    if os.environ.get("ENVIRONMENT", "dev").strip().lower() not in ("dev", "development", "local", "test"):
+        raise RuntimeError("DATABASE_URL must be set for migrations outside dev")
+    db_url = "postgresql+asyncpg://retail_media:retail_media_dev@localhost:5432/retail_media_platform"
+# set_main_option goes through ConfigParser interpolation: a percent-encoded
+# password ("%40") would be read as a placeholder.
+config.set_main_option("sqlalchemy.url", db_url.replace("+asyncpg", "").replace("%", "%%"))
 
 target_metadata = Base.metadata
 

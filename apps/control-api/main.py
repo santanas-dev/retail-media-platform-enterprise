@@ -144,10 +144,13 @@ async def health_ready():
 
     Checks:
     - database: SELECT 1 via async SQLAlchemy
-    - db_role: non-superuser, NOBYPASSRLS (production only; dev reports but
-      does not fail on superuser/BYPASSRLS)
+    - db_role: non-superuser, NOBYPASSRLS (enforced in every environment
+      except dev/development/local/test, which report but do not fail)
     """
-    dev_mode = os.environ.get("ENVIRONMENT", "production") != "production"
+    # Fail closed: only explicit dev environments relax the role check
+    # (pilot and staging run under retail_media_app too).
+    environment = os.environ.get("ENVIRONMENT", "production").strip().lower()
+    dev_mode = environment in ("dev", "development", "local", "test")
     checks = {"database": "unhealthy", "db_role": "unhealthy"}
 
     if _engine is None:

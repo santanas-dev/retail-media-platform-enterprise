@@ -10,9 +10,9 @@
 | | |
 |---|---|
 | Активный этап | — |
-| Последний завершённый | RF-01 — finished, PR ждёт merge (`gh pr list --head fix/RF-01`); RF-00 — merged (PR #9, `7762434`) |
-| Следующий шаг | merge PR RF-01 владельцем → RM-STAB-018 `done` после CI develop (решение владельца) → выбор следующего черновика → `/start RF-<N>` |
-| Базовая линия | `origin/develop @ 6bc9ac0` (2026-09-28, merge RF-CI; push-run `develop` 36407616564 → success; то же дерево — push-run `fix/RF-CI` 36404147483, 41/41). Снимок аудита RF-00 — `b166419`; ветка `fix/RF-00` получила `6bc9ac0` merge-коммитом `3892552` |
+| Последний завершённый | RF-05 — finished, PR ждёт merge (`gh pr list --head fix/RF-05`); RF-01 — merged (PR #11 → `develop @ d8dbd62`, push-run develop 36475858226 → success 41/41); RF-00 — merged (PR #9, `7762434`) |
+| Следующий шаг | merge PR RF-05 владельцем → RM-PILOT-002A `done` после CI develop (решение владельца); `JWT_AUDIENCE` в `.env.stand` до обновления стенда → `/start RF-<N>` |
+| Базовая линия | `origin/develop @ d8dbd62` (2026-09-29, merge RF-01; push-run 36475858226 → success 41/41). Прежняя: `origin/develop @ 6bc9ac0` (2026-09-28, merge RF-CI; push-run `develop` 36407616564 → success; то же дерево — push-run `fix/RF-CI` 36404147483, 41/41). Снимок аудита RF-00 — `b166419`; ветка `fix/RF-00` получила `6bc9ac0` merge-коммитом `3892552` |
 | Источник находок | `docs/audit/2026-09-27-claude-code-review-main-8ad0228.md` (снято на `main @ 8ad0228`; develop на 64 коммита впереди) |
 
 ## Инварианты (не ломать)
@@ -24,6 +24,7 @@
 |---|---|---|---|
 | I-0 | Границы импорта (ADR-014) | `python scripts/ci/check-import-boundaries.py` | исходное правило проекта |
 | I-1 | Refresh-токены: повтор после окна отзывает семью (+audit), в окне — нет; одна ветка при гонке; семья сериализована; отзыв переживает 401 (RM-STAB-018) | шаги job `behavioral-postgres-tests` (PostgreSQL, `retail_media_app` NOBYPASSRLS), затем `python3 -m pytest tests/behavioral/test_rm_stab_018_refresh_replay.py -v` → 7 passed | RF-01 |
+| I-2 | Pilot-compose под `ENVIRONMENT=pilot` поднимается без ручных шагов: роль приложения из `db-migrate`, все сервисы healthy, readiness строгий, identity образа, device-токен control-api принят device-gateway (RM-PILOT-002A) | CI job `pilot-compose-smoke` (`build-images.sh` без push → `verify-pilot-run.sh --images-from-env <version> <sha>`); локально — сборка образов с теми же build-args и тот же вызов; `python -m pytest tests/test_rf05_pilot_boot.py` | RF-05 |
 
 ## Решения владельца, влияющие на этапы
 
@@ -35,6 +36,8 @@
 | 2026-09-27 | Первый этап — пересверка находок на develop (RF-00); дальнейшие этапы — пакеты задач `roadmap.yaml` |
 | 2026-09-28 | Запись RF-CI (карточка, журнал, checkpoint) — в PR #9: предложено агентом в отчёте RF-CI, владелец продолжил `/finish`; синхронизация `fix/RF-00` с develop — merge-коммитом (решение владельца) |
 | 2026-09-28 | RF-01 = P0-7 + замена маскирующего теста `test_replay_calls_family_revoke` (одобрено); T7 и P0-6/P0-8 — в остаток черновика RF-01; задача RM-STAB-018 и OD-046 заводятся этапом; повтор ротированного refresh в окне 10 с — 401 без отзыва семьи, позже — отзыв семьи (вариант «a») |
+| 2026-09-29 | Следующий этап — RF-05, карточка `planned`, номер и состав как в черновике. Protected Boundary «Docker, deployment scripts» — с условиями: без секретов в Dockerfile/compose/скриптах (env или secret-механизм; в репозитории — `.env.example` с заглушками); без root в контейнерах без обоснования в PR; не трогать прод-конфигурацию и CI/CD деплоя в прод — только pilot-контур; список файлов — владельцу до правок. Новая задача в области RM-PILOT-002 — одобрена. RM-STAB-018 → `done`, если run 36475858226 зелёный. RF-01-остаток не начинать; справка по RM-STAB-004. Ревью в конце этапа — «/reviewer» |
+| 2026-09-29 | RF-05 после СТОП на круге 3: п.1 (schema head в lock-режиме verify) — вариант «а» (lock `release.schema_head`, иначе head из миграций на коммите релиза); п.3 — подтверждены ссылка `RM-PILOT-002A` в `requirements-traceability.yaml` (REQ-ARCH-004) и адаптация фикстур `JWT_AUDIENCE` в 3 тестовых файлах; п.4 — принято: `verify-pilot-images.yml` не проходит для релизов, собранных до RF-05 (в образах нет ENV identity). П.2 (`JWT_AUDIENCE` в `validate-pilot-env.py`/`local_stand.py`) — ответа нет, остаётся открытым риском |
 | 2026-09-28 | Красный CI PR #9 из-за внешнего дрейфа — отдельный этап RF-CI (вариант 1); SQLAlchemy `<2.1` в CI и requirements; MinIO → Chainguard по digest; скоуп CI + drill + phase1 + pilot, Protected Boundary «Docker/deployment» — по ответу владельца «CI + drill + phase1 + pilot»: образ/healthcheck MinIO в `phase1-ci.yml`, compose restore-drill/phase1/pilot и версия MinIO в `backup-restore-drill.sh`; pilot `user: "0"` + долг. `user: "0"` в phase1 добавлен агентом на круге ревью 2 по аналогии — **ожидает подтверждения владельца** |
 
 ---
@@ -226,6 +229,7 @@
 ## RF-01 — Refresh-токены: обнаружение повтора и атомарная ротация
 
 - Статус: finished (PR ждёт merge владельцем)
+- Дополнение 2026-09-29: merged — PR #11 → `develop @ d8dbd62`; push-run develop 36475858226 attempt 1 → success 41/41; RM-STAB-018 → `done` (решение владельца 2026-09-29, в ветке `fix/RF-05`)
 - Ветка: fix/RF-01 · Основа: develop @ 7762434 (merge PR #9)
 - Baseline (2026-09-28, `.venv` Python 3.12.3, зависимости — дословно из `phase1-ci.yml`, `set -o pipefail`, код = develop):
   - I-0 `python scripts/ci/check-import-boundaries.py` → rc 0 «All import boundaries clean.»
@@ -329,3 +333,183 @@
 - Долг — раздел «Долг (к `/finish`)» выше; отклонённых 🟠 нет.
 - Новые инварианты: I-1.
 - Следующий шаг: merge PR владельцем → выбор следующего черновика (остаток RF-01: P0-6/P0-8 vs RM-STAB-004; RF-05; RF-02…) → `/start RF-<N>`.
+
+## RF-05 — Pilot-контур поднимается, verify честный
+
+- Статус: finished (PR ждёт merge владельцем)
+- Ветка: fix/RF-05 · Основа: develop @ d8dbd62 (merge PR #11)
+- Сделано до правок (решения владельца 2026-09-29): RM-STAB-018 → `done` в `roadmap.yaml` с `evidence_refs`
+  (behavioral + ci_run 36475858226), генерация; guard PASS, self-test 55/55. `PROJECT_STATE.md` ещё пишет «RM-STAB-018 —
+  `in_progress`», checkpoint обновится на `/finish`. Журнал RF-01 → merged. Карточка RF-05 → `planned`.
+- Факты, собранные для плана (код `d8dbd62`):
+  - `ENVIRONMENT=pilot` → `_is_dev()` false → `_validate_production` (`packages/security/config.py:47-54`).
+  - `Dockerfile.service:30` уже копирует `infra/compose/` в образ; `create-app-role.py` в образе есть, но в `db-migrate` не вызывается,
+    `POSTGRES_APP_PASSWORD` не передаётся; docstring «STAGED» устарел.
+  - device-gateway: CORS-middleware из `get_security_config()` (`apps/device-gateway/main.py:229`), в pilot-compose нет
+    `CORS_ALLOWED_ORIGINS`, `JWT_AUDIENCE`; orchestrator — нет CORS и `METRICS_AUTH_TOKEN`.
+  - `Dockerfile.service` не объявляет `ARG RMP_VERSION` — build-args `build-images.sh:89-91` не попадают в образ; версия приходит
+    только из env compose, verify сверяет её с тем, что сам же передал.
+  - Тесты, закрепляющие дефекты pilot-compose и workaround overlay стенда: `tests/test_local_stand.py`
+    (`test_pilot_compose_still_omits_cors_for_device_gateway`, `test_pilot_compose_still_omits_manifest_key_for_control_api`).
+  - `verify-pilot-run.sh` запускается только `verify-pilot-images.yml` (workflow_dispatch, образы из GHCR).
+- Решения владельца по плану (2026-09-29, AskUserQuestion): список файлов защищённой зоны 1–8 целиком
+  (`docker-compose.pilot.yml`, `create-app-role.py`, `verify-pilot-run.sh`, `docker-compose.local-stand.yml`,
+  `docker-compose.phase1.yml`, `phase1-ci.yml`, `Dockerfile.service`, `.env.pilot.example`); тесты-маски
+  `test_pilot_compose_still_omits_*` (+ парные `test_overlay_supplies_*`) — заменить; доказательство — новый CI-job
+  «pilot compose smoke» + локальный прогон. Не трогаются: `verify-pilot-images.yml`, `publish-pilot-images.yml`,
+  `build-images.sh`, `scripts/deploy/local_stand.py`, прод-конфигурация.
+- Baseline (2026-09-29, `.venv` Python 3.12.3, `set -o pipefail`, код = `d8dbd62`):
+  - I-0 → rc 0 «All import boundaries clean.»
+  - I-1 / behavioral (шаги job дословно, postgres:16-alpine, `retail_media_app` NOBYPASSRLS) → rc 0: 484 passed, 12 skipped;
+    RM-STAB-018 7/7 PASSED.
+  - python-tests (`python -m pytest tests/ -v`, env job) → rc 0: 1914 passed, 541 skipped.
+  - `roadmap-governance-guard` → PASS; `--self-test` → 55/55 (после правки RM-STAB-018).
+- План:
+  - Задача: pilot-compose с `ENVIRONMENT=pilot` поднимается с нуля: `db-migrate` создаёт роль приложения (`create-app-role.py`),
+    сервисы получают недостающие env (device-gateway: CORS, `JWT_AUDIENCE`; воркер: CORS, `METRICS_AUTH_TOKEN`; control-api:
+    `MANIFEST_SIGNING_KEY`); `_validate_production` требует непустой `JWT_AUDIENCE`; версия запекается в образ
+    (`Dockerfile.service` ARG/ENV); verify — `ENVIRONMENT=pilot`, без ручной роли, таймаут = fail, head из миграций,
+    версия образа сверяется с lock; readiness control-api строг во всех строгих окружениях (P2-I11); alembic env —
+    экранирование `%`, без localhost-fallback в строгих окружениях (P2-I9); phase1 dev-compose — порты и healthcheck nats
+    (P1-16); import smoke под `ENVIRONMENT=pilot` (T12).
+  - Домены: infra/compose, scripts/ci, `packages/security/config.py`, `apps/control-api` (readiness, alembic env).
+    ADR-014 не меняется.
+  - Protected Boundaries: «Docker, deployment scripts» (одобрено с условиями) + `.env.pilot.example` (файл 8 списка).
+  - Доказательство: CI-job «Pilot compose smoke» (и локальный прогон того же скрипта) — db-migrate exit 0, все сервисы healthy,
+    роль NOBYPASSRLS создана compose, версия из образа, device-токен control-api принят device-gateway, `get_security_config()`
+    в воркере; unit-тесты валидатора и compose; замена тестов-масок.
+
+### Сделано
+- Тесты сначала: `tests/test_rf05_pilot_boot.py` — на коде `d8dbd62` 11 из 14 падали (config каждого backend-сервиса под
+  `ENVIRONMENT=pilot` из env compose; device-токен control-api → device-gateway; `JWT_AUDIENCE` обязателен; `db-migrate`
+  создаёт роль; readiness pilot/staging; alembic `%` и fallback), после — 14/14; +2 теста phase1 (на compose develop — 2 failed).
+- `docker-compose.pilot.yml`: `db-migrate` вызывает `create-app-role.py` до grant, получает `POSTGRES_APP_USER`
+  (`:-retail_media_app` — grant всё равно жёстко на эту роль) и `POSTGRES_APP_PASSWORD`; control-api ← `MANIFEST_SIGNING_KEY`;
+  device-gateway ← `JWT_AUDIENCE`, CORS; orchestrator-worker ← `JWT_AUDIENCE`, CORS, `METRICS_AUTH_TOKEN`; healthcheck
+  frontend → `127.0.0.1` (FU5 — найден локальным прогоном, решение владельца «исправить»). Все секреты — `${VAR}`; `user: "0"`
+  MinIO не менялся (обоснование в комментарии, RF-CI).
+- `packages/security/config.py::_validate_production`: пустой `JWT_AUDIENCE` → ValueError.
+- `apps/control-api/main.py` readiness: строгая проверка роли БД везде, кроме `dev|development|local|test` (было: только `production`).
+- `apps/control-api/alembic/env.py`: `%` → `%%` для ConfigParser; без `DATABASE_URL` вне dev — RuntimeError вместо localhost.
+- `Dockerfile.service`: `ARG`/`ENV RMP_VERSION|RMP_GIT_SHA|RMP_BUILD_TIME` (build-args `build-images.sh` теперь в образе).
+- `verify-pilot-run.sh`: переписан — `ENVIRONMENT=pilot`, без ручного `CREATE ROLE`, `compose up --wait --wait-timeout`
+  (таймаут = fail), exit `db-migrate`, роль LOGIN/NOSUPERUSER/NOBYPASSRLS, readiness, identity из `docker image inspect` = ожидаемой,
+  `/version` и `/build-info.json`, device-токен control-api принят device-gateway (не 401), конфиг воркера; режим
+  `--images-from-env <version> <sha>` для CI. Отдельный файл `pilot-run-proof.sh` был создан и удалён — вне утверждённого списка.
+- `docker-compose.local-stand.yml`: сняты дубли обходов FU2 (`MANIFEST_SIGNING_KEY`), FU3 (CORS device-gateway), FU5 (healthcheck).
+- `tests/test_local_stand.py`: заменены (одобрено) `test_pilot_compose_still_omits_manifest_key_for_control_api`,
+  `test_overlay_supplies_manifest_key_to_control_api`, `test_pilot_compose_still_omits_cors_for_device_gateway`,
+  `test_overlay_supplies_cors_to_device_gateway`, `test_pilot_healthchecks_still_use_localhost`,
+  `test_overlay_healthcheck_avoids_localhost_ambiguity` → положительные проверки pilot + «overlay не дублирует».
+- `docker-compose.phase1.yml`: ClickHouse native на хосте 9002 (9000 — MinIO); healthcheck nats → `wget :8222/healthz`
+  (в `nats:2-alpine` нет CLI `nats` — проверено `command -v`).
+- `.env.pilot.example`: `RMP_SCHEMA_HEAD=REPLACE_WITH_LOCK_SCHEMA_HEAD` (было устаревшее `034`), комментарии; только заглушки.
+- `phase1-ci.yml`: шаг import smoke под `ENVIRONMENT=pilot` для 3 pilot-сервисов (CI-заглушки, не секреты); job
+  `pilot-compose-smoke` (`build-images.sh` без push → `verify-pilot-run.sh --images-from-env`), добавлен в `release-gate`.
+- Локальное доказательство: образы собраны из ветки (флаги как в `build-images.sh`, он отказывает на грязном дереве),
+  `verify-pilot-run.sh --images-from-env` → rc 0 «VERIFY-PILOT-RUN PASSED», 9 сервисов healthy, device-токен → 404 (не 401).
+  1-й прогон упал на FU5 (advertiser-web unhealthy). Tamper: pilot-compose из develop → rc 1 «FAIL: db-migrate exit code=1».
+
+- Задача `RM-PILOT-002A` (POPS, in_progress) в `roadmap.yaml`, ссылка в REQ-ARCH-004 `roadmap_ids`, генерация.
+- Адаптация фикстур «сильный prod-конфиг» без ослабления (тот же приём, что S-065 для `METRICS_AUTH_TOKEN`): `JWT_AUDIENCE` в
+  `tests/test_production_config_gate.py::_prod_config`, `test_phase3_security.py::TestSecurityConfig.setUp`,
+  `test_phase2_health.py::TestCorsConfig.setUp`; +2 теста gate (`JWT_AUDIENCE` отсутствует / пробелы → ValueError).
+  До адаптации — 32 failed (ошибка `JWT_AUDIENCE` раньше ожидаемой или отказ «accepts»).
+- Самопроверка (до ревью): python-tests → rc 0: 1933 passed, 541 skipped (skipped = baseline); behavioral → rc 0: 484 passed,
+  12 skipped (RM-STAB-018 7/7); I-0 rc 0; guard PASS; self-test 55/55; `git diff --check` rc 0; ruff — новых нет (`main.py` 5→5,
+  `test_local_stand.py` 1→1 — ошибки develop); shellcheck `verify-pilot-run.sh` rc 0; `compose config` pilot / phase1 /
+  pilot+local-stand → OK; локальный pilot proof rc 0.
+
+### Решения
+- Логика доказательства — внутри `verify-pilot-run.sh` (режим `--images-from-env`), а не новым скриптом: новый файл в защищённой
+  зоне не входил в утверждённый список.
+- «Версия из образа» проверяется через `docker image inspect` (ENV образа = lock/ожидание); compose по-прежнему передаёт
+  `RMP_VERSION` из env — снятие этого из compose меняет контракт `validate-pilot-env.py`/`local_stand.py`, вне скоупа.
+- CORS для сервисов без браузера передаётся через compose (вариант «a»), валидатор не ослабляется.
+
+### Ревью
+| Круг | Замечание | Уровень | Решение | Риск исправления | Доказательство |
+|---|---|---|---|---|---|
+| 1 | Проверка device-токена в verify принимает любой статус ≠ 401 (500 прошёл бы) | 🟠 | исправлено: ровно 404 + `"Device not found"` — доказывает и путь через БД под `retail_media_app` | низкий: проверка строже | `dependencies.py:359`, `device-gateway/main.py:181`; прогон rc 0 «404 Device not found» |
+| 1 | Обязательный `JWT_AUDIENCE` может уронить стенд (`.env.stand` без него; `validate_stand_env` не проверяет) | 🟠 | отклонено как правка кода: `scripts/deploy/local_stand.py` вне утверждённого списка файлов → владельцу: перед выкаткой на стенд проверить `JWT_AUDIENCE` в `.env.stand`; долг — проверка в `validate_stand_env` | — | `grep JWT_AUDIENCE scripts/deploy/local_stand.py` → пусто; preflight pilot требует её (`pilot_host_preflight.py:80`) |
+| 1 | `verify-pilot-images.yml` на старых релизах теперь падает (в их образах нет ENV identity) | 🟠 | отклонено с обоснованием: fail-closed — цель P0-5 (версия из образа); контракт workflow меняется — записано в долг и в PR для решения владельца | — | develop `Dockerfile.service` без ARG/ENV |
+| 1 | `/version` сверяет значения, которые скрипт сам записал; комментарий Dockerfile сильнее факта | 🟡 | исправлено: комментарий уточнён; снятие `RMP_VERSION` из compose — долг (контракт `.env.pilot`) | нет | Dockerfile.service |
+| 1 | Pilot import smoke для воркера ничего не доказывает | 🟡 | исправлено: шаг явно грузит `get_security_config()` и требует `dev_mode=False`; комментарий о границе доказательства | низкий | тело шага локально под `bash -e` → 3× «import OK (pilot)» |
+| 1 | `create-app-role.py`: существующая роль не сверяется (атрибуты, пароль), имя без валидации | 🟡 | долг (атрибуты ловит строгий readiness; `POSTGRES_APP_USER` по умолчанию `retail_media_app`) | — | — |
+| 1 | Разные списки «dev» (main/alembic vs `_is_dev`); пустой `ENVIRONMENT` в alembic → dev | 🟡 | долг: общий хелпер; alembic при **незаданном** `ENVIRONMENT` сохраняет прежнее dev-поведение (пустая строка — строгий режим) | — | — |
+| 1 | Docstring теста ссылается на несуществующий скрипт | 🟡 | исправлено | нет | — |
+| 1 | Регулярка не видит `${VAR:-default}` | 🟡 | исправлено: default учитывается в подстановке и в проверке `.env.pilot.example` | нет | 16 passed |
+| 1 | Нет `timeout-minutes` у job | 🟡 | исправлено: 30 | нет | yaml |
+| 1 | Непонятная ошибка при отсутствии контейнера db-migrate | 🟡 | исправлено: явный `fail` | нет | shellcheck rc 0 |
+| 2 | `JWT_AUDIENCE` не проверяется `validate-pilot-env.py`/`validate_stand_env` до старта | 🟠 | то же, что круг 1 п.2: файлы вне утверждённого списка → решение владельца до выкатки на стенд/pilot-хост; риск открыт | — | `grep JWT_AUDIENCE scripts/deploy/validate-pilot-env.py scripts/deploy/local_stand.py` → пусто |
+| 2 | Lock-режим verify брал schema head из checkout, а не из релиза | 🟠 | исправлено: `release.schema_head` из lock (понятный FAIL, если нет); `--images-from-env` — из миграций | низкий | shellcheck rc 0; example-lock без поля → '' → FAIL; живой lock-режим не запускался (нужен релиз в GHCR) |
+| 2 | Пароль приложения может попасть в `docker logs` (traceback SQLAlchemy) и лог PG (`log_min_error_statement`) | 🟠 | исправлено: ошибка печатается без текста (класс + SQLSTATE); под суперпользователем `SET LOCAL log_min_error_statement = panic` перед DDL; DDL через `exec_driver_sql` (в `text()` `:` в пароле — bind-параметр); имя роли — `^[a-z_][a-z0-9_]{0,62}$`, `db_name` — quote_ident | низкий: owner с CREATEROLE без superuser работает (SET пропускается) | живой PG 16.4: пароль с `'`/`:`/`%` → роль создана, вход OK; сбой CREATE ROLE под superuser → в выводе и логе PG 0 вхождений, контроль без SET → 1; unit 5 тестов |
+| 2 | CI job ещё не запускался | 🟠 | принято: доказательство CI — на `/finish`; при падении `--wait` — чинить, не маскировать | — | локальный прогон rc 0 (compose v5.5.1) |
+| 2 | `.env.pilot.example`: комментарий подразумевал смену пароля | 🟡 | исправлено | нет | — |
+| 2 | Docstring readiness «production only» | 🟡 | исправлено | нет | — |
+| 2 | Тест секретов пропускал `${SECRET:-literal}` | 🟡 | исправлено: для секретных ключей — `${VAR}` без default | нет | 24→ passed |
+| 2 | Тест readiness без unset/регистра/пробелов | 🟡 | исправлено: `" Pilot "`, unset, `DEV` | нет | passed |
+| 2 | Compose healthcheck — `/health/live`, строгий readiness виден только через `/health/ready` | 🟡 | граница доказательства: verify вызывает `/health/ready` явно; перевод healthcheck — долг | — | — |
+| 2 | Разные списки dev-окружений | 🟡 | долг (круг 1) | — | — |
+- Самопроверка после круга 2: пересборка образов → verify `--images-from-env` rc 0; python-tests rc 0: 1941 passed, 541 skipped;
+  I-0 rc 0; guard PASS; `git diff --check` rc 0; ruff — новых нет; shellcheck rc 0.
+| 3 | Lock-режим verify требует `release.schema_head`, а `generate_release_lock.py` (публикация) его не пишет → `verify-pilot-images.yml` падает на любом релизе, включая будущие | 🔴 | **открыто — СТОП после 3-го круга**, регрессия круга 2 (моя правка); варианты — владельцу | — | `generate_release_lock.py:90-95` без `schema_head`; `publish-pilot-images.yml:127-129` build-args identity передаёт (identity у новых релизов будет) |
+| 3 | Обязательный `JWT_AUDIENCE` не проверяется до старта стенда/pilot | 🟠 | открыто, решение владельца (файлы вне списка) | — | круги 1–2 |
+| 3 | Вне карточки: `requirements-traceability.yaml` (RM-PILOT-002A в REQ-ARCH-004) и адаптация фикстур 3 тестовых файлов | 🟠 | открыто: нужно подтверждение владельца или откат traceability | — | дифф |
+| 3 | `POSTGRES_APP_USER` настраивается наполовину (grant жёстко на `retail_media_app`) | 🟡 | открыто | — | `database.py:210,215` |
+| 3 | Пароль в логе PG при `log_statement=ddl/all` | 🟡 | открыто (вариант: SCRAM-verifier или `SET LOCAL log_statement='none'`) | — | — |
+| 3 | Pilot import smoke: `except SystemExit: pass` может скрыть отказ | 🟡 | открыто | — | — |
+| 3 | Устаревший docstring `local_stand.py::provision_app_role` | 🟡 | долг (файл вне списка) | — | — |
+| 3 | Разные списки dev-окружений | 🟡 | долг (круги 1–2) | — | — |
+
+- Итог ревью: 3 круга — APPROVE WITH COMMENTS, APPROVE WITH COMMENTS, **REQUEST CHANGES** (🔴 п.1 круга 3). По `/start` шаг 7.4 — СТОП, этап
+  не переведён в `ready_to_finish`. Ревьюер круга 3 локально получил 7 failed в полном `pytest tests/` (`DATABASE_URL refers to a localhost`)
+  и те же 7 на снимке develop — порядкозависимые падения, известные с RF-CI; в env job python-tests у меня rc 0 (1941 passed).
+| 3→Δ | 🔴 п.1 круга 3 | 🔴 | исправлено по решению владельца (вариант «а»): lock `release.schema_head`, иначе `git fetch --depth 1` коммита релиза (если его нет) → `git archive` миграций → `alembic_head.py --versions-dir`; невытягиваемый SHA → FAIL | низкий: только lock-режим; `--images-from-env` не менялся | harness блока: полный репо, lock без поля, `c088111` → 036; lock с полем → его значение; мелкий клон → fetch → 036; несуществующий SHA → rc 1 «not fetchable»; shellcheck rc 0 |
+| 3→Δ | 🟠 п.3 круга 3 (вне карточки) | 🟠 | закрыто решением владельца 2026-09-29 | — | «Решения владельца» |
+| 4 | Lock-режим verify целиком не запускался | 🟠 | принято: ветка schema head проверена harness-ом (4 случая, см. «3→Δ»); полный lock-режим требует релиза в GHCR — не доказан, в PR и долг | — | — |
+| 4 | Старые релизы не проходят verify | 🟠 | закрыто решением владельца 2026-09-29 (п.4) | — | — |
+| 4 | `JWT_AUDIENCE` на стенде | 🟠 | открыто, решение владельца (п.2) | — | — |
+| 4 | Журнал неверно описывал пустой `ENVIRONMENT` в alembic | 🟡 | исправлено | нет | — |
+| 4 | `POSTGRES_APP_USER` настраивается наполовину | 🟡 | исправлено в `.env.pilot.example` (комментарий «должно быть retail_media_app»); проверка в скрипте — долг | нет | — |
+| 4 | `strip()` audience только в валидаторе | 🟡 | долг | — | — |
+| 4 | Разные статусы RF-05 в `stages.md` | 🟡 | исправлено | нет | — |
+| 4 | Устаревший docstring `local_stand.py` | 🟡 | долг (вне списка) | — | — |
+| 4 | Контейнер `rf05-pg` мешал ревьюеру (2 failed `TestScopeAdminReset`) | 🟡 | артефакт параллельного прогона: ревью шло одновременно с моим behavioral-гейтом; скрипт удаляет контейнер в конце; после гейта контейнеров нет, python-tests гейта шёл после behavioral | нет | `docker ps -a` — пусто |
+
+### Гейт
+2026-09-29, `.venv` Python 3.12.3, `set -o pipefail`, после круга 4 (код после этого не менялся; правки круга 4 — комментарий `.env.pilot.example` и документы):
+- Pilot proof: `verify-pilot-run.sh --images-from-env` на образах из ветки → rc 0 «VERIFY-PILOT-RUN PASSED» (9 сервисов healthy, роль создана
+  `db-migrate`, readiness строгий, identity из образа, `404 Device not found`, конфиг воркера). Tamper: pilot-compose develop → rc 1.
+- I-1 / behavioral (шаги job дословно, `retail_media_app` NOBYPASSRLS) → rc 0: 484 passed, 12 skipped; RM-STAB-018 7/7.
+- python-tests (env job) → rc 0: 1941 passed, 541 skipped (skipped = baseline).
+- I-0 rc 0; `roadmap-governance-guard` PASS; `--self-test` 55/55; `git diff --check` rc 0; ruff — новых нет; shellcheck rc 0;
+  `compose config` pilot / phase1 / pilot+local-stand — OK.
+- Ревью: 4 круга — APPROVE WITH COMMENTS, APPROVE WITH COMMENTS, REQUEST CHANGES (🔴 — моя регрессия круга 2, СТОП, решение владельца
+  «а», исправлено), APPROVE WITH COMMENTS.
+- Не запускалось: CI (на `/finish`, включая первый запуск job `pilot-compose-smoke`); lock-режим verify на реальном релизе; frontend/UI-smoke
+  (не затронуты).
+
+### Долг (к `/finish`)
+- **Открытый риск (п.2 владельцу):** `JWT_AUDIENCE` не проверяется `validate-pilot-env.py` / `validate_stand_env`; перед обновлением стенда
+  проверить ключ в `.env.stand`, иначе три backend-сервиса не стартуют.
+- Lock-режим `verify-pilot-run.sh` полностью не доказан (нужен релиз в GHCR); старые релизы не проходят verify (принято владельцем).
+- `generate_release_lock.py` не пишет `release.schema_head` (RF-06).
+- `create-app-role.py`: пароль существующей роли не меняется; при `log_statement=ddl/all` пароль в логе PG (вариант — SCRAM-verifier);
+  `POSTGRES_APP_USER` ≠ `retail_media_app` падает на grant.
+- Compose healthcheck — `/health/live`; строгий readiness только через `/health/ready`.
+- Снять `RMP_VERSION`/`RMP_GIT_SHA` из compose, чтобы рантайм брал identity образа (контракт `.env.pilot`).
+- Общий хелпер dev-окружений (`main.py`, alembic, `_is_dev`); `strip()` audience в jwt; `except SystemExit` в import smoke.
+- Устаревший docstring `local_stand.py::provision_app_role`; ручное создание роли там остаётся (идемпотентно).
+- Старые ошибки ruff: `main.py` E402 ×5, `test_local_stand.py` F841.
+
+### Итог (заполняет /finish)
+- Статус: finished (PR ждёт merge владельцем). Коммит и PR: `gh pr list --head fix/RF-05`; CI — в отчёте `/finish` (в коммит не входит).
+- Доказано: pilot-compose под `ENVIRONMENT=pilot` поднимается с нуля без ручных шагов (P0-1…P0-4 + FU5), verify честный (P0-5):
+  локальный прогон rc 0 на образах ветки, тот же скрипт на compose develop — rc 1; валидатор/compose/readiness/alembic/phase1 —
+  тесты, падавшие на коде до исправления; `create-app-role.py` не пишет пароль в вывод и лог PG (живой PG 16.4, контроль без защиты — утечка).
+- RM-PILOT-002A остаётся `in_progress`: `done` — после merge и зелёного CI develop (включая `pilot-compose-smoke`), решением владельца.
+- Отклонённые 🟠: `JWT_AUDIENCE` в `validate-pilot-env.py`/`local_stand.py` (вне списка файлов, открытый риск — владельцу);
+  старые релизы в verify (принято владельцем). Долг — «Долг (к `/finish`)» выше.
+- Новые инварианты: I-2.
+- Следующий шаг: merge PR владельцем → решение по `JWT_AUDIENCE` на стенде и RM-STAB-004/RF-01-остаток → `/start RF-<N>`.
