@@ -25,6 +25,7 @@ from packages.services.health_state import (
     set_nats_connected,
     set_publisher_ready,
     set_consumer_ready,
+    set_consumer_running,
 )
 
 
@@ -416,6 +417,8 @@ class TestHealthEndpoint(unittest.TestCase):
         set_nats_connected(True)
         set_publisher_ready(True)
         set_consumer_ready(True)
+        # RM-STAB-019: a ready consumer is connected AND its loop is running.
+        set_consumer_running(True)
         bump_relay_published()
         bump_consumer_acked()
         bump_manifest_success()
@@ -438,6 +441,9 @@ class TestHealthEndpoint(unittest.TestCase):
         """When db+nats are ok, to_dict status is 'ok' → expect HTTP 200."""
         set_db_ok(True)
         set_nats_connected(True)
+        # RM-STAB-019: the singleton may carry consumer_ready from an earlier
+        # test; a ready consumer must also be running to report ok.
+        set_consumer_running(True)
         d = get_health_state().to_dict()
         self.assertEqual(d["status"], "ok")
         # Verify the conditional logic: 200 == ok

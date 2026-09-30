@@ -2,7 +2,21 @@
 
 **Last updated:** 2026-08-31 (OD-042: r428 — целевой контракт, RM-GOV-012 approved; implementation_mode у 101 REQ; RM-GOV-012 выравнивание, OD-041 пауза walkthrough; RM-GOV-010-A/B; статус документа ACCEPTED, не APPROVED; не закоммичено)
 
-**RF-05 / RM-PILOT-002A (2026-09-29, PR в develop ждёт merge владельцем) — pilot-контур поднимается под `ENVIRONMENT=pilot`, verify честный.**
+**RF-04 / RM-STAB-019 (2026-09-30, PR в develop ждёт merge владельцем) — оркестратор: сбои не маскируются.**
+Закрывает P0-4 (ack при ошибке), P1-6.a, P1-8, T11 ревью `main @ 8ad0228` (узкий состав — решение владельца 2026-09-29). Было: сломанный
+конфиг безопасности или ошибка БД при генерации записывались как failed по каждому устройству, сообщение ack'алось; сбой `session_setup`/rollback
+навсегда останавливал цикл consumer, а `/health/ready` оставался 200; воркер завершения кампаний работал под `retail_media_app` без
+admin-контекста — RLS прятал кампании, «real DB proof» LIFECYCLE-COMPLETE шёл под владельцем БД. Стало: системный сбой → rollback + nak без
+failed-строк, ошибка данных устройства — failed + ack (как раньше); сбой сессии → nak + `consumer_errors`, цикл продолжается; подключённый
+consumer без цикла → `/health/ready` 503; проход завершения — с `set_worker_admin_context`. Доказательство: `tests/behavioral/test_rm_stab_019_orchestrator_rls.py`
+7/7 под `retail_media_app` NOBYPASSRLS и `tests/test_rm_stab_019_orchestrator_failures.py` (падают на коде до исправления), behavioral 491 passed,
+python-tests 1952 passed, локальный pilot smoke rc 0 (+ `/health/ready` воркера 200), 2 круга ревью (APPROVE WITH COMMENTS). RM-STAB-019 —
+`in_progress` до merge и CI develop. Долг/риск: nak при системном сбое повторяется каждые 5 с без лимита до DLQ (P1-6.b) — **условие выката на
+pilot-хост ожидает решения владельца**; сбой подписи/ошибки кода по устройству → failed + ack; умерший цикл не перезапускается (healthcheck
+compose — `/health/live`); счётчики manifest skipped/failed неточны; ссылка RM-STAB-019 в traceability — ожидает решения владельца.
+RM-PILOT-002A → `done` (решение владельца 2026-09-29; evidence: push-run develop 36571330932 success 42/42). Запись: `docs/remediation/journal.md`.
+
+**RF-05 / RM-PILOT-002A (2026-09-29, merged PR #12 → `develop @ af6810c`; push-run develop 36571330932 success 42/42; RM-PILOT-002A `done` решением владельца 2026-09-29) — pilot-контур поднимается под `ENVIRONMENT=pilot`, verify честный.**
 Закрывает P0-1…P0-5, P1-16, P2-I9, P2-I11, T12 ревью `main @ 8ad0228` (+ FU5). Было: pilot-compose проверялся только с `ENVIRONMENT=dev`,
 где prod-валидатор пропускается, — роль `retail_media_app` никто не создавал, device-gateway/воркер/control-api падали при старте без
 CORS/`JWT_AUDIENCE`/`METRICS_AUTH_TOKEN`/`MANIFEST_SIGNING_KEY`, device-токены получали 401, healthcheck frontend — unhealthy по IPv6,
@@ -12,7 +26,7 @@ verify сам создавал роль, сверял версию со свои
 новый CI job `pilot-compose-smoke` в release-gate. Protected Boundary «Docker, deployment scripts» — одобрена владельцем с условиями
 (список файлов утверждён). Доказательство: локальный прогон verify на образах ветки rc 0 (compose develop — rc 1), `tests/test_rf05_pilot_boot.py`
 (падают на коде до исправления), behavioral 484 passed под `retail_media_app` NOBYPASSRLS, python-tests 1941 passed, 4 круга ревью
-(3-й — REQUEST CHANGES, исправлено по решению владельца). RM-PILOT-002A — `in_progress` до merge и CI develop. Долг/риск: `JWT_AUDIENCE`
+(3-й — REQUEST CHANGES, исправлено по решению владельца). RM-PILOT-002A — `done` (см. RF-04). Долг/риск: `JWT_AUDIENCE`
 не проверяется `validate-pilot-env.py`/`local_stand.py` — **проверить `.env.stand` до обновления стенда** (ожидает решения владельца);
 lock-режим verify на реальном релизе не доказан, релизы до RF-05 verify не проходят (принято владельцем); `generate_release_lock.py` без
 `schema_head` (RF-06). Запись: `docs/remediation/journal.md`.

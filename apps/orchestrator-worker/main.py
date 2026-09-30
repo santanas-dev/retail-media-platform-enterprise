@@ -469,6 +469,24 @@ async def _start_stub_consumer(engine) -> bool:
 # ---------------------------------------------------------------------------
 
 
+async def _campaign_completion_pass(session_factory) -> list[str]:
+    """One completion scan in its own transaction; returns completed campaign IDs.
+
+    RM-STAB-019 (P1-8): campaigns, flights and status history are under FORCE
+    RLS, and the worker runs as retail_media_app (NOBYPASSRLS).  Without the
+    worker admin context the scan sees no campaigns and silently completes
+    nothing — the same context the relay and consumer set (S-019).
+    """
+    from packages.domain.database import set_worker_admin_context
+    from packages.domain.repository import complete_expired_campaigns
+
+    async with session_factory() as session:
+        await set_worker_admin_context(session)
+        completed = await complete_expired_campaigns(session)
+        await session.commit()
+    return completed
+
+
 async def _campaign_completion_maintenance(interval: float = 300.0) -> None:
     """Periodically complete active campaigns whose flights have all expired.
 
@@ -476,7 +494,6 @@ async def _campaign_completion_maintenance(interval: float = 300.0) -> None:
     active campaigns where all flights have ended and transitions them to completed.
     Safe to run frequently — idempotent, no duplicates.
     """
-    from packages.domain.repository import complete_expired_campaigns
     from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
     from sqlalchemy.orm import sessionmaker
     import os as _os
@@ -492,14 +509,12 @@ async def _campaign_completion_maintenance(interval: float = 300.0) -> None:
     while True:
         await asyncio.sleep(interval)
         try:
-            async with async_session() as session:
-                completed = await complete_expired_campaigns(session)
-                if completed:
-                    logger.info(
-                        "Campaign completion: %d campaigns completed: %s",
-                        len(completed), completed,
-                    )
-                await session.commit()
+            completed = await _campaign_completion_pass(async_session)
+            if completed:
+                logger.info(
+                    "Campaign completion: %d campaigns completed: %s",
+                    len(completed), completed,
+                )
         except Exception:
             logger.exception("Campaign completion maintenance tick failed")
 
