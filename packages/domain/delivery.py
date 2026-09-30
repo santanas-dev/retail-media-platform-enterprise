@@ -19,6 +19,7 @@ from datetime import datetime, timezone as tz
 from typing import Any
 
 from sqlalchemy import select, update as sa_update
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -627,6 +628,13 @@ async def generate_manifests_for_campaign(
     valid_to = max(flight_ends).isoformat() if flight_ends else None
 
     # ── 4. Generate manifests per device ──
+    # RF-04 / RM-STAB-019 (P0-4): the security config is a worker-level
+    # precondition, not per-device data.  Load it once, outside the per-device
+    # error handling: a broken config must fail the whole event (caller rolls
+    # back and naks) instead of being recorded as N failed manifests and acked.
+    from packages.security.config import get_security_config
+    signing_key = get_security_config().manifest_signing_key
+
     device_count = len(targets.device_surfaces)
     manifest_count = 0
     failure_count = 0
@@ -700,8 +708,6 @@ async def generate_manifests_for_campaign(
             )
 
             # Sign manifest payload (S-021): inject HMAC signature
-            from packages.security.config import get_security_config
-            signing_key = get_security_config().manifest_signing_key
             if signing_key:
                 sig = sign_manifest_payload(manifest_json, signing_key)
                 manifest_json["signature"]["value"] = sig
@@ -757,6 +763,11 @@ async def generate_manifests_for_campaign(
             manifest_count += 1
             manifest_ids.append(manifest_id)
 
+        except SQLAlchemyError:
+            # RM-STAB-019 (P0-4): a database error is systemic, not a property
+            # of this device — the transaction is unusable.  Propagate so the
+            # caller rolls back and naks; nothing is recorded as failed.
+            raise
         except Exception:
             # Mark the manifest as failed
             await mark_manifest_failed(

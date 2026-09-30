@@ -346,11 +346,17 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
         Runs until stop() is called or CancelledError is received.
         Each message is processed in its own transaction.
         """
+        from packages.services.health_state import set_consumer_running
+
         if self._sub is None:
             logger.error("Not connected — call connect() before run()")
+            set_consumer_running(False)
             return
 
         self._running = True
+        # RM-STAB-019: the loop itself reports that it runs; the finally
+        # below reports that it stopped.
+        set_consumer_running(True)
         logger.info(
             "Campaign event consumer started (JetStream pull): "
             "durable=%s, batch=%d",
@@ -385,6 +391,9 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
             logger.exception("Campaign event consumer loop crashed")
         finally:
             self._running = False
+            # RM-STAB-019 (P1-6.a): a connected consumer whose loop is gone is
+            # not ready — /health/ready reports it instead of staying 200.
+            set_consumer_running(False)
 
     async def stop(self) -> None:
         """Signal the consumer loop to stop (graceful shutdown)."""
@@ -401,7 +410,9 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
           - Handler success + commit  → ack  (msg.ack())
           - Handler failure            → nak  (msg.nak(delay)) — retryable
           - Malformed envelope         → term (msg.term()) — poison pill, no retry
-          - Unhandled exception        → nak  (msg.nak(delay)) — retryable
+          - Unhandled exception        → nak  (msg.nak(delay)) — retryable;
+            includes session_setup / commit / rollback failures, which are
+            also counted as consumer errors (RM-STAB-019)
         """
         try:
             raw_data: bytes = msg.data  # type: ignore[union-attr]
@@ -418,33 +429,42 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
             self.terminated += 1
             return
 
-        async with AsyncSession(self._engine) as session:
-            if self._session_setup is not None:
-                await self._session_setup(session)
-            try:
+        # RM-STAB-019 (P1-6.a): everything that touches the session —
+        # session_setup, the handler, commit, rollback, close — stays inside
+        # this try.  A failure there is counted and nak'd; it never escapes
+        # into run(), where it used to stop the consumer loop for good.
+        committed = False
+        try:
+            async with AsyncSession(self._engine) as session:
+                if self._session_setup is not None:
+                    await self._session_setup(session)
                 success = await handle_campaign_delivery_event(session, envelope)
                 if success:
                     await session.commit()
-                    if await self._safe_ack(msg):
-                        self.acked += 1
-                        from packages.services.health_state import bump_consumer_acked
-                        bump_consumer_acked()
+                    committed = True
                 else:
                     await session.rollback()
-                    await self._safe_nak(msg)
-                    self.nakd += 1
-                    from packages.services.health_state import bump_consumer_nakd
-                    bump_consumer_nakd()
-            except Exception:
-                await session.rollback()
-                await self._safe_nak(msg)
-                self.nakd += 1
-                from packages.services.health_state import bump_consumer_nakd
-                bump_consumer_nakd()
-                logger.exception(
-                    "Unhandled error processing event %s",
-                    envelope.get("event_id", "?"),
-                )
+        except Exception:
+            # Leaving the session context closes it, which rolls back any
+            # open transaction; nothing of this message is committed.
+            self.errors += 1
+            from packages.services.health_state import bump_consumer_errors
+            bump_consumer_errors()
+            logger.exception(
+                "Unhandled error processing event %s",
+                envelope.get("event_id", "?"),
+            )
+
+        if committed:
+            if await self._safe_ack(msg):
+                self.acked += 1
+                from packages.services.health_state import bump_consumer_acked
+                bump_consumer_acked()
+        else:
+            await self._safe_nak(msg)
+            self.nakd += 1
+            from packages.services.health_state import bump_consumer_nakd
+            bump_consumer_nakd()
 
     # ------------------------------------------------------------------
     # Safe JetStream helpers (never crash on ack/nak/term)

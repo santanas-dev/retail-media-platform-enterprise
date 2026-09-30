@@ -10,9 +10,9 @@
 | | |
 |---|---|
 | Активный этап | — |
-| Последний завершённый | RF-05 — finished, PR ждёт merge (`gh pr list --head fix/RF-05`); RF-01 — merged (PR #11 → `develop @ d8dbd62`, push-run develop 36475858226 → success 41/41); RF-00 — merged (PR #9, `7762434`) |
-| Следующий шаг | merge PR RF-05 владельцем → RM-PILOT-002A `done` после CI develop (решение владельца); `JWT_AUDIENCE` в `.env.stand` до обновления стенда → `/start RF-<N>` |
-| Базовая линия | `origin/develop @ d8dbd62` (2026-09-29, merge RF-01; push-run 36475858226 → success 41/41). Прежняя: `origin/develop @ 6bc9ac0` (2026-09-28, merge RF-CI; push-run `develop` 36407616564 → success; то же дерево — push-run `fix/RF-CI` 36404147483, 41/41). Снимок аудита RF-00 — `b166419`; ветка `fix/RF-00` получила `6bc9ac0` merge-коммитом `3892552` |
+| Последний завершённый | RF-04 — finished, PR ждёт merge (`gh pr list --head fix/RF-04`); RF-05 — merged (PR #12 → `develop @ af6810c`, push-run develop 36571330932 → success 42/42); RF-01 — merged (PR #11); RF-00 — merged (PR #9) |
+| Следующий шаг | merge PR RF-04 владельцем → RM-STAB-019 `done` после CI develop (решение владельца); P1-6.b как условие выката на pilot-хост → `/start RF-<N>` |
+| Базовая линия | `origin/develop @ af6810c` (2026-09-29, merge RF-05; push-run 36571330932 → success 42/42). Прежняя: `origin/develop @ d8dbd62` (2026-09-29, merge RF-01; push-run 36475858226 → success 41/41). Прежняя: `origin/develop @ 6bc9ac0` (2026-09-28, merge RF-CI; push-run `develop` 36407616564 → success; то же дерево — push-run `fix/RF-CI` 36404147483, 41/41). Снимок аудита RF-00 — `b166419`; ветка `fix/RF-00` получила `6bc9ac0` merge-коммитом `3892552` |
 | Источник находок | `docs/audit/2026-09-27-claude-code-review-main-8ad0228.md` (снято на `main @ 8ad0228`; develop на 64 коммита впереди) |
 
 ## Инварианты (не ломать)
@@ -25,6 +25,7 @@
 | I-0 | Границы импорта (ADR-014) | `python scripts/ci/check-import-boundaries.py` | исходное правило проекта |
 | I-1 | Refresh-токены: повтор после окна отзывает семью (+audit), в окне — нет; одна ветка при гонке; семья сериализована; отзыв переживает 401 (RM-STAB-018) | шаги job `behavioral-postgres-tests` (PostgreSQL, `retail_media_app` NOBYPASSRLS), затем `python3 -m pytest tests/behavioral/test_rm_stab_018_refresh_replay.py -v` → 7 passed | RF-01 |
 | I-2 | Pilot-compose под `ENVIRONMENT=pilot` поднимается без ручных шагов: роль приложения из `db-migrate`, все сервисы healthy, readiness строгий, identity образа, device-токен control-api принят device-gateway (RM-PILOT-002A) | CI job `pilot-compose-smoke` (`build-images.sh` без push → `verify-pilot-run.sh --images-from-env <version> <sha>`); локально — сборка образов с теми же build-args и тот же вызов; `python -m pytest tests/test_rf05_pilot_boot.py` | RF-05 |
+| I-3 | Оркестратор не маскирует сбои: системный сбой генерации → nak без failed, ошибка данных устройства → failed + ack; сбой сессии не останавливает consumer, остановка цикла → `/health/ready` 503; воркер завершения работает под RLS (RM-STAB-019) | шаги job `behavioral-postgres-tests` (`retail_media_app` NOBYPASSRLS), затем `python3 -m pytest tests/behavioral/test_rm_stab_019_orchestrator_rls.py -v` → 7 passed; `python -m pytest tests/test_rm_stab_019_orchestrator_failures.py` → 11 passed | RF-04 |
 
 ## Решения владельца, влияющие на этапы
 
@@ -38,6 +39,7 @@
 | 2026-09-28 | RF-01 = P0-7 + замена маскирующего теста `test_replay_calls_family_revoke` (одобрено); T7 и P0-6/P0-8 — в остаток черновика RF-01; задача RM-STAB-018 и OD-046 заводятся этапом; повтор ротированного refresh в окне 10 с — 401 без отзыва семьи, позже — отзыв семьи (вариант «a») |
 | 2026-09-29 | Следующий этап — RF-05, карточка `planned`, номер и состав как в черновике. Protected Boundary «Docker, deployment scripts» — с условиями: без секретов в Dockerfile/compose/скриптах (env или secret-механизм; в репозитории — `.env.example` с заглушками); без root в контейнерах без обоснования в PR; не трогать прод-конфигурацию и CI/CD деплоя в прод — только pilot-контур; список файлов — владельцу до правок. Новая задача в области RM-PILOT-002 — одобрена. RM-STAB-018 → `done`, если run 36475858226 зелёный. RF-01-остаток не начинать; справка по RM-STAB-004. Ревью в конце этапа — «/reviewer» |
 | 2026-09-29 | RF-05 после СТОП на круге 3: п.1 (schema head в lock-режиме verify) — вариант «а» (lock `release.schema_head`, иначе head из миграций на коммите релиза); п.3 — подтверждены ссылка `RM-PILOT-002A` в `requirements-traceability.yaml` (REQ-ARCH-004) и адаптация фикстур `JWT_AUDIENCE` в 3 тестовых файлах; п.4 — принято: `verify-pilot-images.yml` не проходит для релизов, собранных до RF-05 (в образах нет ENV identity). П.2 (`JWT_AUDIENCE` в `validate-pilot-env.py`/`local_stand.py`) — ответа нет, остаётся открытым риском |
+| 2026-09-29 | RF-05 смержен; RM-PILOT-002A → `done`. Следующий этап — RF-04, узкий состав: P0-4 (ack при ошибке; системные ошибки → nak, ошибки данных устройства — failed + ack), P1-6.a (цикл переживает сбой сообщения, остановка → `/health/ready` 503), P1-8 (новый behavioral под `retail_media_app`, существующий тест не менять), T11; P1-6.b/P1-7/P2-B7 — отдельный этап с RM-TECH-243. Protected Boundaries — нет. Задача RM-STAB-019, стадия S |
 | 2026-09-28 | Красный CI PR #9 из-за внешнего дрейфа — отдельный этап RF-CI (вариант 1); SQLAlchemy `<2.1` в CI и requirements; MinIO → Chainguard по digest; скоуп CI + drill + phase1 + pilot, Protected Boundary «Docker/deployment» — по ответу владельца «CI + drill + phase1 + pilot»: образ/healthcheck MinIO в `phase1-ci.yml`, compose restore-drill/phase1/pilot и версия MinIO в `backup-restore-drill.sh`; pilot `user: "0"` + долг. `user: "0"` в phase1 добавлен агентом на круге ревью 2 по аналогии — **ожидает подтверждения владельца** |
 
 ---
@@ -513,3 +515,133 @@
   старые релизы в verify (принято владельцем). Долг — «Долг (к `/finish`)» выше.
 - Новые инварианты: I-2.
 - Следующий шаг: merge PR владельцем → решение по `JWT_AUDIENCE` на стенде и RM-STAB-004/RF-01-остаток → `/start RF-<N>`.
+
+## RF-04 — Оркестратор: сбои не маскируются
+
+- Статус: finished (PR ждёт merge владельцем)
+- Ветка: fix/RF-04 · Основа: develop @ af6810c (merge PR #12)
+- Сделано до правок (решения владельца 2026-09-29): RM-PILOT-002A → `done` в `roadmap.yaml` с `evidence_refs` (ci_run 36571330932,
+  command — job `pilot-compose-smoke` и `pytest tests/test_rf05_pilot_boot.py tests/test_production_config_gate.py` → 59 passed локально);
+  RM-STAB-019 (S, in_progress) заведена; генерация. Карточка RF-04 → `in_progress`, RF-05 → `merged`.
+- Факты для плана (код `af6810c`):
+  - P0-4: `generate_manifests_for_campaign` ловит любое исключение устройства (`delivery.py:760`), пишет failed и продолжает;
+    `get_security_config()` грузится внутри цикла по устройствам (`:703`) → при сломанном конфиге каждое устройство failed,
+    handler возвращает `True` → ack.
+  - P1-6.a: в `_process_one` `session_setup` вне `try`, rollback в `except` может бросить → исключение уходит в `run()` → цикл
+    завершается (`except Exception: logger.exception(...)`), `consumer_running` в health не сбрасывается; readiness считается только
+    по `db_ok`/`nats_connected`.
+  - P1-8: `_campaign_completion_maintenance` (`apps/orchestrator-worker/main.py`) — сессия без `set_worker_admin_context`;
+    `tests/behavioral/test_campaign_completion.py` ходит через `BEHAVIORAL_DB_URL` (владелец БД).
+  - Compose healthcheck воркера — `/health/live` (pilot/phase1); 503 на `/health/ready` Docker **не увидит** (уточнение к формулировке
+    варианта в вопросе владельцу; compose вне скоупа — долг RF-05 «healthcheck → /health/ready»).
+- Baseline (2026-09-29, `.venv` Python 3.12.3, `set -o pipefail`, код = `af6810c`):
+  - I-0 → rc 0 «All import boundaries clean.»
+  - I-1 / behavioral (шаги job дословно, postgres:16-alpine, `retail_media_app` NOBYPASSRLS) → rc 0: 484 passed, 12 skipped; RM-STAB-018 7/7.
+  - python-tests (`python -m pytest tests/ -v`, env job) → rc 0: 1941 passed, 541 skipped.
+  - I-2: push-run develop 36571330932 — job «Pilot Compose Smoke — RF-05» success; `tests/test_rf05_pilot_boot.py` входит в python-tests (rc 0).
+  - `roadmap-governance-guard` → PASS; `--self-test` → 55/55 (до и после правок roadmap).
+- План:
+  - Задача: см. карточку. Домены (ADR-014): `packages/domain` (delivery), `packages/services` (consumer, health_state),
+    `apps/orchestrator-worker`. Границы импорта не меняются.
+  - Protected Boundaries: нет. Формат манифеста, lifecycle-переходы, compose/CI не трогаются.
+  - Доказательство (уточнено после ревью круга 1): `tests/test_rm_stab_019_orchestrator_failures.py` (unit: сбой session_setup/rollback →
+    цикл жив; остановка цикла → readiness 503) и `tests/behavioral/test_rm_stab_019_orchestrator_rls.py` (под `retail_media_app`:
+    конфиг-сбой / ошибка БД → nak без failed; ошибка данных → failed + ack; проход воркера завершения).
+
+### Сделано
+- Тесты сначала (на коде `af6810c`):
+  - `tests/test_rm_stab_019_orchestrator_failures.py` (unit, T11) — 5 из 9 падали: сбой `session_setup` / rollback уходил из
+    `_process_one` исключением; цикл `run()` останавливался на первом таком сообщении; `consumer_ready` без работающего цикла → `ok`;
+    вылет цикла не сбрасывал `consumer_running`. 4 контрольных (commit-сбой → не ack, readiness без consumer, shutting_down) проходили.
+  - `tests/behavioral/test_rm_stab_019_orchestrator_rls.py` (PostgreSQL, путь consumer под `retail_media_app` + `set_worker_admin_context`)
+    — 3 из 7 падали: сломанный конфиг безопасности → ack (ожидался nak без failed); ошибка БД при записи манифеста → ack;
+    проход воркера завершения (функции не было). Контрольные: роль NOBYPASSRLS; ошибка данных устройства → failed + ack;
+    рабочий конфиг → generated + ack; без admin-контекста RLS прячет кампанию (механизм P1-8) — проходили.
+- `packages/domain/delivery.py`: `get_security_config()` грузится один раз до цикла по устройствам (вне обработки ошибок устройства);
+  `SQLAlchemyError` внутри цикла пробрасывается (транзакция непригодна) → handler `False` → rollback + nak; прочие ошибки устройства —
+  как раньше (failed + `delivery.manifest.failed`). Формат манифеста и подпись не менялись.
+- `packages/services/campaign_event_handler.py::NatsJetStreamCampaignConsumer`: `_process_one` — весь путь сессии (setup, handler,
+  commit, rollback, close) внутри `try`; сбой → `errors`+1, `bump_consumer_errors`, nak; ack только после успешного commit.
+  `run()` в `finally` сбрасывает `consumer_running` в health.
+- `packages/services/health_state.py::to_dict`: `consumer_ready and not consumer_running` → `degraded` (`/health/ready` 503);
+  `shutting_down` имеет приоритет.
+- `apps/orchestrator-worker/main.py`: `_campaign_completion_pass(session_factory)` — одна транзакция с `set_worker_admin_context`;
+  `_campaign_completion_maintenance` вызывает её (лог — после commit).
+- `roadmap.yaml`: acceptance RM-STAB-019 → behavioral-файл для P0-4 и P1-8, unit — для P1-6.a; генерация.
+- После исправлений: unit 9/9 + `test_phase4_2b_consumer.py` → 47 passed; behavioral файл 7/7; ruff — новых нет (delivery 10→10,
+  main 3→3); I-0 rc 0; guard PASS; self-test 55/55; `git diff --check` rc 0.
+
+- Полный python-tests после правок → 2 failed: `tests/test_phase4_production_readiness.py::TestHealthEndpoint::
+  test_ready_endpoint_includes_all_components` и `test_ready_returns_200_when_status_ok` — «готовое» состояние строилось с
+  `consumer_ready=True` без `consumer_running` (второй — через общий singleton после первого). Решение владельца 2026-09-30:
+  адаптировать фикстуру — `set_consumer_running(True)` в обоих, ассерты не менялись.
+- Самопроверка (2026-09-30, `.venv` Python 3.12.3, `set -o pipefail`):
+  - behavioral (шаги job дословно, `retail_media_app` NOBYPASSRLS) → rc 0: 491 passed, 12 skipped (baseline 484 + 7 новых); RM-STAB-018 7/7.
+  - python-tests (env job) → rc 0: 1950 passed, 548 skipped (541 baseline + 7 новых behavioral без env).
+  - I-2: образы из ветки (флаги `build-images.sh`), `verify-pilot-run.sh --images-from-env rf04-local <sha>` → rc 0
+    «VERIFY-PILOT-RUN PASSED». Дополнительно копией verify из scratchpad (репозиторий не менялся): `/health/ready` оркестратора в
+    pilot-стеке с реальным JetStream consumer → 200 `ok`, consumer ready + running.
+  - I-0 rc 0; guard PASS; self-test 55/55; ruff — новых нет; `git diff --check` rc 0.
+
+### Решения
+- P0-4 доказан на PostgreSQL, а не unit-моками: генерация манифеста — десятки запросов, мок сессии ничего бы не доказал.
+  Граница: ошибка БД в тесте — подменённая `OperationalError` (доказывает ветку `except SQLAlchemyError: raise` на живой PG-транзакции),
+  а не реально оборванное соединение.
+- Системные ошибки = сбой загрузки конфига безопасности и `SQLAlchemyError`; остальное — ошибка данных устройства (контракт прежний).
+- Подсчёт: сбой сессии/handler'а теперь увеличивает и `nakd`, и `errors` (раньше только `nakd`) — видно в health.
+- `StubCampaignEventConsumer` (dev/test) не менялся — P1-6.a про реальный consumer; долг.
+- Readiness: 503 виден только на `/health/ready`; compose healthcheck — `/health/live` (долг RF-05), compose вне скоупа.
+
+### Ревью
+| Круг | Замечание | Уровень | Решение | Риск исправления | Доказательство |
+|---|---|---|---|---|---|
+| 1 | P0-4 закрыт частично: сбой подписи / ошибки кода внутри цикла устройства → failed + ack | 🟠 | отклонено с обоснованием: деление «системная / ошибка данных» по типу исключения — решение владельца; вариант «все устройства упали → nak» без DLQ даёт бесконечный nak для детерминированной ошибки данных кампании с одним устройством; граница записана в notes RM-STAB-019; пересмотр — на этапе DLQ (P1-6.b) | — | `delivery.py` except-ветки; notes RM-STAB-019 |
+| 1 | Все устройства failed → handler считает `manifest_skipped`, не `failed` | 🟠 | долг: правка требует адаптации существующих тестов `test_phase4_2b_consumer.py` (результат генерации — `MagicMock`, `failure_count > 0` → TypeError) — вне карточки | — | `MagicMock().failure_count > 0` → TypeError (проверено) |
+| 1 | `checks.consumer` = `ready` при умершем цикле | 🟡 | долг: правка ломает существующий `test_phase4_production_readiness.py::test_publisher_and_consumer_ready` (вне карточки); причина видна в `components.consumer.running` | — | прогон: 1 failed при правке, откат |
+| 1 | `consumer_running` выставляется в `main.py` до `create_task`; ранний `return` в `run()` не сбрасывает | 🟡 | исправлено: `run()` сам ставит `True` при старте цикла и `False` при `_sub is None` и в `finally`; ссылка на task — долг | низкий: флаг тот же, источник — сам цикл | +2 unit-теста |
+| 1 | 503 на readiness никто не использует (healthcheck `/health/live`) | 🟡 | долг RF-05 (compose вне скоупа); отмечено в notes RM-STAB-019 | — | — |
+| 1 | Бесконечный nak при детерминированной ошибке БД | 🟡 | зафиксировано в «Риск регрессии» RM-STAB-019 (до DLQ, P1-6.b); регрессии нет — раньше PendingRollbackError давал тот же nak | — | notes |
+| 1 | Журнал: неверное имя behavioral-файла и распределение проверок в «План» | 🟡 | исправлено | нет | — |
+| 1 | Тест ошибки БД — мок, не реальный обрыв | 🟡 | исправлено: оговорка в «Решения» | нет | — |
+- Самопроверка после круга 1: behavioral rc 0 — 491 passed, 12 skipped; python-tests rc 0 — 1952 passed, 548 skipped; I-0 rc 0; guard PASS;
+  self-test 55/55; ruff изменённых файлов — новых нет; `git diff --check` rc 0.
+| 2 | Системный сбой → nak каждые 5 с без ограничения (`max_deliver=-1`) | 🟠 | отклонено с обоснованием: бесконечные повторы при nak приняты владельцем при выборе варианта P0-4 (вопрос прямо это оговаривал); backoff/лимит — дизайн DLQ (P1-6.b, отдельный этап); риск в notes RM-STAB-019. **Для владельца:** P1-6.b — условие выката RF-04 на pilot-хост | — | `jetstream_provisioning.py:45`, `nak_delay=5.0` |
+| 2 | Умерший цикл не перезапускается, `/health/live` 200 | 🟠 | долг: владелец выбрал «выжить + readiness», не fail-fast; супервизор / liveness по consumer — отдельная задача; compose вне скоупа | — | notes RM-STAB-019 |
+| 2 | `StubCampaignEventConsumer._handle_one` — старый шаблон | 🟡 | долг (dev/test, вне P1-6.a) | — | — |
+| 2 | Системный сбой увеличивает `consumer_manifest_failed` | 🟡 | долг (отдельный счётчик — вместе с п.2 круга 1) | — | — |
+| 2 | Тест ошибки БД искусственный; старый код при реальном обрыве тоже давал nak (PendingRollbackError) | 🟡 | принято: оговорка уже в «Решения»; «падает до исправления» для ветки БД — только для подменённой ошибки | нет | — |
+| 2 | Сбой драйвера, не обёрнутый SQLAlchemy (`OSError`, `TimeoutError`), → failed + ack | 🟡 | долг | — | — |
+- Ревьюер круга 2 локально получил 7 failed в `pytest tests/` без env job — те же 7 без новых файлов, порядкозависимые (известны с RF-CI);
+  в env job python-tests — rc 0 (см. гейт).
+
+### Гейт
+2026-09-30, `.venv` Python 3.12.3, `set -o pipefail`; код не менялся после самопроверки круга 1 (правки круга 2 — только журнал):
+- behavioral (шаги job дословно, `retail_media_app` NOBYPASSRLS) → rc 0: 491 passed, 12 skipped; RM-STAB-019 7/7; I-1 RM-STAB-018 7/7.
+- python-tests (env job) → rc 0: 1952 passed, 548 skipped (541 baseline + 7 новых behavioral без env); включает `tests/test_rf05_pilot_boot.py`.
+- I-2: образы пересобраны из ветки после круга 1 → `verify-pilot-run.sh --images-from-env rf04-local <sha>` rc 0 «VERIFY-PILOT-RUN PASSED»;
+  копия verify с проверкой `/health/ready` оркестратора → 200 `ok`, consumer running=true; контейнеров `rmp-verify-*` после прогона нет.
+- I-0 rc 0; `roadmap-governance-guard` PASS; `--self-test` 55/55; ruff — новых нет; `git diff --check` rc 0.
+- Ревью: 2 круга — APPROVE WITH COMMENTS, APPROVE WITH COMMENTS.
+- Не запускалось: CI (на `/finish`); frontend/UI-smoke (не затронуты); `docker compose config` (compose не менялся).
+
+### Долг (к `/finish`)
+- P0-4 частично: сбой подписи / ошибки кода внутри генерации по устройству → failed + ack; сбой драйвера вне SQLAlchemy → failed + ack.
+- Бесконечный nak каждые 5 с при системном сбое до DLQ (P1-6.b) — **условие выката на pilot-хост, решение владельца**.
+- Умерший цикл consumer не перезапускается; compose healthcheck на `/health/live` (долг RF-05); ссылка на task `consumer.run()` не хранится.
+- Наблюдаемость: все устройства failed → `manifest_skipped`; системный сбой → `manifest_failed`; `checks.consumer` = `ready` при умершем цикле
+  (правки требуют адаптации существующих тестов вне карточки).
+- `StubCampaignEventConsumer` не переведён на новую структуру.
+- `requirements-traceability.yaml`: ссылка RM-STAB-019 (кандидат REQ-ORCH-002) — решением владельца.
+- Старые ошибки ruff в изменённых файлах (delivery 10, main 3).
+
+### Итог (заполняет /finish)
+- Статус: finished (PR ждёт merge владельцем). Коммит и PR: `gh pr list --head fix/RF-04`; CI — в отчёте `/finish` (в коммит не входит).
+- Доказано: системный сбой генерации (конфиг, БД) → nak без failed-строк, ошибка данных устройства → failed + ack — на PostgreSQL путём consumer
+  под `retail_media_app`; сбой сессии не останавливает цикл, остановка цикла видна в `/health/ready`; воркер завершения работает под RLS.
+  Тесты падали на коде до исправления (unit 5/9, behavioral 3/7).
+- RM-STAB-019 остаётся `in_progress`: `done` — после merge и зелёного CI develop, решением владельца. RM-PILOT-002A — `done`.
+- Отклонённые 🟠: частичный P0-4 (деление по типу исключения — решение владельца; «все устройства упали → nak» без DLQ = бесконечный nak);
+  бесконечный nak до DLQ (принят владельцем при выборе варианта). Долг — «Долг (к `/finish`)» выше.
+- Новые инварианты: I-3.
+- Следующий шаг: merge PR владельцем → решение: P1-6.b (DLQ/backoff) как условие выката RF-04 на pilot-хост; ссылка RM-STAB-019 в traceability →
+  `/start RF-<N>`.

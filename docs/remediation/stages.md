@@ -87,7 +87,7 @@
 
 | Поле | Значение |
 |---|---|
-| Статус | finished |
+| Статус | merged |
 | Цель | Pilot-compose с `ENVIRONMENT=pilot` поднимается с нуля без ручных шагов (роль приложения, CORS, audience, конфиг воркера), а `verify-pilot-run.sh` падает, если это не так |
 | Задачи roadmap.yaml | новая в области RM-PILOT-002 (одобрено владельцем 2026-09-29) |
 | Находки | P0-1, P0-2, P0-3, P0-4 (конфиг; ack при ошибке — RF-04), P0-5, P1-16, P2-I9, P2-I11, T12 |
@@ -98,6 +98,22 @@
 | Входные условия | RF-01 смержен (PR #11, `develop @ d8dbd62`) |
 | Гейт | локальный прогон скрипта pilot compose smoke (`ENVIRONMENT=pilot`, образы собраны из ветки) → db-migrate 0, все сервисы healthy, роль NOBYPASSRLS, версия из образа, device-токен принят, конфиг воркера; I-0; I-1 и job behavioral под `retail_media_app`; job python-tests; `roadmap-governance-guard` + `--self-test`; ruff по изменённым файлам; `docker compose config` pilot/phase1/local-stand |
 | Канон, который меняется | `roadmap.yaml` (новая задача RM-PILOT-*) + генерация; checkpoint `PROJECT_STATE.md` |
+
+## RF-04 — Оркестратор: сбои не маскируются (решение владельца 2026-09-29)
+
+| Поле | Значение |
+|---|---|
+| Статус | finished |
+| Цель | Системный сбой генерации манифеста не ack'ается; consumer переживает сбой отдельного сообщения, а его остановку видит readiness; воркер завершения кампаний работает под RLS — доказано на PostgreSQL под `retail_media_app` |
+| Задачи roadmap.yaml | RM-STAB-019 (новая, стадия S); попутно RM-PILOT-002A → `done` (решение владельца 2026-09-29) |
+| Находки | P0-4 (ack при ошибке), P1-6.a, P1-8, T11 |
+| Скоуп (в) | P0-4: системные ошибки (конфиг безопасности, БД/сессия) → rollback + nak, failed не пишется, счётчик health; ошибка данных устройства — как сейчас (failed + `delivery.manifest.failed` + ack) — `packages/domain/delivery.py`, `packages/services/campaign_event_handler.py`. P1-6.a: сбой `session_setup`/rollback → nak + счётчик ошибок, цикл продолжается; consumer подключён, но цикл не работает → `/health/ready` 503 — `campaign_event_handler.py`, `packages/services/health_state.py`, `apps/orchestrator-worker/main.py`. P1-8: `set_worker_admin_context` в сессии воркера завершения, один проход — функция. Тесты: unit consumer/handler (T11); новый behavioral под `retail_media_app` (NOBYPASSRLS), падающий до исправления. `roadmap.yaml` + генерация |
+| Скоуп (вне) | DLQ/`max_deliver` (P1-6.b), stream subjects (P1-7), `SKIP LOCKED` (P2-B7) — отдельный этап с RM-TECH-243; формат манифеста; lifecycle-переходы; compose/Docker/CI; существующий `tests/behavioral/test_campaign_completion.py` не меняется; `requirements-traceability.yaml` — только решением владельца |
+| Protected Boundaries | нет (решение владельца 2026-09-29) |
+| mini-design | нет |
+| Входные условия | RF-05 смержен (PR #12, `develop @ af6810c`) |
+| Гейт | job behavioral под `retail_media_app` (новый тест + I-1); job python-tests; I-0; I-2 (`tests/test_rf05_pilot_boot.py`; pilot compose smoke локально); `roadmap-governance-guard` + `--self-test`; ruff по изменённым файлам |
+| Канон, который меняется | `roadmap.yaml` (RM-STAB-019; RM-PILOT-002A → `done`) + генерация; checkpoint `PROJECT_STATE.md` |
 
 ## Остальное
 
@@ -117,7 +133,7 @@
 | RF-01-остаток (номер — владелец) | Авторизация: scoped-права, эскалация (P0-7 выделена в RF-01, решение владельца 2026-09-28) | P0-6, P0-8, P1-11.a, T1, T2, T3, T7 | новая; пересекается по коду с RM-STAB-004 (S, in_progress) — риск конфликта правок `dependencies.py`/`scopes.py`, решает владелец; смежно RM-STAB-015 | CORE (безопасность) | нет (auth портала не в списке) | да — модель `scoped_permissions[(type,id)]` по ADR-009 |
 | RF-02 | Деньги: договор кампании и бронь инвентаря | P0-9, P0-11.a–c, P1-9, P2-D1, T4, T8 | RM-TECH-203, RM-TECH-241 (частично) + новая | CORE | campaign submit/approval (бронь в `request_campaign_approval`) | да |
 | RF-03 | Доставка: мультикампанийный манифест, отзыв, resume, daypart/SoV, PoP-окна | P0-12.a–d, P1-2, P2-B8, T9 | RM-TECH-242, RM-TECH-245, RM-TECH-248 + новая | CORE / CH | generated manifest compatibility; campaign publication; KSO runtime (плеер) | да (ADR-016) |
-| RF-04 | Надёжность событий: consumer, stream subjects, воркер завершения | P1-6.a–b, P1-7, P1-8, P0-4 (ack при ошибке), P2-B7, T11 | RM-TECH-243 (частично) + новая | CORE (outbox) | требует проверки: P0-4/P1-8 затрагивают генерацию манифестов и lifecycle кампании (близко к publication flows / manifest compatibility) | нет |
+| RF-04 → карточка выше (узкий состав; P1-6.b, P1-7, P2-B7 — отдельный этап) | Надёжность событий: consumer, stream subjects, воркер завершения | P1-6.a–b, P1-7, P1-8, P0-4 (ack при ошибке), P2-B7, T11 | RM-TECH-243 (частично) + новая | CORE (outbox) | требует проверки: P0-4/P1-8 затрагивают генерацию манифестов и lifecycle кампании (близко к publication flows / manifest compatibility) | нет |
 | RF-05 → карточка выше | Pilot-контур поднимается, verify честный | P0-1, P0-2, P0-3, P0-4 (конфиг), P0-5, P1-16, P2-I9, P2-I11, T12 | новая (область RM-PILOT-002) | POPS / E0 | Docker, deployment scripts | нет |
 | RF-06 | Supply chain CI и образы | P0-10.a–c, P1-18, P2-I1–I7, P2-I10 | RM-STAB-009 (частично) + новая | S / POPS | Docker, deployment scripts; внешнее действие владельца — GHCR visibility | нет |
 | RF-07 | Tenancy и миграции | P1-3, P1-4, P1-17, P2-I8 | RM-TECH-229, RM-STAB-004 (частично) | C / CORE | destructive migrations (downgrade) | да (ERD/migration plan) |

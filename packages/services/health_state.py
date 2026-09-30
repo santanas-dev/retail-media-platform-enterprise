@@ -56,6 +56,10 @@ class HealthState:
         """Return a JSON-serializable readiness snapshot."""
         if self.shutting_down:
             status = "shutting_down"
+        elif self.consumer_ready and not self.consumer_running:
+            # RM-STAB-019 (P1-6.a): the consumer connected, but its loop is
+            # not running — events are no longer consumed.
+            status = "degraded"
         elif self.db_ok and self.nats_connected:
             status = "ok"
         else:

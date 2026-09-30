@@ -1467,8 +1467,25 @@ tasks:
     verified_by: command
     ref: python -m pytest tests/test_rf05_pilot_boot.py tests/test_production_config_gate.py
   decision_status: approved
-  delivery_status: in_progress
-  notes: 'Решение владельца 2026-09-29 (этап RF-05, область RM-PILOT-002, Protected Boundary Docker/deployment с условиями). Находки
+  delivery_status: done
+  evidence_refs:
+  - kind: ci_run
+    ref: https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/36571330932
+    status: verified
+    observed_at: '2026-09-29T13:05:09Z'
+    note: 'push-run develop @ af6810c (merge PR #12), attempt 1, success 42/42, включая job «Pilot Compose Smoke — RF-05»'
+  - kind: command
+    ref: 'CI job pilot-compose-smoke: bash scripts/ci/verify-pilot-run.sh --images-from-env ci-pilot-smoke <sha>'
+    status: verified
+    observed_at: '2026-09-29T13:05:09Z'
+    note: job «Pilot Compose Smoke — RF-05» success в push-run develop 36571330932 (af6810c)
+  - kind: command
+    ref: python -m pytest tests/test_rf05_pilot_boot.py tests/test_production_config_gate.py
+    status: verified
+    observed_at: '2026-09-29T18:36:09Z'
+    note: 59 passed локально на develop @ af6810c; тот же набор в job «Python — Unit Tests» run 36571330932
+  notes: 'done - PR #12 смержен в develop @ af6810c, push-run develop 36571330932 success 42/42 (решение владельца 2026-09-29).
+    Решение владельца 2026-09-29 (этап RF-05, область RM-PILOT-002, Protected Boundary Docker/deployment с условиями). Находки
     ревью main@8ad0228: P0-1..P0-5, P1-16, P2-I9, P2-I11, T12 (+ FU5 healthcheck frontend). REQ: REQ-ARCH-004; SC: -; DEC: -.
     Не покрывает: TLS/reverse proxy (001D), ack/DLQ воркера при ошибке (RF-04), публикацию релиза и verify-pilot-images на GHCR
     (внешнее действие владельца). Риск регрессии: средний - обязательный JWT_AUDIENCE вне dev; pilot-хосты без него не стартуют.'
@@ -1826,6 +1843,32 @@ tasks:
     несуществующую колонку last_error (CompileError); ротация без блокировки. Риск регрессии: средний -
     отзыв семьи начинает срабатывать; гонка вкладок портала (P1-13.b) семью не отзывает (окно 10 с), но
     проигравшая вкладка по-прежнему получает 401 - до single-flight на фронтенде (RF-08).'
+- id: RM-STAB-019
+  kind: implementation
+  stage: S
+  title: 'Оркестратор: сбои не маскируются - nak при системной ошибке генерации, живучий consumer, воркер завершения под RLS'
+  owner_role: Technical owner
+  dependencies: []
+  acceptance:
+  - check: системная ошибка генерации манифеста (конфиг безопасности, БД/сессия) - rollback и nak, строки failed не пишутся;
+      ошибка данных одного устройства - failed + delivery.manifest.failed + ack, как раньше (путь consumer под retail_media_app)
+    verified_by: behavioral
+    ref: tests/behavioral/test_rm_stab_019_orchestrator_rls.py
+  - check: сбой session_setup/rollback одного сообщения - nak, цикл consumer продолжается; остановка цикла подключённого
+      consumer - /health/ready 503
+    verified_by: command
+    ref: python -m pytest tests/test_rm_stab_019_orchestrator_failures.py
+  - check: один проход воркера завершения под retail_media_app (NOBYPASSRLS) завершает активную кампанию с истёкшими флайтами
+    verified_by: behavioral
+    ref: tests/behavioral/test_rm_stab_019_orchestrator_rls.py
+  decision_status: approved
+  delivery_status: in_progress
+  notes: 'Решение владельца 2026-09-29, этап RF-04 (узкий состав). Находки ревью main@8ad0228: P0-4 (ack при ошибке), P1-6.a,
+    P1-8, T11. REQ: - (кандидат REQ-ORCH-002, ссылка - решением владельца); SC: -; DEC: -. Не покрывает: DLQ и max_deliver
+    (P1-6.b), stream subjects (P1-7), SKIP LOCKED outbox (P2-B7) - отдельный этап с RM-TECH-243; сбой подписи и ошибки кода
+    внутри генерации по устройству по-прежнему дают failed + ack (деление по типу исключения). Риск регрессии: низкий -
+    системный сбой начинает повторяться (nak) вместо тихого failed, повторы бесконечны до DLQ (max_deliver=-1, P1-6.b);
+    readiness воркера может стать 503, но compose healthcheck смотрит /health/live - автоперезапуска нет.'
 - id: RM-TECH-220
   kind: implementation
   stage: C
