@@ -22,6 +22,8 @@ from typing import Any, Callable
 
 from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 
+from packages.services.consumer_dead_letters import DEFAULT_BACKOFF_SECONDS, RetryPolicy
+
 logger = logging.getLogger("rmp.campaign_event_handler")
 
 # ---------------------------------------------------------------------------
@@ -240,6 +242,23 @@ class StubCampaignEventConsumer(CampaignEventConsumer):
 # ---------------------------------------------------------------------------
 
 
+def _delivery_metadata(msg: object) -> tuple[int, int | None]:
+    """(num_delivered, stream sequence) of a JetStream message.
+
+    A message without JetStream metadata counts as its first delivery.
+    """
+    try:
+        meta = msg.metadata  # type: ignore[union-attr]
+        num = int(meta.num_delivered)
+    except Exception:
+        return 1, None
+    try:
+        seq = int(meta.sequence.stream)
+    except Exception:
+        seq = None
+    return max(num, 1), seq
+
+
 class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
     """Real NATS JetStream pull-based campaign event consumer (ADR-002, ADR-012).
 
@@ -277,6 +296,7 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
         nak_delay: float = 5.0,
         connect_timeout: float = 5.0,
         session_setup: Callable[[AsyncSession], Awaitable[None]] | None = None,
+        retry_policy: RetryPolicy | None = None,
     ) -> None:
         self._nats_url = nats_url
         self._engine = engine
@@ -287,6 +307,11 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
         self._fetch_timeout = fetch_timeout
         self._nak_delay = nak_delay
         self._connect_timeout = connect_timeout
+        # RM-STAB-020: limited deliveries with growing nak delays, then DLQ.
+        # Without an explicit policy the first delay is ``nak_delay``.
+        self._retry_policy = retry_policy or RetryPolicy(
+            backoff_seconds=(nak_delay, *DEFAULT_BACKOFF_SECONDS[1:]),
+        )
 
         self._nc: object | None = None
         self._js: object | None = None
@@ -299,6 +324,7 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
         self.nakd: int = 0
         self.terminated: int = 0
         self.errors: int = 0
+        self.dead_lettered: int = 0
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -423,7 +449,8 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
             return
 
         envelope = parse_envelope(raw_data)
-        if envelope is None:
+        if not isinstance(envelope, dict):
+            # Not JSON, or JSON that is not an object (RM-STAB-020) — poison.
             logger.warning("Unparseable envelope — term (poison pill)")
             await self._safe_term(msg)
             self.terminated += 1
@@ -434,6 +461,7 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
         # this try.  A failure there is counted and nak'd; it never escapes
         # into run(), where it used to stop the consumer loop for good.
         committed = False
+        failure = "handler returned failure"
         try:
             async with AsyncSession(self._engine) as session:
                 if self._session_setup is not None:
@@ -444,9 +472,11 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
                     committed = True
                 else:
                     await session.rollback()
-        except Exception:
+        except Exception as exc:
             # Leaving the session context closes it, which rolls back any
             # open transaction; nothing of this message is committed.
+            # The DLQ keeps the class name only — messages may carry DSNs.
+            failure = type(exc).__name__
             self.errors += 1
             from packages.services.health_state import bump_consumer_errors
             bump_consumer_errors()
@@ -460,11 +490,72 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
                 self.acked += 1
                 from packages.services.health_state import bump_consumer_acked
                 bump_consumer_acked()
-        else:
-            await self._safe_nak(msg)
-            self.nakd += 1
-            from packages.services.health_state import bump_consumer_nakd
-            bump_consumer_nakd()
+            return
+
+        # RM-STAB-020 (P1-6.b): limited deliveries.  The last allowed failure
+        # goes to the DLQ and is terminated; a failed DLQ write keeps the
+        # message (longest delay) — it is never dropped.
+        num_delivered, stream_sequence = _delivery_metadata(msg)
+        policy = self._retry_policy
+        delay = policy.nak_delay(num_delivered)
+        if num_delivered >= policy.max_deliveries:
+            stored = await self._dead_letter(
+                envelope=envelope,
+                deliveries=num_delivered,
+                stream_sequence=stream_sequence,
+                last_error=failure,
+            )
+            if stored:
+                await self._safe_term(msg)
+                self.dead_lettered += 1
+                from packages.services.health_state import bump_consumer_dead_lettered
+                bump_consumer_dead_lettered()
+                logger.error(
+                    "Event %s (type=%s) dead-lettered after %d deliveries: %s",
+                    envelope.get("event_id", "?"), envelope.get("event_type", "?"),
+                    num_delivered, failure,
+                )
+                return
+            delay = policy.max_delay
+
+        await self._safe_nak(msg, delay)
+        self.nakd += 1
+        from packages.services.health_state import bump_consumer_nakd
+        bump_consumer_nakd()
+
+    async def _dead_letter(
+        self,
+        *,
+        envelope: dict,
+        deliveries: int,
+        stream_sequence: int | None,
+        last_error: str,
+    ) -> bool:
+        """Store the message in consumer_dead_letters (own transaction). True on success."""
+        from packages.services import consumer_dead_letters
+
+        try:
+            async with AsyncSession(self._engine) as session:
+                if self._session_setup is not None:
+                    await self._session_setup(session)
+                await consumer_dead_letters.record_dead_letter(
+                    session,
+                    envelope=envelope,
+                    deliveries=deliveries,
+                    stream_sequence=stream_sequence,
+                    last_error=last_error,
+                )
+                await session.commit()
+            return True
+        except Exception:
+            self.errors += 1
+            from packages.services.health_state import bump_consumer_errors
+            bump_consumer_errors()
+            logger.exception(
+                "Dead-letter write failed for event %s — keeping the message",
+                envelope.get("event_id", "?"),
+            )
+            return False
 
     # ------------------------------------------------------------------
     # Safe JetStream helpers (never crash on ack/nak/term)
@@ -482,9 +573,9 @@ class NatsJetStreamCampaignConsumer(CampaignEventConsumer):
             logger.exception("ack() failed")
             return False
 
-    async def _safe_nak(self, msg: object) -> None:
+    async def _safe_nak(self, msg: object, delay: float | None = None) -> None:
         try:
-            await msg.nak(delay=self._nak_delay)  # type: ignore[union-attr]
+            await msg.nak(delay=self._nak_delay if delay is None else delay)  # type: ignore[union-attr]
         except Exception:
             self.errors += 1
             from packages.services.health_state import bump_consumer_errors

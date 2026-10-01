@@ -111,13 +111,16 @@ async def _run_provisioning(nats_url: str) -> bool:
     )
 
     from packages.services.jetstream_provisioning import (
+        CAMPAIGN_STREAM_SUBJECTS,
+        EVENTS_STREAM,
+        EVENTS_STREAM_SUBJECTS,
+        missing_stream_subjects,
         provision_campaign_delivery,
-        check_stream_exists,
+        provision_outbox_event_stream,
     )
 
     stream = os.environ.get("CAMPAIGN_CONSUMER_STREAM", "RMP")
     durable = os.environ.get("CAMPAIGN_CONSUMER_DURABLE", "rmp-campaign-consumer")
-    subject = os.environ.get("CAMPAIGN_CONSUMER_SUBJECT", "campaign.>")
 
     if auto_provision:
         logger.info(
@@ -125,15 +128,20 @@ async def _run_provisioning(nats_url: str) -> bool:
             stream, durable,
         )
         try:
+            # The stream always captures all of campaign.> — a narrower
+            # CAMPAIGN_CONSUMER_SUBJECT must not shrink it (P1-7).
             result = await provision_campaign_delivery(
                 nats_url,
                 stream=stream,
-                subjects=[subject],
+                subjects=list(CAMPAIGN_STREAM_SUBJECTS),
                 durable=durable,
             )
+            # RM-STAB-020 (P1-7): every other outbox family gets its own
+            # stream — otherwise the relay dead-letters those events.
+            await provision_outbox_event_stream(nats_url)
             logger.info(
-                "Provisioning complete: stream=%s durable=%s",
-                result["stream"], result["durable"],
+                "Provisioning complete: stream=%s durable=%s, stream=%s",
+                result["stream"], result["durable"], EVENTS_STREAM,
             )
             return True
         except Exception as exc:
@@ -143,17 +151,20 @@ async def _run_provisioning(nats_url: str) -> bool:
                 f"(nats-server -js) and credentials are correct."
             ) from exc
 
-    # Auto-provision is off — verify stream exists
-    exists = await check_stream_exists(nats_url, stream=stream)
-    if not exists:
+    # Auto-provision is off — verify both streams exist and capture every
+    # outbox subject (a stream from an older runbook may hold campaign.> only).
+    problems = await missing_stream_subjects(
+        nats_url,
+        {stream: CAMPAIGN_STREAM_SUBJECTS, EVENTS_STREAM: EVENTS_STREAM_SUBJECTS},
+    )
+    if problems:
         raise RuntimeError(
-            f"JetStream stream '{stream}' not found at {nats_url}. "
-            f"Run provisioning first: set NATS_AUTO_PROVISION=true, or run "
-            f"provision_campaign_delivery() from jetstream_provisioning.py. "
-            f"See docs/runbook/delivery-runtime.md."
+            f"JetStream streams at {nats_url} are not provisioned: "
+            f"{'; '.join(problems)}. Run provisioning first: set "
+            f"NATS_AUTO_PROVISION=true. See docs/runbook/delivery-runtime.md."
         )
 
-    logger.info("JetStream stream '%s' found — skipping provisioning.", stream)
+    logger.info("JetStream streams '%s', '%s' found — skipping provisioning.", stream, EVENTS_STREAM)
     return True
 
 
@@ -368,7 +379,12 @@ async def _start_real_consumer(nats_url: str, engine) -> bool:
     from packages.services.campaign_event_handler import (
         NatsJetStreamCampaignConsumer,
     )
+    from packages.services.consumer_dead_letters import retry_policy_from_env
     from packages.services.health_state import set_consumer_ready, set_consumer_running
+
+    # RM-STAB-020: bad CAMPAIGN_CONSUMER_MAX_DELIVERIES / _BACKOFF_SECONDS fail
+    # the start instead of silently falling back.
+    retry_policy = retry_policy_from_env()
 
     try:
         from nats.aio.client import Client as NATS  # noqa: F401
@@ -408,6 +424,7 @@ async def _start_real_consumer(nats_url: str, engine) -> bool:
         # S-019: worker RLS context — set app.rmp_is_admin=true before
         # each message handler so RLS policies grant full visibility.
         session_setup=set_worker_admin_context,
+        retry_policy=retry_policy,
     )
 
     try:
@@ -443,6 +460,7 @@ async def _start_real_consumer(nats_url: str, engine) -> bool:
     logger.info("Campaign event consumer started (JetStream pull)")
     set_consumer_running(True)
     asyncio.create_task(consumer.run())
+    asyncio.create_task(_dead_letter_monitor(engine))
     global _consumer_ref
     _consumer_ref = consumer
     return True
@@ -467,6 +485,37 @@ async def _start_stub_consumer(engine) -> bool:
 # ---------------------------------------------------------------------------
 # Observability summary logger
 # ---------------------------------------------------------------------------
+
+
+async def _dead_letter_check(engine) -> int:
+    """Count consumer dead letters still waiting for the operator; publish to health."""
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from packages.domain.database import set_worker_admin_context
+    from packages.services.consumer_dead_letters import count_dead_letters
+    from packages.services.health_state import set_consumer_dead_letters_pending
+
+    async with AsyncSession(engine) as session:
+        await set_worker_admin_context(session)
+        pending = await count_dead_letters(session)
+    set_consumer_dead_letters_pending(pending)
+    if pending:
+        logger.warning(
+            "%d consumer dead letter(s) waiting — "
+            "python -m packages.services.consumer_dead_letters list",
+            pending,
+        )
+    return pending
+
+
+async def _dead_letter_monitor(engine, interval: float = 300.0) -> None:
+    """RM-STAB-020: the in-memory counter resets on restart; the table does not."""
+    while True:
+        try:
+            await _dead_letter_check(engine)
+        except Exception:
+            logger.exception("Dead-letter check failed")
+        await asyncio.sleep(interval)
 
 
 async def _campaign_completion_pass(session_factory) -> list[str]:
@@ -529,7 +578,7 @@ async def _observability_reporter(interval: float = 60.0) -> None:
         logger.info(
             "Health summary: db=%s nats=%s publisher=%s consumer=%s "
             "relay(pub=%d fail=%d dlq=%d) "
-            "consumer(ack=%d nak=%d term=%d err=%d) "
+            "consumer(ack=%d nak=%d term=%d err=%d dlq=%d) "
             "manifest(ok=%d fail=%d skip=%d)",
             "ok" if state.db_ok else "fail",
             "ok" if state.nats_connected else "fail",
@@ -542,6 +591,7 @@ async def _observability_reporter(interval: float = 60.0) -> None:
             state.consumer_nakd,
             state.consumer_terminated,
             state.consumer_errors,
+            state.consumer_dead_lettered,
             state.consumer_manifest_success,
             state.consumer_manifest_failed,
             state.consumer_manifest_skipped,

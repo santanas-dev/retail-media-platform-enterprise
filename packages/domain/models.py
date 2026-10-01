@@ -1010,6 +1010,35 @@ class OutboxEvent(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
 
 
+class ConsumerDeadLetter(Base):
+    """Campaign-consumer message that exhausted its deliveries (RM-STAB-020).
+
+    Worker-owned: FORCE RLS, visible only under the worker admin context
+    (migration 038).  ``replay`` turns a row into a new outbox event.
+    """
+
+    __tablename__ = "consumer_dead_letters"
+    __table_args__ = (
+        CheckConstraint("status IN ('dead','replayed')", name="ck_consumer_dead_letters_status"),
+        Index("ix_consumer_dead_letters_status_created", "status", "created_at"),
+        Index("ix_consumer_dead_letters_event_id", "event_id"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_new_uuid)
+    event_id = Column(String(64), nullable=False)
+    event_type = Column(String(128), nullable=False)
+    aggregate_type = Column(String(64), nullable=True)
+    aggregate_id = Column(String(36), nullable=True)
+    envelope_json = Column(JSONB, nullable=False)
+    deliveries = Column(Integer, nullable=False)
+    stream_sequence = Column(BigInteger, nullable=True)
+    last_error = Column(Text, nullable=False)
+    status = Column(String(16), nullable=False, default="dead")
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    replayed_at = Column(DateTime(timezone=True), nullable=True)
+    replay_outbox_event_id = Column(String(36), nullable=True)
+
+
 # ---------------------------------------------------------------------------
 # Required Table Count
 # ---------------------------------------------------------------------------
@@ -1536,7 +1565,7 @@ REQUIRED_TABLES = frozenset({
     "campaigns", "campaign_flights", "campaign_placements",
     "creative_assets", "campaign_creatives",
     "campaign_approvals", "campaign_status_history",
-    "outbox_events",
+    "outbox_events", "consumer_dead_letters",
     "delivery_plans", "delivery_manifests",
     "delivery_manifest_surfaces", "delivery_manifest_assets",
     "delivery_attempts",

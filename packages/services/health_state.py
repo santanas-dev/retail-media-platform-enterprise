@@ -43,6 +43,8 @@ class HealthState:
     consumer_nakd: int = 0
     consumer_terminated: int = 0
     consumer_errors: int = 0
+    consumer_dead_lettered: int = 0
+    consumer_dead_letters_pending: int | None = None
     consumer_manifest_success: int = 0
     consumer_manifest_failed: int = 0
     consumer_manifest_skipped: int = 0
@@ -89,6 +91,10 @@ class HealthState:
                     "nakd": self.consumer_nakd,
                     "terminated": self.consumer_terminated,
                     "errors": self.consumer_errors,
+                    "dead_lettered": self.consumer_dead_lettered,
+                    # Rows in consumer_dead_letters still 'dead' (DB, survives
+                    # restarts); None until the first check ran.
+                    "dead_letters_pending": self.consumer_dead_letters_pending,
                     "manifest": {
                         "success": self.consumer_manifest_success,
                         "failed": self.consumer_manifest_failed,
@@ -126,6 +132,8 @@ def get_health_state() -> HealthState:
             consumer_nakd=_state.consumer_nakd,
             consumer_terminated=_state.consumer_terminated,
             consumer_errors=_state.consumer_errors,
+            consumer_dead_lettered=_state.consumer_dead_lettered,
+            consumer_dead_letters_pending=_state.consumer_dead_letters_pending,
             consumer_manifest_success=_state.consumer_manifest_success,
             consumer_manifest_failed=_state.consumer_manifest_failed,
             consumer_manifest_skipped=_state.consumer_manifest_skipped,
@@ -205,6 +213,16 @@ def bump_consumer_terminated() -> None:
 def bump_consumer_errors() -> None:
     with _lock:
         _state.consumer_errors += 1
+
+
+def bump_consumer_dead_lettered() -> None:
+    with _lock:
+        _state.consumer_dead_lettered += 1
+
+
+def set_consumer_dead_letters_pending(count: int) -> None:
+    with _lock:
+        _state.consumer_dead_letters_pending = count
 
 
 def bump_manifest_success() -> None:
