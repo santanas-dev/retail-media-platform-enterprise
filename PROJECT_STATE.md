@@ -2,7 +2,21 @@
 
 **Last updated:** 2026-08-31 (OD-042: r428 — целевой контракт, RM-GOV-012 approved; implementation_mode у 101 REQ; RM-GOV-012 выравнивание, OD-041 пауза walkthrough; RM-GOV-010-A/B; статус документа ACCEPTED, не APPROVED; не закоммичено)
 
-**RF-04 / RM-STAB-019 (2026-09-30, PR в develop ждёт merge владельцем) — оркестратор: сбои не маскируются.**
+**RF-10 / RM-STAB-020 (2026-10-01, PR в develop ждёт merge владельцем) — события не пропадают молча: DLQ consumer и полный stream.**
+Закрывает P1-6.b, P1-7 ревью `main @ 8ad0228` (mini-design одобрен владельцем 2026-09-30, поправки 2026-10-01). Было: consumer повторял
+неудачное сообщение бесконечно каждые 5 с (`max_deliver=-1`); stream RMP ловил только `campaign.>`, поэтому relay переводил все события
+`delivery.*`, `pop.*`, `emergency.changed`, `creative_asset.created` в `dead_letter`. Стало: до 7 доставок с паузами 5с/30с/2м/10м/30м/60м
+(считает приложение, durable не пересоздаётся), после 7-й неудачи — строка в `consumer_dead_letters` (миграция 038, FORCE RLS, только
+worker context) и term; сбой записи — nak 60 мин без потери; CLI `python -m packages.services.consumer_dead_letters list|replay`; health
+`dead_lettered` и `dead_letters_pending`. Два stream: RMP (`campaign.>`) и RMP_EVENTS (остальные семейства, 7 суток / 1 GiB) — поток PoP не
+вытесняет события кампаний. Доказательство: `tests/behavioral/test_rm_stab_020_consumer_dlq.py` 13/13 под `retail_media_app` NOBYPASSRLS,
+`tests/test_rm_stab_020_dlq_and_subjects.py`, behavioral 504 passed, python-tests 1977 passed, миграция 038 upgrade→downgrade→upgrade
+на PG 16, pilot smoke rc 0 с проверкой streams в реальном NATS, 3 круга ревью. RM-STAB-020 — `in_progress` до merge и CI develop.
+Долг/риск — **ожидает решения владельца**: сбой provisioning не фатален (события без stream через ~1 мин в relay `dead_letter`); NATS в
+pilot-compose без `-sd /data` (JetStream не на томе). Принят владельцем: `max_ack_pending=100` при backoff до 60 мин. Запись:
+`docs/remediation/journal.md`.
+
+**RF-04 / RM-STAB-019 (2026-09-30, merged PR #13 → `develop @ b219fad`; push-run develop 36690884823 success 42/42; RM-STAB-019 `done` решением владельца 2026-10-01) — оркестратор: сбои не маскируются.**
 Закрывает P0-4 (ack при ошибке), P1-6.a, P1-8, T11 ревью `main @ 8ad0228` (узкий состав — решение владельца 2026-09-29). Было: сломанный
 конфиг безопасности или ошибка БД при генерации записывались как failed по каждому устройству, сообщение ack'алось; сбой `session_setup`/rollback
 навсегда останавливал цикл consumer, а `/health/ready` оставался 200; воркер завершения кампаний работал под `retail_media_app` без
@@ -11,8 +25,7 @@ failed-строк, ошибка данных устройства — failed + a
 consumer без цикла → `/health/ready` 503; проход завершения — с `set_worker_admin_context`. Доказательство: `tests/behavioral/test_rm_stab_019_orchestrator_rls.py`
 7/7 под `retail_media_app` NOBYPASSRLS и `tests/test_rm_stab_019_orchestrator_failures.py` (падают на коде до исправления), behavioral 491 passed,
 python-tests 1952 passed, локальный pilot smoke rc 0 (+ `/health/ready` воркера 200), 2 круга ревью (APPROVE WITH COMMENTS). RM-STAB-019 —
-`in_progress` до merge и CI develop. Долг/риск: nak при системном сбое повторяется каждые 5 с без лимита до DLQ (P1-6.b) — **условие выката на
-pilot-хост ожидает решения владельца**; сбой подписи/ошибки кода по устройству → failed + ack; умерший цикл не перезапускается (healthcheck
+`done` (см. RF-10). Долг/риск: бесконечный nak при системном сбое закрыт DLQ в RF-10; сбой подписи/ошибки кода по устройству → failed + ack; умерший цикл не перезапускается (healthcheck
 compose — `/health/live`); счётчики manifest skipped/failed неточны; ссылка RM-STAB-019 в traceability — ожидает решения владельца.
 RM-PILOT-002A → `done` (решение владельца 2026-09-29; evidence: push-run develop 36571330932 success 42/42). Запись: `docs/remediation/journal.md`.
 

@@ -40,6 +40,8 @@ python apps/orchestrator-worker/main.py
 | `CAMPAIGN_CONSUMER_STREAM` | `RMP` | JetStream stream name |
 | `CAMPAIGN_CONSUMER_BATCH_SIZE` | `10` | Messages per fetch batch |
 | `CAMPAIGN_CONSUMER_FETCH_TIMEOUT` | `5.0` | Fetch timeout in seconds |
+| `CAMPAIGN_CONSUMER_MAX_DELIVERIES` | `7` | Deliveries per campaign event before the consumer DLQ (RM-STAB-020); invalid value fails the start |
+| `CAMPAIGN_CONSUMER_BACKOFF_SECONDS` | `5,30,120,600,1800,3600` | Nak delay after delivery 1, 2, …; the last value repeats |
 | `NATS_AUTO_PROVISION` | `false` | Auto-create stream + consumer on startup |
 | `OUTBOX_RELAY_ALLOW_STUB` | `false` | Use StubPublisher when NATS_URL is set (dev only) |
 | `RELAY_POLL_INTERVAL` | `0.5` | Outbox poll interval in seconds |
@@ -49,7 +51,19 @@ python apps/orchestrator-worker/main.py
 
 ## Provisioning
 
-JetStream stream + consumer must exist before the worker starts (unless `NATS_AUTO_PROVISION=true`).
+JetStream streams + consumer must exist before the worker starts (unless `NATS_AUTO_PROVISION=true`).
+
+Two streams (RM-STAB-020, P1-7) — every outbox event is published with
+subject = `event_type`, and a subject no stream captures ends in the relay's
+`dead_letter`:
+
+| Stream | Subjects | Limits | Read by |
+|---|---|---|---|
+| `RMP` | `campaign.>` | 1M msgs / 256 MB, no max age | durable `rmp-campaign-consumer` |
+| `RMP_EVENTS` | `delivery.>`, `pop.>`, `emergency.>`, `creative_asset.>` | 1 GiB, 7 days, oldest discarded | nobody yet (buffer for future readers) |
+
+PoP traffic is kept out of `RMP` on purpose: under the limits/DiscardOld policy
+it would evict unacked campaign events.
 
 ### Manual provisioning
 
@@ -63,7 +77,10 @@ asyncio.run(provision_campaign_delivery(
     subjects=["campaign.>"],
     durable="rmp-campaign-consumer",
 ))
+asyncio.run(provision_outbox_event_stream(nats_url="nats://localhost:4222"))  # RMP_EVENTS
 ```
+
+(`from packages.services.jetstream_provisioning import provision_outbox_event_stream`.)
 
 The script is idempotent — safe to run multiple times. It creates the stream/consumer if missing, updates them if they exist.
 
@@ -71,12 +88,24 @@ The script is idempotent — safe to run multiple times. It creates the stream/c
 
 Set `NATS_AUTO_PROVISION=true`. The worker provisions at startup before starting relay/consumer.
 
-If auto-provision is off and the stream does not exist, the worker fails fast with:
+If auto-provision is off, the worker checks that both streams exist and capture
+their subjects (a stream from an older runbook may hold `campaign.>` only) and
+reports, e.g.:
 ```
-RuntimeError: JetStream stream 'RMP' not found at nats://localhost:4222.
-Run provisioning first: set NATS_AUTO_PROVISION=true, or run
-provision_campaign_delivery() from jetstream_provisioning.py.
+RuntimeError: JetStream streams at nats://localhost:4222 are not provisioned:
+stream RMP_EVENTS not found. Run provisioning first: set NATS_AUTO_PROVISION=true.
 ```
+The error is logged by `main()` ("Provisioning failed — worker will attempt to
+start relay/consumer"); the worker does not exit.
+
+**Accepted risk (RM-STAB-020, pending owner decision).** Provisioning runs once
+at start and only when `CAMPAIGN_CONSUMER_ENABLED=true`. If it fails (NATS down,
+streams missing), the relay still starts: every event whose subject no stream
+captures reaches the relay's `dead_letter` after ~1 min (7 attempts, backoff
+1…32 s) and readiness stays green. Check the worker log for "Provisioning
+failed" after every start; recover with provisioning + resetting the outbox rows
+(`UPDATE outbox_events SET status='pending', attempts=0, next_attempt_at=now()
+WHERE status='dead_letter' AND …`).
 
 ## Health checks
 
@@ -207,6 +236,47 @@ ORDER BY created_at DESC LIMIT 10;
 
 Dead-letter events will NOT be retried automatically.  They must be manually
 replayed or discarded.
+
+## Consumer dead letters (RM-STAB-020)
+
+The campaign consumer counts deliveries itself (`msg.metadata.num_delivered`;
+server `max_deliver` stays -1, so the durable is never recreated). A failed
+delivery is nak'd with 5 s, 30 s, 2 min, 10 min, 30 min, 60 min; the failure on
+the 7th delivery (~1 h 43 min) stores the message in `consumer_dead_letters`
+and terminates it. If that write fails, the message is nak'd for 60 min — never
+dropped. `/health/ready` → `components.consumer.dead_lettered` counts them
+(per process; resets on restart); `components.consumer.dead_letters_pending`
+is the number of rows still `dead` in the table (checked every 5 min, survives
+restarts; a WARNING is logged while it is non-zero).
+
+**Finding the cause.** `last_error` holds only "handler returned failure" or an
+exception class name (texts may carry DSNs). The full traceback is in the worker
+log at ERROR — search it for the row's `event_id` / campaign id
+(`Manifest generation failed for campaign=… (event=…)`).
+
+**Bad retry settings.** An invalid `CAMPAIGN_CONSUMER_MAX_DELIVERIES` /
+`CAMPAIGN_CONSUMER_BACKOFF_SECONDS` (non-number, ≤ 0 deliveries, negative,
+`nan`, `inf`) stops the worker process with `ValueError` at consumer start —
+under compose that is a restart loop until the env is fixed.
+
+The table is FORCE RLS, admin context only. Operate from the worker container
+(its `DATABASE_URL` is the app role; the CLI sets the worker context):
+
+```bash
+docker compose exec orchestrator-worker python -m packages.services.consumer_dead_letters list        # not yet replayed
+docker compose exec orchestrator-worker python -m packages.services.consumer_dead_letters list --all  # incl. replayed
+docker compose exec orchestrator-worker python -m packages.services.consumer_dead_letters replay <id>
+docker compose exec orchestrator-worker python -m packages.services.consumer_dead_letters replay --all
+```
+
+`replay` enqueues a new outbox event (same type, aggregate, payload, headers)
+and marks the row `replayed` in one transaction; a row is replayed at most once.
+Fix the cause first — manifest generation is idempotent, so replaying is safe.
+
+**Accepted risk (owner, 2026-10-01):** a message waiting for its next delivery
+holds one of the durable's `max_ack_pending=100` slots. With 100 campaign
+events in backoff (long DB/config outage during active campaign editing), new
+campaign events wait until slots free — up to 60 min after recovery.
 
 ## Graceful shutdown
 

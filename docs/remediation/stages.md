@@ -103,7 +103,7 @@
 
 | Поле | Значение |
 |---|---|
-| Статус | finished |
+| Статус | merged |
 | Цель | Системный сбой генерации манифеста не ack'ается; consumer переживает сбой отдельного сообщения, а его остановку видит readiness; воркер завершения кампаний работает под RLS — доказано на PostgreSQL под `retail_media_app` |
 | Задачи roadmap.yaml | RM-STAB-019 (новая, стадия S); попутно RM-PILOT-002A → `done` (решение владельца 2026-09-29) |
 | Находки | P0-4 (ack при ошибке), P1-6.a, P1-8, T11 |
@@ -114,6 +114,22 @@
 | Входные условия | RF-05 смержен (PR #12, `develop @ af6810c`) |
 | Гейт | job behavioral под `retail_media_app` (новый тест + I-1); job python-tests; I-0; I-2 (`tests/test_rf05_pilot_boot.py`; pilot compose smoke локально); `roadmap-governance-guard` + `--self-test`; ruff по изменённым файлам |
 | Канон, который меняется | `roadmap.yaml` (RM-STAB-019; RM-PILOT-002A → `done`) + генерация; checkpoint `PROJECT_STATE.md` |
+
+## RF-10 — События не пропадают молча: DLQ consumer и полный stream (решение владельца 2026-09-30)
+
+| Поле | Значение |
+|---|---|
+| Статус | finished |
+| Цель | Сообщение consumer, исчерпавшее лимит доставок, сохраняется в PostgreSQL и может быть повторено; каждое событие outbox попадает в stream, а не в `dead_letter` relay |
+| Задачи roadmap.yaml | RM-STAB-020 (новая, стадия S); попутно RM-STAB-019 → `done` (решение владельца 2026-10-01) |
+| Находки | P1-6.b, P1-7 |
+| Скоуп (в) | Лимит 7 доставок в приложении (`msg.metadata.num_delivered`), backoff nak 5с/30с/2м/10м/30м/60м (env, дефолты в коде), серверный `max_deliver` остаётся −1; на 7-й неудаче — строка DLQ (отдельная транзакция, worker admin context) + `term()`, сбой записи → nak 60 мин; счётчик `consumer_dead_lettered` + лог `event_id`; CLI `list / replay <id> / replay --all` (replay — новое outbox-событие + `replayed` в одной транзакции); stream RMP — только `campaign.>` (durable без серверного фильтра, не пересоздаётся), stream RMP_EVENTS — `delivery.>`, `pop.>`, `emergency.>`, `creative_asset.>` (1 GiB, 7 суток, DiscardOld; решение владельца 2026-10-01 после ревью); без auto-provision воркер сверяет subjects обоих; риск `max_ack_pending=100` при backoff принят владельцем 2026-10-01; миграция 038; `roadmap.yaml` + генерация |
+| Скоуп (вне) | API/UI DLQ; DLQ stub-consumer; P2-B7; остаток RM-TECH-243; новые потребители не-campaign событий; compose, Dockerfile, CI. Адаптация 3 тестов воркера в `tests/test_phase4_production_readiness.py` под новый provisioning — одобрена владельцем 2026-10-01 |
+| Protected Boundaries | Только миграция 038 (create table, FORCE RLS, политика «только `app.rmp_is_admin`»); downgrade удаляет лишь новую таблицу и её политики; без DROP/TRUNCATE/DELETE существующих таблиц (решение владельца 2026-09-30) |
+| mini-design | да — одобрен владельцем 2026-09-30 (журнал RF-10) |
+| Входные условия | RF-04 смержен (PR #13, `develop @ b219fad`) |
+| Гейт | job behavioral (новые тесты + I-1 + I-3); job python-tests; I-0; I-2 (pilot smoke) + subjects stream; `roadmap-governance-guard` + `--self-test`; ruff по изменённым файлам; миграция upgrade → downgrade → upgrade на PostgreSQL |
+| Канон, который меняется | `roadmap.yaml` (RM-STAB-020; RM-STAB-019 → `done`) + генерация; checkpoint `PROJECT_STATE.md` |
 
 ## Остальное
 

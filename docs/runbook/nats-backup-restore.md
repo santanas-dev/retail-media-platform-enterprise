@@ -147,6 +147,11 @@ startup (configured via `NATS_AUTO_PROVISION=true` in compose). It:
 2. Creates durable consumer "rmp-campaign-consumer" if not exists
 3. Updates them if config changed
 
+The worker additionally provisions `RMP_EVENTS` (`delivery.>`, `pop.>`,
+`emergency.>`, `creative_asset.>`; 1 GiB / 7 days) via
+`provision_outbox_event_stream()` — RM-STAB-020; see
+`docs/runbook/delivery-runtime.md` → Provisioning.
+
 Integration test `test_nats_recovery.py` proves:
 - Fresh NATS provisioning creates stream + consumer
 - Outbox relay publishes to fresh stream after NATS reset

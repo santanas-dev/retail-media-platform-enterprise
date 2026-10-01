@@ -334,7 +334,11 @@ class TestRunProvisioning(unittest.IsolatedAsyncioTestCase):
 
     async def test_auto_provision_calls_provisioning(self):
         """NATS_AUTO_PROVISION=true → calls provision_campaign_delivery."""
+        # RM-STAB-020: the worker also provisions RMP_EVENTS.
         with patch(
+            "packages.services.jetstream_provisioning.provision_outbox_event_stream",
+            new=AsyncMock(return_value={"stream": "RMP_EVENTS"}),
+        ) as mock_events, patch(
             "packages.services.jetstream_provisioning.provision_campaign_delivery",
         ) as mock_prov:
             mock_prov.return_value = {
@@ -348,6 +352,7 @@ class TestRunProvisioning(unittest.IsolatedAsyncioTestCase):
             self.assertIsNone(exc)
             self.assertTrue(result)
             mock_prov.assert_called_once()
+            mock_events.assert_awaited_once()
 
     async def test_auto_provision_failure_raises(self):
         """Provisioning failure → RuntimeError propagates."""
@@ -365,9 +370,10 @@ class TestRunProvisioning(unittest.IsolatedAsyncioTestCase):
 
     async def test_no_auto_provision_stream_exists(self):
         """Auto-provision off + stream exists → OK."""
+        # RM-STAB-020: streams and their subjects are checked together.
         with patch(
-            "packages.services.jetstream_provisioning.check_stream_exists",
-            return_value=True,
+            "packages.services.jetstream_provisioning.missing_stream_subjects",
+            new=AsyncMock(return_value=[]),
         ):
             result, exc = await self._call({
                 "NATS_AUTO_PROVISION": "false",
@@ -379,8 +385,8 @@ class TestRunProvisioning(unittest.IsolatedAsyncioTestCase):
     async def test_no_auto_provision_stream_missing_raises(self):
         """Auto-provision off + stream missing → fail-fast."""
         with patch(
-            "packages.services.jetstream_provisioning.check_stream_exists",
-            return_value=False,
+            "packages.services.jetstream_provisioning.missing_stream_subjects",
+            new=AsyncMock(return_value=["stream RMP not found"]),
         ):
             result, exc = await self._call({
                 "NATS_AUTO_PROVISION": "false",

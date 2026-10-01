@@ -10,9 +10,9 @@
 | | |
 |---|---|
 | Активный этап | — |
-| Последний завершённый | RF-04 — finished, PR ждёт merge (`gh pr list --head fix/RF-04`); RF-05 — merged (PR #12 → `develop @ af6810c`, push-run develop 36571330932 → success 42/42); RF-01 — merged (PR #11); RF-00 — merged (PR #9) |
-| Следующий шаг | merge PR RF-04 владельцем → RM-STAB-019 `done` после CI develop (решение владельца); P1-6.b как условие выката на pilot-хост → `/start RF-<N>` |
-| Базовая линия | `origin/develop @ af6810c` (2026-09-29, merge RF-05; push-run 36571330932 → success 42/42). Прежняя: `origin/develop @ d8dbd62` (2026-09-29, merge RF-01; push-run 36475858226 → success 41/41). Прежняя: `origin/develop @ 6bc9ac0` (2026-09-28, merge RF-CI; push-run `develop` 36407616564 → success; то же дерево — push-run `fix/RF-CI` 36404147483, 41/41). Снимок аудита RF-00 — `b166419`; ветка `fix/RF-00` получила `6bc9ac0` merge-коммитом `3892552` |
+| Последний завершённый | RF-10 — finished, PR ждёт merge (`gh pr list --head fix/RF-10`); RF-04 — merged (PR #13 → `develop @ b219fad`, push-run develop 36690884823 → success 42/42); RF-05 — merged (PR #12); RF-01, RF-00 — merged |
+| Следующий шаг | merge PR RF-10 владельцем → RM-STAB-020 `done` после CI develop (решение владельца); решения: provisioning при сбое, `-sd /data` NATS → `/start RF-<N>` |
+| Базовая линия | `origin/develop @ b219fad` (2026-09-30, merge RF-04; push-run 36690884823 → success 42/42). Прежние: `af6810c` (merge RF-05), `origin/develop @ d8dbd62` (2026-09-29, merge RF-01; push-run 36475858226 → success 41/41). Прежняя: `origin/develop @ 6bc9ac0` (2026-09-28, merge RF-CI; push-run `develop` 36407616564 → success; то же дерево — push-run `fix/RF-CI` 36404147483, 41/41). Снимок аудита RF-00 — `b166419`; ветка `fix/RF-00` получила `6bc9ac0` merge-коммитом `3892552` |
 | Источник находок | `docs/audit/2026-09-27-claude-code-review-main-8ad0228.md` (снято на `main @ 8ad0228`; develop на 64 коммита впереди) |
 
 ## Инварианты (не ломать)
@@ -26,6 +26,7 @@
 | I-1 | Refresh-токены: повтор после окна отзывает семью (+audit), в окне — нет; одна ветка при гонке; семья сериализована; отзыв переживает 401 (RM-STAB-018) | шаги job `behavioral-postgres-tests` (PostgreSQL, `retail_media_app` NOBYPASSRLS), затем `python3 -m pytest tests/behavioral/test_rm_stab_018_refresh_replay.py -v` → 7 passed | RF-01 |
 | I-2 | Pilot-compose под `ENVIRONMENT=pilot` поднимается без ручных шагов: роль приложения из `db-migrate`, все сервисы healthy, readiness строгий, identity образа, device-токен control-api принят device-gateway (RM-PILOT-002A) | CI job `pilot-compose-smoke` (`build-images.sh` без push → `verify-pilot-run.sh --images-from-env <version> <sha>`); локально — сборка образов с теми же build-args и тот же вызов; `python -m pytest tests/test_rf05_pilot_boot.py` | RF-05 |
 | I-3 | Оркестратор не маскирует сбои: системный сбой генерации → nak без failed, ошибка данных устройства → failed + ack; сбой сессии не останавливает consumer, остановка цикла → `/health/ready` 503; воркер завершения работает под RLS (RM-STAB-019) | шаги job `behavioral-postgres-tests` (`retail_media_app` NOBYPASSRLS), затем `python3 -m pytest tests/behavioral/test_rm_stab_019_orchestrator_rls.py -v` → 7 passed; `python -m pytest tests/test_rm_stab_019_orchestrator_failures.py` → 11 passed | RF-04 |
+| I-4 | События не пропадают молча: ≤7 доставок с backoff, затем DLQ в PostgreSQL (FORCE RLS, только worker context) + term, сбой записи — nak без потери, replay через outbox один раз; RMP = `campaign.>`, RMP_EVENTS = остальные семейства outbox (RM-STAB-020) | шаги job `behavioral-postgres-tests`, затем `python3 -m pytest tests/behavioral/test_rm_stab_020_consumer_dlq.py -v` → 13 passed; `python -m pytest tests/test_rm_stab_020_dlq_and_subjects.py` → passed | RF-10 |
 
 ## Решения владельца, влияющие на этапы
 
@@ -40,6 +41,7 @@
 | 2026-09-29 | Следующий этап — RF-05, карточка `planned`, номер и состав как в черновике. Protected Boundary «Docker, deployment scripts» — с условиями: без секретов в Dockerfile/compose/скриптах (env или secret-механизм; в репозитории — `.env.example` с заглушками); без root в контейнерах без обоснования в PR; не трогать прод-конфигурацию и CI/CD деплоя в прод — только pilot-контур; список файлов — владельцу до правок. Новая задача в области RM-PILOT-002 — одобрена. RM-STAB-018 → `done`, если run 36475858226 зелёный. RF-01-остаток не начинать; справка по RM-STAB-004. Ревью в конце этапа — «/reviewer» |
 | 2026-09-29 | RF-05 после СТОП на круге 3: п.1 (schema head в lock-режиме verify) — вариант «а» (lock `release.schema_head`, иначе head из миграций на коммите релиза); п.3 — подтверждены ссылка `RM-PILOT-002A` в `requirements-traceability.yaml` (REQ-ARCH-004) и адаптация фикстур `JWT_AUDIENCE` в 3 тестовых файлах; п.4 — принято: `verify-pilot-images.yml` не проходит для релизов, собранных до RF-05 (в образах нет ENV identity). П.2 (`JWT_AUDIENCE` в `validate-pilot-env.py`/`local_stand.py`) — ответа нет, остаётся открытым риском |
 | 2026-09-29 | RF-05 смержен; RM-PILOT-002A → `done`. Следующий этап — RF-04, узкий состав: P0-4 (ack при ошибке; системные ошибки → nak, ошибки данных устройства — failed + ack), P1-6.a (цикл переживает сбой сообщения, остановка → `/health/ready` 503), P1-8 (новый behavioral под `retail_media_app`, существующий тест не менять), T11; P1-6.b/P1-7/P2-B7 — отдельный этап с RM-TECH-243. Protected Boundaries — нет. Задача RM-STAB-019, стадия S |
+| 2026-09-30 | RF-04 смержен (PR #13); RM-STAB-019 → `done`. Следующий этап — DLQ (RF-10): P1-6.b + P1-7; хранилище DLQ — таблица PostgreSQL; лимит 7 доставок, backoff 5с/30с/2м/10м/30м/60м в приложении, серверный `max_deliver` −1; оператор — счётчик + CLI-повтор через outbox; stream ловит все префиксы outbox; Protected Boundary — только миграция 038 (downgrade удаляет лишь новую таблицу). Задача RM-STAB-020, стадия S |
 | 2026-09-28 | Красный CI PR #9 из-за внешнего дрейфа — отдельный этап RF-CI (вариант 1); SQLAlchemy `<2.1` в CI и requirements; MinIO → Chainguard по digest; скоуп CI + drill + phase1 + pilot, Protected Boundary «Docker/deployment» — по ответу владельца «CI + drill + phase1 + pilot»: образ/healthcheck MinIO в `phase1-ci.yml`, compose restore-drill/phase1/pilot и версия MinIO в `backup-restore-drill.sh`; pilot `user: "0"` + долг. `user: "0"` в phase1 добавлен агентом на круге ревью 2 по аналогии — **ожидает подтверждения владельца** |
 
 ---
@@ -518,7 +520,7 @@
 
 ## RF-04 — Оркестратор: сбои не маскируются
 
-- Статус: finished (PR ждёт merge владельцем)
+- Статус: merged (PR #13 → `develop @ b219fad`; push-run 36690884823 success 42/42)
 - Ветка: fix/RF-04 · Основа: develop @ af6810c (merge PR #12)
 - Сделано до правок (решения владельца 2026-09-29): RM-PILOT-002A → `done` в `roadmap.yaml` с `evidence_refs` (ci_run 36571330932,
   command — job `pilot-compose-smoke` и `pytest tests/test_rf05_pilot_boot.py tests/test_production_config_gate.py` → 59 passed локально);
@@ -645,3 +647,146 @@
 - Новые инварианты: I-3.
 - Следующий шаг: merge PR владельцем → решение: P1-6.b (DLQ/backoff) как условие выката RF-04 на pilot-хост; ссылка RM-STAB-019 в traceability →
   `/start RF-<N>`.
+
+## RF-10 — События не пропадают молча: DLQ consumer и полный stream
+
+- Статус: finished (PR ждёт merge владельцем)
+- Ветка: fix/RF-10 · Основа: develop @ b219fad (merge PR #13)
+- Сделано до правок (решение владельца 2026-10-01): RM-STAB-019 → `done` (evidence: behavioral + command + ci_run 36690884823);
+  RM-STAB-020 (S, in_progress) заведена; генерация; guard PASS, self-test 55/55. Карточка RF-10 → `in_progress`, RF-04 → `merged`.
+- Факты для плана (код `b219fad`):
+  - Relay-DLQ уже есть: `outbox_relay` → `mark_event_failed(max_attempts=7)` → `dead_letter` в `outbox_events`.
+  - Consumer: `DEFAULT_CONSUMER_CONFIG.max_deliver = -1`, `nak(delay=5.0)` фиксированно, `num_delivered` не читается.
+  - Stream RMP: `subjects=[CAMPAIGN_CONSUMER_SUBJECT]` (`campaign.>`); publisher пишет subject = `event_type`; типы в коде:
+    `campaign.*`, `delivery.manifest.{generated,failed}`, `pop.{event.accepted,event.quarantined,batch.ingested}`, `emergency.changed`,
+    `creative_asset.created` → все не-campaign уходят в `dead_letter` relay.
+  - `_ensure_consumer` при отличии конфига удаляет и пересоздаёт durable (полный replay stream) — поэтому лимит в приложении,
+    серверный конфиг consumer не меняется.
+  - Миграции: head `037`; pilot `NATS_AUTO_PROVISION=true`, `nats:2.10-alpine`.
+- Mini-design (одобрен владельцем 2026-09-30): см. карточку RF-10.
+- Поправка к mini-design (решение владельца 2026-10-01): у durable `rmp-campaign-consumer` нет серверного `filter_subject`
+  (`_ensure_consumer` без фильтра; `subject` в `pull_subscribe` к существующему durable не фильтр) — фраза карточки «consumer фильтрует
+  `campaign.>`» была неверна. Решение: фильтр не добавлять (иначе пересоздание durable и повторное чтение stream); чужие события handler
+  ack'ает без генерации — доказать тестом по каждому не-campaign типу.
+- Baseline (2026-10-01, `.venv` Python 3.12.3, `set -o pipefail`, код = `b219fad`):
+  - I-0 rc 0; `roadmap-governance-guard` PASS; `--self-test` 55/55 (до и после правок roadmap).
+  - I-1 / I-3 / behavioral (шаги job, `retail_media_app` NOBYPASSRLS) → rc 0: 491 passed, 12 skipped; RM-STAB-018 + RM-STAB-019 14/14.
+  - python-tests (env job) → rc 0: 1952 passed, 548 skipped (включает I-3 unit 11/11 и `test_rf05_pilot_boot.py`).
+  - I-2: push-run develop 36690884823 — job «Pilot Compose Smoke — RF-05» success.
+- План: домены — `packages/services` (consumer, provisioning, health, новый модуль DLQ), `packages/domain/models.py` (модель),
+  `apps/control-api/alembic` (038), `apps/orchestrator-worker/main.py` (политика повторов из env). Доказательство — `tests/behavioral/
+  test_rm_stab_020_consumer_dlq.py` (PostgreSQL, `retail_media_app`) и `tests/test_rm_stab_020_dlq_and_subjects.py` (unit).
+
+### Сделано
+- Тесты сначала (на `b219fad`): `tests/test_rm_stab_020_dlq_and_subjects.py` — ImportError (нет модуля DLQ, нет `OUTBOX_STREAM_SUBJECTS`);
+  `tests/behavioral/test_rm_stab_020_consumer_dlq.py` — 6 тестов с DLQ-сценариями FAILED (нет таблицы; nak фиксированный 5 с) + ошибки
+  teardown фикстур; вывод был обрезан, итог по `test_table_has_forced_rls` не сохранён; `test_app_role_is_nobypassrls` — контрольный.
+- `apps/control-api/alembic/versions/038_consumer_dead_letters.py`: таблица `consumer_dead_letters` (envelope, event_id/type, aggregate,
+  deliveries, stream_sequence, last_error, status `dead|replayed`, replayed_at, replay_outbox_event_id), индексы; ENABLE + FORCE RLS,
+  политики SELECT/INSERT/UPDATE/DELETE — только `app.rmp_is_admin`. Downgrade — только эта таблица, её индексы и политики.
+  `packages/domain/models.py`: `ConsumerDeadLetter`, `REQUIRED_TABLES`.
+- `packages/services/consumer_dead_letters.py`: `RetryPolicy` (7 доставок, 5/30/120/600/1800/3600 с), `retry_policy_from_env`
+  (`CAMPAIGN_CONSUMER_MAX_DELIVERIES`, `CAMPAIGN_CONSUMER_BACKOFF_SECONDS`; плохие значения → ValueError при старте),
+  `record_dead_letter`, `list_dead_letters`, `replay_dead_letter` (условный UPDATE `dead→replayed … RETURNING` → новое outbox-событие),
+  CLI `list [--all] | replay <id> | replay --all`.
+- `NatsJetStreamCampaignConsumer`: `num_delivered`/stream seq из `msg.metadata` (нет метаданных → 1-я доставка); неуспех → nak с задержкой
+  по расписанию; на последней доставке — запись DLQ в отдельной транзакции (worker context) + `term`, счётчик `dead_lettered`, лог;
+  сбой записи → nak с максимальной задержкой. В DLQ — только имя класса исключения (без текста: DSN/PII).
+- `health_state`: `consumer_dead_lettered` (+ `components.consumer.dead_lettered`, лог-сводка воркера).
+- `jetstream_provisioning.OUTBOX_STREAM_SUBJECTS` (5 префиксов) — дефолт stream; воркер провижинит их (не `CAMPAIGN_CONSUMER_SUBJECT`);
+  `max_deliver` сервера −1 и durable без фильтра — не меняются (поправка владельца 2026-10-01).
+  **Заменено после ревью круга 1** (решение владельца 2026-10-01): RMP — `CAMPAIGN_STREAM_SUBJECTS` (`campaign.>`), RMP_EVENTS —
+  `EVENTS_STREAM_SUBJECTS` + `EVENTS_STREAM_CONFIG`; `OUTBOX_STREAM_SUBJECTS` — их объединение (для теста покрытия).
+- Воркер: `retry_policy_from_env()` в `_start_real_consumer`.
+- Самопроверка (2026-10-01): unit RF-10 + соседние 197 passed; behavioral DLQ 8/8; миграция на чистом PG 16: upgrade → 038 (64 таблицы,
+  4 политики DLQ, всего 152) → downgrade 037 (63 / 0 / 148) → upgrade 038 (64 / 4 / 152), rc 0; полный behavioral rc 0 — 499 passed
+  (RM-STAB-018/019/020 22/22); python-tests rc 0 — 1971 passed, 556 skipped (+8 behavioral без env); I-0 rc 0; ruff — новых нет;
+  `git diff --check` rc 0; guard PASS; self-test 55/55.
+- I-2 + subjects: образы из рабочего дерева ветки → `verify-pilot-run.sh --images-from-env` rc 0; копия verify: `/health/ready` воркера
+  200; `stream_info(RMP).subjects` = 5 префиксов; durable `max_deliver=-1`, `filter_subject=None`; `js.publish('pop.event.accepted')` → ack
+  stream RMP (раньше — no responders → dead_letter relay).
+
+### Решения
+- Политика DELETE «только admin» добавлена в 038 (не было в mini-design): без неё под FORCE RLS очистка строк — даже оператором и
+  тестами — молча удаляет 0 строк. Риск низкий: тот же предикат admin.
+- `last_error` — фиксированная строка «handler returned failure» или имя класса исключения: тексты исключений SQLAlchemy/asyncpg могут
+  содержать DSN.
+- Replay создаёт **новое** outbox-событие (новый id → новый `Nats-Msg-Id`), чтобы дедупликация JetStream не отбросила повтор.
+- Доказательство отката миграции — локальный прогон на отдельном PG (CI downgrade не гоняет).
+
+### Ревью
+| Круг | Замечание | Уровень | Решение | Риск исправления | Доказательство |
+|---|---|---|---|---|---|
+| 1 | `pop.>` в общем stream RMP: лимиты limits/DiscardOld вытесняют неподтверждённые события campaign (PoP — событие на каждый показ, `pop_ingestion.py:311`) | 🟠 | исправлено решением владельца 2026-10-01: RMP — только `campaign.>`; новый stream RMP_EVENTS (delivery/pop/emergency/creative_asset, 1 GiB, 7 суток, DiscardOld) через `provision_outbox_event_stream`; durable не меняется | средний: топология NATS; RMP возвращается к прежнему `campaign.>` | живой `nats:2.10-alpine`: stream `max_msgs=3` — неподтверждённый `b.campaign` вытеснен `b.pop.*`, consumer видит только pop; `RMP_EVENTS` — max_age 604800 с, 1 GiB, discard old, идемпотентно |
+| 1 | nak с задержкой занимает слот `max_ack_pending=100`; при backoff до 60 мин consumer может стоять | 🟠 | принято как риск решением владельца 2026-10-01 (notes RM-STAB-020, runbook); с отдельным RMP чужие события слоты не занимают | — | живой NATS 2.10: 2× nak(delay=60) при `max_ack_pending=2` → следующий fetch TimeoutError, `num_ack_pending=2` |
+| 1 | Без auto-provision subjects stream не проверяются; runbooks описывают только `campaign.>` | 🟠 | исправлено: `missing_stream_subjects` (оба stream, все subjects) → RuntimeError; `delivery-runtime.md` (streams, env, CLI DLQ, риск), `nats-backup-restore.md`. Ошибку, как и прежнюю «stream not found», логирует `main()` — воркер не завершается (прежнее поведение) | низкий | unit: старый stream → «RMP_EVENTS not found» / «does not capture …»; адаптация 3 тестов воркера — одобрена владельцем 2026-10-01 |
+| 1 | `aggregate_id`/`aggregate_type` без приведения и обрезки → вечный сбой записи DLQ | 🟡 | исправлено: `str()[:size]` для всех строковых полей | нет | behavioral: aggregate_id 80 символов, aggregate_type int → строка записана, term |
+| 1 | JSON-envelope не объект роняет цикл | 🟡 | исправлено: не-dict → term (poison) | нет | unit `[1, 2]` → term, DLQ не вызывается |
+| 1 | `replay --all`: лимит 500, один `KeyError` откатывает всю пачку | 🟡 | исправлено: `--all` без лимита, каждая строка в savepoint, сбой строки — `failed <Class>`, rc 1; `list` предупреждает о лимите. `partition_key` в envelope relay нет — долг | низкий | behavioral: битая строка остаётся `dead`, вторая — `replayed`, rc 1 |
+| 1 | Потерянный `term()` → вторая строка DLQ | 🟡 | исправлено: строка `dead` с тем же `event_id` не дублируется | нет | behavioral: повтор на 8-й доставке → 1 строка, term |
+| 1 | Карточка RF-10 противоречит журналу (фильтр consumer) | 🟡 | исправлено (карточка — новая топология) | нет | stages.md |
+| 1 | `dead_lettered` только в памяти процесса | 🟡 | долг: периодический `COUNT(*) WHERE status='dead'` в лог/health | — | — |
+- Тесты круга 1 (дедупликация, обрезка, `replay --all`) добавлены вместе с исправлениями; падение на коде до исправления не проверялось.
+- Самопроверка после круга 1 (2026-10-01): behavioral rc 0 — 502 passed (RM-STAB-018/019/020 25/25); python-tests rc 0 — 1975 passed,
+  559 skipped; I-0 rc 0; ruff — новых нет; `git diff --check` rc 0; guard PASS. Pilot smoke на пересобранных образах rc 0; копия verify:
+  `/health/ready` воркера 200; RMP = [`campaign.>`]; RMP_EVENTS = 4 семейства, max_age 604800 с, 1 GiB; durable `max_deliver=-1`,
+  без фильтра; `pop.event.accepted` → ack stream RMP_EVENTS.
+
+| 2 | Строки DLQ не видны после рестарта (счётчик в памяти) | 🟠 | исправлено: `_dead_letter_monitor` (раз в 5 мин, worker context) → `components.consumer.dead_letters_pending` + WARNING; `count_dead_letters` | низкий: один COUNT по индексу раз в 5 мин | behavioral: `_dead_letter_check` под `retail_media_app` → +1 после новой строки, health совпадает |
+| 2 | `last_error` почти всегда «handler returned failure» | 🟠 | отклонено с обоснованием: причина — в логе ERROR со стектрейсом по `event_id`/campaign (`handle_campaign_delivery_event`); передача класса из handler меняет его контракт (stub-consumer, существующие тесты вне карточки). Runbook: как найти причину | — | `campaign_event_handler.py` `logger.exception("Manifest generation failed …")` |
+| 2 | Provisioning RMP из env-subject, проверка — из константы | 🟡 | исправлено: RMP всегда `CAMPAIGN_STREAM_SUBJECTS`; env-subject — только для `pull_subscribe` | низкий | unit `test_worker_provisions_both_streams` |
+| 2 | `nan`/`inf` в backoff проходят | 🟡 | исправлено: `math.isfinite` | нет | unit |
+| 2 | Дедупликация склеивает сообщения без `event_id`; не атомарна | 🟡 | частично: без `event_id` — не дедуплицируются (каждое хранится); уникальный индекс — долг (изменение 038) | нет | behavioral: 2 сообщения без id → 2 строки |
+| 2 | Нет теста воркера на плохой env; падение процесса не описано | 🟡 | исправлено: unit `_start_real_consumer` → ValueError; runbook (crash-loop) | нет | unit |
+| 2 | `replay` теряет `partition_key` | 🟡 | долг (в envelope relay его нет) | — | — |
+- Тесты круга 2 добавлены вместе с исправлениями; падение до исправления не проверялось.
+- Самопроверка после круга 2 (2026-10-01): behavioral rc 0 — 504 passed (RM-STAB-018/019/020 27/27); python-tests rc 0 — 1977 passed,
+  561 skipped; I-0 rc 0; guard PASS; self-test 55/55; ruff — новых нет; `git diff --check` rc 0; pilot smoke rc 0, `/health/ready` 200,
+  RMP/RMP_EVENTS как в круге 1, `dead_letters_pending: 0` (проверка под реальной ролью приложения в pilot-стеке).
+| 3 | Provisioning только при старте и только с `CAMPAIGN_CONSUMER_ENABLED=true`; при сбое relay стартует → события без stream через ~1 мин в `dead_letter` relay, readiness зелёный | 🟠 | отклонено как правка в этом этапе: ревью круга 3 — последнее, правка кода без ревью нарушила бы процесс; поведение «сбой provisioning не фатален» прежнее (RMP так же); записано в runbook (диагностика и восстановление outbox) и notes RM-STAB-020 — **решение владельца**: фоновый повтор / health-флаг streams | — | `main()` `except RuntimeError` вокруг `_run_provisioning`; `mark_event_failed` backoff 1…32 с, 7 попыток |
+| 3 | Docstring `missing_stream_subjects` обещает падение старта | 🟡 | исправлено (только текст) | нет | — |
+| 3 | Ссылка на task `_dead_letter_monitor` не хранится | 🟡 | долг (как у `consumer.run`, reporter) | — | — |
+| 3 | JSONB не принимает `\u0000` → вечный nak для такого сообщения в обход outbox | 🟡 | долг (через relay недостижимо) | — | — |
+| 3 | Нет purge/retention для `replayed`; `dead_letters_pending` обновляется раз в 5 мин | 🟡 | долг | — | — |
+| 3 | Вне скоупа: NATS в pilot-compose без `-sd /data` — JetStream пишет в `/tmp/nats/jetstream` контейнера, а не в том | — | **подтверждено** на стенде (`Store Directory: "/tmp/nats/jetstream"` в логе `rmp-local-stand-nats-1`, args `-js -m 8222`); compose — Protected Boundary вне карточки → владельцу | — | `docker logs rmp-local-stand-nats-1` |
+- Итог ревью: 3 круга — REQUEST CHANGES (два 🟠 по топологии → решения владельца, исправлено), APPROVE WITH COMMENTS, APPROVE WITH COMMENTS.
+- Наблюдение: стенд `rmp-local-stand` целиком остановлен 2026-10-01 07:57:14 UTC (SIGTERM, NATS exit 1, сервисы 137); причина не установлена
+  (события docker за окно не хранятся; тесты/скрипты этапа проект стенда не трогают; мой прогон в это время удалял только `rf10-pg`).
+  Стенд не поднимался — `/finish` пересоберёт его `stand-update.sh`.
+
+### Гейт
+2026-10-01, `.venv` Python 3.12.3, `set -o pipefail`; полные прогоны — после последнего изменения поведения (самопроверка после круга 2);
+после них — только docstring `missing_stream_subjects`, runbook, roadmap notes, журнал (перепроверено: unit RF-10 + readiness 76 passed,
+ruff, guard, self-test, `git diff --check`):
+- behavioral (шаги job дословно, `retail_media_app` NOBYPASSRLS) → rc 0: 504 passed, 12 skipped; новый `test_rm_stab_020_consumer_dlq.py` 13/13;
+  I-1 (RM-STAB-018) 7/7; I-3 (RM-STAB-019) 7/7.
+- python-tests (env job) → rc 0: 1977 passed, 561 skipped (541 + 20 behavioral без env); включает I-3 unit и `test_rf05_pilot_boot.py`.
+- I-2: образы из рабочего дерева ветки → `verify-pilot-run.sh --images-from-env` rc 0 «VERIFY-PILOT-RUN PASSED»; копия verify: `/health/ready`
+  воркера 200; RMP = [`campaign.>`], RMP_EVENTS = 4 семейства (604800 с, 1 GiB); durable `max_deliver=-1`, без фильтра; `pop.event.accepted`
+  → RMP_EVENTS; `dead_letters_pending: 0`.
+- Миграция 038 на чистом PG 16: upgrade → downgrade 037 → upgrade, rc 0; таблиц 64 → 63 → 64, политик DLQ 4 → 0 → 4, всего 152 → 148 → 152.
+- I-0 rc 0; `roadmap-governance-guard` PASS; `--self-test` 55/55; ruff — новых нет; `git diff --check` rc 0.
+- Ревью: 3 круга — REQUEST CHANGES, APPROVE WITH COMMENTS, APPROVE WITH COMMENTS.
+- Не запускалось: CI (на `/finish`); JSON Schema job (контракты не менялись); frontend (не затронут); live-проверка NATS-эффектов
+  выполнена отдельным контейнером `nats:2.10-alpine` (удалён).
+
+### Долг (к `/finish`)
+- **Решение владельца:** provisioning только при старте и только с `CAMPAIGN_CONSUMER_ENABLED=true`; при его сбое не-campaign события через
+  ~1 мин уходят в `dead_letter` relay, readiness зелёный (фоновый повтор / health-флаг streams).
+- **Решение владельца (вне скоупа, compose):** NATS в pilot-compose без `-sd /data` — JetStream хранится в `/tmp/nats/jetstream` контейнера,
+  том `nats_jetstream` не используется; streams и сообщения не переживают пересоздание контейнера.
+- Принятый риск: `max_ack_pending=100` при backoff до 60 мин.
+- `last_error` неинформативен для сбоев генерации (причина — в логе по `event_id`).
+- Нет уникального индекса `(event_id) WHERE status='dead'` (дедупликация SELECT→INSERT); нет purge/retention `replayed`; `partition_key` при
+  replay теряется; JSONB и `\u0000`; ссылки на фоновые task не хранятся; DLQ stub-consumer.
+
+### Итог (заполняет /finish)
+- Статус: finished (PR ждёт merge владельцем). Коммит и PR: `gh pr list --head fix/RF-10`; CI — в отчёте `/finish` (в коммит не входит).
+- Доказано: ограниченные доставки с backoff, DLQ в PostgreSQL под FORCE RLS (запись, отсутствие доступа без worker context, без дублей,
+  replay один раз, CLI), счётчик pending из БД — под `retail_media_app`; два stream и сохранность durable — в реальном NATS (pilot smoke);
+  миграция 038 обратима точно; эффекты NATS (вытеснение при limits, слоты `max_ack_pending`) — живым `nats:2.10-alpine`.
+- RM-STAB-020 остаётся `in_progress`: `done` — после merge и зелёного CI develop, решением владельца. RM-STAB-019 — `done`.
+- Отклонённые 🟠: `last_error` из handler (контракт handler, причина — в логе); provisioning при сбое не фатален (последнее ревью, решение
+  владельца). Принятые владельцем: `max_ack_pending`. Долг — «Долг (к `/finish`)» выше.
+- Новые инварианты: I-4.
+- Следующий шаг: merge PR владельцем → решения: provisioning при сбое; `-sd /data` у NATS в pilot-compose (Protected Boundary) → `/start RF-<N>`.

@@ -1862,13 +1862,60 @@ tasks:
     verified_by: behavioral
     ref: tests/behavioral/test_rm_stab_019_orchestrator_rls.py
   decision_status: approved
-  delivery_status: in_progress
-  notes: 'Решение владельца 2026-09-29, этап RF-04 (узкий состав). Находки ревью main@8ad0228: P0-4 (ack при ошибке), P1-6.a,
+  delivery_status: done
+  evidence_refs:
+  - kind: behavioral
+    ref: tests/behavioral/test_rm_stab_019_orchestrator_rls.py
+    status: verified
+    observed_at: '2026-09-30T08:44:02Z'
+    note: 'CI job «Behavioral PostgreSQL Tests — ADR-008 Gate» success на develop @ b219fad (runtime-роль NOBYPASSRLS)'
+  - kind: command
+    ref: python -m pytest tests/test_rm_stab_019_orchestrator_failures.py
+    status: verified
+    observed_at: '2026-09-30T08:44:02Z'
+    note: job «Python — Unit Tests» success в push-run develop 36690884823 (b219fad)
+  - kind: ci_run
+    ref: https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/36690884823
+    status: verified
+    observed_at: '2026-09-30T08:44:02Z'
+    note: push-run develop @ b219fad (merge PR #13), attempt 1, success 42/42
+  notes: 'done - PR #13 смержен в develop @ b219fad, push-run develop 36690884823 success 42/42 (решение владельца 2026-10-01).
+    Решение владельца 2026-09-29, этап RF-04 (узкий состав). Находки ревью main@8ad0228: P0-4 (ack при ошибке), P1-6.a,
     P1-8, T11. REQ: - (кандидат REQ-ORCH-002, ссылка - решением владельца); SC: -; DEC: -. Не покрывает: DLQ и max_deliver
     (P1-6.b), stream subjects (P1-7), SKIP LOCKED outbox (P2-B7) - отдельный этап с RM-TECH-243; сбой подписи и ошибки кода
     внутри генерации по устройству по-прежнему дают failed + ack (деление по типу исключения). Риск регрессии: низкий -
     системный сбой начинает повторяться (nak) вместо тихого failed, повторы бесконечны до DLQ (max_deliver=-1, P1-6.b);
     readiness воркера может стать 503, но compose healthcheck смотрит /health/live - автоперезапуска нет.'
+- id: RM-STAB-020
+  kind: implementation
+  stage: S
+  title: 'События не пропадают молча: DLQ consumer оркестратора (лимит, backoff, повтор) и stream со всеми subjects outbox'
+  owner_role: Technical owner
+  dependencies:
+  - RM-STAB-019
+  acceptance:
+  - check: сообщение consumer после 7-й неудачной доставки записано в DLQ (PostgreSQL) и term; до этого - nak с задержкой
+      по расписанию; сбой записи в DLQ - nak без потери; replay создаёт outbox-событие и помечает строку replayed; без
+      admin-контекста DLQ под retail_media_app не видна
+    verified_by: behavioral
+    ref: tests/behavioral/test_rm_stab_020_consumer_dlq.py
+  - check: каждый event_type outbox из кода захвачен ровно одним stream (RMP - campaign.>, RMP_EVENTS - остальные семейства);
+      без auto-provision воркер сверяет subjects обоих stream; расписание backoff
+    verified_by: command
+    ref: python -m pytest tests/test_rm_stab_020_dlq_and_subjects.py
+  decision_status: approved
+  delivery_status: in_progress
+  notes: 'Решение владельца 2026-09-30, этап RF-10 (mini-design: лимит 7 доставок в приложении, backoff 5с/30с/2м/10м/30м/60м,
+    DLQ - таблица PostgreSQL с FORCE RLS, CLI-повтор через outbox). Решения владельца 2026-10-01 (после ревью): два stream -
+    RMP (campaign.>) и RMP_EVENTS (delivery/pop/emergency/creative_asset, 1 GiB, 7 суток, DiscardOld), чтобы поток PoP не
+    вытеснял неподтверждённые события campaign; durable без серверного фильтра не меняется; риск max_ack_pending=100 при
+    backoff до 60 мин принят (новые события campaign могут ждать до 60 мин после восстановления).
+    Находки ревью main@8ad0228: P1-6.b, P1-7. REQ: - ; SC: -; DEC: -. Protected Boundary: только миграция 038 (downgrade
+    удаляет лишь новую таблицу). Не покрывает: API/UI DLQ, DLQ stub-consumer, SKIP LOCKED outbox (P2-B7), lease/partition
+    order/операции над dead_letter relay (RM-TECH-243). Риск регрессии: низкий - события не-campaign начинают сохраняться
+    в RMP_EVENTS (без потребителя); события consumer после ~1ч43м сбоя уходят в DLQ и требуют replay. Открытый риск
+    (ревью круг 3): provisioning только при старте и только с CAMPAIGN_CONSUMER_ENABLED=true; при его сбое relay стартует,
+    и события без stream через ~1 мин уходят в dead_letter relay - решение владельца.'
 - id: RM-TECH-220
   kind: implementation
   stage: C
