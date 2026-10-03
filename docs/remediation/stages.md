@@ -119,7 +119,7 @@
 
 | Поле | Значение |
 |---|---|
-| Статус | finished |
+| Статус | merged |
 | Цель | Сообщение consumer, исчерпавшее лимит доставок, сохраняется в PostgreSQL и может быть повторено; каждое событие outbox попадает в stream, а не в `dead_letter` relay |
 | Задачи roadmap.yaml | RM-STAB-020 (новая, стадия S); попутно RM-STAB-019 → `done` (решение владельца 2026-10-01) |
 | Находки | P1-6.b, P1-7 |
@@ -130,6 +130,22 @@
 | Входные условия | RF-04 смержен (PR #13, `develop @ b219fad`) |
 | Гейт | job behavioral (новые тесты + I-1 + I-3); job python-tests; I-0; I-2 (pilot smoke) + subjects stream; `roadmap-governance-guard` + `--self-test`; ruff по изменённым файлам; миграция upgrade → downgrade → upgrade на PostgreSQL |
 | Канон, который меняется | `roadmap.yaml` (RM-STAB-020; RM-STAB-019 → `done`) + генерация; checkpoint `PROJECT_STATE.md` |
+
+## RF-11 — Надёжность NATS: хранилище на томе и fail-fast provisioning (решение владельца 2026-10-01)
+
+| Поле | Значение |
+|---|---|
+| Статус | finished |
+| Цель | JetStream хранит streams и сообщения в смонтированном томе и переживает пересоздание контейнера NATS; воркер не запускает relay без проверенных streams |
+| Задачи roadmap.yaml | RM-STAB-021 (новая, стадия S); попутно RM-STAB-020 → `done` (решение владельца 2026-10-01) |
+| Находки | ревью RF-10 круг 3: 🟠 provisioning при сбое; наблюдение `-sd /data` (подтверждено на стенде) |
+| Скоуп (в) | `-sd /data` в command NATS — `infra/compose/docker-compose.pilot.yml`, `infra/compose/docker-compose.phase1.yml`; описание — `scripts/backup/backup_manifest.py`, `docs/runbook/nats-backup-restore.md`; воркер: provisioning при любом `NATS_URL`, сбой provisioning/сверки subjects завершает старт до relay (`main()` не глотает), кроме `OUTBOX_RELAY_ALLOW_STUB=true` — лог; runbook `delivery-runtime.md`; `roadmap.yaml` + генерация |
+| Скоуп (вне) | образ/пользователь/порты NATS; CI и `verify-pilot-run.sh`; restore-drill compose; переподключение relay к NATS во время работы; остальной долг RF-10 |
+| Protected Boundaries | «Docker, deployment» — только 2 compose-файла (флаг хранилища) + описание в `backup_manifest.py` и runbook (решение владельца 2026-10-01) |
+| mini-design | нет — решения владельца 2026-10-01 (fail-fast, список файлов) |
+| Входные условия | RF-10 смержен (PR #14, `develop @ 2151153`) |
+| Гейт | локально pilot-стек: publish в RMP → `up --force-recreate nats` → stream и сообщение на месте (на compose develop — пропадают); unit `tests/test_rm_stab_021_nats_durability.py`; behavioral (I-1, I-3, I-4); python-tests; I-0; I-2; `docker compose config` pilot/phase1; `roadmap-governance-guard` + `--self-test`; ruff |
+| Канон, который меняется | `roadmap.yaml` (RM-STAB-021; RM-STAB-020 → `done`) + генерация; checkpoint `PROJECT_STATE.md` |
 
 ## Остальное
 

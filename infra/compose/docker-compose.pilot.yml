@@ -69,7 +69,10 @@ services:
 
   nats:
     image: nats:2.10-alpine
-    command: ["-js", "-m", "8222"]
+    # RM-STAB-021: -sd puts JetStream on the volume; without it nats-server
+    # stores in /tmp/nats/jetstream inside the container and loses streams
+    # and unconsumed messages on every container recreate.
+    command: ["-js", "-sd", "/data", "-m", "8222"]
     volumes:
       - nats_jetstream:/data
     healthcheck:
