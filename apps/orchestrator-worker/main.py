@@ -104,7 +104,8 @@ async def _run_provisioning(nats_url: str) -> bool:
 
     Raises RuntimeError if:
       - NATS_AUTO_PROVISION=true but provisioning fails.
-      - NATS_AUTO_PROVISION is unset/false and the stream does NOT exist.
+      - NATS_AUTO_PROVISION is unset/false and the stream does NOT exist,
+        or the stream check itself fails (NATS unreachable, nats-py missing).
     """
     auto_provision = (
         os.environ.get("NATS_AUTO_PROVISION", "").strip().lower() == "true"
@@ -153,10 +154,17 @@ async def _run_provisioning(nats_url: str) -> bool:
 
     # Auto-provision is off — verify both streams exist and capture every
     # outbox subject (a stream from an older runbook may hold campaign.> only).
-    problems = await missing_stream_subjects(
-        nats_url,
-        {stream: CAMPAIGN_STREAM_SUBJECTS, EVENTS_STREAM: EVENTS_STREAM_SUBJECTS},
-    )
+    try:
+        problems = await missing_stream_subjects(
+            nats_url,
+            {stream: CAMPAIGN_STREAM_SUBJECTS, EVENTS_STREAM: EVENTS_STREAM_SUBJECTS},
+        )
+    except Exception as exc:
+        # RM-STAB-021: one failure type for _startup_provisioning (e.g. nats-py
+        # missing), as in the auto-provision branch above.
+        raise RuntimeError(
+            f"JetStream stream check at {nats_url} failed: {exc}"
+        ) from exc
     if problems:
         raise RuntimeError(
             f"JetStream streams at {nats_url} are not provisioned: "
@@ -487,6 +495,28 @@ async def _start_stub_consumer(engine) -> bool:
 # ---------------------------------------------------------------------------
 
 
+async def _startup_provisioning(nats_url: str) -> None:
+    """Provision / verify the JetStream streams before the relay starts.
+
+    RM-STAB-021: runs whenever NATS is configured — the relay publishes even
+    with the consumer disabled — and a failure stops the start: a relay
+    without streams turns every event into dead_letter within a minute.
+    Only the explicit dev/test stub mode (OUTBOX_RELAY_ALLOW_STUB=true)
+    logs and continues, matching the relay's own stub fallback.
+    """
+    if not nats_url:
+        return
+    try:
+        await _run_provisioning(nats_url)
+    except RuntimeError:
+        allow_stub = os.environ.get("OUTBOX_RELAY_ALLOW_STUB", "").strip().lower() == "true"
+        if not allow_stub:
+            raise
+        logger.exception(
+            "Provisioning failed — continuing only because OUTBOX_RELAY_ALLOW_STUB=true (dev/test)"
+        )
+
+
 async def _dead_letter_check(engine) -> int:
     """Count consumer dead letters still waiting for the operator; publish to health."""
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -622,15 +652,8 @@ async def main():
         == "true"
     )
 
-    # --- Provisioning ---
-    if nats_url and consumer_enabled:
-        try:
-            await _run_provisioning(nats_url)
-        except RuntimeError:
-            logger.exception(
-                "Provisioning failed — worker will attempt to start "
-                "relay/consumer (may fail-fast if NATS is unreachable)"
-            )
+    # --- Provisioning (RM-STAB-021: required before the relay) ---
+    await _startup_provisioning(nats_url)
 
     # --- Start relay ---
     await _start_relay()

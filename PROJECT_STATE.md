@@ -2,7 +2,21 @@
 
 **Last updated:** 2026-08-31 (OD-042: r428 — целевой контракт, RM-GOV-012 approved; implementation_mode у 101 REQ; RM-GOV-012 выравнивание, OD-041 пауза walkthrough; RM-GOV-010-A/B; статус документа ACCEPTED, не APPROVED; не закоммичено)
 
-**RF-10 / RM-STAB-020 (2026-10-01, PR в develop ждёт merge владельцем) — события не пропадают молча: DLQ consumer и полный stream.**
+**RF-11 / RM-STAB-021 (2026-10-03, PR в develop ждёт merge владельцем) — надёжность NATS: JetStream на томе, provisioning обязателен до relay.**
+Закрывает риски RF-10, ожидавшие решения владельца (решение 2026-10-01). Было: NATS в pilot/phase1-compose запускался без `-sd`, JetStream
+писал в `/tmp/nats/jetstream` контейнера — том `nats_jetstream` пустовал, streams и неподтверждённые сообщения терялись при каждом
+пересоздании контейнера; сбой provisioning только логировался (и provisioning выполнялся лишь при включённом consumer) — relay стартовал, и
+события без stream через ~1 мин уходили в `dead_letter`. Стало: `-sd /data` в command NATS (Protected Boundary «Docker» — только этот флаг);
+воркер проверяет/провижинит streams при любом `NATS_URL` и при сбое завершается до relay (restart loop в pilot; в phase1 нет `restart` —
+воркер остаётся `Exited`), исключение — `OUTBOX_RELAY_ALLOW_STUB=true`; описание в `backup_manifest.py` и runbooks (дренаж перед
+обновлением, удаление тома при восстановлении PG на раннюю точку). Доказательство: живой pilot-стек — stream, сообщение и durable пережили
+`up --force-recreate nats`, на compose develop — пропали; отказ старта rc 1 до relay; `tests/test_rm_stab_021_nats_durability.py` 8 passed
+(тест `main()` падает на коде develop); behavioral 504 passed под `retail_media_app` NOBYPASSRLS; python-tests 1985 passed; pilot smoke rc 0;
+3 круга ревью (APPROVE WITH COMMENTS). RM-STAB-021 — `in_progress` до merge и CI develop. Долг/риск — **ожидает решения владельца**: phase1
+без `restart`; шаг тома NATS в `backup-restore-dr.md`; `verified_by: command` при ручном доказательстве сохранности; при недоступном NATS
+воркер выходит через ~2 мин с неточным советом в тексте ошибки. Запись: `docs/remediation/journal.md`.
+
+**RF-10 / RM-STAB-020 (2026-10-01, merged PR #14 → `develop @ 2151153`; push-run develop 36865587310 success 42/42; RM-STAB-020 `done` решением владельца 2026-10-01) — события не пропадают молча: DLQ consumer и полный stream.**
 Закрывает P1-6.b, P1-7 ревью `main @ 8ad0228` (mini-design одобрен владельцем 2026-09-30, поправки 2026-10-01). Было: consumer повторял
 неудачное сообщение бесконечно каждые 5 с (`max_deliver=-1`); stream RMP ловил только `campaign.>`, поэтому relay переводил все события
 `delivery.*`, `pop.*`, `emergency.changed`, `creative_asset.created` в `dead_letter`. Стало: до 7 доставок с паузами 5с/30с/2м/10м/30м/60м
@@ -12,8 +26,7 @@ worker context) и term; сбой записи — nak 60 мин без поте
 вытесняет события кампаний. Доказательство: `tests/behavioral/test_rm_stab_020_consumer_dlq.py` 13/13 под `retail_media_app` NOBYPASSRLS,
 `tests/test_rm_stab_020_dlq_and_subjects.py`, behavioral 504 passed, python-tests 1977 passed, миграция 038 upgrade→downgrade→upgrade
 на PG 16, pilot smoke rc 0 с проверкой streams в реальном NATS, 3 круга ревью. RM-STAB-020 — `in_progress` до merge и CI develop.
-Долг/риск — **ожидает решения владельца**: сбой provisioning не фатален (события без stream через ~1 мин в relay `dead_letter`); NATS в
-pilot-compose без `-sd /data` (JetStream не на томе). Принят владельцем: `max_ack_pending=100` при backoff до 60 мин. Запись:
+Долг/риск: сбой provisioning не фатален и NATS без `-sd /data` — закрыты RF-11 (см. выше). Принят владельцем: `max_ack_pending=100` при backoff до 60 мин. Запись:
 `docs/remediation/journal.md`.
 
 **RF-04 / RM-STAB-019 (2026-09-30, merged PR #13 → `develop @ b219fad`; push-run develop 36690884823 success 42/42; RM-STAB-019 `done` решением владельца 2026-10-01) — оркестратор: сбои не маскируются.**

@@ -492,15 +492,37 @@ class TestHealthEndpoint(unittest.TestCase):
         self.assertIn("200", live_section)
 
     def test_provisioning_failure_message_is_accurate(self):
-        """Provisioning failure log must mention fail-fast, not 'degraded'."""
+        """Provisioning failure must not be described as a degraded start.
+
+        RM-STAB-021: a failed provisioning now stops the start, so the old
+        "worker will attempt to start relay/consumer (may fail-fast …)" log is
+        gone; the only message that continues names the stub flag.
+        """
+        import ast
+
         path = os.path.join(
             os.path.dirname(__file__), "..", "apps",
             "orchestrator-worker", "main.py",
         )
         with open(path) as f:
             src = f.read()
-        self.assertIn("may fail-fast", src)
         self.assertNotIn("will start degraded", src)
+        self.assertNotIn("worker will attempt to start", src)
+        self.assertIn(
+            "continuing only because OUTBOX_RELAY_ALLOW_STUB=true", src,
+        )
+        # main() itself never catches a provisioning failure.
+        main = next(
+            n for n in ast.parse(src).body
+            if isinstance(n, ast.AsyncFunctionDef) and n.name == "main"
+        )
+        for node in ast.walk(main):
+            if isinstance(node, ast.Try):
+                called = [
+                    c.func.id for c in ast.walk(node)
+                    if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)
+                ]
+                self.assertNotIn("_startup_provisioning", called)
 
 
 # ---------------------------------------------------------------------------

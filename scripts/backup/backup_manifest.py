@@ -110,11 +110,12 @@ def default_component_classification() -> dict[str, dict[str, str]]:
     - postgres: authoritative business state → backed_up (pg_dump custom).
     - minio: authoritative binary objects (creatives, contract PDFs) → backed_up.
     - redis: cache semantics only (S-0xx) → excluded_disposable.
-    - nats: JetStream is enabled (-js) and has durable stream "RMP" + consumer
+    - nats: JetStream is enabled (-js) with its store on the compose volume
+      (-sd /data, RM-STAB-021) and has streams "RMP" / "RMP_EVENTS" + consumer
       "rmp-campaign-consumer", but the authoritative source of truth is the
       PostgreSQL outbox_events table (events are written there first and
-      published with Nats-Msg-Id=event_id for dedup). Full recovery is via
-      idempotent provisioning (provision_campaign_delivery) + outbox relay
+      published with Nats-Msg-Id=event_id for dedup). The volume is not part
+      of this backup; recovery is via idempotent provisioning + outbox relay
       replay. See docs/runbook/nats-backup-restore.md → excluded_replayable.
     """
     return {
@@ -138,11 +139,14 @@ def default_component_classification() -> dict[str, dict[str, str]]:
             "reason": (
                 "JetStream transport only; authoritative source of truth is "
                 "PostgreSQL outbox_events. Every event written to outbox first, "
-                "published with Nats-Msg-Id=event_id dedup. Stream/consumer are "
-                "recreated idempotently at startup (NATS_AUTO_PROVISION)."
+                "published with Nats-Msg-Id=event_id dedup. Streams/consumer are "
+                "recreated idempotently at startup (NATS_AUTO_PROVISION). The "
+                "JetStream store (-sd /data, volume nats_jetstream) is not in "
+                "this backup."
             ),
             "recovery_procedure": (
-                "start nats-server -js → provision_campaign_delivery() → "
+                "start nats-server -js -sd /data → worker provisions RMP + "
+                "RMP_EVENTS at startup (fails to start otherwise) → "
                 "outbox relay replays pending events (dedup-safe via Nats-Msg-Id)"
             ),
         },

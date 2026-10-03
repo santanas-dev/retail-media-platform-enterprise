@@ -10,9 +10,9 @@
 | | |
 |---|---|
 | Активный этап | — |
-| Последний завершённый | RF-10 — finished, PR ждёт merge (`gh pr list --head fix/RF-10`); RF-04 — merged (PR #13 → `develop @ b219fad`, push-run develop 36690884823 → success 42/42); RF-05 — merged (PR #12); RF-01, RF-00 — merged |
-| Следующий шаг | merge PR RF-10 владельцем → RM-STAB-020 `done` после CI develop (решение владельца); решения: provisioning при сбое, `-sd /data` NATS → `/start RF-<N>` |
-| Базовая линия | `origin/develop @ b219fad` (2026-09-30, merge RF-04; push-run 36690884823 → success 42/42). Прежние: `af6810c` (merge RF-05), `origin/develop @ d8dbd62` (2026-09-29, merge RF-01; push-run 36475858226 → success 41/41). Прежняя: `origin/develop @ 6bc9ac0` (2026-09-28, merge RF-CI; push-run `develop` 36407616564 → success; то же дерево — push-run `fix/RF-CI` 36404147483, 41/41). Снимок аудита RF-00 — `b166419`; ветка `fix/RF-00` получила `6bc9ac0` merge-коммитом `3892552` |
+| Последний завершённый | RF-11 — finished, PR ждёт merge (`gh pr list --head fix/RF-11`); RF-10 — merged (PR #14 → `develop @ 2151153`, push-run develop 36865587310 → success 42/42); RF-04, RF-05, RF-01, RF-00 — merged |
+| Следующий шаг | merge PR RF-11 владельцем → RM-STAB-021 `done` после CI develop (решение владельца); решения по долгу RF-11 (phase1 `restart`, DR runbook, `verified_by`) → `/start RF-<N>` |
+| Базовая линия | `origin/develop @ 2151153` (2026-10-01, merge RF-10; push-run 36865587310 → success 42/42). Прежние: `b219fad` (merge RF-04), `af6810c` (merge RF-05), `origin/develop @ d8dbd62` (2026-09-29, merge RF-01; push-run 36475858226 → success 41/41). Прежняя: `origin/develop @ 6bc9ac0` (2026-09-28, merge RF-CI; push-run `develop` 36407616564 → success; то же дерево — push-run `fix/RF-CI` 36404147483, 41/41). Снимок аудита RF-00 — `b166419`; ветка `fix/RF-00` получила `6bc9ac0` merge-коммитом `3892552` |
 | Источник находок | `docs/audit/2026-09-27-claude-code-review-main-8ad0228.md` (снято на `main @ 8ad0228`; develop на 64 коммита впереди) |
 
 ## Инварианты (не ломать)
@@ -27,6 +27,7 @@
 | I-2 | Pilot-compose под `ENVIRONMENT=pilot` поднимается без ручных шагов: роль приложения из `db-migrate`, все сервисы healthy, readiness строгий, identity образа, device-токен control-api принят device-gateway (RM-PILOT-002A) | CI job `pilot-compose-smoke` (`build-images.sh` без push → `verify-pilot-run.sh --images-from-env <version> <sha>`); локально — сборка образов с теми же build-args и тот же вызов; `python -m pytest tests/test_rf05_pilot_boot.py` | RF-05 |
 | I-3 | Оркестратор не маскирует сбои: системный сбой генерации → nak без failed, ошибка данных устройства → failed + ack; сбой сессии не останавливает consumer, остановка цикла → `/health/ready` 503; воркер завершения работает под RLS (RM-STAB-019) | шаги job `behavioral-postgres-tests` (`retail_media_app` NOBYPASSRLS), затем `python3 -m pytest tests/behavioral/test_rm_stab_019_orchestrator_rls.py -v` → 7 passed; `python -m pytest tests/test_rm_stab_019_orchestrator_failures.py` → 11 passed | RF-04 |
 | I-4 | События не пропадают молча: ≤7 доставок с backoff, затем DLQ в PostgreSQL (FORCE RLS, только worker context) + term, сбой записи — nak без потери, replay через outbox один раз; RMP = `campaign.>`, RMP_EVENTS = остальные семейства outbox (RM-STAB-020) | шаги job `behavioral-postgres-tests`, затем `python3 -m pytest tests/behavioral/test_rm_stab_020_consumer_dlq.py -v` → 13 passed; `python -m pytest tests/test_rm_stab_020_dlq_and_subjects.py` → passed | RF-10 |
+| I-5 | JetStream на томе (`-sd` = точка монтирования именованного тома в pilot/phase1-compose); воркер с `NATS_URL` не запускает relay без проверенных streams, кроме `OUTBOX_RELAY_ALLOW_STUB=true` (RM-STAB-021) | `python -m pytest tests/test_rm_stab_021_nats_durability.py` → 8 passed; живое доказательство (publish → `up --force-recreate nats` → stream и сообщение на месте) — процедура в журнале RF-11, автоматизации нет | RF-11 |
 
 ## Решения владельца, влияющие на этапы
 
@@ -42,6 +43,8 @@
 | 2026-09-29 | RF-05 после СТОП на круге 3: п.1 (schema head в lock-режиме verify) — вариант «а» (lock `release.schema_head`, иначе head из миграций на коммите релиза); п.3 — подтверждены ссылка `RM-PILOT-002A` в `requirements-traceability.yaml` (REQ-ARCH-004) и адаптация фикстур `JWT_AUDIENCE` в 3 тестовых файлах; п.4 — принято: `verify-pilot-images.yml` не проходит для релизов, собранных до RF-05 (в образах нет ENV identity). П.2 (`JWT_AUDIENCE` в `validate-pilot-env.py`/`local_stand.py`) — ответа нет, остаётся открытым риском |
 | 2026-09-29 | RF-05 смержен; RM-PILOT-002A → `done`. Следующий этап — RF-04, узкий состав: P0-4 (ack при ошибке; системные ошибки → nak, ошибки данных устройства — failed + ack), P1-6.a (цикл переживает сбой сообщения, остановка → `/health/ready` 503), P1-8 (новый behavioral под `retail_media_app`, существующий тест не менять), T11; P1-6.b/P1-7/P2-B7 — отдельный этап с RM-TECH-243. Protected Boundaries — нет. Задача RM-STAB-019, стадия S |
 | 2026-09-30 | RF-04 смержен (PR #13); RM-STAB-019 → `done`. Следующий этап — DLQ (RF-10): P1-6.b + P1-7; хранилище DLQ — таблица PostgreSQL; лимит 7 доставок, backoff 5с/30с/2м/10м/30м/60м в приложении, серверный `max_deliver` −1; оператор — счётчик + CLI-повтор через outbox; stream ловит все префиксы outbox; Protected Boundary — только миграция 038 (downgrade удаляет лишь новую таблицу). Задача RM-STAB-020, стадия S |
+| 2026-10-01 | RF-10 смержен (PR #14); RM-STAB-020 → `done`. Следующий этап — надёжность NATS (RF-11): `-sd /data` в command NATS pilot/phase1-compose + описание в `backup_manifest.py` и runbook (Protected Boundary «Docker, deployment» — только эти файлы); провижининг при любом `NATS_URL`, сбой — fail-fast до relay (кроме `OUTBOX_RELAY_ALLOW_STUB`). Задача RM-STAB-021, стадия S |
+| 2026-10-02 | RF-11: существующий `tests/test_phase4_production_readiness.py::test_provisioning_failure_message_is_accurate` (вне карточки, требовал литерал «may fail-fast» из удаляемого лога) — адаптировать под новое поведение (AskUserQuestion) |
 | 2026-09-28 | Красный CI PR #9 из-за внешнего дрейфа — отдельный этап RF-CI (вариант 1); SQLAlchemy `<2.1` в CI и requirements; MinIO → Chainguard по digest; скоуп CI + drill + phase1 + pilot, Protected Boundary «Docker/deployment» — по ответу владельца «CI + drill + phase1 + pilot»: образ/healthcheck MinIO в `phase1-ci.yml`, compose restore-drill/phase1/pilot и версия MinIO в `backup-restore-drill.sh`; pilot `user: "0"` + долг. `user: "0"` в phase1 добавлен агентом на круге ревью 2 по аналогии — **ожидает подтверждения владельца** |
 
 ---
@@ -650,7 +653,7 @@
 
 ## RF-10 — События не пропадают молча: DLQ consumer и полный stream
 
-- Статус: finished (PR ждёт merge владельцем)
+- Статус: merged (PR #14 → `develop @ 2151153`; push-run 36865587310 success 42/42)
 - Ветка: fix/RF-10 · Основа: develop @ b219fad (merge PR #13)
 - Сделано до правок (решение владельца 2026-10-01): RM-STAB-019 → `done` (evidence: behavioral + command + ci_run 36690884823);
   RM-STAB-020 (S, in_progress) заведена; генерация; guard PASS, self-test 55/55. Карточка RF-10 → `in_progress`, RF-04 → `merged`.
@@ -790,3 +793,139 @@ ruff, guard, self-test, `git diff --check`):
   владельца). Принятые владельцем: `max_ack_pending`. Долг — «Долг (к `/finish`)» выше.
 - Новые инварианты: I-4.
 - Следующий шаг: merge PR владельцем → решения: provisioning при сбое; `-sd /data` у NATS в pilot-compose (Protected Boundary) → `/start RF-<N>`.
+
+## RF-11 — Надёжность NATS: хранилище на томе и fail-fast provisioning
+
+- Статус: finished (PR ждёт merge владельцем)
+- Ветка: fix/RF-11 · Основа: develop @ 2151153 (merge PR #14)
+- Сделано до правок (решение владельца 2026-10-01): RM-STAB-020 → `done` (evidence: behavioral + command + ci_run 36865587310);
+  RM-STAB-021 (S, in_progress); генерация; guard PASS, self-test 55/55. Карточка RF-11 → `in_progress`, RF-10 → `merged`.
+- Факты для плана (код `2151153`):
+  - pilot/phase1-compose: NATS `command: ["-js", "-m", "8222"]`, том `nats_jetstream:/data` смонтирован, но store dir по умолчанию —
+    `/tmp/nats/jetstream` (лог стенда `Store Directory: "/tmp/nats/jetstream"`) → том не используется.
+  - `main()`: provisioning только при `NATS_URL` и `CAMPAIGN_CONSUMER_ENABLED=true`; `RuntimeError` → `logger.exception`, старт продолжается.
+  - `_start_relay` при `NATS_URL` и недоступном NATS уже бросает `RuntimeError` (кроме `OUTBOX_RELAY_ALLOW_STUB=true`).
+  - `backup_manifest.py`: NATS — `excluded_replayable` (recovery: провижининг + replay outbox).
+- Baseline (2026-10-01, `.venv` Python 3.12.3, `set -o pipefail`, код = `2151153`):
+  - I-0 rc 0; guard PASS; self-test 55/55.
+  - I-1 / I-3 / I-4 / behavioral (шаги job, `retail_media_app` NOBYPASSRLS) → rc 0: 504 passed, 12 skipped.
+  - python-tests (env job) → rc 0: 1977 passed, 561 skipped. (Первый прогон дал 7 failed — все в новом `tests/test_rm_stab_021_nats_durability.py`,
+    записанном во время прогона; повтор без него — rc 0.)
+  - I-2: push-run develop 36865587310 — job «Pilot Compose Smoke — RF-05» success.
+- План: домены — `infra/compose` (2 файла, флаг), `scripts/backup/backup_manifest.py` (текст), `apps/orchestrator-worker/main.py`
+  (`_startup_provisioning`), runbooks. Доказательство — unit `tests/test_rm_stab_021_nats_durability.py` (падал на `2151153`: 7 из 8 —
+  compose без `-sd`, нет `_startup_provisioning`) + локальный прогон pilot-стека с пересозданием NATS (и tamper на compose develop).
+
+### Сделано
+- Возобновление 2026-10-02: сессия 2026-10-01 оборвалась (ПК выключился) после правок кода, до записи в журнал. Сверка дерева с планом:
+  `git fsck` чисто; в дереве были compose ×2, `main.py`, новый тест, roadmap + генерация, карточка и журнал — всё по плану выше;
+  `backup_manifest.py` и runbooks не были начаты. Владелец продолжил этап (`/start RF-11`).
+- Тест сначала (сессия 2026-10-01): `tests/test_rm_stab_021_nats_durability.py` — на `2151153` падали 7 из 8 (baseline выше).
+- `docker-compose.pilot.yml`, `docker-compose.phase1.yml`: command NATS `["-js", "-sd", "/data", "-m", "8222"]` (только флаг и комментарий).
+- `apps/orchestrator-worker/main.py`: `_startup_provisioning(nats_url)` — без `NATS_URL` ничего; иначе `_run_provisioning` при любом
+  `CAMPAIGN_CONSUMER_ENABLED`; `RuntimeError` пробрасывается (кроме `OUTBOX_RELAY_ALLOW_STUB=true` — `logger.exception` и продолжение);
+  `main()` вызывает её до `_start_relay()` без `try`.
+- `scripts/backup/backup_manifest.py`: только текст (docstring, `reason`, `recovery_procedure` компонента nats): `-sd /data`, том не входит
+  в бэкап, RMP + RMP_EVENTS, воркер не стартует без streams. Disposition `excluded_replayable` и схема манифеста не менялись.
+- `docs/runbook/nats-backup-restore.md` (§2 store directory, сценарий A, §7), `docs/runbook/delivery-runtime.md` (раздел «Provisioning is
+  required before the relay» вместо «Accepted risk (RM-STAB-020)», раздел «JetStream storage»).
+- `packages/services/jetstream_provisioning.py`: одна строка docstring `missing_stream_subjects` («main() logs it and starts anyway» стало
+  неверным). Файл в карточке не назван — только текст, поведение не менялось.
+- `tests/test_phase4_production_readiness.py::test_provisioning_failure_message_is_accurate`: требовал литерал «may fail-fast» из удалённого
+  лога → 1 failed в python-tests. Адаптирован решением владельца 2026-10-02: нет «will start degraded», нет «worker will attempt to
+  start», есть сообщение stub-режима, `main()` не оборачивает `_startup_provisioning` в `try`.
+- Живое доказательство (2026-10-02, образы `rmp-rf11/*:rf11-local` из рабочего дерева, флаги как в `build-images.sh`; скрипт в scratchpad,
+  репозиторий не менялся): pilot-стек → стоп воркера → `js.publish('campaign.rf11.proof')` → `up --force-recreate nats`:
+  - compose ветки: `Store Directory: "/data/jetstream"`; до и после пересоздания (контейнер `ea193623ce94` → `7ff5bffff6b4`) —
+    RMP `messages=1, last_seq=1`, payload совпадает, RMP_EVENTS на месте, durable `num_pending=1, ack_floor=0`.
+  - compose develop (tamper): `Store Directory: "/tmp/nats/jetstream"`; после пересоздания — RMP и RMP_EVENTS `NOT FOUND`.
+  - fail-fast: streams удалены, образ ветки с `NATS_AUTO_PROVISION=false`, `CAMPAIGN_CONSUMER_ENABLED=false` → процесс завершился rc 1,
+    `RuntimeError: JetStream streams … are not provisioned` из `_startup_provisioning`, до relay. Сравнение со старым образом в этом прогоне
+    недействительно (переменная окружения shell перекрыла env-файл — оба запуска шли на образе ветки) и в доказательство не входит;
+    прежнее поведение доказано unit-тестом (падал на `2151153`).
+- Самопроверка (2026-10-02, `.venv` Python 3.12.3, `set -o pipefail`):
+  - python-tests (env job) → rc 0: 1983 passed, 561 skipped (до адаптации теста: 1 failed, 1982 passed).
+  - behavioral (шаги job, `retail_media_app` NOBYPASSRLS) → rc 0: 504 passed, 12 skipped; RM-STAB-018/019/020 27/27.
+  - I-2: `verify-pilot-run.sh --images-from-env rf11-local <sha>` → rc 0 «VERIFY-PILOT-RUN PASSED».
+  - I-0 rc 0; guard PASS; self-test rc 0; `git diff --check` rc 0; ruff — 0 ошибок в изменённых файлах (как на develop);
+    `docker compose config -q` pilot (env-заглушки) / phase1 → rc 0; pilot + local-stand overlay — command NATS с `-sd /data`.
+
+### Решения
+- `_startup_provisioning` ловит только `RuntimeError` — это контракт `_run_provisioning` (оборачивает сбой auto-provision и сбой сверки).
+- Stub-исключение привязано к `OUTBOX_RELAY_ALLOW_STUB` (а не к `CAMPAIGN_CONSUMER_ALLOW_STUB`): provisioning нужен relay.
+- Миграции данных из `/tmp/nats/jetstream` старого контейнера нет: первый старт после обновления — пустой том, воркер провижинит streams,
+  outbox досылает pending. Опубликованные, но не обработанные до обновления сообщения теряются так же, как при любом пересоздании
+  контейнера до RF-11.
+- Overlay стенда (`docker-compose.local-stand.yml`) наследует command NATS из pilot-compose — стенд получит `-sd /data` при пересборке.
+
+### Ревью
+| Круг | Замечание | Уровень | Решение | Риск исправления | Доказательство |
+|---|---|---|---|---|---|
+| 1 | Stub-режим падает без nats-py: ветка сверки (`NATS_AUTO_PROVISION` выкл.) отдаёт `ModuleNotFoundError`, `_startup_provisioning` ловит только `RuntimeError` | 🟠 | исправлено: вызов `missing_stream_subjects` в `_run_provisioning` обёрнут — любое исключение → `RuntimeError` (как в ветке auto-provision); docstring | низкий: меняется только тип исключения ветки сверки; тесты `_run_provisioning` (RM-STAB-020, phase4) passed | unit `test_stream_check_errors_surface_as_runtime_error`: до правки failed (`ModuleNotFoundError`), после — passed |
+| 1 | Runbook восстановления не учитывает сохраняемый том: PG восстановлен на раннюю точку + старый stream → сообщения «из будущего»; §3 «republishing is safe» неверно (dedup-окно 2 мин) | 🟠 | исправлено в `nats-backup-restore.md`: §3 — окно дедупликации и условие; Scenario D шаг 2 — удалить том `nats_jetstream` перед стартом NATS. `docs/runbook/backup-restore-dr.md` вне списка файлов карточки — не правился, долг → владельцу | нет (документ) | `jetstream_provisioning.py` — `duplicate_window` не задаётся (дефолт сервера 2 мин) |
+| 1 | Порядок вызовов в тесте через `ast.walk` (обход в ширину) хрупок | 🟡 | исправлено: сортировка по `lineno` + оба вызова на верхнем уровне `main()` | нет | unit passed |
+| 1 | RM-STAB-021 acceptance 2: `verified_by: command` при ручном доказательстве, автоматической регрессии сохранности нет | 🟡 | долг → владельцу (тип `verified_by`; автотест сохранности требует CI — вне скоупа) | — | — |
+| 1 | Нет шага дренажа перед обновлением | 🟡 | исправлено: §2 runbook — остановить writers, дождаться `num_pending=0` и отсутствия ack pending, затем пересоздать NATS | нет | — |
+| 1 | Позиция durable сохраняется, только пока `add_consumer` не падает (иначе delete + recreate с `deliver_policy` all) | 🟡 | исправлено: ограничение описано в runbook; `_ensure_consumer` не менялся (вне скоупа) | нет | `jetstream_provisioning.py:136-153`; `DEFAULT_CONSUMER_CONFIG` без `deliver_policy` |
+- Самопроверка после круга 1 (2026-10-03): образ воркера пересобран; I-2 `verify-pilot-run.sh --images-from-env` rc 0; живой прогон: compose
+  ветки — до/после `--force-recreate nats` RMP `messages=1`, payload совпадает; затем старт воркера (auto-provision) — durable не пересоздан
+  (`created` 16:14:58, момент первого провижининга; после рестарта NATS значение отличается на 43 мкс — точность при восстановлении с диска),
+  `ack_floor` 0 → 1 (сообщение доставлено после пересоздания); fail-fast — rc 1 до relay; compose develop — streams `NOT FOUND`.
+  python-tests rc 0 — 1984 passed, 561 skipped; behavioral rc 0 — 504 passed, 12 skipped (RM-STAB-018/019/020 27/27); I-0 rc 0; guard PASS;
+  self-test rc 0; `git diff --check` rc 0; ruff — новых нет (`main.py` 3 = develop 3, `test_phase4_production_readiness.py` 2 = develop 2;
+  запись «0 ошибок» в самопроверке выше была ошибкой подсчёта — неверный шаблон grep, сами ошибки — develop).
+| 2 | Phase1 compose без `restart`: после fail-fast воркер остаётся `Exited`; runbook говорил только о restart loop | 🟠 | исправлено: `delivery-runtime.md` — pilot: restart loop; phase1: `Exited`, ручной `up -d orchestrator-worker`. Добавление `restart` в phase1 — вне скоупа (Protected Boundary), → владельцу | нет (документ) | `grep -c restart docker-compose.phase1.yml` → 0 |
+| 2 | Нет поведенческого теста `main()`: остановка до relay доказана только AST | 🟠 | исправлено: `test_main_stops_before_relay_when_provisioning_fails` — `main()` с моками health/provisioning(RuntimeError)/relay/consumer → RuntimeError, relay и consumer не вызваны; `wait_for` 5 с | нет | на ветке passed; на `main.py` develop (копия в scratchpad) — failed `TimeoutError` (relay стартовал, `main()` ждёт сигнала) |
+| 2 | Таблица §2 runbook: «Consumer delivery state — ephemeral» противоречит новому тексту | 🟡 | исправлено | нет | — |
+| 2 | Stub-ветка `_startup_provisioning` ловит только `RuntimeError` (ошибка импорта модуля provisioning выйдет наружу) | 🟡 | долг: обе ветки `_run_provisioning` оборачивают ошибки; модуль на верхнем уровне импортирует только `logging` — риск низкий | — | — |
+| 2 | `missing_stream_subjects`: любая ошибка `stream_info` → «stream X not found» — теперь это причина отказа старта, текст вводит в заблуждение | 🟡 | долг: код RF-10, не менялся этапом | — | `jetstream_provisioning.py:307-312` |
+| 2 | Шаг дренажа: не сказано, что останавливать и что воркер должен работать | 🟡 | исправлено: остановить `control-api` (единственный, кроме воркера, писатель outbox — PoP-роутер тоже в control-api), воркер работает до `num_pending=0`/`num_ack_pending=0` | нет | `grep packages.api.pop apps` → только `control-api/main.py:99` |
+- Самопроверка после круга 2 (2026-10-03): python-tests rc 0 — 1985 passed, 561 skipped; I-0 rc 0; guard PASS; self-test rc 0; `git diff --check` rc 0;
+  ruff нового теста — чисто. `main.py` после круга 1 не менялся (behavioral, I-2 и живой прогон круга 1 — на финальном коде воркера).
+| 3 | При недоступном NATS выход не сразу: nats-py повторяет первый connect (60 × 2 с), `/health/live` 200 всё это время | 🟠 | отклонено как правка кода (круг ревью последний, правка без ревью нарушила бы процесс; задержка была и до RF-11 — тот же `_run_provisioning` вызывался в pilot при consumer on); окно описано в `delivery-runtime.md`; `max_reconnect_attempts` на старте — долг → владельцу | — | живой замер: образ ветки, `NATS_URL=nats://127.0.0.1:4999` → rc 1 через 121 с |
+| 3 | Без auto-provision недоступный NATS даёт «are not provisioned … Run provisioning first: set NATS_AUTO_PROVISION=true» — неверный совет, теперь это причина отказа старта | 🟠 | отклонено как правка кода (то же основание); в сообщении есть «NATS unreachable at …» — runbook объясняет, что причина в NATS; разделение текста — долг (вместе с п.5 круга 2) | — | тот же замер — полный текст ошибки |
+| 3 | `NATS_URL` + пустой `DATABASE_URL` (skeleton relay) теперь тоже требует provisioning | 🟡 | принято как задумано (решение владельца «при любом `NATS_URL`»); записано в runbook | нет | — |
+| 3 | Хранилище растёт на томе: до ~1,25 GiB; при лимите RMP discard old удаляет и неподтверждённые | 🟡 | исправлено (текст): объём тома и поведение лимита в `delivery-runtime.md`; поведение лимитов прежнее → владельцу | нет | `DEFAULT_STREAM_CONFIG`, `EVENTS_STREAM_CONFIG` (discard не задан → old) |
+| 3 | `test_runs_when_consumer_disabled` не зависит от `CAMPAIGN_CONSUMER_ENABLED` | 🟡 | принято: проверка на уровне `main()` с consumer off — `test_main_stops_before_relay_when_provisioning_fails` | — | — |
+| 3 | Тест phase4 проверяет реализацию (AST, литералы) | 🟡 | принято (адаптация по решению владельца; поведение — в новом тесте) | — | — |
+- Итог ревью: 3 круга — APPROVE WITH COMMENTS ×3; 🔴 нет; 🟠: 4 исправлено, 2 (круг 3) отклонены как правка кода после последнего круга — описаны
+  в runbook, в долге.
+
+### Гейт
+2026-10-03, `.venv` Python 3.12.3, `set -o pipefail`. Код воркера (`main.py`) не менялся после самопроверки круга 1; после неё — тест (круг 2),
+runbooks и журнал:
+- Живой pilot-стек (образы из рабочего дерева, воркер пересобран после круга 1): publish в RMP → `up --force-recreate nats` → RMP и сообщение
+  на месте (`messages=1`, payload совпадает), durable не пересоздан, после старта воркера сообщение доставлено (`ack_floor` 1); на compose develop —
+  streams `NOT FOUND`. Fail-fast: streams удалены, auto-provision off, consumer off → rc 1 до relay; NATS недоступен → rc 1 через 121 с.
+- unit `tests/test_rm_stab_021_nats_durability.py` → 8 passed (тест `main()` на `main.py` develop — failed `TimeoutError`).
+- behavioral (шаги job, `retail_media_app` NOBYPASSRLS; после круга 1) → rc 0: 504 passed, 12 skipped; I-1/I-3/I-4 (RM-STAB-018/019/020) 27/27.
+- python-tests (env job) → rc 0: 1985 passed, 561 skipped; включает I-3 unit, I-4 unit, `test_rf05_pilot_boot.py`.
+- I-2: `verify-pilot-run.sh --images-from-env rf11-local <sha>` → rc 0 «VERIFY-PILOT-RUN PASSED» (после круга 1).
+- I-0 rc 0; `roadmap-governance-guard` PASS; `--self-test` 55/55; `git diff --check` rc 0; `docker compose config -q` pilot (env-заглушки) / phase1 → rc 0;
+  ruff — новых нет (`main.py` 3 = develop, `test_phase4_production_readiness.py` 2 = develop, остальные 0).
+- Ревью: 3 круга — APPROVE WITH COMMENTS ×3.
+- Не запускалось: CI (на `/finish`); JSON Schema job (контракты не менялись); frontend/UI-smoke (не затронуты); restore-drill (вне скоупа).
+
+### Долг (к `/finish`)
+- **Владельцу:** phase1 compose без `restart` — после fail-fast воркер остаётся `Exited` (описано в runbook; правка compose вне скоупа).
+- **Владельцу:** `docs/runbook/backup-restore-dr.md` не содержит шага «удалить том `nats_jetstream` при восстановлении PG на раннюю точку»
+  (есть в `nats-backup-restore.md`, файл DR вне списка карточки).
+- **Владельцу:** RM-STAB-021 acceptance 2 — `verified_by: command` при ручном доказательстве; автоматической регрессии сохранности (CI) нет.
+- Ожидание недоступного NATS при старте ~2 мин (nats-py 60 × 2 с, `/health/live` 200) — `max_reconnect_attempts` на старте; текст ошибки при
+  недоступном NATS советует auto-provision; любая ошибка `stream_info` → «not found» (код RF-10).
+- Stub-ветка `_startup_provisioning` ловит только `RuntimeError`.
+- Лимиты streams: при заполнении RMP discard old удаляет и неподтверждённые сообщения (поведение прежнее, том теперь копит данные).
+- Позиция durable сохраняется, пока `add_consumer` не падает (иначе delete + recreate с начала stream).
+- Первый старт после обновления — пустой том; опубликованные, но не обработанные сообщения старого контейнера теряются (процедура дренажа — в runbook).
+- Старые ошибки ruff: `main.py` 3, `test_phase4_production_readiness.py` 2.
+
+### Итог (заполняет /finish)
+- Статус: finished (PR ждёт merge владельцем). Коммит и PR: `gh pr list --head fix/RF-11`; CI — в отчёте `/finish` (в коммит не входит).
+- Доказано: JetStream в pilot/phase1 пишет в том (`Store Directory: "/data/jetstream"`); stream RMP, неподтверждённое сообщение и позиция
+  durable переживают `up --force-recreate nats`, после старта воркера сообщение доставлено; на compose develop streams пропадают.
+  Сбой проверки streams завершает воркер до relay при любом `CAMPAIGN_CONSUMER_ENABLED` (живой прогон rc 1; тест `main()` падает на коде develop).
+- RM-STAB-021 остаётся `in_progress`: `done` — после merge и зелёного CI develop, решением владельца. RM-STAB-020 — `done`.
+- Отклонённые 🟠 (круг 3, правка кода после последнего круга): ~2 мин ожидания недоступного NATS при старте; неверный совет в тексте ошибки
+  при недоступном NATS — оба описаны в `delivery-runtime.md`. Долг — «Долг (к `/finish`)» выше.
+- Новые инварианты: I-5.
+- Следующий шаг: merge PR владельцем → решения: phase1 `restart`, шаг тома NATS в `backup-restore-dr.md`, `verified_by` acceptance 2 → `/start RF-<N>`.
