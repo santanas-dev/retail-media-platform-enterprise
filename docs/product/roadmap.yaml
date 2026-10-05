@@ -1904,8 +1904,25 @@ tasks:
     verified_by: command
     ref: python -m pytest tests/test_rm_stab_020_dlq_and_subjects.py
   decision_status: approved
-  delivery_status: in_progress
-  notes: 'Решение владельца 2026-09-30, этап RF-10 (mini-design: лимит 7 доставок в приложении, backoff 5с/30с/2м/10м/30м/60м,
+  delivery_status: done
+  evidence_refs:
+  - kind: behavioral
+    ref: tests/behavioral/test_rm_stab_020_consumer_dlq.py
+    status: verified
+    observed_at: '2026-10-01T13:09:04Z'
+    note: 'CI job «Behavioral PostgreSQL Tests — ADR-008 Gate» success на develop @ 2151153 (runtime-роль NOBYPASSRLS)'
+  - kind: command
+    ref: python -m pytest tests/test_rm_stab_020_dlq_and_subjects.py
+    status: verified
+    observed_at: '2026-10-01T13:09:04Z'
+    note: job «Python — Unit Tests» success в push-run develop 36865587310 (2151153)
+  - kind: ci_run
+    ref: https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/36865587310
+    status: verified
+    observed_at: '2026-10-01T13:09:04Z'
+    note: push-run develop @ 2151153 (merge PR #14), attempt 1, success 42/42
+  notes: 'done - PR #14 смержен в develop @ 2151153, push-run develop 36865587310 success 42/42 (решение владельца 2026-10-01).
+    Решение владельца 2026-09-30, этап RF-10 (mini-design: лимит 7 доставок в приложении, backoff 5с/30с/2м/10м/30м/60м,
     DLQ - таблица PostgreSQL с FORCE RLS, CLI-повтор через outbox). Решения владельца 2026-10-01 (после ревью): два stream -
     RMP (campaign.>) и RMP_EVENTS (delivery/pop/emergency/creative_asset, 1 GiB, 7 суток, DiscardOld), чтобы поток PoP не
     вытеснял неподтверждённые события campaign; durable без серверного фильтра не меняется; риск max_ack_pending=100 при
@@ -1916,6 +1933,29 @@ tasks:
     в RMP_EVENTS (без потребителя); события consumer после ~1ч43м сбоя уходят в DLQ и требуют replay. Открытый риск
     (ревью круг 3): provisioning только при старте и только с CAMPAIGN_CONSUMER_ENABLED=true; при его сбое relay стартует,
     и события без stream через ~1 мин уходят в dead_letter relay - решение владельца.'
+- id: RM-STAB-021
+  kind: implementation
+  stage: S
+  title: 'Надёжность NATS: JetStream на томе (переживает пересоздание контейнера), provisioning streams обязателен до relay'
+  owner_role: Technical owner
+  dependencies:
+  - RM-STAB-020
+  acceptance:
+  - check: в pilot- и phase1-compose JetStream хранит данные в смонтированном томе (-sd = точка монтирования); провижининг
+      при любом NATS_URL, сбой провижининга завершает старт воркера до relay (кроме OUTBOX_RELAY_ALLOW_STUB=true)
+    verified_by: command
+    ref: python -m pytest tests/test_rm_stab_021_nats_durability.py
+  - check: stream и неподтверждённое сообщение переживают docker compose up --force-recreate nats в pilot-стеке
+    verified_by: command
+    ref: 'локальный прогон pilot-стека (журнал RF-11): publish → force-recreate nats → stream_info'
+  decision_status: approved
+  delivery_status: in_progress
+  notes: 'Решение владельца 2026-10-01, этап RF-11 (ревью RF-10 круг 3: provisioning при сбое; NATS без -sd /data -
+    JetStream в /tmp/nats/jetstream контейнера, подтверждено на стенде). REQ: -; SC: -; DEC: -. Protected Boundary: Docker/
+    deployment - только command NATS в docker-compose.pilot.yml / docker-compose.phase1.yml и описание в backup_manifest.py
+    и runbook. Не покрывает: переподключение relay к NATS во время работы, restore-drill compose, CI. Риск регрессии:
+    низкий - первый старт после обновления начинает с пустого тома (содержимое /tmp контейнера и так терялось);
+    воркер с NATS, но без возможности провижининга, теперь не стартует (restart loop вместо тихого dead_letter).'
 - id: RM-TECH-220
   kind: implementation
   stage: C

@@ -289,7 +289,8 @@ async def missing_stream_subjects(
 
     Used when auto-provisioning is off, so a stream created by an older
     runbook (``campaign.>`` only) is reported instead of silently leaving
-    P1-7 in place.  The worker raises; ``main()`` logs it and starts anyway.
+    P1-7 in place.  The worker raises and the start stops before the relay
+    (RM-STAB-021), unless ``OUTBOX_RELAY_ALLOW_STUB=true``.
     """
     from nats.aio.client import Client as NATS
 

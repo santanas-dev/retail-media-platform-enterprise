@@ -32,12 +32,38 @@ providing at-least-once delivery semantics.
 | Event status (pending/published/failed/dead_letter) | PostgreSQL `outbox_events` | ✅ PostgreSQL backup |
 | Delivery manifests | PostgreSQL `delivery_manifests` | ✅ PostgreSQL backup |
 | JetStream message storage | NATS `/data` volume | ⚠️ Recreatable via outbox replay |
-| Consumer delivery state | NATS in-memory/volume | ⚠️ Ephemeral — consumer restarts from first pending |
+| Consumer delivery state | NATS volume `nats_jetstream` | ⚠️ Survives container recreate; lost with the volume or when the durable is recreated (then redelivery from the start of the stream) |
 
-**NATS JetStream persistent volume is optional.** The named volume
-`nats_jetstream` in docker-compose provides faster recovery (no need to
-replay all pending events), but the system is designed to recover from
-**empty NATS storage** via provisioning + outbox replay.
+**JetStream store directory (RM-STAB-021).** In pilot and phase1 compose NATS
+runs with `-js -sd /data`, and `/data` is the named volume `nats_jetstream`:
+streams, their messages and the durable's position survive a container
+recreate. Before RM-STAB-021 the command had no `-sd`, nats-server stored in
+`/tmp/nats/jetstream` inside the container, and the mounted volume stayed
+empty — every recreate of the NATS container was Scenario B below. The first
+start after the upgrade begins with an empty volume (nothing is migrated from
+the old container's `/tmp`). Events the relay already published (outbox
+`published`) but the consumer has not acked are lost with the old container
+and are not re-sent by the relay — before applying the upgrade:
+1. Stop `control-api` — besides the worker, the only service writing outbox
+   events (campaign, emergency, creative, PoP routes):
+   `docker compose stop control-api`.
+2. Keep `orchestrator-worker` running: its relay publishes the remaining
+   `pending` outbox rows and its consumer reads them.
+3. Wait until the durable `rmp-campaign-consumer` reports `num_pending=0` and
+   `num_ack_pending=0` (NATS monitoring `:8222/jsz?consumers=true` from inside
+   the compose network).
+4. Apply the upgrade (NATS is recreated with `-sd /data`). Events the worker
+   itself publishes to `RMP_EVENTS` (`delivery.*`) have no reader and are not
+   drained; that buffer starts empty.
+
+The durable's position survives only while provisioning finds it unchanged:
+`_ensure_consumer` deletes and recreates the durable when `add_consumer`
+fails (config change or any other error), and a recreated durable starts
+from the beginning of the stream (redelivery; handlers must stay idempotent).
+
+**Backing up the volume is optional.** It is not part of the unified backup
+(`backup_manifest.py`: `excluded_replayable`); the system is designed to
+recover from **empty NATS storage** via provisioning + outbox replay.
 
 ## 3. Dedup Safety
 
@@ -47,8 +73,11 @@ being delivered twice within the dedup window. This means:
 
 - **Re-running the outbox relay is safe** — already-published events are
   skipped (status = `published`, not `pending`)
-- **Republishing from a PostgreSQL restore is safe** — JetStream will not
-  redeliver events already processed
+- **Republishing from a PostgreSQL restore** — dedup protects only within the
+  stream's duplicate window (server default 2 minutes; provisioning does not
+  set it). With the JetStream store on a persistent volume (RM-STAB-021) a
+  restore to an earlier point must start NATS empty — see Scenario D
+  step 2; otherwise safety rests on handler idempotency alone
 - **Consumer restart is safe** — unacked messages are redelivered with the
   same Msg-Id, and the handler is idempotent
 
@@ -70,9 +99,12 @@ recovery (no outbox replay needed). But the mandatory minimum is PostgreSQL.
 **Impact:** Relay cannot publish. Consumer stops. No data loss.
 
 **Recovery:**
-1. Start NATS with JetStream: `nats-server -js`
-2. Run provisioning: `provision_campaign_delivery()`
-3. Stream + consumer are recreated
+1. Start NATS with JetStream on the volume: `nats-server -js -sd /data`
+   (compose: `docker compose up -d nats`)
+2. Volume intact → streams, messages and the durable are already there.
+   Volume empty → the worker provisions at startup (`NATS_AUTO_PROVISION=true`);
+   without provisioned streams it does not start (RM-STAB-021)
+3. Stream + consumer exist
 4. Outbox relay resumes — publishes pending events
 5. Consumer processes and generates manifests
 
@@ -110,8 +142,15 @@ recovery (no outbox replay needed). But the mandatory minimum is PostgreSQL.
 
 **Recovery order:**
 1. Restore PostgreSQL from backup
-2. Start NATS with JetStream
-3. Run provisioning
+2. Start NATS with JetStream **on an empty store**. Since RM-STAB-021 the store
+   (`-sd /data`, volume `nats_jetstream`) survives `compose down`/`up` without
+   `-v` and container recreates. When PostgreSQL is restored to an earlier
+   point on the same host, remove the volume before starting NATS
+   (`docker compose stop nats orchestrator-worker && docker compose rm -f nats
+   && docker volume rm <project>_nats_jetstream`): otherwise the stream still
+   holds messages published after the backup point, and the durable delivers
+   them on top of the older database state
+3. Run provisioning (the worker does it at startup)
 4. Start control-api + orchestrator-worker (they handle relay + consumer startup)
 5. Verify: `scripts/check/nats_recovery_check.py`
 6. Monitor relay published counters (Prometheus: `outbox_published_total`)
@@ -141,7 +180,9 @@ Options:
 ## 7. Provisioning Proof
 
 `provision_campaign_delivery()` is idempotent and safe to run at every
-startup (configured via `NATS_AUTO_PROVISION=true` in compose). It:
+startup (configured via `NATS_AUTO_PROVISION=true` in compose). The worker runs
+it whenever `NATS_URL` is set and exits before starting the relay if it fails
+(RM-STAB-021; `docs/runbook/delivery-runtime.md` → Provisioning). It:
 
 1. Creates stream "RMP" with subjects `campaign.>` if not exists
 2. Creates durable consumer "rmp-campaign-consumer" if not exists

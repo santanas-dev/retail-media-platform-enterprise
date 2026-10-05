@@ -95,17 +95,52 @@ reports, e.g.:
 RuntimeError: JetStream streams at nats://localhost:4222 are not provisioned:
 stream RMP_EVENTS not found. Run provisioning first: set NATS_AUTO_PROVISION=true.
 ```
-The error is logged by `main()` ("Provisioning failed — worker will attempt to
-start relay/consumer"); the worker does not exit.
 
-**Accepted risk (RM-STAB-020, pending owner decision).** Provisioning runs once
-at start and only when `CAMPAIGN_CONSUMER_ENABLED=true`. If it fails (NATS down,
-streams missing), the relay still starts: every event whose subject no stream
-captures reaches the relay's `dead_letter` after ~1 min (7 attempts, backoff
-1…32 s) and readiness stays green. Check the worker log for "Provisioning
-failed" after every start; recover with provisioning + resetting the outbox rows
-(`UPDATE outbox_events SET status='pending', attempts=0, next_attempt_at=now()
-WHERE status='dead_letter' AND …`).
+### Provisioning is required before the relay (RM-STAB-021)
+
+Provisioning (or, with auto-provision off, the stream check) runs once at start
+whenever `NATS_URL` is set — also with `CAMPAIGN_CONSUMER_ENABLED=false`, since
+the relay publishes without the consumer. If it fails (NATS down, streams
+missing or not capturing their subjects), the worker **exits before the relay
+starts**, instead of running and sending every event to the relay's
+`dead_letter` within ~1 min. With pilot compose (`restart: unless-stopped`)
+this is a restart loop with the `RuntimeError` above in the log; fix NATS /
+provisioning and the next restart goes through. Phase1 compose has **no
+restart policy**: the worker stays `Exited` — after fixing NATS start it again
+(`docker compose -f infra/compose/docker-compose.phase1.yml up -d orchestrator-worker`).
+
+Timing: with NATS **unreachable** the exit is not immediate — the nats-py client
+retries the first connect (60 attempts × 2 s), so the worker exits after
+~2 min (measured: 121 s, rc 1); meanwhile `/health/live` answers 200. With
+auto-provision off the message then reads `… are not provisioned: NATS
+unreachable at …: no servers available … Run provisioning first` — in that case
+the cause is NATS itself (container, network, `NATS_URL`), not provisioning.
+
+`NATS_URL` set with an empty `DATABASE_URL` (relay skeleton mode) also requires
+provisioning — intended: the rule is "any `NATS_URL`".
+
+Disk: streams now accumulate on the volume (no reset on container recreate):
+`RMP` up to 256 MB / 1M messages, `RMP_EVENTS` up to 1 GiB / 7 days — size
+`nats_jetstream` for ~1.3 GiB plus headroom. When `RMP` reaches its limit the
+oldest messages are discarded, acked or not (limits retention, behaviour
+unchanged by RM-STAB-021).
+
+Only `OUTBOX_RELAY_ALLOW_STUB=true` (dev/test) logs "Provisioning failed —
+continuing only because OUTBOX_RELAY_ALLOW_STUB=true" and continues.
+
+Not covered: streams removed while the worker is running (provisioning is not
+repeated). Events that reached `dead_letter` that way are recovered with
+provisioning + resetting the outbox rows (`UPDATE outbox_events SET
+status='pending', attempts=0, next_attempt_at=now() WHERE status='dead_letter'
+AND …`).
+
+### JetStream storage (RM-STAB-021)
+
+In pilot and phase1 compose NATS runs with `-js -sd /data`; `/data` is the
+named volume `nats_jetstream`, so streams, their messages and the durable's
+position survive `docker compose up --force-recreate nats`. Without `-sd`
+nats-server stores in `/tmp/nats/jetstream` inside the container. Check:
+`docker logs <nats container> | grep "Store Directory"` → `/data/jetstream`.
 
 ## Health checks
 
