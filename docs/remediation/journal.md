@@ -9,10 +9,10 @@
 
 | | |
 |---|---|
-| Активный этап | — (RF-GOV-0 — `finished`, документы `/finish` готовы; `canon-auditor` → APPROVE WITH COMMENTS; коммит, push и PR — в этом же запуске `/finish`, В4 отвечен владельцем 2026-10-05: «Да, продолжай») |
-| Последний завершённый | RF-11 — merged (PR #15 → `develop @ e2e3f63`, 2026-10-05; push-run develop 37295565157 → success); RF-10 — merged (PR #14 → `develop @ 2151153`, push-run develop 36865587310 → success 42/42); RF-04, RF-05, RF-01, RF-00 — merged |
-| Следующий шаг | RF-GOV-0, `/finish`: документы этапа обновлены (итог в журнале, `stages.md` → `finished`, checkpoint `PROJECT_STATE.md`) → `canon-auditor` → APPROVE WITH COMMENTS (1 круг) → В4 отвечен владельцем («Да, продолжай») → коммит явным списком (`CLAUDE.md`, `docs/audit/2026-10-05-claude-governance-review.md`, `docs/audit/README.md`, `docs/remediation/stages.md`, `docs/remediation/journal.md`, `PROJECT_STATE.md`) → `git push -u origin fix/RF-GOV-0` → PR в `develop` → CI → `stand-update.sh`. Неотслеживаемый `o/` — владельца, не трогать и в коммит не включать. До правки правил неотслеживаемые файлы учитывать через `git status --short` (решение владельца 2026-10-05). После merge: RM-STAB-021 → `done` — в карточку следующего этапа с кодом (вариант «а»). Следующий документальный этап (вместе с `AGENTS.md` и guard): шапки `journal.md:3-4`, `:20-21` и `stages.md:3-5`, `:23`; `docs/audit/README.md:26-27`, `:30`; `AGENTS.md:121-123`, `:295`, `:308`; замечания ревью RF-GOV-0 (раздел «Долг» записи этапа). Прежний долг RF-11 (phase1 `restart`, DR runbook, `verified_by`) — без изменений |
-| Базовая линия | `origin/develop @ e2e3f63` (2026-10-05, merge RF-11; push-run 37295565157 → success). Прежние: `2151153` (merge RF-10; push-run 36865587310 → success 42/42), `b219fad` (merge RF-04), `af6810c` (merge RF-05), `origin/develop @ d8dbd62` (2026-09-29, merge RF-01; push-run 36475858226 → success 41/41). Прежняя: `origin/develop @ 6bc9ac0` (2026-09-28, merge RF-CI; push-run `develop` 36407616564 → success; то же дерево — push-run `fix/RF-CI` 36404147483, 41/41). Снимок аудита RF-00 — `b166419`; ветка `fix/RF-00` получила `6bc9ac0` merge-коммитом `3892552` |
+| Активный этап | — (RF-12 — `finished`: документы `/finish` готовы, `canon-auditor` → коммит → push → PR → CI → стенд — в этом запуске `/finish`) |
+| Последний завершённый | RF-GOV-0 — merged (PR #16 → `develop @ 5cf482b`, 2026-10-05; push-run develop 37309852950 → success 42/42); RF-11 — merged (PR #15 → `develop @ e2e3f63`, push-run 37295565157 → success); RF-10, RF-04, RF-05, RF-01, RF-00 — merged |
+| Следующий шаг | RF-12, `/finish` 2026-10-05: документы обновлены → `canon-auditor` → коммит явным списком (12 изменённых + 2 новых теста + `PROJECT_STATE.md`; `o/` не включать) → `git push -u origin fix/RF-12` → PR в `develop` → CI → `stand-update.sh` → read-only запрос к БД стенда (текст — запись этапа), результат в отчёт. После merge владельцем — `/start`: AD-настройки → RM-STAB-023 → P0-8; попутно RM-STAB-022 → `done` решением владельца. Внимание: локальный `python -m pytest tests/` на этом хосте останавливает стенд (до RM-STAB-023) |
+| Базовая линия | `origin/develop @ 5cf482b` (2026-10-05, merge RF-GOV-0; push-run 37309852950 → success 42/42). Прежние: `e2e3f63` (merge RF-11; push-run 37295565157 → success), `2151153` (merge RF-10; push-run 36865587310 → success 42/42), `b219fad` (merge RF-04), `af6810c` (merge RF-05), `origin/develop @ d8dbd62` (2026-09-29, merge RF-01; push-run 36475858226 → success 41/41). Прежняя: `origin/develop @ 6bc9ac0` (2026-09-28, merge RF-CI; push-run `develop` 36407616564 → success; то же дерево — push-run `fix/RF-CI` 36404147483, 41/41). Снимок аудита RF-00 — `b166419`; ветка `fix/RF-00` получила `6bc9ac0` merge-коммитом `3892552` |
 | Источник находок | `docs/audit/2026-09-27-claude-code-review-main-8ad0228.md` (снято на `main @ 8ad0228`; develop на 64 коммита впереди) |
 
 ## Инварианты (не ломать)
@@ -28,6 +28,7 @@
 | I-3 | Оркестратор не маскирует сбои: системный сбой генерации → nak без failed, ошибка данных устройства → failed + ack; сбой сессии не останавливает consumer, остановка цикла → `/health/ready` 503; воркер завершения работает под RLS (RM-STAB-019) | шаги job `behavioral-postgres-tests` (`retail_media_app` NOBYPASSRLS), затем `python3 -m pytest tests/behavioral/test_rm_stab_019_orchestrator_rls.py -v` → 7 passed; `python -m pytest tests/test_rm_stab_019_orchestrator_failures.py` → 11 passed | RF-04 |
 | I-4 | События не пропадают молча: ≤7 доставок с backoff, затем DLQ в PostgreSQL (FORCE RLS, только worker context) + term, сбой записи — nak без потери, replay через outbox один раз; RMP = `campaign.>`, RMP_EVENTS = остальные семейства outbox (RM-STAB-020) | шаги job `behavioral-postgres-tests`, затем `python3 -m pytest tests/behavioral/test_rm_stab_020_consumer_dlq.py -v` → 13 passed; `python -m pytest tests/test_rm_stab_020_dlq_and_subjects.py` → passed | RF-10 |
 | I-5 | JetStream на томе (`-sd` = точка монтирования именованного тома в pilot/phase1-compose); воркер с `NATS_URL` не запускает relay без проверенных streams, кроме `OUTBOX_RELAY_ALLOW_STUB=true` (RM-STAB-021) | `python -m pytest tests/test_rm_stab_021_nats_durability.py` → 8 passed; живое доказательство (publish → `up --force-recreate nats` → stream и сообщение на месте) — процедура в журнале RF-11, автоматизации нет | RF-11 |
+| I-6 | Управление ролями и учётками не даёт эскалации: scoped-роль → 403 на `require_permission`; роль себе / выше своей — 403; последний `system_admin` и break-glass-админ — 409, в т.ч. при гонке; сброс пароля, реактивация, деактивация учётки выше актора — 403; отказы в аудите (RM-STAB-022) | шаги job `behavioral-postgres-tests` (`retail_media_app` NOBYPASSRLS), затем `python3 -m pytest tests/behavioral/test_rm_stab_022_role_escalation.py -v` → 43 passed; `python -m pytest tests/test_rm_stab_022_advertiser_portal_routes.py` → 3 passed | RF-12 |
 
 ## Решения владельца, влияющие на этапы
 
@@ -57,6 +58,12 @@
 | 2026-10-05 | «Карточку подтверждаю, RM-STAB-021 — вариант а» — карточка RF-GOV-0 подтверждена в виде, показанном в чате 2026-10-05 (скоуп: `CLAUDE.md`, `docs/audit/2026-10-05-claude-governance-review.md`, `stages.md`, `journal.md`, checkpoint `PROJECT_STATE.md`, строка в `docs/audit/README.md`; guard, `AGENTS.md`, `roadmap.yaml`, `o/` — вне); вариант «а»: RM-STAB-021 → `done` вне RF-GOV-0, запись в следующем этапе с кодом |
 | 2026-10-05 | RF-GOV-0, ответы на В1–В3 (вставленный текст, подтверждён владельцем «да, мои»): «1 — подтверждаю карточку RF-GOV-0 в редакции stages.md. 2 — правь: разрешаю разовую правку одной фразы про G-2 („таблица добавлена, блок Truth Priority сохранён до этапа с guard“). 3 — как есть: замечания №1, №4, №5 и остальные предложения по правилам вынести в следующий документальный этап, записать в „Долг“. До тех пор неотслеживаемые файлы учитывай через git status --short» |
 | 2026-10-05 | RF-GOV-0, В4 (AskUserQuestion: продолжать ли остановленный `/finish` — коммит, push `fix/RF-GOV-0`, PR в `develop`, CI, стенд — после вердикта `canon-auditor`): «Да, продолжай» |
+| 2026-10-05 | «PR #16 смержил» (проверено: PR #16 MERGED 2026-10-05T12:29:08Z, `develop @ 5cf482b`) |
+| 2026-10-05 | RF-12, ответы на вопросы `/start` (вставленный текст, подтверждён владельцем «да, мои»): «1 — узкий RF-12, как в карточке. P0-8 отдельным этапом после него. 2 — да, заводи RM-STAB-022 в стадии S с такой формулировкой и приёмкой. 3 — сначала проверь сам: есть ли ветки, незакоммиченные правки или открытые PR по RM-STAB-004, и что по ней сделано в коде. Покажи результат. Параллельно над ней никто не работает, ты единственный исполнитель. 4 — принципиально согласен на замену тестов, закрепляющих дефект, при условиях: точный список в мини-дизайне, каждый заменённый тест проверяет поведение строже прежнего, ни один не удаляется без замены. Окончательное „да“ дам после списка. Дождись зелёного CI на develop @ 5cf482b, прежде чем снимать baseline.» В мини-дизайне отдельно ответить: какие из 52 маршрутов законно используют пользователи только со scoped-ролями и что с ними станет; есть ли на стенде и в сиде пользователи, которые потеряют доступ; как защита последнего администратора учитывает break_glass_admin; пишется ли аудит при отказе в назначении роли и при попытке self-assign; что вернёт API при отказе (код и текст) и не раскрывает ли ответ лишнего |
+| 2026-10-05 | RF-12, ответы на мини-дизайн (вставленный текст, подтверждён владельцем «да, мои»): «1 — мини-дизайн одобряю с дополнениями ниже. 2 — иерархия по подмножеству прав: принять как есть. 3 — исправить саму count_active_admin_users (DISTINCT, только глобальная роль). 4 — аудит отказов писать, как описано. В событии: актор, цель, роль, причина; без секретов. 5 — разрешаю один read-only запрос к БД стенда тем же способом, что в stand-update.sh (docker compose exec внутри контейнера, файл .env.stand ты не открываешь), в транзакции READ ONLY, только SELECT. Сначала покажи текст запроса, результат — имена, роли, тип scope. 6 — „да“ на замену тестов test_phase3_identity_api.py и test_phase3_user_management.py. По test_c1_moderation_approval_rls.py — „да“ при условии из п. Г.» Дополнения: «А. Инвентаризация соседних путей эскалации: все маршруты, которые меняют роли, права ролей, учётные данные (сброс пароля, реактивация), создают пользователя с ролью или инвайт. По каждому: кто может вызвать и можно ли так получить права выше своих. Что закрывается в RF-12 — закрой, остальное — в долг с файл:строка. Если путь к правам system_admin есть у не-system_admin — СТОП и покажи. Б. remove_role: тот же запрет, что в assign_role — нельзя снять роль, права которой не входят в глобальные права актора. Тест. В. Гонку одновременных снятий роли закрыть в этом этапе блокировкой и тестом, не в долг. То же для деактивации последнего администратора. Г. Scoped-модерация: проверь по ТЗ, ADR-009 и user-journeys, является ли модератор, ограниченный организацией, требуемым сценарием. Если да — СТОП, покажи цитаты и варианты. Если нет — продолжай с заменой пяти тестов. Д. В отчёте отдельно: четыре справочника, которые теряет advertiser — подтверди поиском по apps/advertiser-web, что портал их не вызывает, и назови тест, который это закрепляет. Запиши решения в журнал и продолжай /start.» |
+| 2026-10-05 | RF-12, «СТОП-А» и запрос к стенду: «1 — расширить RF-12, 2 — отдельный этап, 3 — выполняй» — (1) в RF-12 добавить в `reset_password` и `activate_user` запрет действовать над учёткой, чьи глобальные права не входят в права актора (break-glass сбрасывает только `system_admin`), с тестами и заменой тестов сброса пароля, закрепляющих прежнее поведение; (2) `PUT /auth/ad-settings` — отдельный этап с мини-дизайном; (3) выполнить показанный read-only запрос к БД стенда |
+| 2026-10-05 | RF-12, после круга 2 (вставленный текст; авторство не переспрашивалось — в нём же: «Ответы, вставленные текстом, — мои решения, не переспрашивай», два прежних подтверждения «да, мои»): «1 — добавить в deactivate_user тот же запрет, что в сбросе пароля: 403 с аудитом. Третий круг ревью. 2 — стенд сейчас не поднимай. Запрос к БД выполни на /finish после пересборки, результат — в отчёте. 3 — причину остановки разбери сейчас, до /finish, только чтением, пока контейнеры не пересозданы … Вывод — в журнал и мне. Если виноват тест или скрипт этого репозитория — предложи этап.» Вопросы к отчёту: «4 — PUT /auth/ad-settings: какое право нужно и у каких ролей оно есть? Если его может вызвать не system_admin — этот этап ставим следующим, раньше P0-8. 5 — scoped-модерация: что показала проверка по ТЗ и ADR-009». «После третьего круга — гейт и остановка.» |
+| 2026-10-05 | RF-12, после разбора остановки стенда (вставленный текст, «Ответы — мои решения»): «1 — этап на исправление тестов стенда нужен. Заведи задачу в roadmap, стадия S: „Юнит-тесты не вызывают настоящий docker: подмена compose в _update_harness, общий предохранитель, тест-сторож“. Карточку покажешь, когда дойдёт очередь. 2 — порядок следующих этапов: сначала настройки AD (PUT /auth/ad-settings), затем тесты стенда, затем P0-8. 3 — до исправления тестов стенда: остановка стенда при локальном pytest tests/ — известное поведение. Не обходи его пропуском тестов; записывай в журнал факт остановки, стенд поднимет /finish. 4 — третий круг: добавь test-auditor по дельте — менялся мок в существующем тесте и добавлены тесты деактивации. 5 — в мини-дизайн этапа про AD заранее включи три вопроса: (а) отдаёт ли GET /auth/ad-settings пароль или иной секрет привязки; (б) можно ли через POST /auth/ad-settings/test заставить сервер подключаться к произвольному адресу; (в) как учётка из AD получает роли при входе. После вердиктов третьего круга — гейт и остановка.» |
 
 ---
 
@@ -945,7 +952,7 @@ runbooks и журнал:
 
 ## RF-GOV-0 — Новые правила работы (документальный этап)
 
-- Статус: finished (PR ждёт merge владельцем)
+- Статус: merged (PR #16 → `develop @ 5cf482b`, 2026-10-05; `gh pr list --state merged --head fix/RF-GOV-0`)
 - Ветка: fix/RF-GOV-0 · Основа: develop @ e2e3f63 (merge PR #15)
 - Режим: новый этап. `/start` запущен владельцем 2026-10-05 без аргумента. Этап выбран агентом: активного этапа нет, CI `develop` зелёный,
   карточек `planned` в `stages.md` нет; карточка RF-GOV-0 подтверждена владельцем 2026-10-05 («Карточку подтверждаю») и по записи
@@ -1079,3 +1086,414 @@ runbooks и журнал:
 - Новые инварианты: нет.
 - Следующий шаг: merge PR владельцем → `/start`: кандидаты — документальный этап (`AGENTS.md` + guard + долг RF-GOV-0) либо этап с кодом
   (в карточку — «попутно RM-STAB-021 → `done`»).
+
+---
+
+## RF-12 — Управление ролями не даёт эскалации
+
+- Статус: finished (PR ждёт merge владельцем)
+- Ветка: fix/RF-12 · Основа: develop @ 5cf482b (merge PR #16)
+- Режим: новый этап. `/start` запущен владельцем 2026-10-05 без аргумента. Этап выбран агентом: `CLAUDE.md` §16 п. 4 — нет `in_progress`,
+  CI develop не красный, карточек `planned` нет; старшая группа риска открытых находок сверки RF-00 (`b166419`, 2026-09-27, заново не
+  пересчитывалась) — права и эскалация (P0-6). Условия «без ожидания» не выполнены (новая задача roadmap, mini-design, замена тестов) →
+  карточка показана владельцу, ответы получены 2026-10-05 (см. «Решения владельца»).
+- Сделано до правок: RF-GOV-0 → `merged` в `stages.md` и записи этапа (PR #16, mergedAt 2026-10-05T12:29:08Z, merge-коммит `5cf482b`).
+- Ветка: `git fetch origin develop:develop` (ff `e2e3f63..5cf482b`), `git switch -c fix/RF-12 develop`; незакоммиченный `journal.md`
+  (запись агента после merge RF-GOV-0) перенесён без конфликта; `o/` не тронут.
+- Проверка RM-STAB-004 (поручение владельца, только чтение): веток (локальных и удалённых), открытых PR, stash и незакоммиченных правок
+  по задаче нет; после 2026-08-31 коммитов в `packages/domain/scopes.py`, `packages/api/dependencies.py`, `apps/control-api/seed.py` нет;
+  `resolve_scope_context` обрабатывает только `scope_type == "advertiser"`, `require_scoped_permission` для прочих типов → 403
+  `SCOPE_RESTRICTED`; `tests/behavioral/test_retailer_scope_rbac.py` отсутствует. Задача `in_progress` только по статусу.
+- Baseline (2026-10-05, код = `5cf482b`):
+  - по CI: push-run develop 37309852950 «Phase 1 — Quality Gates» → success 42/42 — I-0, I-1, I-2, I-3, I-4, unit-часть I-5, guard и
+    self-test, python-tests, behavioral приняты по нему, локально не повторялись;
+  - I-5, живое доказательство (нет в CI): по записи журнала RF-11 — compose и код воркера с тех пор не менялись
+    (`git diff --stat 9f0ee98 origin/develop -- infra apps/orchestrator-worker packages/services` проверить перед гейтом; RF-GOV-0 — только документы).
+- План: домен (ADR-014) — identity/auth (`packages/api`, `packages/domain`); Protected Boundaries — нет. Задача: (1) `require_permission`
+  учитывает только права глобальных назначений ролей; (2) `assign_role` отклоняет назначение себе и роли выше своей; (3) `remove_role`
+  защищает последнего администратора. Доказательство: новый behavioral-тест под `retail_media_app` (NOBYPASSRLS), падающий на коде develop;
+  unit-тесты маршрутов. Детали и ответы на пять вопросов владельца — раздел «Мини-дизайн» (вносится после инвентаризации маршрутов).
+
+### Мини-дизайн (2026-10-05) — одобрен владельцем 2026-10-05 с дополнениями (см. «Решения владельца»); текст ниже — редакция на момент показа
+
+Факты — инвентаризация субагентом-исследователем (только чтение) + выборочная проверка агентом (`test_c1…:129-169`, `seed.py` — подмножества
+прав, `admin-web/src/api/client.ts:29-49`, ADR-009 §1 `:27-38`).
+
+**М1. `require_permission` — только глобальные права.** `repository.get_user_permissions(session, user_id, *, global_only=False)`;
+`require_permission` вызывает с `global_only=True` (условие `UserRole.scope_type IS NULL`). `/auth/me` (`packages/api/auth.py:268`) не
+меняется — кабинет рекламодателя строит UI по полному набору прав. Точка патча юнит-тестов
+(`packages.api.dependencies.repository.get_user_permissions`) сохраняется. `require_scoped_permission` и `ScopeContext` не меняются (P0-8 — вне этапа).
+
+**М2. `assign_role` (после существующих проверок 404/422, до записи):**
+- актор == цель → 403 `{"code": "SELF_ROLE_ASSIGNMENT_FORBIDDEN", "message": "Cannot assign a role to yourself"}`;
+- права назначаемой роли ⊄ глобальных прав актора → 403 `{"code": "ROLE_EXCEEDS_ACTOR_PERMISSIONS", "message": "Cannot assign a role
+  that exceeds your own permissions"}` (без перечня недостающих прав). «Выше своей» — по кодам прав, не по именам ролей (`CLAUDE.md` §10).
+  По сиду: `system_admin` (30 прав) назначает любую роль; `security_admin` (16) не может назначить `system_admin`, `operator`, `analyst`,
+  `advertiser` (у них есть права, которых нет у `security_admin`: `organization.read`, `channels.read`, `devices.read`,
+  `commerce.*`, `campaign_briefs.manage`) — **вопрос владельцу В-М2**.
+
+**М3. `remove_role` и «последний администратор».** Администратор = активный пользователь с глобальным (`scope_type IS NULL`) назначением
+`system_admin`. Снятие такого назначения отклоняется 409, если это последний активный администратор
+(`{"code": "LAST_SYSTEM_ADMIN", "message": "Cannot remove the last active system admin role"}`) или последний активный break-glass
+пользователь с этой ролью (`{"code": "LAST_BREAK_GLASS_ADMIN", …}`): учётка break-glass без `system_admin` бесполезна. Снятие роли с себя
+не запрещается отдельно (это понижение), но проходит те же две проверки. `count_active_admin_users` (`repository.py:4061-4074`) сегодня
+считает строки JOIN без `DISTINCT` и без учёта scope — scoped `system_admin` считается «админом»; **вопрос В-М3**: исправить функцию
+(тогда меняется и guard деактивации `users.py:232-238`) или завести отдельную для `remove_role`.
+
+**М4. Аудит отказов.** Сегодня отказы не аудируются (прецеденты commit-перед-raise — только auth: `packages/api/auth.py:128-134, 190-195`).
+Предложение: три новых отказа пишут `user.role_assign_denied` / `user.role_remove_denied` (details: `role_code`, `scope_type`, `scope_id`,
+`reason`: `self_assign` | `exceeds_actor_permissions` | `last_system_admin` | `last_break_glass_admin`), `await db.commit()` перед `raise`.
+Обычный 403 `PERMISSION_DENIED` от `require_permission` аудит по-прежнему не пишет (`test_403_does_not_write_audit` не меняется).
+
+**М5. Кто теряет доступ.** Только-scoped пользователи: сид `advertiser_test` (`seed.py:702-705`) и все рекламодатели из онбординга
+(`repository.py:4023-4030`). Из 51 места `require_permission` роль `advertiser` проходит сегодня только `campaigns.read`: GET `/branches`,
+`/clusters`, `/stores`, `/display-surfaces` (`identity_routes/inventory.py:52-82`) → станет 403. advertiser-web ни одного из 51 маршрута не
+вызывает. Внутренние роли в сиде и онбординге — глобальные, не затронуты. Стенд `.78`: БД не читалась (учётные данные — секрет);
+назначения через UI (`PUT /users/{id}/roles` со scope) возможны — проверка запросом владельца или агентом по отдельному разрешению.
+
+**М6. Тесты (замена — окончательное «да» владельца ожидается).**
+| Тест | Сейчас | Замена |
+|---|---|---|
+| `tests/behavioral/test_c1_moderation_approval_rls.py` — 5 тестов (`:266, :310, :323, :343, :389`) | «scoped-модератор» (роль `advertiser` со scope + добавленные `creatives.moderate`/`campaigns.approve`) проходит `require_permission` | модератор получает глобальную неадминскую фикстурную роль + membership ORG_A — те же 5 проверок RLS (свои 200, чужое 404) сохраняются; плюс 5 новых: тот же набор прав в scoped-назначении → 403 на каждом маршруте |
+| `tests/test_phase3_identity_api.py::TestUserRoleManagement::test_assign_role_success` (`:1197`) | `u-1` назначает роль себе → 201 | цель — другой пользователь → 201 + проверка аудита; плюс новые: self → 403, роль выше → 403, аудит отказа |
+| `…::test_remove_role_success` (`:1275`) | `u-1` снимает свой `system_admin` → 204 | снятие при ≥2 администраторах → 204; плюс новые: последний админ → 409, последний break-glass → 409, scoped `system_admin` не защищён |
+| `tests/test_phase3_user_management.py::test_cannot_deactivate_last_admin` (`:678`) — только при В-М3 «исправить» | роль `system_admin` со `scope_type="advertiser"` → 409 | глобальный `system_admin` → 409; плюс новый: scoped `system_admin` последним админом не считается |
+Новый `tests/behavioral/test_rm_stab_022_role_escalation.py` под `retail_media_app` (NOBYPASSRLS): путь эскалации P0-6 целиком (scoped
+`system_admin` → `PUT /users/{self}/roles` → 403, глобальным админом не стал); 403 на маршрутах п. М5; self-assign; роль выше своей;
+последний админ и break-glass; строки аудита отказов сохраняются после 403/409; `/auth/me` scoped-рекламодателя не изменился.
+
+**Риски.** (1) Гонка двух одновременных снятий роли у двух последних админов — блокировка строк назначений в проверке; доказательство
+тестом либо долг. (2) admin-web показывает `/me`-права: scoped `system_admin` увидит админ-меню и получит 403 — приемлемо до P0-8.
+(3) RM-STAB-004 (retailer-scoped `analyst`/`operator`) должна будет перевести их маршруты на `require_scoped_permission(…, "retailer")` —
+RF-12 этот путь не закрывает.
+
+**Вопросы владельцу (ожидают ответа):** В-М1 одобрить мини-дизайн; В-М2 иерархия по подмножеству прав (следствие для `security_admin`);
+В-М3 `count_active_admin_users`; В-М4 аудит отказов — писать ли; В-М5 проверка стенда; В-М6 окончательное «да» на список замен.
+
+### Проверки по дополнениям владельца (2026-10-05, только чтение; текст дополнений ожидает подтверждения авторства)
+
+**А. Соседние пути эскалации** (чтение кода агентом; запуском не воспроизводилось):
+| Путь | Кто может вызвать | Права выше своих? |
+|---|---|---|
+| `POST /users/{id}/reset-password` — `identity_routes/users.py:298-378` | глобальный `users.manage`: `system_admin`, `security_admin` (`seed.py:388, :510`) | **ДА → `system_admin`.** Проверяются только «не себе» (`:318-322`) и `auth_provider.startswith("local_")` (`:324`); цель — любой локальный пользователь, включая `break_glass_admin` (`local_break_glass`, `seed.py:664`). Ответ возвращает `one_time_password` (`:375-380`) → вход под break-glass |
+| `PUT /auth/ad-settings` — `identity_routes/ad_settings.py:56-135` | `users.manage` | **ДА, если есть AD-пользователи с ролью выше.** Актор меняет `server_url`/`base_dn`/`certificate_validation` (допустимо `none`) → вход под любым пользователем `auth_provider=ad` через свой LDAP. В сиде AD-пользователей нет; стенд не проверялся |
+| `POST /users/{id}/activate` — `users.py:263-294` | `users.manage` | сам по себе нет; в связке со сбросом пароля возвращает деактивированную учётку администратора |
+| `PUT /users/{id}/roles`, `DELETE …/roles/{id}` | `roles.manage` | да — закрывается RF-12 (М2, М3, доп. Б) |
+| любой маршрут `require_permission` для scoped `system_admin`/`security_admin` | scoped-назначение | да — закрывается RF-12 (М1) |
+| `POST /users/local-advertiser` — `users.py:126-203` | `users.manage` | нет: роль жёстко `advertiser` со scope организации (`:168-181`), `is_break_glass=False` |
+| `POST /advertiser-applications/{id}/invite`, публичный accept — `advertiser_applications.py:133`, `public_routes/applications.py:72`, `repository.py:4502-4566` | `advertiser_applications.review` (только `system_admin`) / держатель токена | нет: роль `advertiser` со scope организации заявки |
+| `POST /users/{id}/deactivate` | `users.manage` | нет (отказ в обслуживании: `security_admin` может деактивировать `system_admin`, кроме последнего) |
+| маршруты изменения прав ролей (`role_permissions`) | — | не существуют (вне сида и миграций записей нет) |
+**СТОП-А** (условие дополнения А): путь к `system_admin` у `security_admin` через сброс пароля break-glass. Вне скоупа карточки RF-12
+(`reset_password`, `ad_settings.py`). Варианты — в чате; ожидает решения владельца.
+
+**Г. Scoped-модерация.** Модератор, ограниченный организацией рекламодателя, каноном не требуется: персона `moderator` — внутренняя роль
+с **retailer** scope (`docs/architecture/rm-stab-003-personas-retailer-scope-design-gate.md:30`, принят OD-044; bundle отсутствует —
+`role-scope-matrix.yaml:146-147`); journeys `creative.moderate_approve/_reject` (`user-journeys.md:230-234`) и US-MOD-001
+(`tz-v2.6-draft.md:589`) scope организации не упоминают; ADR-009 §1 (`:33-34`): глобальное право требует unscoped-роли. Retailer-scoped
+модератор — будущая RM-STAB-004 (`require_scoped_permission(…, "retailer")`). Вывод: замена пяти тестов допустима.
+
+**Д. Четыре справочника.** `rg 'branches|clusters|display-surfaces|stores' apps/advertiser-web/src` → единственное совпадение — комментарий
+`api/types.ts:250`; вызовов нет. Теста, закрепляющего «портал их не вызывает», сейчас **нет** — будет добавлен в этапе.
+
+**Запрос к БД стенда (текст на согласование; не выполнялся):** `dc exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At'`
+(тот же `dc`, что `stand-update.sh:23-24`; `.env.stand` передаётся compose путём, не открывается), SQL:
+`BEGIN TRANSACTION READ ONLY; SELECT u.username, u.status, r.code, COALESCE(ur.scope_type,'global') FROM users u JOIN user_roles ur ON
+ur.user_id=u.id JOIN roles r ON r.id=ur.role_id WHERE r.code IN ('system_admin','security_admin') OR NOT EXISTS (SELECT 1 FROM user_roles g
+WHERE g.user_id=u.id AND g.scope_type IS NULL) ORDER BY r.code, u.username; COMMIT;`
+
+### Сделано
+- `docs/remediation/stages.md`: RF-GOV-0 → `merged`; карточка RF-12 (`in_progress`).
+- `docs/product/roadmap.yaml`: RM-STAB-022 (новая, S, `in_progress`, зависимость RM-STAB-003); RM-STAB-021 → `done` (evidence: push-run
+  37295565157, PR #15). `.venv/bin/python scripts/ci/roadmap-generate.py` → 3 файла `generated/` обновлены;
+  `roadmap-governance-guard.py` → PASS rc 0; `--self-test` → 55/55 rc 0; `check-import-boundaries.py` → clean.
+
+- Инвентаризация для мини-дизайна (субагент Explore, только чтение; `git status --short` после — новых изменений нет): 51 место
+  `require_permission`, роли сида, источники scoped-назначений, тесты. Мини-дизайн записан выше.
+
+- Реализация (2026-10-05, одобренное ядро М1–М4 + дополнения Б, В):
+  - `packages/domain/repository.py`: `get_user_permissions(…, global_only=False)`; новые `get_role_permission_codes`, `get_role`,
+    `lock_admin_membership` (transaction-scoped advisory lock, ключ 22), `count_active_break_glass_admin_users`;
+    `count_active_admin_users` — `DISTINCT` пользователей, только `scope_type IS NULL`.
+  - `packages/api/dependencies.py`: `require_permission` → `global_only=True`. `/auth/me` не менялся.
+  - `packages/api/identity_routes/users.py`: `assign_role` — отказ себе (403 `SELF_ROLE_ASSIGNMENT_FORBIDDEN`) и роли выше своей
+    (403 `ROLE_EXCEEDS_ACTOR_PERMISSIONS`); `remove_role` — роль выше своей (403), последний админ (409 `LAST_SYSTEM_ADMIN`), последний
+    break-glass с `system_admin` (409 `LAST_BREAK_GLASS_ADMIN`), счёт под блокировкой; `deactivate_user` — блокировка, админ = только
+    глобальное назначение; отказы пишут `user.role_assign_denied` / `user.role_remove_denied` и коммитятся до ответа.
+- Тесты:
+  - новый `tests/behavioral/test_rm_stab_022_role_escalation.py` — 31 тест под `retail_media_app` (NOBYPASSRLS): с исправлением 31 passed;
+    на коде до исправления (`git apply -R` правок `packages/`) — **26 failed, 5 passed**; с отключённой блокировкой
+    (`lock_admin_membership` → no-op) три теста `TestConcurrentLastAdmin` — 3 failed в 3 прогонах из 3, с блокировкой — 3 passed × 3;
+  - `tests/behavioral/test_c1_moderation_approval_rls.py`: модератор — глобальная неадминская фикстурная роль `beh_c1_moderator` +
+    membership ORG_A (прежние 8 проверок без изменения утверждений); +5 тестов `TestC1ScopedRoleDenied` (та же роль в scoped-назначении → 403).
+    Права `creatives.moderate`/`campaigns.approve` роли `advertiser` фикстура больше не добавляет;
+  - `tests/test_phase3_identity_api.py`: `test_assign_role_success`, `test_remove_role_success` заменены (цель — другой пользователь,
+    проверяются аргументы и аудит); +7 новых (self, выше своей ×2, последний админ, последний break-glass, scoped не защищён);
+  - `tests/test_phase3_user_management.py`: `test_cannot_deactivate_last_admin` заменён (глобальная роль, порядок lock → count,
+    пользователь не деактивирован); + `test_scoped_system_admin_is_not_the_last_admin`;
+  - новый `tests/test_rm_stab_022_advertiser_portal_routes.py` (доп. Д): advertiser-web не обращается к `/branches`, `/clusters`,
+    `/stores`, `/display-surfaces`.
+- Самопроверка (2026-10-05, локально, `set -o pipefail`): behavioral — свежий `postgres:16-alpine`, шаги job `behavioral-postgres-tests`
+  дословно (migrations, seed, роль `retail_media_app` NOBYPASSRLS), `python3 -m pytest tests/behavioral/` → **540 passed, 12 skipped**, rc 0
+  (baseline CI 504 + 36 новых; I-1, I-3, I-4 внутри); `python -m pytest tests/` с env job python-tests → **1995 passed, 597 skipped**, rc 0
+  (I-2 `test_rf05_pilot_boot.py`, I-5 unit — внутри); I-0 → clean; ruff: новые файлы чисто, в трёх изменённых файлах `packages/` число
+  замечаний равно develop (1 / 54 / 2). Наблюдение: при поднятом локальном PostgreSQL на :5432 `tests/test_phase3_security.py::TestScopeAdminReset`
+  (2 теста) падают в job python-tests (без PG — skip) — известный артефакт T7 (журнал RF-05), к этапу не относится.
+- Состав субагентов (круг 1; `git diff --name-only origin/develop` + `git status --short`): `code-reviewer`, `test-auditor` — всегда;
+  `security-reviewer` — запущен (`packages/api/dependencies.py`, `packages/api/identity_routes/users.py`); `migration-reviewer` — не запущен
+  (нет `alembic/versions`, `models.py`); `ui-reviewer` — не запущен (порталы и `tests/ui-*` не менялись); `canon-auditor` — на `/finish`.
+
+- Круг исправлений после ревью 1 и решения владельца «расширить RF-12» (2026-10-05):
+  - `users.py`: `_require_actor_covers_target` — `reset_password` и `activate_user` отклоняют (403 `TARGET_EXCEEDS_ACTOR_PERMISSIONS`, аудит
+    `user.password_reset_denied` / `user.activate_denied`, commit до ответа) учётку, чьи глобальные права ⊄ глобальных прав актора;
+    break-glass — только актору с глобальным `system_admin` (`repository.user_has_global_role`). `deactivate_user`: блокировка берётся
+    первой, до чтения цели; break-glass с `system_admin` дополнительно проверяется `count_active_break_glass_admin_users`.
+    `remove_role`: блокировка до чтения цели.
+  - тесты: behavioral `TestAccountTakeoverGuards` (8 тестов: сброс пароля break-glass/`system_admin`/`operator` от `security_admin` → 403 +
+    аудит + хэш не изменён; scoped-рекламодатель → 200; реактивация; исключение `local-advertiser` → 201, роль только scoped, 403 на
+    глобальном маршруте); юнит +4 (`test_phase3_user_management.py`); тест портала — пути из приложения. Существующие тесты сброса пароля
+    не менялись — замена не потребовалась.
+  - «падает до исправления»: на коде `packages/` develop файл `test_rm_stab_022_role_escalation.py` → **30 failed, 9 passed**
+    (из 8 новых takeover-тестов 4 failed — отрицательные, 4 passed — положительные сценарии, не изменившиеся).
+  - самопроверка на итоговом дереве: behavioral (свежая БД, шаги CI) → **548 passed, 12 skipped**, rc 0; `pytest tests/` (env python-tests)
+    → **1999 passed, 605 skipped**, rc 0; I-0 clean; guard PASS; self-test 55/55; ruff — новые файлы чисто, изменённые не хуже develop
+    (`users.py` 1/1, `repository.py` 54/54, `dependencies.py` 2/2, `test_phase3_user_management.py` 4/4, `test_c1…` 0/1).
+  - `stages.md`: цель и скоуп карточки RF-12 дополнены расширением (решение владельца 2026-10-05).
+- Состав круга 2: `code-reviewer` (дельта), `security-reviewer` и `test-auditor` (их замечания исправлялись); новых путей условных
+  субагентов нет (`git status --short`: те же каталоги).
+
+- Круг исправлений 2 (решение владельца 2026-10-05: «добавить в deactivate_user тот же запрет»): `deactivate_user` вызывает
+  `_require_actor_covers_target` (403 `TARGET_EXCEEDS_ACTOR_PERMISSIONS`, аудит `user.deactivate_denied`). Тесты: behavioral
+  `TestDeactivateLastAdmin` заменён на `TestDeactivateGuards` (6 тестов; последовательный сценарий «последний админ → 409» при новом
+  правиле недостижим — деактивировать `system_admin` может только другой `system_admin`; 409 остаётся доказанным гонками
+  `TestConcurrentLastAdmin` и юнит-тестом); юнит +2; в существующем `test_cannot_deactivate_last_break_glass` в мок добавлен
+  `user_has_global_role=True` (утверждения не менялись). На коде `packages/` develop: файл → **33 failed, 10 passed**;
+  `TestDeactivateGuards` → 4 failed, 2 passed (положительные). Итоговое дерево: behavioral (свежая БД, шаги CI) → **552 passed,
+  12 skipped**, rc 0; `pytest tests/` (env python-tests) → **2001 passed, 609 skipped**, rc 0; I-0 clean; guard PASS; self-test 55/55;
+  ruff — новые и тестовые файлы чисто, `users.py` 1/1, `repository.py` 54/54, `dependencies.py` 2/2, `test_phase3_user_management.py` 4/4.
+- Состав круга 3: `code-reviewer` (дельта), `security-reviewer` (его замечание исправлялось). `test-auditor` — не запускается повторно:
+  его замечания круга 2 не исправлялись (отклонено с обоснованием / 🟡).
+
+- 2026-10-05: `roadmap.yaml` — RM-STAB-023 (новая, S, `planned`, решение владельца); `stages.md` — поле «Канон» карточки дополнено.
+  Состав круга 3 дополнен `test-auditor` (решение владельца).
+
+### Решения
+
+- Принятое исключение из правила подмножества: `POST /users/local-advertiser` — держатель `users.manage` создаёт рекламодателя с ролью
+  `advertiser` (scoped), хотя у роли есть права вне набора `security_admin`; глобальных прав она не даёт.
+- Правило для `reset_password`/`activate_user` сравнивает **глобальные** права цели: scoped-рекламодателя `security_admin` сбрасывать может,
+  пользователя с глобальной ролью `operator`/`analyst`/`system_admin` — нет (следствие решения владельца по иерархии).
+
+### Ревью
+
+Круг 1 (2026-10-05): `security-reviewer` → **APPROVE WITH COMMENTS** (критичных нет; behavioral им не запускались — только чтение).
+
+| Круг | Субагент | Замечание | Уровень | Решение | Риск исправления | Доказательство |
+|---|---|---|---|---|---|---|
+| 1 | security | №1 `reset_password` (`users.py:355-429`): `security_admin` сбрасывает пароль break-glass → `system_admin`; смежно `PUT /auth/ad-settings` | 🟠 | исправить в RF-12 (решение владельца 2026-10-05: «расширить RF-12»); AD-настройки — отдельный этап (долг) | меняется контракт прав `reset-password`/`activate`: `security_admin` не сбросит пароль пользователю с глобальными правами вне своих | совпадает со «СТОП-А» (чтение кода) |
+| 1 | security | №2 behavioral-доказательство им не прогонялось | 🟠 | прогон записан в «Сделано» (540 passed под `retail_media_app`); после расширения — повторить и записать с отпечатком | нет | «Сделано», «Гейт» |
+| 1 | security | №3 правило подмножества сравнивает коды прав, а `is_admin` даётся по коду роли (`scopes.py:25,130`): не-админская роль с `roles.manage` и надмножеством прав могла бы выдать `security_admin` | 🟡 | долг: в сиде `roles.manage` только у админских ролей; правило «админские роли назначает только `is_admin`» — к RM-STAB-015 | — | `seed.py:396, :518` |
+| 1 | security | №4 решение «нужна ли защита» принимается по данным до блокировки; `activate_user` блокировку не берёт (снятие роли с неактивного админа + активация + деактивация другого → ноль админов) | 🟡→исправить | исправить вместе с расширением: блокировка до чтения цели в `remove_role`/`deactivate_user` для глобального `system_admin`, блокировка в `activate_user` | низкий | проверить тестом |
+| 1 | security | №5 `create_local_advertiser`: `security_admin` выдаёт роль `advertiser` (есть права вне его набора) мимо правила подмножества | 🟡 | принятое исключение: роль жёстко `advertiser` со scope организации, глобальных прав не даёт; записано в «Решения» | — | `users.py:168-181` |
+| 1 | security | №6 `apps/control-api/seed.py:699-701` — комментарий описывает прежнюю семантику | 🟡 | долг (файл вне скоупа карточки) | — | — |
+
+Круг 1 (2026-10-05): `code-reviewer` → **APPROVE WITH COMMENTS** (критичных нет; 4 «важно», 5 «желательно»; behavioral им не запускались).
+
+| Круг | Субагент | Замечание | Уровень | Решение | Риск исправления | Доказательство |
+|---|---|---|---|---|---|---|
+| 1 | code | №1 `reset_password`: `security_admin` → `system_admin` через сброс пароля break-glass | 🟠 | исправить в RF-12 (решение владельца 2026-10-05) — то же, что security №1 | см. security №1 | «СТОП-А» |
+| 1 | code | №2 `create_local_advertiser` выдаёт роль `advertiser` без правила подмножества; `security_admin` по сиду может назначать только `security_admin` | 🟠 | исключение зафиксировать тестом (behavioral: `security_admin` создаёт рекламодателя → 201, роль только scoped); следствие для admin-web (403 в форме ролей у `security_admin`) — принято владельцем («иерархия: принять как есть»), назвать в отчёте | нет | «Решения» |
+| 1 | code | №3 scoped-роль по-прежнему даёт права на маршрутах `require_scoped_permission` (`dependencies.py:228-231`), напр. `POST /campaigns/{id}/approve` для scoped `system_admin` в своих организациях; предложен тест, фиксирующий текущее поведение | 🟠 | **отклонено в части теста**: это находка P0-8, вынесенная владельцем в отдельный этап после RF-12; тест, закрепляющий дефект, без одобрения владельца не добавляется (`CLAUDE.md` §4). Формулировки результата — только «на маршрутах `require_permission`»; в долг к этапу P0-8 | — | решение владельца 2026-10-05 «P0-8 отдельным этапом» |
+| 1 | code | №4 тест портала закрепляет 4 маршрута, а не все маршруты `require_permission` | 🟠 | исправить: список запрещённых путей строить из приложения FastAPI (зависимость `require_permission`) | низкий (только тест) | — |
+| 1 | code | №5 деактивация break-glass считает всех активных break-glass, а не break-glass с глобальным `system_admin` | 🟡→исправить | добавить проверку `count_active_break_glass_admin_users` в `deactivate_user` | низкий | — |
+| 1 | code | №6 роли и статус цели читаются до блокировки; `activate_user` блокировку не берёт | 🟡→исправить | то же, что security №4 | низкий | — |
+| 1 | code | №7 иерархия сравнивает коды прав, `is_admin` — по коду роли | 🟡 | долг (то же, что security №3) | — | — |
+| 1 | code | №8 отказ 409 в `deactivate_user` не аудируется; частота записей аудита отказов не ограничена | 🟡 | долг: аудит отказов деактивации владельцем не заказывался; предложение — следующим этапом | — | — |
+| 1 | code | №9 комментарий `seed.py:700-701`; F541 в `test_c1…:231`; `/auth/me` показывает scoped-права в admin-web | 🟡 | F541 — исправить; остальное — долг (seed вне скоупа; `/me` — риск мини-дизайна №2) | нет | — |
+
+Круг 1 (2026-10-05): `test-auditor` → **APPROVE WITH COMMENTS** (гейт воспроизведён им на своём `postgres:16-alpine`: 540 passed с `.venv`;
+новые тесты падают на develop-коде; блокировка no-op → 3 failed в 2 прогонах из 2; ослаблений, skip/xfail, удалённых тестов нет).
+
+| Круг | Субагент | Замечание | Уровень | Решение | Риск исправления | Доказательство |
+|---|---|---|---|---|---|---|
+| 1 | test | №1 тест портала — grep по литералам, сборку пути из переменных не увидит | 🟠 | исправлено частично: список запрещённых путей теперь берётся из приложения FastAPI (48 путей `require_permission`), а не из 4 констант; в docstring прямо названо, что проверка статическая и путь из переменных не видит. Ui-smoke рекламодателя — в CI | нет | `tests/test_rm_stab_022_advertiser_portal_routes.py` 3 passed |
+| 1 | test | №2 `test_last_break_glass_admin_keeps_system_admin_role`: при сломанном коде роль seed-пользователя снимается и не возвращается | 🟠 | исправлено: восстановление назначения и чистка аудита в `finally` | нет | прогон на develop-коде, затем на исправленном без пересоздания БД — см. «Сделано» |
+| 1 | test | №3 порядок lock → count в юнит-тесте проверяется хрупко | 🟡 | без правки: основное доказательство — behavioral (`TestConcurrentLastAdmin`) | — | — |
+| 1 | test | №4 юнит-тесты `remove_role` на моках | 🟡 | без правки: результат в БД доказан behavioral | — | — |
+
+Круг 2 (2026-10-05): `security-reviewer` → **APPROVE WITH COMMENTS** (критичных нет; behavioral им не запускались).
+
+| Круг | Субагент | Замечание | Уровень | Решение | Риск исправления | Доказательство |
+|---|---|---|---|---|---|---|
+| 2 | security | №1 `deactivate_user` не подчиняется правилу «цель не выше актора»: `security_admin` деактивирует всех `system_admin`, кроме последнего, а вернуть их теперь может только `system_admin` (этап это усугубил: раньше активировать мог второй `security_admin`) | 🟠 | **ожидает ответа владельца**: расширение владельца называло `reset_password` и `activate_user`; запрет в деактивации — ещё одно изменение контракта прав. Рекомендация агента — добавить (тот же помощник, аудит `user.deactivate_denied`, замена ожиданий в 2 behavioral-тестах этапа, где `security_admin` деактивирует админа) | низкий; `security_admin` перестанет деактивировать `system_admin`/`operator`/`analyst` | `users.py:303-348`; `test_rm_stab_022…::TestDeactivateLastAdmin` |
+| 2 | security | №2 в разборе круга 1 записано «блокировка в `activate_user`», в коде её нет | 🟡 | уточнение: блокировка в `activate_user` не внесена и не требуется — активация только увеличивает число администраторов, а `remove_role`/`deactivate_user` берут блокировку до чтения цели и считают после неё (сценарий security №4 круга 1 закрыт этим порядком) | нет | `users.py` `remove_role`, `deactivate_user` |
+| 2 | security | №3 `security_admin` сбрасывает пароль scoped-рекламодателю (получает его scoped-права) и другому `security_admin` (чужой actor id) | 🟡 | долг: первое — принятое решение («Решения»); второе — предложение «оповещение владельца учётки / правило двух лиц» следующим этапом | — | — |
+| 2 | security | №4 иерархия по кодам прав vs `is_admin` по коду роли | 🟡 | долг (круг 1) | — | — |
+| 2 | security | №5 отказы 409 в `deactivate_user` без аудита | 🟡 | долг (круг 1); закроется вместе с №1, если владелец одобрит | — | — |
+| 2 | security | №6 запрос завершается после потери прав актором за время ожидания блокировки | 🟡 | долг: инвариант «не ноль администраторов» не нарушается | — | — |
+| 2 | security | №7 комментарий `seed.py:699-701` | 🟡 | долг (круг 1) | — | — |
+
+Круг 2 (2026-10-05): `code-reviewer` → **APPROVE WITH COMMENTS** (критичных нет; behavioral им не запускались).
+
+| Круг | Субагент | Замечание | Уровень | Решение | Риск исправления | Доказательство |
+|---|---|---|---|---|---|---|
+| 2 | code | №1 `deactivate_user` не проверяет «актор покрывает цель» | 🟠 | то же, что security №1 круга 2 — **ожидает ответа владельца** | см. там | — |
+| 2 | code | №2 `roles.manage` у `security_admin` почти не работает: по сиду он назначает/снимает только `security_admin`; не может снять `advertiser` с созданного им рекламодателя или привязать его ко второй организации; кнопки в `admin-web/src/pages/UsersPage.tsx:266-291` дадут 403 | 🟠 | **отклонено как дефект**: это названное владельцу следствие решения «иерархия по подмножеству прав: принять как есть» (2026-10-05; в вопросе было сказано: «назначать роли сможет только `system_admin`»). Деталь про scoped-назначение `advertiser` названа владельцу в отчёте; изменение правила — только его решением | — | «Решения владельца» 2026-10-05 |
+| 2 | code | №3 иерархия по кодам прав vs RLS-админ по коду роли | 🟠 | в долг (как security №3/№4): сегодня не эксплуатируется — `roles.manage` только у админских ролей, API создания ролей нет; место — RM-STAB-015 | — | `seed.py:396, :518` |
+| 2 | code | №4 защита кабинета рекламодателя от регресса — статический тест; просит прогнать UI-smoke advertiser-web до merge | 🟠 | принято: job «UI-Smoke — Playwright (P0 subset)» идёт в CI PR на `/finish`; его результат записывается в отчёт `/finish` до merge. Локально UI-smoke не запускался | нет | CI PR (будет на `/finish`) |
+| 2 | code | 🟡 проверка прав актора до блокировки; отказы деактивации без аудита и в другом формате; нет лимита на строки аудита отказов; `pg_advisory_xact_lock` без `lock_timeout`; результат `remove_user_role` игнорируется (было и раньше); комментарий `seed.py`; `/auth/me`; два способа вызова `create_audit_event` в файле | 🟡 | долг | — | — |
+
+Круг 2 (2026-10-05): `test-auditor` → **APPROVE WITH COMMENTS** (на своём PostgreSQL: без исправления 30 failed; с исправлением 546 passed
++ 2 failed `test_license_seat_ledger::TestDevIngest` из-за системного `python3` без `sqlalchemy` в его окружении — не дифф; ослаблений нет).
+
+| Круг | Субагент | Замечание | Уровень | Решение | Риск исправления | Доказательство |
+|---|---|---|---|---|---|---|
+| 2 | test | №1 `TestConcurrentLastAdmin`: порядок побед недетерминирован, возможен флак в CI; не доказано, что побеждает именно блокировка | 🟠 | **отклонено с обоснованием**: (а) блокировка доказана абляцией — `lock_admin_membership` → no-op: 3 failed в 3 прогонах из 3 (агент) и 2 из 2 (`test-auditor`, круг 1); (б) с блокировкой исход по статусам детерминирован (`[204/200, 409]` при любом порядке), 15 повторов подряд — см. ниже; ожидания оставлены точными намеренно. Если в CI появится флак — усиливать барьером, без retry (в долг) | — | повторы ниже |
+| 2 | test | 🟡 юниты `reset_password`/`activate_user` на моках (дублируются behavioral); статический тест портала | 🟡 | без правки | — | — |
+
+- Повторы `TestConcurrentLastAdmin` на итоговом дереве (свежая БД): 15 прогонов подряд — 15 раз `3 passed`.
+- Итог кругов: круг 1 — `code-reviewer`, `test-auditor`, `security-reviewer` → APPROVE WITH COMMENTS; круг 2 — все три → APPROVE WITH COMMENTS.
+  Открыт один 🟠 (деактивация вышестоящих учёток, code №1 / security №1 круга 2) — **ожидает ответа владельца**; `ready_to_finish` до ответа не выставляется.
+
+Круг 3 (2026-10-05): `security-reviewer` → **APPROVE WITH COMMENTS**; `code-reviewer` → **APPROVE WITH COMMENTS** (критичных нет; behavioral ими не запускались).
+
+| Круг | Субагент | Замечание | Уровень | Решение | Риск исправления | Доказательство |
+|---|---|---|---|---|---|---|
+| 3 | code №1 / security №3 | `test_concurrent_removal_and_deactivation_keep_one_admin` допускает `[204, 409]`, а при порядке «снятие роли первым» код вернёт `[204, 403]` (деактивация от разжалованного актора не проходит `_require_actor_covers_target`) | 🟠 | исправить тест: допустимые исходы `[200, 409]` и `[204, 403]`, инвариант «ровно один активный админ» без изменений. Правка после круга 3 — четвёртого круга нет (`CLAUDE.md` §6), названо владельцу | только тест | чтение `users.py` `deactivate_user`: проверка покрытия раньше счёта; повторы — «Гейт» |
+| 3 | code №2 / security №4 | `_require_actor_covers_target` сравнивает только глобальные права цели: `security_admin` сбрасывает пароль scoped-учётке (рекламодатель, scoped `system_admin`) и получает её scoped-права на маршрутах `require_scoped_permission`; смежно `POST /users/local-advertiser` | 🟠 | **отклонено с обоснованием (решение агента, владелец может отменить)**: сравнение всех прав отрезало бы `security_admin` от сброса пароля рекламодателям (journey `user.reset_password`), следствие «рекламодателям — сможет» названо владельцу в отчётах 2026-10-05 до его решений; действие scoped-прав — находка P0-8 (отдельный этап). В долг с `packages/api/identity_routes/users.py:117-124`; цель карточки формулируется как «глобальные права» | — | «Решения» этапа |
+| 3 | code №3 | `security_admin` не может деактивировать/сбросить пароль `operator`, `analyst`; не назначает и не снимает `advertiser`; кнопки admin-web дадут 403 | 🟠 | **отклонено**: решения владельца 2026-10-05 («иерархия: принять как есть»; «добавить в deactivate_user тот же запрет» — после перечня следствий в отчёте). Перечень повторён в отчёте; предложение для runbook/сида — в долг | — | «Решения владельца» |
+| 3 | security №1 | `PUT /auth/ad-settings`: `security_admin` входит под любой AD-учёткой; сервисный пароль привязки уходит на чужой сервер | 🟠 | следующий этап (решение владельца 2026-10-05: AD раньше тестов стенда и P0-8); в долг | — | — |
+| 3 | security №2 / code 🟡 | права актора в `remove_role` читаются до блокировки (взаимное разжалование при ≥3 админах) | 🟡 | долг | — | — |
+| 3 | code 🟡 | отказы 409 деактивации без аудита и строкой; нет лимита аудита отказов; `/auth/me`; комментарий `seed.py:700`; `only_test_admins` опасна при убитом процессе (только выделенная тестовая БД) | 🟡 | долг | — | — |
+| 3 | code | в карточке мини-дизайн числился «ожидает одобрения» | 🟡 | исправлено (`stages.md`, заголовок раздела журнала) | нет | — |
+
+Круг 3 (2026-10-05): `test-auditor` (добавлен решением владельца) → **APPROVE WITH COMMENTS**: на своём PostgreSQL behavioral 552 passed, 12 skipped;
+на `origin/develop` новый файл — 33 failed, 10 passed; мутации: убран guard в `deactivate_user` → 4 behavioral + 1 юнит упали; блокировка →
+`pass` → 3 теста гонок упали; ослаблений нет. Замечания — 🟡 (юнит на моках; ruff «не хуже базовой линии» — так и записано в «Сделано»;
+статический тест портала) — без правки.
+
+- Итог ревью: 3 круга. Круг 1 — `code-reviewer`, `test-auditor`, `security-reviewer`; круг 2 — те же; круг 3 — те же. Все девять вердиктов —
+  APPROVE WITH COMMENTS, 🔴 не было. Отклонённые 🟠 (с обоснованием — таблицы выше): тест, закрепляющий поведение P0-8 (code к1 №3);
+  «`roles.manage` у `security_admin` почти не работает» (code к2 №2, к3 №3 — решения владельца); нестабильность тестов гонок
+  (test к2 №1 — абляция и повторы); сравнение scoped-прав цели при сбросе пароля (code к3 №2 / security к3 №4 — решение агента, владелец
+  может отменить).
+- После круга 3 (ревьюерами не просмотрено — четвёртого круга нет): `test_concurrent_removal_and_deactivation_keep_one_admin` — допустимые
+  исходы заменены на точные пары `(409, 200)` и `(204, 403)` (code к3 №1 / security к3 №3); `roadmap.yaml` RM-STAB-023 + генерация;
+  `stages.md` — статус мини-дизайна, поле «Канон».
+
+`/finish`, `canon-auditor` круг 1 (2026-10-05) → **REQUEST CHANGES** (🔴 нет; 3 🟠, 3 🟡 — только документы).
+
+| Круг | Замечание | Уровень | Решение | Риск исправления | Доказательство |
+|---|---|---|---|---|---|
+| canon 1 | №1 `roadmap.yaml`, `notes` RM-STAB-022: «mini-design ожидает одобрения владельца» | 🟠 | исправлено + генерация + guard; отсылка «перечень - mini-design» уточнена | нет | guard PASS |
+| canon 1 | №2 «отпечаток совпал» в «Итоге» не воспроизводится | 🟠 | формулировка исправлена: совпадал на момент предусловий, затем менялись только документы шага 2; записан отдельный отпечаток кода и тестов; оговорка названа | нет | «Итог» |
+| canon 1 | №3 🟡 `test-auditor` не попали в «Долг» | 🟠 | добавлено | нет | «Долг» |
+| canon 1 | «PR ждёт merge» при ещё не открытом PR | 🟡 | как в прежних этапах: порядок навыка `/finish`; после `gh pr create` проверяется `gh pr list --head fix/RF-12`, иначе СТОП и правка статуса | нет | отчёт `/finish` |
+| canon 1 | приёмка RM-STAB-023 запускает тест, останавливающий стенд | 🟡 | долг — уточнить в карточке этапа | — | «Долг» |
+| canon 1 | правки после круга 3 вне ревью | 🟡 | названо в журнале и отчёте | — | — |
+
+`/finish`, `canon-auditor` круг 2 (2026-10-05) → **APPROVE WITH COMMENTS** (🔴 нет; отпечаток кода и тестов пересчитан им — совпал).
+
+| Круг | Замечание | Уровень | Решение | Риск исправления | Доказательство |
+|---|---|---|---|---|---|
+| canon 2 | в «Долг» не попали: два способа вызова `create_audit_event`; завершение запроса после потери прав актором; ruff «не хуже базовой линии» | 🟠 | добавлено в «Долг» | нет | «Долг» |
+| canon 2 | `finished` / «PR ждёт merge» до открытия PR | 🟡 | как canon 1: проверка `gh pr list --head fix/RF-12` после `gh pr create` | нет | отчёт `/finish` |
+| canon 2 | второй новый тест не назван в карточке | 🟡 | дописан в «Скоуп (в)» | нет | `stages.md` |
+
+### Наблюдения
+- **Причина остановки стенда установлена (2026-10-05, только чтение + прогон с подставным `docker`).** Стенд `rmp-local-stand` останавливает
+  локальный прогон юнит-тестов этого репозитория:
+  - `tests/test_local_stand.py::_update_harness` (`:274-312`) подменяет `_bring_up`, `wait_healthy`, `verify_identity`, `db_schema_head`, но не
+    `compose`/`run`. Тесты с неуспешным обновлением (`test_failed_update_rolls_back_to_previous_lock` `:325`,
+    `test_rollback_restores_image_env` `:337` и ещё три в том же файле) доходят до отката в `scripts/deploy/local_stand.py:929`
+    `compose("stop", check=False)` → настоящий `docker compose -p rmp-local-stand -f … stop` (проект задан константой `:44`).
+  - Доказательство: прогон `tests/test_local_stand.py`, `test_local_stand_cookie.py`, `test_stand_identity_and_safe_smoke.py` с подставным
+    `docker` первым в `PATH` (скрипт только пишет аргументы): 184 passed; зафиксировано 5 вызовов `compose -p rmp-local-stand … stop`,
+    3 × `… config`, 3 × `… ps -a`, 3 × `docker ps -a --filter label=com.docker.compose.project=rmp-local-stand`. По одному `stop` на каждый
+    из двух названных тестов (проверено поштучно).
+  - Картина остановки совпадает с `compose stop`: `docker inspect` — proxy/minio/web `FinishedAt` 14:27:55–56Z exit 0; сервисы 14:28:05–06Z
+    exit 137 (SIGKILL после 10 с); NATS exit 1; postgres/redis последними 14:28:06Z exit 0; `OOMKilled=false` у всех; `restart=unless-stopped`
+    и контейнеры не поднялись — так бывает только после явной остановки. Демон docker не перезапускался (`ActiveEnterTimestamp` 06:56:06Z).
+    Время совпадает с первым локальным `python -m pytest tests/` этого этапа; случай RF-10 (2026-10-01 07:57Z) — тоже во время локального
+    прогона python-tests.
+  - Не получено: `journalctl -u docker` за 14:20–14:35Z и за 2026-10-01 — записей нет (журнал доступен, последняя запись — старт демона);
+    `dmesg` — нет прав (`Operation not permitted`); события docker за окно не сохранились; по `ciso-portal-check` — контейнеров нет, событий
+    за окно нет (туда не заходил).
+  - В CI проекта `rmp-local-stand` нет — там дефект не проявляется. Локально каждый `pytest tests/` на хосте стенда его останавливает;
+    раньше это маскировал `/finish` (`stand-update.sh` поднимает стенд заново).
+  - Вне скоупа RF-12 → **предложение этапа**: в `_update_harness` подменять `compose`; общий autouse-предохранитель в `tests/conftest.py`,
+    запрещающий тестам настоящий `docker`/`compose` (кроме opt-in интеграционных); тест-сторож. Задачи в roadmap нет — нужна решением владельца.
+  - Стенд не поднимался (решение владельца: до `/finish`). Read-only запрос к БД стенда — на `/finish` после пересборки, результат в отчёт.
+
+### Гейт
+- 2026-10-05, итоговое дерево (локально, `.venv`, `set -o pipefail`):
+  - behavioral — свежий `postgres:16-alpine`, шаги job `behavioral-postgres-tests` дословно, `retail_media_app` NOBYPASSRLS:
+    `python3 -m pytest tests/behavioral/` → **552 passed, 12 skipped**, rc 0 (новый тест RM-STAB-022 — 43; I-1, I-3, I-4 внутри);
+  - `python -m pytest tests/` с env job python-tests → **2001 passed, 609 skipped**, rc 0 (I-2 `test_rf05_pilot_boot.py`, I-5 unit, I-3/I-4 unit внутри);
+  - `TestConcurrentLastAdmin` — 20 прогонов подряд по `3 passed`;
+  - I-0 `check-import-boundaries.py` → clean; `roadmap-governance-guard.py` → PASS; `--self-test` → 55/55;
+  - ruff: новые файлы чисто; изменённые не хуже develop (`users.py` 1/1, `repository.py` 54/54, `dependencies.py` 2/2,
+    `test_phase3_user_management.py` 4/4, `test_c1…` 0/1, `test_phase3_identity_api.py` 0/0).
+- Принято без прогона: I-2 (pilot-compose-smoke) — по CI 37309852950 (`develop @ 5cf482b`), compose/Dockerfile/CI этап не менял;
+  I-5 живое — по записи журнала RF-11 (`git diff --stat 9f0ee98 origin/develop -- infra apps/orchestrator-worker packages/services` пуст,
+  этап эти пути не трогает). UI-smoke локально не запускался — job CI на PR.
+- Факт (решение владельца 2026-10-05, п. 3): локальные `python -m pytest tests/` этого этапа выполняют `docker compose -p rmp-local-stand … stop`;
+  стенд остановлен с 2026-10-05T14:28:06Z и не поднимался — поднимет `/finish`.
+- Отпечаток дерева (журнал исключён — он сам в диффе; два неотслеживаемых теста добавлены содержимым): `beac9f4642201f4aff41cddd79b9312728168689ee167961371737b1158f94a2`.
+  Команда: `{ git diff origin/develop -- . ':!docs/remediation/journal.md'; cat tests/behavioral/test_rm_stab_022_role_escalation.py tests/test_rm_stab_022_advertiser_portal_routes.py; } | sha256sum`.
+  `git status --short`: ` M` — `docs/product/generated/roadmap-metrics.generated.json`, `roadmap.generated.md`, `roadmap.generated.xlsx`,
+  `docs/product/roadmap.yaml`, `docs/remediation/journal.md`, `docs/remediation/stages.md`, `packages/api/dependencies.py`,
+  `packages/api/identity_routes/users.py`, `packages/domain/repository.py`, `tests/behavioral/test_c1_moderation_approval_rls.py`,
+  `tests/test_phase3_identity_api.py`, `tests/test_phase3_user_management.py`; `??` — `o/` (владельца, вне этапа),
+  `tests/behavioral/test_rm_stab_022_role_escalation.py`, `tests/test_rm_stab_022_advertiser_portal_routes.py`.
+- Вердикты субагентов — все APPROVE WITH COMMENTS (3 круга) → этап `ready_to_finish`.
+
+### Долг (к `/finish`)
+- **Следующие этапы (порядок — решение владельца 2026-10-05):** (1) `PUT /auth/ad-settings` и соседние (`packages/api/identity_routes/ad_settings.py:24, :56, :137`,
+  право `users.manage` — есть у `security_admin`): вход под чужой AD-учёткой через свой LDAP, сервисный пароль привязки уходит на
+  чужой сервер; задачи roadmap нет — нужна решением владельца; в мини-дизайн включить вопросы владельца (а) секрет в GET, (б) произвольный
+  адрес в POST `/test`, (в) как AD-учётка получает роли при входе. (2) RM-STAB-023 — юнит-тесты останавливают стенд. (3) P0-8 + T3 (+T7).
+- На `/finish`: после пересборки стенда выполнить read-only запрос к БД стенда (текст — «Проверки по дополнениям»), результат — в отчёт.
+- `packages/api/identity_routes/users.py:117-124`: `_require_actor_covers_target` сравнивает только глобальные права цели — `security_admin`
+  может сбросить пароль scoped-учётке (и другому `security_admin`) и войти под ней; к этапу P0-8 / оповещение владельца учётки.
+- `packages/api/dependencies.py:228-231`: scoped-роль действует на маршрутах `require_scoped_permission` без привязки к организации (P0-8).
+- `packages/domain/scopes.py:25, :130` vs `users.py` (правило подмножества): `is_admin` — по коду роли, иерархия — по кодам прав; к RM-STAB-015.
+- `users.py` `remove_role`: права актора читаются до блокировки (взаимное разжалование при ≥3 админах; ноль админов невозможен).
+- `users.py` `deactivate_user`: отказы 409 (последний админ / break-glass) без аудита и строкой, а не `{code, message}`; нет лимита на
+  строки аудита отказов; `lock_admin_membership` без `lock_timeout`; результат `remove_user_role` игнорируется.
+- `apps/control-api/seed.py:699-701`: комментарий описывает прежнюю семантику `get_user_permissions` (файл вне скоупа).
+- `packages/api/auth.py:268`: `/auth/me` отдаёт scoped-права — admin-web покажет scoped-пользователю разделы с 403 (P1-11.b).
+- Следствие иерархии (решение владельца): `security_admin` по сиду назначает/снимает только роль `security_admin`, не управляет
+  `operator`/`analyst`; кнопки `apps/admin-web/src/pages/UsersPage.tsx:266-291` дадут 403 — для runbook; варианты смягчения — владельцу.
+- Тесты гонок: при флаке в CI — усиливать барьером, без retry. Фикстура `only_test_admins` — только на выделенной тестовой БД.
+- `packages/api/identity_routes/users.py`: два способа вызова `create_audit_event` в одном файле (локальный импорт и `repository.…`) — причесать отдельным этапом.
+- `users.py` `deactivate_user`, `remove_role`: уже начатый запрос завершается, даже если актор потерял права, пока ждал блокировку (окно — миллисекунды; инвариант «не ноль администраторов» не нарушается) — отдельным этапом.
+- Гейт «ruff по изменённым файлам» фактически означает «не хуже базовой линии» (в старых файлах давние замечания) — предложение по правилам.
+- Тесты (🟡 `test-auditor`, без правки): юнит-тесты `remove_role`, `reset_password`, `activate_user`, `deactivate_user` — на моках репозитория;
+  порядок lock → count в `test_cannot_deactivate_last_admin` проверяется через `side_effect`; тест портала рекламодателя статический
+  (путь из переменных не увидит) — результат в БД и 403 доказаны behavioral.
+- RM-STAB-023: `ref` приёмки (`python -m pytest tests/test_local_stand.py`) — команда, которая сегодня останавливает стенд; уточнить в карточке этапа.
+- Не проверено на стенде: есть ли пользователи только со scoped-назначениями не-рекламодательских ролей (запрос — на `/finish`).
+
+### Итог (заполняет /finish)
+- Статус: finished (PR ждёт merge владельцем). Коммит и PR: `gh pr list --head fix/RF-12`; CI и стенд — в отчёте `/finish` (в коммит не входят).
+- `/finish`, предусловия (2026-10-05): на момент проверки предусловий отпечаток дерева совпадал с записью гейта (`beac9f46…58f94a2`) →
+  тяжёлые проверки приняты по записи (behavioral 552 passed; их повторит CI PR); быстрые прогнаны заново: `pytest tests/` (env python-tests)
+  → 2001 passed, 609 skipped; I-0 clean; guard PASS; self-test 55/55; ruff по новым и тестовым файлам чисто.
+  После этого шаг 2 `/finish` менял только документы (`stages.md` → `finished`, checkpoint `PROJECT_STATE.md`, `notes` RM-STAB-022 в
+  `roadmap.yaml` + генерация — замечание `canon-auditor`), поэтому полный отпечаток гейта больше не воспроизводится — это ожидаемо.
+  Код и тесты после гейта не менялись; их отдельный отпечаток: `48aa4877ad9679cfdedf7bab4679f695a637b4ca3a1de18bf81a6a9491090928`
+  (`{ git diff origin/develop -- packages tests; cat tests/behavioral/test_rm_stab_022_role_escalation.py tests/test_rm_stab_022_advertiser_portal_routes.py; } | sha256sum`;
+  время последней правки: код `packages/` — до гейта, последний изменённый тест — `test_rm_stab_022_role_escalation.py`, правка гоночного
+  теста перед финальным прогоном гейта). Оговорка: на гейте отдельный отпечаток кода и тестов не записывался — неизменность подтверждается
+  временем файлов и тем, что CI PR повторит behavioral на закоммиченном дереве.
+- Доказано: P0-6 закрыт на маршрутах `require_permission` (51 место, 48 путей); назначение/снятие ролей, сброс пароля, реактивация и
+  деактивация не дают прав выше своих и не выводят из строя вышестоящих; последний администратор и break-glass защищены, включая гонки;
+  отказы аудируются — behavioral под `retail_media_app` NOBYPASSRLS (43 теста, на develop 33 failed), юнит-тесты, абляция блокировки.
+- Не доказано / не входит: действие scoped-ролей на `require_scoped_permission` (P0-8); `PUT /auth/ad-settings`; порталы не менялись —
+  UI-smoke не добавлялся, функция реестра не затрагивалась (Done Gate не применяется: исправление дефекта бэкенда).
+- RM-STAB-022 — `in_progress` до merge и CI develop; RM-STAB-021 → `done`; RM-STAB-023 — `planned` (новая).
+- Отклонённые 🟠 — раздел «Ревью» (итог ревью). Долг — раздел «Долг (к `/finish`)».
+- Новый инвариант: I-6.
+- Следующий шаг: merge PR владельцем → `/start`: этап про `PUT /auth/ad-settings` (нужна задача roadmap решением владельца; мини-дизайн с
+  вопросами а–в), затем RM-STAB-023, затем P0-8; в карточку следующего этапа с кодом — «попутно RM-STAB-022 → `done`» (решением владельца).

@@ -668,6 +668,7 @@ class TestDeactivateActivate(unittest.TestCase):
         self._mock_repo(
             get_user_detail=_make_user("gb-001", "active", is_break_glass=True),
             count_active_break_glass_users=1,
+            user_has_global_role=True,
         )
         resp = self.client.post(
             "/api/v1/identity/users/gb-001/deactivate",
@@ -676,21 +677,134 @@ class TestDeactivateActivate(unittest.TestCase):
         self.assertEqual(resp.status_code, 409)
 
     def test_cannot_deactivate_last_admin(self):
-        """Cannot deactivate last active system_admin user."""
+        """Cannot deactivate the last active global system_admin (RM-STAB-022).
+
+        The count is taken under the admin-membership lock, and the user stays
+        active.
+        """
         self._mock_auth()
         target = _make_user("admin-target", "active")
-        target.roles = [_MockUserRole("ur-1", "role-admin", "advertiser", None)]
+        target.roles = [_MockUserRole("ur-1", "role-admin", None, None)]
         target.roles[0].role = _MockRole("role-admin", "system_admin", "System Admin")
 
         self._mock_repo(
             get_user_detail=target,
             count_active_admin_users=1,
         )
+        order = []
+        from packages.api.identity import repository as repo
+        repo.count_active_admin_users.side_effect = lambda *a, **k: order.append("count") or 1
+        with patch(
+            "packages.api.identity.repository.lock_admin_membership",
+            new_callable=AsyncMock,
+            side_effect=lambda *a, **k: order.append("lock"),
+        ):
+            resp = self.client.post(
+                "/api/v1/identity/users/admin-target/deactivate",
+                headers=self._auth(self._token()),
+            )
+        self.assertEqual(resp.status_code, 409, resp.text)
+        self.assertEqual(resp.json()["detail"], "Cannot deactivate the last active system admin")
+        self.assertEqual(order, ["lock", "count"])
+        repo.set_user_status.assert_not_called()
+
+    def test_scoped_system_admin_is_not_the_last_admin(self):
+        """A scoped system_admin assignment is not an administrator (RM-STAB-022):
+        it is neither counted nor protected by the last-admin guard."""
+        self._mock_auth()
+        target = _make_user("scoped-target", "active")
+        target.roles = [_MockUserRole("ur-1", "role-admin", "advertiser", "org-1")]
+        target.roles[0].role = _MockRole("role-admin", "system_admin", "System Admin")
+
+        self._mock_repo(
+            get_user_detail=target,
+            count_active_admin_users=1,
+        )
+        from packages.api.identity import repository as repo
+        resp = self.client.post(
+            "/api/v1/identity/users/scoped-target/deactivate",
+            headers=self._auth(self._token()),
+        )
+        self.assertEqual(resp.status_code, 200, resp.text)
+        repo.count_active_admin_users.assert_not_called()
+        repo.set_user_status.assert_called_once()
+
+    def test_deactivate_refused_when_target_outranks_actor(self):
+        """RM-STAB-022: disabling an account that outranks the actor -> 403, audited."""
+        self._mock_auth()
+        self._mock_repo(
+            get_user_detail=_make_user("admin-target", "active"),
+            create_audit_event=None,
+        )
+        from packages.api.identity import repository as repo
+
+        async def _perms(_db, user_id, **kwargs):
+            self.assertEqual(kwargs, {"global_only": True})
+            if user_id == "admin-target":
+                return {"users.manage", "emergency.manage"}
+            return {"users.read", "users.manage"}
+        repo.get_user_permissions.side_effect = _perms
+
         resp = self.client.post(
             "/api/v1/identity/users/admin-target/deactivate",
             headers=self._auth(self._token()),
         )
-        self.assertEqual(resp.status_code, 409)
+        self.assertEqual(resp.status_code, 403, resp.text)
+        self.assertEqual(resp.json()["detail"]["code"], "TARGET_EXCEEDS_ACTOR_PERMISSIONS")
+        repo.set_user_status.assert_not_called()
+        kw = repo.create_audit_event.call_args.kwargs
+        self.assertEqual(kw["action"], "user.deactivate_denied")
+        self.assertEqual(kw["target_id"], "admin-target")
+        self.assertEqual(kw["details"], {"reason": "exceeds_actor_permissions"})
+
+    def test_deactivate_break_glass_requires_global_system_admin(self):
+        """RM-STAB-022: a break-glass account is disabled by a global system_admin only."""
+        self._mock_auth()
+        self._mock_repo(
+            get_user_detail=_make_user("gb-001", "active", is_break_glass=True),
+            count_active_break_glass_users=2,
+            user_has_global_role=False,
+            create_audit_event=None,
+        )
+        from packages.api.identity import repository as repo
+        resp = self.client.post(
+            "/api/v1/identity/users/gb-001/deactivate",
+            headers=self._auth(self._token()),
+        )
+        self.assertEqual(resp.status_code, 403, resp.text)
+        repo.set_user_status.assert_not_called()
+        self.assertEqual(
+            repo.create_audit_event.call_args.kwargs["details"],
+            {"reason": "break_glass_requires_system_admin"},
+        )
+
+    def test_activate_refused_when_target_outranks_actor(self):
+        """RM-STAB-022: reviving an account that outranks the actor -> 403, audited."""
+        self._mock_auth()
+        self._mock_repo(
+            get_user_detail=_make_user("admin-target", "inactive"),
+            create_audit_event=None,
+        )
+        from packages.api.identity import repository as repo
+
+        async def _perms(_db, user_id, **kwargs):
+            self.assertEqual(kwargs, {"global_only": True})
+            if user_id == "admin-target":
+                return {"users.manage", "emergency.manage"}
+            return {"users.read", "users.manage"}
+        repo.get_user_permissions.side_effect = _perms
+
+        resp = self.client.post(
+            "/api/v1/identity/users/admin-target/activate",
+            headers=self._auth(self._token()),
+        )
+        self.assertEqual(resp.status_code, 403, resp.text)
+        self.assertEqual(resp.json()["detail"]["code"], "TARGET_EXCEEDS_ACTOR_PERMISSIONS")
+        repo.set_user_status.assert_not_called()
+        kw = repo.create_audit_event.call_args.kwargs
+        self.assertEqual(kw["action"], "user.activate_denied")
+        self.assertEqual(kw["target_id"], "admin-target")
+        self.assertEqual(kw["details"], {"reason": "exceeds_actor_permissions"})
 
     def test_cannot_deactivate_self(self):
         """Admin cannot deactivate their own account (self-lockout)."""
@@ -840,6 +954,77 @@ class TestResetPassword(unittest.TestCase):
         self.assertNotIn("password_hash", body)
         self.assertNotIn("password", body)
         self.assertTrue(body["must_change_password"])
+
+    def _perms_by_user(self, actor, target):
+        async def _perms(_db, user_id, **kwargs):
+            self.assertEqual(kwargs, {"global_only": True})
+            return actor if user_id == "u-admin" else target
+        return _perms
+
+    def test_reset_refused_when_target_outranks_actor(self):
+        """RM-STAB-022: target holds a global permission the actor lacks -> 403,
+        audited, password untouched, no one-time password in the response."""
+        self._mock_auth_and_repo(create_audit_event=None)
+        from packages.api.identity import repository as repo
+        repo.get_user_permissions.side_effect = self._perms_by_user(
+            {"users.read", "users.manage"}, {"users.manage", "emergency.manage"})
+
+        resp = self.client.post(
+            "/api/v1/identity/users/target/reset-password",
+            json={"auto_generate_password": True},
+            headers=self._auth(self._token()),
+        )
+        self.assertEqual(resp.status_code, 403, resp.text)
+        self.assertEqual(resp.json()["detail"], {
+            "code": "TARGET_EXCEEDS_ACTOR_PERMISSIONS",
+            "message": "Cannot manage a user whose permissions exceed your own",
+        })
+        self.assertNotIn("one_time_password", resp.text)
+        self.assertNotIn("emergency.manage", resp.text)
+        repo.update_local_credential_password.assert_not_called()
+        kw = repo.create_audit_event.call_args.kwargs
+        self.assertEqual(kw["action"], "user.password_reset_denied")
+        self.assertEqual(kw["actor_user_id"], "u-admin")
+        self.assertEqual(kw["target_id"], "target")
+        self.assertEqual(kw["details"], {"reason": "exceeds_actor_permissions"})
+
+    def test_reset_break_glass_requires_global_system_admin(self):
+        """RM-STAB-022: a break-glass account is reset by a global system_admin
+        only - even if the permission sets happen to match."""
+        self._mock_auth_and_repo(
+            get_user_detail=_make_user("target", "active", "local_break_glass",
+                                       is_break_glass=True),
+            user_has_global_role=False,
+            create_audit_event=None,
+        )
+        from packages.api.identity import repository as repo
+
+        resp = self.client.post(
+            "/api/v1/identity/users/target/reset-password",
+            json={"auto_generate_password": True},
+            headers=self._auth(self._token()),
+        )
+        self.assertEqual(resp.status_code, 403, resp.text)
+        self.assertEqual(resp.json()["detail"]["code"], "TARGET_EXCEEDS_ACTOR_PERMISSIONS")
+        self.assertEqual(repo.user_has_global_role.call_args.args[1:], ("u-admin", "system_admin"))
+        repo.update_local_credential_password.assert_not_called()
+        self.assertEqual(
+            repo.create_audit_event.call_args.kwargs["details"],
+            {"reason": "break_glass_requires_system_admin"},
+        )
+
+    def test_reset_break_glass_by_global_system_admin_ok(self):
+        self._mock_auth_and_repo(
+            get_user_detail=_make_user("target", "active", "local_break_glass",
+                                       is_break_glass=True),
+            user_has_global_role=True,
+        )
+        resp = self.client.post(
+            "/api/v1/identity/users/target/reset-password",
+            json={"auto_generate_password": True},
+            headers=self._auth(self._token()),
+        )
+        self.assertEqual(resp.status_code, 200, resp.text)
 
 
 # ---------------------------------------------------------------------------

@@ -126,8 +126,8 @@ def require_permission(permission_code: str):
     """Factory: return a FastAPI dependency that enforces a specific permission.
 
     Uses get_current_active_user (JWT + active user check), then loads
-    the user's permissions via their roles and verifies the required
-    permission is present.
+    the permissions of the user's global (unscoped) roles and verifies the
+    required permission is present.  Scoped roles do not count here.
 
     Returns 403 if authenticated but missing the permission.
     Deny by default - no permission -> 403.
@@ -137,7 +137,9 @@ def require_permission(permission_code: str):
         claims: dict = Depends(get_current_active_user),
         db=Depends(get_db, scope="function"),
     ) -> dict:
-        perms = await repository.get_user_permissions(db, claims["sub"])
+        perms = await repository.get_user_permissions(
+            db, claims["sub"], global_only=True
+        )
         if permission_code not in perms:
             raise HTTPException(
                 status_code=403,

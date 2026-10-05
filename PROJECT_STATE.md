@@ -2,7 +2,25 @@
 
 **Last updated:** 2026-08-31 (OD-042: r428 — целевой контракт, RM-GOV-012 approved; implementation_mode у 101 REQ; RM-GOV-012 выравнивание, OD-041 пауза walkthrough; RM-GOV-010-A/B; статус документа ACCEPTED, не APPROVED; не закоммичено)
 
-**RF-GOV-0 (2026-10-05, PR в develop ждёт merge владельцем) — новые правила работы: `CLAUDE.md` владельца и аудит управления приняты в git.**
+**RF-12 / RM-STAB-022 (2026-10-05, PR в develop ждёт merge владельцем) — управление ролями и учётками не даёт эскалации.**
+Закрывает P0-6, P1-11.a, T2 ревью `main @ 8ad0228` (mini-design одобрен владельцем 2026-10-05; расширения — его решениями после находок
+ревью). Было: `require_permission` (51 место) принимал права scoped-ролей как глобальные — scoped `system_admin` назначал себе глобальную
+роль; `assign_role`/`remove_role` без запрета назначить себе и роль выше своей, без защиты последнего администратора;
+`security_admin` сбрасывал пароль break-glass и входил как `system_admin`; счётчик администраторов считал строки и scoped-назначения.
+Стало: `require_permission` учитывает только назначения без scope (`/auth/me` не менялся); назначение и снятие роли — 403 себе и роли,
+права которой ⊄ глобальных прав актора; последний `system_admin` и последний break-glass с этой ролью — 409, счёт под advisory-блокировкой
+(в т.ч. деактивация); сброс пароля, реактивация и деактивация — 403, если глобальные права цели выше прав актора, break-glass — только
+`system_admin`; отказы пишутся в аудит и коммитятся до ответа. Только бэкенд: порталы не менялись (кнопки admin-web у `security_admin`
+для чужих ролей отвечают 403). Доказательство: `tests/behavioral/test_rm_stab_022_role_escalation.py` 43/43 под `retail_media_app`
+NOBYPASSRLS (на коде develop — 33 failed), behavioral 552 passed, python-tests 2001 passed, тесты гонок падают без блокировки;
+3 круга ревью (`code-reviewer`, `test-auditor`, `security-reviewer` — APPROVE WITH COMMENTS). RM-STAB-022 — `in_progress` до merge и CI
+develop; RM-STAB-021 → `done` (решение владельца 2026-10-05); RM-STAB-023 заведена `planned` (юнит-тесты `tests/test_local_stand.py`
+выполняют настоящий `docker compose stop` стенда). Долг/риск: `PUT /auth/ad-settings` под `users.manage` — `security_admin` может войти
+под AD-учёткой через свой LDAP (следующий этап, решение владельца); scoped-роль действует на маршрутах `require_scoped_permission`
+(P0-8, отдельный этап); сброс пароля scoped-учётке даёт её scoped-права; `security_admin` по сиду управляет только ролью
+`security_admin`. Запись: `docs/remediation/journal.md`.
+
+**RF-GOV-0 (2026-10-05, merged PR #16 → `develop @ 5cf482b`; push-run develop 37309852950 success 42/42) — новые правила работы: `CLAUDE.md` владельца и аудит управления приняты в git.**
 Документальный этап, без задачи roadmap (решение владельца 2026-10-05); код, тесты, CI, compose, `AGENTS.md`, guard, `roadmap.yaml` и реестр не
 менялись. `CLAUDE.md` переписан владельцем: единая точка входа, таблица «вопрос → источник», цикл этапа, матрица субагентов-ревьюеров, память
 между сессиями, ведение roadmap; блок Truth Priority сохранён дословно (его сверяет guard). Основание —
