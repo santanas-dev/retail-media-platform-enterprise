@@ -2,6 +2,20 @@
 
 **Last updated:** 2026-08-31 (OD-042: r428 — целевой контракт, RM-GOV-012 approved; implementation_mode у 101 REQ; RM-GOV-012 выравнивание, OD-041 пауза walkthrough; RM-GOV-010-A/B; статус документа ACCEPTED, не APPROVED; не закоммичено)
 
+**RF-GOV-0 (2026-10-05, PR в develop ждёт merge владельцем) — новые правила работы: `CLAUDE.md` владельца и аудит управления приняты в git.**
+Документальный этап, без задачи roadmap (решение владельца 2026-10-05); код, тесты, CI, compose, `AGENTS.md`, guard, `roadmap.yaml` и реестр не
+менялись. `CLAUDE.md` переписан владельцем: единая точка входа, таблица «вопрос → источник», цикл этапа, матрица субагентов-ревьюеров, память
+между сессиями, ведение roadmap; блок Truth Priority сохранён дословно (его сверяет guard). Основание —
+`docs/audit/2026-10-05-claude-governance-review.md` (14 находок G-1…G-14, ожидают решения владельца; этап закрывает G-5 и G-6 в части
+`CLAUDE.md`, G-2 — частично). Попутно: RF-11 смержен (PR #15 → `develop @ e2e3f63`, push-run 37295565157 → success); RM-STAB-021 остаётся
+`in_progress` — `done` вносится следующим этапом с кодом (решение владельца 2026-10-05). Доказательство: `roadmap-governance-guard` PASS,
+self-test 55/55, границы импорта чисты (локально, `.venv`); остальные инварианты — по CI `develop @ e2e3f63` (код не менялся); `code-reviewer` —
+2 круга, APPROVE WITH COMMENTS. Долг — следующий документальный этап вместе с `AGENTS.md` и guard: замечания ревью к `CLAUDE.md`
+(отпечаток дерева и выбор условных субагентов не видят неотслеживаемые файлы; триггеры `security-reviewer` не покрывают
+`packages/domain/repository.py`/`database.py`; текст не различает исполнителя и ревьюеров; прочие — журнал RF-GOV-0), шапки `journal.md`,
+`stages.md`, `docs/audit/README.md` и разделы `AGENTS.md`, расходящиеся с новым `CLAUDE.md`. Файлы процесса вне git (`CLAUDE.local.md`,
+`.claude/agents/`, `.claude/skills/`) в этап не входят и ревьюеру не видны.
+
 **RF-11 / RM-STAB-021 (2026-10-03, PR в develop ждёт merge владельцем) — надёжность NATS: JetStream на томе, provisioning обязателен до relay.**
 Закрывает риски RF-10, ожидавшие решения владельца (решение 2026-10-01). Было: NATS в pilot/phase1-compose запускался без `-sd`, JetStream
 писал в `/tmp/nats/jetstream` контейнера — том `nats_jetstream` пустовал, streams и неподтверждённые сообщения терялись при каждом

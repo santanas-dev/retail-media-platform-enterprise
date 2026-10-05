@@ -135,7 +135,7 @@
 
 | Поле | Значение |
 |---|---|
-| Статус | finished |
+| Статус | merged |
 | Цель | JetStream хранит streams и сообщения в смонтированном томе и переживает пересоздание контейнера NATS; воркер не запускает relay без проверенных streams |
 | Задачи roadmap.yaml | RM-STAB-021 (новая, стадия S); попутно RM-STAB-020 → `done` (решение владельца 2026-10-01) |
 | Находки | ревью RF-10 круг 3: 🟠 provisioning при сбое; наблюдение `-sd /data` (подтверждено на стенде) |
@@ -146,6 +146,22 @@
 | Входные условия | RF-10 смержен (PR #14, `develop @ 2151153`) |
 | Гейт | локально pilot-стек: publish в RMP → `up --force-recreate nats` → stream и сообщение на месте (на compose develop — пропадают); unit `tests/test_rm_stab_021_nats_durability.py`; behavioral (I-1, I-3, I-4); python-tests; I-0; I-2; `docker compose config` pilot/phase1; `roadmap-governance-guard` + `--self-test`; ruff |
 | Канон, который меняется | `roadmap.yaml` (RM-STAB-021; RM-STAB-020 → `done`) + генерация; checkpoint `PROJECT_STATE.md` |
+
+## RF-GOV-0 — Новые правила работы (документальный; решение владельца 2026-10-05)
+
+| Поле | Значение |
+|---|---|
+| Статус | finished |
+| Цель | Новый `CLAUDE.md` владельца (единая точка входа: источники по вопросам, цикл этапа, матрица субагентов, память между сессиями, ведение roadmap) и аудит управления 2026-10-05 приняты в git; guard документов зелёный |
+| Задачи roadmap.yaml | — (работа над процессом и документами; без задачи roadmap — решение владельца 2026-10-05) |
+| Находки | `docs/audit/2026-10-05-claude-governance-review.md`: G-5, G-6 (в части `CLAUDE.md`); G-2 — частично: таблица «вопрос → источник» добавлена, линейный блок Truth Priority сохранён до этапа с guard и `AGENTS.md` |
+| Скоуп (в) | `CLAUDE.md` и `docs/audit/2026-10-05-claude-governance-review.md` — правки владельца, вход этапа, агент их содержание не меняет; карточка в `stages.md`; `journal.md`; короткий checkpoint в `PROJECT_STATE.md`; строка в `docs/audit/README.md` |
+| Скоуп (вне) | Код, тесты, CI, compose; `scripts/ci/roadmap-governance-guard.py` и его self-test; `AGENTS.md`; `roadmap.yaml` и реестр (RM-STAB-021 → `done` — в следующем этапе с кодом); `CLAUDE.local.md`, `.claude/` (вне git); каталог `o/`; шапки `journal.md`/`stages.md`, правила `docs/audit/README.md` — следующий документальный этап вместе с `AGENTS.md` и guard |
+| Protected Boundaries | нет |
+| mini-design | нет |
+| Входные условия | RF-11 смержен (PR #15, `develop @ e2e3f63`); карточка подтверждена владельцем 2026-10-05 |
+| Гейт | `roadmap-governance-guard` PASS + `--self-test` 55/55 (под `.venv`); I-0; `git diff --name-only origin/develop` + неотслеживаемые = только файлы скоупа (`o/` не входит); `code-reviewer` и, на `/finish`, `canon-auditor` — APPROVE*; CI `Phase 1 — Quality Gates` на PR |
+| Канон, который меняется | `CLAUDE.md`; checkpoint `PROJECT_STATE.md` |
 
 ## Остальное
 
