@@ -1192,26 +1192,106 @@ class TestUserRoleManagement(unittest.TestCase):
 
     # ── PUT /users/{id}/roles ──
 
+    @patch("packages.domain.repository.get_role_permission_codes", new_callable=AsyncMock)
     @patch("packages.domain.repository.get_user_detail", new_callable=AsyncMock)
     @patch("packages.domain.repository.find_role_by_code", new_callable=AsyncMock)
     @patch("packages.domain.repository.assign_user_role", new_callable=AsyncMock)
     @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
-    def test_assign_role_success(self, mock_audit, mock_assign, mock_find_role, mock_get_user):
-        """Assign role returns 201 + writes audit event."""
+    def test_assign_role_success(self, mock_audit, mock_assign, mock_find_role,
+                                 mock_get_user, mock_role_perms):
+        """Assign a role within the actor's permissions to ANOTHER user → 201 + audit."""
         _setup_role_mgmt_mocks(self, perms={"users.read", "roles.manage"})
-        mock_get_user.return_value = _make_user()
+        mock_get_user.return_value = _make_user(id="u-2")
         mock_find_role.return_value = _make_role(id="r-2", code="operator", name="Operator")
-        mock_assign.return_value = _MockRoleAssignment(user_id="u-1", role_id="r-2")
+        mock_role_perms.return_value = {"users.read"}
+        mock_assign.return_value = _MockRoleAssignment(user_id="u-2", role_id="r-2")
+
+        resp = TestClient(_get_app()).put(
+            "/api/v1/identity/users/u-2/roles",
+            json={"role_code": "operator"},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.json()["role_code"], "operator")
+        self.assertEqual(resp.json()["user_id"], "u-2")
+        self.assertEqual(mock_assign.call_args.kwargs["user_id"], "u-2")
+        self.assertEqual(mock_assign.call_args.kwargs["role_id"], "r-2")
+        mock_audit.assert_called_once()
+        self.assertEqual(mock_audit.call_args.kwargs["action"], "user.role_assigned")
+        self.assertEqual(mock_audit.call_args.kwargs["actor_user_id"], "u-1")
+        self.assertEqual(mock_audit.call_args.kwargs["target_id"], "u-2")
+
+    @patch("packages.domain.repository.get_role_permission_codes", new_callable=AsyncMock)
+    @patch("packages.domain.repository.get_user_detail", new_callable=AsyncMock)
+    @patch("packages.domain.repository.find_role_by_code", new_callable=AsyncMock)
+    @patch("packages.domain.repository.assign_user_role", new_callable=AsyncMock)
+    @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
+    def test_assign_role_to_self_forbidden(self, mock_audit, mock_assign, mock_find_role,
+                                           mock_get_user, mock_role_perms):
+        """RM-STAB-022: assigning a role to yourself → 403, audited, nothing assigned."""
+        _setup_role_mgmt_mocks(self, perms={"users.read", "roles.manage"})
+        mock_get_user.return_value = _make_user(id="u-1")
+        mock_find_role.return_value = _make_role(id="r-2", code="operator", name="Operator")
+        mock_role_perms.return_value = set()
 
         resp = TestClient(_get_app()).put(
             "/api/v1/identity/users/u-1/roles",
             json={"role_code": "operator"},
             headers=_auth(_token()),
         )
-        self.assertEqual(resp.status_code, 201)
-        self.assertEqual(resp.json()["role_code"], "operator")
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.json()["detail"], {
+            "code": "SELF_ROLE_ASSIGNMENT_FORBIDDEN",
+            "message": "Cannot assign a role to yourself",
+        })
+        mock_assign.assert_not_called()
         mock_audit.assert_called_once()
-        self.assertEqual(mock_audit.call_args.kwargs["action"], "user.role_assigned")
+        kw = mock_audit.call_args.kwargs
+        self.assertEqual(kw["action"], "user.role_assign_denied")
+        self.assertEqual(kw["actor_user_id"], "u-1")
+        self.assertEqual(kw["target_id"], "u-1")
+        self.assertEqual(kw["details"], {
+            "role_code": "operator", "scope_type": None, "scope_id": None,
+            "reason": "self_assign",
+        })
+
+    @patch("packages.domain.repository.get_role_permission_codes", new_callable=AsyncMock)
+    @patch("packages.domain.repository.get_user_detail", new_callable=AsyncMock)
+    @patch("packages.domain.repository.find_role_by_code", new_callable=AsyncMock)
+    @patch("packages.domain.repository.assign_user_role", new_callable=AsyncMock)
+    @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
+    def test_assign_role_above_actor_forbidden(self, mock_audit, mock_assign, mock_find_role,
+                                               mock_get_user, mock_role_perms):
+        """RM-STAB-022: a role carrying a permission the actor lacks → 403, audited.
+
+        The response does not list the missing permissions.
+        """
+        _, mock_perms = _setup_role_mgmt_mocks(self, perms={"users.read", "roles.manage"})
+        mock_get_user.return_value = _make_user(id="u-2")
+        mock_find_role.return_value = _make_role(id="r-1", code="system_admin")
+        mock_role_perms.return_value = {"users.read", "emergency.manage"}
+
+        resp = TestClient(_get_app()).put(
+            "/api/v1/identity/users/u-2/roles",
+            json={"role_code": "system_admin"},
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.json()["detail"], {
+            "code": "ROLE_EXCEEDS_ACTOR_PERMISSIONS",
+            "message": "Cannot assign a role that exceeds your own permissions",
+        })
+        self.assertNotIn("emergency.manage", resp.text)
+        mock_assign.assert_not_called()
+        mock_audit.assert_called_once()
+        kw = mock_audit.call_args.kwargs
+        self.assertEqual(kw["action"], "user.role_assign_denied")
+        self.assertEqual(kw["target_id"], "u-2")
+        self.assertEqual(kw["details"]["reason"], "exceeds_actor_permissions")
+        self.assertEqual(kw["details"]["role_code"], "system_admin")
+        # Only global (unscoped) permissions of the actor are compared.
+        for call in mock_perms.call_args_list:
+            self.assertEqual(call.kwargs, {"global_only": True})
 
     @patch("packages.domain.repository.get_user_detail", new_callable=AsyncMock)
     def test_assign_role_user_not_found(self, mock_get_user):
@@ -1271,23 +1351,139 @@ class TestUserRoleManagement(unittest.TestCase):
 
     # ── DELETE /users/{id}/roles/{assignment_id} ──
 
-    @patch("packages.domain.repository.get_user_role_assignment", new_callable=AsyncMock)
-    @patch("packages.domain.repository.remove_user_role", new_callable=AsyncMock)
-    @patch("packages.domain.repository.create_audit_event", new_callable=AsyncMock)
-    def test_remove_role_success(self, mock_audit, mock_remove, mock_get_assignment):
-        """Remove role returns 204 + writes audit event."""
+    def _remove_role_mocks(self, *, assignment, role, role_perms, target=None,
+                           admins=2, break_glass_admins=2):
+        """Patch the repository calls remove_role makes; returns the mocks by name."""
+        values = {
+            "get_user_role_assignment": assignment,
+            "get_role": role,
+            "get_role_permission_codes": role_perms,
+            "get_user_detail": target or _make_user(id=assignment.user_id),
+            "lock_admin_membership": None,
+            "count_active_admin_users": admins,
+            "count_active_break_glass_admin_users": break_glass_admins,
+            "remove_user_role": True,
+            "create_audit_event": None,
+        }
+        mocks = {}
+        for name, value in values.items():
+            patcher = patch(f"packages.domain.repository.{name}", new_callable=AsyncMock)
+            mocks[name] = patcher.start()
+            mocks[name].return_value = value
+            self.addCleanup(patcher.stop)
+        return mocks
+
+    def test_remove_role_success(self):
+        """Remove a system_admin role while another admin remains → 204 + audit."""
         _setup_role_mgmt_mocks(self, perms={"users.read", "roles.manage"})
-        mock_get_assignment.return_value = _MockRoleAssignment(
-            id="ur-1", user_id="u-1", role_id="r-1")
-        mock_remove.return_value = True
+        m = self._remove_role_mocks(
+            assignment=_MockRoleAssignment(id="ur-2", user_id="u-2", role_id="r-1"),
+            role=_make_role(id="r-1", code="system_admin"),
+            role_perms={"users.read", "roles.manage"},
+            admins=2,
+        )
+
+        resp = TestClient(_get_app()).delete(
+            "/api/v1/identity/users/u-2/roles/ur-2",
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 204)
+        self.assertEqual(m["remove_user_role"].call_args.args[1], "ur-2")
+        m["lock_admin_membership"].assert_called_once()
+        m["create_audit_event"].assert_called_once()
+        kw = m["create_audit_event"].call_args.kwargs
+        self.assertEqual(kw["action"], "user.role_removed")
+        self.assertEqual(kw["target_id"], "u-2")
+
+    def test_remove_role_above_actor_forbidden(self):
+        """RM-STAB-022: cannot remove a role carrying permissions the actor lacks."""
+        _setup_role_mgmt_mocks(self, perms={"users.read", "roles.manage"})
+        m = self._remove_role_mocks(
+            assignment=_MockRoleAssignment(id="ur-2", user_id="u-2", role_id="r-1"),
+            role=_make_role(id="r-1", code="system_admin"),
+            role_perms={"users.read", "emergency.manage"},
+        )
+
+        resp = TestClient(_get_app()).delete(
+            "/api/v1/identity/users/u-2/roles/ur-2",
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.json()["detail"], {
+            "code": "ROLE_EXCEEDS_ACTOR_PERMISSIONS",
+            "message": "Cannot remove a role that exceeds your own permissions",
+        })
+        m["remove_user_role"].assert_not_called()
+        kw = m["create_audit_event"].call_args.kwargs
+        self.assertEqual(kw["action"], "user.role_remove_denied")
+        self.assertEqual(kw["details"]["reason"], "exceeds_actor_permissions")
+
+    def test_remove_last_system_admin_role_conflict(self):
+        """RM-STAB-022: the last active global system_admin keeps the role - 409,
+        also when the actor removes their own role."""
+        _setup_role_mgmt_mocks(self, perms={"users.read", "roles.manage"})
+        m = self._remove_role_mocks(
+            assignment=_MockRoleAssignment(id="ur-1", user_id="u-1", role_id="r-1"),
+            role=_make_role(id="r-1", code="system_admin"),
+            role_perms={"users.read", "roles.manage"},
+            admins=1,
+        )
 
         resp = TestClient(_get_app()).delete(
             "/api/v1/identity/users/u-1/roles/ur-1",
             headers=_auth(_token()),
         )
+        self.assertEqual(resp.status_code, 409)
+        self.assertEqual(resp.json()["detail"]["code"], "LAST_SYSTEM_ADMIN")
+        m["remove_user_role"].assert_not_called()
+        m["lock_admin_membership"].assert_called_once()
+        kw = m["create_audit_event"].call_args.kwargs
+        self.assertEqual(kw["action"], "user.role_remove_denied")
+        self.assertEqual(kw["details"]["reason"], "last_system_admin")
+
+    def test_remove_last_break_glass_admin_role_conflict(self):
+        """RM-STAB-022: the last active break-glass admin keeps system_admin - 409."""
+        _setup_role_mgmt_mocks(self, perms={"users.read", "roles.manage"})
+        m = self._remove_role_mocks(
+            assignment=_MockRoleAssignment(id="ur-2", user_id="u-2", role_id="r-1"),
+            role=_make_role(id="r-1", code="system_admin"),
+            role_perms={"users.read"},
+            target=_make_user(id="u-2", is_break_glass=True),
+            admins=3,
+            break_glass_admins=1,
+        )
+
+        resp = TestClient(_get_app()).delete(
+            "/api/v1/identity/users/u-2/roles/ur-2",
+            headers=_auth(_token()),
+        )
+        self.assertEqual(resp.status_code, 409)
+        self.assertEqual(resp.json()["detail"]["code"], "LAST_BREAK_GLASS_ADMIN")
+        m["remove_user_role"].assert_not_called()
+        self.assertEqual(
+            m["create_audit_event"].call_args.kwargs["details"]["reason"],
+            "last_break_glass_admin",
+        )
+
+    def test_remove_scoped_system_admin_role_not_protected(self):
+        """RM-STAB-022: a scoped system_admin assignment is not an administrator."""
+        _setup_role_mgmt_mocks(self, perms={"users.read", "roles.manage"})
+        m = self._remove_role_mocks(
+            assignment=_MockRoleAssignment(
+                id="ur-2", user_id="u-2", role_id="r-1",
+                scope_type="advertiser", scope_id="org-1"),
+            role=_make_role(id="r-1", code="system_admin"),
+            role_perms={"users.read"},
+            admins=1,
+        )
+
+        resp = TestClient(_get_app()).delete(
+            "/api/v1/identity/users/u-2/roles/ur-2",
+            headers=_auth(_token()),
+        )
         self.assertEqual(resp.status_code, 204)
-        mock_audit.assert_called_once()
-        self.assertEqual(mock_audit.call_args.kwargs["action"], "user.role_removed")
+        m["count_active_admin_users"].assert_not_called()
+        m["remove_user_role"].assert_called_once()
 
     @patch("packages.domain.repository.get_user_role_assignment", new_callable=AsyncMock)
     def test_remove_role_assignment_not_found(self, mock_get_assignment):

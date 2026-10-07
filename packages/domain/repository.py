@@ -153,14 +153,15 @@ async def get_advertiser_org_for_user(
 
 
 async def get_user_permissions(
-    session: AsyncSession, user_id: str
+    session: AsyncSession, user_id: str, *, global_only: bool = False
 ) -> set[str]:
     """Return the set of permission codes granted to a user via their roles.
 
     Joins: UserRole → RolePermission → Permission.
-    Includes permissions from ALL user role assignments — both global (unscoped)
-    and scoped.  Tenant-level access control is enforced separately by
-    resolve_scope_context / RLS (see packages.domain.scopes).
+    By default includes permissions from ALL role assignments, global and
+    scoped (the portal builds its UI from this set).  ``global_only=True``
+    counts unscoped assignments only: a scoped role never grants global
+    access (ADR-009 §1), so ``require_permission`` must use this form.
     """
     stmt = (
         select(Permission.code)
@@ -171,6 +172,40 @@ async def get_user_permissions(
             UserRole.user_id == user_id,
         )
         .distinct()
+    )
+    if global_only:
+        stmt = stmt.where(UserRole.scope_type.is_(None))
+    result = await session.execute(stmt)
+    return {row[0] for row in result}
+
+
+async def user_has_global_role(
+    session: AsyncSession, user_id: str, role_code: str
+) -> bool:
+    """True if the user holds the role as a global (unscoped) assignment."""
+    stmt = (
+        select(func.count())
+        .select_from(UserRole)
+        .join(Role, Role.id == UserRole.role_id)
+        .where(
+            UserRole.user_id == user_id,
+            UserRole.scope_type.is_(None),
+            Role.code == role_code,
+        )
+    )
+    result = await session.execute(stmt)
+    return (result.scalar() or 0) > 0
+
+
+async def get_role_permission_codes(
+    session: AsyncSession, role_id: str
+) -> set[str]:
+    """Return the permission codes carried by a role."""
+    stmt = (
+        select(Permission.code)
+        .select_from(RolePermission)
+        .join(Permission, Permission.id == RolePermission.permission_id)
+        .where(RolePermission.role_id == role_id)
     )
     result = await session.execute(stmt)
     return {row[0] for row in result}
@@ -4058,16 +4093,51 @@ async def count_active_break_glass_users(session: AsyncSession) -> int:
     return result.scalar() or 0
 
 
+_ADMIN_MEMBERSHIP_LOCK_KEY = 22  # advisory-lock key, RM-STAB-022
+
+
+async def lock_admin_membership(session: AsyncSession) -> None:
+    """Serialize changes to the set of active system admins.
+
+    Transaction-scoped advisory lock: taken before the last-admin counts so
+    two concurrent removals/deactivations cannot both see "one admin left
+    over".  The count that follows runs as a new statement and therefore
+    sees whatever the previous lock holder committed.
+    """
+    await session.execute(
+        select(func.pg_advisory_xact_lock(_ADMIN_MEMBERSHIP_LOCK_KEY))
+    )
+
+
 async def count_active_admin_users(session: AsyncSession) -> int:
-    """Count users with system_admin role and status='active' (approximate)."""
+    """Count active users holding a global (unscoped) system_admin role."""
     stmt = (
-        select(func.count())
+        select(func.count(func.distinct(User.id)))
         .select_from(User)
         .join(UserRole, UserRole.user_id == User.id)
         .join(Role, Role.id == UserRole.role_id)
         .where(
             User.status == "active",
             Role.code == "system_admin",
+            UserRole.scope_type.is_(None),
+        )
+    )
+    result = await session.execute(stmt)
+    return result.scalar() or 0
+
+
+async def count_active_break_glass_admin_users(session: AsyncSession) -> int:
+    """Count active break-glass users holding a global system_admin role."""
+    stmt = (
+        select(func.count(func.distinct(User.id)))
+        .select_from(User)
+        .join(UserRole, UserRole.user_id == User.id)
+        .join(Role, Role.id == UserRole.role_id)
+        .where(
+            User.status == "active",
+            User.is_break_glass.is_(True),
+            Role.code == "system_admin",
+            UserRole.scope_type.is_(None),
         )
     )
     result = await session.execute(stmt)
@@ -4120,6 +4190,11 @@ async def get_user_role_assignment(
     stmt = select(UserRole).where(UserRole.id == assignment_id)
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def get_role(session: AsyncSession, role_id: str) -> Role | None:
+    """Get a role by its id."""
+    return await session.get(Role, role_id)
 
 
 async def remove_user_role(session: AsyncSession, assignment_id: str) -> bool:

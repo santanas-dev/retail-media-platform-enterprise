@@ -151,7 +151,7 @@
 
 | Поле | Значение |
 |---|---|
-| Статус | finished |
+| Статус | merged |
 | Цель | Новый `CLAUDE.md` владельца (единая точка входа: источники по вопросам, цикл этапа, матрица субагентов, память между сессиями, ведение roadmap) и аудит управления 2026-10-05 приняты в git; guard документов зелёный |
 | Задачи roadmap.yaml | — (работа над процессом и документами; без задачи roadmap — решение владельца 2026-10-05) |
 | Находки | `docs/audit/2026-10-05-claude-governance-review.md`: G-5, G-6 (в части `CLAUDE.md`); G-2 — частично: таблица «вопрос → источник» добавлена, линейный блок Truth Priority сохранён до этапа с guard и `AGENTS.md` |
@@ -162,6 +162,22 @@
 | Входные условия | RF-11 смержен (PR #15, `develop @ e2e3f63`); карточка подтверждена владельцем 2026-10-05 |
 | Гейт | `roadmap-governance-guard` PASS + `--self-test` 55/55 (под `.venv`); I-0; `git diff --name-only origin/develop` + неотслеживаемые = только файлы скоупа (`o/` не входит); `code-reviewer` и, на `/finish`, `canon-auditor` — APPROVE*; CI `Phase 1 — Quality Gates` на PR |
 | Канон, который меняется | `CLAUDE.md`; checkpoint `PROJECT_STATE.md` |
+
+## RF-12 — Управление ролями не даёт эскалации (решение владельца 2026-10-05)
+
+| Поле | Значение |
+|---|---|
+| Статус | finished |
+| Цель | Scoped-роль не даёт глобальных прав на маршрутах `require_permission`; нельзя назначить роль себе или выше своей; нельзя снять роль с последнего администратора; нельзя сбросить пароль, реактивировать или деактивировать учётку с правами выше своих — доказано на PostgreSQL под `retail_media_app` |
+| Задачи roadmap.yaml | RM-STAB-022 (новая, стадия S; решение владельца 2026-10-05); попутно RM-STAB-021 → `done` (решение владельца 2026-10-05, вариант «а») |
+| Находки | P0-6, P1-11.a, T2 |
+| Скоуп (в) | `packages/api/dependencies.py` (`require_permission`), `packages/domain/repository.py` (`get_user_permissions`), `packages/api/identity_routes/users.py` (`assign_role`, `remove_role`, `deactivate_user`; расширение по решениям владельца 2026-10-05 после «СТОП-А» и ревью круга 2: `reset_password`, `activate_user`, `deactivate_user` — запрет действовать над учёткой, чьи глобальные права не входят в права актора, break-glass — только `system_admin`); новый behavioral-тест `tests/behavioral/test_rm_stab_022_role_escalation.py` и статический `tests/test_rm_stab_022_advertiser_portal_routes.py`; замена тестов, закрепляющих дефект (принципиальное согласие владельца 2026-10-05; окончательное «да» — после списка в мини-дизайне: каждый заменённый тест строже прежнего, ни один не удаляется без замены); `roadmap.yaml` и генерация; RF-GOV-0 → `merged` |
+| Скоуп (вне) | P0-8 и T3 (права по конкретной организации — отдельный этап после RF-12), `PUT /auth/ad-settings` (отдельный этап с мини-дизайном — решение владельца 2026-10-05), T7, P1-11.b (фронтенд), RM-STAB-004, RM-STAB-015, миграции, порталы, CI |
+| Protected Boundaries | нет |
+| mini-design | да — меняется контракт прав; одобрен владельцем 2026-10-05 с дополнениями А–Д и расширениями (журнал RF-12) |
+| Входные условия | PR #16 (RF-GOV-0) смержен — `develop @ 5cf482b`; push-run develop 37309852950 → success 42/42 |
+| Гейт | job behavioral под `retail_media_app` (новый тест `tests/behavioral/test_rm_stab_022_role_escalation.py`, I-1, I-3, I-4); job python-tests; I-0; I-2 и I-5 — по CI или записи журнала; `roadmap-governance-guard` + `--self-test`; ruff по изменённым файлам |
+| Канон, который меняется | `roadmap.yaml` (RM-STAB-022; RM-STAB-021 → `done`; RM-STAB-023 — новая `planned`, решение владельца 2026-10-05) + генерация; checkpoint `PROJECT_STATE.md` |
 
 ## Остальное
 

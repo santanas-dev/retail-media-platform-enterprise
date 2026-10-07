@@ -7,6 +7,11 @@ Proof that under NOBYPASSRLS:
   - approve/reject works for accessible creatives (no 404)
   - Cross-tenant access is denied
   - Admin sees all
+  - RM-STAB-022: the moderation/approval routes need a GLOBAL (unscoped) role;
+    the same permissions held through a scoped assignment give 403
+
+The moderator is a non-admin with a global fixture role; RLS narrows what it
+sees to its advertiser membership (Org A).
 
 Requires: RUN_BEHAVIORAL_TESTS=1, PostgreSQL, migrations applied.
 """
@@ -72,6 +77,10 @@ CAMPAIGN_A_ID = "beh-c1-camp-a-00000000000000001"
 ADMIN_USER = "beh-c1-admin-0000000000000001"
 ADMIN_LC = "beh-c1-alc-000000000000000001"
 ADMIN_UR = "beh-c1-aur-000000000000000001"
+MOD_GLOBAL_UR = "beh-c1-ur-0000000000000000002"
+SCOPED_MOD_USER = "beh-c1-smod-00000000000000001"
+SCOPED_MOD_UR = "beh-c1-ur-0000000000000000003"
+SCOPED_MOD_AUM = "beh-c1-aum-000000000000000002"
 MOD_USERNAME = "beh-c1-mod"
 
 
@@ -150,23 +159,34 @@ def c1_fixtures():
       VALUES ('{ADMIN_LC}', '{ADMIN_USER}', 'local_advertiser', '{ph}', 'active')
     ; INSERT INTO user_roles (id, user_id, role_id)
       SELECT '{ADMIN_UR}', '{ADMIN_USER}', id FROM roles WHERE code='system_admin'
-    -- Grant creatives.moderate + campaigns.approve to advertiser role (scoped moderator)
+    -- Fixture-only moderator role: creatives.moderate + campaigns.approve.
+    -- Not an admin role, not part of the product role model.
+    ; INSERT INTO roles (id, code, name, description, is_system)
+      SELECT '{MOD_ROLE}', 'beh_c1_moderator', 'Behavioural C1 moderator',
+             'Fixture-only moderator', false
+      WHERE NOT EXISTS (SELECT 1 FROM roles WHERE code='beh_c1_moderator')
     ; INSERT INTO role_permissions (id, role_id, permission_id)
-      SELECT 'rp-c1-mod-cr', r.id, p.id
+      SELECT 'rp-c1-'||p.code, r.id, p.id
       FROM roles r CROSS JOIN permissions p
-      WHERE r.code='advertiser' AND p.code='creatives.moderate'
+      WHERE r.code='beh_c1_moderator'
+        AND p.code IN ('creatives.moderate', 'campaigns.approve')
       AND NOT EXISTS (
         SELECT 1 FROM role_permissions
         WHERE role_id=r.id AND permission_id=p.id
       )
-    ; INSERT INTO role_permissions (id, role_id, permission_id)
-      SELECT 'rp-c1-ap-camp', r.id, p.id
-      FROM roles r CROSS JOIN permissions p
-      WHERE r.code='advertiser' AND p.code='campaigns.approve'
-      AND NOT EXISTS (
-        SELECT 1 FROM role_permissions
-        WHERE role_id=r.id AND permission_id=p.id
-      )
+    -- Moderator - the role is GLOBAL (unscoped), membership narrows RLS to Org A
+    ; INSERT INTO user_roles (id, user_id, role_id)
+      SELECT '{MOD_GLOBAL_UR}', '{MOD_USER}', id FROM roles WHERE code='beh_c1_moderator'
+    -- Same permissions through a SCOPED assignment only (RM-STAB-022 -> 403)
+    ; INSERT INTO users (id, code, username, email, display_name, auth_provider, status)
+      VALUES ('{SCOPED_MOD_USER}', 'C1-SMOD', 'beh-c1-smod', 'c1-smod@t.local',
+              'C1 Scoped Moderator', 'local_advertiser', 'active')
+    ; INSERT INTO user_roles (id, user_id, role_id, scope_type, scope_id)
+      SELECT '{SCOPED_MOD_UR}', '{SCOPED_MOD_USER}', id, 'advertiser', '{ORG_A}'
+      FROM roles WHERE code='beh_c1_moderator'
+    ; INSERT INTO advertiser_user_memberships
+        (id, user_id, advertiser_organization_id, status)
+      VALUES ('{SCOPED_MOD_AUM}', '{SCOPED_MOD_USER}', '{ORG_A}', 'active')
 
     -- Creative in Org A
     ; INSERT INTO creative_assets
@@ -208,7 +228,7 @@ def c1_fixtures():
     yield
 
     # Teardown
-    _run_fixture_sql(f"""
+    _run_fixture_sql("""
     DELETE FROM campaign_status_history WHERE campaign_id LIKE 'beh-c1-%'
     ; DELETE FROM campaign_placements WHERE campaign_id LIKE 'beh-c1-%'
     ; DELETE FROM campaign_creatives WHERE campaign_id LIKE 'beh-c1-%'
@@ -225,6 +245,7 @@ def c1_fixtures():
     ; DELETE FROM refresh_sessions WHERE user_id LIKE 'beh-c1-%'
     ; DELETE FROM local_credentials WHERE user_id LIKE 'beh-c1-%'
     ; DELETE FROM user_roles WHERE user_id LIKE 'beh-c1-%'
+    ; DELETE FROM roles WHERE code = 'beh_c1_moderator'
     ; DELETE FROM users WHERE id LIKE 'beh-c1-%'
     ; DELETE FROM advertiser_contracts WHERE id LIKE 'beh-c1-%'
     ; DELETE FROM advertiser_organizations WHERE id LIKE 'beh-c1-%'
@@ -241,8 +262,13 @@ def _auth(token):
 
 
 def _token_mod():
-    """Token for the scoped C1 moderator (org-A scope + creatives.moderate)."""
+    """Token for the C1 moderator: global moderator role, RLS scope = Org A."""
     return create_access_token(MOD_USER, "local_advertiser")
+
+
+def _token_scoped_mod():
+    """Token for a user holding the moderator role only as a scoped assignment."""
+    return create_access_token(SCOPED_MOD_USER, "local_advertiser")
 
 
 def _token_admin():
@@ -405,3 +431,62 @@ class TestC1ApprovalQueueRLS:
                 f"Cross-tenant campaign leak: {item['id']} belongs to "
                 f"{item.get('advertiser_organization_id')}"
             )
+
+
+@pytest.mark.usefixtures("c1_fixtures")
+class TestC1ScopedRoleDenied:
+    """RM-STAB-022: moderation/approval permissions held through a scoped role
+    assignment do not open the global routes (ADR-009: scope never widens)."""
+
+    @pytest.fixture(autouse=True)
+    def setup_client(self, app, db_available):
+        reset_security_config()
+        self.client = TestClient(app)
+
+    def _assert_denied(self, resp):
+        assert resp.status_code == 403, resp.text
+        assert resp.json()["detail"]["code"] == "PERMISSION_DENIED"
+
+    def test_scoped_role_denied_on_moderation_queue(self):
+        self._assert_denied(self.client.get(
+            "/api/v1/identity/creative-assets/moderation-queue"
+            "?moderation_status=pending_review",
+            headers=_auth(_token_scoped_mod()),
+        ))
+
+    def test_scoped_role_denied_on_approve_own_org_creative(self):
+        _run_fixture_sql(f"""
+        UPDATE creative_assets SET moderation_status='pending_review'
+        WHERE id='{CREATIVE_A_ID}'
+        """)
+        self._assert_denied(self.client.post(
+            f"/api/v1/identity/creative-assets/{CREATIVE_A_ID}/approve",
+            headers=_auth(_token_scoped_mod()),
+        ))
+        resp = self.client.get(
+            "/api/v1/identity/creative-assets/moderation-queue"
+            "?moderation_status=pending_review",
+            headers=_auth(_token_admin()),
+        )
+        assert CREATIVE_A_ID in {item["id"] for item in resp.json()["items"]}, (
+            "Denied approve must leave the creative pending"
+        )
+
+    def test_scoped_role_denied_on_reject_own_org_creative(self):
+        self._assert_denied(self.client.post(
+            f"/api/v1/identity/creative-assets/{CREATIVE_A_ID}/reject",
+            json={"reason": "Не соответствует требованиям"},
+            headers=_auth(_token_scoped_mod()),
+        ))
+
+    def test_scoped_role_denied_on_cross_tenant_approve(self):
+        self._assert_denied(self.client.post(
+            f"/api/v1/identity/creative-assets/{CREATIVE_B_ID}/approve",
+            headers=_auth(_token_scoped_mod()),
+        ))
+
+    def test_scoped_role_denied_on_approval_queue(self):
+        self._assert_denied(self.client.get(
+            "/api/v1/identity/campaigns/approval-queue?status=pending_approval",
+            headers=_auth(_token_scoped_mod()),
+        ))

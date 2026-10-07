@@ -38,6 +38,104 @@ from packages.domain.schemas import (
 router = APIRouter()
 
 
+def _is_global_system_admin_assignment(user_role) -> bool:
+    return (
+        user_role.scope_type is None
+        and user_role.role is not None
+        and user_role.role.code == "system_admin"
+    )
+
+
+async def _deny_user_action(
+    db,
+    *,
+    actor_user_id: str,
+    target_user_id: str,
+    action: str,
+    status_code: int,
+    code: str,
+    message: str,
+    details: dict,
+):
+    """Audit a refused action on a user, persist the audit row, then refuse.
+
+    The commit comes first: get_db rolls the transaction back on the
+    exception, and the refusal must stay on record.
+    """
+    await repository.create_audit_event(
+        db,
+        actor_user_id=actor_user_id,
+        action=action,
+        target_type="user",
+        target_id=target_user_id,
+        details=details,
+    )
+    await db.commit()
+    raise HTTPException(
+        status_code=status_code,
+        detail={"code": code, "message": message},
+    )
+
+
+async def _deny_role_change(
+    db,
+    *,
+    reason: str,
+    role_code: str,
+    scope_type: str | None,
+    scope_id: str | None,
+    **kwargs,
+):
+    await _deny_user_action(
+        db,
+        details={
+            "role_code": role_code,
+            "scope_type": scope_type,
+            "scope_id": scope_id,
+            "reason": reason,
+        },
+        **kwargs,
+    )
+
+
+async def _require_actor_covers_target(
+    db, *, actor_user_id: str, target, denied_action: str
+) -> None:
+    """Refuse to act on an account that outranks the actor.
+
+    Taking over or reviving an account is as good as holding its roles, and
+    disabling one takes its holder out of play, so the same subset rule as
+    in assign_role applies: the target's global
+    permissions must be within the actor's.  A break-glass account can be
+    managed by a global system_admin only.
+    """
+    reason = None
+    if target.is_break_glass and not await repository.user_has_global_role(
+        db, actor_user_id, "system_admin"
+    ):
+        reason = "break_glass_requires_system_admin"
+    else:
+        actor_perms = await repository.get_user_permissions(
+            db, actor_user_id, global_only=True
+        )
+        target_perms = await repository.get_user_permissions(
+            db, target.id, global_only=True
+        )
+        if not target_perms <= actor_perms:
+            reason = "exceeds_actor_permissions"
+    if reason is not None:
+        await _deny_user_action(
+            db,
+            actor_user_id=actor_user_id,
+            target_user_id=target.id,
+            action=denied_action,
+            status_code=403,
+            code="TARGET_EXCEEDS_ACTOR_PERMISSIONS",
+            message="Cannot manage a user whose permissions exceed your own",
+            details={"reason": reason},
+        )
+
+
 def _generate_user_code(username: str) -> str:
     """Generate a unique, server-derived user code.
 
@@ -211,6 +309,10 @@ async def deactivate_user(
     _rls=Depends(set_rls_context),
     _claims: dict = Depends(require_permission("users.manage")),
 ):
+    # Serialize with concurrent deactivations / role removals before reading
+    # the target, so two requests cannot each see "one more admin left".
+    await repository.lock_admin_membership(db)
+
     user = await repository.get_user_detail(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -221,6 +323,15 @@ async def deactivate_user(
     if user_id == scope.user_id:
         raise HTTPException(status_code=409, detail="Cannot deactivate your own account")
 
+    await _require_actor_covers_target(
+        db,
+        actor_user_id=scope.user_id,
+        target=user,
+        denied_action="user.deactivate_denied",
+    )
+
+    is_admin = any(_is_global_system_admin_assignment(ur) for ur in user.roles)
+
     if user.is_break_glass:
         count = await repository.count_active_break_glass_users(db)
         if count <= 1:
@@ -228,14 +339,19 @@ async def deactivate_user(
                 status_code=409,
                 detail="Cannot deactivate the last active break-glass user",
             )
+        if is_admin and await repository.count_active_break_glass_admin_users(db) <= 1:
+            raise HTTPException(
+                status_code=409,
+                detail="Cannot deactivate the last active break-glass user",
+            )
 
-    admin_count = await repository.count_active_admin_users(db)
-    is_admin = any(ur.role and ur.role.code == "system_admin" for ur in user.roles)
-    if is_admin and admin_count <= 1:
-        raise HTTPException(
-            status_code=409,
-            detail="Cannot deactivate the last active system admin",
-        )
+    if is_admin:
+        admin_count = await repository.count_active_admin_users(db)
+        if admin_count <= 1:
+            raise HTTPException(
+                status_code=409,
+                detail="Cannot deactivate the last active system admin",
+            )
 
     await repository.set_user_status(db, user_id, "inactive")
 
@@ -274,6 +390,13 @@ async def activate_user(
 
     if user.status == "active":
         raise HTTPException(status_code=409, detail="User is already active")
+
+    await _require_actor_covers_target(
+        db,
+        actor_user_id=scope.user_id,
+        target=user,
+        denied_action="user.activate_denied",
+    )
 
     await repository.set_user_status(db, user_id, "active")
 
@@ -316,6 +439,13 @@ async def reset_password(
             status_code=422,
             detail="Cannot reset your own password via admin endpoint. Use /auth/change-password instead.",
         )
+
+    await _require_actor_covers_target(
+        db,
+        actor_user_id=scope.user_id,
+        target=user,
+        denied_action="user.password_reset_denied",
+    )
 
     if not user.auth_provider.startswith("local_"):
         raise HTTPException(
@@ -431,6 +561,40 @@ async def assign_role(
                 detail=f"Advertiser organization '{body.scope_id}' not found",
             )
 
+    if user_id == scope.user_id:
+        await _deny_role_change(
+            db,
+            actor_user_id=scope.user_id,
+            target_user_id=user_id,
+            action="user.role_assign_denied",
+            status_code=403,
+            code="SELF_ROLE_ASSIGNMENT_FORBIDDEN",
+            message="Cannot assign a role to yourself",
+            reason="self_assign",
+            role_code=role.code,
+            scope_type=body.scope_type,
+            scope_id=body.scope_id,
+        )
+
+    actor_perms = await repository.get_user_permissions(
+        db, scope.user_id, global_only=True
+    )
+    role_perms = await repository.get_role_permission_codes(db, role.id)
+    if not role_perms <= actor_perms:
+        await _deny_role_change(
+            db,
+            actor_user_id=scope.user_id,
+            target_user_id=user_id,
+            action="user.role_assign_denied",
+            status_code=403,
+            code="ROLE_EXCEEDS_ACTOR_PERMISSIONS",
+            message="Cannot assign a role that exceeds your own permissions",
+            reason="exceeds_actor_permissions",
+            role_code=role.code,
+            scope_type=body.scope_type,
+            scope_id=body.scope_id,
+        )
+
     user_role = await repository.assign_user_role(
         db,
         user_id=user_id,
@@ -485,6 +649,62 @@ async def remove_role(
             status_code=404,
             detail="Role assignment does not belong to this user",
         )
+
+    role = await repository.get_role(db, assignment.role_id)
+    role_code = role.code if role is not None else ""
+    denial = dict(
+        actor_user_id=scope.user_id,
+        target_user_id=user_id,
+        action="user.role_remove_denied",
+        role_code=role_code,
+        scope_type=assignment.scope_type,
+        scope_id=assignment.scope_id,
+    )
+
+    actor_perms = await repository.get_user_permissions(
+        db, scope.user_id, global_only=True
+    )
+    role_perms = await repository.get_role_permission_codes(db, assignment.role_id)
+    if not role_perms <= actor_perms:
+        await _deny_role_change(
+            db,
+            status_code=403,
+            code="ROLE_EXCEEDS_ACTOR_PERMISSIONS",
+            message="Cannot remove a role that exceeds your own permissions",
+            reason="exceeds_actor_permissions",
+            **denial,
+        )
+
+    if assignment.scope_type is None and role_code == "system_admin":
+        # Lock first, read the target after: its status must not change
+        # between the read and the count.
+        await repository.lock_admin_membership(db)
+        target = await repository.get_user_detail(db, user_id)
+        if target is not None and target.status == "active":
+            if await repository.count_active_admin_users(db) <= 1:
+                await _deny_role_change(
+                    db,
+                    status_code=409,
+                    code="LAST_SYSTEM_ADMIN",
+                    message="Cannot remove the last active system admin role",
+                    reason="last_system_admin",
+                    **denial,
+                )
+            if (
+                target.is_break_glass
+                and await repository.count_active_break_glass_admin_users(db) <= 1
+            ):
+                await _deny_role_change(
+                    db,
+                    status_code=409,
+                    code="LAST_BREAK_GLASS_ADMIN",
+                    message=(
+                        "Cannot remove the system admin role from the last "
+                        "active break-glass user"
+                    ),
+                    reason="last_break_glass_admin",
+                    **denial,
+                )
 
     from packages.domain.repository import create_audit_event
     await create_audit_event(

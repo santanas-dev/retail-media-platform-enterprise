@@ -1949,13 +1949,65 @@ tasks:
     verified_by: command
     ref: 'локальный прогон pilot-стека (журнал RF-11): publish → force-recreate nats → stream_info'
   decision_status: approved
-  delivery_status: in_progress
-  notes: 'Решение владельца 2026-10-01, этап RF-11 (ревью RF-10 круг 3: provisioning при сбое; NATS без -sd /data -
+  delivery_status: done
+  evidence_refs:
+  - kind: command
+    ref: python -m pytest tests/test_rm_stab_021_nats_durability.py
+    status: verified
+    observed_at: '2026-10-05T10:24:53Z'
+    note: job «Python — Unit Tests» success в push-run develop 37295565157 (e2e3f63)
+  - kind: ci_run
+    ref: https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/37295565157
+    status: verified
+    observed_at: '2026-10-05T10:24:53Z'
+    note: 'push-run develop @ e2e3f63 (merge PR #15), success 42/42'
+  notes: 'done - PR #15 смержен в develop @ e2e3f63, push-run develop 37295565157 success 42/42 (решение владельца
+    2026-10-05, вариант «а»; запись внесена этапом RF-12); сохранность stream при force-recreate доказана вручную
+    (журнал RF-11), автоматизации нет. Решение владельца 2026-10-01, этап RF-11 (ревью RF-10 круг 3: provisioning при сбое; NATS без -sd /data -
     JetStream в /tmp/nats/jetstream контейнера, подтверждено на стенде). REQ: -; SC: -; DEC: -. Protected Boundary: Docker/
     deployment - только command NATS в docker-compose.pilot.yml / docker-compose.phase1.yml и описание в backup_manifest.py
     и runbook. Не покрывает: переподключение relay к NATS во время работы, restore-drill compose, CI. Риск регрессии:
     низкий - первый старт после обновления начинает с пустого тома (содержимое /tmp контейнера и так терялось);
     воркер с NATS, но без возможности провижининга, теперь не стартует (restart loop вместо тихого dead_letter).'
+- id: RM-STAB-022
+  kind: implementation
+  stage: S
+  title: 'Управление ролями: scoped-роль не даёт глобальных прав, запрет self-assign и назначения ролей выше своей, защита
+    последнего администратора'
+  owner_role: Technical owner
+  dependencies:
+  - RM-STAB-003
+  acceptance:
+  - check: под retail_media_app (NOBYPASSRLS) - пользователь только со scoped-ролью получает 403 на маршрутах require_permission;
+      назначение роли себе и роли с правами выше своих отклоняется; снятие роли с последнего активного администратора
+      отклоняется
+    verified_by: behavioral
+    ref: tests/behavioral/test_rm_stab_022_role_escalation.py
+  decision_status: approved
+  delivery_status: in_progress
+  notes: 'Решение владельца 2026-10-05, этап RF-12 (находки P0-6, P1-11.a, T2 ревью main @ 8ad0228; сверка RF-00). REQ: -;
+    SC: -; DEC: -. Mini-design одобрен владельцем 2026-10-05 с дополнениями (журнал RF-12). Не покрывает: привязку прав к конкретной
+    организации рекламодателя (P0-8, T3), T7, фронтенд (P1-11.b), RM-STAB-004, RM-STAB-015. Риск регрессии: средний -
+    пользователи только со scoped-ролями теряют доступ к маршрутам require_permission (перечень - журнал RF-12, раздел Мини-дизайн, М5).'
+- id: RM-STAB-023
+  kind: implementation
+  stage: S
+  title: 'Юнит-тесты не вызывают настоящий docker: подмена compose в _update_harness, общий предохранитель, тест-сторож'
+  owner_role: Technical owner
+  dependencies:
+  - RM-ENV-001
+  acceptance:
+  - check: прогон python -m pytest tests/ не выполняет ни одной настоящей команды docker/compose (кроме opt-in интеграционных
+      тестов); тест-сторож падает, если юнит-тест доходит до настоящего docker
+    verified_by: command
+    ref: python -m pytest tests/test_local_stand.py
+  decision_status: approved
+  delivery_status: planned
+  notes: 'Решение владельца 2026-10-05 (наблюдение этапа RF-12): tests/test_local_stand.py::_update_harness не подменяет compose,
+    тесты неуспешного обновления доходят до scripts/deploy/local_stand.py compose("stop") и останавливают стенд rmp-local-stand при
+    локальном python -m pytest tests/ (2026-10-01, 2026-10-05). REQ: -; SC: -; DEC: -. Порядок (решение владельца 2026-10-05):
+    после этапа про PUT /auth/ad-settings, до P0-8. До исправления остановка стенда при локальном прогоне - известное поведение,
+    пропуском тестов не обходится. Риск регрессии: низкий - только тесты.'
 - id: RM-TECH-220
   kind: implementation
   stage: C
