@@ -167,7 +167,7 @@
 
 | Поле | Значение |
 |---|---|
-| Статус | finished |
+| Статус | merged |
 | Цель | Scoped-роль не даёт глобальных прав на маршрутах `require_permission`; нельзя назначить роль себе или выше своей; нельзя снять роль с последнего администратора; нельзя сбросить пароль, реактивировать или деактивировать учётку с правами выше своих — доказано на PostgreSQL под `retail_media_app` |
 | Задачи roadmap.yaml | RM-STAB-022 (новая, стадия S; решение владельца 2026-10-05); попутно RM-STAB-021 → `done` (решение владельца 2026-10-05, вариант «а») |
 | Находки | P0-6, P1-11.a, T2 |
@@ -178,6 +178,22 @@
 | Входные условия | PR #16 (RF-GOV-0) смержен — `develop @ 5cf482b`; push-run develop 37309852950 → success 42/42 |
 | Гейт | job behavioral под `retail_media_app` (новый тест `tests/behavioral/test_rm_stab_022_role_escalation.py`, I-1, I-3, I-4); job python-tests; I-0; I-2 и I-5 — по CI или записи журнала; `roadmap-governance-guard` + `--self-test`; ruff по изменённым файлам |
 | Канон, который меняется | `roadmap.yaml` (RM-STAB-022; RM-STAB-021 → `done`; RM-STAB-023 — новая `planned`, решение владельца 2026-10-05) + генерация; checkpoint `PROJECT_STATE.md` |
+
+## RF-GOV-1 — Решения владельца от 2026-10-07 в roadmap (документальный; решение владельца 2026-10-07)
+
+| Поле | Значение |
+|---|---|
+| Статус | finished |
+| Цель | Решения владельца от 2026-10-07 записаны в `roadmap.yaml`: из прежних 19 открытых OD не остаётся ни одного (два новых — на содержание RTO/RPO и топологии), статусы задач и утверждающий Gate-S соответствуют решениям; guard и self-test зелёные |
+| Задачи roadmap.yaml | — (работа над планом и документами; этап назначен владельцем 2026-10-07: «сначала отдельный документальный этап, до RF-13») |
+| Находки | `docs/audit/2026-10-05-claude-governance-review.md`: G-9 (19 открытых OD), G-4 (кто закрывает Gate-S), G-8 (в части записи решения) |
+| Скоуп (в) | `docs/product/roadmap.yaml`: OD-008…015, 021, 024…033 → `approved` (текст решения владельца в `statement`, `decided_on: 2026-10-07`); новый OD-047 (решения по ведению проекта); Gate-S `approver: owner`; RM-STAB-022 → `done` (evidence: behavioral, ci_run 37585486496); RM-STAB-004 → `planned`; RM-OPS-005 → `planned` (разблокирована OD-009); заметки о решениях в задачах, которых они касаются; новые задачи, заведённые по условному утверждению владельца 2026-10-08 («у которых всё сходится»; сверка — журнал; RM-OPS-006 не заведена — ждёт подтверждения владельца; RM-STAB-026 и 027 перенесены из стадии S по ответу 2026-10-08, целевые стадии CORE и POPS — выбор агента) (RM-STAB-024…027, RM-PILOT-002B, RM-OPS-007, 008, 009, RM-TECH-290, 291), OD-048 и OD-049 (`open`, содержание RTO/RPO и топологии), разделение RM-OPS-004 (приёмка, `release.rollback` → RM-OPS-009); зависимости RM-STAB-004 ← RM-STAB-025 и RM-PILOT-003 ← RM-OPS-009, RM-TECH-291, RM-TECH-290, RM-OPS-005; `docs/product/generated/*` (генерация); `stages.md` (эта карточка, RF-12 → `merged`); `journal.md`; checkpoint `PROJECT_STATE.md` |
+| Скоуп (вне) | Код, тесты, CI, compose; `requirements-traceability.yaml` (тексты `block_reason` с «OD-… open» — в долг); `feature-registry.yaml`; `AGENTS.md`, `CLAUDE.md`, guard; приёмка RM-GOV-007/008/009/010/012 (ACCEPT владельца не дан); закрытие Gate-S; коммит `.claude/agents`, `.claude/skills`, архивация журнала — следующий документальный этап |
+| Protected Boundaries | нет |
+| mini-design | нет |
+| Входные условия | PR #17 (RF-12) смержен — `develop @ 88a4e9e`; push-run develop 37585486496 → success 42/42 |
+| Гейт | `roadmap-governance-guard` PASS + `--self-test` 55/55; `roadmap-generate.py --check-clean-diff` CLEAN; I-0; состав диффа = файлы скоупа; `code-reviewer` и, на `/finish`, `canon-auditor` — APPROVE*; CI на PR |
+| Канон, который меняется | `roadmap.yaml` + генерация; checkpoint `PROJECT_STATE.md` |
 
 ## Остальное
 

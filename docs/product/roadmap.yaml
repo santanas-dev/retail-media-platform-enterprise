@@ -45,62 +45,80 @@ owner_decisions:
 - id: OD-008
   aliases: [DEC-004]
   sources: ['ADR-002 (NATS JetStream baseline)', 'tz-v2.6 §29 DEC-004']
-  statement: MFA обязателен до production; согласование NATS с ИТ/ops — до pilot deployment.
-  status: open
+  statement: 'MFA обязателен до production; согласование NATS с ИТ/ops — до pilot deployment. Решение владельца
+    2026-10-07 - MFA в пилоте не делается (внешних пользователей нет). Условие - MFA для system_admin и security_admin
+    обязателен до первого внешнего пользователя, но не позже production. Согласование NATS с ИТ владелец начинает сейчас.
+    Контекст решения - пилот только во внутренней сети, внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
 - id: OD-009
   aliases: [DEC-006, DEC-007]
   sources: ['user-journeys.md §5.1 2026-07-18 (SLA/retention defaults приняты)', 'tz-v2.6 §29 DEC-006/DEC-007']
-  statement: Объём безопасности и соответствия до production — SIEM/Wazuh-экспорт, минимизация
-    PII, доступ администратора только через VPN, retention и партиционирование данных.
-    Вопрос - расширяется ли scope RM-OPS-001 этими четырьмя пунктами или каждый становится
-    отдельной задачей. Ни один сейчас не назван ни одной из 42 задач.
-  status: open
+  statement: 'Объём безопасности и соответствия до production — SIEM/Wazuh-экспорт, минимизация PII, доступ
+    администратора только через VPN, retention и партиционирование данных. Вопрос - расширяется ли scope RM-OPS-001 этими
+    четырьмя пунктами или каждый становится отдельной задачей. Ни один сейчас не назван ни одной из 42 задач. Решение
+    владельца 2026-10-07 - разбить на четыре задачи. Сроки хранения и минимизация ПДн - до пилота. Доступ админа через VPN
+    и SIEM-экспорт - до первого внешнего пользователя, но не позже production. Контекст решения - пилот только во
+    внутренней сети, внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
   blocks:
   - RM-OPS-001
 - id: OD-010
   aliases: [DEC-008]
   sources: ['tz-v2.6 §29 DEC-008, §22.7/22.9']
-  statement: Безопасная выкатка — staged rollout с rollback и feature flags. Вопрос - это
-    предусловие пилота или production. От ответа зависит, входят ли они в RM-PILOT-002
-    preflight или только в RM-OPS-001.
-  status: open
+  statement: 'Безопасная выкатка — staged rollout с rollback и feature flags. Вопрос - это предусловие пилота или
+    production. От ответа зависит, входят ли они в RM-PILOT-002 preflight или только в RM-OPS-001. Решение владельца
+    2026-10-07 - откат - до пилота, feature flags - до production. Контекст решения - пилот только во внутренней сети,
+    внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
   blocks:
   - RM-PILOT-002
   - RM-OPS-001
 - id: OD-011
   aliases: [DEC-009]
   sources: ['tz-v2.6 §29 DEC-009, §22.15', 'RM-TECH-205']
-  statement: Нагрузочные профили и критерии производительности на 40K устройств. Вопрос -
-    измеряется ли это до пилота как вход в SLO (RM-TECH-205) и в триггер ClickHouse
-    (RM-TECH-209), или откладывается до production.
-  status: open
+  statement: 'Нагрузочные профили и критерии производительности на 40K устройств. Вопрос - измеряется ли это до пилота
+    как вход в SLO (RM-TECH-205) и в триггер ClickHouse (RM-TECH-209), или откладывается до production. Решение владельца
+    2026-10-07 - нагрузочные профили отложены до ступени 500; до пилота - замер базовой линии. Контекст решения - пилот
+    только во внутренней сети, внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
   blocks:
   - RM-TECH-205
   - RM-TECH-209
 - id: OD-012
-  statement: Часовые пояса, календарь и праздничное расписание показов. Это корректность
-    доставки, а не операционный вопрос - вопрос владельцу - входит ли в scope пилота.
-  status: open
+  statement: 'Часовые пояса, календарь и праздничное расписание показов. Это корректность доставки, а не операционный
+    вопрос - вопрос владельцу - входит ли в scope пилота. Решение владельца 2026-10-07 - часовые пояса - да, праздничный
+    календарь - нет. Контекст решения - пилот только во внутренней сети, внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
 - id: OD-013
-  statement: Self-service онбординг рекламодателя - сброс пароля самим пользователем и
-    приглашения. Админский сброс и приглашение уже reachable с зелёными смоуками;
-    self-service отсутствует. Вопрос согласуется с OD-005 (managed-first) - нужен ли
-    self-service в первом пилоте.
-  status: open
+  statement: 'Self-service онбординг рекламодателя - сброс пароля самим пользователем и приглашения. Админский сброс и
+    приглашение уже reachable с зелёными смоуками; self-service отсутствует. Вопрос согласуется с OD-005 (managed-first) -
+    нужен ли self-service в первом пилоте. Решение владельца 2026-10-07 - self-service не включается в первый пилот.
+    Контекст решения - пилот только во внутренней сети, внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
   blocks:
   - RM-BIZ-002
 - id: OD-014
   aliases: [DEC-027]
   sources: ['ADR-018', 'tz-v2.6 §29 DEC-027, REQ-V26-002/010']
-  statement: A/B lift и attribution - материал ветки v2.6, зависит от модели арендатора
-    (ADR-018). Вопрос - фиксируется ли как отложенное решением, по образцу ADR-019 для
-    Channel Orchestrator, или остаётся неопределённым.
-  status: open
+  statement: 'A/B lift и attribution - материал ветки v2.6, зависит от модели арендатора (ADR-018). Вопрос - фиксируется
+    ли как отложенное решением, по образцу ADR-019 для Channel Orchestrator, или остаётся неопределённым. Решение
+    владельца 2026-10-07 - отложено, пересмотр после ступени 100. Контекст решения - пилот только во внутренней сети,
+    внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
 - id: OD-015
-  statement: Операционный центр здоровья устройств. Функция device.health_view reachable и
-    закреплена в CI; вопрос - достаточно ли этого представления для пилота или требуется
-    отдельный операционный центр как самостоятельный объём работ.
-  status: open
+  statement: 'Операционный центр здоровья устройств. Функция device.health_view reachable и закреплена в CI; вопрос -
+    достаточно ли этого представления для пилота или требуется отдельный операционный центр как самостоятельный объём
+    работ. Решение владельца 2026-10-07 - экрана здоровья устройств для пилота достаточно. Контекст решения - пилот только
+    во внутренней сети, внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
 - id: OD-016
   statement: 192.168.110.77 выводится из эксплуатации решением владельца 2026-08-26.
     Уточняет OD-007 в части .77 - формулировка «unreachable at check time» была
@@ -147,8 +165,12 @@ owner_decisions:
   status: approved
   decided_on: '2026-08-28'
 - id: OD-021
-  statement: Каналы первой production-очереди и владелец каждого не выбраны. Вопрос владельцу - перечень каналов, владелец, SLA и бюджет каждого. До решения единственный реальный канал - KSO (ADR-019), хуки под несуществующие каналы запрещены.
-  status: open
+  statement: 'Каналы первой production-очереди и владелец каждого не выбраны. Вопрос владельцу - перечень каналов,
+    владелец, SLA и бюджет каждого. До решения единственный реальный канал - KSO (ADR-019), хуки под несуществующие каналы
+    запрещены. Решение владельца 2026-10-07 - только КСО; второй канал - после пилота. Контекст решения - пилот только во
+    внутренней сети, внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
   aliases: [DEC-001]
   sources: ['ADR-019', 'tz-v2.6 §23/§25, §29 DEC-001']
 - id: OD-022
@@ -172,61 +194,99 @@ owner_decisions:
   - AQ.1 №5 (master-data adapter - отсутствующий prerequisite)
   - ответ владельца 2026-08-31 (RM-GOV-010)
 - id: OD-024
-  statement: Пилотная шкала КСО → 10 → 100 → 500 → сеть принята 2026-07-18. Открыты измеримые exit criteria каждого перехода - вопрос владельцу, какие метрики и пороги закрывают ступень.
-  status: open
+  statement: 'Пилотная шкала КСО → 10 → 100 → 500 → сеть принята 2026-07-18. Открыты измеримые exit criteria каждого
+    перехода - вопрос владельцу, какие метрики и пороги закрывают ступень. Решение владельца 2026-10-07 - структура
+    принята - 3-4 метрики на ступень плюс условие «нет открытых находок P0 по правам, арендности и секретам»; ступень
+    держится не меньше срока, переход - когда все метрики выполнены за срок. Пороги утверждены: КСО→10 - 7 дней,
+    устройства онлайн ≥95% времени, доставка манифеста ≥99% устройств за 15 мин, полнота PoP ≥95% ожидаемых показов, 0
+    остановок показа дольше 30 мин; 10→100 - 14 дней, ≥97%, ≥99% за 10 мин, ≥97%, не больше 1 инцидента с ручным
+    вмешательством и 0 потерь данных; 100→500 - 21 день, ≥98%, ≥99,5% за 10 мин, ≥98%, 0 инцидентов с потерей данных и
+    откат проверен на живой ступени; 500→сеть - 30 дней, ≥99%, ≥99,5% за 5 мин, ≥99%, выполнен замер нагрузки (OD-011) и
+    утверждены RTO/RPO (OD-025). Контекст решения - пилот только во внутренней сети, внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
   aliases: [DEC-010]
   sources: ['user-journeys.md §5.1 2026-07-18 (шкала КСО → 10 → 100 → 500 → сеть принята)', 'tz-v2.6 §29 DEC-010']
   blocks:
   - RM-PILOT-001
 - id: OD-025
-  statement: RTO/RPO, HA target и владелец DR не определены. Вопрос владельцу - целевые RTO/RPO для production, кто владеет DR и что является go/no-go критерием.
-  status: open
+  statement: 'RTO/RPO, HA target и владелец DR не определены. Вопрос владельцу - целевые RTO/RPO для production, кто
+    владеет DR и что является go/no-go критерием. Решение владельца 2026-10-07 - RTO/RPO - до production; владелец DR -
+    владелец продукта. Для пилота достаточно проверенного бэкапа и восстановления. Контекст решения - пилот только во
+    внутренней сети, внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
   aliases: [DEC-012]
   sources: ['tz-v2.6 §5/§17, §29 DEC-012']
   blocks:
   - RM-OPS-001
   - RM-OPS-003
 - id: OD-026
-  statement: Advertiser/BI API access не решён. Вопрос владельцу - scoped API keys с rotation/revoke/audit в первой очереди либо явное исключение из неё.
-  status: open
+  statement: 'Advertiser/BI API access не решён. Вопрос владельцу - scoped API keys с rotation/revoke/audit в первой
+    очереди либо явное исключение из неё. Решение владельца 2026-10-07 - вне первой очереди, пересмотр после пилота.
+    Контекст решения - пилот только во внутренней сети, внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
   aliases: [DEC-013]
   sources: ['tz-v2.6 §12/§16, REQ-INT-003, §29 DEC-013']
 - id: OD-027
-  statement: Внешний monitoring-dashboard - read-only наблюдатель без права менять файлы, статусы, задачи и owner decisions. Требуется решение владельца с датой - scope, freshness/correlation contract, оформление расхождений (MON-DIVERGENCE) и запрет записи статусов.
-  status: open
+  statement: 'Внешний monitoring-dashboard - read-only наблюдатель без права менять файлы, статусы, задачи и owner
+    decisions. Требуется решение владельца с датой - scope, freshness/correlation contract, оформление расхождений
+    (MON-DIVERGENCE) и запрет записи статусов. Решение владельца 2026-10-07 - отложено. Контекст решения - пилот только во
+    внутренней сети, внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
   aliases: [DEC-014]
   sources: ['tz-v2.6 Дополнение R, REQ-ARCH-002, §29 DEC-014']
 - id: OD-028
-  statement: Production deployment topology не выбрана - Docker Swarm или approved equivalent. Вопрос владельцу - топология, владелец, критерии HA/rollback, стоимость эксплуатации и migration evidence.
-  status: open
+  statement: 'Production deployment topology не выбрана - Docker Swarm или approved equivalent. Вопрос владельцу -
+    топология, владелец, критерии HA/rollback, стоимость эксплуатации и migration evidence. Решение владельца 2026-10-07 -
+    отложено до итогов пилота. Контекст решения - пилот только во внутренней сети, внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
   aliases: [DEC-015]
   sources: ['tz-v2.6 REQ-ARCH-004, §29 DEC-015']
   blocks:
   - RM-OPS-001
   - RM-OPS-003
 - id: OD-029
-  statement: Device PKI/mTLS activation и срок отказа от token-only flow не решены. Вопрос владельцу/ИБ - PKI/CRL/OCSP, proxy enforcement, migration и rollback.
-  status: open
+  statement: 'Device PKI/mTLS activation и срок отказа от token-only flow не решены. Вопрос владельцу/ИБ - PKI/CRL/OCSP,
+    proxy enforcement, migration и rollback. Решение владельца 2026-10-07 - отложено до production. Контекст решения -
+    пилот только во внутренней сети, внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
   aliases: [DEC-016]
   sources: ['tz-v2.6 REQ-SEC-003, §29 DEC-016', 'OD-002 (Ed25519 - принято)']
 - id: OD-030
-  statement: Полный ЭДО/биллинг по умолчанию вне первой очереди. Требуется owner/legal решение - границы сущностей и trigger возврата в scope.
-  status: open
+  statement: 'Полный ЭДО/биллинг по умолчанию вне первой очереди. Требуется owner/legal решение - границы сущностей и
+    trigger возврата в scope. Решение владельца 2026-10-07 - вне первой очереди, пересмотр после пилота. Контекст решения
+    - пилот только во внутренней сети, внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
   aliases: [DEC-017]
   sources: ['tz-v2.6 §2.2, §22.12, §29 DEC-017']
 - id: OD-031
-  statement: DSP/SSP-закупка по умолчанию вне первой очереди. Требуется product/legal решение, ручное согласование и review date.
-  status: open
+  statement: 'DSP/SSP-закупка по умолчанию вне первой очереди. Требуется product/legal решение, ручное согласование и
+    review date. Решение владельца 2026-10-07 - вне первой очереди, пересмотр после пилота. Контекст решения - пилот
+    только во внутренней сети, внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
   aliases: [DEC-018]
   sources: ['tz-v2.6 §2.2, §29 DEC-018']
 - id: OD-032
-  statement: Персонализация покупателя по умолчанию вне первой очереди. Требуется privacy/legal решение - lawful purpose и review trigger.
-  status: open
+  statement: 'Персонализация покупателя по умолчанию вне первой очереди. Требуется privacy/legal решение - lawful
+    purpose и review trigger. Решение владельца 2026-10-07 - вне первой очереди, пересмотр после пилота. Контекст решения
+    - пилот только во внутренней сети, внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
   aliases: [DEC-019]
   sources: ['tz-v2.6 §2.2, §14, §29 DEC-019']
 - id: OD-033
-  statement: Звук в торговом зале по умолчанию вне первой очереди. Требуется business/operations safety решение и review date.
-  status: open
+  statement: 'Звук в торговом зале по умолчанию вне первой очереди. Требуется business/operations safety решение и
+    review date. Решение владельца 2026-10-07 - вне первой очереди, пересмотр после пилота. Контекст решения - пилот
+    только во внутренней сети, внешних пользователей в пилоте нет.'
+  status: approved
+  decided_on: '2026-10-07'
   aliases: [DEC-020]
   sources: ['tz-v2.6 §2.2, §9, §29 DEC-020']
 - id: OD-034
@@ -382,6 +442,33 @@ owner_decisions:
   - указание владельца 2026-09-28 (сессия /start RF-01)
   - docs/audit/2026-09-27-claude-rf-00-recheck-develop-b166419.md (P0-7)
   - docs/remediation/stages.md (RF-01)
+- id: OD-047
+  sources: ['указание владельца 2026-10-07 (сессия; журнал RF-GOV-1)', 'docs/audit/2026-10-05-claude-governance-review.md (G-4, G-8)']
+  statement: 'Решения владельца 2026-10-07 по ведению проекта - (1) Gate-S закрывает владелец, по отчёту агента и
+    зелёному CI (Codex в цикле этапа не участвует); (2) план только в roadmap.yaml, этапы RF - способ исполнения (G-8);
+    (3) находка P0-8 исполняется отдельной задачей, не в составе RM-STAB-004 (стадия S и исполнение раньше RM-STAB-004 -
+    рекомендация агента, с которой владелец согласился ответом «P0-8 отдельной задачей»); (4) RM-STAB-004 возвращается в
+    planned - работы по ней в коде нет. Порядок ближайших этапов в OD не фиксируется - он ведётся в
+    docs/remediation/journal.md.'
+  status: approved
+  decided_on: '2026-10-07'
+- id: OD-048
+  sources: ['указание владельца 2026-10-08 (сессия; журнал RF-GOV-1)', 'OD-025']
+  statement: 'Значения RTO/RPO для production не утверждены. OD-025 (2026-10-07) решил только срок - до production - и
+    владельца DR (владелец продукта). Вопрос владельцу - целевые RTO и RPO и go/no-go критерий. Срок - до production.'
+  status: open
+  blocks:
+  - RM-OPS-001
+  - RM-OPS-003
+- id: OD-049
+  sources: ['указание владельца 2026-10-08 (сессия; журнал RF-GOV-1)', 'OD-028']
+  statement: 'Топология production не выбрана. OD-028 (2026-10-07) решил только срок - по итогам пилота. Вопрос
+    владельцу - топология (Docker Swarm или approved equivalent), критерии HA/rollback, стоимость эксплуатации. Срок - до
+    production.'
+  status: open
+  blocks:
+  - RM-OPS-001
+  - RM-OPS-003
 stages:
 - id: G
   title: Единая система roadmap
@@ -438,7 +525,7 @@ gates:
   note: 'историческая пометка (RM-GOV-012, 2026-08-31) - гейт введён после того, как RM-ENV-001 была закрыта done 2026-08-26 (owner gate scope_decision, .77 decommissioned по OD-016); гейт не переоценивает RM-ENV-001 задним числом и закрывается приёмкой RM-ENV-003'
 - id: Gate-S
   closes_stage: S
-  approver: codex
+  approver: owner
   conditions:
   - новые counts и evidence воспроизводимы
 - id: Gate-U
@@ -583,9 +670,9 @@ blocked_features:
   - функция реализована задачей RM-TECH-283 и имеет зелёный smoke/behavioral proof
 - feature_id: release.rollback
   unblocked_by:
-  - RM-OPS-004
+  - RM-OPS-009
   conditions:
-  - функция реализована задачей RM-OPS-004 и имеет зелёный smoke/behavioral proof
+  - функция реализована задачей RM-OPS-009 и имеет зелёный smoke/behavioral proof
 - feature_id: rollout.rollback
   unblocked_by:
   - RM-OPS-004
@@ -966,13 +1053,20 @@ tasks:
   dependencies:
   - RM-STAB-003
   - RM-STAB-006
+  - RM-STAB-025
   acceptance:
   - check: API/portal/migration согласованы
     verified_by: behavioral
     ref: tests/behavioral/test_retailer_scope_rbac.py
   decision_status: approved
-  delivery_status: in_progress
-  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) OD-044 (2026-08-31): реализовать по mini-design RM-STAB-003 - 4 bundles аддитивно, alias operator, scope_type=retailer в resolve_scope_context/require_scoped_permission; D3 - retailer scope по умолчанию внутренним non-admin (seed); D2 - analyst read-only retailer-scoped; security_admin не трогать (D1 → RM-STAB-015). 2026-08-31 старт (OD-043: RM-STAB-003/006 done; план владельца после CI 33408891221).'
+  delivery_status: planned
+  notes: '2026-10-07 (OD-047) - возвращена в planned решением владельца: веток, PR и правок по задаче нет, в коде
+    scope_type=retailer не реализован, приёмочный тест отсутствует. P0-8 исполняется отдельной задачей раньше неё. полная
+    приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) OD-044 (2026-08-31): реализовать по
+    mini-design RM-STAB-003 - 4 bundles аддитивно, alias operator, scope_type=retailer в
+    resolve_scope_context/require_scoped_permission; D3 - retailer scope по умолчанию внутренним non-admin (seed); D2 -
+    analyst read-only retailer-scoped; security_admin не трогать (D1 → RM-STAB-015). 2026-08-31 старт (OD-043:
+    RM-STAB-003/006 done; план владельца после CI 33408891221).'
   owner_gate:
     required: true
     reason: migration_application
@@ -1198,7 +1292,10 @@ tasks:
   - self.campaign_create
   decision_status: approved
   delivery_status: blocked
-  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2). RM-GOV-009 (OD-037): blocked до OD-013 — полный self-service вне pilot scope (REQ-V26-003, OD-005)'
+  notes: 'OD-013 решён владельцем 2026-10-07 - self-service не включается в первый пилот. Остаётся blocked решением
+    владельца 2026-10-08; перевод в deferred и правка трассировки - ближайший документальный этап. Записи ниже - до
+    2026-10-07 (исторические): полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2).
+    RM-GOV-009 (OD-037): blocked до OD-013 — полный self-service вне pilot scope (REQ-V26-003, OD-005)'
   owner_gate:
     required: true
     reason: scope_decision
@@ -1272,7 +1369,14 @@ tasks:
     ref: docs/product/slo-objectives.yaml
   decision_status: approved
   delivery_status: planned
-  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) RM-GOV-009 (r421): REQ-NFR-001/006/007; пороги ждут OD-011/OD-009 — добавить в notes; артефакты AG выносятся в RM-TECH-288 RM-GOV-012 (предложение 2026-08-31, до ACCEPT владельца): перенесено A → C - артефакт Дополнения AG принимается до Gate-C (старт разработки по OD-041). Кандидат подготовлен (OD-043, 2026-08-31, без приёмки): docs/product/slo-objectives.yaml - 11 объектов, каждое число §8 с formula/window/owner/status; пороги OD-011/OD-025 open. Задача planned до закрытия зависимостей (OD-043).'
+  notes: 'OD-011 решён владельцем 2026-10-07 - до пилота только замер базовой линии, нагрузочные профили - на ступени
+    500. Замер выделен в RM-TECH-291 (решение владельца 2026-10-08). Записи ниже - до 2026-10-07 (исторические): полная
+    приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) RM-GOV-009 (r421):
+    REQ-NFR-001/006/007; пороги ждут OD-011/OD-009 — добавить в notes; артефакты AG выносятся в RM-TECH-288 RM-GOV-012
+    (предложение 2026-08-31, до ACCEPT владельца): перенесено A → C - артефакт Дополнения AG принимается до Gate-C (старт
+    разработки по OD-041). Кандидат подготовлен (OD-043, 2026-08-31, без приёмки): docs/product/slo-objectives.yaml - 11
+    объектов, каждое число §8 с formula/window/owner/status; пороги OD-011/OD-025 open. Задача planned до закрытия
+    зависимостей (OD-043).'
 - id: RM-TECH-206
   kind: implementation
   stage: CORE
@@ -1421,7 +1525,9 @@ tasks:
     ref: docs/product/clickhouse-capacity-trigger.yaml
   decision_status: approved
   delivery_status: planned
-  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  notes: 'OD-011 решён владельцем 2026-10-07 - оценка триггера ClickHouse по нагрузочным профилям ступени 500. Записи
+    ниже - до 2026-10-07 (исторические): полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md
+    (+v2)'
 - id: RM-PILOT-001
   kind: design
   stage: POPS
@@ -1436,7 +1542,9 @@ tasks:
     ref: docs/runbook/pilot-scope.md
   decision_status: approved
   delivery_status: planned
-  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) RM-GOV-009 (r421): deps += OD-024 (exit criteria ступеней), REQ-ARCH-004'
+  notes: 'OD-024 решён владельцем 2026-10-07 - критерии перехода между ступенями утверждены (пороги - в OD-024). Записи
+    ниже - до 2026-10-07 (исторические): полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md
+    (+v2) RM-GOV-009 (r421): deps += OD-024 (exit criteria ступеней), REQ-ARCH-004'
 - id: RM-PILOT-002
   kind: external-plan
   stage: POPS
@@ -1449,7 +1557,9 @@ tasks:
     ref: infra/deploy/images.lock.json + dry-run evidence
   decision_status: approved
   delivery_status: planned
-  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  notes: 'OD-010 решён владельцем 2026-10-07 - откат до пилота, feature flags до production. Откат выделен в отдельную
+    задачу RM-OPS-009 (решение владельца 2026-10-08). Записи ниже - до 2026-10-07 (исторические): полная приёмка —
+    docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)'
 - id: RM-PILOT-002A
   kind: implementation
   stage: POPS
@@ -1495,13 +1605,21 @@ tasks:
   title: Controlled pilot deploy
   dependencies:
   - RM-PILOT-002
+  - RM-OPS-009
+  - RM-TECH-291
+  - RM-TECH-290
+  - RM-OPS-005
   acceptance:
   - check: SHA/lock/schema/health, stand-safe journeys, rollback readiness
     verified_by: owner
     ref: docs/audit/<дата>-pilot-deploy-<sha>.md + ACCEPT владельца с датой (deployment gate)
   decision_status: approved
   delivery_status: planned
-  notes: полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2)
+  notes: 'До пилота выполняются откат релиза (RM-OPS-009), замер базовой линии производительности (RM-TECH-291), часовые
+    пояса (RM-TECH-290) и сроки хранения (RM-OPS-005) - добавлены в зависимости агентом как следствие решений владельца
+    2026-10-07/08 («до пилота», «в пилоте»); названы владельцу в отчёте этапа RF-GOV-1. Записи ниже - до 2026-10-07
+    (исторические): полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) Минимизация ПДн
+    (задача ещё не заведена - ожидает подтверждения владельца) добавится после её заведения.'
   owner_gate:
     required: true
     reason: deployment
@@ -1517,7 +1635,12 @@ tasks:
     ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой; OD-025/OD-028)
   decision_status: approved
   delivery_status: planned
-  notes: 'полная приёмка — docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) RM-GOV-009 (r421): зависит от OD-025 (RTO/RPO) и OD-028 (топология); REQ-OPS-005/006; HA baseline выделен в RM-OPS-003'
+  notes: 'OD-009, OD-010, OD-025, OD-028 решены владельцем 2026-10-07 по срокам - VPN и SIEM до первого внешнего
+    пользователя, но не позже production; feature flags, RTO/RPO и топология - до production. Содержание НЕ утверждено и
+    вынесено в открытые OD-048 (значения RTO/RPO) и OD-049 (топология production), срок обоих - до production (решение
+    владельца 2026-10-08): приёмка не закрыта. Записи ниже - до 2026-10-07 (исторические): полная приёмка —
+    docs/audit/2026-08-26-roadmap-task-breakdown-final-candidate.md (+v2) RM-GOV-009 (r421): зависит от OD-025 (RTO/RPO) и
+    OD-028 (топология); REQ-OPS-005/006; HA baseline выделен в RM-OPS-003'
   owner_gate:
     required: true
     reason: deployment
@@ -1778,7 +1901,13 @@ tasks:
     ref: tests/test_phase3_user_management.py
   decision_status: approved
   delivery_status: planned
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-009; SC: SC-SEC-007; DEC: -. Evidence: tests/test_phase3_user_management.py; tests/test_s019_role_safety.py. Риск регрессии: средний: миграция permission-кодов затрагивает seed ролей (RM-STAB-004). OD-044 D1 (2026-08-31): сузить security_admin до модели Q2 (снять campaigns.manage/approve, creatives.moderate, inventory.manage, users.manage) отдельной миграцией с negative-тестами.'
+  notes: 'Намерение владельца 2026-10-07 (в объём задачи) - security_admin может деактивировать любую учётку, кроме
+    system_admin и break-glass; реактивация, сброс пароля и роли - по строгому правилу подмножества прав (RM-STAB-022);
+    оповещение владельца учётки при сбросе пароля; правило «админские роли назначает только is_admin». RM-GOV-009 кандидат
+    A3 (OD-037). REQ: REQ-SEC-009; SC: SC-SEC-007; DEC: -. Evidence: tests/test_phase3_user_management.py;
+    tests/test_s019_role_safety.py. Риск регрессии: средний: миграция permission-кодов затрагивает seed ролей
+    (RM-STAB-004). OD-044 D1 (2026-08-31): сузить security_admin до модели Q2 (снять campaigns.manage/approve,
+    creatives.moderate, inventory.manage, users.manage) отдельной миграцией с negative-тестами.'
 - id: RM-STAB-016
   kind: implementation
   stage: S
@@ -1984,11 +2113,25 @@ tasks:
     verified_by: behavioral
     ref: tests/behavioral/test_rm_stab_022_role_escalation.py
   decision_status: approved
-  delivery_status: in_progress
-  notes: 'Решение владельца 2026-10-05, этап RF-12 (находки P0-6, P1-11.a, T2 ревью main @ 8ad0228; сверка RF-00). REQ: -;
-    SC: -; DEC: -. Mini-design одобрен владельцем 2026-10-05 с дополнениями (журнал RF-12). Не покрывает: привязку прав к конкретной
-    организации рекламодателя (P0-8, T3), T7, фронтенд (P1-11.b), RM-STAB-004, RM-STAB-015. Риск регрессии: средний -
-    пользователи только со scoped-ролями теряют доступ к маршрутам require_permission (перечень - журнал RF-12, раздел Мини-дизайн, М5).'
+  delivery_status: done
+  evidence_refs:
+  - kind: behavioral
+    ref: tests/behavioral/test_rm_stab_022_role_escalation.py
+    status: verified
+    observed_at: '2026-10-07T07:14:07Z'
+    note: 'CI job «Behavioral PostgreSQL Tests — ADR-008 Gate» success на develop @ 88a4e9e (runtime-роль NOBYPASSRLS)'
+  - kind: ci_run
+    ref: https://github.com/santanas-dev/retail-media-platform-enterprise/actions/runs/37585486496
+    status: verified
+    observed_at: '2026-10-07T07:14:07Z'
+    note: 'push-run develop @ 88a4e9e (merge PR #17), success 42/42'
+  notes: 'done - PR #17 смержен в develop @ 88a4e9e, push-run develop 37585486496 success 42/42 (решение владельца
+    2026-10-07). Этап RF-12 расширен решениями владельца 2026-10-05 - запрет сброса пароля, реактивации и деактивации
+    учётки с правами выше актора. Решение владельца 2026-10-05, этап RF-12 (находки P0-6, P1-11.a, T2 ревью main @
+    8ad0228; сверка RF-00). REQ: -; SC: -; DEC: -. Mini-design одобрен владельцем 2026-10-05 с дополнениями (журнал
+    RF-12). Не покрывает: привязку прав к конкретной организации рекламодателя (P0-8, T3), T7, фронтенд (P1-11.b),
+    RM-STAB-004, RM-STAB-015. Риск регрессии: средний - пользователи только со scoped-ролями теряют доступ к маршрутам
+    require_permission (перечень - журнал RF-12, раздел Мини-дизайн, М5).'
 - id: RM-STAB-023
   kind: implementation
   stage: S
@@ -2440,8 +2583,11 @@ tasks:
     ref: tests/test_phase3_auth_api.py
   decision_status: approved
   delivery_status: planned
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-001; SC: SC-SEC-008; DEC: -. Evidence: tests/test_phase3_auth_api.py;
-    tests/behavioral/test_auth_dual_e2e.py. Риск регрессии: высокий: вход всех пользователей.'
+  notes: 'OD-008 решён владельцем 2026-10-07 - MFA в пилоте не делается; MFA для system_admin и security_admin
+    обязателен до первого внешнего пользователя, но не позже production (условие строже прежнего «до production»). Записи
+    ниже - до 2026-10-07 (исторические): RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-001; SC: SC-SEC-008; DEC: -.
+    Evidence: tests/test_phase3_auth_api.py; tests/behavioral/test_auth_dual_e2e.py. Риск регрессии: высокий: вход всех
+    пользователей.'
   owner_gate:
     required: true
     reason: protected_boundary
@@ -2621,8 +2767,10 @@ tasks:
     ref: docs/audit/RM-TECH-261-artifact.md (создаётся задачей)
   decision_status: approved
   delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-CHAN-001, REQ-ORCH-005; SC: SC-CHAN-002, SC-ORCH-004;
-    DEC: DEC-001, DEC-002. Evidence: OD-021; design doc. Риск регрессии: высокий: рефакторинг KSO-вертикали.
+  notes: 'OD-021 решён владельцем 2026-10-07 - только КСО, второй канал после пилота. Остаётся blocked решением
+    владельца 2026-10-08; перевод в deferred и правка трассировки - ближайший документальный этап. Записи ниже - до
+    2026-10-07 (исторические): RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-CHAN-001, REQ-ORCH-005; SC: SC-CHAN-002,
+    SC-ORCH-004; DEC: DEC-001, DEC-002. Evidence: OD-021; design doc. Риск регрессии: высокий: рефакторинг KSO-вертикали.
     blocked до OD-021; Orchestrator/Adapter Layer/mock не создаются раньше (ADR-019/OD-022).'
   owner_gate:
     required: true
@@ -2728,7 +2876,10 @@ tasks:
   - attribution.lift_report
   decision_status: approved
   delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-002; SC: -; DEC: DEC-005, DEC-027. Evidence: new behavioral; report. Риск регрессии: средний. blocked OD-014 (DEC-027); OD-023 approved 2026-08-31.'
+  notes: 'OD-014 решён владельцем 2026-10-07 - отложено, пересмотр после ступени 100. Остаётся blocked решением
+    владельца 2026-10-08; перевод в deferred и правка трассировки - ближайший документальный этап. Записи ниже - до
+    2026-10-07 (исторические): RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-002; SC: -; DEC: DEC-005, DEC-027. Evidence:
+    new behavioral; report. Риск регрессии: средний. blocked OD-014 (DEC-027); OD-023 approved 2026-08-31.'
 - id: RM-TECH-283
   kind: design
   stage: A
@@ -2745,7 +2896,10 @@ tasks:
   - placement.audience_targeting
   decision_status: approved
   delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-005; SC: -; DEC: DEC-005, DEC-019. Evidence: OD-032; contract. Риск регрессии: низкий. blocked OD-032 (DEC-019); OD-023 approved 2026-08-31.'
+  notes: 'OD-032 решён владельцем 2026-10-07 - вне первой очереди, пересмотр после пилота. Остаётся blocked решением
+    владельца 2026-10-08; перевод в deferred и правка трассировки - ближайший документальный этап. Записи ниже - до
+    2026-10-07 (исторические): RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-005; SC: -; DEC: DEC-005, DEC-019. Evidence:
+    OD-032; contract. Риск регрессии: низкий. blocked OD-032 (DEC-019); OD-023 approved 2026-08-31.'
   owner_gate:
     required: true
     reason: scope_decision
@@ -2764,7 +2918,10 @@ tasks:
   - experiment.evaluate
   decision_status: approved
   delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-BIZ-012, REQ-V26-010; SC: -; DEC: DEC-027. Evidence: new behavioral. Риск регрессии: средний. blocked OD-014 (DEC-027) - методика winner metric не утверждена.'
+  notes: 'OD-014 решён владельцем 2026-10-07 - отложено, пересмотр после ступени 100. Остаётся blocked решением
+    владельца 2026-10-08; перевод в deferred и правка трассировки - ближайший документальный этап. Записи ниже - до
+    2026-10-07 (исторические): RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-BIZ-012, REQ-V26-010; SC: -; DEC: DEC-027.
+    Evidence: new behavioral. Риск регрессии: средний. blocked OD-014 (DEC-027) - методика winner metric не утверждена.'
 - id: RM-TECH-285
   kind: implementation
   stage: A
@@ -2799,8 +2956,10 @@ tasks:
   - finance.reconcile
   decision_status: approved
   delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-006, REQ-BIZ-009; SC: -; DEC: DEC-017. Evidence:
-    new behavioral. Риск регрессии: средний. blocked OD-030.'
+  notes: 'OD-030 решён владельцем 2026-10-07 - вне первой очереди, пересмотр после пилота. Остаётся blocked решением
+    владельца 2026-10-08; перевод в deferred и правка трассировки - ближайший документальный этап. Записи ниже - до
+    2026-10-07 (исторические): RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-V26-006, REQ-BIZ-009; SC: -; DEC: DEC-017.
+    Evidence: new behavioral. Риск регрессии: средний. blocked OD-030.'
 - id: RM-TECH-287
   kind: implementation
   stage: A
@@ -2815,8 +2974,10 @@ tasks:
     ref: tests/test_s065_rate_limit.py
   decision_status: approved
   delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-INT-003; SC: SC-SEC-002; DEC: DEC-013. Evidence: tests/test_s065_rate_limit.py;
-    new behavioral. Риск регрессии: средний. blocked OD-026.'
+  notes: 'OD-026 решён владельцем 2026-10-07 - вне первой очереди, пересмотр после пилота. Остаётся blocked решением
+    владельца 2026-10-08; перевод в deferred и правка трассировки - ближайший документальный этап. Записи ниже - до
+    2026-10-07 (исторические): RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-INT-003; SC: SC-SEC-002; DEC: DEC-013. Evidence:
+    tests/test_s065_rate_limit.py; new behavioral. Риск регрессии: средний. blocked OD-026.'
 - id: RM-TECH-288
   kind: governance
   stage: C
@@ -2879,9 +3040,12 @@ tasks:
     ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)
   decision_status: approved
   delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-OPS-006, REQ-ARCH-004; SC: SC-OPS-001, SC-OPS-005;
-    DEC: DEC-012, DEC-015. Evidence: tests/test_production_config_gate.py; drill record. Риск регрессии:
-    высокий. blocked OD-025/OD-028.'
+  notes: 'OD-025 и OD-028 решены владельцем 2026-10-07 только по сроку - RTO/RPO до production (владелец DR - владелец
+    продукта), топология - по итогам пилота. Содержание НЕ утверждено и вынесено в открытые OD-048 (значения RTO/RPO) и
+    OD-049 (топология production), срок обоих - до production (решение владельца 2026-10-08): задача blocked ими, приёмка
+    не закрыта. Записи ниже - до 2026-10-07 (исторические): RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-OPS-006,
+    REQ-ARCH-004; SC: SC-OPS-001, SC-OPS-005; DEC: DEC-012, DEC-015. Evidence: tests/test_production_config_gate.py; drill
+    record. Риск регрессии: высокий. blocked OD-025/OD-028.'
   owner_gate:
     required: true
     reason: deployment
@@ -2893,16 +3057,19 @@ tasks:
   dependencies:
   - RM-PILOT-002
   acceptance:
-  - check: rollback возвращает предыдущую версию; flag отключает функцию; ответственность по OD-010
+  - check: flag отключает функцию; rollout проходит состояния planned→lab→canary→staged→paused→completed/rolled_back; ответственность по OD-010
     verified_by: behavioral
-    ref: tests/integration/test_stand_rollback_drill.py
+    ref: tests/behavioral/test_rm_ops_004_rollout_flags.py
   feature_ids:
   - rollout.rollback
-  - release.rollback
   decision_status: approved
   delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-OPS-002; SC: SC-OPS-007; DEC: DEC-008. Evidence: tests/integration/test_stand_rollback_drill.py.
-    Риск регрессии: средний. blocked OD-010.'
+  notes: 'Решение владельца 2026-10-08 - задача разделена: откат релиза до пилота выделен в RM-OPS-009 (вместе с
+    функцией release.rollback); здесь остаются rollout entity/state machine и feature flags - до production (OD-010,
+    2026-10-07). Приёмка сужена до флагов и состояний rollout. Остаётся blocked решением владельца 2026-10-08; перевод в
+    deferred и правка трассировки - ближайший документальный этап. Записи ниже - до 2026-10-07 (исторические): RM-GOV-009
+    кандидат A3 (OD-037). REQ: REQ-OPS-002; SC: SC-OPS-007; DEC: DEC-008. Evidence:
+    tests/integration/test_stand_rollback_drill.py. Риск регрессии: средний. blocked OD-010.'
 - id: RM-OPS-005
   kind: governance
   stage: C
@@ -2916,8 +3083,206 @@ tasks:
     verified_by: owner
     ref: docs/product/roadmap.yaml:owner_decisions (ACCEPT владельца с датой)
   decision_status: approved
-  delivery_status: blocked
-  notes: 'RM-GOV-009 кандидат A3 (OD-037). REQ: REQ-SEC-004; SC: SC-SEC-011; DEC: DEC-007. Evidence: OD-009; retention-policy.yaml. Риск регрессии: низкий. blocked OD-009. RM-GOV-012 (предложение 2026-08-31, до ACCEPT владельца): перенесено POPS → C - артефакт Дополнения AG принимается до Gate-C (старт разработки по OD-041). 2026-08-31: кандидат docs/product/retention-policy.yaml подготовлен (working defaults REQ-DATA-001, legal register) - не действует до OD-009; задача остаётся blocked.'
+  delivery_status: planned
+  notes: '2026-10-07 (OD-009) - разблокирована решением владельца по объёму и сроку: сроки хранения и минимизация ПДн -
+    до пилота; OD-009 делится на четыре задачи - эта (сроки хранения), RM-OPS-007 (VPN), RM-OPS-008 (SIEM) и минимизация
+    ПДн (задача ещё не заведена - ожидает подтверждения владельцем приёмки). Юридическое утверждение retention/152-ФЗ НЕ
+    дано: приёмка задачи этим не закрыта. Записи ниже - до 2026-10-07 (исторические): RM-GOV-009 кандидат A3 (OD-037).
+    REQ: REQ-SEC-004; SC: SC-SEC-011; DEC: DEC-007. Evidence: OD-009; retention-policy.yaml. Риск регрессии: низкий.
+    blocked OD-009. RM-GOV-012 (предложение 2026-08-31, до ACCEPT владельца): перенесено POPS → C - артефакт Дополнения AG
+    принимается до Gate-C (старт разработки по OD-041). 2026-08-31: кандидат docs/product/retention-policy.yaml
+    подготовлен (working defaults REQ-DATA-001, legal register) - не действует до OD-009; задача остаётся blocked.'
   owner_gate:
     required: true
     reason: scope_decision
+- id: RM-STAB-024
+  kind: implementation
+  stage: S
+  title: 'Настройки AD: отдельные права чтения и изменения только у system_admin; вне dev подключение к AD только по TLS
+    с проверкой сертификата (PUT и POST /test)'
+  owner_role: Technical owner
+  dependencies:
+  - RM-STAB-022
+  acceptance:
+  - check: 'под retail_media_app (NOBYPASSRLS): GET/PUT /auth/ad-settings и POST /auth/ad-settings/test доступны только
+      держателю отдельных прав (в сиде - system_admin), security_admin получает 403; вне dev PUT и POST /test отклоняют
+      подключение без TLS или без проверки сертификата; пароль привязки не возвращается в ответе никому'
+    verified_by: behavioral
+    ref: 'tests/behavioral/test_rm_stab_024_ad_settings.py'
+  - check: 'уже сохранённые небезопасные настройки после исправления не ломают вход через AD молча - поведение явное и
+      видно администратору (способ определяется мини-дизайном этапа)'
+    verified_by: behavioral
+    ref: 'tests/behavioral/test_rm_stab_024_ad_settings.py'
+  decision_status: approved
+  delivery_status: planned
+  notes: 'Решения владельца 2026-10-07 - «задача про PUT /auth/ad-settings, стадия S, первая в очереди»; «права + запрет
+    небезопасного транспорта. Запрет действует и на PUT, и на POST /auth/ad-settings/test»; «security_admin настройки AD
+    не читает. Пароль привязки не возвращается в ответе никому, включая system_admin»; «вход через AD не должен молча
+    сломаться»; миграция 039 разрешена - «только добавление строк, downgrade удаляет только добавленное, существующие
+    строки не меняются». Детали формулировки и приёмки - «вне dev», «отдельные права», «в сиде - system_admin» -
+    предложены агентом (вариант, показанный владельцу в чате 2026-10-07) и подтверждаются мини-дизайном RF-13; дословно
+    владелец решил только процитированное выше. Этап RF-13. REQ: -; SC: -; DEC: -. Не покрывает: список разрешённых хостов
+    AD (RM-STAB-026), создание AD-учёток и роли из групп AD (RM-TECH-252), загрузку настроек из БД при старте.'
+- id: RM-STAB-025
+  kind: implementation
+  stage: S
+  title: 'Права scoped-роли действуют только в её scope (P0-8)'
+  owner_role: Technical owner
+  dependencies:
+  - RM-STAB-022
+  acceptance:
+  - check: 'под retail_media_app (NOBYPASSRLS): роль с scope организации A плюс членство в организации B не даёт прав этой
+      роли в B на маршрутах require_scoped_permission'
+    verified_by: behavioral
+    ref: 'tests/behavioral/test_rm_stab_025_scoped_permissions.py'
+  decision_status: approved
+  delivery_status: planned
+  notes: 'Решение владельца 2026-10-07 («P0-8 отдельной задачей»; OD-047). Находки P0-8, T3 ревью main @ 8ad0228.
+    Исполняется отдельным этапом, раньше RM-STAB-004. Способ (модель прав) определяется мини-дизайном этапа. REQ: -; SC:
+    -; DEC: -.'
+- id: RM-STAB-026
+  kind: implementation
+  stage: CORE
+  title: 'Настройки AD: сервер AD задаётся только из списка разрешённых хостов'
+  owner_role: Technical owner
+  dependencies:
+  - RM-STAB-024
+  acceptance:
+  - check: 'адрес сервера AD вне списка разрешённых хостов отклоняется при сохранении настроек и при проверке подключения'
+    verified_by: behavioral
+    ref: 'tests/behavioral/test_rm_stab_026_ad_allowed_hosts.py'
+  decision_status: approved
+  delivery_status: planned
+  notes: 'Решение владельца 2026-10-07 («Список разрешённых хостов — отдельным этапом, в долг»). Срок не назначен.
+    Способ задания списка определяется мини-дизайном этапа. REQ: -; SC: -; DEC: -. Перенесена из стадии S по ответу
+    владельца 2026-10-08 («перенеси»): в условие Gate-S не входит. Целевая стадия CORE выбрана агентом - ожидает
+    подтверждения владельца.'
+- id: RM-STAB-027
+  kind: implementation
+  stage: POPS
+  title: 'MinIO в pilot- и phase1-compose работает не под root'
+  owner_role: Technical owner
+  dependencies: []
+  acceptance:
+  - check: 'в pilot- и phase1-compose у сервиса MinIO нет user 0; стек поднимается, бакеты доступны'
+    verified_by: command
+    ref: 'CI job pilot-compose-smoke'
+  decision_status: approved
+  delivery_status: planned
+  owner_gate:
+    required: true
+    reason: protected_boundary
+  notes: 'Решение владельца 2026-10-07 («user: "0" для MinIO в phase1 — подтверждаю; перевод на non-root отдельной
+    задачей»); В цитате владельца - phase1; pilot включён по долгу RF-CI (2026-09-28) - оставлены оба контура по ответу
+    владельца 2026-10-08 («оба» / «оставить» - при обоих прочтениях нумерации вопросов результат один). Protected
+    Boundary: Docker/compose - разрешение по файлам в карточке этапа. Срок не назначен. REQ: -; SC: -; DEC: -. Перенесена
+    из стадии S по ответу владельца 2026-10-08 («перенеси»): в условие Gate-S не входит. Целевая стадия POPS выбрана
+    агентом - ожидает подтверждения владельца.'
+- id: RM-PILOT-002B
+  kind: implementation
+  stage: POPS
+  title: 'Конфигурация pilot-контура: проверка JWT_AUDIENCE, restart воркера в phase1, том NATS в DR-runbook'
+  owner_role: Technical owner
+  dependencies:
+  - RM-PILOT-002A
+  acceptance:
+  - check: 'validate-pilot-env.py и local_stand.py отклоняют окружение без корректного JWT_AUDIENCE'
+    verified_by: command
+    ref: 'python -m pytest tests/test_rf05_pilot_boot.py'
+  - check: 'воркер в phase1-compose перезапускается после отказа старта; DR-runbook содержит шаг про том NATS'
+    verified_by: artifact
+    ref: 'docs/runbook/backup-restore-dr.md'
+  decision_status: approved
+  delivery_status: planned
+  owner_gate:
+    required: true
+    reason: protected_boundary
+  notes: 'Решение владельца 2026-10-07 («JWT_AUDIENCE и долг RF-11 — одним небольшим этапом про конфигурацию
+    pilot-контура»). Долг RF-05 (JWT_AUDIENCE) и RF-11 (phase1 restart, DR runbook, verified_by при ручном
+    доказательстве). Protected Boundary: Docker/compose и скрипты деплоя - разрешение по файлам в карточке этапа. REQ: -;
+    SC: -; DEC: -. Пункт долга RF-11 «verified_by при ручном доказательстве» в приёмку не включён - это формат записи
+    приёмки RM-STAB-021, решается в этапе.'
+- id: RM-OPS-007
+  kind: implementation
+  stage: POPS
+  title: 'Доступ администратора только через VPN'
+  owner_role: Technical owner
+  dependencies: []
+  acceptance:
+  - check: 'admin-портал и административный API недоступны вне VPN; срок - до первого внешнего пользователя, но не позже
+      production'
+    verified_by: artifact
+    ref: 'docs/audit/<дата>-admin-vpn-access.md'
+  decision_status: approved
+  delivery_status: planned
+  notes: 'Решение владельца 2026-10-07 по OD-009 («разбить на четыре задачи … Доступ админа через VPN и SIEM-экспорт —
+    до первого внешнего пользователя, но не позже production»). Способ определяется мини-дизайном этапа. REQ: -; SC: -;
+    DEC: DEC-007.'
+- id: RM-OPS-008
+  kind: implementation
+  stage: POPS
+  title: 'SIEM-экспорт событий аудита'
+  owner_role: Technical owner
+  dependencies:
+  - RM-STAB-014
+  acceptance:
+  - check: 'события аудита экспортируются в SIEM; срок - до первого внешнего пользователя, но не позже production'
+    verified_by: artifact
+    ref: 'docs/audit/<дата>-siem-export.md'
+  decision_status: approved
+  delivery_status: planned
+  notes: 'Решение владельца 2026-10-07 по OD-009 (SIEM/Wazuh-экспорт; «до первого внешнего пользователя, но не позже
+    production»). Формат и приёмник определяются мини-дизайном этапа. REQ: -; SC: -; DEC: DEC-007.'
+- id: RM-OPS-009
+  kind: implementation
+  stage: POPS
+  title: 'Откат релиза до пилота: возврат на предыдущий bundle с сохранением данных'
+  owner_role: Technical owner
+  dependencies:
+  - RM-PILOT-002
+  acceptance:
+  - check: 'откат возвращает предыдущую версию; данные сохранены'
+    verified_by: command
+    ref: 'python -m pytest tests/integration/test_rm_ops_009_release_rollback.py (новый тест; обязателен в CI либо записанный прогон на стенде с артефактом)'
+  feature_ids:
+  - release.rollback
+  decision_status: approved
+  delivery_status: planned
+  notes: 'Решения владельца - 2026-10-07 «OD-010 — откат до пилота, feature flags до production»; 2026-10-08 «разделить
+    RM-OPS-004: „откат“ — до пилота, „feature flags“ — до production». Выделена из RM-OPS-004 вместе с функцией
+    release.rollback. Объём отката (сервисы, схема, данные) определяется в этапе. REQ: REQ-OPS-002; SC: SC-OPS-007; DEC:
+    DEC-008.'
+- id: RM-TECH-290
+  kind: implementation
+  stage: CORE
+  title: 'Часовые пояса в пилоте: расписание показов исполняется по местному времени магазина'
+  owner_role: Technical owner
+  dependencies:
+  - Gate-S
+  acceptance:
+  - check: 'показы по расписанию и окна PoP считаются в часовом поясе магазина; праздничный календарь не входит'
+    verified_by: behavioral
+    ref: 'tests/behavioral/test_rm_tech_290_timezones.py'
+  decision_status: approved
+  delivery_status: planned
+  notes: 'Решения владельца 2026-10-07 и 2026-10-08 («OD-012 — часовые пояса да, праздничный календарь нет»; «завести
+    две новые задачи: часовые пояса в пилоте (OD-012) и замер базовой линии производительности до пилота (OD-011)»). REQ:
+    -; SC: -; DEC: -. Пункт «окна PoP в часовом поясе магазина» оставлен по ответу владельца 2026-10-08 («оставить» / «да»
+    - при обоих прочтениях нумерации вопросов результат один).'
+- id: RM-TECH-291
+  kind: implementation
+  stage: POPS
+  title: 'Замер базовой линии производительности до пилота'
+  owner_role: Technical owner
+  dependencies:
+  - Gate-S
+  acceptance:
+  - check: 'базовые показатели производительности измерены на стенде и записаны; пороги и нагрузочные профили не
+      устанавливаются (ступень 500, OD-011)'
+    verified_by: artifact
+    ref: 'docs/audit/<дата>-performance-baseline.md'
+  decision_status: approved
+  delivery_status: planned
+  notes: 'Решения владельца 2026-10-07 и 2026-10-08 («OD-011 — нагрузочные профили отложить до ступени 500; до пилота —
+    замер базовой линии»; «завести две новые задачи …»). Состав показателей определяется в этапе. REQ: -; SC: -; DEC:
+    DEC-009.'
